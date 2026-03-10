@@ -30,13 +30,7 @@ export interface ExecuteDeletionResult {
   deletedUserId: number;
   transferredToUserId: number;
   dataTransferred: { catalogs: number; datasets: number };
-  dataDeleted: {
-    catalogs: number;
-    datasets: number;
-    events: number;
-    scheduledImports: number;
-    importFiles: number;
-  };
+  dataDeleted: { catalogs: number; datasets: number; events: number; scheduledImports: number; importFiles: number };
 }
 
 /** Check result for whether a user can be deleted. */

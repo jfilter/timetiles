@@ -58,10 +58,7 @@ export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | nu
   });
 
   if (commaFormat.length / samples.length >= 0.7) {
-    return {
-      format: "combined_comma",
-      confidence: commaFormat.length / samples.length,
-    };
+    return { format: "combined_comma", confidence: commaFormat.length / samples.length };
   }
   return null;
 };
@@ -98,10 +95,7 @@ export const checkSpaceFormat = (samples: unknown[]): FormatDetectionResult | nu
   });
 
   if (spaceFormat.length / samples.length >= 0.7) {
-    return {
-      format: "combined_space",
-      confidence: spaceFormat.length / samples.length,
-    };
+    return { format: "combined_space", confidence: spaceFormat.length / samples.length };
   }
   return null;
 };
@@ -158,10 +152,7 @@ export const checkGeoJsonFormat = (samples: unknown[]): FormatDetectionResult | 
   });
 
   if (geoJsonFormat.length / samples.length >= 0.7) {
-    return {
-      format: "geojson",
-      confidence: geoJsonFormat.length / samples.length,
-    };
+    return { format: "geojson", confidence: geoJsonFormat.length / samples.length };
   }
   return null;
 };

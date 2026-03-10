@@ -26,17 +26,8 @@ import { loadJobResources } from "../utils/resource-loading";
 import { getImportFilePath } from "../utils/upload-path";
 
 interface DuplicateAnalysisResult {
-  internalDuplicates: Array<{
-    rowNumber: number;
-    uniqueId: string;
-    firstOccurrence?: number;
-    count?: number;
-  }>;
-  externalDuplicates: Array<{
-    rowNumber: number;
-    uniqueId: string;
-    existingEventId: number | string;
-  }>;
+  internalDuplicates: Array<{ rowNumber: number; uniqueId: string; firstOccurrence?: number; count?: number }>;
+  externalDuplicates: Array<{ rowNumber: number; uniqueId: string; existingEventId: number | string }>;
   totalRows: number;
   uniqueIdMap: Map<string, number>;
 }
@@ -61,12 +52,7 @@ const skipDeduplication = async (
           strategy: "disabled",
           internal: [],
           external: [],
-          summary: {
-            totalRows,
-            uniqueRows: totalRows,
-            internalDuplicates: 0,
-            externalDuplicates: 0,
-          },
+          summary: { totalRows, uniqueRows: totalRows, internalDuplicates: 0, externalDuplicates: 0 },
         },
       },
     });
@@ -107,11 +93,7 @@ const analyzeInternalDuplicates = async (
       const uniqueId = generateUniqueId(row, dataset.idStrategy);
 
       if (uniqueIdMap.has(uniqueId)) {
-        internalDuplicates.push({
-          rowNumber,
-          uniqueId,
-          firstOccurrence: uniqueIdMap.get(uniqueId),
-        });
+        internalDuplicates.push({ rowNumber, uniqueId, firstOccurrence: uniqueIdMap.get(uniqueId) });
       } else {
         uniqueIdMap.set(uniqueId, rowNumber);
       }
@@ -149,21 +131,14 @@ const analyzeExternalDuplicates = async (
 
     const existingEvents = await payload.find({
       collection: COLLECTION_NAMES.EVENTS,
-      where: {
-        dataset: { equals: dataset.id },
-        uniqueId: { in: chunk },
-      },
+      where: { dataset: { equals: dataset.id }, uniqueId: { in: chunk } },
       limit: chunk.length,
     });
 
     for (const event of existingEvents.docs) {
       const rowNumber = uniqueIdMap.get(event.uniqueId);
       if (rowNumber !== undefined) {
-        externalDuplicates.push({
-          rowNumber,
-          uniqueId: event.uniqueId,
-          existingEventId: event.id,
-        });
+        externalDuplicates.push({ rowNumber, uniqueId: event.uniqueId, existingEventId: event.id });
       }
     }
   }
@@ -281,10 +256,7 @@ export const analyzeDuplicatesJob = {
       if (!stagesExist) {
         await ProgressTrackingService.initializeStageProgress(payload, importJobId, fileTotalRows);
         // Refetch job to get updated progress structure
-        const updatedJob = await payload.findByID({
-          collection: COLLECTION_NAMES.IMPORT_JOBS,
-          id: importJobId,
-        });
+        const updatedJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
         Object.assign(job, updatedJob);
       }
 
@@ -325,12 +297,7 @@ export const analyzeDuplicatesJob = {
         id: importJobId,
         data: {
           stage: PROCESSING_STAGE.FAILED,
-          errors: [
-            {
-              row: 0,
-              error: error instanceof Error ? error.message : "Unknown error",
-            },
-          ],
+          errors: [{ row: 0, error: error instanceof Error ? error.message : "Unknown error" }],
         },
       });
 

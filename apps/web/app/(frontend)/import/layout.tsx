@@ -25,21 +25,13 @@ const getInitialAuth = async () => {
 
     if (user) {
       const typedUser = user as User;
-      return {
-        isAuthenticated: true,
-        isEmailVerified: typedUser._verified === true,
-        userId: typedUser.id,
-      };
+      return { isAuthenticated: true, isEmailVerified: typedUser._verified === true, userId: typedUser.id };
     }
   } catch {
     // Not authenticated
   }
 
-  return {
-    isAuthenticated: false,
-    isEmailVerified: false,
-    userId: null,
-  };
+  return { isAuthenticated: false, isEmailVerified: false, userId: null };
 };
 
 export default async function ImportLayout({ children }: Readonly<{ children: React.ReactNode }>) {

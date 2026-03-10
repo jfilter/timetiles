@@ -35,12 +35,6 @@
   },
   "useTsLinkResolution": false,
   "preserveLinkText": true,
-  "navigation": {
-    "includeCategories": true,
-    "includeGroups": true
-  },
-  "textContentMappings": {
-    "title.indexPage": "API Reference",
-    "title.memberPage": "{name} | API Reference"
-  }
+  "navigation": { "includeCategories": true, "includeGroups": true },
+  "textContentMappings": { "title.indexPage": "API Reference", "title.memberPage": "{name} | API Reference" }
 }

@@ -70,9 +70,7 @@ describe.sequential("Network Error Handling Tests", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    const { users } = await withUsers(envWithServer, {
-      testUser: { role: "admin", email: TEST_EMAILS.network },
-    });
+    const { users } = await withUsers(envWithServer, { testUser: { role: "admin", email: TEST_EMAILS.network } });
     testUser = users.testUser;
 
     // Create test catalog
@@ -143,11 +141,7 @@ describe.sequential("Network Error Handling Tests", () => {
         testEnv,
         testCatalogId,
         `${testServerUrl}/file with spaces.csv`,
-        {
-          user: testUser,
-          name: "URL with Spaces Import",
-          frequency: "daily",
-        }
+        { user: testUser, name: "URL with Spaces Import", frequency: "daily" }
       );
 
       // Execute the job
@@ -178,11 +172,7 @@ describe.sequential("Network Error Handling Tests", () => {
         testEnv,
         testCatalogId,
         "https://this-domain-definitely-does-not-exist-12345.com/file.csv",
-        {
-          user: testUser,
-          name: "DNS Failure Import",
-          frequency: "daily",
-        }
+        { user: testUser, name: "DNS Failure Import", frequency: "daily" }
       );
 
       // Execute the job - real DNS will fail for non-existent domain
@@ -301,11 +291,7 @@ describe.sequential("Network Error Handling Tests", () => {
 
   describe("HTTP Error Responses", () => {
     it("should handle 404 Not Found", async () => {
-      testServer.respond("/missing.csv", {
-        status: 404,
-        body: "Not Found",
-        headers: { "Content-Type": "text/plain" },
-      });
+      testServer.respond("/missing.csv", { status: 404, body: "Not Found", headers: { "Content-Type": "text/plain" } });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/missing.csv`, {
         user: testUser,
@@ -384,10 +370,7 @@ describe.sequential("Network Error Handling Tests", () => {
         user: testUser,
         name: "Auth Failure Import",
         frequency: "daily",
-        authConfig: {
-          type: "bearer",
-          bearerToken: "invalid-token",
-        },
+        authConfig: { type: "bearer", bearerToken: "invalid-token" },
       });
 
       // Execute the job
@@ -462,11 +445,7 @@ describe.sequential("Network Error Handling Tests", () => {
         user: testUser,
         name: "Wrong Content Type Import",
         frequency: "daily",
-        additionalData: {
-          advancedConfig: {
-            expectedContentType: "csv",
-          },
-        },
+        additionalData: { advancedConfig: { expectedContentType: "csv" } },
       });
 
       // Execute the job
@@ -503,11 +482,7 @@ describe.sequential("Network Error Handling Tests", () => {
         user: testUser,
         name: "Binary Data Import",
         frequency: "daily",
-        additionalData: {
-          advancedConfig: {
-            expectedContentType: "csv",
-          },
-        },
+        additionalData: { advancedConfig: { expectedContentType: "csv" } },
       });
 
       // Execute the job
@@ -541,10 +516,7 @@ describe.sequential("Network Error Handling Tests", () => {
       testServer.respond("/large.csv", {
         status: 200,
         body: largeData,
-        headers: {
-          "Content-Type": "text/csv",
-          "Content-Length": String(largeData.length),
-        },
+        headers: { "Content-Type": "text/csv", "Content-Length": String(largeData.length) },
       });
 
       const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
@@ -689,10 +661,7 @@ describe.sequential("Network Error Handling Tests", () => {
         expect(successOutput.contentType).toBe("text/csv");
 
         // Verify the import file was created
-        const importFile = await payload.findByID({
-          collection: "import-files",
-          id: successOutput.importFileId,
-        });
+        const importFile = await payload.findByID({ collection: "import-files", id: successOutput.importFileId });
         expect(importFile).toBeDefined();
         // Status should be "parsing" because afterChange hook queues dataset-detection job immediately
         expect(importFile.status).toBe("parsing");

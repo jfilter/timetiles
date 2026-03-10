@@ -115,14 +115,7 @@ describe("applyTransforms", () => {
   it("should apply simple rename transform", () => {
     const data = { date: "2024-01-15", name: "Event" };
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "date",
-        to: "start_date",
-        active: true,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
     ];
 
     const result = applyTransforms(data, transforms);
@@ -133,42 +126,18 @@ describe("applyTransforms", () => {
   it("should apply nested path rename", () => {
     const data = { user: { email: "john@example.com", name: "John" } };
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "user.email",
-        to: "contact.email",
-        active: true,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "user.email", to: "contact.email", active: true, autoDetected: false },
     ];
 
     const result = applyTransforms(data, transforms);
-    expect(result).toEqual({
-      user: { name: "John" },
-      contact: { email: "john@example.com" },
-    });
+    expect(result).toEqual({ user: { name: "John" }, contact: { email: "john@example.com" } });
   });
 
   it("should apply multiple transforms", () => {
     const data = { date: "2024-01-15", author: "John", title: "Event" };
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "date",
-        to: "start_date",
-        active: true,
-        autoDetected: false,
-      },
-      {
-        id: "2",
-        type: "rename",
-        from: "author",
-        to: "creator",
-        active: true,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
+      { id: "2", type: "rename", from: "author", to: "creator", active: true, autoDetected: false },
     ];
 
     const result = applyTransforms(data, transforms);
@@ -178,14 +147,7 @@ describe("applyTransforms", () => {
   it("should skip inactive transforms", () => {
     const data = { date: "2024-01-15", name: "Event" };
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "date",
-        to: "start_date",
-        active: false,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "date", to: "start_date", active: false, autoDetected: false },
     ];
 
     const result = applyTransforms(data, transforms);
@@ -195,14 +157,7 @@ describe("applyTransforms", () => {
   it("should skip transforms for non-existent fields", () => {
     const data = { name: "Event" };
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "date",
-        to: "start_date",
-        active: true,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
     ];
 
     const result = applyTransforms(data, transforms);
@@ -214,14 +169,7 @@ describe("applyTransforms", () => {
     const data = { date: "2024-01-15", name: "Event" };
     const original = { ...data };
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "date",
-        to: "start_date",
-        active: true,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
     ];
 
     applyTransforms(data, transforms);
@@ -235,33 +183,11 @@ describe("applyTransforms", () => {
   });
 
   it("should handle complex nested transformations", () => {
-    const data = {
-      event: {
-        date: "2024-01-15",
-        location: {
-          city: "NYC",
-          coords: { lat: 40.7, lng: -74.0 },
-        },
-      },
-    };
+    const data = { event: { date: "2024-01-15", location: { city: "NYC", coords: { lat: 40.7, lng: -74.0 } } } };
 
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "event.date",
-        to: "start_date",
-        active: true,
-        autoDetected: false,
-      },
-      {
-        id: "2",
-        type: "rename",
-        from: "event.location.coords.lat",
-        to: "latitude",
-        active: true,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "event.date", to: "start_date", active: true, autoDetected: false },
+      { id: "2", type: "rename", from: "event.location.coords.lat", to: "latitude", active: true, autoDetected: false },
     ];
 
     const result = applyTransforms(data, transforms);
@@ -376,14 +302,7 @@ describe("applyTransformsBatch", () => {
     ];
 
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "date",
-        to: "start_date",
-        active: true,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
     ];
 
     const result = applyTransformsBatch(data, transforms);
@@ -403,14 +322,7 @@ describe("applyTransformsBatch", () => {
     const original = JSON.parse(JSON.stringify(data));
 
     const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "rename",
-        from: "date",
-        to: "start_date",
-        active: true,
-        autoDetected: false,
-      },
+      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
     ];
 
     applyTransformsBatch(data, transforms);

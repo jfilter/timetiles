@@ -34,9 +34,7 @@ describe("Event API Access Control Consistency", () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
 
     // Create a PRIVATE catalog and dataset
     const { catalog: privateCatalog } = await withCatalog(testEnv, {
@@ -76,10 +74,7 @@ describe("Event API Access Control Consistency", () => {
           uniqueId: `private-event-${Date.now()}-${i}`,
           dataset: privateDatasetId,
           data: { title: `Private Event ${i + 1}` },
-          location: {
-            latitude: 52.52 + i * 0.01,
-            longitude: 13.405 + i * 0.01,
-          },
+          location: { latitude: 52.52 + i * 0.01, longitude: 13.405 + i * 0.01 },
           eventTimestamp: new Date(2024, 5, 15 + i).toISOString(),
         },
       });
@@ -93,10 +88,7 @@ describe("Event API Access Control Consistency", () => {
           uniqueId: `public-event-${Date.now()}-${i}`,
           dataset: publicDatasetId,
           data: { title: `Public Event ${i + 1}` },
-          location: {
-            latitude: 40.7128 + i * 0.01,
-            longitude: -74.006 + i * 0.01,
-          },
+          location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 6, 10 + i).toISOString(),
         },
       });

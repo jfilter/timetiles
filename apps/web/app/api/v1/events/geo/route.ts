@@ -45,33 +45,20 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
-      return NextResponse.json({
-        type: "FeatureCollection",
-        features: [],
-        clusters: [],
-        totalCount: 0,
-      });
+      return NextResponse.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
     }
 
     const filters = buildEventFilters({ parameters, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyAccess === true || filters.denyResults === true) {
-      return NextResponse.json({
-        type: "FeatureCollection",
-        features: [],
-        clusters: [],
-        totalCount: 0,
-      });
+      return NextResponse.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
     }
 
     const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
     const clusters = transformResultToClusters(result.rows);
 
-    return NextResponse.json({
-      type: "FeatureCollection",
-      features: clusters,
-    });
+    return NextResponse.json({ type: "FeatureCollection", features: clusters });
   } catch (error) {
     return handleError(error);
   }
@@ -79,9 +66,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
 
 const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { error: NextResponse } => {
   if (boundsParam == null) {
-    return {
-      error: badRequest("Missing bounds parameter"),
-    };
+    return { error: badRequest("Missing bounds parameter") };
   }
 
   try {
@@ -93,9 +78,7 @@ const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { erro
   } catch {
     return {
       error: NextResponse.json(
-        {
-          error: "Invalid bounds format. Expected: {north, south, east, west}",
-        },
+        { error: "Invalid bounds format. Expected: {north, south, east, west}" },
         { status: 400 }
       ),
     };

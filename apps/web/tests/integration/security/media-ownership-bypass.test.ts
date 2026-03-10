@@ -27,9 +27,7 @@ const createTestImageBuffer = (): Buffer => {
 const createMediaForUser = (payload: any, user: User, alt: string): Promise<Media> => {
   return payload.create({
     collection: "media",
-    data: {
-      alt,
-    },
+    data: { alt },
     file: {
       data: createTestImageBuffer(),
       mimetype: "image/png",
@@ -82,10 +80,7 @@ describe.sequential("Media Ownership Bypass Vulnerability", () => {
         payload.update({
           collection: "media",
           id: ownerMedia.id,
-          data: {
-            alt: "hacked",
-            createdBy: attackerUser.id,
-          },
+          data: { alt: "hacked", createdBy: attackerUser.id },
           user: attackerUser,
           overrideAccess: false,
         })
@@ -94,12 +89,7 @@ describe.sequential("Media Ownership Bypass Vulnerability", () => {
 
     it("should reject delete when attacker injects createdBy to spoof ownership", async () => {
       await expect(
-        payload.delete({
-          collection: "media",
-          id: ownerMedia.id,
-          user: attackerUser,
-          overrideAccess: false,
-        })
+        payload.delete({ collection: "media", id: ownerMedia.id, user: attackerUser, overrideAccess: false })
       ).rejects.toThrow();
     });
   });

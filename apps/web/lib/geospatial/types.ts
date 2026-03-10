@@ -53,10 +53,7 @@ export interface CoordinateSample {
   lat: number | null;
   lon: number | null;
   isValid: boolean;
-  originalValues: {
-    lat: string;
-    lon: string;
-  };
+  originalValues: { lat: string; lon: string };
 }
 
 /**

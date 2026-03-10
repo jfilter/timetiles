@@ -42,9 +42,7 @@ describe.sequential("Pipeline Workflow Transitions", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
     testUserId = users.testUser.id;
 
     const { catalog } = await withCatalog(testEnv, {
@@ -108,10 +106,7 @@ describe.sequential("Pipeline Workflow Transitions", () => {
       job: { id: "schema-job-1", input: { importJobId: importJob.id, batchNumber: 0 } },
     });
 
-    await validateSchemaJob.handler({
-      payload,
-      job: { id: "validation-job-1", input: { importJobId: importJob.id } },
-    });
+    await validateSchemaJob.handler({ payload, job: { id: "validation-job-1", input: { importJobId: importJob.id } } });
 
     return { importFile, importJob, datasetId };
   };
@@ -239,12 +234,7 @@ Event 1,2024-01-01`;
           dataset: dataset.id,
           stage: PROCESSING_STAGE.AWAIT_APPROVAL,
           schema: { title: { type: "string" }, date: { type: "date" } },
-          schemaValidation: {
-            requiresApproval: true,
-            approved: false,
-            hasBreakingChanges: false,
-            changes: [],
-          },
+          schemaValidation: { requiresApproval: true, approved: false, hasBreakingChanges: false, changes: [] },
           progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
           duplicates: { summary: { uniqueRows: 1 } },
         },
@@ -320,10 +310,7 @@ Event 1,2024-01-01,Location 1`;
         job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
-      await validateSchemaJob.handler({
-        payload,
-        job: { id: "validation-job", input: { importJobId: importJob.id } },
-      });
+      await validateSchemaJob.handler({ payload, job: { id: "validation-job", input: { importJobId: importJob.id } } });
 
       const updatedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
 
@@ -367,10 +354,7 @@ Event 2,2024-01-02`;
 
       const beforeValidation = await payload.findByID({ collection: "import-jobs", id: importJob.id });
 
-      await validateSchemaJob.handler({
-        payload,
-        job: { id: "validation-job", input: { importJobId: importJob.id } },
-      });
+      await validateSchemaJob.handler({ payload, job: { id: "validation-job", input: { importJobId: importJob.id } } });
 
       const afterValidation = await payload.findByID({ collection: "import-jobs", id: importJob.id });
 
@@ -421,10 +405,7 @@ Event 2,2024-01-02,Location 2`;
         job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
-      await validateSchemaJob.handler({
-        payload,
-        job: { id: "validation-job", input: { importJobId: importJob.id } },
-      });
+      await validateSchemaJob.handler({ payload, job: { id: "validation-job", input: { importJobId: importJob.id } } });
 
       await createSchemaVersionJob.handler({
         payload,
@@ -520,11 +501,7 @@ Failed Event,2024-01-01`;
 
       // Cannot transition FAILED → COMPLETED
       await expect(
-        payload.update({
-          collection: "import-jobs",
-          id: failedJob.id,
-          data: { stage: PROCESSING_STAGE.COMPLETED },
-        })
+        payload.update({ collection: "import-jobs", id: failedJob.id, data: { stage: PROCESSING_STAGE.COMPLETED } })
       ).rejects.toThrow("Invalid recovery stage");
 
       // But CAN recover to a valid retry stage
@@ -572,10 +549,7 @@ Event,2024-01-01`;
 
       const queuedJobs = await payload.find({
         collection: "payload-jobs",
-        where: {
-          "input.importJobId": { equals: failedJob.id },
-          completedAt: { exists: false },
-        },
+        where: { "input.importJobId": { equals: failedJob.id }, completedAt: { exists: false } },
       });
       expect(queuedJobs.docs.length).toBeGreaterThanOrEqual(0);
     });

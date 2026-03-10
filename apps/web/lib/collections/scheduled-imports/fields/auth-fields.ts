@@ -35,18 +35,13 @@ const decryptAfterRead: FieldHook = ({ value }) => {
   return decryptField(value, getSecret());
 };
 
-const credentialHooks = {
-  beforeChange: [encryptBeforeChange],
-  afterRead: [decryptAfterRead],
-};
+const credentialHooks = { beforeChange: [encryptBeforeChange], afterRead: [decryptAfterRead] };
 
 export const authFields: Field[] = [
   {
     name: "authConfig",
     type: "group",
-    admin: {
-      description: "Authentication configuration for accessing the URL",
-    },
+    admin: { description: "Authentication configuration for accessing the URL" },
     fields: [
       {
         name: "type",
@@ -103,13 +98,7 @@ export const authFields: Field[] = [
         },
         hooks: credentialHooks,
       },
-      {
-        name: "customHeaders",
-        type: "json",
-        admin: {
-          description: "Additional custom headers as JSON object",
-        },
-      },
+      { name: "customHeaders", type: "json", admin: { description: "Additional custom headers as JSON object" } },
     ],
   },
 ];

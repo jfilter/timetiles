@@ -73,10 +73,7 @@ describe.sequential("Geocoding Cache Integration", () => {
   };
 
   const createImportFile = async (csvContent: string | Buffer, filename: string) =>
-    withImportFile(testEnv, testCatalogId, csvContent, {
-      filename,
-      user: testUserId,
-    });
+    withImportFile(testEnv, testCatalogId, csvContent, { filename, user: testUserId });
 
   beforeAll(async () => {
     // Spy on loadProviders to return mock providers instead of calling real NodeGeocoder
@@ -114,12 +111,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         enabled: true,
         priority: 1,
         rateLimit: 50,
-        config: {
-          google: {
-            apiKey: "test-api-key-for-geocoding",
-            language: "en",
-          },
-        },
+        config: { google: { apiKey: "test-api-key-for-geocoding", language: "en" } },
         tags: ["testing"],
       },
     });
@@ -127,9 +119,7 @@ describe.sequential("Geocoding Cache Integration", () => {
     const { initializeGeocoding } = await import("../../../lib/services/geocoding");
     initializeGeocoding(payload);
 
-    const { users } = await withUsers(testEnv, {
-      importer: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { importer: { role: "user" } });
     testUserId = users.importer.id;
 
     const { catalog } = await withCatalog(testEnv, {
@@ -197,18 +187,13 @@ describe.sequential("Geocoding Cache Integration", () => {
       // Verify location field was detected
       const importJobs = await payload.find({
         collection: "import-jobs",
-        where: {
-          importFile: { equals: importFile.id },
-        },
+        where: { importFile: { equals: importFile.id } },
       });
       expect(importJobs.docs.length).toBeGreaterThan(0);
       expect(importJobs.docs[0].detectedFieldMappings?.locationPath).toBeDefined();
 
       // Verify location-cache was populated with 10 unique locations
-      const locationCache = await payload.find({
-        collection: "location-cache",
-        limit: 100,
-      });
+      const locationCache = await payload.find({ collection: "location-cache", limit: 100 });
 
       expect(locationCache.docs).toHaveLength(10);
 
@@ -225,10 +210,7 @@ describe.sequential("Geocoding Cache Integration", () => {
 
       // Verify all events were created with coordinates
       // Since we clear the database before each test, all events belong to this import
-      const events = await payload.find({
-        collection: "events",
-        limit: 100,
-      });
+      const events = await payload.find({ collection: "events", limit: 100 });
 
       expect(events.docs).toHaveLength(15);
 
@@ -253,10 +235,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(10);
 
       // Get cache state after first import
-      const cacheAfterFirst = await payload.find({
-        collection: "location-cache",
-        limit: 100,
-      });
+      const cacheAfterFirst = await payload.find({ collection: "location-cache", limit: 100 });
 
       expect(cacheAfterFirst.docs).toHaveLength(10);
 
@@ -272,10 +251,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(0);
 
       // Verify cache still has only 10 entries (no duplicates)
-      const cacheAfterSecond = await payload.find({
-        collection: "location-cache",
-        limit: 100,
-      });
+      const cacheAfterSecond = await payload.find({ collection: "location-cache", limit: 100 });
 
       expect(cacheAfterSecond.docs).toHaveLength(10);
 
@@ -286,10 +262,7 @@ describe.sequential("Geocoding Cache Integration", () => {
 
       // Verify all events (from both imports) were created with coordinates
       // After two imports of 15 events each, we should have 30 events total
-      const allEventsAfterCacheHit = await payload.find({
-        collection: "events",
-        limit: 100,
-      });
+      const allEventsAfterCacheHit = await payload.find({ collection: "events", limit: 100 });
 
       expect(allEventsAfterCacheHit.docs).toHaveLength(30); // 15 from first + 15 from second
 
@@ -333,18 +306,12 @@ describe.sequential("Geocoding Cache Integration", () => {
       expect(callAddresses).toContain("555 Newbury St Boston MA");
 
       // Verify cache now has 15 total entries (10 original + 5 new)
-      const cacheAfterMixed = await payload.find({
-        collection: "location-cache",
-        limit: 100,
-      });
+      const cacheAfterMixed = await payload.find({ collection: "location-cache", limit: 100 });
 
       expect(cacheAfterMixed.docs).toHaveLength(15);
 
       // Verify all events created (15 from first + 10 from second = 25 total)
-      const allEventsAfterMixedImport = await payload.find({
-        collection: "events",
-        limit: 100,
-      });
+      const allEventsAfterMixedImport = await payload.find({ collection: "events", limit: 100 });
 
       expect(allEventsAfterMixedImport.docs).toHaveLength(40);
 
@@ -385,19 +352,13 @@ describe.sequential("Geocoding Cache Integration", () => {
       expect(callAddresses).toContain("Third Location Blvd");
 
       // Verify cache has 3 entries
-      const locationCache = await payload.find({
-        collection: "location-cache",
-        limit: 100,
-      });
+      const locationCache = await payload.find({ collection: "location-cache", limit: 100 });
 
       expect(locationCache.docs).toHaveLength(3);
 
       // Verify all 10 events were created with coordinates
       // Since we clear database before each test, all events belong to this import
-      const events = await payload.find({
-        collection: "events",
-        limit: 100,
-      });
+      const events = await payload.find({ collection: "events", limit: 100 });
 
       expect(events.docs).toHaveLength(10);
 
@@ -443,10 +404,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       // Should only geocode 2 unique locations (normalized)
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(2);
 
-      const locationCache = await payload.find({
-        collection: "location-cache",
-        limit: 100,
-      });
+      const locationCache = await payload.find({ collection: "location-cache", limit: 100 });
 
       expect(locationCache.docs).toHaveLength(2);
 
@@ -471,9 +429,7 @@ describe.sequential("Geocoding Cache Integration", () => {
 
       const locationCache = await payload.find({
         collection: "location-cache",
-        where: {
-          normalizedAddress: { equals: "test location" },
-        },
+        where: { normalizedAddress: { equals: "test location" } },
       });
 
       expect(locationCache.docs).toHaveLength(1);

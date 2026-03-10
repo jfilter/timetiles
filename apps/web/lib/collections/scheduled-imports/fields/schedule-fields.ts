@@ -17,9 +17,7 @@ export const scheduleFields: Field[] = [
       { label: "Frequency", value: "frequency" },
       { label: "Cron Expression", value: "cron" },
     ],
-    admin: {
-      description: "Choose scheduling method",
-    },
+    admin: { description: "Choose scheduling method" },
   },
   {
     name: "frequency",
@@ -30,10 +28,7 @@ export const scheduleFields: Field[] = [
       { label: "Weekly", value: "weekly" },
       { label: "Monthly", value: "monthly" },
     ],
-    admin: {
-      condition: (data) => data?.scheduleType === "frequency",
-      description: "How often to run the import",
-    },
+    admin: { condition: (data) => data?.scheduleType === "frequency", description: "How often to run the import" },
   },
   {
     name: "cronExpression",

@@ -30,10 +30,7 @@ export const GET = withRateLimit(
       const service = getScheduleService(payload);
       const status = service.getStatus();
 
-      return NextResponse.json({
-        success: true,
-        status,
-      });
+      return NextResponse.json({ success: true, status });
     } catch (error) {
       logger.error("Failed to get schedule service status", { error });
       return internalError("Failed to get schedule service status");
@@ -62,11 +59,7 @@ export const POST = withRateLimit(
 
       logger.info("Schedule service started", { serviceConfig, status });
 
-      return NextResponse.json({
-        success: true,
-        message: "Schedule service started",
-        status,
-      });
+      return NextResponse.json({ success: true, message: "Schedule service started", status });
     } catch (error) {
       logger.error("Failed to start schedule service", { error });
       return internalError("Failed to start schedule service");
@@ -86,10 +79,7 @@ export const DELETE = withRateLimit(
 
       logger.info("Schedule service stopped");
 
-      return NextResponse.json({
-        success: true,
-        message: "Schedule service stopped",
-      });
+      return NextResponse.json({ success: true, message: "Schedule service stopped" });
     } catch (error) {
       logger.error("Failed to stop schedule service", { error });
       return internalError("Failed to stop schedule service");

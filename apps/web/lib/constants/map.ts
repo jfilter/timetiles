@@ -18,13 +18,7 @@ export const MAP_STYLES = {
  * Default cluster statistics used when no data is available.
  * These provide sensible defaults for percentile-based cluster visualization.
  */
-export const DEFAULT_CLUSTER_STATS = {
-  p20: 2,
-  p40: 5,
-  p60: 10,
-  p80: 20,
-  p100: 50,
-} as const;
+export const DEFAULT_CLUSTER_STATS = { p20: 2, p40: 5, p60: 10, p80: 20, p100: 50 } as const;
 
 /**
  * Cluster statistics interface for percentile breakpoints.
@@ -56,13 +50,7 @@ export interface ClusterStats {
  * ```
  */
 export const ensureAscendingPercentiles = (rawStats: Partial<ClusterStats>): ClusterStats => {
-  const stats: ClusterStats = {
-    p20: rawStats.p20 ?? DEFAULT_CLUSTER_STATS.p20,
-    p40: 0,
-    p60: 0,
-    p80: 0,
-    p100: 0,
-  };
+  const stats: ClusterStats = { p20: rawStats.p20 ?? DEFAULT_CLUSTER_STATS.p20, p40: 0, p60: 0, p80: 0, p100: 0 };
   stats.p40 = Math.max(rawStats.p40 ?? DEFAULT_CLUSTER_STATS.p40, stats.p20 + 1);
   stats.p60 = Math.max(rawStats.p60 ?? DEFAULT_CLUSTER_STATS.p60, stats.p40 + 1);
   stats.p80 = Math.max(rawStats.p80 ?? DEFAULT_CLUSTER_STATS.p80, stats.p60 + 1);

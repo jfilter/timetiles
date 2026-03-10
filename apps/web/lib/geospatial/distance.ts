@@ -73,17 +73,11 @@ export const calculateCentroid = (points: Coordinates[]): Coordinates => {
   }
 
   const sum = points.reduce(
-    (acc, point) => ({
-      latitude: acc.latitude + point.latitude,
-      longitude: acc.longitude + point.longitude,
-    }),
+    (acc, point) => ({ latitude: acc.latitude + point.latitude, longitude: acc.longitude + point.longitude }),
     { latitude: 0, longitude: 0 }
   );
 
-  return {
-    latitude: sum.latitude / points.length,
-    longitude: sum.longitude / points.length,
-  };
+  return { latitude: sum.latitude / points.length, longitude: sum.longitude / points.length };
 };
 
 /**

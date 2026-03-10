@@ -123,12 +123,7 @@ export interface MultiWindowRateLimitResult {
   /** Remaining requests in the most restrictive window */
   remaining?: number;
   /** Details of the check that failed */
-  details?: {
-    limit: number;
-    windowMs: number;
-    remaining: number;
-    resetTime: number;
-  };
+  details?: { limit: number; windowMs: number; remaining: number; resetTime: number };
 }
 
 /**
@@ -185,12 +180,7 @@ export class RateLimitService {
     identifier: string,
     limit: number = 10,
     windowMs: number = 60 * 60 * 1000 // 1 hour default
-  ): {
-    allowed: boolean;
-    remaining: number;
-    resetTime: number;
-    blocked: boolean;
-  } {
+  ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
     const now = Date.now();
     const entry = this.cache.get(identifier);
 
@@ -214,19 +204,10 @@ export class RateLimitService {
     now: number,
     windowMs: number
   ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
-    const newEntry: RateLimitEntry = {
-      count: 1,
-      resetTime: now + windowMs,
-      blocked: false,
-    };
+    const newEntry: RateLimitEntry = { count: 1, resetTime: now + windowMs, blocked: false };
     this.cache.set(identifier, newEntry);
 
-    return {
-      allowed: true,
-      remaining: limit - 1,
-      resetTime: newEntry.resetTime,
-      blocked: false,
-    };
+    return { allowed: true, remaining: limit - 1, resetTime: newEntry.resetTime, blocked: false };
   }
 
   private handleBlockedRequest(
@@ -234,12 +215,7 @@ export class RateLimitService {
     entry: RateLimitEntry
   ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
     logger.debug({ identifier, resetTime: new Date(entry.resetTime) }, "Request denied - identifier blocked");
-    return {
-      allowed: false,
-      remaining: 0,
-      resetTime: entry.resetTime,
-      blocked: true,
-    };
+    return { allowed: false, remaining: 0, resetTime: entry.resetTime, blocked: true };
   }
 
   private processRateLimitCheck(
@@ -258,20 +234,10 @@ export class RateLimitService {
       // Log rate limit violation
       this.logRateLimitViolation(identifier, entry.count, limit);
 
-      return {
-        allowed: false,
-        remaining: 0,
-        resetTime: entry.resetTime,
-        blocked: true,
-      };
+      return { allowed: false, remaining: 0, resetTime: entry.resetTime, blocked: true };
     }
 
-    return {
-      allowed: true,
-      remaining: limit - entry.count,
-      resetTime: entry.resetTime,
-      blocked: false,
-    };
+    return { allowed: true, remaining: limit - entry.count, resetTime: entry.resetTime, blocked: false };
   }
 
   /**
@@ -322,10 +288,7 @@ export class RateLimitService {
     }
 
     // All windows passed
-    return {
-      allowed: true,
-      remaining: minRemaining,
-    };
+    return { allowed: true, remaining: minRemaining };
   }
 
   /**
@@ -344,11 +307,7 @@ export class RateLimitService {
   /**
    * Get current rate limit status without incrementing.
    */
-  getRateLimitStatus(identifier: string): {
-    count: number;
-    resetTime: number;
-    blocked: boolean;
-  } | null {
+  getRateLimitStatus(identifier: string): { count: number; resetTime: number; blocked: boolean } | null {
     const entry = this.cache.get(identifier);
     if (!entry || Date.now() >= entry.resetTime) {
       return null;
@@ -367,11 +326,7 @@ export class RateLimitService {
    * Block an identifier immediately.
    */
   blockIdentifier(identifier: string, durationMs: number = 24 * 60 * 60 * 1000): void {
-    const entry: RateLimitEntry = {
-      count: 999999,
-      resetTime: Date.now() + durationMs,
-      blocked: true,
-    };
+    const entry: RateLimitEntry = { count: 999999, resetTime: Date.now() + durationMs, blocked: true };
     this.cache.set(identifier, entry);
     logger.warn({ identifier, durationMs }, "Identifier blocked");
   }
@@ -420,14 +375,7 @@ export class RateLimitService {
    */
   private logRateLimitViolation(identifier: string, attemptedCount: number, limit: number): void {
     try {
-      logger.warn(
-        {
-          identifier,
-          attemptedCount,
-          limit,
-        },
-        "Rate limit exceeded"
-      );
+      logger.warn({ identifier, attemptedCount, limit }, "Rate limit exceeded");
     } catch (error) {
       logger.error({ error, identifier }, "Failed to log rate limit violation");
     }
@@ -436,11 +384,7 @@ export class RateLimitService {
   /**
    * Get statistics about current rate limits.
    */
-  getStatistics(): {
-    totalEntries: number;
-    blockedEntries: number;
-    activeEntries: number;
-  } {
+  getStatistics(): { totalEntries: number; blockedEntries: number; activeEntries: number } {
     const now = Date.now();
     let blocked = 0;
     let active = 0;
@@ -454,11 +398,7 @@ export class RateLimitService {
       }
     }
 
-    return {
-      totalEntries: this.cache.size,
-      blockedEntries: blocked,
-      activeEntries: active,
-    };
+    return { totalEntries: this.cache.size, blockedEntries: blocked, activeEntries: active };
   }
 
   /**

@@ -17,13 +17,9 @@ vi.mock("@/lib/middleware/auth", () => ({
   withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({
-  getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
+vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractClusterStatsParameters: mocks.mockExtractClusterStatsParameters,
@@ -44,17 +40,9 @@ vi.mock("@/lib/utils/event-params", () => ({
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign(
-    (strings: TemplateStringsArray, ...values: unknown[]) => ({
-      type: "sql",
-      strings: Array.from(strings),
-      values,
-    }),
+    (strings: TemplateStringsArray, ...values: unknown[]) => ({ type: "sql", strings: Array.from(strings), values }),
     {
-      join: vi.fn((parts: unknown[], separator: unknown) => ({
-        type: "join",
-        parts,
-        separator,
-      })),
+      join: vi.fn((parts: unknown[], separator: unknown) => ({ type: "join", parts, separator })),
       raw: vi.fn((value: string) => ({ type: "raw", value })),
     }
   ),
@@ -78,9 +66,7 @@ describe.sequential("GET /api/v1/events/geo/stats", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.mockGetPayload.mockResolvedValue({
-      db: { drizzle: { execute: mocks.mockDrizzleExecute } },
-    });
+    mocks.mockGetPayload.mockResolvedValue({ db: { drizzle: { execute: mocks.mockDrizzleExecute } } });
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
     mocks.mockExtractClusterStatsParameters.mockReturnValue({
       catalog: null,

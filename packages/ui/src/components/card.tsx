@@ -22,17 +22,9 @@ const cardVariants = cva("rounded-sm border transition-all duration-200", {
       showcase:
         "bg-background dark:bg-card text-card-foreground border-2 border-cartographic-navy dark:border-border shadow-sm hover:shadow-lg hover:-translate-y-1",
     },
-    padding: {
-      none: "",
-      sm: "p-4",
-      default: "p-6",
-      lg: "p-8",
-    },
+    padding: { none: "", sm: "p-4", default: "p-6", lg: "p-8" },
   },
-  defaultVariants: {
-    variant: "default",
-    padding: "default",
-  },
+  defaultVariants: { variant: "default", padding: "default" },
 });
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof cardVariants> {}

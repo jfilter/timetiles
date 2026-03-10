@@ -1,9 +1,7 @@
 {
   "extends": "@timetiles/typescript-config/base.json",
   "compilerOptions": {
-    "paths": {
-      "@timetiles/payload-schema-detection/*": ["./src/*"]
-    },
+    "paths": { "@timetiles/payload-schema-detection/*": ["./src/*"] },
     "moduleResolution": "bundler",
     "module": "ESNext",
     "allowSyntheticDefaultImports": true,

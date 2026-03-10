@@ -159,11 +159,7 @@ describe.sequential("Webhook Import Service Integration", () => {
     // Setup test data
     const timestamp = Date.now();
     const { users } = await withUsers(testEnv, {
-      testUser: {
-        role: "admin",
-        email: `service-test-${timestamp}@example.com`,
-        trustLevel: "5",
-      },
+      testUser: { role: "admin", email: `service-test-${timestamp}@example.com`, trustLevel: "5" },
     });
     testUser = users.testUser;
 
@@ -215,10 +211,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         frequency: "daily",
         additionalData: {
           dataset: testDataset.id,
-          advancedOptions: {
-            autoApproveSchema: true,
-            skipDuplicateChecking: false,
-          },
+          advancedOptions: { autoApproveSchema: true, skipDuplicateChecking: false },
         },
       }
     );
@@ -254,10 +247,7 @@ describe.sequential("Webhook Import Service Integration", () => {
 
       // Verify import file in database
 
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: result.output.importFileId,
-      });
+      const importFile = await payload.findByID({ collection: "import-files", id: result.output.importFileId });
 
       expect(importFile).toBeDefined();
       // The originalName should contain our specified name
@@ -274,10 +264,7 @@ describe.sequential("Webhook Import Service Integration", () => {
 
       // Verify metadata
       expect(importFile.metadata).toMatchObject({
-        scheduledExecution: {
-          scheduledImportId: testScheduledImport.id,
-          executionTime: expect.any(String),
-        },
+        scheduledExecution: { scheduledImportId: testScheduledImport.id, executionTime: expect.any(String) },
       });
 
       // Verify file was saved
@@ -298,9 +285,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          sourceUrl: excelUrl,
-        },
+        data: { sourceUrl: excelUrl },
       });
 
       const result = await urlFetchJob.handler({
@@ -326,10 +311,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         throw new Error("Expected successful result with importFileId");
       }
 
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: result.output.importFileId,
-      });
+      const importFile = await payload.findByID({ collection: "import-files", id: result.output.importFileId });
 
       if (importFile.filename) {
         expect(importFile.filename).toMatch(/\.xlsx$/);
@@ -343,16 +325,11 @@ describe.sequential("Webhook Import Service Integration", () => {
       // Clean up import files after each test to avoid interference
       const existingFiles = await payload.find({
         collection: "import-files",
-        where: {
-          catalog: { equals: testCatalog.id },
-        },
+        where: { catalog: { equals: testCatalog.id } },
       });
 
       for (const file of existingFiles.docs) {
-        await payload.delete({
-          collection: "import-files",
-          id: file.id,
-        });
+        await payload.delete({ collection: "import-files", id: file.id });
       }
     });
 
@@ -382,11 +359,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       const firstFileId = result1.output.importFileId;
 
       // Mark the first import as completed for duplicate detection to work
-      await payload.update({
-        collection: "import-files",
-        id: firstFileId,
-        data: { status: "completed" },
-      });
+      await payload.update({ collection: "import-files", id: firstFileId, data: { status: "completed" } });
 
       // Reset status for second import
       await payload.update({
@@ -421,10 +394,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       expect(result2.output.importFileId.toString()).toBe(firstFileId.toString());
 
       // Verify scheduled import was updated with duplicate info
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       expect(updatedImport.lastStatus).toBe("success");
     });
@@ -433,11 +403,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          advancedOptions: {
-            skipDuplicateChecking: true,
-          },
-        },
+        data: { advancedOptions: { skipDuplicateChecking: true } },
       });
 
       // First import
@@ -510,12 +476,7 @@ describe.sequential("Webhook Import Service Integration", () => {
             },
           },
         },
-        file: {
-          data: differentContent,
-          mimetype: "text/csv",
-          name: "old-import.csv",
-          size: differentContent.length,
-        },
+        file: { data: differentContent, mimetype: "text/csv", name: "old-import.csv", size: differentContent.length },
         user: testUser,
       });
 
@@ -553,10 +514,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         id: testScheduledImport.id,
         data: {
           sourceUrl: `http://localhost:${testServerPort}/auth/bearer.csv`,
-          authConfig: {
-            type: "bearer",
-            bearerToken: TEST_CREDENTIALS.bearer.alternateToken,
-          },
+          authConfig: { type: "bearer", bearerToken: TEST_CREDENTIALS.bearer.alternateToken },
         },
       });
 
@@ -569,10 +527,7 @@ describe.sequential("Webhook Import Service Integration", () => {
           input: {
             scheduledImportId: testScheduledImport.id,
             sourceUrl: `http://localhost:${testServerPort}/auth/bearer.csv`,
-            authConfig: {
-              type: "bearer",
-              bearerToken: TEST_CREDENTIALS.bearer.alternateToken,
-            },
+            authConfig: { type: "bearer", bearerToken: TEST_CREDENTIALS.bearer.alternateToken },
             catalogId: testCatalog.id,
             originalName: "Bearer Auth Test",
             userId: testUser.id,
@@ -606,11 +561,7 @@ describe.sequential("Webhook Import Service Integration", () => {
           input: {
             scheduledImportId: testScheduledImport.id,
             sourceUrl: `http://localhost:${testServerPort}/auth/basic.csv`,
-            authConfig: {
-              type: "basic",
-              username: "testuser",
-              password: "testpass",
-            },
+            authConfig: { type: "basic", username: "testuser", password: "testpass" },
             catalogId: testCatalog.id,
             originalName: "Basic Auth Test",
             userId: testUser.id,
@@ -630,10 +581,7 @@ describe.sequential("Webhook Import Service Integration", () => {
           sourceUrl: `http://localhost:${testServerPort}/auth/custom.csv`,
           authConfig: {
             type: "none",
-            customHeaders: {
-              "X-API-Key": TEST_CREDENTIALS.apiKey.key,
-              "X-Custom-Header": "custom-value",
-            },
+            customHeaders: { "X-API-Key": TEST_CREDENTIALS.apiKey.key, "X-Custom-Header": "custom-value" },
           },
         },
       });
@@ -648,10 +596,7 @@ describe.sequential("Webhook Import Service Integration", () => {
             sourceUrl: `http://localhost:${testServerPort}/auth/custom.csv`,
             authConfig: {
               type: "custom",
-              customHeaders: {
-                "X-API-Key": TEST_CREDENTIALS.apiKey.key,
-                "X-Custom-Header": "custom-value",
-              },
+              customHeaders: { "X-API-Key": TEST_CREDENTIALS.apiKey.key, "X-Custom-Header": "custom-value" },
             },
             catalogId: testCatalog.id,
             originalName: "Custom Headers Test",
@@ -668,18 +613,9 @@ describe.sequential("Webhook Import Service Integration", () => {
   describe("Import Name Templates", () => {
     it("should generate names from template variables", async () => {
       const templates = [
-        {
-          template: "{{name}} - {{date}}",
-          expectedPattern: /Service Import.*\d{4}-\d{2}-\d{2}/,
-        },
-        {
-          template: "{{url}} at {{time}}",
-          expectedPattern: /localhost at \d{2}:\d{2}:\d{2}/,
-        },
-        {
-          template: "Webhook {{date}} from {{url}}",
-          expectedPattern: /Webhook \d{4}-\d{2}-\d{2} from localhost/,
-        },
+        { template: "{{name}} - {{date}}", expectedPattern: /Service Import.*\d{4}-\d{2}-\d{2}/ },
+        { template: "{{url}} at {{time}}", expectedPattern: /localhost at \d{2}:\d{2}:\d{2}/ },
+        { template: "Webhook {{date}} from {{url}}", expectedPattern: /Webhook \d{4}-\d{2}-\d{2} from localhost/ },
       ];
 
       for (const { template, expectedPattern } of templates) {
@@ -721,10 +657,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         if (!result.output.success || !("importFileId" in result.output)) {
           throw new Error("Expected successful result with importFileId");
         }
-        const importFile = await payload.findByID({
-          collection: "import-files",
-          id: result.output.importFileId,
-        });
+        const importFile = await payload.findByID({ collection: "import-files", id: result.output.importFileId });
 
         expect(importFile.originalName).toMatch(expectedPattern);
       }
@@ -734,9 +667,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          importNameTemplate: null,
-        },
+        data: { importNameTemplate: null },
       });
 
       const defaultName = `${testScheduledImport.name} - ${new Date().toISOString().split("T")[0]}`;
@@ -762,10 +693,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         throw new Error("Expected successful result with importFileId");
       }
 
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: result.output.importFileId,
-      });
+      const importFile = await payload.findByID({ collection: "import-files", id: result.output.importFileId });
 
       expect(importFile.originalName).toBe(defaultName);
     });
@@ -779,29 +707,13 @@ describe.sequential("Webhook Import Service Integration", () => {
           {
             sheetIdentifier: "Events",
             dataset: testDataset.id,
-            mappingRules: {
-              dateField: "event_date",
-              nameField: "event_name",
-              locationField: "venue",
-            },
+            mappingRules: { dateField: "event_date", nameField: "event_name", locationField: "venue" },
           },
-          {
-            sheetIdentifier: "Speakers",
-            dataset: testDataset.id,
-            mappingRules: {
-              nameField: "speaker_name",
-            },
-          },
+          { sheetIdentifier: "Speakers", dataset: testDataset.id, mappingRules: { nameField: "speaker_name" } },
         ],
       };
 
-      await payload.update({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-        data: {
-          multiSheetConfig,
-        },
-      });
+      await payload.update({ collection: "scheduled-imports", id: testScheduledImport.id, data: { multiSheetConfig } });
 
       const result = await urlFetchJob.handler({
         req: { payload },
@@ -824,10 +736,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         throw new Error("Expected successful result with importFileId");
       }
 
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: result.output.importFileId,
-      });
+      const importFile = await payload.findByID({ collection: "import-files", id: result.output.importFileId });
 
       // Check that datasetMapping is present and has the correct structure
       if (
@@ -856,14 +765,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          statistics: {
-            totalRuns: 10,
-            successfulRuns: 8,
-            failedRuns: 2,
-            averageDuration: 5000,
-          },
-        },
+        data: { statistics: { totalRuns: 10, successfulRuns: 8, failedRuns: 2, averageDuration: 5000 } },
       });
 
       const result = await urlFetchJob.handler({
@@ -884,10 +786,7 @@ describe.sequential("Webhook Import Service Integration", () => {
 
       expect(result.output.success).toBe(true);
 
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       expect(updatedImport.statistics?.totalRuns).toBe(11);
       expect(updatedImport.statistics?.successfulRuns).toBe(9);
@@ -905,12 +804,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         id: testScheduledImport.id,
         data: {
           sourceUrl: `http://localhost:${testServerPort}/500-error.csv`, // Use error endpoint
-          statistics: {
-            totalRuns: 5,
-            successfulRuns: 3,
-            failedRuns: 2,
-            averageDuration: 1000,
-          },
+          statistics: { totalRuns: 5, successfulRuns: 3, failedRuns: 2, averageDuration: 1000 },
         },
       });
 
@@ -932,10 +826,7 @@ describe.sequential("Webhook Import Service Integration", () => {
 
       expect(result.output.success).toBe(false);
 
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       expect(updatedImport.statistics?.totalRuns).toBe(6);
       expect(updatedImport.statistics?.successfulRuns).toBe(3);
@@ -1006,10 +897,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         throw new Error("Expected successful result with importFileId");
       }
 
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: result.output.importFileId,
-      });
+      const importFile = await payload.findByID({ collection: "import-files", id: result.output.importFileId });
 
       // The file content is actually CSV, so it should be detected as CSV
       expect(importFile.mimeType).toBe("text/csv");
@@ -1035,10 +923,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       expect(result.output.success).toBe(false);
       expect("error" in result.output && result.output.error).toContain("500");
 
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       expect(updatedImport.lastStatus).toBe("failed");
       expect(updatedImport.lastError).toContain("500");

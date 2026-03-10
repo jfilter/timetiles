@@ -52,10 +52,7 @@ describe.sequential("Database-backed Seed Operations", () => {
       const collections = ["users", "catalogs", "datasets", "events"];
 
       for (const collection of collections) {
-        const result = await payload.find({
-          collection: collection as keyof Config["collections"],
-          limit: 1,
-        });
+        const result = await payload.find({ collection: collection as keyof Config["collections"], limit: 1 });
 
         expect(result.docs.length).toBeGreaterThan(0);
       }
@@ -65,25 +62,13 @@ describe.sequential("Database-backed Seed Operations", () => {
       // Explicitly truncate specific collections for better performance
       await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events"]);
 
-      await testEnv.seedManager.seedWithConfig({
-        collections: ["users", "catalogs"],
-        preset: "testing",
-      });
+      await testEnv.seedManager.seedWithConfig({ collections: ["users", "catalogs"], preset: "testing" });
 
-      const users = await payload.find({
-        collection: "users",
-        limit: 100,
-      });
+      const users = await payload.find({ collection: "users", limit: 100 });
 
-      const catalogs = await payload.find({
-        collection: "catalogs",
-        limit: 100,
-      });
+      const catalogs = await payload.find({ collection: "catalogs", limit: 100 });
 
-      const datasets = await payload.find({
-        collection: "datasets",
-        limit: 100,
-      });
+      const datasets = await payload.find({ collection: "datasets", limit: 100 });
 
       expect(users.docs.length).toBeGreaterThan(0);
       expect(catalogs.docs.length).toBeGreaterThan(0);
@@ -93,9 +78,7 @@ describe.sequential("Database-backed Seed Operations", () => {
 
   describe.sequential("Truncation Operations", () => {
     it("should truncate all collections when no specific collections provided", async () => {
-      await testEnv.seedManager.seedWithConfig({
-        preset: "testing",
-      });
+      await testEnv.seedManager.seedWithConfig({ preset: "testing" });
 
       // Verify we have data before truncation
       let hasData = false;
@@ -103,10 +86,7 @@ describe.sequential("Database-backed Seed Operations", () => {
       const collections = ["users", "catalogs", "datasets", "events"];
 
       for (const collection of collections) {
-        const result = await payload.find({
-          collection: collection as keyof Config["collections"],
-          limit: 1,
-        });
+        const result = await payload.find({ collection: collection as keyof Config["collections"], limit: 1 });
         if (result.docs.length > 0) {
           hasData = true;
           break;
@@ -120,10 +100,7 @@ describe.sequential("Database-backed Seed Operations", () => {
       // Check that most collections are empty (allowing some that might not clear due to refs)
       let emptiedCount = 0;
       for (const collection of collections) {
-        const result = await payload.find({
-          collection: collection as keyof Config["collections"],
-          limit: 100,
-        });
+        const result = await payload.find({ collection: collection as keyof Config["collections"], limit: 100 });
         if (result.docs.length === 0) {
           emptiedCount++;
         }
@@ -139,10 +116,7 @@ describe.sequential("Database-backed Seed Operations", () => {
       await testEnv.seedManager.truncate(seedCollections);
       // Try to seed datasets without catalogs - should complete without throwing
       await expect(
-        testEnv.seedManager.seedWithConfig({
-          collections: ["datasets"],
-          preset: "testing",
-        })
+        testEnv.seedManager.seedWithConfig({ collections: ["datasets"], preset: "testing" })
       ).resolves.toBeUndefined();
 
       // Verify no datasets were actually created due to missing catalogs
@@ -152,17 +126,11 @@ describe.sequential("Database-backed Seed Operations", () => {
 
     it("should handle missing datasets for events", async () => {
       await testEnv.seedManager.truncate(seedCollections);
-      await testEnv.seedManager.seedWithConfig({
-        collections: ["catalogs"],
-        preset: "testing",
-      });
+      await testEnv.seedManager.seedWithConfig({ collections: ["catalogs"], preset: "testing" });
 
       // Try to seed events without datasets - should complete without throwing
       await expect(
-        testEnv.seedManager.seedWithConfig({
-          collections: ["events"],
-          preset: "testing",
-        })
+        testEnv.seedManager.seedWithConfig({ collections: ["events"], preset: "testing" })
       ).resolves.toBeUndefined();
 
       // Verify no events were actually created due to missing datasets
@@ -196,10 +164,7 @@ describe.sequential("Database-backed Seed Operations", () => {
     });
 
     it("should seed using configuration for test preset", async () => {
-      await testEnv.seedManager.seedWithConfig({
-        preset: "testing",
-        collections: ["users", "catalogs"],
-      });
+      await testEnv.seedManager.seedWithConfig({ preset: "testing", collections: ["users", "catalogs"] });
 
       const usersCount = await testEnv.seedManager.getCollectionCount("users");
       const catalogsCount = await testEnv.seedManager.getCollectionCount("catalogs");
@@ -216,10 +181,7 @@ describe.sequential("Database-backed Seed Operations", () => {
     });
 
     it("should respect collection dependencies", async () => {
-      await testEnv.seedManager.seedWithConfig({
-        preset: "development",
-        collections: ["catalogs", "datasets"],
-      });
+      await testEnv.seedManager.seedWithConfig({ preset: "development", collections: ["catalogs", "datasets"] });
 
       const catalogsCount = await testEnv.seedManager.getCollectionCount("catalogs");
       const datasetsCount = await testEnv.seedManager.getCollectionCount("datasets");
@@ -227,11 +189,7 @@ describe.sequential("Database-backed Seed Operations", () => {
       expect(catalogsCount).toBeGreaterThan(0);
       expect(datasetsCount).toBeGreaterThan(0);
 
-      const datasets = await testEnv.payload.find({
-        collection: "datasets",
-        limit: 5,
-        depth: 1,
-      });
+      const datasets = await testEnv.payload.find({ collection: "datasets", limit: 5, depth: 1 });
 
       expect(datasets.docs.length).toBeGreaterThan(0);
 
@@ -245,14 +203,7 @@ describe.sequential("Database-backed Seed Operations", () => {
       await testEnv.seedManager.seedWithConfig({
         preset: "testing",
         collections: ["users"],
-        configOverrides: {
-          users: {
-            count: 10,
-            options: {
-              includeTestUsers: true,
-            },
-          },
-        },
+        configOverrides: { users: { count: 10, options: { includeTestUsers: true } } },
       });
 
       const usersCount = await testEnv.seedManager.getCollectionCount("users");
@@ -262,10 +213,7 @@ describe.sequential("Database-backed Seed Operations", () => {
     });
 
     it("should skip disabled collections", async () => {
-      await testEnv.seedManager.seedWithConfig({
-        preset: "development",
-        collections: ["media"],
-      });
+      await testEnv.seedManager.seedWithConfig({ preset: "development", collections: ["media"] });
 
       const mediaCount = await testEnv.seedManager.getCollectionCount("media");
       expect(mediaCount).toBe(0);
@@ -273,22 +221,14 @@ describe.sequential("Database-backed Seed Operations", () => {
 
     it("should throw error for unknown preset", async () => {
       await expect(
-        testEnv.seedManager.seedWithConfig({
-          preset: "unknown-preset",
-          collections: ["events"],
-        })
+        testEnv.seedManager.seedWithConfig({ preset: "unknown-preset", collections: ["events"] })
       ).rejects.toThrow("Unknown preset: unknown-preset");
     });
 
     it("should seed main-menu global successfully", async () => {
-      await testEnv.seedManager.seedWithConfig({
-        preset: "development",
-        collections: ["main-menu"],
-      });
+      await testEnv.seedManager.seedWithConfig({ preset: "development", collections: ["main-menu"] });
 
-      const mainMenu = await testEnv.payload.findGlobal({
-        slug: "main-menu",
-      });
+      const mainMenu = await testEnv.payload.findGlobal({ slug: "main-menu" });
 
       expect(mainMenu).toBeDefined();
       expect(mainMenu.navItems).toBeDefined();

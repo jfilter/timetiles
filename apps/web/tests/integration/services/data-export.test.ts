@@ -75,30 +75,16 @@ describe.sequential("Data Export Service", () => {
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
       // Create catalogs
-      await payload.create({
-        collection: "catalogs",
-        data: {
-          name: "Test Catalog 1",
-          createdBy: users.testUser.id,
-        },
-      });
+      await payload.create({ collection: "catalogs", data: { name: "Test Catalog 1", createdBy: users.testUser.id } });
       const catalog2 = await payload.create({
         collection: "catalogs",
-        data: {
-          name: "Test Catalog 2",
-          createdBy: users.testUser.id,
-        },
+        data: { name: "Test Catalog 2", createdBy: users.testUser.id },
       });
 
       // Create a dataset
       await payload.create({
         collection: "datasets",
-        data: {
-          name: "Test Dataset",
-          catalog: catalog2.id,
-          language: "eng",
-          createdBy: users.testUser.id,
-        },
+        data: { name: "Test Dataset", catalog: catalog2.id, language: "eng", createdBy: users.testUser.id },
       });
 
       const summary = await exportService.getExportSummary(users.testUser.id);
@@ -114,31 +100,19 @@ describe.sequential("Data Export Service", () => {
       // Create catalog and dataset
       const catalog = await payload.create({
         collection: "catalogs",
-        data: {
-          name: "Test Catalog",
-          createdBy: users.testUser.id,
-        },
+        data: { name: "Test Catalog", createdBy: users.testUser.id },
       });
 
       const dataset = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Test Dataset",
-          catalog: catalog.id,
-          language: "eng",
-          createdBy: users.testUser.id,
-        },
+        data: { name: "Test Dataset", catalog: catalog.id, language: "eng", createdBy: users.testUser.id },
       });
 
       // Create events
       for (let i = 0; i < 5; i++) {
         await payload.create({
           collection: "events",
-          data: {
-            dataset: dataset.id,
-            uniqueId: `test-event-${i}`,
-            data: { title: `Event ${i}` },
-          },
+          data: { dataset: dataset.id, uniqueId: `test-event-${i}`, data: { title: `Event ${i}` } },
         });
       }
 
@@ -149,28 +123,13 @@ describe.sequential("Data Export Service", () => {
 
     it("should not count other users data", async () => {
       const env = { payload, seedManager: { truncate } } as any;
-      const { users } = await withUsers(env, {
-        user1: { role: "user" },
-        user2: { role: "user" },
-      });
+      const { users } = await withUsers(env, { user1: { role: "user" }, user2: { role: "user" } });
 
       // Create catalog for user1
-      await payload.create({
-        collection: "catalogs",
-        data: {
-          name: "User1 Catalog",
-          createdBy: users.user1.id,
-        },
-      });
+      await payload.create({ collection: "catalogs", data: { name: "User1 Catalog", createdBy: users.user1.id } });
 
       // Create catalog for user2
-      await payload.create({
-        collection: "catalogs",
-        data: {
-          name: "User2 Catalog",
-          createdBy: users.user2.id,
-        },
-      });
+      await payload.create({ collection: "catalogs", data: { name: "User2 Catalog", createdBy: users.user2.id } });
 
       const summaryUser1 = await exportService.getExportSummary(users.user1.id);
       const summaryUser2 = await exportService.getExportSummary(users.user2.id);
@@ -183,9 +142,7 @@ describe.sequential("Data Export Service", () => {
   describe("fetchAllUserData", () => {
     it("should fetch user profile data", async () => {
       const env = { payload, seedManager: { truncate } } as any;
-      const { users } = await withUsers(env, {
-        testUser: { role: "user", firstName: "Test", lastName: "User" },
-      });
+      const { users } = await withUsers(env, { testUser: { role: "user", firstName: "Test", lastName: "User" } });
 
       const data = await exportService.fetchAllUserData(users.testUser.id);
 
@@ -204,11 +161,7 @@ describe.sequential("Data Export Service", () => {
 
       await payload.create({
         collection: "catalogs",
-        data: {
-          name: "Export Test Catalog",
-          isPublic: true,
-          createdBy: users.testUser.id,
-        },
+        data: { name: "Export Test Catalog", isPublic: true, createdBy: users.testUser.id },
       });
 
       const data = await exportService.fetchAllUserData(users.testUser.id);
@@ -225,10 +178,7 @@ describe.sequential("Data Export Service", () => {
 
       const catalog = await payload.create({
         collection: "catalogs",
-        data: {
-          name: "Test Catalog",
-          createdBy: users.testUser.id,
-        },
+        data: { name: "Test Catalog", createdBy: users.testUser.id },
       });
 
       await payload.create({
@@ -268,11 +218,7 @@ describe.sequential("Data Export Service", () => {
 
       const exportRecord = await payload.create({
         collection: "data-exports",
-        data: {
-          user: users.testUser.id,
-          status: "pending",
-          requestedAt: new Date().toISOString(),
-        },
+        data: { user: users.testUser.id, status: "pending", requestedAt: new Date().toISOString() },
         overrideAccess: true,
       });
 
@@ -289,20 +235,14 @@ describe.sequential("Data Export Service", () => {
 
       const exportRecord = await payload.create({
         collection: "data-exports",
-        data: {
-          user: users.testUser.id,
-          status: "pending",
-          requestedAt: new Date().toISOString(),
-        },
+        data: { user: users.testUser.id, status: "pending", requestedAt: new Date().toISOString() },
         overrideAccess: true,
       });
 
       const updated = await payload.update({
         collection: "data-exports",
         id: exportRecord.id,
-        data: {
-          status: "processing",
-        },
+        data: { status: "processing" },
         overrideAccess: true,
       });
 
@@ -311,30 +251,19 @@ describe.sequential("Data Export Service", () => {
 
     it("should enforce user can only read own exports", async () => {
       const env = { payload, seedManager: { truncate } } as any;
-      const { users } = await withUsers(env, {
-        user1: { role: "user" },
-        user2: { role: "user" },
-      });
+      const { users } = await withUsers(env, { user1: { role: "user" }, user2: { role: "user" } });
 
       // Create export for user1
       await payload.create({
         collection: "data-exports",
-        data: {
-          user: users.user1.id,
-          status: "pending",
-          requestedAt: new Date().toISOString(),
-        },
+        data: { user: users.user1.id, status: "pending", requestedAt: new Date().toISOString() },
         overrideAccess: true,
       });
 
       // Create export for user2
       await payload.create({
         collection: "data-exports",
-        data: {
-          user: users.user2.id,
-          status: "pending",
-          requestedAt: new Date().toISOString(),
-        },
+        data: { user: users.user2.id, status: "pending", requestedAt: new Date().toISOString() },
         overrideAccess: true,
       });
 
@@ -360,27 +289,17 @@ describe.sequential("Data Export Service", () => {
       // Create export record
       const exportRecord = await payload.create({
         collection: "data-exports",
-        data: {
-          user: users.testUser.id,
-          status: "pending",
-          requestedAt: new Date().toISOString(),
-        },
+        data: { user: users.testUser.id, status: "pending", requestedAt: new Date().toISOString() },
         overrideAccess: true,
       });
 
       // Queue job
-      await payload.jobs.queue({
-        task: "data-export",
-        input: { exportId: exportRecord.id },
-      });
+      await payload.jobs.queue({ task: "data-export", input: { exportId: exportRecord.id } });
 
       // Verify job was queued
       const pendingJobs = await payload.find({
         collection: "payload-jobs",
-        where: {
-          taskSlug: { equals: "data-export" },
-          completedAt: { exists: false },
-        },
+        where: { taskSlug: { equals: "data-export" }, completedAt: { exists: false } },
         overrideAccess: true,
       });
 

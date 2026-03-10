@@ -28,10 +28,7 @@ export class ProviderRateLimiter {
    * Should be called when providers are loaded.
    */
   configure(providerName: string, requestsPerSecond: number): void {
-    this.state.set(providerName, {
-      lastRequestTime: 0,
-      requestsPerSecond: Math.max(1, requestsPerSecond),
-    });
+    this.state.set(providerName, { lastRequestTime: 0, requestsPerSecond: Math.max(1, requestsPerSecond) });
     logger.debug("Configured rate limit", { providerName, requestsPerSecond });
   }
 

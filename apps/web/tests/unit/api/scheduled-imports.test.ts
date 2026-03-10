@@ -26,11 +26,7 @@ const mockSchedule = {
   createdBy: { id: 1, email: TEST_EMAILS.user },
 };
 
-const createMockPayload = () => ({
-  findByID: vi.fn(),
-  update: vi.fn(),
-  jobs: { queue: vi.fn() },
-});
+const createMockPayload = () => ({ findByID: vi.fn(), update: vi.fn(), jobs: { queue: vi.fn() } });
 
 /**
  * Creates a mock PayloadRequest for testing custom endpoint handlers.
@@ -116,12 +112,7 @@ describe.sequential("POST /api/scheduled-imports/:id/trigger", () => {
     await triggerEndpoint.handler(req);
 
     expect(mockPayload.findByID).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "scheduled-imports",
-        id: 1,
-        user: mockUser,
-        overrideAccess: false,
-      })
+      expect.objectContaining({ collection: "scheduled-imports", id: 1, user: mockUser, overrideAccess: false })
     );
   });
 
@@ -156,10 +147,7 @@ describe.sequential("POST /api/scheduled-imports/:id/trigger", () => {
     expect(mockPayload.update).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "scheduled-imports",
-        where: {
-          id: { equals: 1 },
-          lastStatus: { not_equals: "running" },
-        },
+        where: { id: { equals: 1 }, lastStatus: { not_equals: "running" } },
         overrideAccess: true,
       })
     );

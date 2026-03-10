@@ -19,13 +19,7 @@ import { type ErrorResponse, unauthorized } from "./api-response";
  */
 export const verifyPassword = async (payload: Payload, user: User, password: string): Promise<void> => {
   try {
-    await payload.login({
-      collection: "users",
-      data: {
-        email: user.email,
-        password,
-      },
-    });
+    await payload.login({ collection: "users", data: { email: user.email, password } });
   } catch {
     logger.warn({ userId: user.id }, "Failed password verification");
     throw new Error("Password is incorrect");

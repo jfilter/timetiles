@@ -36,9 +36,7 @@ export const dataExportCleanupJob = {
       // Find all ready exports that have expired
       const expiredExports = await payload.find({
         collection: "data-exports",
-        where: {
-          and: [{ status: { equals: "ready" } }, { expiresAt: { less_than: now.toISOString() } }],
-        },
+        where: { and: [{ status: { equals: "ready" } }, { expiresAt: { less_than: now.toISOString() } }] },
         limit: 100,
         overrideAccess: true,
       });
@@ -53,10 +51,7 @@ export const dataExportCleanupJob = {
           await payload.update({
             collection: "data-exports",
             id: exportRecord.id,
-            data: {
-              status: "expired",
-              filePath: null,
-            },
+            data: { status: "expired", filePath: null },
             overrideAccess: true,
           });
           recordsUpdated++;
@@ -95,11 +90,7 @@ export const dataExportCleanupJob = {
       let recordsDeleted = 0;
       for (const record of oldRecords.docs) {
         try {
-          await payload.delete({
-            collection: "data-exports",
-            id: record.id,
-            overrideAccess: true,
-          });
+          await payload.delete({ collection: "data-exports", id: record.id, overrideAccess: true });
           recordsDeleted++;
         } catch (error) {
           errors++;
@@ -108,25 +99,11 @@ export const dataExportCleanupJob = {
       }
 
       logger.info(
-        {
-          jobId: job?.id,
-          filesDeleted,
-          recordsUpdated,
-          recordsDeleted,
-          errors,
-        },
+        { jobId: job?.id, filesDeleted, recordsUpdated, recordsDeleted, errors },
         "Data export cleanup job completed"
       );
 
-      return {
-        output: {
-          success: true,
-          filesDeleted,
-          recordsUpdated,
-          recordsDeleted,
-          errors,
-        },
-      };
+      return { output: { success: true, filesDeleted, recordsUpdated, recordsDeleted, errors } };
     } catch (error) {
       logError(error, "Data export cleanup job failed", { jobId: job?.id });
       throw error;

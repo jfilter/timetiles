@@ -17,13 +17,9 @@ vi.mock("@/lib/middleware/auth", () => ({
   withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/geospatial", () => ({
-  parseBoundsParameter: mocks.mockParseBoundsParameter,
-}));
+vi.mock("@/lib/geospatial", () => ({ parseBoundsParameter: mocks.mockParseBoundsParameter }));
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractListParameters: mocks.mockExtractListParameters,
@@ -50,18 +46,13 @@ import { GET } from "@/app/api/v1/events/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
 const createRequest = (queryString: string, user: unknown = null) =>
-  ({
-    user,
-    nextUrl: new URL(`http://localhost:3000/api/v1/events${queryString}`),
-  }) as unknown as AuthenticatedRequest;
+  ({ user, nextUrl: new URL(`http://localhost:3000/api/v1/events${queryString}`) }) as unknown as AuthenticatedRequest;
 
 describe.sequential("GET /api/v1/events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.mockGetPayload.mockResolvedValue({
-      find: mocks.mockPayloadFind,
-    });
+    mocks.mockGetPayload.mockResolvedValue({ find: mocks.mockPayloadFind });
     mocks.mockParseBoundsParameter.mockReturnValue({ bounds: null });
     mocks.mockExtractListParameters.mockReturnValue({
       catalog: null,
@@ -107,13 +98,7 @@ describe.sequential("GET /api/v1/events", () => {
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          and: expect.arrayContaining([
-            {
-              eventTimestamp: {
-                less_than_equal: "2024-03-31T23:59:59.999Z",
-              },
-            },
-          ]),
+          and: expect.arrayContaining([{ eventTimestamp: { less_than_equal: "2024-03-31T23:59:59.999Z" } }]),
         }),
       })
     );
@@ -131,14 +116,7 @@ describe.sequential("GET /api/v1/events", () => {
       limit: 100,
       sort: "-eventTimestamp",
     });
-    mocks.mockParseBoundsParameter.mockReturnValue({
-      bounds: {
-        west: 170,
-        east: -170,
-        south: -10,
-        north: 10,
-      },
-    });
+    mocks.mockParseBoundsParameter.mockReturnValue({ bounds: { west: 170, east: -170, south: -10, north: 10 } });
 
     const response = await GET(createRequest(""), undefined);
 
@@ -150,16 +128,8 @@ describe.sequential("GET /api/v1/events", () => {
           and: expect.arrayContaining([
             {
               or: [
-                {
-                  "location.longitude": {
-                    greater_than_equal: 170,
-                  },
-                },
-                {
-                  "location.longitude": {
-                    less_than_equal: -170,
-                  },
-                },
+                { "location.longitude": { greater_than_equal: 170 } },
+                { "location.longitude": { less_than_equal: -170 } },
               ],
             },
           ]),
@@ -187,15 +157,7 @@ describe.sequential("GET /api/v1/events", () => {
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          and: expect.arrayContaining([
-            {
-              id: {
-                equals: -1,
-              },
-            },
-          ]),
-        }),
+        where: expect.objectContaining({ and: expect.arrayContaining([{ id: { equals: -1 } }]) }),
       })
     );
   });
@@ -219,15 +181,7 @@ describe.sequential("GET /api/v1/events", () => {
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          and: expect.arrayContaining([
-            {
-              id: {
-                equals: -1,
-              },
-            },
-          ]),
-        }),
+        where: expect.objectContaining({ and: expect.arrayContaining([{ id: { equals: -1 } }]) }),
       })
     );
   });

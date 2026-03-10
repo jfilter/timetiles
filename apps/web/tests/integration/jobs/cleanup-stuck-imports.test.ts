@@ -30,15 +30,10 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "admin", trustLevel: "5" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin", trustLevel: "5" } });
     testUser = users.testUser;
 
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Cleanup Test Catalog",
-      user: testUser,
-    });
+    const { catalog } = await withCatalog(testEnv, { name: "Cleanup Test Catalog", user: testUser });
     testCatalog = catalog;
   });
 
@@ -73,30 +68,21 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
           name: "Stuck Import Test",
           frequency: "daily",
           createdBy: testUser.id,
-          additionalData: {
-            lastStatus: "running",
-            lastRun: threeHoursAgo.toISOString(),
-          },
+          additionalData: { lastStatus: "running", lastRun: threeHoursAgo.toISOString() },
         }
       );
 
       // Run cleanup job
       const result = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-1",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-1", task: "cleanup-stuck-scheduled-imports" },
       });
 
       expect(result.output.resetCount).toBe(1);
       expect(result.output.totalRunning).toBe(1);
 
       // Verify import was reset
-      const resetImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: stuckImport.id,
-      });
+      const resetImport = await payload.findByID({ collection: "scheduled-imports", id: stuckImport.id });
 
       expect(resetImport.lastStatus).toBe("failed");
       expect(resetImport.lastError).toContain("stuck and automatically reset");
@@ -124,20 +110,14 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Run cleanup job
       const result = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-2",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-2", task: "cleanup-stuck-scheduled-imports" },
       });
 
       expect(result.output.resetCount).toBe(0);
       expect(result.output.totalRunning).toBe(1); // One running import found but not reset
 
       // Verify import was not changed
-      const unchangedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: recentImport.id,
-      });
+      const unchangedImport = await payload.findByID({ collection: "scheduled-imports", id: recentImport.id });
 
       expect(unchangedImport.lastStatus).toBe("running");
       expect(unchangedImport.lastError).toBeNull(); // or toBeUndefined()
@@ -169,10 +149,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Run cleanup job
       const result = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-3",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-3", task: "cleanup-stuck-scheduled-imports" },
       });
 
       expect(result.output.resetCount).toBe(5);
@@ -180,10 +157,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
 
       // Verify all were reset
       for (const imp of stuckImports) {
-        const resetImport = await payload.findByID({
-          collection: "scheduled-imports",
-          id: imp.id,
-        });
+        const resetImport = await payload.findByID({ collection: "scheduled-imports", id: imp.id });
         expect(resetImport.lastStatus).toBe("failed");
         expect(resetImport.lastError).toContain("stuck");
       }
@@ -212,10 +186,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Run cleanup job
       const result = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-4",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-4", task: "cleanup-stuck-scheduled-imports" },
       });
 
       // Should process all 105 (under the 1000 limit)
@@ -225,10 +196,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Verify all 105 were reset
       const resetCount = await payload.count({
         collection: "scheduled-imports",
-        where: {
-          lastStatus: { equals: "failed" },
-          lastError: { contains: "stuck" },
-        },
+        where: { lastStatus: { equals: "failed" }, lastError: { contains: "stuck" } },
       });
 
       expect(resetCount.totalDocs).toBe(105);
@@ -236,9 +204,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Verify none are still stuck
       const stillStuck = await payload.count({
         collection: "scheduled-imports",
-        where: {
-          lastStatus: { equals: "running" },
-        },
+        where: { lastStatus: { equals: "running" } },
       });
 
       expect(stillStuck.totalDocs).toBe(0);
@@ -281,18 +247,12 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       });
 
       // Delete the second import to cause an error during processing
-      await payload.delete({
-        collection: "scheduled-imports",
-        id: import2.id,
-      });
+      await payload.delete({ collection: "scheduled-imports", id: import2.id });
 
       // Run cleanup job
       const result = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-error",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-error", task: "cleanup-stuck-scheduled-imports" },
       });
 
       // Should have found only 1 (since import2 was deleted)
@@ -300,10 +260,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       expect(result.output.totalRunning).toBe(1);
 
       // Verify first import was reset
-      const resetImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: import1.id,
-      });
+      const resetImport = await payload.findByID({ collection: "scheduled-imports", id: import1.id });
 
       expect(resetImport.lastStatus).toBe("failed");
     });
@@ -312,10 +269,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // No stuck imports exist
       const result = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-empty",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-empty", task: "cleanup-stuck-scheduled-imports" },
       });
 
       expect(result.output.resetCount).toBe(0);
@@ -352,10 +306,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Run cleanup job first time
       const result1 = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-idem-1",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-idem-1", task: "cleanup-stuck-scheduled-imports" },
       });
 
       expect(result1.output.resetCount).toBe(1);
@@ -363,19 +314,13 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Run cleanup job second time
       const result2 = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-idem-2",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-idem-2", task: "cleanup-stuck-scheduled-imports" },
       });
 
       expect(result2.output.resetCount).toBe(0);
 
       // Import should still be in failed state
-      const finalImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: stuckImport.id,
-      });
+      const finalImport = await payload.findByID({ collection: "scheduled-imports", id: stuckImport.id });
 
       expect(finalImport.lastStatus).toBe("failed");
       expect(finalImport.lastError).toContain("stuck");
@@ -408,19 +353,13 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Run cleanup job
       const cleanupResult = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-webhook",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-webhook", task: "cleanup-stuck-scheduled-imports" },
       });
 
       expect(cleanupResult.output.resetCount).toBe(1);
 
       // Verify import can now be triggered via webhook
-      const resetImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: stuckImport.id,
-      });
+      const resetImport = await payload.findByID({ collection: "scheduled-imports", id: stuckImport.id });
 
       expect(resetImport.lastStatus).toBe("failed");
       expect(resetImport.webhookToken).toBe(webhookToken); // Token preserved
@@ -429,16 +368,10 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: stuckImport.id,
-        data: {
-          lastStatus: "running",
-          lastRun: new Date().toISOString(),
-        },
+        data: { lastStatus: "running", lastRun: new Date().toISOString() },
       });
 
-      const afterTrigger = await payload.findByID({
-        collection: "scheduled-imports",
-        id: stuckImport.id,
-      });
+      const afterTrigger = await payload.findByID({ collection: "scheduled-imports", id: stuckImport.id });
 
       expect(afterTrigger.lastStatus).toBe("running");
     });
@@ -459,29 +392,18 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
           createdBy: testUser.id,
           lastStatus: "running",
           lastRun: nineHoursAgo.toISOString(),
-          executionHistory: [
-            {
-              executedAt: nineHoursAgo.toISOString(),
-              status: "success",
-            },
-          ],
+          executionHistory: [{ executedAt: nineHoursAgo.toISOString(), status: "success" }],
         },
       });
 
       // Run cleanup job
       await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-history",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-history", task: "cleanup-stuck-scheduled-imports" },
       });
 
       // The cleanup job should have added an entry to the execution history
-      const finalImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: stuckImport.id,
-      });
+      const finalImport = await payload.findByID({ collection: "scheduled-imports", id: stuckImport.id });
 
       expect(finalImport.executionHistory).toHaveLength(2); // Original + cleanup
       expect(finalImport.executionHistory?.[0]?.status).toBe("failed");
@@ -549,10 +471,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Run cleanup job
       const result = await cleanupStuckScheduledImportsJob.handler({
         req: { payload },
-        job: {
-          id: "cleanup-job-perf",
-          task: "cleanup-stuck-scheduled-imports",
-        },
+        job: { id: "cleanup-job-perf", task: "cleanup-stuck-scheduled-imports" },
       });
 
       // Should reset 3 stuck imports, find 6 total running (3 stuck + 3 recent)
@@ -562,18 +481,14 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       // Verify only stuck imports were modified
       const stillRunning = await payload.count({
         collection: "scheduled-imports",
-        where: {
-          lastStatus: { equals: "running" },
-        },
+        where: { lastStatus: { equals: "running" } },
       });
 
       expect(stillRunning.totalDocs).toBe(3); // The recent ones
 
       const successCount = await payload.count({
         collection: "scheduled-imports",
-        where: {
-          lastStatus: { equals: "success" },
-        },
+        where: { lastStatus: { equals: "success" } },
       });
 
       expect(successCount.totalDocs).toBe(3); // Unchanged

@@ -24,12 +24,7 @@ export interface FilterLabels {
 /** Convert map bounds to simple object format for React Query compatibility */
 export const simplifyBounds = (mapBounds: MapBounds | null): MapBounds | null => {
   if (!mapBounds) return null;
-  return {
-    north: mapBounds.north,
-    south: mapBounds.south,
-    east: mapBounds.east,
-    west: mapBounds.west,
-  };
+  return { north: mapBounds.north, south: mapBounds.south, east: mapBounds.east, west: mapBounds.west };
 };
 
 /** Get catalog name by ID */
@@ -73,10 +68,7 @@ export const getFilterLabels = (
   datasets: DataSourceDataset[]
 ): FilterLabels => ({
   catalog: filters.catalog != null && filters.catalog !== "" ? getCatalogName(catalogs, filters.catalog) : undefined,
-  datasets: filters.datasets.map((id) => ({
-    id,
-    name: getDatasetName(datasets, id),
-  })),
+  datasets: filters.datasets.map((id) => ({ id, name: getDatasetName(datasets, id) })),
   dateRange: formatDateRange(filters.startDate, filters.endDate),
   fieldFilters: filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
 });
@@ -203,11 +195,7 @@ export const getInitialViewState = (
 ): { latitude: number; longitude: number; zoom: number } | null => {
   if (!hasMapPosition) return null;
   if (mapPosition.latitude == null || mapPosition.longitude == null || mapPosition.zoom == null) return null;
-  return {
-    latitude: mapPosition.latitude,
-    longitude: mapPosition.longitude,
-    zoom: mapPosition.zoom,
-  };
+  return { latitude: mapPosition.latitude, longitude: mapPosition.longitude, zoom: mapPosition.zoom };
 };
 
 /** Check if zoom to data button should be shown */

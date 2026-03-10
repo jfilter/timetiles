@@ -33,15 +33,10 @@ const Events: CollectionConfig = {
     useAsTitle: "id",
     defaultColumns: ["dataset", "eventTimestamp", "createdAt", "validationStatus", "geocodingStatus"],
     group: "Data",
-    pagination: {
-      defaultLimit: 50,
-    },
+    pagination: { defaultLimit: 50 },
     preview: (doc) => {
       // Generate preview URL (uses JWT authentication via HTTP-only cookies)
-      const params = new URLSearchParams({
-        collection: COLLECTION_NAMES.EVENTS,
-        slug: String(doc.id),
-      });
+      const params = new URLSearchParams({ collection: COLLECTION_NAMES.EVENTS, slug: String(doc.id) });
 
       return `/api/preview?${params.toString()}`;
     },
@@ -55,9 +50,7 @@ const Events: CollectionConfig = {
 
       // Logged-in users can see: public data OR data they own (via catalog)
       if (user) {
-        return {
-          or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }],
-        } as Where;
+        return { or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }] } as Where;
       }
 
       // Anonymous users only see public data
@@ -92,71 +85,41 @@ const Events: CollectionConfig = {
     readVersions: isEditorOrAdmin,
   },
   fields: [
-    {
-      name: "dataset",
-      type: "relationship",
-      relationTo: "datasets",
-      required: true,
-      hasMany: false,
-    },
+    { name: "dataset", type: "relationship", relationTo: "datasets", required: true, hasMany: false },
     {
       name: "datasetIsPublic",
       type: "checkbox",
       defaultValue: false,
       index: true,
-      admin: {
-        hidden: true,
-        description: "Denormalized from dataset.isPublic for zero-query access control",
-      },
+      admin: { hidden: true, description: "Denormalized from dataset.isPublic for zero-query access control" },
     },
     {
       name: "catalogOwnerId",
       type: "number",
       index: true,
-      admin: {
-        hidden: true,
-        description: "Denormalized from catalog.owner for zero-query owner access control",
-      },
+      admin: { hidden: true, description: "Denormalized from catalog.owner for zero-query owner access control" },
     },
     {
       name: "importJob",
       type: "relationship",
       relationTo: "import-jobs",
       hasMany: false,
-      admin: {
-        description: "The import job that created this event",
-      },
+      admin: { description: "The import job that created this event" },
     },
     {
       name: "data",
       type: "json",
       required: true,
-      admin: {
-        description: "Generic data in JSON format (JSONB indexed for fast queries)",
-      },
+      admin: { description: "Generic data in JSON format (JSONB indexed for fast queries)" },
     },
     {
       name: "location",
       type: "group",
       fields: [
-        {
-          name: "latitude",
-          type: "number",
-          admin: {
-            step: 0.000001,
-          },
-        },
-        {
-          name: "longitude",
-          type: "number",
-          admin: {
-            step: 0.000001,
-          },
-        },
+        { name: "latitude", type: "number", admin: { step: 0.000001 } },
+        { name: "longitude", type: "number", admin: { step: 0.000001 } },
       ],
-      admin: {
-        description: "Geographic coordinates (WGS84)",
-      },
+      admin: { description: "Geographic coordinates (WGS84)" },
     },
     {
       name: "coordinateSource",
@@ -177,48 +140,23 @@ const Events: CollectionConfig = {
           name: "importColumns",
           type: "group",
           fields: [
-            {
-              name: "latitudeColumn",
-              type: "text",
-              admin: {
-                description: "Column name containing latitude",
-              },
-            },
-            {
-              name: "longitudeColumn",
-              type: "text",
-              admin: {
-                description: "Column name containing longitude",
-              },
-            },
+            { name: "latitudeColumn", type: "text", admin: { description: "Column name containing latitude" } },
+            { name: "longitudeColumn", type: "text", admin: { description: "Column name containing longitude" } },
             {
               name: "combinedColumn",
               type: "text",
-              admin: {
-                description: "Column name if coordinates were combined",
-              },
+              admin: { description: "Column name if coordinates were combined" },
             },
-            {
-              name: "format",
-              type: "text",
-              admin: {
-                description: "Format of coordinates (decimal, DMS, etc.)",
-              },
-            },
+            { name: "format", type: "text", admin: { description: "Format of coordinates (decimal, DMS, etc.)" } },
           ],
-          admin: {
-            condition: (data) => (data.coordinateSource as { type?: string })?.type === "import",
-          },
+          admin: { condition: (data) => (data.coordinateSource as { type?: string })?.type === "import" },
         },
         {
           name: "confidence",
           type: "number",
           min: 0,
           max: 1,
-          admin: {
-            step: 0.01,
-            description: "Confidence in coordinate accuracy (0-1)",
-          },
+          admin: { step: 0.01, description: "Confidence in coordinate accuracy (0-1)" },
         },
         {
           name: "normalizedAddress",
@@ -240,26 +178,17 @@ const Events: CollectionConfig = {
           ],
         },
       ],
-      admin: {
-        description: "Source and validation of coordinate data",
-      },
+      admin: { description: "Source and validation of coordinate data" },
     },
     {
       name: "eventTimestamp",
       type: "date",
-      admin: {
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
-        description: "When the actual event occurred",
-      },
+      admin: { date: { pickerAppearance: "dayAndTime" }, description: "When the actual event occurred" },
     },
     {
       name: "locationName",
       type: "text",
-      admin: {
-        description: "Location/venue name for display (e.g., 'Reichstag', 'Kottbusser Platz')",
-      },
+      admin: { description: "Location/venue name for display (e.g., 'Reichstag', 'Kottbusser Platz')" },
     },
 
     {
@@ -274,13 +203,7 @@ const Events: CollectionConfig = {
       name: "geocodingInfo",
       type: "group",
       fields: [
-        {
-          name: "originalAddress",
-          type: "text",
-          admin: {
-            description: "Original address string from import",
-          },
-        },
+        { name: "originalAddress", type: "text", admin: { description: "Original address string from import" } },
         {
           name: "geocodingStatus",
           type: "select",
@@ -289,52 +212,28 @@ const Events: CollectionConfig = {
             { label: "Success", value: "success" },
             { label: "Failed", value: "failed" },
           ],
-          admin: {
-            description: "Geocoding processing status",
-          },
+          admin: { description: "Geocoding processing status" },
         },
         {
           name: "provider",
           type: "select",
           options: [
-            {
-              label: "Google Maps",
-              value: "google",
-            },
-            {
-              label: "Nominatim (OpenStreetMap)",
-              value: "nominatim",
-            },
-            {
-              label: "Manual Entry",
-              value: "manual",
-            },
+            { label: "Google Maps", value: "google" },
+            { label: "Nominatim (OpenStreetMap)", value: "nominatim" },
+            { label: "Manual Entry", value: "manual" },
           ],
-          admin: {
-            description: "Geocoding provider used",
-          },
+          admin: { description: "Geocoding provider used" },
         },
         {
           name: "confidence",
           type: "number",
           min: 0,
           max: 1,
-          admin: {
-            step: 0.01,
-            description: "Geocoding confidence score (0-1)",
-          },
+          admin: { step: 0.01, description: "Geocoding confidence score (0-1)" },
         },
-        {
-          name: "normalizedAddress",
-          type: "text",
-          admin: {
-            description: "Normalized address returned by geocoder",
-          },
-        },
+        { name: "normalizedAddress", type: "text", admin: { description: "Normalized address returned by geocoder" } },
       ],
-      admin: {
-        description: "Geocoding metadata and information",
-      },
+      admin: { description: "Geocoding metadata and information" },
     },
     {
       name: "uniqueId",
@@ -342,40 +241,30 @@ const Events: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
-      admin: {
-        description: "Unique identifier for deduplication (format: datasetId:strategy:value)",
-      },
+      admin: { description: "Unique identifier for deduplication (format: datasetId:strategy:value)" },
     },
     {
       name: "sourceId",
       type: "text",
       index: true,
-      admin: {
-        description: "Original ID from source system (when using external ID strategy)",
-      },
+      admin: { description: "Original ID from source system (when using external ID strategy)" },
     },
     {
       name: "contentHash",
       type: "text",
       index: true,
-      admin: {
-        description: "SHA256 hash of data content for duplicate detection",
-      },
+      admin: { description: "SHA256 hash of data content for duplicate detection" },
     },
     {
       name: "importBatch",
       type: "number",
       index: true,
-      admin: {
-        description: "Batch number within import for tracking",
-      },
+      admin: { description: "Batch number within import for tracking" },
     },
     {
       name: "schemaVersionNumber",
       type: "number",
-      admin: {
-        description: "Schema version number this event was validated against",
-      },
+      admin: { description: "Schema version number this event was validated against" },
     },
     {
       name: "validationStatus",
@@ -404,31 +293,15 @@ const Events: CollectionConfig = {
     // for performance. Stats are computed on-demand or via scheduled job.
   },
   indexes: [
-    {
-      fields: ["dataset", "eventTimestamp"],
-    },
-    {
-      fields: ["eventTimestamp"],
-    },
-    {
-      fields: ["uniqueId"],
-    },
-    {
-      fields: ["dataset", "contentHash"],
-    },
-    {
-      fields: ["importJob", "importBatch"],
-    },
-    {
-      fields: ["validationStatus"],
-    },
+    { fields: ["dataset", "eventTimestamp"] },
+    { fields: ["eventTimestamp"] },
+    { fields: ["uniqueId"] },
+    { fields: ["dataset", "contentHash"] },
+    { fields: ["importJob", "importBatch"] },
+    { fields: ["validationStatus"] },
     // B-tree indexes for bounds computation (MIN/MAX queries)
-    {
-      fields: ["location.longitude"],
-    },
-    {
-      fields: ["location.latitude"],
-    },
+    { fields: ["location.longitude"] },
+    { fields: ["location.latitude"] },
   ],
 };
 

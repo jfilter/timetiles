@@ -23,18 +23,7 @@ import * as React from "react";
 
 const footerVariants = cva(
   "relative border-t border-charcoal/20 bg-gradient-to-b from-parchment/30 via-parchment/20 to-background overflow-hidden",
-  {
-    variants: {
-      size: {
-        default: "py-24",
-        sm: "py-16",
-        lg: "py-32",
-      },
-    },
-    defaultVariants: {
-      size: "default",
-    },
-  }
+  { variants: { size: { default: "py-24", sm: "py-16", lg: "py-32" } }, defaultVariants: { size: "default" } }
 );
 
 const gridOverlayStyle = {
@@ -75,9 +64,7 @@ const footerContentVariants = cva("mb-12", {
       3: "grid grid-cols-1 md:grid-cols-3 gap-12",
     },
   },
-  defaultVariants: {
-    columns: 3,
-  },
+  defaultVariants: { columns: 3 },
 });
 
 const FooterContent = React.forwardRef<

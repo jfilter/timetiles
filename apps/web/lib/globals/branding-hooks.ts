@@ -65,10 +65,7 @@ const fetchMediaBuffer = async (
   mediaId: string
 ): Promise<Buffer | null> => {
   try {
-    const media = await payload.findByID({
-      collection: "media",
-      id: mediaId,
-    });
+    const media = await payload.findByID({ collection: "media", id: mediaId });
 
     if (!media?.url) {
       logger.warn({ mediaId }, "Favicon source has no URL");

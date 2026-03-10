@@ -32,9 +32,7 @@ const deriveKey = (secret: string): Buffer => scryptSync(secret, SALT, KEY_LENGT
 export const encryptField = (plaintext: string, secret: string): string => {
   const key = deriveKey(secret);
   const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ALGORITHM, key, iv, {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
+  const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
 
   let encrypted = cipher.update(plaintext, "utf8", "hex");
   encrypted += cipher.final("hex");
@@ -63,9 +61,7 @@ export const decryptField = (encrypted: string, secret: string): string => {
   const iv = Buffer.from(ivHex, "hex");
   const authTag = Buffer.from(authTagHex, "hex");
 
-  const decipher = createDecipheriv(ALGORITHM, key, iv, {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
+  const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
   decipher.setAuthTag(authTag);
 
   return decipher.update(ciphertext, "hex", "utf8") + decipher.final("utf8");

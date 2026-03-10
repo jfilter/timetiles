@@ -32,11 +32,7 @@ describe("cn", () => {
   });
 
   it("handles objects with boolean values", () => {
-    const result = cn({
-      active: true,
-      disabled: false,
-      focused: true,
-    });
+    const result = cn({ active: true, disabled: false, focused: true });
     expect(result).toBe("active focused");
   });
 

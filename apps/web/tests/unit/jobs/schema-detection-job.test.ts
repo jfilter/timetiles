@@ -37,13 +37,9 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/utils/file-readers", () => ({
-  readBatchFromFile: mocks.readBatchFromFile,
-}));
+vi.mock("@/lib/utils/file-readers", () => ({ readBatchFromFile: mocks.readBatchFromFile }));
 
-vi.mock("@/lib/services/schema-builder", () => ({
-  ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder,
-}));
+vi.mock("@/lib/services/schema-builder", () => ({ ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder }));
 
 vi.mock("@/lib/services/progress-tracking", () => ({
   ProgressTrackingService: {
@@ -54,9 +50,7 @@ vi.mock("@/lib/services/progress-tracking", () => ({
   },
 }));
 
-vi.mock("@/lib/types/schema-detection", () => ({
-  getSchemaBuilderState: mocks.getSchemaBuilderState,
-}));
+vi.mock("@/lib/types/schema-detection", () => ({ getSchemaBuilderState: mocks.getSchemaBuilderState }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
@@ -73,10 +67,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
     // Create standard mock payload and context using factories
     mockPayload = createMockPayload();
-    mockContext = createMockContext(mockPayload, {
-      importJobId: TEST_IDS.IMPORT_JOB,
-      batchNumber: 0,
-    });
+    mockContext = createMockContext(mockPayload, { importJobId: TEST_IDS.IMPORT_JOB, batchNumber: 0 });
 
     // Mock schema builder instance (job-specific)
     mockSchemaBuilderInstance = {
@@ -151,13 +142,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({
-        output: {
-          batchNumber: 0,
-          rowsProcessed: 3,
-          hasMore: false,
-        },
-      });
+      expect(result).toEqual({ output: { batchNumber: 0, rowsProcessed: 3, hasMore: false } });
 
       // Verify file reading
       expect(mocks.readBatchFromFile).toHaveBeenCalledWith("/mock/import-files/test.csv", {
@@ -257,13 +242,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({
-        output: {
-          batchNumber: 0,
-          rowsProcessed: 2,
-          hasMore: false,
-        },
-      });
+      expect(result).toEqual({ output: { batchNumber: 0, rowsProcessed: 2, hasMore: false } });
 
       // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();
@@ -280,19 +259,10 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const mockImportFile = createMockImportFile();
 
       // Mock a full batch (10000 rows) to trigger hasMore = true
-      const fullBatch = Array.from({ length: 10000 }, (_, i) => ({
-        id: `${i + 1}`,
-        title: `Event ${i + 1}`,
-      }));
+      const fullBatch = Array.from({ length: 10000 }, (_, i) => ({ id: `${i + 1}`, title: `Event ${i + 1}` }));
 
       // Mock schema and state
-      const mockSchema = {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
-      };
+      const mockSchema = { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } };
 
       const mockState = {
         fieldStats: {
@@ -320,21 +290,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result indicates more data
-      expect(result).toEqual({
-        output: {
-          batchNumber: 0,
-          rowsProcessed: 10000,
-          hasMore: true,
-        },
-      });
+      expect(result).toEqual({ output: { batchNumber: 0, rowsProcessed: 10000, hasMore: true } });
 
       // Verify next batch was queued
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
         task: "detect-schema",
-        input: {
-          importJobId: "import-123",
-          batchNumber: 1,
-        },
+        input: { importJobId: "import-123", batchNumber: 1 },
       });
     });
 
@@ -353,22 +314,13 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result indicates completion
-      expect(result).toEqual({
-        output: {
-          completed: true,
-          batchNumber: 0,
-          rowsProcessed: 0,
-          hasMore: false,
-        },
-      });
+      expect(result).toEqual({ output: { completed: true, batchNumber: 0, rowsProcessed: 0, hasMore: false } });
 
       // Verify stage transition to validation
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: "import-123",
-        data: {
-          stage: "validate-schema",
-        },
+        data: { stage: "validate-schema" },
       });
 
       // Should not queue next batch or call schema builder
@@ -389,13 +341,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       ];
 
       // Mock schema and state
-      const mockSchema = {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
-      };
+      const mockSchema = { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } };
 
       const mockState = {
         fieldStats: {
@@ -498,20 +444,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       // Mock existing schema builder state
       const existingState = {
-        fieldStats: {
-          id: { occurrences: 10, uniqueValues: 10, typeDistribution: { string: 10 } },
-        },
+        fieldStats: { id: { occurrences: 10, uniqueValues: 10, typeDistribution: { string: 10 } } },
         recordCount: 10,
       };
 
       // Mock updated schema and state
-      const mockSchema = {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
-      };
+      const mockSchema = { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } };
 
       const mockState = {
         fieldStats: {
@@ -539,13 +477,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({
-        output: {
-          batchNumber: 0,
-          rowsProcessed: 1,
-          hasMore: false,
-        },
-      });
+      expect(result).toEqual({ output: { batchNumber: 0, rowsProcessed: 1, hasMore: false } });
 
       // Verify ProgressiveSchemaBuilder was initialized with existing state
       expect(mocks.ProgressiveSchemaBuilder).toHaveBeenCalledWith(existingState);

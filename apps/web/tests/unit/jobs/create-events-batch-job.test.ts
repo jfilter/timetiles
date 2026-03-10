@@ -25,13 +25,9 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/utils/file-readers", () => ({
-  readBatchFromFile: mocks.readBatchFromFile,
-}));
+vi.mock("@/lib/utils/file-readers", () => ({ readBatchFromFile: mocks.readBatchFromFile }));
 
-vi.mock("@/lib/services/id-generation", () => ({
-  generateUniqueId: mocks.generateUniqueId,
-}));
+vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
 vi.mock("@/lib/types/geocoding", () => ({
   getGeocodingResults: mocks.getGeocodingResults,
@@ -72,16 +68,11 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       create: vi.fn(),
       update: vi.fn(),
       count: vi.fn().mockResolvedValue({ totalDocs: 2 }),
-      jobs: {
-        queue: vi.fn().mockResolvedValue({}),
-      },
+      jobs: { queue: vi.fn().mockResolvedValue({}) },
     };
 
     // Mock context
-    mockContext = createMockContext(mockPayload, {
-      importJobId: "import-123",
-      batchNumber: 0,
-    });
+    mockContext = createMockContext(mockPayload, { importJobId: "import-123", batchNumber: 0 });
   });
 
   describe("Success Cases", () => {
@@ -92,26 +83,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-          summary: { uniqueRows: 2 },
-        },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 2 } },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       // Mock dataset
-      const mockDataset = {
-        id: "dataset-456",
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-        },
-      };
+      const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
       // Mock import file
       const mockImportFile = createMockImportFile();
@@ -156,13 +133,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Verify result
       expect(result).toEqual({
-        output: {
-          batchNumber: 0,
-          eventsCreated: 2,
-          eventsSkipped: 0,
-          errors: 0,
-          hasMore: false,
-        },
+        output: { batchNumber: 0, eventsCreated: 2, eventsSkipped: 0, errors: 0, hasMore: false },
       });
 
       // Verify file reading
@@ -179,11 +150,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         data: expect.objectContaining({
           dataset: "dataset-456",
           uniqueId: "dataset-456:ext:1",
-          data: expect.objectContaining({
-            id: "1",
-            title: "Event 1",
-            address: "123 Main St",
-          }),
+          data: expect.objectContaining({ id: "1", title: "Event 1", address: "123 Main St" }),
         }),
       });
 
@@ -197,25 +164,11 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-          summary: { uniqueRows: 1 },
-        },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
-      const mockDataset = {
-        id: "dataset-456",
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-        },
-      };
+      const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
       const mockImportFile = createMockImportFile("file-789");
 
@@ -238,13 +191,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       await createEventsBatchJob.handler(mockContext);
 
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          collection: "import-files",
-          id: "file-789",
-          data: {
-            status: "completed",
-          },
-        })
+        expect.objectContaining({ collection: "import-files", id: "file-789", data: { status: "completed" } })
       );
     });
 
@@ -260,17 +207,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
           external: [{ rowNumber: 2, uniqueId: "dataset-456:ext:3" }],
           summary: { uniqueRows: 1 },
         },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
-      const mockDataset = {
-        id: "dataset-456",
-        idStrategy: { type: "external", externalIdPath: "id" },
-      };
+      const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
       const mockImportFile = createMockImportFile();
 
@@ -328,11 +268,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1000 } },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
@@ -346,10 +282,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       });
 
       // Mock a full batch (1000 rows) to trigger hasMore = true
-      const fullBatch = Array.from({ length: 1000 }, (_, i) => ({
-        id: `${i + 1}`,
-        title: `Event ${i + 1}`,
-      }));
+      const fullBatch = Array.from({ length: 1000 }, (_, i) => ({ id: `${i + 1}`, title: `Event ${i + 1}` }));
       mocks.readBatchFromFile.mockReturnValueOnce(fullBatch);
 
       // Mock unique ID generation for all 1000 rows
@@ -367,13 +300,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Should indicate more data available
       expect(result).toEqual({
-        output: {
-          batchNumber: 0,
-          eventsCreated: 1000,
-          eventsSkipped: 0,
-          errors: 0,
-          hasMore: true,
-        },
+        output: { batchNumber: 0, eventsCreated: 1000, eventsSkipped: 0, errors: 0, hasMore: true },
       });
 
       // Should create 1000 events
@@ -382,10 +309,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Should queue next batch
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
         task: "create-events",
-        input: {
-          importJobId: "import-123",
-          batchNumber: 1,
-        },
+        input: { importJobId: "import-123", batchNumber: 1 },
       });
     });
 
@@ -400,13 +324,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
           summary: { internalDuplicates: 1, externalDuplicates: 2, uniqueRows: 10 },
         },
         progress: {
-          stages: {
-            "create-events": {
-              status: "in_progress",
-              rowsProcessed: 10,
-              rowsTotal: 10,
-            },
-          },
+          stages: { "create-events": { status: "in_progress", rowsProcessed: 10, rowsTotal: 10 } },
           overallPercentage: 0,
           estimatedCompletionTime: null,
         },
@@ -468,11 +386,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
@@ -485,11 +399,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = { id: "dataset-456" };
@@ -510,11 +420,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 0 } },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = { id: "dataset-456" };
@@ -562,11 +468,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = {
@@ -625,11 +527,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = {
@@ -679,11 +577,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             age: 25, // Transformed to number
           }),
           validationStatus: "transformed",
-          transformations: expect.arrayContaining([
-            expect.objectContaining({
-              path: "age",
-            }),
-          ]),
+          transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
         }),
       });
     });
@@ -694,11 +588,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = {
@@ -733,10 +623,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // No transformations applied
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "events",
-        data: expect.objectContaining({
-          validationStatus: "pending",
-          transformations: null,
-        }),
+        data: expect.objectContaining({ validationStatus: "pending", transformations: null }),
       });
     });
 
@@ -746,11 +633,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = {
@@ -804,10 +687,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "events",
         data: expect.objectContaining({
-          data: expect.objectContaining({
-            age: 25,
-            active: true,
-          }),
+          data: expect.objectContaining({ age: 25, active: true }),
           transformations: expect.arrayContaining([
             expect.objectContaining({ path: "age" }),
             expect.objectContaining({ path: "active" }),
@@ -822,11 +702,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = {
@@ -883,11 +759,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = {

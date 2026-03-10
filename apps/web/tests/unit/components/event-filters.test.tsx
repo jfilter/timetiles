@@ -22,11 +22,7 @@ const mockDataSources: DataSourcesResponse = {
 
 // Mock the useDataSourcesQuery hook
 vi.mock("@/lib/hooks/use-data-sources-query", () => ({
-  useDataSourcesQuery: () => ({
-    data: mockDataSources,
-    isLoading: false,
-    error: null,
-  }),
+  useDataSourcesQuery: () => ({ data: mockDataSources, isLoading: false, error: null }),
 }));
 
 describe("EventFilters", () => {
@@ -47,9 +43,7 @@ describe("EventFilters", () => {
     // Test the filtering logic by setting URL state to select first catalog
     const searchParams = new URLSearchParams("catalog=1");
 
-    const { container } = renderWithProviders(<EventFilters />, {
-      searchParams,
-    });
+    const { container } = renderWithProviders(<EventFilters />, { searchParams });
 
     // Should show Datasets section
     expect(container).toHaveTextContent("Datasets");
@@ -104,9 +98,7 @@ describe("EventFilters", () => {
   test("shows clear date filters button when dates are set", () => {
     const searchParams = new URLSearchParams("startDate=2024-01-01&endDate=2024-12-31");
 
-    const { container } = renderWithProviders(<EventFilters />, {
-      searchParams,
-    });
+    const { container } = renderWithProviders(<EventFilters />, { searchParams });
 
     // Should show the clear button when dates are set
     expect(container).toHaveTextContent("Clear date filters");
@@ -124,11 +116,7 @@ describe("EventFilters with empty data", () => {
   beforeEach(() => {
     // Override mock for empty data tests
     vi.doMock("@/lib/hooks/use-data-sources-query", () => ({
-      useDataSourcesQuery: () => ({
-        data: { catalogs: [], datasets: [] },
-        isLoading: false,
-        error: null,
-      }),
+      useDataSourcesQuery: () => ({ data: { catalogs: [], datasets: [] }, isLoading: false, error: null }),
     }));
   });
 
@@ -150,10 +138,7 @@ describe("EventFilters with catalog having no datasets", () => {
   beforeEach(() => {
     vi.doMock("@/lib/hooks/use-data-sources-query", () => ({
       useDataSourcesQuery: () => ({
-        data: {
-          catalogs: [{ id: 99, name: "Empty Catalog" }],
-          datasets: [],
-        },
+        data: { catalogs: [{ id: 99, name: "Empty Catalog" }], datasets: [] },
         isLoading: false,
         error: null,
       }),

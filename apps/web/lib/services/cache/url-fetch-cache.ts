@@ -57,16 +57,9 @@ export class UrlFetchCache {
     this.maxTTL = getEnvInteger(process.env.URL_FETCH_CACHE_MAX_TTL, 2592000); // 30 days default
     this.respectCacheControl = process.env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL !== "false";
 
-    const storage = new FileSystemCacheStorage({
-      cacheDir,
-      maxSize,
-      defaultTTL: this.defaultTTL,
-    });
+    const storage = new FileSystemCacheStorage({ cacheDir, maxSize, defaultTTL: this.defaultTTL });
 
-    this.cache = new Cache({
-      storage,
-      keyPrefix: "http:",
-    });
+    this.cache = new Cache({ storage, keyPrefix: "http:" });
   }
 
   /**
@@ -269,11 +262,7 @@ export class UrlFetchCache {
 
     await this.cacheResponse(cacheKey, data, respHeaders, response.status);
 
-    return {
-      data,
-      headers: { ...respHeaders, "X-Cache": "MISS" },
-      status: response.status,
-    };
+    return { data, headers: { ...respHeaders, "X-Cache": "MISS" }, status: response.status };
   }
 
   /**
@@ -298,11 +287,7 @@ export class UrlFetchCache {
       await this.cacheResponse(cacheKey, data, headers, response.status);
     }
 
-    return {
-      data,
-      headers: { ...headers, "X-Cache": "MISS" },
-      status: response.status,
-    };
+    return { data, headers: { ...headers, "X-Cache": "MISS" }, status: response.status };
   }
 
   /**
@@ -457,10 +442,7 @@ export class UrlFetchCache {
       await this.cache.delete(key);
     }
 
-    logger.info("Invalidated user cache", {
-      userId,
-      count: userKeys.length,
-    });
+    logger.info("Invalidated user cache", { userId, count: userKeys.length });
   }
 }
 

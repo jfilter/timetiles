@@ -37,13 +37,7 @@ const extractAccessControlFields = (
 /** Fetch dataset with catalog populated */
 const fetchDatasetWithCatalog = async (req: PayloadRequest, datasetId: number | string): Promise<Dataset | null> => {
   try {
-    return await req.payload.findByID({
-      collection: "datasets",
-      id: datasetId,
-      depth: 1,
-      overrideAccess: true,
-      req,
-    });
+    return await req.payload.findByID({ collection: "datasets", id: datasetId, depth: 1, overrideAccess: true, req });
   } catch {
     return null;
   }

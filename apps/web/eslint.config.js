@@ -30,12 +30,7 @@ export default [
   // Override parserOptions to point to this project's tsconfig
   {
     files: ["**/*.ts", "**/*.tsx"],
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: {
       "sonarjs/no-unused-vars": "off", // Covered by @typescript-eslint/no-unused-vars with ignoreRestSiblings
       "@typescript-eslint/no-unused-vars": [
@@ -62,11 +57,7 @@ export default [
       // Enforce type imports for interfaces and types to prevent runtime issues
       "@typescript-eslint/consistent-type-imports": [
         "error",
-        {
-          prefer: "type-imports",
-          disallowTypeAnnotations: false,
-          fixStyle: "separate-type-imports",
-        },
+        { prefer: "type-imports", disallowTypeAnnotations: false, fixStyle: "separate-type-imports" },
       ],
       // Disable other style/convention rules for migrations
       "prefer-arrow-functions/prefer-arrow-functions": "off", // Payload migration convention uses regular functions

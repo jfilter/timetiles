@@ -209,11 +209,7 @@ export class ErrorRecoveryService {
     }
 
     if (!classification.retryable) {
-      return {
-        success: false,
-        action: "not_retryable",
-        error: `Error is not retryable: ${classification.reason}`,
-      };
+      return { success: false, action: "not_retryable", error: `Error is not retryable: ${classification.reason}` };
     }
 
     if (retryCount >= config.maxRetries) {
@@ -257,11 +253,7 @@ export class ErrorRecoveryService {
     }
 
     const userId = extractRelationId(importFile.user)!;
-    const user = await payload.findByID({
-      collection: "users",
-      id: userId,
-      overrideAccess: true,
-    });
+    const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     const quotaService = getQuotaService(payload);
     const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1);
@@ -328,10 +320,7 @@ export class ErrorRecoveryService {
       const normalizedJobId = this.normalizeJobId(jobId);
 
       // Get the failed job
-      const job = await payload.findByID({
-        collection: IMPORT_JOBS_COLLECTION,
-        id: normalizedJobId,
-      });
+      const job = await payload.findByID({ collection: IMPORT_JOBS_COLLECTION, id: normalizedJobId });
 
       // Check if job exists first
       if (!job) {
@@ -387,12 +376,7 @@ export class ErrorRecoveryService {
         nextRetryAt,
       });
 
-      return {
-        success: true,
-        action: "retry_scheduled",
-        retryScheduled: true,
-        nextRetryAt,
-      };
+      return { success: true, action: "retry_scheduled", retryScheduled: true, nextRetryAt };
     } catch (error) {
       logError(error, "Failed to recover import job", { jobId });
       return {
@@ -431,11 +415,7 @@ export class ErrorRecoveryService {
 
     // File access errors - often recoverable
     if (errorMessage.includes("enoent") || errorMessage.includes("file not found")) {
-      return {
-        type: "permanent",
-        reason: "File not found - file may have been deleted",
-        retryable: false,
-      };
+      return { type: "permanent", reason: "File not found - file may have been deleted", retryable: false };
     }
 
     // Network/database connection errors - usually recoverable
@@ -444,20 +424,12 @@ export class ErrorRecoveryService {
       errorMessage.includes("timeout") ||
       errorMessage.includes("econnrefused")
     ) {
-      return {
-        type: "recoverable",
-        reason: "Network or database connection issue",
-        retryable: true,
-      };
+      return { type: "recoverable", reason: "Network or database connection issue", retryable: true };
     }
 
     // Memory/resource errors - often recoverable with delay
     if (errorMessage.includes("memory") || errorMessage.includes("resource")) {
-      return {
-        type: "recoverable",
-        reason: "Resource exhaustion - may resolve with delay",
-        retryable: true,
-      };
+      return { type: "recoverable", reason: "Resource exhaustion - may resolve with delay", retryable: true };
     }
 
     // Quota errors - cannot retry until quota resets
@@ -482,28 +454,16 @@ export class ErrorRecoveryService {
 
     // Rate limiting - definitely recoverable
     if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
-      return {
-        type: "recoverable",
-        reason: "Rate limiting - will resolve with delay",
-        retryable: true,
-      };
+      return { type: "recoverable", reason: "Rate limiting - will resolve with delay", retryable: true };
     }
 
     // Permission errors - usually permanent
     if (errorMessage.includes("permission") || errorMessage.includes("unauthorized")) {
-      return {
-        type: "permanent",
-        reason: "Permission denied - needs configuration fix",
-        retryable: false,
-      };
+      return { type: "permanent", reason: "Permission denied - needs configuration fix", retryable: false };
     }
 
     // Default to recoverable for unknown errors
-    return {
-      type: "recoverable",
-      reason: "Unknown error - attempting recovery",
-      retryable: true,
-    };
+    return { type: "recoverable", reason: "Unknown error - attempting recovery", retryable: true };
   }
 
   /**
@@ -624,10 +584,7 @@ export class ErrorRecoveryService {
           context: { skipStageTransition: true },
         });
 
-        logger.info("Set recovery stage (job queued via hook)", {
-          importJobId: job.id,
-          stage: recoveryStage,
-        });
+        logger.info("Set recovery stage (job queued via hook)", { importJobId: job.id, stage: recoveryStage });
       }
     } catch (error) {
       logError(error, "Failed to process pending retries");
@@ -703,10 +660,7 @@ export class ErrorRecoveryService {
     try {
       const normalizedJobId = this.normalizeJobId(jobId);
 
-      const job = await payload.findByID({
-        collection: IMPORT_JOBS_COLLECTION,
-        id: normalizedJobId,
-      });
+      const job = await payload.findByID({ collection: IMPORT_JOBS_COLLECTION, id: normalizedJobId });
 
       if (!job) {
         return { success: false, action: "job_not_found", error: "Import job not found" };
@@ -717,11 +671,7 @@ export class ErrorRecoveryService {
         lastRetryAt: new Date().toISOString(),
         errorLog: {
           ...getErrorLogState(job),
-          manualReset: {
-            resetAt: new Date().toISOString(),
-            previousStage: job.stage,
-            targetStage,
-          },
+          manualReset: { resetAt: new Date().toISOString(), previousStage: job.stage, targetStage },
         },
       };
 
@@ -743,10 +693,7 @@ export class ErrorRecoveryService {
         clearedRetries: clearRetries,
       });
 
-      return {
-        success: true,
-        action: "manual_reset",
-      };
+      return { success: true, action: "manual_reset" };
     } catch (error) {
       logError(error, "Failed to reset job stage", { jobId, targetStage });
       return {
@@ -795,7 +742,9 @@ export class ErrorRecoveryService {
    * Limited to 100 failed jobs per query to prevent performance issues.
    * Access control should be applied by the calling API endpoint.
    */
-  static async getRecoveryRecommendations(payload: Payload): Promise<
+  static async getRecoveryRecommendations(
+    payload: Payload
+  ): Promise<
     Array<{
       jobId: string | number;
       stage: string;
@@ -806,9 +755,7 @@ export class ErrorRecoveryService {
   > {
     const failedJobs = await payload.find({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      where: {
-        stage: { equals: PROCESSING_STAGE.FAILED },
-      },
+      where: { stage: { equals: PROCESSING_STAGE.FAILED } },
       pagination: false,
     });
 
@@ -826,13 +773,7 @@ export class ErrorRecoveryService {
         recommendedAction = "Manual intervention required - max retries exceeded";
       }
 
-      return {
-        jobId: job.id,
-        stage: job.stage,
-        classification,
-        recommendedAction,
-        retryCount,
-      };
+      return { jobId: job.id, stage: job.stage, classification, recommendedAction, retryCount };
     });
   }
 }

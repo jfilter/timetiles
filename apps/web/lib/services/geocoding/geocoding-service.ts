@@ -59,10 +59,7 @@ export class GeocodingService {
       this.initialized = true;
 
       logger.info(
-        {
-          activeProviders: providers.filter((p) => p.enabled).map((p) => p.name),
-          totalProviders: providers.length,
-        },
+        { activeProviders: providers.filter((p) => p.enabled).map((p) => p.name), totalProviders: providers.length },
         "Geocoding service initialized"
       );
     } catch (error) {
@@ -98,9 +95,7 @@ export class GeocodingService {
 
   private async loadSettings(): Promise<void> {
     try {
-      const settingsGlobal = await this.payload.findGlobal({
-        slug: "settings",
-      });
+      const settingsGlobal = await this.payload.findGlobal({ slug: "settings" });
 
       const geocodingSettings = settingsGlobal.geocoding;
 
@@ -124,14 +119,8 @@ export class GeocodingService {
       this.settings = {
         enabled: true,
         fallbackEnabled: true,
-        providerSelection: {
-          strategy: "priority",
-          requiredTags: [],
-        },
-        caching: {
-          enabled: true,
-          ttlDays: 30,
-        },
+        providerSelection: { strategy: "priority", requiredTags: [] },
+        caching: { enabled: true, ttlDays: 30 },
       };
     }
   }

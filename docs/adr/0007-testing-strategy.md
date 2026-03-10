@@ -68,13 +68,9 @@ Unit tests mock external dependencies following three patterns:
 **`vi.hoisted()` for mock variables.** Because `vi.mock()` is hoisted above imports, any mock variable referenced inside the factory must also be hoisted. This is the standard pattern for mocks that need per-test configuration:
 
 ```typescript
-const { mockParseCoordinate } = vi.hoisted(() => ({
-  mockParseCoordinate: vi.fn(),
-}));
+const { mockParseCoordinate } = vi.hoisted(() => ({ mockParseCoordinate: vi.fn() }));
 
-vi.mock("@/lib/geospatial", () => ({
-  parseCoordinate: mockParseCoordinate,
-}));
+vi.mock("@/lib/geospatial", () => ({ parseCoordinate: mockParseCoordinate }));
 ```
 
 **`vi.mock()` with import-time side effects for shared mocks.** The logger mock (`tests/mocks/services/logger.ts`) calls `vi.mock("@/lib/logger", ...)` at import time. Test files opt in by importing the mock file:
@@ -114,11 +110,7 @@ import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials"
 
 const user = await payload.create({
   collection: "users",
-  data: {
-    email: TEST_EMAILS.admin,
-    password: TEST_CREDENTIALS.basic.strongPassword,
-    role: "admin",
-  },
+  data: { email: TEST_EMAILS.admin, password: TEST_CREDENTIALS.basic.strongPassword, role: "admin" },
 });
 ```
 

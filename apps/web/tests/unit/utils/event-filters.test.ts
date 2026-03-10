@@ -11,13 +11,7 @@ import { buildEventFilters } from "@/lib/utils/event-filters";
 describe("event-filters", () => {
   it("normalizes date-only end dates in buildEventFilters", () => {
     const filters = buildEventFilters({
-      parameters: {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: "2024-03-31",
-        fieldFilters: {},
-      },
+      parameters: { catalog: null, datasets: [], startDate: null, endDate: "2024-03-31", fieldFilters: {} },
       accessibleCatalogIds: [1, 2],
       bounds: null,
     });
@@ -27,13 +21,7 @@ describe("event-filters", () => {
 
   it("filters invalid dataset ids in buildEventFilters", () => {
     const filters = buildEventFilters({
-      parameters: {
-        catalog: null,
-        datasets: ["10", "abc", "20"],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      },
+      parameters: { catalog: null, datasets: ["10", "abc", "20"], startDate: null, endDate: null, fieldFilters: {} },
       accessibleCatalogIds: [1, 2],
       bounds: null,
     });
@@ -43,13 +31,7 @@ describe("event-filters", () => {
 
   it("rejects partially numeric dataset ids in buildEventFilters", () => {
     const filters = buildEventFilters({
-      parameters: {
-        catalog: null,
-        datasets: ["10oops"],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      },
+      parameters: { catalog: null, datasets: ["10oops"], startDate: null, endDate: null, fieldFilters: {} },
       accessibleCatalogIds: [1, 2],
       bounds: null,
     });
@@ -60,13 +42,7 @@ describe("event-filters", () => {
 
   it("returns no results when all dataset ids are invalid in buildEventFilters", () => {
     const filters = buildEventFilters({
-      parameters: {
-        catalog: null,
-        datasets: ["abc", "def"],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      },
+      parameters: { catalog: null, datasets: ["abc", "def"], startDate: null, endDate: null, fieldFilters: {} },
       accessibleCatalogIds: [1, 2],
       bounds: null,
     });
@@ -77,13 +53,7 @@ describe("event-filters", () => {
 
   it("treats an empty catalog as no catalog filter", () => {
     const filters = buildEventFilters({
-      parameters: {
-        catalog: "",
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      },
+      parameters: { catalog: "", datasets: [], startDate: null, endDate: null, fieldFilters: {} },
       accessibleCatalogIds: [1, 2],
       bounds: null,
     });
@@ -95,13 +65,7 @@ describe("event-filters", () => {
 
   it("rejects partially numeric catalog ids", () => {
     const filters = buildEventFilters({
-      parameters: {
-        catalog: "1abc",
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      },
+      parameters: { catalog: "1abc", datasets: [], startDate: null, endDate: null, fieldFilters: {} },
       accessibleCatalogIds: [1, 2],
       bounds: null,
     });

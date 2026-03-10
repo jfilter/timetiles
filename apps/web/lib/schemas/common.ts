@@ -39,11 +39,7 @@ export const PaginationSchema = z
  * Standard error response format.
  */
 export const ErrorResponseSchema = z
-  .object({
-    error: z.string(),
-    code: z.string().optional(),
-    details: z.unknown().optional(),
-  })
+  .object({ error: z.string(), code: z.string().optional(), details: z.unknown().optional() })
   .openapi("ErrorResponse");
 
 /**

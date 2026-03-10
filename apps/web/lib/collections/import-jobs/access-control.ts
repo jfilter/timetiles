@@ -33,9 +33,7 @@ export const importJobsAccess = {
     }
 
     // Return import jobs linked to user's import files
-    return {
-      importFile: { in: importFileIds },
-    };
+    return { importFile: { in: importFileIds } };
   }) as Access,
 
   // Only authenticated users can create import jobs (if feature enabled)
@@ -56,11 +54,7 @@ export const importJobsAccess = {
     // Security: Check ownership of EXISTING job, not the new data being set
     if (user && id) {
       try {
-        const existingJob = await req.payload.findByID({
-          collection: "import-jobs",
-          id,
-          overrideAccess: true,
-        });
+        const existingJob = await req.payload.findByID({ collection: "import-jobs", id, overrideAccess: true });
 
         if (existingJob?.importFile) {
           const importFileId = extractRelationId(existingJob.importFile)!;

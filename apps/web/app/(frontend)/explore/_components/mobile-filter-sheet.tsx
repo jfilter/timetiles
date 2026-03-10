@@ -97,10 +97,7 @@ export const MobileFilterSheet = ({
 
   // Memoize the sheet style to avoid creating new objects on each render
   const sheetStyle = useMemo(
-    () => ({
-      height: "70dvh",
-      transform: isOpen ? `translateY(${dragOffset}px)` : "translateY(100%)",
-    }),
+    () => ({ height: "70dvh", transform: isOpen ? `translateY(${dragOffset}px)` : "translateY(100%)" }),
     [isOpen, dragOffset]
   );
 

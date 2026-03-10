@@ -158,20 +158,13 @@ const handleScheduleInitialization = (data: Record<string, unknown>, operation: 
       if (nextRun) {
         data.nextRun = nextRun.toISOString();
       } else {
-        logger.warn("Failed to calculate nextRun from cron expression", {
-          cronExpression: data.cronExpression,
-        });
+        logger.warn("Failed to calculate nextRun from cron expression", { cronExpression: data.cronExpression });
       }
     }
 
     // This would be calculated by the schedule manager
     // For now, just ensure the fields exist
-    data.statistics ??= {
-      totalRuns: 0,
-      successfulRuns: 0,
-      failedRuns: 0,
-      averageDuration: 0,
-    };
+    data.statistics ??= { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
   }
 };
 

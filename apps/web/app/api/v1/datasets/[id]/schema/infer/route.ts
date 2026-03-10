@@ -40,11 +40,7 @@ export const POST = withAuth(
 
       // Verify dataset exists
       const dataset = await payload
-        .findByID({
-          collection: "datasets",
-          id: datasetId,
-          overrideAccess: true,
-        })
+        .findByID({ collection: "datasets", id: datasetId, overrideAccess: true })
         .catch(() => null);
 
       if (!dataset) {
@@ -64,11 +60,7 @@ export const POST = withAuth(
         // No body or invalid JSON - use defaults
       }
 
-      logger.info("Schema inference requested", {
-        datasetId,
-        userId: request.user.id,
-        options,
-      });
+      logger.info("Schema inference requested", { datasetId, userId: request.user.id, options });
 
       // Perform schema inference
       const result = await SchemaInferenceService.inferSchemaFromEvents(payload, datasetId, options);
@@ -96,10 +88,7 @@ export const POST = withAuth(
       });
     } catch (error) {
       const { id } = await context.params;
-      logError(error, "Failed to infer schema for dataset", {
-        datasetId: id,
-        userId: request.user?.id,
-      });
+      logError(error, "Failed to infer schema for dataset", { datasetId: id, userId: request.user?.id });
 
       return internalError("Failed to infer schema for dataset");
     }

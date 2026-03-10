@@ -15,10 +15,7 @@ describe.sequential("ProgressTrackingService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockPayload = {
-      findByID: vi.fn(),
-      update: vi.fn().mockResolvedValue({}),
-    };
+    mockPayload = { findByID: vi.fn(), update: vi.fn().mockResolvedValue({}) };
   });
 
   describe("initializeStageProgress", () => {

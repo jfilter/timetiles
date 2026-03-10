@@ -69,14 +69,8 @@ export declare const COMBINED_COORDINATE_PATTERNS: RegExp[];
  * Valid coordinate bounds.
  */
 export declare const COORDINATE_BOUNDS: {
-  latitude: {
-    min: number;
-    max: number;
-  };
-  longitude: {
-    min: number;
-    max: number;
-  };
+  latitude: { min: number; max: number };
+  longitude: { min: number; max: number };
 };
 /**
  * Detect geo field mappings.

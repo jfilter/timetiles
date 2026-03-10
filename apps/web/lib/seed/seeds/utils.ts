@@ -30,14 +30,8 @@ export const DATASET_SCHEMAS = {
       department: { type: "string", description: "Department or division" },
       contact: { type: "string", description: "Contact email or phone" },
       severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
-      status: {
-        type: "string",
-        enum: ["open", "in-progress", "resolved", "closed"],
-      },
-      reference_number: {
-        type: "string",
-        description: "Official reference number",
-      },
+      status: { type: "string", enum: ["open", "in-progress", "resolved", "closed"] },
+      reference_number: { type: "string", description: "Official reference number" },
       reported_date: { type: "string", format: "date-time" },
     },
     required: ["agency", "department", "status"],
@@ -45,18 +39,12 @@ export const DATASET_SCHEMAS = {
   environmental: {
     type: "object",
     properties: {
-      station_id: {
-        type: "string",
-        description: "Monitoring station identifier",
-      },
+      station_id: { type: "string", description: "Monitoring station identifier" },
       measurement_type: { type: "string", description: "Type of measurement" },
       value: { type: "number", description: "Measured value" },
       unit: { type: "string", description: "Unit of measurement" },
       sensor_id: { type: "string", description: "Sensor identifier" },
-      quality: {
-        type: "string",
-        enum: ["good", "moderate", "poor", "hazardous"],
-      },
+      quality: { type: "string", enum: ["good", "moderate", "poor", "hazardous"] },
       conditions: { type: "string", description: "Environmental conditions" },
       timestamp: { type: "string", format: "date-time" },
     },
@@ -72,10 +60,7 @@ export const DATASET_SCHEMAS = {
       keywords: { type: "array", items: { type: "string" } },
       doi: { type: "string", description: "Digital Object Identifier" },
       publication_date: { type: "string", format: "date" },
-      sample_size: {
-        type: "integer",
-        description: "Sample size if applicable",
-      },
+      sample_size: { type: "integer", description: "Sample size if applicable" },
     },
     required: ["institution", "researcher", "discipline"],
   },
@@ -115,12 +100,7 @@ export const DATASET_SCHEMAS = {
 export const GEOGRAPHIC_REGIONS = {
   "new-york-metro": {
     name: "New York Metropolitan Area",
-    bounds: {
-      north: 41.1,
-      south: 40.4,
-      east: -73.5,
-      west: -74.3,
-    },
+    bounds: { north: 41.1, south: 40.4, east: -73.5, west: -74.3 },
     centers: [
       { name: "Manhattan", lat: 40.7831, lng: -73.9712 },
       { name: "Brooklyn", lat: 40.6782, lng: -73.9442 },
@@ -131,12 +111,7 @@ export const GEOGRAPHIC_REGIONS = {
   },
   california: {
     name: "California",
-    bounds: {
-      north: 42.0,
-      south: 32.5,
-      east: -114.1,
-      west: -124.4,
-    },
+    bounds: { north: 42.0, south: 32.5, east: -114.1, west: -124.4 },
     centers: [
       { name: "Los Angeles", lat: 34.0522, lng: -118.2437 },
       { name: "San Francisco", lat: 37.7749, lng: -122.4194 },
@@ -147,12 +122,7 @@ export const GEOGRAPHIC_REGIONS = {
   },
   texas: {
     name: "Texas",
-    bounds: {
-      north: 36.5,
-      south: 25.8,
-      east: -93.5,
-      west: -106.6,
-    },
+    bounds: { north: 36.5, south: 25.8, east: -93.5, west: -106.6 },
     centers: [
       { name: "Houston", lat: 29.7604, lng: -95.3698 },
       { name: "Dallas", lat: 32.7767, lng: -96.797 },
@@ -163,12 +133,7 @@ export const GEOGRAPHIC_REGIONS = {
   },
   europe: {
     name: "Europe",
-    bounds: {
-      north: 60.0,
-      south: 35.0,
-      east: 40.0,
-      west: -10.0,
-    },
+    bounds: { north: 60.0, south: 35.0, east: 40.0, west: -10.0 },
     centers: [
       { name: "London", lat: 51.5074, lng: -0.1278 },
       { name: "Paris", lat: 48.8566, lng: 2.3522 },

@@ -147,16 +147,9 @@ const parseAndValidateCoordinates = (
     return null;
   }
 
-  const validation = {
-    isValid: true,
-    normalizedLat: lat_parsed,
-    normalizedLng: lng_parsed,
-  };
+  const validation = { isValid: true, normalizedLat: lat_parsed, normalizedLng: lng_parsed };
 
-  return {
-    coordinates: { lat: validation.normalizedLat, lng: validation.normalizedLng },
-    validation: validation,
-  };
+  return { coordinates: { lat: validation.normalizedLat, lng: validation.normalizedLng }, validation: validation };
 };
 
 export const processRowData = (

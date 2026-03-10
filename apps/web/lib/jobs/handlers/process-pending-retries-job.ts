@@ -27,10 +27,6 @@ export const processPendingRetriesJob = {
 
     await ErrorRecoveryService.processPendingRetries(req.payload);
 
-    return {
-      output: {
-        success: true,
-      },
-    };
+    return { output: { success: true } };
   },
 };

@@ -26,19 +26,10 @@ import {
 export const registry = new OpenAPIRegistry();
 
 // Common response descriptions
-const DESCRIPTIONS = {
-  BAD_REQUEST: "Invalid request parameters",
-  INTERNAL_ERROR: "Internal server error",
-} as const;
+const DESCRIPTIONS = { BAD_REQUEST: "Invalid request parameters", INTERNAL_ERROR: "Internal server error" } as const;
 
 // Common error response content
-const errorResponse = (schema = ErrorResponseSchema) => ({
-  content: {
-    "application/json": {
-      schema,
-    },
-  },
-});
+const errorResponse = (schema = ErrorResponseSchema) => ({ content: { "application/json": { schema } } });
 
 // =============================================================================
 // Event API Routes
@@ -51,14 +42,9 @@ registry.registerPath({
   summary: "List events with pagination",
   description:
     "Returns a paginated list of events matching the specified filters. Events are returned with enriched data including extracted title, description, and location.",
-  request: {
-    query: EventListQuerySchema,
-  },
+  request: { query: EventListQuerySchema },
   responses: {
-    200: {
-      description: "Paginated event list",
-      content: { "application/json": { schema: EventListResponseSchema } },
-    },
+    200: { description: "Paginated event list", content: { "application/json": { schema: EventListResponseSchema } } },
     400: { description: DESCRIPTIONS.BAD_REQUEST, ...errorResponse() },
     500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
   },
@@ -71,9 +57,7 @@ registry.registerPath({
   summary: "Aggregate event counts by catalog or dataset",
   description:
     "Returns event counts grouped by catalog or dataset. When datasets are explicitly filtered, all selected datasets appear in results (with 0 count if no events match in the current viewport).",
-  request: {
-    query: AggregateQuerySchema,
-  },
+  request: { query: AggregateQuerySchema },
   responses: {
     200: {
       description: "Aggregated event counts",
@@ -91,9 +75,7 @@ registry.registerPath({
   summary: "Get temporal histogram of events",
   description:
     "Returns a histogram of event counts over time with automatically calculated bucket sizes. The bucket size is optimized based on the target, min, and max bucket parameters.",
-  request: {
-    query: HistogramQuerySchema,
-  },
+  request: { query: HistogramQuerySchema },
   responses: {
     200: {
       description: "Temporal histogram data",
@@ -111,9 +93,7 @@ registry.registerPath({
   summary: "Get clustered events for map display",
   description:
     "Returns events clustered based on zoom level and viewport bounds. Uses server-side PostGIS clustering for optimal performance with large datasets. Returns a GeoJSON FeatureCollection.",
-  request: {
-    query: MapClustersQuerySchema,
-  },
+  request: { query: MapClustersQuerySchema },
   responses: {
     200: {
       description: "GeoJSON FeatureCollection of clustered events",
@@ -131,9 +111,7 @@ registry.registerPath({
   summary: "Get cluster statistics for visualization",
   description:
     "Returns percentile breakpoints for cluster sizes across the entire filtered dataset. Used to maintain consistent cluster visualization across all zoom levels and viewports.",
-  request: {
-    query: ClusterStatsQuerySchema,
-  },
+  request: { query: ClusterStatsQuerySchema },
   responses: {
     200: {
       description: "Cluster size percentile statistics",
@@ -162,14 +140,8 @@ registry.registerPath({
           schema: {
             type: "object",
             properties: {
-              catalogCounts: {
-                type: "object",
-                additionalProperties: { type: "integer" },
-              },
-              datasetCounts: {
-                type: "object",
-                additionalProperties: { type: "integer" },
-              },
+              catalogCounts: { type: "object", additionalProperties: { type: "integer" } },
+              datasetCounts: { type: "object", additionalProperties: { type: "integer" } },
               totalEvents: { type: "integer" },
             },
             required: ["catalogCounts", "datasetCounts", "totalEvents"],

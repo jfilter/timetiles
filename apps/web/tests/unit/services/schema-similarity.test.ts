@@ -140,11 +140,7 @@ describe("Schema Similarity Service", () => {
     });
 
     it("considers language match in scoring", () => {
-      const uploadedSchema: UploadedSchema = {
-        headers: ["title", "date"],
-        sampleData: [],
-        rowCount: 50,
-      };
+      const uploadedSchema: UploadedSchema = { headers: ["title", "date"], sampleData: [], rowCount: 50 };
 
       const datasetSchemaEng: DatasetSchema = {
         datasetId: 1,
@@ -214,9 +210,7 @@ describe("Schema Similarity Service", () => {
     });
 
     it("filters out datasets below minimum score", () => {
-      const results = findSimilarDatasets(uploadedSchema, datasetSchemas, {
-        minScore: 50,
-      });
+      const results = findSimilarDatasets(uploadedSchema, datasetSchemas, { minScore: 50 });
 
       // All returned results should have score >= 50
       for (const result of results) {
@@ -225,18 +219,14 @@ describe("Schema Similarity Service", () => {
     });
 
     it("limits results to maxResults", () => {
-      const results = findSimilarDatasets(uploadedSchema, datasetSchemas, {
-        maxResults: 1,
-      });
+      const results = findSimilarDatasets(uploadedSchema, datasetSchemas, { maxResults: 1 });
 
       expect(results).toHaveLength(1);
       expect(results[0]?.datasetName).toBe("Perfect Match");
     });
 
     it("returns empty array when no datasets match minimum score", () => {
-      const results = findSimilarDatasets(uploadedSchema, datasetSchemas, {
-        minScore: 99,
-      });
+      const results = findSimilarDatasets(uploadedSchema, datasetSchemas, { minScore: 99 });
 
       // Only the perfect match might reach this threshold
       expect(results.length).toBeLessThanOrEqual(1);
@@ -273,11 +263,7 @@ describe("Schema Similarity Service", () => {
     });
 
     it("handles dataset without field mapping overrides", () => {
-      const dataset: Partial<Dataset> = {
-        id: 2,
-        name: "Basic Dataset",
-        language: "deu",
-      };
+      const dataset: Partial<Dataset> = { id: 2, name: "Basic Dataset", language: "deu" };
 
       const result = datasetToSchema(dataset as Dataset);
 
@@ -312,11 +298,7 @@ describe("Schema Similarity Service", () => {
     });
 
     it("defaults language to eng when not specified", () => {
-      const dataset: Partial<Dataset> = {
-        id: 4,
-        name: "No Language",
-        language: undefined as unknown as string,
-      };
+      const dataset: Partial<Dataset> = { id: 4, name: "No Language", language: undefined as unknown as string };
 
       const result = datasetToSchema(dataset as Dataset);
 
@@ -328,10 +310,7 @@ describe("Schema Similarity Service", () => {
         id: 5,
         name: "No Types",
         language: "eng",
-        fieldMetadata: {
-          title: { occurrences: 100 } as any,
-          count: { occurrences: 50 } as any,
-        },
+        fieldMetadata: { title: { occurrences: 100 } as any, count: { occurrences: 50 } as any },
       };
 
       const result = datasetToSchema(dataset as Dataset);
@@ -458,11 +437,7 @@ describe("Schema Similarity Service", () => {
 
   describe("edge cases", () => {
     it("returns 0 structure similarity when uploaded headers are empty", () => {
-      const uploadedSchema: UploadedSchema = {
-        headers: [],
-        sampleData: [],
-        rowCount: 0,
-      };
+      const uploadedSchema: UploadedSchema = { headers: [], sampleData: [], rowCount: 0 };
 
       const datasetSchema: DatasetSchema = {
         datasetId: 1,
@@ -478,11 +453,7 @@ describe("Schema Similarity Service", () => {
     });
 
     it("returns neutral language match when no language is detected", () => {
-      const uploadedSchema: UploadedSchema = {
-        headers: ["title"],
-        sampleData: [],
-        rowCount: 1,
-      };
+      const uploadedSchema: UploadedSchema = { headers: ["title"], sampleData: [], rowCount: 1 };
 
       const datasetSchema: DatasetSchema = {
         datasetId: 1,

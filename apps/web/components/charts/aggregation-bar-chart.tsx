@@ -60,10 +60,7 @@ const AggregationBarChartComponent = ({
   const chartData: BarChartDataItem[] = useMemo(() => {
     if (!data?.items) return [];
 
-    return data.items.map((item) => ({
-      label: item.name,
-      value: item.count,
-    }));
+    return data.items.map((item) => ({ label: item.name, value: item.count }));
   }, [data]);
 
   // Click handler based on aggregation type (stable - uses ref for data access)

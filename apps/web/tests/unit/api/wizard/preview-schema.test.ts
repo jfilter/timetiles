@@ -50,20 +50,13 @@ vi.mock("node:fs", () => ({
   },
 }));
 
-vi.mock("papaparse", () => ({
-  default: { parse: mocks.mockPapaParse },
-}));
+vi.mock("papaparse", () => ({ default: { parse: mocks.mockPapaParse } }));
 
-vi.mock("xlsx", () => ({
-  read: mocks.mockXlsxRead,
-  utils: { sheet_to_json: mocks.mockSheetToJson },
-}));
+vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_json: mocks.mockSheetToJson } }));
 
 vi.mock("uuid", () => ({ v4: vi.fn().mockReturnValue("test-uuid") }));
 
-vi.mock("@/lib/jobs/handlers/url-fetch-job/auth", () => ({
-  buildAuthHeaders: mocks.mockBuildAuthHeaders,
-}));
+vi.mock("@/lib/jobs/handlers/url-fetch-job/auth", () => ({ buildAuthHeaders: mocks.mockBuildAuthHeaders }));
 
 vi.mock("@/lib/jobs/handlers/url-fetch-job/fetch-utils", () => ({
   fetchUrlData: mocks.mockFetchUrlData,
@@ -118,9 +111,7 @@ const createMockRequest = (formData: FormData) => {
   return new Request("http://localhost/api/wizard/preview-schema", {
     method: "POST",
     body: formData,
-    headers: new Headers({
-      Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}`,
-    }),
+    headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
   }) as unknown as NextRequest;
 };
 
@@ -218,16 +209,8 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
 
       // Mock Papa.parse: first call for preview (with preview option), second for full count
       mocks.mockPapaParse
-        .mockReturnValueOnce({
-          data: [csvRow],
-          meta: { fields: csvHeaders },
-          errors: [],
-        })
-        .mockReturnValueOnce({
-          data: [csvRow, csvRow, csvRow],
-          meta: { fields: csvHeaders },
-          errors: [],
-        });
+        .mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] })
+        .mockReturnValueOnce({ data: [csvRow, csvRow, csvRow], meta: { fields: csvHeaders }, errors: [] });
 
       mocks.mockReadFileSync.mockReturnValue(
         "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco"
@@ -267,16 +250,8 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
       const csvRow = { title: "Event 1", date: "2024-01-01" };
 
       mocks.mockPapaParse
-        .mockReturnValueOnce({
-          data: [csvRow],
-          meta: { fields: csvHeaders },
-          errors: [],
-        })
-        .mockReturnValueOnce({
-          data: [csvRow],
-          meta: { fields: csvHeaders },
-          errors: [],
-        });
+        .mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] })
+        .mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] });
       mocks.mockReadFileSync.mockReturnValue("title,date\nEvent 1,2024-01-01");
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
@@ -387,14 +362,8 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
     });
 
     it("should return 400 for unsupported file type from URL", async () => {
-      mocks.mockFetchUrlData.mockResolvedValue({
-        data: Buffer.from("some data"),
-        contentType: "application/json",
-      });
-      mocks.mockDetectFileTypeFromResponse.mockReturnValue({
-        fileExtension: ".json",
-        mimeType: "application/json",
-      });
+      mocks.mockFetchUrlData.mockResolvedValue({ data: Buffer.from("some data"), contentType: "application/json" });
+      mocks.mockDetectFileTypeFromResponse.mockReturnValue({ fileExtension: ".json", mimeType: "application/json" });
 
       const formData = new FormData();
       formData.append("sourceUrl", "https://example.com/data.json");
@@ -426,14 +395,8 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
       const csvContent = "title,date\nEvent 1,2024-01-01";
       const fetchedData = Buffer.from(csvContent);
 
-      mocks.mockFetchUrlData.mockResolvedValue({
-        data: fetchedData,
-        contentType: "text/csv",
-      });
-      mocks.mockDetectFileTypeFromResponse.mockReturnValue({
-        fileExtension: ".csv",
-        mimeType: "text/csv",
-      });
+      mocks.mockFetchUrlData.mockResolvedValue({ data: fetchedData, contentType: "text/csv" });
+      mocks.mockDetectFileTypeFromResponse.mockReturnValue({ fileExtension: ".csv", mimeType: "text/csv" });
 
       mocks.mockReadFileSync.mockReturnValue(csvContent);
       mocks.mockPapaParse
@@ -467,14 +430,8 @@ describe.sequential("POST /api/wizard/preview-schema", () => {
       const csvContent = "title,date\nEvent 1,2024-01-01";
       const fetchedData = Buffer.from(csvContent);
 
-      mocks.mockFetchUrlData.mockResolvedValue({
-        data: fetchedData,
-        contentType: "text/csv",
-      });
-      mocks.mockDetectFileTypeFromResponse.mockReturnValue({
-        fileExtension: ".csv",
-        mimeType: "text/csv",
-      });
+      mocks.mockFetchUrlData.mockResolvedValue({ data: fetchedData, contentType: "text/csv" });
+      mocks.mockDetectFileTypeFromResponse.mockReturnValue({ fileExtension: ".csv", mimeType: "text/csv" });
 
       mocks.mockReadFileSync.mockReturnValue(csvContent);
       mocks.mockPapaParse

@@ -130,11 +130,7 @@ export interface FlowMappingConfig {
   /** List of transform configurations */
   transforms: ImportTransform[];
   /** Viewport state for restoring view */
-  viewport?: {
-    x: number;
-    y: number;
-    zoom: number;
-  };
+  viewport?: { x: number; y: number; zoom: number };
 }
 
 /**
@@ -175,13 +171,7 @@ export const TARGET_FIELD_DEFINITIONS: Array<{
     required: true,
     description: "The main title or name of the event",
   },
-  {
-    fieldKey: "dateField",
-    label: "Date",
-    icon: "Calendar",
-    required: true,
-    description: "When the event occurs",
-  },
+  { fieldKey: "dateField", label: "Date", icon: "Calendar", required: true, description: "When the event occurs" },
   {
     fieldKey: "locationField",
     label: "Location",
@@ -300,11 +290,7 @@ export const createTargetNodes = (startY: number = 50): TargetFieldNode[] => {
     id: `target-${def.fieldKey}`,
     type: "target-field" as const,
     position: { x: 500, y: startY + index * 80 },
-    data: {
-      ...def,
-      isConnected: false,
-      connectedColumn: null,
-    },
+    data: { ...def, isConnected: false, connectedColumn: null },
   }));
 };
 

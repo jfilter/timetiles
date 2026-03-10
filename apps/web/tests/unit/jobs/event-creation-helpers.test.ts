@@ -8,13 +8,9 @@ import "@/tests/mocks/services/logger";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Use vi.hoisted to prevent thread-pool mock contamination from other test files
-const mocks = vi.hoisted(() => ({
-  generateUniqueId: vi.fn(() => "generated-id"),
-}));
+const mocks = vi.hoisted(() => ({ generateUniqueId: vi.fn(() => "generated-id") }));
 
-vi.mock("@/lib/services/id-generation", () => ({
-  generateUniqueId: mocks.generateUniqueId,
-}));
+vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
 import { createEventData, extractCoordinates, extractTimestamp } from "@/lib/jobs/utils/event-creation-helpers";
 
@@ -105,11 +101,7 @@ describe("extractCoordinates", () => {
   describe("priority order", () => {
     it("should prefer import coordinates over geocoded", () => {
       const row = { latitude: 40.7128, longitude: -74.006, location: "Berlin Germany" };
-      const fieldMappings = {
-        latitudePath: "latitude",
-        longitudePath: "longitude",
-        locationPath: "location",
-      };
+      const fieldMappings = { latitudePath: "latitude", longitudePath: "longitude", locationPath: "location" };
       const geocodingResults = {
         "Berlin Germany": {
           coordinates: { lat: 52.52, lng: 13.405 },
@@ -215,13 +207,7 @@ describe("createEventData", () => {
   it("does not coerce partially numeric import job ids into event relations", () => {
     const result = createEventData(
       { title: "Test Event", date: "2024-06-15T10:30:00Z" },
-      {
-        id: 42,
-        idStrategy: {
-          type: "auto",
-          duplicateStrategy: "skip",
-        },
-      } as any,
+      { id: 42, idStrategy: { type: "auto", duplicateStrategy: "skip" } } as any,
       "123abc",
       {},
       {},

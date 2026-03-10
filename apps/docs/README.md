@@ -76,10 +76,7 @@ Navigation is controlled by `_meta.js` files in each directory:
 
 ```javascript
 // Example _meta.js
-export default {
-  "page-slug": "Display Name",
-  "another-page": "Another Page",
-};
+export default { "page-slug": "Display Name", "another-page": "Another Page" };
 ```
 
 ### MDX Features

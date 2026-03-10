@@ -12,18 +12,12 @@ const mocks = vi.hoisted(() => ({
   mockFindByID: vi.fn(),
 }));
 
-vi.mock("@/lib/middleware/auth", () => ({
-  withAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
-}));
+vi.mock("@/lib/middleware/auth", () => ({ withAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler) }));
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
 vi.mock("@/lib/services/schema-inference-service", () => ({
-  SchemaInferenceService: {
-    inferSchemaFromEvents: mocks.mockInferSchemaFromEvents,
-  },
+  SchemaInferenceService: { inferSchemaFromEvents: mocks.mockInferSchemaFromEvents },
 }));
 
 vi.mock("@/payload.config", () => ({ default: {} }));
@@ -34,10 +28,7 @@ import { POST } from "@/app/api/v1/datasets/[id]/schema/infer/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
 const createRequest = (user: unknown) =>
-  ({
-    user,
-    json: vi.fn().mockResolvedValue({}),
-  }) as unknown as AuthenticatedRequest;
+  ({ user, json: vi.fn().mockResolvedValue({}) }) as unknown as AuthenticatedRequest;
 
 const createContext = (id: string) => ({
   // oxlint-disable-next-line promise/prefer-await-to-then
@@ -49,9 +40,7 @@ describe.sequential("POST /api/v1/datasets/[id]/schema/infer", () => {
     vi.clearAllMocks();
 
     mocks.mockFindByID.mockResolvedValue({ id: 1, name: "Dataset 1" });
-    mocks.mockGetPayload.mockResolvedValue({
-      findByID: mocks.mockFindByID,
-    });
+    mocks.mockGetPayload.mockResolvedValue({ findByID: mocks.mockFindByID });
     mocks.mockInferSchemaFromEvents.mockResolvedValue({
       generated: true,
       message: "Schema generated",

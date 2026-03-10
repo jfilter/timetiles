@@ -51,10 +51,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     mocks.initializeGeocoding.mockReset();
     mocks.getFileRowCount.mockReset();
     mockPayload = createMockPayload();
-    mockContext = {
-      payload: mockPayload,
-      input: { importJobId: 123 },
-    } as unknown as JobHandlerContext;
+    mockContext = { payload: mockPayload, input: { importJobId: 123 } } as unknown as JobHandlerContext;
   });
 
   afterEach(() => {
@@ -69,9 +66,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         dataset: 456,
         importFile: 789,
         sheetIndex: 0,
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
+        detectedFieldMappings: { locationPath: "address" },
       };
 
       // Mock file with duplicate locations
@@ -127,22 +122,11 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       });
 
       // Should return correct output
-      expect(result.output).toEqual({
-        totalRows: 3,
-        uniqueLocations: 2,
-        geocodedCount: 2,
-        failedCount: 0,
-      });
+      expect(result.output).toEqual({ totalRows: 3, uniqueLocations: 2, geocodedCount: 2, failedCount: 0 });
     });
 
     it("should skip rows without location values", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
-        id: 123,
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
-      };
+      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       // Mock file with missing/empty locations
       mocks.readAllRowsFromFile.mockReturnValue([
@@ -168,22 +152,11 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
       expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
 
-      expect(result.output).toEqual({
-        totalRows: 4,
-        uniqueLocations: 1,
-        geocodedCount: 1,
-        failedCount: 0,
-      });
+      expect(result.output).toEqual({ totalRows: 4, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
 
     it("should handle geocoding failures gracefully", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
-        id: 123,
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
-      };
+      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       mocks.readAllRowsFromFile.mockReturnValue([
         { id: "1", title: "Event 1", address: "123 Main St" },
@@ -207,21 +180,14 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should geocode both, but only one succeeds
       expect(mocks.geocodeAddress).toHaveBeenCalledTimes(2);
 
-      expect(result.output).toEqual({
-        totalRows: 2,
-        uniqueLocations: 2,
-        geocodedCount: 1,
-        failedCount: 1,
-      });
+      expect(result.output).toEqual({ totalRows: 2, uniqueLocations: 2, geocodedCount: 1, failedCount: 1 });
 
       // Should still store the successful result
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             geocodingResults: {
-              "123 Main St": expect.objectContaining({
-                coordinates: { lat: 40.7128, lng: -74.006 },
-              }),
+              "123 Main St": expect.objectContaining({ coordinates: { lat: 40.7128, lng: -74.006 } }),
             },
           }),
         })
@@ -257,13 +223,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle empty file gracefully", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
-        id: 123,
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
-      };
+      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       mocks.readAllRowsFromFile.mockReturnValue([]);
 
@@ -279,28 +239,14 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 123,
-        data: {
-          geocodingResults: {},
-          stage: "create-events",
-        },
+        data: { geocodingResults: {}, stage: "create-events" },
       });
 
-      expect(result.output).toEqual({
-        totalRows: 0,
-        uniqueLocations: 0,
-        geocodedCount: 0,
-        failedCount: 0,
-      });
+      expect(result.output).toEqual({ totalRows: 0, uniqueLocations: 0, geocodedCount: 0, failedCount: 0 });
     });
 
     it("should trim whitespace from locations", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
-        id: 123,
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
-      };
+      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       mocks.readAllRowsFromFile.mockReturnValue([
         { id: "1", address: "  123 Main St  " },
@@ -323,12 +269,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
       expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
 
-      expect(result.output).toEqual({
-        totalRows: 2,
-        uniqueLocations: 1,
-        geocodedCount: 1,
-        failedCount: 0,
-      });
+      expect(result.output).toEqual({ totalRows: 2, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
   });
 
@@ -355,13 +296,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should set job to FAILED stage on error", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
-        id: 123,
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
-      };
+      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
@@ -377,26 +312,14 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 123,
-        data: {
-          stage: "failed",
-          errorLog: {
-            error: "File read error",
-            context: "geocode-batch",
-          },
-        },
+        data: { stage: "failed", errorLog: { error: "File read error", context: "geocode-batch" } },
       });
     });
   });
 
   describe("Edge Cases", () => {
     it("should handle non-string location values", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
-        id: 123,
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
-      };
+      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       mocks.readAllRowsFromFile.mockReturnValue([
         { id: "1", address: "123 Main St" },
@@ -421,12 +344,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
       expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
 
-      expect(result.output).toEqual({
-        totalRows: 4,
-        uniqueLocations: 1,
-        geocodedCount: 1,
-        failedCount: 0,
-      });
+      expect(result.output).toEqual({ totalRows: 4, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
 
     it("should fail the job when all geocoding fails", async () => {
@@ -434,9 +352,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         ...createMockImportJob(),
         id: 123,
         importFile: { id: 789, filename: "test.csv" },
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
+        detectedFieldMappings: { locationPath: "address" },
       };
 
       mocks.readAllRowsFromFile.mockReturnValue([
@@ -489,13 +405,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle large number of unique locations", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
-        id: 123,
-        detectedFieldMappings: {
-          locationPath: "address",
-        },
-      };
+      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       // Generate 100 rows with 50 unique locations (each location appears twice)
       const rows = [];
@@ -521,12 +431,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should geocode exactly 50 unique locations, not 100
       expect(mocks.geocodeAddress).toHaveBeenCalledTimes(50);
 
-      expect(result.output).toEqual({
-        totalRows: 100,
-        uniqueLocations: 50,
-        geocodedCount: 50,
-        failedCount: 0,
-      });
+      expect(result.output).toEqual({ totalRows: 100, uniqueLocations: 50, geocodedCount: 50, failedCount: 0 });
     });
   });
 });

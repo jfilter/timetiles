@@ -66,10 +66,7 @@ for (const pkg of PACKAGES) {
   // Run lint with JSON output
   if (pkg.hasLint) {
     try {
-      execSync(`tsx ${path.join(scriptsDir, "lint-fast-with-json.ts")}`, {
-        cwd: pkgPath,
-        stdio: "pipe",
-      });
+      execSync(`tsx ${path.join(scriptsDir, "lint-fast-with-json.ts")}`, { cwd: pkgPath, stdio: "pipe" });
     } catch {
       // Expected to fail if there are lint errors
     }
@@ -78,10 +75,7 @@ for (const pkg of PACKAGES) {
   // Run typecheck with JSON output
   if (pkg.hasTypecheck) {
     try {
-      execSync(`tsx ${path.join(scriptsDir, "typecheck-fast-with-json.ts")}`, {
-        cwd: pkgPath,
-        stdio: "pipe",
-      });
+      execSync(`tsx ${path.join(scriptsDir, "typecheck-fast-with-json.ts")}`, { cwd: pkgPath, stdio: "pipe" });
     } catch {
       // Expected to fail if there are type errors
     }
@@ -133,14 +127,7 @@ for (const pkg of PACKAGES) {
 
   const success = lintSuccess && typecheckSuccess;
 
-  results.push({
-    package: pkg.name,
-    lintSuccess,
-    typecheckSuccess,
-    lintErrors,
-    lintWarnings,
-    typecheckErrors,
-  });
+  results.push({ package: pkg.name, lintSuccess, typecheckSuccess, lintErrors, lintWarnings, typecheckErrors });
 
   if (!success) {
     allPassed = false;
@@ -208,13 +195,7 @@ if (totalErrors > 0) {
         try {
           const lintData = JSON.parse(fs.readFileSync(lintPath, "utf-8")) as Array<{
             filePath: string;
-            messages: Array<{
-              ruleId: string | null;
-              severity: number;
-              message: string;
-              line: number;
-              column: number;
-            }>;
+            messages: Array<{ ruleId: string | null; severity: number; message: string; line: number; column: number }>;
           }>;
 
           for (const file of lintData) {

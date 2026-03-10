@@ -16,18 +16,9 @@ export const schemaConfigFields: Field[] = [
     type: "select",
     defaultValue: "additive",
     options: [
-      {
-        label: "Strict - Schema must match exactly",
-        value: "strict",
-      },
-      {
-        label: "Additive - Accept new fields automatically",
-        value: "additive",
-      },
-      {
-        label: "Flexible - Require approval for changes",
-        value: "flexible",
-      },
+      { label: "Strict - Schema must match exactly", value: "strict" },
+      { label: "Additive - Accept new fields automatically", value: "additive" },
+      { label: "Flexible - Require approval for changes", value: "flexible" },
     ],
     admin: {
       description:
@@ -41,9 +32,6 @@ export const schemaConfigFields: Field[] = [
     name: "sourceImportFile",
     type: "relationship",
     relationTo: "import-files",
-    admin: {
-      readOnly: true,
-      description: "The original import file this schedule was created from (via wizard)",
-    },
+    admin: { readOnly: true, description: "The original import file this schedule was created from (via wizard)" },
   },
 ];

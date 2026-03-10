@@ -95,16 +95,10 @@ const checkUploadsDirectory = async (): Promise<HealthCheckResult> => {
     logger.debug("Uploads directory is writable", { path: uploadsDir });
     return { status: "healthy", message: "Uploads directory is writable" };
   } catch (error) {
-    logger.warn("Uploads directory not writable", {
-      path: uploadsDir,
-      error: (error as Error).message,
-    });
+    logger.warn("Uploads directory not writable", { path: uploadsDir, error: (error as Error).message });
     // In CI, treat missing uploads directory as a warning instead of error
     if (process.env.CI === "true") {
-      return {
-        status: "degraded",
-        message: "Uploads directory not writable (CI environment)",
-      };
+      return { status: "degraded", message: "Uploads directory not writable (CI environment)" };
     }
     return { status: "error", message: "Uploads directory not writable" };
   }
@@ -130,10 +124,7 @@ const checkGeocodingService = async (): Promise<HealthCheckResult> => {
         ? `${providers.totalDocs} enabled provider(s) found`
         : "No enabled geocoding providers found in the database";
 
-    logger.debug("Geocoding service check complete", {
-      status,
-      totalProviders: providers.totalDocs,
-    });
+    logger.debug("Geocoding service check complete", { status, totalProviders: providers.totalDocs });
 
     let healthStatus: "healthy" | "degraded" | "error";
     if (status === "ok") {
@@ -144,15 +135,9 @@ const checkGeocodingService = async (): Promise<HealthCheckResult> => {
       healthStatus = "error";
     }
 
-    return {
-      status: healthStatus,
-      message,
-    };
+    return { status: healthStatus, message };
   } catch (error) {
-    logger.error("Geocoding service check failed", {
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-    });
+    logger.error("Geocoding service check failed", { error: (error as Error).message, stack: (error as Error).stack });
     return { status: "error", message: (error as Error).message };
   }
 };
@@ -170,10 +155,7 @@ const checkPayloadCMS = async (): Promise<HealthCheckResult> => {
     logger.debug("Payload CMS check passed");
     return { status: "healthy", message: "Payload CMS is accessible" };
   } catch (error) {
-    logger.error("Payload CMS check failed", {
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-    });
+    logger.error("Payload CMS check failed", { error: (error as Error).message, stack: (error as Error).stack });
     return { status: "error", message: (error as Error).message };
   }
 };
@@ -208,10 +190,7 @@ const checkMigrations = async (): Promise<HealthCheckResult> => {
     const migrationFiles = await fs.readdir(migrationsDir);
     logger.debug("Found migration files", { count: migrationFiles.length });
 
-    const executedMigrations = await payload.find({
-      collection: COLLECTION_NAMES.PAYLOAD_MIGRATIONS,
-      limit: 1000,
-    });
+    const executedMigrations = await payload.find({ collection: COLLECTION_NAMES.PAYLOAD_MIGRATIONS, limit: 1000 });
 
     const executedMigrationNames = executedMigrations.docs.map((m) => m.name);
     const pendingMigrations = migrationFiles.filter(
@@ -232,10 +211,7 @@ const checkMigrations = async (): Promise<HealthCheckResult> => {
           : "All migrations are up to date",
     };
   } catch (error) {
-    logger.error("Migrations check failed", {
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-    });
+    logger.error("Migrations check failed", { error: (error as Error).message, stack: (error as Error).stack });
     throw error; // Re-throw to be caught by the wrapper
   }
 };
@@ -258,10 +234,7 @@ const checkPostGIS = async (): Promise<HealthCheckResult> => {
       message: hasPostGIS ? "PostGIS extension is enabled" : "PostGIS extension not found",
     };
   } catch (error) {
-    logger.error("PostGIS check failed", {
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-    });
+    logger.error("PostGIS check failed", { error: (error as Error).message, stack: (error as Error).stack });
     return { status: "error", message: (error as Error).message };
   }
 };
@@ -304,10 +277,7 @@ const checkDatabaseFunctions = async (): Promise<HealthCheckResult> => {
           : "All required database functions are present",
     };
   } catch (error) {
-    logger.error("Database functions check failed", {
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-    });
+    logger.error("Database functions check failed", { error: (error as Error).message, stack: (error as Error).stack });
     return { status: "error", message: (error as Error).message };
   }
 };
@@ -338,10 +308,7 @@ const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
 
   // Development mode without SMTP - using ethereal.email
   logger.debug("Using ethereal.email for development");
-  return {
-    status: "degraded",
-    message: "Development mode - using ethereal.email (view at https://ethereal.email)",
-  };
+  return { status: "degraded", message: "Development mode - using ethereal.email (view at https://ethereal.email)" };
 };
 
 const checkDatabaseSize = async (): Promise<HealthCheckResult> => {
@@ -359,15 +326,9 @@ const checkDatabaseSize = async (): Promise<HealthCheckResult> => {
     const size = sizeCheck.rows[0]?.size ?? "Unknown";
     logger.debug("Database size check complete", { size });
 
-    return {
-      status: "healthy",
-      message: size,
-    };
+    return { status: "healthy", message: size };
   } catch (error) {
-    logger.error("Database size check failed", {
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-    });
+    logger.error("Database size check failed", { error: (error as Error).message, stack: (error as Error).stack });
     return { status: "error", message: (error as Error).message };
   }
 };
@@ -381,10 +342,7 @@ const wrapHealthCheck = async (
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     logger.error(`${checkName} check threw exception`, { error: message });
-    return {
-      status: "error" as const,
-      message: `${checkName} check failed: ${message}`,
-    };
+    return { status: "error" as const, message: `${checkName} check failed: ${message}` };
   }
 };
 
@@ -429,10 +387,7 @@ export const runHealthChecks = async () => {
   const results = { env, uploads, geocoding, email, cms, migrations, postgis, dbFunctions, dbSize };
   const duration = Date.now() - startTime;
 
-  logger.info("Health checks completed", {
-    duration,
-    summary: createHealthSummary(results),
-  });
+  logger.info("Health checks completed", { duration, summary: createHealthSummary(results) });
 
   return results;
 };

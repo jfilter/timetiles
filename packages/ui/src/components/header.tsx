@@ -21,15 +21,9 @@ const headerVariants = cva("sticky top-0 z-50 w-full border-b backdrop-blur-sm t
         "bg-cartographic-cream/95 border-cartographic-navy/20 dark:bg-cartographic-parchment/95 dark:border-cartographic-navy/40",
       app: "bg-cartographic-parchment/95 border-cartographic-navy/30 dark:bg-cartographic-cream/95 dark:border-cartographic-navy/50",
     },
-    decorative: {
-      true: "relative overflow-hidden",
-      false: "",
-    },
+    decorative: { true: "relative overflow-hidden", false: "" },
   },
-  defaultVariants: {
-    variant: "marketing",
-    decorative: false,
-  },
+  defaultVariants: { variant: "marketing", decorative: false },
 });
 
 export interface HeaderProps extends React.HTMLAttributes<HTMLElement>, VariantProps<typeof headerVariants> {

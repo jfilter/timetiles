@@ -38,13 +38,9 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/utils/file-readers", () => ({
-  readBatchFromFile: mocks.readBatchFromFile,
-}));
+vi.mock("@/lib/utils/file-readers", () => ({ readBatchFromFile: mocks.readBatchFromFile }));
 
-vi.mock("@/lib/services/schema-builder", () => ({
-  ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder,
-}));
+vi.mock("@/lib/services/schema-builder", () => ({ ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder }));
 
 vi.mock("@/lib/services/schema-versioning", () => ({
   SchemaVersioningService: {
@@ -54,27 +50,15 @@ vi.mock("@/lib/services/schema-versioning", () => ({
 }));
 
 vi.mock("@/lib/services/progress-tracking", () => ({
-  ProgressTrackingService: {
-    startStage: mocks.startStage,
-    completeStage: mocks.completeStage,
-  },
+  ProgressTrackingService: { startStage: mocks.startStage, completeStage: mocks.completeStage },
 }));
 
-vi.mock("@/lib/types/schema-detection", () => ({
-  getSchemaBuilderState: mocks.getSchemaBuilderState,
-}));
+vi.mock("@/lib/types/schema-detection", () => ({ getSchemaBuilderState: mocks.getSchemaBuilderState }));
 
-vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: () => ({
-    checkQuota: mocks.checkQuota,
-  }),
-}));
+vi.mock("@/lib/services/quota-service", () => ({ getQuotaService: () => ({ checkQuota: mocks.checkQuota }) }));
 
 vi.mock("@/lib/constants/quota-constants", () => ({
-  QUOTA_TYPES: {
-    EVENTS_PER_IMPORT: "maxEventsPerImport",
-    TOTAL_EVENTS: "maxTotalEvents",
-  },
+  QUOTA_TYPES: { EVENTS_PER_IMPORT: "maxEventsPerImport", TOTAL_EVENTS: "maxTotalEvents" },
 }));
 
 describe.sequential("ValidateSchemaJob Handler", () => {
@@ -88,16 +72,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     // Create standard mock payload and context using factories
     mockPayload = createMockPayload();
-    mockContext = createMockContext(mockPayload, {
-      importJobId: "123",
-    });
+    mockContext = createMockContext(mockPayload, { importJobId: "123" });
 
     // Mock schema builder instance (job-specific)
-    mockSchemaBuilderInstance = {
-      processBatch: vi.fn(),
-      getSchema: vi.fn(),
-      getState: vi.fn(),
-    };
+    mockSchemaBuilderInstance = { processBatch: vi.fn(), getSchema: vi.fn(), getState: vi.fn() };
 
     // Setup ProgressiveSchemaBuilder mock
     // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
@@ -111,9 +89,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should reject partially numeric import job ids before loading resources", async () => {
-      mockContext = createMockContext(mockPayload, {
-        importJobId: "123abc",
-      });
+      mockContext = createMockContext(mockPayload, { importJobId: "123abc" });
 
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Invalid import job ID");
 
@@ -123,10 +99,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     it("should auto-approve schema with only non-breaking changes", async () => {
       // Create mock data using factories
-      const mockImportJob = createMockImportJob({
-        id: 123,
-        progress: { total: 100 },
-      });
+      const mockImportJob = createMockImportJob({ id: 123, progress: { total: 100 } });
       const mockDataset = createMockDataset();
       const mockImportFile = createMockImportFile();
 
@@ -135,21 +108,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Mock detected schema with new optional field
       const mockDetectedSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          newField: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" }, newField: { type: "string" } },
         required: ["id", "title"],
       };
 
       // Mock current schema without the new field
       const mockCurrentSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
@@ -174,9 +140,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // Mock current schema lookup
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ schema: mockCurrentSchema }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
 
       // Mock getSchemaBuilderState to return cached state (no file reading needed)
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
@@ -194,13 +158,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({
-        output: {
-          requiresApproval: false,
-          hasBreakingChanges: false,
-          newFields: 1,
-        },
-      });
+      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 1 } });
 
       // Schema version creation now happens in CREATE_SCHEMA_VERSION stage, not inline
       // So we should NOT expect createSchemaVersion to be called here
@@ -215,13 +173,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           schemaValidation: {
             isCompatible: true,
             breakingChanges: [],
-            newFields: [
-              {
-                field: "newField",
-                type: "string",
-                optional: true,
-              },
-            ],
+            newFields: [{ field: "newField", type: "string", optional: true }],
             requiresApproval: false,
             approvalReason: "Manual approval required by dataset configuration",
             transformSuggestions: [],
@@ -238,30 +190,18 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-        progress: {
-          total: 100,
-        },
+        duplicates: { internal: [], external: [] },
+        progress: { total: 100 },
       };
 
       // Mock dataset without auto-approval for breaking changes
       const mockDataset = {
         id: "dataset-456",
-        schemaConfig: {
-          autoGrow: false,
-          autoApproveNonBreaking: false,
-          locked: false,
-        },
+        schemaConfig: { autoGrow: false, autoApproveNonBreaking: false, locked: false },
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = { id: "file-789", filename: "test.csv" };
 
       // Mock file data
 
@@ -278,19 +218,13 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Mock current schema with id as string
       const mockCurrentSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
       // Mock schema builder state (cached from schema detection stage)
       const mockSchemaBuilderState = {
-        fieldStats: {
-          id: { occurrences: 100, uniqueValues: 100 },
-          title: { occurrences: 100, uniqueValues: 95 },
-        },
+        fieldStats: { id: { occurrences: 100, uniqueValues: 100 }, title: { occurrences: 100, uniqueValues: 95 } },
         recordCount: 100,
       };
 
@@ -305,9 +239,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // Mock current schema lookup
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ schema: mockCurrentSchema }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
 
       // Mock getSchemaBuilderState to return cached state (no file reading needed)
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
@@ -322,13 +254,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // Verify result requires approval due to breaking changes
-      expect(result).toEqual({
-        output: {
-          requiresApproval: true,
-          hasBreakingChanges: true,
-          newFields: 0,
-        },
-      });
+      expect(result).toEqual({ output: { requiresApproval: true, hasBreakingChanges: true, newFields: 0 } });
 
       // Verify no schema version was created (needs approval)
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
@@ -367,13 +293,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-        progress: {
-          total: 100,
-        },
+        duplicates: { internal: [], external: [] },
+        progress: { total: 100 },
       };
 
       // Mock dataset with locked schema
@@ -387,37 +308,24 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = { id: "file-789", filename: "test.csv" };
 
       // Mock detected schema with new field
       const mockDetectedSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          newField: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" }, newField: { type: "string" } },
         required: ["id", "title"],
       };
 
       // Mock current schema without the new field
       const mockCurrentSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
       // Mock schema builder state (cached from schema detection stage)
-      const mockSchemaBuilderState = {
-        fieldStats: {},
-        recordCount: 100,
-      };
+      const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
       // Add schema builder state to import job
       (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
@@ -430,9 +338,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // Mock current schema lookup
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ schema: mockCurrentSchema }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
 
       // Mock getSchemaBuilderState to return cached state (no file reading needed)
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
@@ -447,13 +353,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // Verify result requires approval due to locked schema
-      expect(result).toEqual({
-        output: {
-          requiresApproval: true,
-          hasBreakingChanges: false,
-          newFields: 1,
-        },
-      });
+      expect(result).toEqual({ output: { requiresApproval: true, hasBreakingChanges: false, newFields: 1 } });
 
       // Verify job was updated to await approval
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -464,13 +364,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           schemaValidation: {
             isCompatible: true,
             breakingChanges: [],
-            newFields: [
-              {
-                field: "newField",
-                type: "string",
-                optional: true,
-              },
-            ],
+            newFields: [{ field: "newField", type: "string", optional: true }],
             requiresApproval: true,
             approvalReason: "Manual approval required by dataset configuration",
             transformSuggestions: [],
@@ -489,10 +383,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     });
 
     it("should throw error when dataset not found", async () => {
-      const mockImportJob = {
-        id: 123,
-        dataset: "dataset-456",
-      };
+      const mockImportJob = { id: 123, dataset: "dataset-456" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
 
@@ -500,16 +391,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     });
 
     it("should throw error when import file not found", async () => {
-      const mockImportJob = {
-        id: 123,
-        dataset: "dataset-456",
-        importFile: "file-789",
-      };
+      const mockImportJob = { id: 123, dataset: "dataset-456", importFile: "file-789" };
 
-      const mockDataset = {
-        id: "dataset-456",
-        schemaConfig: {},
-      };
+      const mockDataset = { id: "dataset-456", schemaConfig: {} };
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -527,15 +411,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         // No schemaBuilderState - this should cause an error
       };
 
-      const mockDataset = {
-        id: "dataset-456",
-        schemaConfig: {},
-      };
+      const mockDataset = { id: "dataset-456", schemaConfig: {} };
 
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = { id: "file-789", filename: "test.csv" };
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -555,12 +433,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         id: 123,
         data: {
           stage: "failed",
-          errors: [
-            {
-              row: 0,
-              error: "Schema builder state not found. Schema detection stage must run first.",
-            },
-          ],
+          errors: [{ row: 0, error: "Schema builder state not found. Schema detection stage must run first." }],
         },
       });
     });
@@ -574,48 +447,30 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        duplicates: {
-          internal: [],
-          external: [],
-        },
-        progress: {
-          total: 100,
-        },
+        duplicates: { internal: [], external: [] },
+        progress: { total: 100 },
       };
 
       // Mock dataset
       const mockDataset = {
         id: "dataset-456",
-        schemaConfig: {
-          autoGrow: true,
-          autoApproveNonBreaking: true,
-          locked: false,
-        },
+        schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = { id: "file-789", filename: "test.csv" };
 
       // Mock file data
 
       // Mock detected schema (same as current)
       const mockSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
       // Mock schema builder state (cached from schema detection stage)
-      const mockSchemaBuilderState = {
-        fieldStats: {},
-        recordCount: 100,
-      };
+      const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
       // Add schema builder state to import job
       (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
@@ -628,9 +483,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // Mock current schema lookup (same as detected)
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ schema: mockSchema }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
 
       // Mock getSchemaBuilderState to return cached state (no file reading needed)
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
@@ -645,13 +498,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // Verify result - no approval needed, no changes
-      expect(result).toEqual({
-        output: {
-          requiresApproval: false,
-          hasBreakingChanges: false,
-          newFields: 0,
-        },
-      });
+      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 0 } });
 
       // Verify no schema version was created (no changes)
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
@@ -682,38 +529,23 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        duplicates: {
-          internal: [{ rowNumber: 1 }],
-          external: [{ rowNumber: 2 }],
-        },
-        progress: {
-          total: 100,
-        },
+        duplicates: { internal: [{ rowNumber: 1 }], external: [{ rowNumber: 2 }] },
+        progress: { total: 100 },
       };
 
       // Mock dataset
       const mockDataset = {
         id: "dataset-456",
-        schemaConfig: {
-          autoGrow: true,
-          autoApproveNonBreaking: true,
-          locked: false,
-        },
+        schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
       };
 
       // Mock import file
-      const mockImportFile = {
-        id: "file-789",
-        filename: "test.csv",
-      };
+      const mockImportFile = { id: "file-789", filename: "test.csv" };
 
       // Mock schema
       const mockSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
@@ -733,9 +565,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ schema: mockSchema }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
 
       // Mock getSchemaBuilderState to return cached state (no file reading needed)
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
@@ -766,14 +596,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       currentSchema: Record<string, unknown>;
       userId?: number;
     }) => {
-      const mockSchemaBuilderState = {
-        fieldStats: {},
-        recordCount: 100,
-      };
+      const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
-      const mockImportJob = createMockImportJob({
-        id: 123,
-      });
+      const mockImportJob = createMockImportJob({ id: 123 });
       (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
@@ -781,15 +606,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const mockImportFile = createMockImportFile();
 
       // Add processingOptions with schemaMode and optionally a user
-      (mockImportFile as any).processingOptions = {
-        schemaMode: options.schemaMode,
-      };
+      (mockImportFile as any).processingOptions = { schemaMode: options.schemaMode };
       if (options.userId) {
-        (mockImportFile as any).user = {
-          id: options.userId,
-          email: "test@example.com",
-          role: "user",
-        };
+        (mockImportFile as any).user = { id: options.userId, email: "test@example.com", role: "user" };
       }
 
       mockPayload.findByID
@@ -797,9 +616,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ schema: options.currentSchema }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: options.currentSchema }] });
 
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
       mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(options.detectedSchema);
@@ -810,22 +627,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     };
 
     it("should fail import in strict mode when schema has changes", async () => {
-      const currentSchema = {
-        type: "object",
-        properties: { id: { type: "string" } },
-        required: ["id"],
-      };
+      const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = {
         type: "object",
         properties: { id: { type: "string" }, newField: { type: "string" } },
         required: ["id"],
       };
 
-      setupSchemaModeTest({
-        schemaMode: "strict",
-        detectedSchema,
-        currentSchema,
-      });
+      setupSchemaModeTest({ schemaMode: "strict", detectedSchema, currentSchema });
 
       const result = await validateSchemaJob.handler(mockContext);
 
@@ -844,30 +653,16 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         expect.objectContaining({
           collection: "import-jobs",
           id: 123,
-          data: expect.objectContaining({
-            stage: "failed",
-          }),
+          data: expect.objectContaining({ stage: "failed" }),
         })
       );
     });
 
     it("should fail import in additive mode when schema has breaking changes", async () => {
-      const currentSchema = {
-        type: "object",
-        properties: { id: { type: "string" } },
-        required: ["id"],
-      };
-      const detectedSchema = {
-        type: "object",
-        properties: { id: { type: "number" } },
-        required: ["id"],
-      };
+      const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
+      const detectedSchema = { type: "object", properties: { id: { type: "number" } }, required: ["id"] };
 
-      setupSchemaModeTest({
-        schemaMode: "additive",
-        detectedSchema,
-        currentSchema,
-      });
+      setupSchemaModeTest({ schemaMode: "additive", detectedSchema, currentSchema });
 
       const result = await validateSchemaJob.handler(mockContext);
 
@@ -892,62 +687,32 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     });
 
     it("should auto-approve non-breaking changes in additive mode without transforms", async () => {
-      const currentSchema = {
-        type: "object",
-        properties: { id: { type: "string" } },
-        required: ["id"],
-      };
+      const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = {
         type: "object",
         properties: { id: { type: "string" }, newField: { type: "string" } },
         required: ["id"],
       };
 
-      setupSchemaModeTest({
-        schemaMode: "additive",
-        detectedSchema,
-        currentSchema,
-      });
+      setupSchemaModeTest({ schemaMode: "additive", detectedSchema, currentSchema });
 
       const result = await validateSchemaJob.handler(mockContext);
 
       // additive mode with non-breaking changes and no high-confidence transforms: auto-approve
       // schemaMode is set so determineRequiresApproval returns false (bypasses dataset config)
-      expect(result).toEqual({
-        output: {
-          requiresApproval: false,
-          hasBreakingChanges: false,
-          newFields: 1,
-        },
-      });
+      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 1 } });
 
       // Should proceed to create-schema-version since there are changes but no approval needed
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            stage: "create-schema-version",
-          }),
-        })
+        expect.objectContaining({ data: expect.objectContaining({ stage: "create-schema-version" }) })
       );
     });
 
     it("should fail import in flexible mode when schema has breaking changes", async () => {
-      const currentSchema = {
-        type: "object",
-        properties: { id: { type: "string" } },
-        required: ["id"],
-      };
-      const detectedSchema = {
-        type: "object",
-        properties: { id: { type: "number" } },
-        required: ["id"],
-      };
+      const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
+      const detectedSchema = { type: "object", properties: { id: { type: "number" } }, required: ["id"] };
 
-      setupSchemaModeTest({
-        schemaMode: "flexible",
-        detectedSchema,
-        currentSchema,
-      });
+      setupSchemaModeTest({ schemaMode: "flexible", detectedSchema, currentSchema });
 
       const result = await validateSchemaJob.handler(mockContext);
 
@@ -963,73 +728,37 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     });
 
     it("should auto-approve non-breaking changes in flexible mode", async () => {
-      const currentSchema = {
-        type: "object",
-        properties: { id: { type: "string" } },
-        required: ["id"],
-      };
+      const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = {
         type: "object",
         properties: { id: { type: "string" }, extra: { type: "number" } },
         required: ["id"],
       };
 
-      setupSchemaModeTest({
-        schemaMode: "flexible",
-        detectedSchema,
-        currentSchema,
-      });
+      setupSchemaModeTest({ schemaMode: "flexible", detectedSchema, currentSchema });
 
       const result = await validateSchemaJob.handler(mockContext);
 
       // flexible mode: non-breaking changes auto-approve, schemaMode bypasses dataset config
-      expect(result).toEqual({
-        output: {
-          requiresApproval: false,
-          hasBreakingChanges: false,
-          newFields: 1,
-        },
-      });
+      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 1 } });
 
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            stage: "create-schema-version",
-          }),
-        })
+        expect.objectContaining({ data: expect.objectContaining({ stage: "create-schema-version" }) })
       );
     });
 
     it("should pass through with no failure for strict mode when no changes exist", async () => {
-      const schema = {
-        type: "object",
-        properties: { id: { type: "string" } },
-        required: ["id"],
-      };
+      const schema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
 
-      setupSchemaModeTest({
-        schemaMode: "strict",
-        detectedSchema: schema,
-        currentSchema: schema,
-      });
+      setupSchemaModeTest({ schemaMode: "strict", detectedSchema: schema, currentSchema: schema });
 
       const result = await validateSchemaJob.handler(mockContext);
 
       // No changes in strict mode: no failure, no approval, goes to geocode-batch
-      expect(result).toEqual({
-        output: {
-          requiresApproval: false,
-          hasBreakingChanges: false,
-          newFields: 0,
-        },
-      });
+      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 0 } });
 
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            stage: "geocode-batch",
-          }),
-        })
+        expect.objectContaining({ data: expect.objectContaining({ stage: "geocode-batch" }) })
       );
     });
   });
@@ -1070,11 +799,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const mockDataset = createMockDataset();
       const mockImportFile = createMockImportFile();
       // Attach a user object to the import file to trigger quota checking
-      (mockImportFile as any).user = {
-        id: 1,
-        email: "test@example.com",
-        role: "user",
-      };
+      (mockImportFile as any).user = { id: 1, email: "test@example.com", role: "user" };
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -1082,12 +807,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // First checkQuota call (EVENTS_PER_IMPORT) returns not allowed
-      mocks.checkQuota.mockResolvedValueOnce({
-        allowed: false,
-        current: 0,
-        limit: 50,
-        remaining: 0,
-      });
+      mocks.checkQuota.mockResolvedValueOnce({ allowed: false, current: 0, limit: 50, remaining: 0 });
 
       mockPayload.update.mockResolvedValue({});
 
@@ -1100,9 +820,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         expect.objectContaining({
           collection: "import-jobs",
           id: 123,
-          data: expect.objectContaining({
-            stage: "failed",
-          }),
+          data: expect.objectContaining({ stage: "failed" }),
         })
       );
     });
@@ -1116,11 +834,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       const mockDataset = createMockDataset();
       const mockImportFile = createMockImportFile();
-      (mockImportFile as any).user = {
-        id: 1,
-        email: "test@example.com",
-        role: "user",
-      };
+      (mockImportFile as any).user = { id: 1, email: "test@example.com", role: "user" };
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -1128,19 +842,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile);
 
       // First checkQuota call (EVENTS_PER_IMPORT) returns allowed
-      mocks.checkQuota.mockResolvedValueOnce({
-        allowed: true,
-        current: 0,
-        limit: 1000,
-        remaining: 1000,
-      });
+      mocks.checkQuota.mockResolvedValueOnce({ allowed: true, current: 0, limit: 1000, remaining: 1000 });
       // Second checkQuota call (TOTAL_EVENTS) returns not allowed
-      mocks.checkQuota.mockResolvedValueOnce({
-        allowed: false,
-        current: 9500,
-        limit: 10000,
-        remaining: 500,
-      });
+      mocks.checkQuota.mockResolvedValueOnce({ allowed: false, current: 9500, limit: 10000, remaining: 500 });
 
       mockPayload.update.mockResolvedValue({});
 
@@ -1154,9 +858,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           data: expect.objectContaining({
             stage: "failed",
             errors: expect.arrayContaining([
-              expect.objectContaining({
-                error: expect.stringContaining("would exceed your total events limit"),
-              }),
+              expect.objectContaining({ error: expect.stringContaining("would exceed your total events limit") }),
             ]),
           }),
         })

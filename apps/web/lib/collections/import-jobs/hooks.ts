@@ -104,11 +104,7 @@ const handleSchemaApproval = (
     data.stage = PROCESSING_STAGE.CREATE_SCHEMA_VERSION;
     data.schemaValidation.approvedAt = new Date().toISOString();
     data.schemaValidation.approvedBy = approvedBy;
-    logger.info("Import job approved", {
-      importJobId: data.id,
-      approvedBy: approvedBy,
-      stage: data.stage,
-    });
+    logger.info("Import job approved", { importJobId: data.id, approvedBy: approvedBy, stage: data.stage });
   }
 };
 
@@ -143,18 +139,10 @@ const validateCreateOwnership = async (data: Partial<ImportJob>, req: PayloadReq
   if (data.dataset) {
     const datasetId = extractRelationId(data.dataset);
     if (datasetId) {
-      const dataset = await req.payload.findByID({
-        collection: "datasets",
-        id: datasetId,
-        overrideAccess: true,
-      });
+      const dataset = await req.payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
       const catalogId = extractRelationId(dataset?.catalog);
       if (catalogId) {
-        const catalog = await req.payload.findByID({
-          collection: "catalogs",
-          id: catalogId,
-          overrideAccess: true,
-        });
+        const catalog = await req.payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
         const catalogOwnerId = extractRelationId(catalog?.createdBy);
         const isPublicCatalog = catalog?.isPublic ?? false;
         if (catalogOwnerId !== user.id && !isPublicCatalog) {
@@ -220,10 +208,7 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     if (operation === "create") {
       // Get the user who created this import job (from the import file)
       const importFileId = extractRelationId(doc.importFile)!;
-      const importFile = await req.payload.findByID({
-        collection: COLLECTION_NAMES.IMPORT_FILES,
-        id: importFileId,
-      });
+      const importFile = await req.payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: importFileId });
 
       if (importFile?.user) {
         const userId = extractRelationId(importFile.user)!;
@@ -231,18 +216,12 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
         const quotaService = getQuotaService(req.payload);
         await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1, req);
 
-        logger.info("Import job creation tracked for quota", {
-          userId,
-          importJobId: doc.id,
-        });
+        logger.info("Import job creation tracked for quota", { userId, importJobId: doc.id });
       }
     }
     // Handle initial job creation
     if (operation === "create") {
-      await req.payload.jobs.queue({
-        task: JOB_TYPES.ANALYZE_DUPLICATES,
-        input: { importJobId: doc.id },
-      });
+      await req.payload.jobs.queue({ task: JOB_TYPES.ANALYZE_DUPLICATES, input: { importJobId: doc.id } });
       return doc;
     }
 
@@ -258,11 +237,7 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
         id: doc.id,
         data: {
           stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            error: transitionResult.error,
-            context: "stage transition",
-            timestamp: new Date().toISOString(),
-          },
+          errorLog: { error: transitionResult.error, context: "stage transition", timestamp: new Date().toISOString() },
         },
       });
     }

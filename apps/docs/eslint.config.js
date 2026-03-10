@@ -27,12 +27,7 @@ export default [
     },
   },
   // Override for _meta.js files - simple config files don't need JSDoc
-  {
-    files: ["**/_meta.js"],
-    rules: {
-      "jsdoc/require-file-overview": "off",
-    },
-  },
+  { files: ["**/_meta.js"], rules: { "jsdoc/require-file-overview": "off" } },
   // Scripts configuration - Node.js environment with relaxed rules (TypeScript only)
   {
     files: ["scripts/**/*.ts"],
@@ -57,13 +52,7 @@ export default [
     rules: {
       "no-console": "off", // Scripts can use console for output
       "no-undef": "off", // Node.js globals are available
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-        },
-      ],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "sonarjs/slow-regex": "off", // Scripts may need complex regex patterns
       "regexp/no-super-linear-backtracking": "off", // Allow complex regex for scripts
       "sonarjs/cognitive-complexity": "off", // Scripts can be complex

@@ -78,15 +78,8 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
       await expect(
         payload.create({
           collection: "import-files",
-          data: {
-            catalog: ownerPrivateCatalog.id,
-          },
-          file: {
-            data: csvBuffer,
-            mimetype: "text/csv",
-            name: `attack-${Date.now()}.csv`,
-            size: csvBuffer.length,
-          },
+          data: { catalog: ownerPrivateCatalog.id },
+          file: { data: csvBuffer, mimetype: "text/csv", name: `attack-${Date.now()}.csv`, size: csvBuffer.length },
           user: attackerUser,
           overrideAccess: false,
         })
@@ -98,15 +91,8 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
     it("owner can create import-file with their own private catalog", async () => {
       const result = await payload.create({
         collection: "import-files",
-        data: {
-          catalog: ownerPrivateCatalog.id,
-        },
-        file: {
-          data: csvBuffer,
-          mimetype: "text/csv",
-          name: `owner-${Date.now()}.csv`,
-          size: csvBuffer.length,
-        },
+        data: { catalog: ownerPrivateCatalog.id },
+        file: { data: csvBuffer, mimetype: "text/csv", name: `owner-${Date.now()}.csv`, size: csvBuffer.length },
         user: ownerUser,
         overrideAccess: false,
       });
@@ -116,15 +102,8 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
     it("attacker can create import-file with a public catalog", async () => {
       const result = await payload.create({
         collection: "import-files",
-        data: {
-          catalog: ownerPublicCatalog.id,
-        },
-        file: {
-          data: csvBuffer,
-          mimetype: "text/csv",
-          name: `public-${Date.now()}.csv`,
-          size: csvBuffer.length,
-        },
+        data: { catalog: ownerPublicCatalog.id },
+        file: { data: csvBuffer, mimetype: "text/csv", name: `public-${Date.now()}.csv`, size: csvBuffer.length },
         user: attackerUser,
         overrideAccess: false,
       });
@@ -134,15 +113,8 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
     it("admin can create import-file with any catalog", async () => {
       const result = await payload.create({
         collection: "import-files",
-        data: {
-          catalog: ownerPrivateCatalog.id,
-        },
-        file: {
-          data: csvBuffer,
-          mimetype: "text/csv",
-          name: `admin-${Date.now()}.csv`,
-          size: csvBuffer.length,
-        },
+        data: { catalog: ownerPrivateCatalog.id },
+        file: { data: csvBuffer, mimetype: "text/csv", name: `admin-${Date.now()}.csv`, size: csvBuffer.length },
         user: adminUser,
         overrideAccess: false,
       });
@@ -152,15 +124,8 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
     it("attacker can create import-file with their own catalog", async () => {
       const result = await payload.create({
         collection: "import-files",
-        data: {
-          catalog: attackerCatalog.id,
-        },
-        file: {
-          data: csvBuffer,
-          mimetype: "text/csv",
-          name: `attacker-own-${Date.now()}.csv`,
-          size: csvBuffer.length,
-        },
+        data: { catalog: attackerCatalog.id },
+        file: { data: csvBuffer, mimetype: "text/csv", name: `attacker-own-${Date.now()}.csv`, size: csvBuffer.length },
         user: attackerUser,
         overrideAccess: false,
       });

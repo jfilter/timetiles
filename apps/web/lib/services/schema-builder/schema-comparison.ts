@@ -35,9 +35,7 @@ const detectRemovedFields = (context: ChangeDetectionContext): boolean => {
       const change: SchemaChange = {
         type: "removed_field",
         path: field,
-        details: {
-          description: `Field '${field}' was removed`,
-        },
+        details: { description: `Field '${field}' was removed` },
         severity: "error",
         autoApprovable: false,
       };
@@ -69,10 +67,7 @@ const detectAddedFields = (context: ChangeDetectionContext): boolean => {
       const change: SchemaChange = {
         type: "new_field",
         path: field,
-        details: {
-          description: `Field '${field}' was added${isRequired ? " (required)" : ""}`,
-          required: isRequired,
-        },
+        details: { description: `Field '${field}' was added${isRequired ? " (required)" : ""}`, required: isRequired },
         severity: isBreaking ? "error" : "info",
         autoApprovable: !isBreaking,
       };
@@ -109,11 +104,7 @@ const detectEnumChanges = (
     const change: SchemaChange = {
       type: "enum_change",
       path: field,
-      details: {
-        description: `Enum values changed for '${field}'`,
-        added,
-        removed,
-      },
+      details: { description: `Enum values changed for '${field}'`, added, removed },
       severity: removed.length > 0 ? "warning" : "info",
       autoApprovable: removed.length === 0,
     };
@@ -144,11 +135,7 @@ const detectFieldModifications = (context: ChangeDetectionContext): boolean => {
       const change: SchemaChange = {
         type: "type_change",
         path: field,
-        details: {
-          description: `Field '${field}' type changed from ${oldType} to ${newType}`,
-          oldType,
-          newType,
-        },
+        details: { description: `Field '${field}' type changed from ${oldType} to ${newType}`, oldType, newType },
         severity: "error",
         autoApprovable: false,
       };
@@ -178,9 +165,7 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
       const change: SchemaChange = {
         type: "format_change",
         path: field,
-        details: {
-          description: `Field '${field}' became required`,
-        },
+        details: { description: `Field '${field}' became required` },
         severity: "error",
         autoApprovable: false,
       };
@@ -195,9 +180,7 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
       const change: SchemaChange = {
         type: "format_change",
         path: field,
-        details: {
-          description: `Field '${field}' became optional`,
-        },
+        details: { description: `Field '${field}' became optional` },
         severity: "info",
         autoApprovable: true,
       };
@@ -242,12 +225,7 @@ export const compareSchemas = (
   const requiresApproval = changes.some((c) => c.severity === "error" || c.severity === "warning");
   const canAutoApprove = changes.every((c) => c.autoApprovable);
 
-  return {
-    changes,
-    isBreaking,
-    requiresApproval,
-    canAutoApprove,
-  };
+  return { changes, isBreaking, requiresApproval, canAutoApprove };
 };
 
 /**

@@ -388,22 +388,14 @@ describe.sequential("getClientIdentifier", () => {
   });
 
   it("should extract IP from x-real-ip header", () => {
-    const request = new Request("http://localhost", {
-      headers: {
-        "x-real-ip": "203.0.113.2",
-      },
-    });
+    const request = new Request("http://localhost", { headers: { "x-real-ip": "203.0.113.2" } });
 
     const identifier = getClientIdentifier(request);
     expect(identifier).toBe("203.0.113.2");
   });
 
   it("should extract IP from cf-connecting-ip header", () => {
-    const request = new Request("http://localhost", {
-      headers: {
-        "cf-connecting-ip": "203.0.113.3",
-      },
-    });
+    const request = new Request("http://localhost", { headers: { "cf-connecting-ip": "203.0.113.3" } });
 
     const identifier = getClientIdentifier(request);
     expect(identifier).toBe("203.0.113.3");
@@ -411,11 +403,7 @@ describe.sequential("getClientIdentifier", () => {
 
   it("should prioritize x-forwarded-for over other headers", () => {
     const request = new Request("http://localhost", {
-      headers: {
-        "x-forwarded-for": "203.0.113.1",
-        "x-real-ip": "203.0.113.2",
-        "cf-connecting-ip": "203.0.113.3",
-      },
+      headers: { "x-forwarded-for": "203.0.113.1", "x-real-ip": "203.0.113.2", "cf-connecting-ip": "203.0.113.3" },
     });
 
     const identifier = getClientIdentifier(request);
@@ -431,9 +419,7 @@ describe.sequential("getClientIdentifier", () => {
 
   it("should handle multiple IPs in x-forwarded-for", () => {
     const request = new Request("http://localhost", {
-      headers: {
-        "x-forwarded-for": "  203.0.113.1  ,  10.0.0.1  ,  172.16.0.1  ",
-      },
+      headers: { "x-forwarded-for": "  203.0.113.1  ,  10.0.0.1  ,  172.16.0.1  " },
     });
 
     const identifier = getClientIdentifier(request);
@@ -554,24 +540,12 @@ describe.sequential("RATE_LIMITS constants", () => {
   it("should have correct multi-window configurations", () => {
     // FILE_UPLOAD
     expect(RATE_LIMITS.FILE_UPLOAD.windows).toHaveLength(3);
-    expect(RATE_LIMITS.FILE_UPLOAD.windows[0]).toEqual({
-      limit: 1,
-      windowMs: 5000,
-      name: "burst",
-    });
-    expect(RATE_LIMITS.FILE_UPLOAD.windows[1]).toEqual({
-      limit: 5,
-      windowMs: 3600000,
-      name: "hourly",
-    });
+    expect(RATE_LIMITS.FILE_UPLOAD.windows[0]).toEqual({ limit: 1, windowMs: 5000, name: "burst" });
+    expect(RATE_LIMITS.FILE_UPLOAD.windows[1]).toEqual({ limit: 5, windowMs: 3600000, name: "hourly" });
 
     // WEBHOOK_TRIGGER
     expect(RATE_LIMITS.WEBHOOK_TRIGGER.windows).toHaveLength(2);
-    expect(RATE_LIMITS.WEBHOOK_TRIGGER.windows[0]).toEqual({
-      limit: 1,
-      windowMs: 10000,
-      name: "burst",
-    });
+    expect(RATE_LIMITS.WEBHOOK_TRIGGER.windows[0]).toEqual({ limit: 1, windowMs: 10000, name: "burst" });
 
     // PROGRESS_CHECK
     expect(RATE_LIMITS.PROGRESS_CHECK.windows).toHaveLength(2);

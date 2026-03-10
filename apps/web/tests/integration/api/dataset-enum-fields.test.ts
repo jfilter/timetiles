@@ -90,17 +90,10 @@ describe("Dataset enum fields", () => {
       },
     };
 
-    const { dataset } = await withDataset(testEnv, catalog.id, {
-      name: "Enum Fields Test Dataset",
-      isPublic: true,
-    });
+    const { dataset } = await withDataset(testEnv, catalog.id, { name: "Enum Fields Test Dataset", isPublic: true });
 
     // Update dataset with fieldMetadata (not in withDataset options)
-    await payload.update({
-      collection: "datasets",
-      id: dataset.id,
-      data: { fieldMetadata },
-    });
+    await payload.update({ collection: "datasets", id: dataset.id, data: { fieldMetadata } });
 
     testDatasetId = dataset.id;
   });
@@ -112,10 +105,7 @@ describe("Dataset enum fields", () => {
   });
 
   it("should store fieldMetadata with enum candidates on dataset", async () => {
-    const dataset = await payload.findByID({
-      collection: "datasets",
-      id: testDatasetId,
-    });
+    const dataset = await payload.findByID({ collection: "datasets", id: testDatasetId });
 
     expect(dataset.fieldMetadata).toBeDefined();
     expect(dataset.fieldMetadata).not.toBeNull();
@@ -127,10 +117,7 @@ describe("Dataset enum fields", () => {
   });
 
   it("should identify enum candidates vs non-enum fields", async () => {
-    const dataset = await payload.findByID({
-      collection: "datasets",
-      id: testDatasetId,
-    });
+    const dataset = await payload.findByID({ collection: "datasets", id: testDatasetId });
 
     const metadata = dataset.fieldMetadata as Record<string, FieldStatistics>;
 

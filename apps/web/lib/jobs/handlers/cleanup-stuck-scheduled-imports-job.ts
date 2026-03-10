@@ -77,12 +77,7 @@ const resetStuckImport = async (
     }
 
     // Update statistics
-    const stats = scheduledImport.statistics ?? {
-      totalRuns: 0,
-      successfulRuns: 0,
-      failedRuns: 0,
-      averageDuration: 0,
-    };
+    const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
     stats.failedRuns = (stats.failedRuns ?? 0) + 1;
 
     // Reset the import status
@@ -135,18 +130,12 @@ export const cleanupStuckScheduledImportsJob = {
       // Find all scheduled imports with "running" status
       const runningImports = await payload.find({
         collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
-        where: {
-          lastStatus: {
-            equals: "running",
-          },
-        },
+        where: { lastStatus: { equals: "running" } },
         limit: 1000,
         pagination: false,
       });
 
-      logger.info("Found running scheduled imports", {
-        count: runningImports.docs.length,
-      });
+      logger.info("Found running scheduled imports", { count: runningImports.docs.length });
 
       const processResult = await processStuckImports(
         runningImports.docs,
@@ -165,16 +154,11 @@ export const cleanupStuckScheduledImportsJob = {
         errors: processResult.errors.length > 0 ? processResult.errors : undefined,
       };
 
-      logger.info("Cleanup stuck scheduled imports job completed", {
-        jobId: context.job?.id ?? context.id,
-        ...result,
-      });
+      logger.info("Cleanup stuck scheduled imports job completed", { jobId: context.job?.id ?? context.id, ...result });
 
       return { output: result };
     } catch (error) {
-      logError(error, "Cleanup stuck scheduled imports job failed", {
-        jobId: context.job?.id ?? context.id,
-      });
+      logError(error, "Cleanup stuck scheduled imports job failed", { jobId: context.job?.id ?? context.id });
       throw error;
     }
   },
@@ -219,11 +203,7 @@ const processStuckImports = async (
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      errors.push({
-        id: scheduledImport.id.toString(),
-        name: scheduledImport.name,
-        error: errorMessage,
-      });
+      errors.push({ id: scheduledImport.id.toString(), name: scheduledImport.name, error: errorMessage });
       logError(error, "Failed to process scheduled import in cleanup", {
         scheduledImportId: scheduledImport.id,
         name: scheduledImport.name,

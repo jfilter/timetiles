@@ -42,11 +42,7 @@ interface TestResult {
   name: string;
   status: string;
   duration?: number;
-  assertionResults: Array<{
-    status: string;
-    title: string;
-    failureMessages?: string[];
-  }>;
+  assertionResults: Array<{ status: string; title: string; failureMessages?: string[] }>;
 }
 
 interface TestSummary {
@@ -124,12 +120,7 @@ try {
   const results = JSON.parse(fs.readFileSync(resultsPath, "utf-8")) as TestSummary;
 
   // Add wall-clock duration to results and save back
-  const enhancedResults = {
-    ...results,
-    wallClockDuration,
-    startTime,
-    endTime,
-  };
+  const enhancedResults = { ...results, wallClockDuration, startTime, endTime };
   fs.writeFileSync(resultsPath, JSON.stringify(enhancedResults, null, 2));
 
   const status = results.success ? "✅" : "❌";

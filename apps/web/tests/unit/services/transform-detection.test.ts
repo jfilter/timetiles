@@ -13,19 +13,13 @@ describe("Transform detection", () => {
   it("should detect simple rename (high similarity)", () => {
     const oldSchema = {
       type: "object",
-      properties: {
-        date: { type: "string" },
-        title: { type: "string" },
-      },
+      properties: { date: { type: "string" }, title: { type: "string" } },
       required: ["date", "title"],
     };
 
     const newSchema = {
       type: "object",
-      properties: {
-        start_date: { type: "string" },
-        title: { type: "string" },
-      },
+      properties: { start_date: { type: "string" }, title: { type: "string" } },
       required: ["start_date", "title"],
     };
 
@@ -45,19 +39,9 @@ describe("Transform detection", () => {
   });
 
   it("should detect rename with common pattern (start_ prefix)", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        time: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { time: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        start_time: { type: "string" },
-      },
-    };
+    const newSchema = { type: "object", properties: { start_time: { type: "string" } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
@@ -70,19 +54,9 @@ describe("Transform detection", () => {
   });
 
   it("should detect rename with common pattern (end_ prefix)", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        date: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { date: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        end_date: { type: "string" },
-      },
-    };
+    const newSchema = { type: "object", properties: { end_date: { type: "string" } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
@@ -95,19 +69,9 @@ describe("Transform detection", () => {
   });
 
   it("should detect rename with _name suffix", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        author: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { author: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        author_name: { type: "string" },
-      },
-    };
+    const newSchema = { type: "object", properties: { author_name: { type: "string" } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
@@ -120,19 +84,9 @@ describe("Transform detection", () => {
   });
 
   it("should detect rename with event_ prefix", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        title: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { title: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        event_title: { type: "string" },
-      },
-    };
+    const newSchema = { type: "object", properties: { event_title: { type: "string" } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
@@ -145,19 +99,9 @@ describe("Transform detection", () => {
   });
 
   it("should not detect rename for completely different names", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        author: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { author: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        location: { type: "string" },
-      },
-    };
+    const newSchema = { type: "object", properties: { location: { type: "string" } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
@@ -166,12 +110,7 @@ describe("Transform detection", () => {
   });
 
   it("should not detect rename for incompatible types", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        count: { type: "number" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { count: { type: "number" } } };
 
     const newSchema = {
       type: "object",
@@ -191,20 +130,12 @@ describe("Transform detection", () => {
   it("should detect multiple renames", () => {
     const oldSchema = {
       type: "object",
-      properties: {
-        date: { type: "string" },
-        author: { type: "string" },
-        title: { type: "string" },
-      },
+      properties: { date: { type: "string" }, author: { type: "string" }, title: { type: "string" } },
     };
 
     const newSchema = {
       type: "object",
-      properties: {
-        start_date: { type: "string" },
-        creator: { type: "string" },
-        event_title: { type: "string" },
-      },
+      properties: { start_date: { type: "string" }, creator: { type: "string" }, event_title: { type: "string" } },
     };
 
     const comparison = compareSchemas(oldSchema, newSchema);
@@ -224,13 +155,7 @@ describe("Transform detection", () => {
   });
 
   it("should handle schema with no changes", () => {
-    const schema = {
-      type: "object",
-      properties: {
-        title: { type: "string" },
-        date: { type: "string" },
-      },
-    };
+    const schema = { type: "object", properties: { title: { type: "string" }, date: { type: "string" } } };
 
     const comparison = compareSchemas(schema, schema);
     const suggestions = detectTransforms(schema, schema, comparison.changes);
@@ -239,20 +164,9 @@ describe("Transform detection", () => {
   });
 
   it("should handle new fields without removals", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        title: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { title: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        title: { type: "string" },
-        date: { type: "string" },
-      },
-    };
+    const newSchema = { type: "object", properties: { title: { type: "string" }, date: { type: "string" } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
@@ -263,11 +177,7 @@ describe("Transform detection", () => {
   it("should prioritize same position in schema", () => {
     const oldSchema = {
       type: "object",
-      properties: {
-        id: { type: "string" },
-        date: { type: "string" },
-        title: { type: "string" },
-      },
+      properties: { id: { type: "string" }, date: { type: "string" }, title: { type: "string" } },
     };
 
     const newSchema = {
@@ -289,19 +199,9 @@ describe("Transform detection", () => {
   });
 
   it("should include reason in suggestions", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        date: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { date: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        start_date: { type: "string" },
-      },
-    };
+    const newSchema = { type: "object", properties: { start_date: { type: "string" } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
@@ -314,19 +214,9 @@ describe("Transform detection", () => {
   });
 
   it("should handle case-insensitive similarity", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        Date: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { Date: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        date: { type: "string" },
-      },
-    };
+    const newSchema = { type: "object", properties: { date: { type: "string" } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
@@ -339,19 +229,9 @@ describe("Transform detection", () => {
   });
 
   it("should handle nullable type compatibility", () => {
-    const oldSchema = {
-      type: "object",
-      properties: {
-        email: { type: "string" },
-      },
-    };
+    const oldSchema = { type: "object", properties: { email: { type: "string" } } };
 
-    const newSchema = {
-      type: "object",
-      properties: {
-        user_email: { type: ["string", "null"] },
-      },
-    };
+    const newSchema = { type: "object", properties: { user_email: { type: ["string", "null"] } } };
 
     const comparison = compareSchemas(oldSchema, newSchema);
     const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);

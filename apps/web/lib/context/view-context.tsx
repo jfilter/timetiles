@@ -28,11 +28,7 @@ interface ViewContextValue {
   hasView: boolean;
 
   /** Data scope filter derived from view configuration */
-  dataScope: {
-    mode: "all" | "catalogs" | "datasets";
-    catalogIds?: number[];
-    datasetIds?: number[];
-  };
+  dataScope: { mode: "all" | "catalogs" | "datasets"; catalogIds?: number[]; datasetIds?: number[] };
 
   /** Filter configuration from view */
   filterConfig: {
@@ -48,27 +44,15 @@ interface ViewContextValue {
     title?: string;
     logoUrl?: string;
     faviconUrl?: string;
-    colors?: {
-      primary?: string;
-      secondary?: string;
-      background?: string;
-    };
+    colors?: { primary?: string; secondary?: string; background?: string };
     headerHtml?: string;
   };
 
   /** Map settings from view */
   mapSettings: {
-    defaultBounds?: {
-      north: number;
-      south: number;
-      east: number;
-      west: number;
-    };
+    defaultBounds?: { north: number; south: number; east: number; west: number };
     defaultZoom?: number;
-    defaultCenter?: {
-      latitude: number;
-      longitude: number;
-    };
+    defaultCenter?: { latitude: number; longitude: number };
     baseMapStyle: "default" | "light" | "dark" | "satellite";
     customStyleUrl?: string;
   };
@@ -171,20 +155,10 @@ export const ViewProvider = ({ view, children }: ViewProviderProps): React.React
 
       mapSettings: {
         defaultBounds: hasCompleteBounds
-          ? {
-              north: bounds.north!,
-              south: bounds.south!,
-              east: bounds.east!,
-              west: bounds.west!,
-            }
+          ? { north: bounds.north!, south: bounds.south!, east: bounds.east!, west: bounds.west! }
           : undefined,
         defaultZoom: view?.mapSettings?.defaultZoom ?? undefined,
-        defaultCenter: hasCompleteCenter
-          ? {
-              latitude: center.latitude!,
-              longitude: center.longitude!,
-            }
-          : undefined,
+        defaultCenter: hasCompleteCenter ? { latitude: center.latitude!, longitude: center.longitude! } : undefined,
         baseMapStyle: view?.mapSettings?.baseMapStyle ?? "default",
         customStyleUrl: view?.mapSettings?.customStyleUrl ?? undefined,
       },

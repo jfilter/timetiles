@@ -37,10 +37,7 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
     setIsLoggingOut(true);
     void (async () => {
       try {
-        await fetch("/api/users/logout", {
-          method: "POST",
-          credentials: "include",
-        });
+        await fetch("/api/users/logout", { method: "POST", credentials: "include" });
         router.refresh();
         router.push("/");
       } catch {

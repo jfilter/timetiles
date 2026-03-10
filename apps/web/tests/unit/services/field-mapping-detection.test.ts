@@ -91,10 +91,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should prefer 'title' over 'name'", () => {
-      const fieldStats = createFieldStats({
-        name: { fieldType: "title" },
-        title: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ name: { fieldType: "title" }, title: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -102,9 +99,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'event_name' as title", () => {
-      const fieldStats = createFieldStats({
-        event_name: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ event_name: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -144,9 +139,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'bezeichnung' as title", () => {
-      const fieldStats = createFieldStats({
-        bezeichnung: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ bezeichnung: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "deu");
 
@@ -154,9 +147,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'veranstaltung' (event) as title", () => {
-      const fieldStats = createFieldStats({
-        veranstaltung: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ veranstaltung: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "deu");
 
@@ -180,9 +171,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'événement' as title", () => {
-      const fieldStats = createFieldStats({
-        événement: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ événement: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "fra");
 
@@ -190,9 +179,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'heure' (time) as timestamp", () => {
-      const fieldStats = createFieldStats({
-        heure: { fieldType: "timestamp" },
-      });
+      const fieldStats = createFieldStats({ heure: { fieldType: "timestamp" } });
 
       const mappings = detectFieldMappings(fieldStats, "fra");
 
@@ -216,9 +203,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'evento' as title", () => {
-      const fieldStats = createFieldStats({
-        evento: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ evento: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "spa");
 
@@ -226,9 +211,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'hora' as timestamp", () => {
-      const fieldStats = createFieldStats({
-        hora: { fieldType: "timestamp" },
-      });
+      const fieldStats = createFieldStats({ hora: { fieldType: "timestamp" } });
 
       const mappings = detectFieldMappings(fieldStats, "spa");
 
@@ -252,9 +235,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'evento' as title", () => {
-      const fieldStats = createFieldStats({
-        evento: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ evento: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "ita");
 
@@ -278,9 +259,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'evenement' as title", () => {
-      const fieldStats = createFieldStats({
-        evenement: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ evenement: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "nld");
 
@@ -304,9 +283,7 @@ describe("Field Mapping Detection", () => {
     });
 
     it("should detect 'evento' as title", () => {
-      const fieldStats = createFieldStats({
-        evento: { fieldType: "title" },
-      });
+      const fieldStats = createFieldStats({ evento: { fieldType: "title" } });
 
       const mappings = detectFieldMappings(fieldStats, "por");
 
@@ -398,10 +375,7 @@ describe("Field Mapping Detection", () => {
   describe("Geographic Field Detection", () => {
     describe("Coordinate fields", () => {
       it("should detect lat/lon numeric fields", () => {
-        const fieldStats = createFieldStats({
-          lat: { fieldType: "latitude" },
-          lon: { fieldType: "longitude" },
-        });
+        const fieldStats = createFieldStats({ lat: { fieldType: "latitude" }, lon: { fieldType: "longitude" } });
 
         const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -422,10 +396,7 @@ describe("Field Mapping Detection", () => {
       });
 
       it("should detect lng as longitude", () => {
-        const fieldStats = createFieldStats({
-          lat: { fieldType: "latitude" },
-          lng: { fieldType: "longitude" },
-        });
+        const fieldStats = createFieldStats({ lat: { fieldType: "latitude" }, lng: { fieldType: "longitude" } });
 
         const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -459,14 +430,8 @@ describe("Field Mapping Detection", () => {
 
       it("should detect string coordinates that can be parsed", () => {
         const fieldStats = createFieldStats({
-          lat: {
-            uniqueSamples: ["40.7128", "51.5074", "48.8566"],
-            typeDistribution: { string: 100 },
-          },
-          lon: {
-            uniqueSamples: ["-74.0060", "0.1278", "2.3522"],
-            typeDistribution: { string: 100 },
-          },
+          lat: { uniqueSamples: ["40.7128", "51.5074", "48.8566"], typeDistribution: { string: 100 } },
+          lon: { uniqueSamples: ["-74.0060", "0.1278", "2.3522"], typeDistribution: { string: 100 } },
         });
 
         const mappings = detectFieldMappings(fieldStats, "eng");
@@ -523,9 +488,7 @@ describe("Field Mapping Detection", () => {
         const testCases = ["address", "location", "place", "venue", "city", "town", "street"];
 
         for (const fieldName of testCases) {
-          const fieldStats = createFieldStats({
-            [fieldName]: { fieldType: "location" },
-          });
+          const fieldStats = createFieldStats({ [fieldName]: { fieldType: "location" } });
 
           const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -534,9 +497,7 @@ describe("Field Mapping Detection", () => {
       });
 
       it("should detect addr as address", () => {
-        const fieldStats = createFieldStats({
-          addr: { fieldType: "location" },
-        });
+        const fieldStats = createFieldStats({ addr: { fieldType: "location" } });
 
         const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -544,9 +505,7 @@ describe("Field Mapping Detection", () => {
       });
 
       it("should detect event_location field", () => {
-        const fieldStats = createFieldStats({
-          event_location: { fieldType: "location" },
-        });
+        const fieldStats = createFieldStats({ event_location: { fieldType: "location" } });
 
         const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -554,9 +513,7 @@ describe("Field Mapping Detection", () => {
       });
 
       it("should detect full_address field", () => {
-        const fieldStats = createFieldStats({
-          full_address: { fieldType: "location" },
-        });
+        const fieldStats = createFieldStats({ full_address: { fieldType: "location" } });
 
         const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -575,9 +532,7 @@ describe("Field Mapping Detection", () => {
         ];
 
         for (const { field, expected } of testCases) {
-          const fieldStats = createFieldStats({
-            [field]: { fieldType: "location" },
-          });
+          const fieldStats = createFieldStats({ [field]: { fieldType: "location" } });
 
           const mappings = detectFieldMappings(fieldStats, "deu");
 
@@ -586,9 +541,7 @@ describe("Field Mapping Detection", () => {
       });
 
       it("should detect straße (street with umlaut)", () => {
-        const fieldStats = createFieldStats({
-          straße: { fieldType: "location" },
-        });
+        const fieldStats = createFieldStats({ straße: { fieldType: "location" } });
 
         const mappings = detectFieldMappings(fieldStats, "deu");
 
@@ -596,9 +549,7 @@ describe("Field Mapping Detection", () => {
       });
 
       it("should detect strasse (street without umlaut)", () => {
-        const fieldStats = createFieldStats({
-          strasse: { fieldType: "location" },
-        });
+        const fieldStats = createFieldStats({ strasse: { fieldType: "location" } });
 
         const mappings = detectFieldMappings(fieldStats, "deu");
 
@@ -616,9 +567,7 @@ describe("Field Mapping Detection", () => {
         ];
 
         for (const { field, expected } of testCases) {
-          const fieldStats = createFieldStats({
-            [field]: { fieldType: "location" },
-          });
+          const fieldStats = createFieldStats({ [field]: { fieldType: "location" } });
 
           const mappings = detectFieldMappings(fieldStats, "fra");
 
@@ -637,9 +586,7 @@ describe("Field Mapping Detection", () => {
         ];
 
         for (const { field, expected } of testCases) {
-          const fieldStats = createFieldStats({
-            [field]: { fieldType: "location" },
-          });
+          const fieldStats = createFieldStats({ [field]: { fieldType: "location" } });
 
           const mappings = detectFieldMappings(fieldStats, "spa");
 
@@ -658,9 +605,7 @@ describe("Field Mapping Detection", () => {
         ];
 
         for (const { field, expected } of testCases) {
-          const fieldStats = createFieldStats({
-            [field]: { fieldType: "location" },
-          });
+          const fieldStats = createFieldStats({ [field]: { fieldType: "location" } });
 
           const mappings = detectFieldMappings(fieldStats, "ita");
 
@@ -679,9 +624,7 @@ describe("Field Mapping Detection", () => {
         ];
 
         for (const { field, expected } of testCases) {
-          const fieldStats = createFieldStats({
-            [field]: { fieldType: "location" },
-          });
+          const fieldStats = createFieldStats({ [field]: { fieldType: "location" } });
 
           const mappings = detectFieldMappings(fieldStats, "nld");
 
@@ -700,9 +643,7 @@ describe("Field Mapping Detection", () => {
         ];
 
         for (const { field, expected } of testCases) {
-          const fieldStats = createFieldStats({
-            [field]: { fieldType: "location" },
-          });
+          const fieldStats = createFieldStats({ [field]: { fieldType: "location" } });
 
           const mappings = detectFieldMappings(fieldStats, "por");
 
@@ -727,10 +668,7 @@ describe("Field Mapping Detection", () => {
       });
 
       it("should detect only coordinates when no location field exists", () => {
-        const fieldStats = createFieldStats({
-          lat: { fieldType: "latitude" },
-          lon: { fieldType: "longitude" },
-        });
+        const fieldStats = createFieldStats({ lat: { fieldType: "latitude" }, lon: { fieldType: "longitude" } });
 
         const mappings = detectFieldMappings(fieldStats, "eng");
 
@@ -740,9 +678,7 @@ describe("Field Mapping Detection", () => {
       });
 
       it("should detect only location when no coordinates exist", () => {
-        const fieldStats = createFieldStats({
-          venue: { fieldType: "location" },
-        });
+        const fieldStats = createFieldStats({ venue: { fieldType: "location" } });
 
         const mappings = detectFieldMappings(fieldStats, "eng");
 

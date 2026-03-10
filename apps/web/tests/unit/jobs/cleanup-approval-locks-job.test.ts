@@ -47,12 +47,7 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
       const result = cleanupApprovalLocksJob.handler();
 
       // Verify result shows correct number of cleaned locks
-      expect(result).toEqual({
-        output: {
-          transitionLocksCleaned: 5,
-          totalCleaned: 5,
-        },
-      });
+      expect(result).toEqual({ output: { transitionLocksCleaned: 5, totalCleaned: 5 } });
 
       // Verify locks were actually cleared
       expect(transitioningJobs.size).toBe(0);
@@ -67,12 +62,7 @@ describe.sequential("CleanupApprovalLocksJob Handler", () => {
       const result = cleanupApprovalLocksJob.handler();
 
       // Verify result shows zero cleaned
-      expect(result).toEqual({
-        output: {
-          transitionLocksCleaned: 0,
-          totalCleaned: 0,
-        },
-      });
+      expect(result).toEqual({ output: { transitionLocksCleaned: 0, totalCleaned: 0 } });
     });
 
     it("should clean up different amounts of locks correctly", () => {

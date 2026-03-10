@@ -14,11 +14,7 @@ import "@/tests/mocks/services/logger";
 
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => ({
-  mockPayload: {
-    create: vi.fn(),
-    update: vi.fn(),
-    find: vi.fn(),
-  },
+  mockPayload: { create: vi.fn(), update: vi.fn(), find: vi.fn() },
   mockGetPayload: vi.fn(),
   mockExistsSync: vi.fn(),
   mockReadFileSync: vi.fn(),
@@ -33,11 +29,7 @@ vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
 vi.mock("node:fs", () => ({
-  default: {
-    existsSync: mocks.mockExistsSync,
-    readFileSync: mocks.mockReadFileSync,
-    unlinkSync: mocks.mockUnlinkSync,
-  },
+  default: { existsSync: mocks.mockExistsSync, readFileSync: mocks.mockReadFileSync, unlinkSync: mocks.mockUnlinkSync },
 }));
 
 vi.mock("@/lib/middleware/auth", () => ({
@@ -61,17 +53,12 @@ vi.mock("@/lib/services/quota-service", () => {
     }
   }
   return {
-    getQuotaService: () => ({
-      validateQuota: mocks.mockValidateQuota,
-      checkQuota: mocks.mockCheckQuota,
-    }),
+    getQuotaService: () => ({ validateQuota: mocks.mockValidateQuota, checkQuota: mocks.mockCheckQuota }),
     QuotaExceededError,
   };
 });
 
-vi.mock("@/lib/constants/quota-constants", () => ({
-  QUOTA_TYPES: { ACTIVE_SCHEDULES: "maxActiveSchedules" },
-}));
+vi.mock("@/lib/constants/quota-constants", () => ({ QUOTA_TYPES: { ACTIVE_SCHEDULES: "maxActiveSchedules" } }));
 
 // 4. Vitest imports and source code AFTER mocks
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -99,11 +86,7 @@ const basePreviewMeta = {
   expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour from now
 };
 
-const baseSheetMapping = {
-  sheetIndex: 0,
-  datasetId: "new" as const,
-  newDatasetName: "Test Dataset",
-};
+const baseSheetMapping = { sheetIndex: 0, datasetId: "new" as const, newDatasetName: "Test Dataset" };
 
 const baseFieldMapping = {
   sheetIndex: 0,
@@ -129,10 +112,7 @@ const baseBody = {
 // --- Helpers ---
 
 const createRequest = (body: Record<string, unknown>, user: Record<string, unknown> = mockUser) => {
-  return {
-    user,
-    json: vi.fn().mockResolvedValue(body),
-  } as unknown as AuthenticatedRequest;
+  return { user, json: vi.fn().mockResolvedValue(body) } as unknown as AuthenticatedRequest;
 };
 
 /** Set up filesystem mocks so loadPreviewMetadata returns the given metadata. */
@@ -295,11 +275,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
 
   describe("Catalog Handling", () => {
     it("should create a new catalog when catalogId is 'new' with a name", async () => {
-      const req = createRequest({
-        ...baseBody,
-        catalogId: "new",
-        newCatalogName: "My Catalog",
-      });
+      const req = createRequest({ ...baseBody, catalogId: "new", newCatalogName: "My Catalog" });
 
       const response = await POST(req, {} as never);
       const body = await response.json();
@@ -311,19 +287,13 @@ describe.sequential("POST /api/wizard/configure-import", () => {
       expect(mocks.mockPayload.create).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "catalogs",
-          data: expect.objectContaining({
-            name: "My Catalog",
-            isPublic: true,
-          }),
+          data: expect.objectContaining({ name: "My Catalog", isPublic: true }),
         })
       );
     });
 
     it("should return 400 when catalogId is 'new' without newCatalogName", async () => {
-      const req = createRequest({
-        ...baseBody,
-        catalogId: "new",
-      });
+      const req = createRequest({ ...baseBody, catalogId: "new" });
 
       const response = await POST(req, {} as never);
       const body = await response.json();
@@ -411,10 +381,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
     });
 
     it("should pass req to dataset update calls (Bug 14)", async () => {
-      const req = createRequest({
-        ...baseBody,
-        sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }],
-      });
+      const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
 
       await POST(req, {} as never);
 
@@ -427,10 +394,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
     });
 
     it("should update an existing dataset when datasetId is numeric", async () => {
-      const req = createRequest({
-        ...baseBody,
-        sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }],
-      });
+      const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
 
       const response = await POST(req, {} as never);
       const body = await response.json();
@@ -443,11 +407,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
         expect.objectContaining({
           collection: "datasets",
           id: 42,
-          data: expect.objectContaining({
-            fieldMappingOverrides: expect.objectContaining({
-              titlePath: "title",
-            }),
-          }),
+          data: expect.objectContaining({ fieldMappingOverrides: expect.objectContaining({ titlePath: "title" }) }),
         })
       );
     });
@@ -556,11 +516,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
         expect.objectContaining({
           collection: "datasets",
           data: expect.objectContaining({
-            schemaConfig: expect.objectContaining({
-              locked: false,
-              autoGrow: true,
-              autoApproveNonBreaking: true,
-            }),
+            schemaConfig: expect.objectContaining({ locked: false, autoGrow: true, autoApproveNonBreaking: true }),
           }),
         })
       );
@@ -649,11 +605,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
         expect.objectContaining({
           collection: "datasets",
           data: expect.objectContaining({
-            schemaConfig: {
-              locked: true,
-              autoGrow: false,
-              autoApproveNonBreaking: false,
-            },
+            schemaConfig: { locked: true, autoGrow: false, autoApproveNonBreaking: false },
           }),
         })
       );
@@ -668,11 +620,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
         expect.objectContaining({
           collection: "datasets",
           data: expect.objectContaining({
-            schemaConfig: {
-              locked: false,
-              autoGrow: true,
-              autoApproveNonBreaking: true,
-            },
+            schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
           }),
         })
       );
@@ -687,11 +635,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
         expect.objectContaining({
           collection: "datasets",
           data: expect.objectContaining({
-            schemaConfig: {
-              locked: false,
-              autoGrow: true,
-              autoApproveNonBreaking: false,
-            },
+            schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: false },
           }),
         })
       );

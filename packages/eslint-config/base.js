@@ -62,18 +62,10 @@ export default [
   sonarPlugin.configs.recommended,
   ...tseslint.configs.recommended,
   // Apply type-aware rules only to TypeScript files
-  ...tseslint.configs.recommendedTypeChecked.map((config) => ({
-    ...config,
-    files: ["**/*.ts", "**/*.tsx"],
-  })),
+  ...tseslint.configs.recommendedTypeChecked.map((config) => ({ ...config, files: ["**/*.ts", "**/*.tsx"] })),
   {
     files: ["**/*.ts", "**/*.tsx"],
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: {
       // Type-aware rules that require TypeScript project information
       "@typescript-eslint/no-floating-promises": "error",
@@ -93,24 +85,13 @@ export default [
       "@typescript-eslint/strict-boolean-expressions": "off",
       "@typescript-eslint/prefer-nullish-coalescing": [
         "error",
-        {
-          ignoreTernaryTests: false,
-          ignoreConditionalTests: false,
-          ignoreMixedLogicalExpressions: false,
-        },
+        { ignoreTernaryTests: false, ignoreConditionalTests: false, ignoreMixedLogicalExpressions: false },
       ],
       "@typescript-eslint/prefer-optional-chain": "error",
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/naming-convention": [
         "error",
-        {
-          selector: "interface",
-          format: ["PascalCase"],
-          custom: {
-            regex: "^I[A-Z]",
-            match: false,
-          },
-        },
+        { selector: "interface", format: ["PascalCase"], custom: { regex: "^I[A-Z]", match: false } },
       ],
 
       // 2024 TypeScript Enhancements
@@ -132,11 +113,7 @@ export default [
   // Config files and other JS files without type checking
   {
     files: ["**/*.js", "**/*.mjs", "**/*.config.*"],
-    languageOptions: {
-      parserOptions: {
-        allowDefaultProject: true,
-      },
-    },
+    languageOptions: { parserOptions: { allowDefaultProject: true } },
   },
   {
     plugins: {
@@ -243,43 +220,19 @@ export default [
           default: "disallow",
           rules: [
             // Apps can use packages but not other apps
-            {
-              from: ["app-web", "app-docs"],
-              allow: ["package", "package-ui", "package-config"],
-            },
+            { from: ["app-web", "app-docs"], allow: ["package", "package-ui", "package-config"] },
             // Packages can only use other packages
-            {
-              from: "package",
-              allow: ["package"],
-            },
+            { from: "package", allow: ["package"] },
             // Web app internal boundaries
-            {
-              from: "web-components",
-              allow: ["web-lib", "package"],
-            },
-            {
-              from: "web-pages",
-              allow: ["web-components", "web-lib", "package"],
-            },
-            {
-              from: "web-api",
-              allow: ["web-lib", "package"],
-            },
+            { from: "web-components", allow: ["web-lib", "package"] },
+            { from: "web-pages", allow: ["web-components", "web-lib", "package"] },
+            { from: "web-api", allow: ["web-lib", "package"] },
             // Root can access everything
-            {
-              from: "root",
-              allow: "*",
-            },
+            { from: "root", allow: "*" },
           ],
         },
       ],
-      "boundaries/external": [
-        "error",
-        {
-          default: "allow",
-          rules: [],
-        },
-      ],
+      "boundaries/external": ["error", { default: "allow", rules: [] }],
 
       // Unicorn
       "unicorn/filename-case": [
@@ -315,12 +268,7 @@ export default [
       // Function declaration consistency
       "prefer-arrow-functions/prefer-arrow-functions": [
         "error",
-        {
-          classPropertiesAllowed: false,
-          disallowPrototype: false,
-          returnStyle: "unchanged",
-          singleReturnOnly: false,
-        },
+        { classPropertiesAllowed: false, disallowPrototype: false, returnStyle: "unchanged", singleReturnOnly: false },
       ],
 
       // Project-specific
@@ -351,30 +299,12 @@ export default [
       // JSDoc - File overview validation
       "jsdoc/require-file-overview": [
         "error",
-        {
-          tags: {
-            module: {
-              initialCommentsOnly: true,
-              mustExist: true,
-              preventDuplicates: true,
-            },
-          },
-        },
+        { tags: { module: { initialCommentsOnly: true, mustExist: true, preventDuplicates: true } } },
       ],
       // Ensure @module tag doesn't have inline descriptions (TypeDoc requirement)
-      "jsdoc/check-tag-names": [
-        "error",
-        {
-          definedTags: ["module", "category"],
-        },
-      ],
+      "jsdoc/check-tag-names": ["error", { definedTags: ["module", "category"] }],
       // @module should be empty for TypeDoc
-      "jsdoc/empty-tags": [
-        "error",
-        {
-          tags: ["module"],
-        },
-      ],
+      "jsdoc/empty-tags": ["error", { tags: ["module"] }],
       // Disable the sentence completion rules - they're too strict for property descriptions
       "jsdoc/require-description-complete-sentence": "off",
       // Disable match-description - too strict for inline comments
@@ -386,9 +316,7 @@ export default [
   // Allow default exports for config files
   {
     files: ["**/*.config.{js,ts,mjs}", "**/eslint.config.{js,ts}", "packages/eslint-config/*.js"],
-    rules: {
-      "import/no-default-export": "off",
-    },
+    rules: { "import/no-default-export": "off" },
   },
   // Add oxlint bridge at the END to auto-disable ESLint rules that oxlint handles
   // Uses buildFromOxlintConfigFile to only disable rules actually enabled in .oxlintrc.json

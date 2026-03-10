@@ -44,12 +44,7 @@ describe.sequential("Branding Global", () => {
     });
 
     it("should update site name", async () => {
-      const updated = await payload.updateGlobal({
-        slug: "branding",
-        data: {
-          siteName: "Custom Brand",
-        },
-      });
+      const updated = await payload.updateGlobal({ slug: "branding", data: { siteName: "Custom Brand" } });
 
       expect(updated.siteName).toBe("Custom Brand");
 
@@ -61,9 +56,7 @@ describe.sequential("Branding Global", () => {
     it("should update site description", async () => {
       const updated = await payload.updateGlobal({
         slug: "branding",
-        data: {
-          siteDescription: "A custom description for testing.",
-        },
+        data: { siteDescription: "A custom description for testing." },
       });
 
       expect(updated.siteDescription).toBe("A custom description for testing.");
@@ -76,10 +69,7 @@ describe.sequential("Branding Global", () => {
     it("should update multiple fields at once", async () => {
       const updated = await payload.updateGlobal({
         slug: "branding",
-        data: {
-          siteName: "Multi Update Test",
-          siteDescription: "Testing multiple field updates.",
-        },
+        data: { siteName: "Multi Update Test", siteDescription: "Testing multiple field updates." },
       });
 
       expect(updated.siteName).toBe("Multi Update Test");
@@ -87,12 +77,7 @@ describe.sequential("Branding Global", () => {
     });
 
     it("should allow empty string for site name", async () => {
-      const updated = await payload.updateGlobal({
-        slug: "branding",
-        data: {
-          siteName: "",
-        },
-      });
+      const updated = await payload.updateGlobal({ slug: "branding", data: { siteName: "" } });
 
       expect(updated.siteName).toBe("");
     });
@@ -101,10 +86,7 @@ describe.sequential("Branding Global", () => {
   describe("Access Control", () => {
     it("should allow public read access", async () => {
       // findGlobal without user context should work
-      const branding = await payload.findGlobal({
-        slug: "branding",
-        overrideAccess: false,
-      });
+      const branding = await payload.findGlobal({ slug: "branding", overrideAccess: false });
 
       expect(branding).toBeDefined();
       expect(branding.siteName).toBeDefined();
@@ -158,11 +140,7 @@ describe.sequential("Branding Favicon Generation", () => {
     // Update with no favicon sources
     await payload.updateGlobal({
       slug: "branding",
-      data: {
-        siteName: "Test",
-        faviconSourceLight: null,
-        faviconSourceDark: null,
-      },
+      data: { siteName: "Test", faviconSourceLight: null, faviconSourceDark: null },
     });
 
     // The hook should not throw an error
@@ -173,20 +151,10 @@ describe.sequential("Branding Favicon Generation", () => {
 
   it("should handle favicon source removal gracefully", async () => {
     // First set a source (even though it's null), then remove it
-    await payload.updateGlobal({
-      slug: "branding",
-      data: {
-        faviconSourceLight: null,
-      },
-    });
+    await payload.updateGlobal({ slug: "branding", data: { faviconSourceLight: null } });
 
     // Update again to trigger the hook with previousDoc
-    const updated = await payload.updateGlobal({
-      slug: "branding",
-      data: {
-        siteName: "Updated Name",
-      },
-    });
+    const updated = await payload.updateGlobal({ slug: "branding", data: { siteName: "Updated Name" } });
 
     // Should complete without error
     expect(updated.siteName).toBe("Updated Name");
@@ -203,12 +171,7 @@ describe.sequential("Branding Favicon Generation", () => {
 
     // Create a simple 512x512 red square PNG as test image
     const testImageBuffer = await sharp({
-      create: {
-        width: 512,
-        height: 512,
-        channels: 4,
-        background: { r: 255, g: 0, b: 0, alpha: 1 },
-      },
+      create: { width: 512, height: 512, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 1 } },
     })
       .png()
       .toBuffer();
@@ -216,15 +179,8 @@ describe.sequential("Branding Favicon Generation", () => {
     // Upload the test image to media collection
     const mediaDoc = await payload.create({
       collection: "media",
-      data: {
-        alt: "Test favicon source",
-      },
-      file: {
-        data: testImageBuffer,
-        mimetype: "image/png",
-        name: "test-favicon.png",
-        size: testImageBuffer.length,
-      },
+      data: { alt: "Test favicon source" },
+      file: { data: testImageBuffer, mimetype: "image/png", name: "test-favicon.png", size: testImageBuffer.length },
       user: users.admin,
     });
 
@@ -232,12 +188,7 @@ describe.sequential("Branding Favicon Generation", () => {
     expect(mediaDoc.url).toBeDefined();
 
     // Set the uploaded image as favicon source
-    await payload.updateGlobal({
-      slug: "branding",
-      data: {
-        faviconSourceLight: mediaDoc.id,
-      },
-    });
+    await payload.updateGlobal({ slug: "branding", data: { faviconSourceLight: mediaDoc.id } });
 
     // Verify the branding was updated
     const branding = await payload.findGlobal({ slug: "branding" });
@@ -265,24 +216,14 @@ describe.sequential("Branding Favicon Generation", () => {
 
     // Create light favicon source (blue square)
     const lightImageBuffer = await sharp({
-      create: {
-        width: 512,
-        height: 512,
-        channels: 4,
-        background: { r: 0, g: 0, b: 255, alpha: 1 },
-      },
+      create: { width: 512, height: 512, channels: 4, background: { r: 0, g: 0, b: 255, alpha: 1 } },
     })
       .png()
       .toBuffer();
 
     // Create dark favicon source (yellow square)
     const darkImageBuffer = await sharp({
-      create: {
-        width: 512,
-        height: 512,
-        channels: 4,
-        background: { r: 255, g: 255, b: 0, alpha: 1 },
-      },
+      create: { width: 512, height: 512, channels: 4, background: { r: 255, g: 255, b: 0, alpha: 1 } },
     })
       .png()
       .toBuffer();
@@ -291,34 +232,21 @@ describe.sequential("Branding Favicon Generation", () => {
     const lightMedia = await payload.create({
       collection: "media",
       data: { alt: "Light favicon" },
-      file: {
-        data: lightImageBuffer,
-        mimetype: "image/png",
-        name: "light-favicon.png",
-        size: lightImageBuffer.length,
-      },
+      file: { data: lightImageBuffer, mimetype: "image/png", name: "light-favicon.png", size: lightImageBuffer.length },
       user: users.admin,
     });
 
     const darkMedia = await payload.create({
       collection: "media",
       data: { alt: "Dark favicon" },
-      file: {
-        data: darkImageBuffer,
-        mimetype: "image/png",
-        name: "dark-favicon.png",
-        size: darkImageBuffer.length,
-      },
+      file: { data: darkImageBuffer, mimetype: "image/png", name: "dark-favicon.png", size: darkImageBuffer.length },
       user: users.admin,
     });
 
     // Set both as favicon sources
     await payload.updateGlobal({
       slug: "branding",
-      data: {
-        faviconSourceLight: lightMedia.id,
-        faviconSourceDark: darkMedia.id,
-      },
+      data: { faviconSourceLight: lightMedia.id, faviconSourceDark: darkMedia.id },
     });
 
     // Check that all favicon files were generated for both themes

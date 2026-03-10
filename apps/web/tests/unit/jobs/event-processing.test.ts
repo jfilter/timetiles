@@ -6,17 +6,11 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockParseCoordinate } = vi.hoisted(() => ({
-  mockParseCoordinate: vi.fn(),
-}));
+const { mockParseCoordinate } = vi.hoisted(() => ({ mockParseCoordinate: vi.fn() }));
 
-vi.mock("@/lib/geospatial", () => ({
-  parseCoordinate: mockParseCoordinate,
-}));
+vi.mock("@/lib/geospatial", () => ({ parseCoordinate: mockParseCoordinate }));
 
-vi.mock("@/lib/utils/date", async (importOriginal) => ({
-  ...(await importOriginal()),
-}));
+vi.mock("@/lib/utils/date", async (importOriginal) => ({ ...(await importOriginal()) }));
 
 import { extractCoordinatesFromRow, processRowData } from "@/lib/jobs/utils/event-processing";
 
@@ -35,28 +29,20 @@ describe("event-processing", () => {
       mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
 
       const row = { latitude: "52.5", longitude: "13.4" };
-      const result = extractCoordinatesFromRow(row, {
-        latitudeColumn: "latitude",
-        longitudeColumn: "longitude",
-      });
+      const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
 
       expect(result.coordinates).toEqual({ lat: 52.5, lng: 13.4 });
     });
 
     it("should return empty when lat column missing value", () => {
       const row = { latitude: null, longitude: "13.4" };
-      const result = extractCoordinatesFromRow(row, {
-        latitudeColumn: "latitude",
-        longitudeColumn: "longitude",
-      });
+      const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
       expect(result).toEqual({});
     });
 
     it("should return empty when only latitudeColumn specified", () => {
       const row = { latitude: "52.5" };
-      const result = extractCoordinatesFromRow(row, {
-        latitudeColumn: "latitude",
-      });
+      const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude" });
       expect(result).toEqual({});
     });
 
@@ -64,10 +50,7 @@ describe("event-processing", () => {
       mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
 
       const row = { coords: "52.5, 13.4" };
-      const result = extractCoordinatesFromRow(row, {
-        combinedColumn: "coords",
-        coordinateFormat: "combined_comma",
-      });
+      const result = extractCoordinatesFromRow(row, { combinedColumn: "coords", coordinateFormat: "combined_comma" });
 
       expect(result.coordinates).toEqual({ lat: 52.5, lng: 13.4 });
     });
@@ -80,10 +63,7 @@ describe("event-processing", () => {
       });
 
       const row = { coords: `40°26'46"N, 74°0'21"W` };
-      const result = extractCoordinatesFromRow(row, {
-        combinedColumn: "coords",
-        coordinateFormat: "combined_comma",
-      });
+      const result = extractCoordinatesFromRow(row, { combinedColumn: "coords", coordinateFormat: "combined_comma" });
 
       expect(result.coordinates).toEqual({ lat: 40.446111, lng: -74.005833 });
     });
@@ -92,20 +72,14 @@ describe("event-processing", () => {
       mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
 
       const row = { coords: "52.5 13.4" };
-      const result = extractCoordinatesFromRow(row, {
-        combinedColumn: "coords",
-        coordinateFormat: "combined_space",
-      });
+      const result = extractCoordinatesFromRow(row, { combinedColumn: "coords", coordinateFormat: "combined_space" });
 
       expect(result.coordinates).toEqual({ lat: 52.5, lng: 13.4 });
     });
 
     it("should return empty for invalid combined format", () => {
       const row = { coords: "invalid" };
-      const result = extractCoordinatesFromRow(row, {
-        combinedColumn: "coords",
-        coordinateFormat: "combined_comma",
-      });
+      const result = extractCoordinatesFromRow(row, { combinedColumn: "coords", coordinateFormat: "combined_comma" });
       expect(result).toEqual({});
     });
 
@@ -113,10 +87,7 @@ describe("event-processing", () => {
       mockParseCoordinate.mockReturnValue(null);
 
       const row = { latitude: "52.5", longitude: "13.4" };
-      const result = extractCoordinatesFromRow(row, {
-        latitudeColumn: "latitude",
-        longitudeColumn: "longitude",
-      });
+      const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
       expect(result).toEqual({});
     });
 
@@ -128,10 +99,7 @@ describe("event-processing", () => {
       });
 
       const row = { latitude: `40°26'46"N`, longitude: `74°0'21"W` };
-      const result = extractCoordinatesFromRow(row, {
-        latitudeColumn: "latitude",
-        longitudeColumn: "longitude",
-      });
+      const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
 
       expect(result.coordinates).toEqual({ lat: 40.446111, lng: -74.005833 });
     });
@@ -140,10 +108,7 @@ describe("event-processing", () => {
       mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
 
       const row = { latitude: 52.5, longitude: 13.4 };
-      const result = extractCoordinatesFromRow(row, {
-        latitudeColumn: "latitude",
-        longitudeColumn: "longitude",
-      });
+      const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
 
       expect(result.coordinates).toEqual({ lat: 52.5, lng: 13.4 });
     });
@@ -156,40 +121,25 @@ describe("event-processing", () => {
       });
 
       const row = { latitude: "999", longitude: "13.4" };
-      const result = extractCoordinatesFromRow(row, {
-        latitudeColumn: "latitude",
-        longitudeColumn: "longitude",
-      });
+      const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
 
       expect(result).toEqual({});
     });
 
     it("should return empty for non-string/number lat value", () => {
       const row = { latitude: { nested: true }, longitude: "13.4" };
-      const result = extractCoordinatesFromRow(row, {
-        latitudeColumn: "latitude",
-        longitudeColumn: "longitude",
-      });
+      const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
       expect(result).toEqual({});
     });
 
     it("should return empty for non-string/number combined value", () => {
       const row = { coords: { nested: true } };
-      const result = extractCoordinatesFromRow(row, {
-        combinedColumn: "coords",
-        coordinateFormat: "combined_comma",
-      });
+      const result = extractCoordinatesFromRow(row, { combinedColumn: "coords", coordinateFormat: "combined_comma" });
       expect(result).toEqual({});
     });
 
     it("should return empty when combined column is empty string", () => {
-      const result = extractCoordinatesFromRow(
-        {},
-        {
-          combinedColumn: "",
-          coordinateFormat: "combined_comma",
-        }
-      );
+      const result = extractCoordinatesFromRow({}, { combinedColumn: "", coordinateFormat: "combined_comma" });
       expect(result).toEqual({});
     });
 
@@ -210,12 +160,7 @@ describe("event-processing", () => {
 
   describe("processRowData", () => {
     it("should process basic row data", () => {
-      const row = {
-        title: "Test Event",
-        description: "A test description",
-        date: "2024-01-01",
-        location: "Berlin",
-      };
+      const row = { title: "Test Event", description: "A test description", date: "2024-01-01", location: "Berlin" };
 
       const result = processRowData(row, false, undefined);
 
@@ -228,17 +173,9 @@ describe("event-processing", () => {
     it("should include coordinates when available", () => {
       mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
 
-      const row = {
-        title: "Test",
-        date: "2024-01-01",
-        latitude: "52.5",
-        longitude: "13.4",
-      };
+      const row = { title: "Test", date: "2024-01-01", latitude: "52.5", longitude: "13.4" };
 
-      const result = processRowData(row, true, {
-        latitudeColumn: "latitude",
-        longitudeColumn: "longitude",
-      });
+      const result = processRowData(row, true, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
 
       expect(result.preExistingCoordinates).toEqual({ lat: 52.5, lng: 13.4 });
       expect(result.skipGeocoding).toBe(true);

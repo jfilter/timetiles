@@ -13,32 +13,24 @@ export const targetFields: Field[] = [
     type: "relationship",
     relationTo: "catalogs",
     required: true,
-    admin: {
-      description: "Catalog to import data into",
-    },
+    admin: { description: "Catalog to import data into" },
   },
   {
     name: "dataset",
     type: "relationship",
     relationTo: "datasets",
-    admin: {
-      description: "Target dataset for single-sheet imports",
-    },
+    admin: { description: "Target dataset for single-sheet imports" },
   },
   {
     name: "multiSheetConfig",
     type: "group",
-    admin: {
-      description: "Configuration for Excel files with multiple sheets",
-    },
+    admin: { description: "Configuration for Excel files with multiple sheets" },
     fields: [
       {
         name: "enabled",
         type: "checkbox",
         defaultValue: false,
-        admin: {
-          description: "Enable multi-sheet import configuration",
-        },
+        admin: { description: "Enable multi-sheet import configuration" },
       },
       {
         name: "sheets",
@@ -52,26 +44,20 @@ export const targetFields: Field[] = [
             name: "sheetIdentifier",
             type: "text",
             required: true,
-            admin: {
-              description: "Sheet name or index (0-based)",
-            },
+            admin: { description: "Sheet name or index (0-based)" },
           },
           {
             name: "dataset",
             type: "relationship",
             relationTo: "datasets",
             required: true,
-            admin: {
-              description: "Target dataset for this sheet",
-            },
+            admin: { description: "Target dataset for this sheet" },
           },
           {
             name: "skipIfMissing",
             type: "checkbox",
             defaultValue: false,
-            admin: {
-              description: "Skip this sheet if not found in the file",
-            },
+            admin: { description: "Skip this sheet if not found in the file" },
           },
         ],
       },

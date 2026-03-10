@@ -18,32 +18,17 @@ import {
 describe("common schemas", () => {
   describe("BoundsSchema", () => {
     it("should accept valid bounds", () => {
-      const result = BoundsSchema.safeParse({
-        north: 52.5,
-        south: 52.3,
-        east: 13.5,
-        west: 13.3,
-      });
+      const result = BoundsSchema.safeParse({ north: 52.5, south: 52.3, east: 13.5, west: 13.3 });
       expect(result.success).toBe(true);
     });
 
     it("should reject out-of-range latitude", () => {
-      const result = BoundsSchema.safeParse({
-        north: 91,
-        south: 52.3,
-        east: 13.5,
-        west: 13.3,
-      });
+      const result = BoundsSchema.safeParse({ north: 91, south: 52.3, east: 13.5, west: 13.3 });
       expect(result.success).toBe(false);
     });
 
     it("should reject out-of-range longitude", () => {
-      const result = BoundsSchema.safeParse({
-        north: 52.5,
-        south: 52.3,
-        east: 181,
-        west: 13.3,
-      });
+      const result = BoundsSchema.safeParse({ north: 52.5, south: 52.3, east: 181, west: 13.3 });
       expect(result.success).toBe(false);
     });
 
@@ -99,11 +84,7 @@ describe("common schemas", () => {
     });
 
     it("should accept error with code and details", () => {
-      const result = ErrorResponseSchema.safeParse({
-        error: "Not found",
-        code: "NOT_FOUND",
-        details: { id: 123 },
-      });
+      const result = ErrorResponseSchema.safeParse({ error: "Not found", code: "NOT_FOUND", details: { id: 123 } });
       expect(result.success).toBe(true);
     });
   });

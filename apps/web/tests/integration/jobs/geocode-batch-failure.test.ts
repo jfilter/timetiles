@@ -76,20 +76,14 @@ Event 3,2024-01-03,Hamburg Germany
     await withDataset(testEnv, testCatalogId, {
       name: "geocode-failure-test.csv",
       language: "eng",
-      schemaConfig: {
-        locked: false,
-        autoGrow: true,
-        autoApproveNonBreaking: true,
-      },
+      schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
     });
 
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
       filename: "geocode-failure-test.csv",
       mimeType: "text/csv",
       user: testUserId,
-      additionalData: {
-        originalName: "geocode-failure-test.csv",
-      },
+      additionalData: { originalName: "geocode-failure-test.csv" },
     });
 
     const stageResult = await runJobsUntilImportJobStage(
@@ -127,20 +121,14 @@ Event 3,2024-01-03,Hamburg Germany
     expect(importJob.errorLog.error).toMatch(/Geocoding|geocoding/i);
 
     // Verify the import file status (may be "failed" or still "processing" depending on error type)
-    const updatedImportFile = await payload.findByID({
-      collection: "import-files",
-      id: importFile.id,
-    });
+    const updatedImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
 
     // Import file status should indicate failure eventually
     // Note: The exact status depends on whether all-geocoding-failed path or general error path was taken
     expect(["failed", "processing"]).toContain(updatedImportFile.status);
 
     // Verify no events were created (since geocoding failed)
-    const events = await payload.find({
-      collection: "events",
-      where: { importJob: { equals: importJob.id } },
-    });
+    const events = await payload.find({ collection: "events", where: { importJob: { equals: importJob.id } } });
 
     expect(events.docs).toHaveLength(0);
   });

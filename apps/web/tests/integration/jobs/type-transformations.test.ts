@@ -42,15 +42,10 @@ describe.sequential("Type Transformations Integration", () => {
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "admin" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
     testUserId = users.testUser.id;
 
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Transformation Test Catalog",
-      user: users.testUser,
-    });
+    const { catalog } = await withCatalog(testEnv, { name: "Transformation Test Catalog", user: users.testUser });
     testCatalog = catalog;
   });
 
@@ -78,9 +73,7 @@ describe.sequential("Type Transformations Integration", () => {
         name: "Transform Test Dataset",
         catalog: testCatalog.id,
         language: "eng",
-        schemaConfig: {
-          allowTransformations: true,
-        },
+        schemaConfig: { allowTransformations: true },
         importTransforms: [
           {
             id: "transform-age",
@@ -101,10 +94,7 @@ describe.sequential("Type Transformations Integration", () => {
             active: true,
           },
         ],
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-        },
+        idStrategy: { type: "external", externalIdPath: "id" },
       },
     });
 
@@ -119,11 +109,7 @@ describe.sequential("Type Transformations Integration", () => {
         dataset: dataset.id,
         importFile: importFile.id,
         stage: "create-events",
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         duplicates: {
           internal: [],
           external: [],
@@ -138,11 +124,7 @@ describe.sequential("Type Transformations Integration", () => {
       input: { importJobId: importJob.id, batchNumber: 0 },
     });
 
-    const events = await payload.find({
-      collection: "events",
-      where: { dataset: { equals: dataset.id } },
-      limit: 10,
-    });
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } }, limit: 10 });
 
     expect(events.docs).toHaveLength(2);
 
@@ -165,9 +147,7 @@ describe.sequential("Type Transformations Integration", () => {
         name: "No Transform Dataset",
         catalog: testCatalog.id,
         language: "eng",
-        schemaConfig: {
-          allowTransformations: false,
-        },
+        schemaConfig: { allowTransformations: false },
         importTransforms: [
           {
             id: "transform-age-disabled",
@@ -179,10 +159,7 @@ describe.sequential("Type Transformations Integration", () => {
             active: false,
           },
         ],
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-        },
+        idStrategy: { type: "external", externalIdPath: "id" },
       },
     });
 
@@ -197,11 +174,7 @@ describe.sequential("Type Transformations Integration", () => {
         dataset: dataset.id,
         importFile: importFile.id,
         stage: "create-events",
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         duplicates: {
           internal: [],
           external: [],
@@ -216,10 +189,7 @@ describe.sequential("Type Transformations Integration", () => {
       input: { importJobId: importJob.id, batchNumber: 0 },
     });
 
-    const events = await payload.find({
-      collection: "events",
-      where: { dataset: { equals: dataset.id } },
-    });
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } } });
 
     expect(events.docs).toHaveLength(1);
     const event = events.docs[0]!;

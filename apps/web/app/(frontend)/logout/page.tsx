@@ -18,9 +18,7 @@ export default async function LogoutPage() {
   try {
     await fetch(`${process.env.NEXT_PUBLIC_PAYLOAD_URL}/api/users/logout`, {
       method: "POST",
-      headers: {
-        cookie: headersList.get("cookie") ?? "",
-      },
+      headers: { cookie: headersList.get("cookie") ?? "" },
     });
   } catch {
     // Ignore errors - redirect anyway

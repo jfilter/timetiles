@@ -17,13 +17,9 @@ vi.mock("@/lib/middleware/auth", () => ({
   withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({
-  getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
+vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractBaseEventParameters: mocks.mockExtractBaseEventParameters,
@@ -44,17 +40,9 @@ vi.mock("@/lib/utils/event-params", () => ({
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign(
-    (strings: TemplateStringsArray, ...values: unknown[]) => ({
-      type: "sql",
-      strings: Array.from(strings),
-      values,
-    }),
+    (strings: TemplateStringsArray, ...values: unknown[]) => ({ type: "sql", strings: Array.from(strings), values }),
     {
-      join: vi.fn((parts: unknown[], separator: unknown) => ({
-        type: "join",
-        parts,
-        separator,
-      })),
+      join: vi.fn((parts: unknown[], separator: unknown) => ({ type: "join", parts, separator })),
       raw: vi.fn((value: string) => ({ type: "raw", value })),
     }
   ),
@@ -89,9 +77,7 @@ describe.sequential("GET /api/v1/events/bounds", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.mockGetPayload.mockResolvedValue({
-      db: { drizzle: { execute: mocks.mockDrizzleExecute } },
-    });
+    mocks.mockGetPayload.mockResolvedValue({ db: { drizzle: { execute: mocks.mockDrizzleExecute } } });
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([]);
     mocks.mockExtractBaseEventParameters.mockReturnValue({
       catalog: "",
@@ -106,10 +92,7 @@ describe.sequential("GET /api/v1/events/bounds", () => {
     const response = await GET(createRequest("?catalog="), undefined);
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      bounds: null,
-      count: 0,
-    });
+    await expect(response.json()).resolves.toEqual({ bounds: null, count: 0 });
     expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
   });
 
@@ -126,10 +109,7 @@ describe.sequential("GET /api/v1/events/bounds", () => {
     const response = await GET(createRequest("?catalog=1abc"), undefined);
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      bounds: null,
-      count: 0,
-    });
+    await expect(response.json()).resolves.toEqual({ bounds: null, count: 0 });
     expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
   });
 
@@ -140,9 +120,7 @@ describe.sequential("GET /api/v1/events/bounds", () => {
       datasets: [],
       startDate: null,
       endDate: null,
-      fieldFilters: {
-        "venue.address.city": ["Berlin"],
-      },
+      fieldFilters: { "venue.address.city": ["Berlin"] },
     });
     mocks.mockDrizzleExecute.mockResolvedValue({
       rows: [{ west: "13.1", south: "52.4", east: "13.6", north: "52.7", count: 3 }],

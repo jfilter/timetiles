@@ -37,12 +37,7 @@ export interface FieldStatistics {
   };
 
   // Numeric stats
-  numericStats?: {
-    min: number;
-    max: number;
-    avg: number;
-    isInteger: boolean;
-  };
+  numericStats?: { min: number; max: number; avg: number; isInteger: boolean };
 
   // Enum detection
   isEnumCandidate: boolean;

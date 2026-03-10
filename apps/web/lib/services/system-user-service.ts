@@ -89,9 +89,7 @@ export class SystemUserService {
     // Try to find existing system user
     const existing = await this.payload.find({
       collection: "users",
-      where: {
-        email: { equals: SYSTEM_USER_EMAIL },
-      },
+      where: { email: { equals: SYSTEM_USER_EMAIL } },
       limit: 1,
       overrideAccess: true,
     });
@@ -105,11 +103,7 @@ export class SystemUserService {
 
     // Create system user
     logger.info("Creating system user");
-    const user = await this.payload.create({
-      collection: "users",
-      data: getSystemUserConfig(),
-      overrideAccess: true,
-    });
+    const user = await this.payload.create({ collection: "users", data: getSystemUserConfig(), overrideAccess: true });
 
     this.cachedSystemUserId = user.id;
     logger.info({ userId: user.id }, "System user created");
@@ -134,11 +128,7 @@ export class SystemUserService {
     }
 
     // Slow path: look up the user
-    const user = await this.payload.findByID({
-      collection: "users",
-      id: numericId,
-      overrideAccess: true,
-    });
+    const user = await this.payload.findByID({ collection: "users", id: numericId, overrideAccess: true });
 
     if (!user) {
       return false;

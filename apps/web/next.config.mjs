@@ -16,57 +16,19 @@ const nextConfig = {
   transpilePackages: ["@timetiles/ui", "@timetiles/assets"],
   redirects: async () => [
     // Redirect Payload dashboard auth routes to main app
-    {
-      source: "/dashboard/login",
-      destination: "/login?redirect=/dashboard",
-      permanent: false,
-    },
-    {
-      source: "/dashboard/logout",
-      destination: "/logout",
-      permanent: false,
-    },
-    {
-      source: "/dashboard/create-first-user",
-      destination: "/",
-      permanent: false,
-    },
-    {
-      source: "/dashboard/forgot-password",
-      destination: "/login",
-      permanent: false,
-    },
-    {
-      source: "/dashboard/reset-password",
-      destination: "/login",
-      permanent: false,
-    },
+    { source: "/dashboard/login", destination: "/login?redirect=/dashboard", permanent: false },
+    { source: "/dashboard/logout", destination: "/logout", permanent: false },
+    { source: "/dashboard/create-first-user", destination: "/", permanent: false },
+    { source: "/dashboard/forgot-password", destination: "/login", permanent: false },
+    { source: "/dashboard/reset-password", destination: "/login", permanent: false },
   ],
+  reactCompiler: false,
   experimental: {
-    reactCompiler: false,
     // Optimize barrel file imports for faster builds and smaller bundles
     // See: https://vercel.com/blog/how-we-optimized-package-imports-in-next-js
     optimizePackageImports: ["lucide-react", "@xyflow/react", "@timetiles/ui", "@tanstack/react-query", "date-fns"],
   },
-  turbopack: {
-    rules: {
-      "*.svg": {
-        loaders: ["@svgr/webpack"],
-        as: "*.js",
-        options: {
-          icon: true,
-          svgProps: {
-            role: "img",
-          },
-        },
-      },
-    },
-  },
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
+  turbopack: { rules: { "*.svg": { loaders: ["@svgr/webpack"], as: "*.js" } } },
   typescript: {
     // Use production tsconfig that excludes test files during build
     tsconfigPath: isProduction ? "./tsconfig.build.json" : "./tsconfig.json",

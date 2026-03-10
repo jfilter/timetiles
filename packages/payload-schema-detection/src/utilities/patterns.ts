@@ -316,10 +316,7 @@ export const COMBINED_COORDINATE_PATTERNS = [
 /**
  * Valid coordinate bounds.
  */
-export const COORDINATE_BOUNDS = {
-  latitude: { min: -90, max: 90 },
-  longitude: { min: -180, max: 180 },
-};
+export const COORDINATE_BOUNDS = { latitude: { min: -90, max: 90 }, longitude: { min: -180, max: 180 } };
 
 /**
  * Address patterns for geocoding field detection.
@@ -511,11 +508,7 @@ const findCombinedCoordinateField = (
     const formatResult = checkCommaFormat(samples);
 
     if (formatResult && formatResult.confidence >= 0.7) {
-      return {
-        path: fieldPath,
-        format: formatResult.format,
-        confidence: formatResult.confidence,
-      };
+      return { path: fieldPath, format: formatResult.format, confidence: formatResult.confidence };
     }
   }
 
@@ -554,13 +547,7 @@ export const detectGeoFields = (fieldStats: Record<string, FieldStatistics>): Ge
 
   if (latitude && longitude) {
     const avgConfidence = (latitude.confidence + longitude.confidence) / 2;
-    return {
-      type: "separate",
-      confidence: avgConfidence,
-      latitude,
-      longitude,
-      locationField,
-    };
+    return { type: "separate", confidence: avgConfidence, latitude, longitude, locationField };
   }
 
   // Try combined coordinate field
@@ -569,10 +556,7 @@ export const detectGeoFields = (fieldStats: Record<string, FieldStatistics>): Ge
     return {
       type: "combined",
       confidence: combined.confidence,
-      combined: {
-        path: combined.path,
-        format: combined.format,
-      },
+      combined: { path: combined.path, format: combined.format },
       locationField,
     };
   }
@@ -591,11 +575,7 @@ export const detectGeoFields = (fieldStats: Record<string, FieldStatistics>): Ge
 
   // If only location field found, return with low confidence for geocoding
   if (locationField) {
-    return {
-      type: "separate",
-      confidence: locationField.confidence * 0.3,
-      locationField,
-    };
+    return { type: "separate", confidence: locationField.confidence * 0.3, locationField };
   }
 
   return null;
@@ -618,11 +598,5 @@ export const detectFieldMappings = (
   const locationName = findFieldByPattern(fieldStats, getPatterns("locationName", language), isTextField);
   const geo = detectGeoFields(fieldStats);
 
-  return {
-    title,
-    description,
-    timestamp,
-    locationName,
-    geo,
-  };
+  return { title, description, timestamp, locationName, geo };
 };

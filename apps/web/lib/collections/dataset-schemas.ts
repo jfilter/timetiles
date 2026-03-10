@@ -31,9 +31,7 @@ const DatasetSchemas: CollectionConfig = {
       if (user?.role === "admin" || user?.role === "editor") return true;
 
       if (user) {
-        return {
-          or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }],
-        } as Where;
+        return { or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }] } as Where;
       }
 
       return { datasetIsPublic: { equals: true } };
@@ -58,9 +56,7 @@ const DatasetSchemas: CollectionConfig = {
       relationTo: "datasets",
       required: true,
       index: true,
-      admin: {
-        description: "Dataset this schema belongs to",
-      },
+      admin: { description: "Dataset this schema belongs to" },
     },
     {
       name: "datasetIsPublic",
@@ -76,25 +72,18 @@ const DatasetSchemas: CollectionConfig = {
       name: "catalogOwnerId",
       type: "number",
       index: true,
-      admin: {
-        hidden: true,
-        description: "Denormalized: catalog.createdBy for zero-query owner access control",
-      },
+      admin: { hidden: true, description: "Denormalized: catalog.createdBy for zero-query owner access control" },
     },
     {
       name: "versionNumber",
       type: "number",
       required: true,
-      admin: {
-        description: "Schema version number (auto-incremented)",
-      },
+      admin: { description: "Schema version number (auto-incremented)" },
     },
     {
       name: "displayName",
       type: "text",
-      admin: {
-        hidden: true,
-      },
+      admin: { hidden: true },
       hooks: {
         beforeChange: [
           ({ data }) => {
@@ -103,44 +92,20 @@ const DatasetSchemas: CollectionConfig = {
         ],
       },
     },
-    {
-      name: "schema",
-      type: "json",
-      required: true,
-      admin: {
-        description: "JSON Schema Draft 7",
-      },
-    },
-    {
-      name: "fieldMetadata",
-      type: "json",
-      required: true,
-      admin: {
-        description: "Field statistics and metadata",
-      },
-    },
+    { name: "schema", type: "json", required: true, admin: { description: "JSON Schema Draft 7" } },
+    { name: "fieldMetadata", type: "json", required: true, admin: { description: "Field statistics and metadata" } },
     {
       name: "eventCountAtCreation",
       type: "number",
-      admin: {
-        description: "Number of events in the dataset when this schema was generated",
-      },
+      admin: { description: "Number of events in the dataset when this schema was generated" },
     },
     {
       name: "schemaSummary",
       type: "group",
       fields: [
         { name: "totalFields", type: "number" },
-        {
-          name: "newFields",
-          type: "array",
-          fields: [{ name: "path", type: "text" }],
-        },
-        {
-          name: "removedFields",
-          type: "array",
-          fields: [{ name: "path", type: "text" }],
-        },
+        { name: "newFields", type: "array", fields: [{ name: "path", type: "text" }] },
+        { name: "removedFields", type: "array", fields: [{ name: "path", type: "text" }] },
         {
           name: "typeChanges",
           type: "array",
@@ -165,53 +130,28 @@ const DatasetSchemas: CollectionConfig = {
       name: "importSources",
       type: "array",
       fields: [
-        {
-          name: "import",
-          type: "relationship",
-          relationTo: "import-jobs",
-          required: true,
-        },
-        {
-          name: "recordCount",
-          type: "number",
-        },
-        {
-          name: "batchCount",
-          type: "number",
-        },
+        { name: "import", type: "relationship", relationTo: "import-jobs", required: true },
+        { name: "recordCount", type: "number" },
+        { name: "batchCount", type: "number" },
       ],
-      admin: {
-        description: "Import jobs that contributed to this schema",
-      },
+      admin: { description: "Import jobs that contributed to this schema" },
     },
     {
       name: "approvalRequired",
       type: "checkbox",
-      admin: {
-        description: "Whether this schema requires manual approval",
-      },
+      admin: { description: "Whether this schema requires manual approval" },
     },
     {
       name: "approvedBy",
       type: "relationship",
       relationTo: "users",
-      admin: {
-        condition: (data) => data?.status === "active",
-      },
+      admin: { condition: (data) => data?.status === "active" },
     },
-    {
-      name: "approvalNotes",
-      type: "textarea",
-      admin: {
-        condition: (data) => Boolean(data?.approvedBy),
-      },
-    },
+    { name: "approvalNotes", type: "textarea", admin: { condition: (data) => Boolean(data?.approvedBy) } },
     {
       name: "autoApproved",
       type: "checkbox",
-      admin: {
-        description: "Was automatically approved due to safe changes",
-      },
+      admin: { description: "Was automatically approved due to safe changes" },
     },
     {
       name: "conflicts",
@@ -225,41 +165,27 @@ const DatasetSchemas: CollectionConfig = {
       name: "fieldMappings",
       type: "group",
       label: "Field Mappings",
-      admin: {
-        description: "Detected or configured field mappings for standard event properties",
-      },
+      admin: { description: "Detected or configured field mappings for standard event properties" },
       fields: [
         {
           name: "titlePath",
           type: "text",
-          admin: {
-            description: "Path to title/name field in source data",
-            readOnly: true,
-          },
+          admin: { description: "Path to title/name field in source data", readOnly: true },
         },
         {
           name: "descriptionPath",
           type: "text",
-          admin: {
-            description: "Path to description/details field in source data",
-            readOnly: true,
-          },
+          admin: { description: "Path to description/details field in source data", readOnly: true },
         },
         {
           name: "locationNamePath",
           type: "text",
-          admin: {
-            description: "Path to location/venue name field in source data",
-            readOnly: true,
-          },
+          admin: { description: "Path to location/venue name field in source data", readOnly: true },
         },
         {
           name: "timestampPath",
           type: "text",
-          admin: {
-            description: "Path to timestamp/date field in source data",
-            readOnly: true,
-          },
+          admin: { description: "Path to timestamp/date field in source data", readOnly: true },
         },
       ],
     },

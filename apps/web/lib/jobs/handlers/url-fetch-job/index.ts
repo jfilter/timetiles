@@ -86,12 +86,7 @@ const handleDuplicateCheck = async (
     await updateScheduledImportSuccess(payload, context.scheduledImport, existingFile.id, 0);
   }
 
-  return {
-    importFileId: existingFile.id,
-    filename: existingFile.filename,
-    contentHash: dataHash,
-    isDuplicate: true,
-  };
+  return { importFileId: existingFile.id, filename: existingFile.filename, contentHash: dataHash, isDuplicate: true };
 };
 
 /**
@@ -106,12 +101,7 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
     user: userId,
     status: "pending",
     metadata: {
-      urlFetch: {
-        sourceUrl,
-        contentHash: dataHash,
-        isDuplicate: false,
-        fetchedAt: new Date().toISOString(),
-      },
+      urlFetch: { sourceUrl, contentHash: dataHash, isDuplicate: false, fetchedAt: new Date().toISOString() },
       scheduledExecution: scheduledImportId
         ? { scheduledImportId, executionTime: new Date().toISOString() }
         : undefined,
@@ -256,16 +246,7 @@ const buildSuccessOutput = (
 };
 
 const buildErrorOutput = (error: Error) => {
-  return {
-    output: {
-      success: false,
-      error: error.message,
-      errorDetails: {
-        name: error.name,
-        stack: error.stack,
-      },
-    },
-  };
+  return { output: { success: false, error: error.message, errorDetails: { name: error.name, stack: error.stack } } };
 };
 
 // Helper to load user from userId (which can be object or ID)
@@ -301,10 +282,7 @@ const checkAndTrackQuota = async (
   // Track URL fetch usage
   await quotaService.incrementUsage(user.id, USAGE_TYPES.URL_FETCHES_TODAY, 1);
 
-  logger.info("URL fetch quota checked and tracked", {
-    userId: user.id,
-    remaining: quotaCheck.remaining,
-  });
+  logger.info("URL fetch quota checked and tracked", { userId: user.id, remaining: quotaCheck.remaining });
 };
 
 // Helper to prepare cache options
@@ -346,10 +324,7 @@ export const urlFetchJob = {
     const input = (context.input ?? context.job?.input) as UrlFetchJobInput;
 
     const startTime = Date.now();
-    logger.info("Starting URL fetch job", {
-      sourceUrl: input.sourceUrl,
-      scheduledImportId: input.scheduledImportId,
-    });
+    logger.info("Starting URL fetch job", { sourceUrl: input.sourceUrl, scheduledImportId: input.scheduledImportId });
 
     if (!input.sourceUrl) {
       throw new Error("Source URL is required");
@@ -362,15 +337,8 @@ export const urlFetchJob = {
 
       // Abort if scheduled import was requested but is disabled or not found
       if (input.scheduledImportId && !scheduledImport) {
-        logger.info("Scheduled import disabled or not found, aborting", {
-          scheduledImportId: input.scheduledImportId,
-        });
-        return {
-          output: {
-            success: false,
-            error: "Scheduled import is disabled or not found",
-          },
-        };
+        logger.info("Scheduled import disabled or not found, aborting", { scheduledImportId: input.scheduledImportId });
+        return { output: { success: false, error: "Scheduled import is disabled or not found" } };
       }
 
       // Resolve userId from input or scheduled import's creator

@@ -42,12 +42,7 @@ export const geocodingProviderSeeds = (environment: string): GeocodingProviderSe
         enabled: false, // Disabled by default until API key is configured in admin panel
         priority: 2,
         rateLimit: 50,
-        config: {
-          google: {
-            apiKey: "YOUR_API_KEY_HERE",
-            language: "en",
-          },
-        },
+        config: { google: { apiKey: "YOUR_API_KEY_HERE", language: "en" } },
         tags: ["development", "secondary", "paid-tier", "region-global", "high-volume"],
         notes: "Google Maps geocoding - configure API key in admin panel to enable",
       },
@@ -57,14 +52,7 @@ export const geocodingProviderSeeds = (environment: string): GeocodingProviderSe
         enabled: false, // Disabled by default until API key is configured in admin panel
         priority: 3,
         rateLimit: 10,
-        config: {
-          opencage: {
-            apiKey: "YOUR_API_KEY_HERE",
-            language: "en",
-            annotations: true,
-            abbrv: false,
-          },
-        },
+        config: { opencage: { apiKey: "YOUR_API_KEY_HERE", language: "en", annotations: true, abbrv: false } },
         tags: ["development", "backup", "paid-tier", "region-global"],
         notes: "OpenCage geocoding - configure API key in admin panel to enable",
       },

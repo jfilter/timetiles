@@ -54,13 +54,7 @@ const parseISODate = (dateStr: string): number => {
  */
 const fetchFullHistogram = async (catalog: string | null, datasets: string[]): Promise<HistogramResponse> => {
   // Use buildBaseEventParams with no date filters to get full range
-  const params = buildBaseEventParams({
-    catalog,
-    datasets,
-    startDate: null,
-    endDate: null,
-    fieldFilters: {},
-  });
+  const params = buildBaseEventParams({ catalog, datasets, startDate: null, endDate: null, fieldFilters: {} });
 
   const response = await fetch(`/api/v1/events/temporal?${params.toString()}`);
 
@@ -132,10 +126,7 @@ export const TimeRangeSlider = ({
 
   // Memoize style objects to avoid creating new objects on each render
   const rangeStyle = useMemo(
-    () => ({
-      left: `${startPosition * 100}%`,
-      right: `${(1 - endPosition) * 100}%`,
-    }),
+    () => ({ left: `${startPosition * 100}%`, right: `${(1 - endPosition) * 100}%` }),
     [startPosition, endPosition]
   );
 

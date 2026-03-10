@@ -75,11 +75,7 @@ export class TestServer {
       }
 
       const status = config.status ?? 200;
-      const headers = {
-        "Content-Type": "text/plain",
-        "Access-Control-Allow-Origin": "*",
-        ...config.headers,
-      };
+      const headers = { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*", ...config.headers };
 
       res.writeHead(status, headers);
 
@@ -103,11 +99,7 @@ export class TestServer {
     return this.respond(path, {
       ...options,
       body: csvData,
-      headers: {
-        "Content-Type": "text/csv",
-        "Content-Length": String(Buffer.byteLength(csvData)),
-        ...options.headers,
-      },
+      headers: { "Content-Type": "text/csv", "Content-Length": String(Buffer.byteLength(csvData)), ...options.headers },
     });
   }
 
@@ -133,10 +125,7 @@ export class TestServer {
   respondWithFile(routePath: string, fixturePath: string, contentType: string): this {
     const fullPath = path.join(__dirname, "../fixtures", fixturePath);
     this.routes.set(routePath, (_req, res) => {
-      res.writeHead(200, {
-        "Content-Type": contentType,
-        "Access-Control-Allow-Origin": "*",
-      });
+      res.writeHead(200, { "Content-Type": contentType, "Access-Control-Allow-Origin": "*" });
       createReadStream(fullPath).pipe(res);
     });
     return this;
@@ -172,11 +161,7 @@ export class TestServer {
 
       const config = authorized
         ? successResponse
-        : (failureResponse ?? {
-            status: 401,
-            body: "Unauthorized",
-            headers: { "Content-Type": "text/plain" },
-          });
+        : (failureResponse ?? { status: 401, body: "Unauthorized", headers: { "Content-Type": "text/plain" } });
 
       if (config.delay) {
         await new Promise((resolve) => setTimeout(resolve, config.delay));
@@ -229,10 +214,7 @@ export class TestServer {
    */
   respondWithStream(path: string, chunks: Array<string | Buffer>, chunkDelayMs: number = 100): this {
     this.routes.set(path, async (_req, res) => {
-      res.writeHead(200, {
-        "Content-Type": "text/plain",
-        "Transfer-Encoding": "chunked",
-      });
+      res.writeHead(200, { "Content-Type": "text/plain", "Transfer-Encoding": "chunked" });
 
       for (const chunk of chunks) {
         res.write(chunk);
@@ -369,11 +351,7 @@ export const createSimpleTestServer = async (
     res.end(response.body ?? "");
   });
   const url = await server.start();
-  return {
-    server,
-    url,
-    stop: () => server.stop(),
-  };
+  return { server, url, stop: () => server.stop() };
 };
 
 /**

@@ -124,11 +124,7 @@ export class StageTransitionService {
       // Clean up transition lock
       this.transitioningJobs.delete(transitionKey);
 
-      return {
-        success: true,
-        jobQueued: queueResult.queued,
-        queuedJobType: queueResult.jobType,
-      };
+      return { success: true, jobQueued: queueResult.queued, queuedJobType: queueResult.jobType };
     } catch (error) {
       logger.error("Stage transition failed", {
         importJobId: jobId,
@@ -140,10 +136,7 @@ export class StageTransitionService {
       // Clean up transition lock
       this.transitioningJobs.delete(transitionKey);
 
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   }
 
@@ -153,24 +146,15 @@ export class StageTransitionService {
   private static async queueStageJob(payload: Payload, job: ImportJob): Promise<{ queued: boolean; jobType?: string }> {
     switch (job.stage) {
       case PROCESSING_STAGE.ANALYZE_DUPLICATES:
-        await payload.jobs.queue({
-          task: JOB_TYPES.ANALYZE_DUPLICATES,
-          input: { importJobId: job.id },
-        });
+        await payload.jobs.queue({ task: JOB_TYPES.ANALYZE_DUPLICATES, input: { importJobId: job.id } });
         return { queued: true, jobType: JOB_TYPES.ANALYZE_DUPLICATES };
 
       case PROCESSING_STAGE.DETECT_SCHEMA:
-        await payload.jobs.queue({
-          task: JOB_TYPES.DETECT_SCHEMA,
-          input: { importJobId: job.id, batchNumber: 0 },
-        });
+        await payload.jobs.queue({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId: job.id, batchNumber: 0 } });
         return { queued: true, jobType: JOB_TYPES.DETECT_SCHEMA };
 
       case PROCESSING_STAGE.VALIDATE_SCHEMA:
-        await payload.jobs.queue({
-          task: JOB_TYPES.VALIDATE_SCHEMA,
-          input: { importJobId: job.id },
-        });
+        await payload.jobs.queue({ task: JOB_TYPES.VALIDATE_SCHEMA, input: { importJobId: job.id } });
         return { queued: true, jobType: JOB_TYPES.VALIDATE_SCHEMA };
 
       case PROCESSING_STAGE.AWAIT_APPROVAL:
@@ -180,24 +164,15 @@ export class StageTransitionService {
         return { queued: false };
 
       case PROCESSING_STAGE.CREATE_SCHEMA_VERSION:
-        await payload.jobs.queue({
-          task: JOB_TYPES.CREATE_SCHEMA_VERSION,
-          input: { importJobId: job.id },
-        });
+        await payload.jobs.queue({ task: JOB_TYPES.CREATE_SCHEMA_VERSION, input: { importJobId: job.id } });
         return { queued: true, jobType: JOB_TYPES.CREATE_SCHEMA_VERSION };
 
       case PROCESSING_STAGE.GEOCODE_BATCH:
-        await payload.jobs.queue({
-          task: JOB_TYPES.GEOCODE_BATCH,
-          input: { importJobId: job.id, batchNumber: 0 },
-        });
+        await payload.jobs.queue({ task: JOB_TYPES.GEOCODE_BATCH, input: { importJobId: job.id, batchNumber: 0 } });
         return { queued: true, jobType: JOB_TYPES.GEOCODE_BATCH };
 
       case PROCESSING_STAGE.CREATE_EVENTS:
-        await payload.jobs.queue({
-          task: JOB_TYPES.CREATE_EVENTS,
-          input: { importJobId: job.id, batchNumber: 0 },
-        });
+        await payload.jobs.queue({ task: JOB_TYPES.CREATE_EVENTS, input: { importJobId: job.id, batchNumber: 0 } });
         return { queued: true, jobType: JOB_TYPES.CREATE_EVENTS };
 
       case PROCESSING_STAGE.COMPLETED:
@@ -209,10 +184,7 @@ export class StageTransitionService {
         return { queued: false };
 
       default:
-        logger.warn("Unknown stage for job queuing", {
-          importJobId: job.id,
-          stage: job.stage,
-        });
+        logger.warn("Unknown stage for job queuing", { importJobId: job.id, stage: job.stage });
         return { queued: false };
     }
   }

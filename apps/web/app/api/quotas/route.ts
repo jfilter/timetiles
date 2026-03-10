@@ -103,10 +103,7 @@ export const GET = withRateLimit(
       // Add quota headers
       const headers = await quotaService.getQuotaHeaders(user);
 
-      return NextResponse.json(response, {
-        status: 200,
-        headers,
-      });
+      return NextResponse.json(response, { status: 200, headers });
     } catch (error) {
       return handleError(error);
     }

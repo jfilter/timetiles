@@ -142,13 +142,7 @@ const matchesCronDate = (
     dayOfMonth,
     month,
     dayOfWeek,
-  }: {
-    minute: string;
-    hour: string;
-    dayOfMonth: string;
-    month: string;
-    dayOfWeek: string;
-  }
+  }: { minute: string; hour: string; dayOfMonth: string; month: string; dayOfWeek: string }
 ): boolean => {
   if (!matchesCronPart(minute, date.getUTCMinutes())) {
     return false;
@@ -336,10 +330,7 @@ const processScheduledImport = async (
   await payload.update({
     collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
     id: scheduledImport.id,
-    data: {
-      lastStatus: "running",
-      lastRun: currentTime.toISOString(),
-    },
+    data: { lastStatus: "running", lastRun: currentTime.toISOString() },
   });
 
   // Queue the URL fetch job
@@ -368,12 +359,7 @@ const processScheduledImport = async (
 
   // Update statistics - only increment totalRuns at queue time.
   // successfulRuns/failedRuns are updated by the job handler on completion.
-  const stats = scheduledImport.statistics ?? {
-    totalRuns: 0,
-    successfulRuns: 0,
-    failedRuns: 0,
-    averageDuration: 0,
-  };
+  const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
   stats.totalRuns = (stats.totalRuns ?? 0) + 1;
 
   // Update the scheduled import record with next run time and statistics.
@@ -411,12 +397,7 @@ const handleImportError = async (payload: Payload, scheduledImport: ScheduledImp
   });
 
   try {
-    const stats = scheduledImport.statistics ?? {
-      totalRuns: 0,
-      successfulRuns: 0,
-      failedRuns: 0,
-      averageDuration: 0,
-    };
+    const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
     stats.totalRuns = (stats.totalRuns ?? 0) + 1;
     stats.failedRuns = (stats.failedRuns ?? 0) + 1;
 
@@ -449,11 +430,7 @@ export const scheduleManagerJob = {
       if (!(await isFeatureEnabled(payload, "enableScheduledJobExecution"))) {
         logger.info("Schedule manager job skipped - feature disabled", { jobId: job?.id });
         return {
-          output: {
-            success: true,
-            skipped: true,
-            reason: "Feature flag enableScheduledJobExecution is disabled",
-          },
+          output: { success: true, skipped: true, reason: "Feature flag enableScheduledJobExecution is disabled" },
         };
       }
 
@@ -464,11 +441,7 @@ export const scheduleManagerJob = {
       // Find all enabled scheduled imports
       const scheduledImports = await payload.find({
         collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
-        where: {
-          enabled: {
-            equals: true,
-          },
-        },
+        where: { enabled: { equals: true } },
         limit: 1000,
         pagination: false,
       });

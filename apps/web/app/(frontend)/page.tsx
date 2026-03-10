@@ -14,18 +14,9 @@ import { BlockRenderer } from "@/components/block-renderer";
 import config from "@/payload.config";
 
 export default async function Page() {
-  const payload = await getPayload({
-    config,
-  });
+  const payload = await getPayload({ config });
 
-  const pages = await payload.find({
-    collection: "pages",
-    where: {
-      slug: {
-        equals: "home",
-      },
-    },
-  });
+  const pages = await payload.find({ collection: "pages", where: { slug: { equals: "home" } } });
 
   if (!pages.docs.length) {
     notFound();

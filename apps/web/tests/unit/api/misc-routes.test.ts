@@ -25,16 +25,16 @@ vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
-vi.mock("@/lib/health", () => ({
-  runHealthChecks: mocks.mockRunHealthChecks,
-}));
+vi.mock("@/lib/health", () => ({ runHealthChecks: mocks.mockRunHealthChecks }));
 
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: vi.fn().mockReturnValue({
-    checkQuota: mocks.mockCheckQuota,
-    getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
-    getQuotaHeaders: mocks.mockGetQuotaHeaders,
-  }),
+  getQuotaService: vi
+    .fn()
+    .mockReturnValue({
+      checkQuota: mocks.mockCheckQuota,
+      getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
+      getQuotaHeaders: mocks.mockGetQuotaHeaders,
+    }),
 }));
 
 vi.mock("@/lib/constants/quota-constants", () => ({
@@ -48,9 +48,7 @@ vi.mock("@/lib/constants/quota-constants", () => ({
   },
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler }));
 
 vi.mock("@/lib/middleware/auth", () => ({
   withAuth: (handler: any) => async (req: any, ctx: any) => {
@@ -67,9 +65,7 @@ vi.mock("@/lib/middleware/auth", () => ({
 
 vi.mock("@/lib/services/rate-limit-service", () => ({
   getClientIdentifier: vi.fn().mockReturnValue("test-client"),
-  getRateLimitService: vi.fn().mockReturnValue({
-    checkConfiguredRateLimit: mocks.mockCheckRateLimit,
-  }),
+  getRateLimitService: vi.fn().mockReturnValue({ checkConfiguredRateLimit: mocks.mockCheckRateLimit }),
   RATE_LIMITS: {},
 }));
 
@@ -84,19 +80,13 @@ import { getQuotaService } from "@/lib/services/quota-service";
 const mockUser = { id: 1, email: "test@test.com", role: "user" };
 
 const createRequest = (url: string, method = "GET") =>
-  new Request(url, {
-    method,
-    headers: new Headers({ Authorization: "Bearer test" }),
-  });
+  new Request(url, { method, headers: new Headers({ Authorization: "Bearer test" }) });
 
 let mockPayload: any;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockPayload = {
-    auth: vi.fn().mockResolvedValue({ user: mockUser }),
-    find: vi.fn().mockResolvedValue({ docs: [] }),
-  };
+  mockPayload = { auth: vi.fn().mockResolvedValue({ user: mockUser }), find: vi.fn().mockResolvedValue({ docs: [] }) };
   mocks.mockGetPayload.mockResolvedValue(mockPayload);
 
   // Re-apply mocks that clearAllMocks wiped
@@ -204,11 +194,7 @@ describe.sequential("Wizard Catalogs Route", () => {
         { id: 11, name: "Dataset 2" },
       ],
     });
-    expect(body.catalogs[1]).toEqual({
-      id: 2,
-      name: "Catalog B",
-      datasets: [{ id: 12, name: "Dataset 3" }],
-    });
+    expect(body.catalogs[1]).toEqual({ id: 2, name: "Catalog B", datasets: [{ id: 12, name: "Dataset 3" }] });
   });
 
   it("returns empty catalogs array when user has none", async () => {
@@ -223,17 +209,13 @@ describe.sequential("Wizard Catalogs Route", () => {
   });
 
   it("handles dataset without catalog ID", async () => {
-    mockPayload.find
-      .mockResolvedValueOnce({
-        docs: [{ id: 1, name: "Catalog A" }],
-      })
-      .mockResolvedValueOnce({
-        docs: [
-          { id: 10, name: "Dataset 1", catalog: { id: 1 } },
-          { id: 11, name: "Orphan Dataset", catalog: null },
-          { id: 12, name: "String Catalog", catalog: "some-string" },
-        ],
-      });
+    mockPayload.find.mockResolvedValueOnce({ docs: [{ id: 1, name: "Catalog A" }] }).mockResolvedValueOnce({
+      docs: [
+        { id: 10, name: "Dataset 1", catalog: { id: 1 } },
+        { id: 11, name: "Orphan Dataset", catalog: null },
+        { id: 12, name: "String Catalog", catalog: "some-string" },
+      ],
+    });
 
     const request = createRequest("http://localhost/api/wizard/catalogs");
     const response = await (catalogsGET as any)(request, {});

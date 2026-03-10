@@ -70,11 +70,7 @@ describe("FileDropZone", () => {
 // UrlInputForm
 // ---------------------------------------------------------------------------
 describe("UrlInputForm", () => {
-  const defaultProps = {
-    initialUrl: "",
-    isLoading: false,
-    onFetch: vi.fn(),
-  };
+  const defaultProps = { initialUrl: "", isLoading: false, onFetch: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();

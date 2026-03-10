@@ -82,11 +82,7 @@ export const POST = withRateLimit(
           const userId = extractRelationId(importFile.user)!;
 
           // Get full user object for quota checking
-          const user = await payload.findByID({
-            collection: "users",
-            id: userId,
-            overrideAccess: true,
-          });
+          const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
           const quotaService = getQuotaService(payload);
           const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1);

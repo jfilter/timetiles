@@ -64,15 +64,9 @@ const footer = (
   </Footer>
 );
 
-const sidebarConfig = {
-  defaultMenuCollapseLevel: 2,
-  toggleButton: true,
-  defaultOpen: true,
-};
+const sidebarConfig = { defaultMenuCollapseLevel: 2, toggleButton: true, defaultOpen: true };
 
-const tocConfig = {
-  backToTop: true,
-};
+const tocConfig = { backToTop: true };
 
 const banner = (
   <Banner storageKey="development-disclaimer" dismissible>

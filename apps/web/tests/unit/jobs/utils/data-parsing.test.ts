@@ -186,11 +186,7 @@ Event 2,Description 2,2024-03-16`;
 
       const result = parseCSVFile(csvPath, mockLogger);
       expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({
-        title: "Event 1",
-        description: "Description 1",
-        date: "2024-03-15",
-      });
+      expect(result[0]).toMatchObject({ title: "Event 1", description: "Description 1", date: "2024-03-15" });
     });
 
     it("should handle empty CSV file", () => {
@@ -254,11 +250,7 @@ Event 1,Desc 1,2024-03-15`;
 
       const result = parseExcelFile(xlsxPath, mockLogger);
       expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({
-        title: "Event 1",
-        description: "Description 1",
-        date: "2024-03-15",
-      });
+      expect(result[0]).toMatchObject({ title: "Event 1", description: "Description 1", date: "2024-03-15" });
     });
 
     it("should handle missing headers", () => {
@@ -292,10 +284,7 @@ Event 1,2024-03-15`;
 
       const result = parseFileByType(csvPath, "csv", mockLogger);
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        title: "Event 1",
-        date: "2024-03-15",
-      });
+      expect(result[0]).toMatchObject({ title: "Event 1", date: "2024-03-15" });
     });
 
     it("should route to Excel parser", () => {
@@ -313,10 +302,7 @@ Event 1,2024-03-15`;
 
       const result = parseFileByType(xlsxPath, "xlsx", mockLogger);
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        title: "Event 1",
-        date: "2024-03-15",
-      });
+      expect(result[0]).toMatchObject({ title: "Event 1", date: "2024-03-15" });
     });
 
     it("should throw for unsupported type", () => {

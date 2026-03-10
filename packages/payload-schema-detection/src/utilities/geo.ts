@@ -78,10 +78,7 @@ export const detectPatterns = (
   fieldStats: Record<string, FieldStatistics>,
   config?: { enumThreshold?: number; enumMode?: "count" | "percentage" }
 ): PatternResult => {
-  return {
-    idFields: detectIdFields(fieldStats),
-    enumFields: detectEnumFields(fieldStats, config),
-  };
+  return { idFields: detectIdFields(fieldStats), enumFields: detectEnumFields(fieldStats, config) };
 };
 
 /**

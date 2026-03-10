@@ -33,11 +33,7 @@ export default buildConfigWithDefaults({
   databaseUrl: process.env.DATABASE_URL || "",
 
   // During build phase, use minimal pool to avoid connections
-  poolConfig: isBuildPhase
-    ? {
-        max: 0,
-      }
-    : undefined,
+  poolConfig: isBuildPhase ? { max: 0 } : undefined,
 
   // Always run migrations in production, skip in build phase
   runMigrations: process.env.NODE_ENV === "production" && !isBuildPhase,

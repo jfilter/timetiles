@@ -20,10 +20,7 @@ export interface EventStats {
   totalEvents: number;
   eventsWithLocation: number;
   eventsWithoutLocation: number;
-  dateRange: {
-    min: Date | null;
-    max: Date | null;
-  };
+  dateRange: { min: Date | null; max: Date | null };
   eventsByDataset: Record<string, number>;
   eventsByCatalog: Record<string, number>;
 }
@@ -34,10 +31,7 @@ export const useEventStats = (events: Event[]): EventStats =>
       totalEvents: events.length,
       eventsWithLocation: 0,
       eventsWithoutLocation: 0,
-      dateRange: {
-        min: null,
-        max: null,
-      },
+      dateRange: { min: null, max: null },
       eventsByDataset: {},
       eventsByCatalog: {},
     };
@@ -108,11 +102,7 @@ export const useEventsByDataset = (events: Event[], datasets: Dataset[]): BarCha
     return Array.from(eventCounts.entries())
       .map(([datasetId, count]) => {
         const dataset = datasetMap.get(datasetId);
-        return {
-          label: dataset?.name ?? `Dataset ${datasetId}`,
-          value: count,
-          metadata: { datasetId, dataset },
-        };
+        return { label: dataset?.name ?? `Dataset ${datasetId}`, value: count, metadata: { datasetId, dataset } };
       })
       .sort((a, b) => b.value - a.value);
   }, [events, datasets]);
@@ -134,11 +124,7 @@ export const useEventsByCatalog = (events: Event[], catalogs: Catalog[]): BarCha
     return Array.from(catalogCounts.entries())
       .map(([catalogId, count]) => {
         const catalog = catalogMap.get(catalogId);
-        return {
-          label: catalog?.name ?? `Catalog ${catalogId}`,
-          value: count,
-          metadata: { catalogId, catalog },
-        };
+        return { label: catalog?.name ?? `Catalog ${catalogId}`, value: count, metadata: { catalogId, catalog } };
       })
       .sort((a, b) => b.value - a.value);
   }, [events, catalogs]);

@@ -302,11 +302,7 @@ export const isTransformValid = (transform: ImportTransform): boolean => {
  * Create a new transform with default values
  */
 export const createTransform = (type: TransformType): ImportTransform => {
-  const base = {
-    id: crypto.randomUUID(),
-    active: true,
-    autoDetected: false,
-  };
+  const base = { id: crypto.randomUUID(), active: true, autoDetected: false };
 
   switch (type) {
     case "rename":

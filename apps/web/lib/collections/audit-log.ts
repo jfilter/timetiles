@@ -50,49 +50,31 @@ const AuditLog: CollectionConfig = {
       type: "number",
       required: true,
       index: true,
-      admin: {
-        description: "The ID of the user this action pertains to",
-        readOnly: true,
-      },
+      admin: { description: "The ID of the user this action pertains to", readOnly: true },
     },
     {
       name: "userEmailHash",
       type: "text",
       required: true,
-      admin: {
-        description: "SHA-256 hash of the user's email at the time of the action",
-        readOnly: true,
-      },
+      admin: { description: "SHA-256 hash of the user's email at the time of the action", readOnly: true },
     },
     {
       name: "performedBy",
       type: "relationship",
       relationTo: "users",
-      admin: {
-        description: "Admin who initiated the action (null for self-initiated actions)",
-        readOnly: true,
-      },
+      admin: { description: "Admin who initiated the action (null for self-initiated actions)", readOnly: true },
     },
     {
       name: "timestamp",
       type: "date",
       required: true,
       index: true,
-      admin: {
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
-        description: "When the action occurred",
-        readOnly: true,
-      },
+      admin: { date: { pickerAppearance: "dayAndTime" }, description: "When the action occurred", readOnly: true },
     },
     {
       name: "ipAddress",
       type: "text",
-      admin: {
-        description: "Raw client IP address (cleared after 30 days by background job)",
-        readOnly: true,
-      },
+      admin: { description: "Raw client IP address (cleared after 30 days by background job)", readOnly: true },
     },
     {
       name: "ipAddressHash",
@@ -102,14 +84,7 @@ const AuditLog: CollectionConfig = {
         readOnly: true,
       },
     },
-    {
-      name: "details",
-      type: "json",
-      admin: {
-        description: "Action-specific structured data",
-        readOnly: true,
-      },
-    },
+    { name: "details", type: "json", admin: { description: "Action-specific structured data", readOnly: true } },
   ],
 };
 

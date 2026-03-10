@@ -53,13 +53,7 @@ const isMappingComplete = (mapping: FieldMapping | undefined): boolean => {
 /**
  * Confidence badge component showing auto-detection confidence level.
  */
-const ConfidenceBadge = ({
-  level,
-  className,
-}: Readonly<{
-  level: ConfidenceLevel;
-  className?: string;
-}>) => {
+const ConfidenceBadge = ({ level, className }: Readonly<{ level: ConfidenceLevel; className?: string }>) => {
   if (level === "none") return null;
 
   const styles = {
@@ -68,11 +62,7 @@ const ConfidenceBadge = ({
     low: "bg-muted text-muted-foreground",
   };
 
-  const labels = {
-    high: "Auto-detected",
-    medium: "Suggested",
-    low: "Best guess",
-  };
+  const labels = { high: "Auto-detected", medium: "Suggested", low: "Best guess" };
 
   return (
     <span
@@ -94,9 +84,7 @@ const ConfidenceBadge = ({
  */
 const LanguageDetectionBanner = ({
   suggestedMappings,
-}: Readonly<{
-  suggestedMappings: SuggestedMappings | undefined;
-}>) => {
+}: Readonly<{ suggestedMappings: SuggestedMappings | undefined }>) => {
   if (!suggestedMappings?.language) return null;
 
   const { language } = suggestedMappings;
@@ -362,9 +350,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   // Configure navigation for this step
   useEffect(() => {
-    setNavigationConfig({
-      onNext: () => nextStep(),
-    });
+    setNavigationConfig({ onNext: () => nextStep() });
     return () => setNavigationConfig({});
   }, [setNavigationConfig, nextStep]);
 

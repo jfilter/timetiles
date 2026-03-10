@@ -11,9 +11,7 @@
 
 const mockUseQuery = vi.hoisted(() => vi.fn());
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: mockUseQuery,
-}));
+vi.mock("@tanstack/react-query", () => ({ useQuery: mockUseQuery }));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,11 +23,7 @@ describe("useFeatureEnabled", () => {
   });
 
   it("should default to disabled (false) when data is loading", () => {
-    mockUseQuery.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-    });
+    mockUseQuery.mockReturnValue({ data: undefined, isLoading: true, error: null });
 
     const result = useFeatureEnabled("allowPrivateImports");
 
@@ -38,11 +32,7 @@ describe("useFeatureEnabled", () => {
   });
 
   it("should default to disabled (false) on error", () => {
-    mockUseQuery.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: new Error("Failed to fetch"),
-    });
+    mockUseQuery.mockReturnValue({ data: undefined, isLoading: false, error: new Error("Failed to fetch") });
 
     const result = useFeatureEnabled("allowPrivateImports");
 
@@ -51,11 +41,7 @@ describe("useFeatureEnabled", () => {
   });
 
   it("should return true for explicitly enabled flags", () => {
-    mockUseQuery.mockReturnValue({
-      data: { allowPrivateImports: true },
-      isLoading: false,
-      error: null,
-    });
+    mockUseQuery.mockReturnValue({ data: { allowPrivateImports: true }, isLoading: false, error: null });
 
     const result = useFeatureEnabled("allowPrivateImports");
 
@@ -63,11 +49,7 @@ describe("useFeatureEnabled", () => {
   });
 
   it("should return false for explicitly disabled flags", () => {
-    mockUseQuery.mockReturnValue({
-      data: { allowPrivateImports: false },
-      isLoading: false,
-      error: null,
-    });
+    mockUseQuery.mockReturnValue({ data: { allowPrivateImports: false }, isLoading: false, error: null });
 
     const result = useFeatureEnabled("allowPrivateImports");
 
@@ -76,11 +58,7 @@ describe("useFeatureEnabled", () => {
 
   it("should return isLoading and error from the underlying query", () => {
     const testError = new Error("network failure");
-    mockUseQuery.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: testError,
-    });
+    mockUseQuery.mockReturnValue({ data: undefined, isLoading: false, error: testError });
 
     const result = useFeatureEnabled("enableScheduledImports");
 

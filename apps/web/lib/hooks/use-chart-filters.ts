@@ -76,9 +76,5 @@ export const useChartFilters = (): ChartFilterHandlers => {
     [setCatalog]
   );
 
-  return {
-    handleDateClick,
-    handleDatasetClick,
-    handleCatalogClick,
-  };
+  return { handleDateClick, handleDatasetClick, handleCatalogClick };
 };

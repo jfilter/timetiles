@@ -17,10 +17,7 @@ const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
     city: "Berlin",
     country: "Germany",
   },
-  location: {
-    longitude: 13.405,
-    latitude: 52.52,
-  },
+  location: { longitude: 13.405, latitude: 52.52 },
   eventTimestamp: "2024-06-15T10:00:00Z",
   dataset: 1,
   createdAt: "2024-01-01T00:00:00Z",
@@ -107,14 +104,7 @@ describe("EventsList", () => {
 
   test("extracts location from various field patterns", () => {
     const events = [
-      createMockEvent({
-        id: 1,
-        data: {
-          title: "Event with city/country",
-          city: "Paris",
-          country: "France",
-        },
-      }),
+      createMockEvent({ id: 1, data: { title: "Event with city/country", city: "Paris", country: "France" } }),
       createMockEvent({
         id: 2,
         data: {
@@ -124,12 +114,7 @@ describe("EventsList", () => {
       }),
       createMockEvent({
         id: 3,
-        data: {
-          title: "Event with venue",
-          venue: "Madison Square Garden",
-          city: "New York",
-          country: "USA",
-        },
+        data: { title: "Event with venue", venue: "Madison Square Garden", city: "New York", country: "USA" },
         geocodingInfo: {
           normalizedAddress: "4 Pennsylvania Plaza, New York, NY 10001, USA",
           confidence: 0.95,
@@ -157,12 +142,7 @@ describe("EventsList", () => {
         data: {
           event: {
             name: "Nested Event Name", // Nested structure
-            details: {
-              location: {
-                city: "Barcelona",
-                country: "Spain",
-              },
-            },
+            details: { location: { city: "Barcelona", country: "Spain" } },
           },
           // Also flat fields for comparison
           title: "Flat Title",
@@ -181,21 +161,9 @@ describe("EventsList", () => {
 
   test("sorts events chronologically when eventTimestamp is available", () => {
     const events = [
-      createMockEvent({
-        id: 1,
-        data: { title: "Later Event" },
-        eventTimestamp: "2024-06-20T10:00:00Z",
-      }),
-      createMockEvent({
-        id: 2,
-        data: { title: "Earlier Event" },
-        eventTimestamp: "2024-06-10T10:00:00Z",
-      }),
-      createMockEvent({
-        id: 3,
-        data: { title: "No Timestamp Event" },
-        eventTimestamp: null,
-      }),
+      createMockEvent({ id: 1, data: { title: "Later Event" }, eventTimestamp: "2024-06-20T10:00:00Z" }),
+      createMockEvent({ id: 2, data: { title: "Earlier Event" }, eventTimestamp: "2024-06-10T10:00:00Z" }),
+      createMockEvent({ id: 3, data: { title: "No Timestamp Event" }, eventTimestamp: null }),
     ];
 
     renderWithProviders(<EventsList events={events} />);
@@ -208,13 +176,7 @@ describe("EventsList", () => {
 
   test("handles large numbers of events efficiently", () => {
     const manyEvents = Array.from({ length: 10 }, (_, i) =>
-      createMockEvent({
-        id: i + 1,
-        data: {
-          title: `Event ${i + 1}`,
-          description: `Description for event ${i + 1}`,
-        },
-      })
+      createMockEvent({ id: i + 1, data: { title: `Event ${i + 1}`, description: `Description for event ${i + 1}` } })
     );
 
     const { container } = renderWithProviders(<EventsList events={manyEvents} />);

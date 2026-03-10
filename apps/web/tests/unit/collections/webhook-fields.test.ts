@@ -16,9 +16,7 @@ type WebhookData = {
 };
 
 // Mock the crypto module
-vi.mock("crypto", () => ({
-  randomBytes: vi.fn(),
-}));
+vi.mock("crypto", () => ({ randomBytes: vi.fn() }));
 
 describe("Webhook Field Management", () => {
   const mockRandomBytes = randomBytes as unknown as ReturnType<typeof vi.fn>;
@@ -39,19 +37,11 @@ describe("Webhook Field Management", () => {
   describe("Token Generation", () => {
     it("should generate token when webhook is enabled for the first time", () => {
       const mockToken = "b".repeat(64);
-      mockRandomBytes.mockImplementationOnce(() => ({
-        toString: () => mockToken,
-      }));
+      mockRandomBytes.mockImplementationOnce(() => ({ toString: () => mockToken }));
 
-      const data = {
-        webhookEnabled: true,
-        webhookToken: undefined,
-      };
+      const data = { webhookEnabled: true, webhookToken: undefined };
 
-      const originalDoc = {
-        webhookEnabled: false,
-        webhookToken: undefined,
-      };
+      const originalDoc = { webhookEnabled: false, webhookToken: undefined };
 
       // Simulate beforeChange hook logic
       const result = simulateWebhookBeforeChange(data, originalDoc);
@@ -62,15 +52,9 @@ describe("Webhook Field Management", () => {
 
     it("should not generate token when webhook is already enabled with token", () => {
       const existingToken = "existing_token_123";
-      const data = {
-        webhookEnabled: true,
-        webhookToken: existingToken,
-      };
+      const data = { webhookEnabled: true, webhookToken: existingToken };
 
-      const originalDoc = {
-        webhookEnabled: true,
-        webhookToken: existingToken,
-      };
+      const originalDoc = { webhookEnabled: true, webhookToken: existingToken };
 
       const result = simulateWebhookBeforeChange(data, originalDoc);
 
@@ -81,19 +65,11 @@ describe("Webhook Field Management", () => {
 
     it("should regenerate token when webhook is re-enabled", () => {
       const newToken = "c".repeat(64);
-      mockRandomBytes.mockImplementationOnce(() => ({
-        toString: () => newToken,
-      }));
+      mockRandomBytes.mockImplementationOnce(() => ({ toString: () => newToken }));
 
-      const data = {
-        webhookEnabled: true,
-        webhookToken: undefined,
-      };
+      const data = { webhookEnabled: true, webhookToken: undefined };
 
-      const originalDoc = {
-        webhookEnabled: false,
-        webhookToken: "old_token_123",
-      };
+      const originalDoc = { webhookEnabled: false, webhookToken: "old_token_123" };
 
       const result = simulateWebhookBeforeChange(data, originalDoc);
 
@@ -103,15 +79,9 @@ describe("Webhook Field Management", () => {
     });
 
     it("should clear token when webhook is disabled", () => {
-      const data = {
-        webhookEnabled: false,
-        webhookToken: "existing_token",
-      };
+      const data = { webhookEnabled: false, webhookToken: "existing_token" };
 
-      const originalDoc = {
-        webhookEnabled: true,
-        webhookToken: "existing_token",
-      };
+      const originalDoc = { webhookEnabled: true, webhookToken: "existing_token" };
 
       const result = simulateWebhookBeforeChange(data, originalDoc);
 
@@ -121,14 +91,9 @@ describe("Webhook Field Management", () => {
 
     it("should handle enabling webhook without original document (new record)", () => {
       const newToken = "d".repeat(64);
-      mockRandomBytes.mockImplementationOnce(() => ({
-        toString: () => newToken,
-      }));
+      mockRandomBytes.mockImplementationOnce(() => ({ toString: () => newToken }));
 
-      const data = {
-        webhookEnabled: true,
-        webhookToken: undefined,
-      };
+      const data = { webhookEnabled: true, webhookToken: undefined };
 
       const result = simulateWebhookBeforeChange(data, undefined);
 
@@ -146,10 +111,7 @@ describe("Webhook Field Management", () => {
 
     it("should generate correct webhook URL with token", () => {
       const token = "test_token_123";
-      const data = {
-        webhookEnabled: true,
-        webhookToken: token,
-      };
+      const data = { webhookEnabled: true, webhookToken: token };
 
       const url = generateWebhookUrl(data);
 
@@ -157,10 +119,7 @@ describe("Webhook Field Management", () => {
     });
 
     it("should not generate webhook URL when disabled", () => {
-      const data = {
-        webhookEnabled: false,
-        webhookToken: "test_token_123",
-      };
+      const data = { webhookEnabled: false, webhookToken: "test_token_123" };
 
       const url = generateWebhookUrl(data);
 
@@ -168,10 +127,7 @@ describe("Webhook Field Management", () => {
     });
 
     it("should not generate webhook URL when token is missing", () => {
-      const data = {
-        webhookEnabled: true,
-        webhookToken: undefined,
-      };
+      const data = { webhookEnabled: true, webhookToken: undefined };
 
       const url = generateWebhookUrl(data);
 
@@ -182,10 +138,7 @@ describe("Webhook Field Management", () => {
       delete process.env.NEXT_PUBLIC_PAYLOAD_URL;
 
       const token = "test_token_123";
-      const data = {
-        webhookEnabled: true,
-        webhookToken: token,
-      };
+      const data = { webhookEnabled: true, webhookToken: token };
 
       const url = generateWebhookUrl(data);
 
@@ -195,10 +148,7 @@ describe("Webhook Field Management", () => {
 
   describe("Token Security", () => {
     it("should generate cryptographically secure tokens", () => {
-      const data = {
-        webhookEnabled: true,
-        webhookToken: undefined,
-      };
+      const data = { webhookEnabled: true, webhookToken: undefined };
 
       const result = simulateWebhookBeforeChange(data, undefined);
 
@@ -213,14 +163,9 @@ describe("Webhook Field Management", () => {
 
       // Mock different tokens for each call
       for (let i = 0; i < 10; i++) {
-        mockRandomBytes.mockImplementationOnce(() => ({
-          toString: () => `token_${i}`.padEnd(64, "0"),
-        }));
+        mockRandomBytes.mockImplementationOnce(() => ({ toString: () => `token_${i}`.padEnd(64, "0") }));
 
-        const data = {
-          webhookEnabled: true,
-          webhookToken: undefined,
-        };
+        const data = { webhookEnabled: true, webhookToken: undefined };
 
         const result = simulateWebhookBeforeChange(data, undefined);
         if (result.webhookToken) {
@@ -235,20 +180,11 @@ describe("Webhook Field Management", () => {
 
   describe("Field Visibility", () => {
     it("should show webhook URL field only when enabled with token", () => {
-      const dataWithToken = {
-        webhookEnabled: true,
-        webhookToken: "test_token",
-      };
+      const dataWithToken = { webhookEnabled: true, webhookToken: "test_token" };
 
-      const dataWithoutToken = {
-        webhookEnabled: true,
-        webhookToken: undefined,
-      };
+      const dataWithoutToken = { webhookEnabled: true, webhookToken: undefined };
 
-      const dataDisabled = {
-        webhookEnabled: false,
-        webhookToken: "test_token",
-      };
+      const dataDisabled = { webhookEnabled: false, webhookToken: "test_token" };
 
       expect(shouldShowWebhookUrl(dataWithToken)).toBe(true);
       expect(shouldShowWebhookUrl(dataWithoutToken)).toBe(false);
@@ -256,14 +192,7 @@ describe("Webhook Field Management", () => {
     });
 
     it("should hide webhook token field from UI", () => {
-      const webhookTokenFieldConfig = {
-        name: "webhookToken",
-        type: "text",
-        maxLength: 64,
-        admin: {
-          hidden: true,
-        },
-      };
+      const webhookTokenFieldConfig = { name: "webhookToken", type: "text", maxLength: 64, admin: { hidden: true } };
 
       expect(webhookTokenFieldConfig.admin.hidden).toBe(true);
     });
@@ -282,11 +211,7 @@ describe("Webhook Field Management", () => {
         // webhookEnabled not included in update
       };
 
-      const originalDoc = {
-        name: "Original Import",
-        webhookEnabled: true,
-        webhookToken: "existing_token",
-      };
+      const originalDoc = { name: "Original Import", webhookEnabled: true, webhookToken: "existing_token" };
 
       const result = simulateWebhookBeforeChange(data, originalDoc);
 
@@ -297,9 +222,7 @@ describe("Webhook Field Management", () => {
 
     it("should preserve other fields when updating webhook settings", () => {
       const newToken = "new_token_123".padEnd(64, "0");
-      mockRandomBytes.mockImplementationOnce(() => ({
-        toString: () => newToken,
-      }));
+      mockRandomBytes.mockImplementationOnce(() => ({ toString: () => newToken }));
 
       const data = {
         name: "Test Import",

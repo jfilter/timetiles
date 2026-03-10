@@ -145,59 +145,25 @@ const Users: CollectionConfig = {
     },
   },
   fields: [
-    {
-      name: "firstName",
-      type: "text",
-      maxLength: 100,
-    },
-    {
-      name: "lastName",
-      type: "text",
-      maxLength: 100,
-    },
+    { name: "firstName", type: "text", maxLength: 100 },
+    { name: "lastName", type: "text", maxLength: 100 },
     {
       name: "role",
       type: "select",
       options: [
-        {
-          label: "User",
-          value: "user",
-        },
-        {
-          label: "Admin",
-          value: "admin",
-        },
-        {
-          label: "Editor",
-          value: "editor",
-        },
+        { label: "User", value: "user" },
+        { label: "Admin", value: "admin" },
+        { label: "Editor", value: "editor" },
       ],
       defaultValue: "user",
-      access: {
-        update: ({ req: { user } }) => user?.role === "admin",
-      },
-      admin: {
-        position: "sidebar",
-      },
+      access: { update: ({ req: { user } }) => user?.role === "admin" },
+      admin: { position: "sidebar" },
     },
-    {
-      name: "isActive",
-      type: "checkbox",
-      defaultValue: true,
-      admin: {
-        position: "sidebar",
-      },
-    },
+    { name: "isActive", type: "checkbox", defaultValue: true, admin: { position: "sidebar" } },
     {
       name: "lastLoginAt",
       type: "date",
-      admin: {
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
-        position: "sidebar",
-        readOnly: true,
-      },
+      admin: { date: { pickerAppearance: "dayAndTime" }, position: "sidebar", readOnly: true },
     },
     {
       name: "registrationSource",
@@ -207,11 +173,7 @@ const Users: CollectionConfig = {
         { label: "Self-Registration", value: "self" },
       ],
       defaultValue: "admin",
-      admin: {
-        position: "sidebar",
-        readOnly: true,
-        description: "How this user account was created",
-      },
+      admin: { position: "sidebar", readOnly: true, description: "How this user account was created" },
     },
     // Permission and Quota Fields
     {
@@ -223,87 +185,62 @@ const Users: CollectionConfig = {
       })),
       defaultValue: String(TRUST_LEVELS.REGULAR),
       required: true,
-      admin: {
-        position: "sidebar",
-        description: "User trust level determines resource quotas and rate limits",
-      },
-      access: {
-        update: ({ req: { user } }) => user?.role === "admin",
-      },
+      admin: { position: "sidebar", description: "User trust level determines resource quotas and rate limits" },
+      access: { update: ({ req: { user } }) => user?.role === "admin" },
     },
     {
       name: "quotas",
       type: "group",
-      admin: {
-        description: "Resource quotas for this user (automatically set based on trust level)",
-      },
-      access: {
-        update: ({ req: { user } }) => user?.role === "admin",
-      },
+      admin: { description: "Resource quotas for this user (automatically set based on trust level)" },
+      access: { update: ({ req: { user } }) => user?.role === "admin" },
       fields: [
         {
           name: "maxActiveSchedules",
           type: "number",
           min: -1,
-          admin: {
-            description: "Maximum number of active scheduled imports (-1 for unlimited)",
-          },
+          admin: { description: "Maximum number of active scheduled imports (-1 for unlimited)" },
         },
         {
           name: "maxUrlFetchesPerDay",
           type: "number",
           min: -1,
-          admin: {
-            description: "Maximum URL fetches per day (-1 for unlimited)",
-          },
+          admin: { description: "Maximum URL fetches per day (-1 for unlimited)" },
         },
         {
           name: "maxFileUploadsPerDay",
           type: "number",
           min: -1,
-          admin: {
-            description: "Maximum file uploads per day (-1 for unlimited)",
-          },
+          admin: { description: "Maximum file uploads per day (-1 for unlimited)" },
         },
         {
           name: "maxEventsPerImport",
           type: "number",
           min: -1,
-          admin: {
-            description: "Maximum events per single import (-1 for unlimited)",
-          },
+          admin: { description: "Maximum events per single import (-1 for unlimited)" },
         },
         {
           name: "maxTotalEvents",
           type: "number",
           min: -1,
-          admin: {
-            description: "Maximum total events allowed (-1 for unlimited)",
-          },
+          admin: { description: "Maximum total events allowed (-1 for unlimited)" },
         },
         {
           name: "maxImportJobsPerDay",
           type: "number",
           min: -1,
-          admin: {
-            description: "Maximum import jobs per day (-1 for unlimited)",
-          },
+          admin: { description: "Maximum import jobs per day (-1 for unlimited)" },
         },
         {
           name: "maxFileSizeMB",
           type: "number",
           min: 1,
-          admin: {
-            description: "Maximum file size in MB for uploads",
-          },
+          admin: { description: "Maximum file size in MB for uploads" },
         },
         {
           name: "maxCatalogsPerUser",
           type: "number",
           min: -1,
-          admin: {
-            description: "Maximum number of catalogs per user (-1 for unlimited)",
-          },
+          admin: { description: "Maximum number of catalogs per user (-1 for unlimited)" },
         },
       ],
     },
@@ -316,9 +253,7 @@ const Users: CollectionConfig = {
         description: "Custom quota overrides (JSON format) - overrides trust level defaults",
         condition: ({ data }) => data?.role === "admin",
       },
-      access: {
-        update: ({ req: { user } }) => user?.role === "admin",
-      },
+      access: { update: ({ req: { user } }) => user?.role === "admin" },
     },
     // Account Deletion Fields
     {
@@ -330,18 +265,13 @@ const Users: CollectionConfig = {
         { label: "Deleted", value: "deleted" },
       ],
       defaultValue: "active",
-      admin: {
-        position: "sidebar",
-        description: "Account deletion status",
-      },
+      admin: { position: "sidebar", description: "Account deletion status" },
     },
     {
       name: "deletionRequestedAt",
       type: "date",
       admin: {
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
+        date: { pickerAppearance: "dayAndTime" },
         position: "sidebar",
         readOnly: true,
         description: "When the user requested account deletion",
@@ -351,9 +281,7 @@ const Users: CollectionConfig = {
       name: "deletionScheduledAt",
       type: "date",
       admin: {
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
+        date: { pickerAppearance: "dayAndTime" },
         position: "sidebar",
         readOnly: true,
         description: "When the account will be permanently deleted",
@@ -401,10 +329,7 @@ const Users: CollectionConfig = {
               }
             }
 
-            data.quotas = {
-              ...defaultQuotas,
-              ...filteredProvidedQuotas,
-            };
+            data.quotas = { ...defaultQuotas, ...filteredProvidedQuotas };
           }
         }
 
@@ -425,10 +350,7 @@ const Users: CollectionConfig = {
             }
           }
 
-          data.quotas = {
-            ...defaultQuotas,
-            ...filteredProvidedQuotas,
-          };
+          data.quotas = { ...defaultQuotas, ...filteredProvidedQuotas };
         }
 
         return data;
@@ -458,23 +380,14 @@ const Users: CollectionConfig = {
             {
               action: AUDIT_ACTIONS.TRUST_LEVEL_CHANGED,
               fieldPath: "trustLevel",
-              detailsFn: (oldVal, newVal) => ({
-                previousTrustLevel: oldVal,
-                newTrustLevel: newVal,
-              }),
+              detailsFn: (oldVal, newVal) => ({ previousTrustLevel: oldVal, newTrustLevel: newVal }),
             },
             {
               action: AUDIT_ACTIONS.ROLE_CHANGED,
               fieldPath: "role",
-              detailsFn: (oldVal, newVal) => ({
-                previousRole: oldVal,
-                newRole: newVal,
-              }),
+              detailsFn: (oldVal, newVal) => ({ previousRole: oldVal, newRole: newVal }),
             },
-            {
-              action: AUDIT_ACTIONS.CUSTOM_QUOTAS_CHANGED,
-              fieldPath: "customQuotas",
-            },
+            { action: AUDIT_ACTIONS.CUSTOM_QUOTAS_CHANGED, fieldPath: "customQuotas" },
           ]
         );
 

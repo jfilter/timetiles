@@ -15,13 +15,7 @@ import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter }
 describe("Store Helper Functions", () => {
   describe("getActiveFilterCount", () => {
     it("should return 0 for empty filters", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      };
+      const filters: FilterState = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
 
       expect(getActiveFilterCount(filters)).toBe(0);
     });
@@ -39,13 +33,7 @@ describe("Store Helper Functions", () => {
     });
 
     it("should not count empty string catalog", () => {
-      const filters: FilterState = {
-        catalog: "",
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      };
+      const filters: FilterState = { catalog: "", datasets: [], startDate: null, endDate: null, fieldFilters: {} };
 
       expect(getActiveFilterCount(filters)).toBe(0);
     });
@@ -99,13 +87,7 @@ describe("Store Helper Functions", () => {
     });
 
     it("should not count empty string dates", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: "",
-        endDate: "",
-        fieldFilters: {},
-      };
+      const filters: FilterState = { catalog: null, datasets: [], startDate: "", endDate: "", fieldFilters: {} };
 
       expect(getActiveFilterCount(filters)).toBe(0);
     });
@@ -152,25 +134,13 @@ describe("Store Helper Functions", () => {
 
   describe("hasActiveFilters", () => {
     it("should return false for empty filters", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      };
+      const filters: FilterState = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
 
       expect(hasActiveFilters(filters)).toBe(false);
     });
 
     it("should return false for empty string values", () => {
-      const filters: FilterState = {
-        catalog: "",
-        datasets: [],
-        startDate: "",
-        endDate: "",
-        fieldFilters: {},
-      };
+      const filters: FilterState = { catalog: "", datasets: [], startDate: "", endDate: "", fieldFilters: {} };
 
       expect(hasActiveFilters(filters)).toBe(false);
     });
@@ -607,13 +577,7 @@ describe("Store Helper Functions", () => {
     it("should return empty filter state", () => {
       const result = clearAllFilters();
 
-      expect(result).toEqual({
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      });
+      expect(result).toEqual({ catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} });
     });
 
     it("should always return same structure", () => {

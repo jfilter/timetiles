@@ -29,12 +29,7 @@ export interface GeocodingResult extends Pick<
 
 export interface BatchGeocodingResult {
   results: Map<string, GeocodingResult | GeocodingError>;
-  summary: {
-    total: number;
-    successful: number;
-    failed: number;
-    cached: number;
-  };
+  summary: { total: number; successful: number; failed: number; cached: number };
 }
 
 export class GeocodingError extends Error {
@@ -62,14 +57,8 @@ export const DEFAULT_NOMINATIM_RATE_LIMIT = 1;
 export interface GeocodingSettings {
   enabled: boolean;
   fallbackEnabled: boolean;
-  providerSelection: {
-    strategy: string;
-    requiredTags: string[];
-  };
-  caching: {
-    enabled: boolean;
-    ttlDays: number;
-  };
+  providerSelection: { strategy: string; requiredTags: string[] };
+  caching: { enabled: boolean; ttlDays: number };
 }
 
 // Constants

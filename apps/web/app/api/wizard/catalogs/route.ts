@@ -76,10 +76,7 @@ export const GET = withAuth(async (req: AuthenticatedRequest) => {
       datasets: datasetsByCatalog.get(catalog.id) ?? [],
     }));
 
-    logger.info("Catalogs fetched for wizard", {
-      userId: user.id,
-      catalogCount: catalogs.length,
-    });
+    logger.info("Catalogs fetched for wizard", { userId: user.id, catalogCount: catalogs.length });
 
     return NextResponse.json({ catalogs });
   } catch (error) {

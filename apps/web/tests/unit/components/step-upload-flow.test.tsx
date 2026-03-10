@@ -75,12 +75,7 @@ const apiSuccess = {
   previewId: "preview-abc123",
 };
 
-const urlApiSuccess = {
-  ...apiSuccess,
-  fileName: "remote-data.csv",
-  contentLength: 2048,
-  contentType: "text/csv",
-};
+const urlApiSuccess = { ...apiSuccess, fileName: "remote-data.csv", contentLength: 2048, contentType: "text/csv" };
 
 // ---------------------------------------------------------------------------
 // Setup / Teardown
@@ -196,9 +191,7 @@ describe.sequential("StepUpload", () => {
       const dropZone = dropText.closest("div")!;
 
       await act(async () => {
-        fireEvent.drop(dropZone, {
-          dataTransfer: { files: [createFile()] },
-        });
+        fireEvent.drop(dropZone, { dataTransfer: { files: [createFile()] } });
       });
 
       await waitFor(() => {
@@ -381,11 +374,7 @@ describe.sequential("StepUpload", () => {
         renderWithProviders(<StepUpload />);
       });
 
-      expect(mockSetNavigationConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          onNext: expect.any(Function),
-        })
-      );
+      expect(mockSetNavigationConfig).toHaveBeenCalledWith(expect.objectContaining({ onNext: expect.any(Function) }));
     });
 
     test("clears navigation config on unmount", async () => {

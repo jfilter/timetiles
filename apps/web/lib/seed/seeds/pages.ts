@@ -25,16 +25,8 @@ export const pagesSeed: PageSeed[] = [
           "TimeTiles lets you map, filter, and discover patterns in your geodata, making it easy to turn raw location data into actionable insights.",
         background: "grid",
         buttons: [
-          {
-            text: "Get Started",
-            link: "/explore",
-            variant: "default",
-          },
-          {
-            text: "Learn More",
-            link: "/about",
-            variant: "outline",
-          },
+          { text: "Get Started", link: "/explore", variant: "default" },
+          { text: "Learn More", link: "/about", variant: "outline" },
         ],
       },
       {
@@ -69,21 +61,9 @@ export const pagesSeed: PageSeed[] = [
       {
         blockType: "stats",
         stats: [
-          {
-            value: "10,000+",
-            label: "Events Mapped",
-            icon: "map",
-          },
-          {
-            value: "500+",
-            label: "Datasets Imported",
-            icon: "timeline",
-          },
-          {
-            value: "100%",
-            label: "Open Source",
-            icon: "github",
-          },
+          { value: "10,000+", label: "Events Mapped", icon: "map" },
+          { value: "500+", label: "Datasets Imported", icon: "timeline" },
+          { value: "100%", label: "Open Source", icon: "github" },
         ],
       },
       {
@@ -277,12 +257,7 @@ export const pagesSeed: PageSeed[] = [
             value: "Community chat, ideas, and general questions",
             link: "https://github.com/jfilter/timetiles/discussions",
           },
-          {
-            icon: "email",
-            label: "Email",
-            value: "hello@timetiles.io",
-            link: "mailto:hello@timetiles.io",
-          },
+          { icon: "email", label: "Email", value: "hello@timetiles.io", link: "mailto:hello@timetiles.io" },
         ],
       },
       {

@@ -147,12 +147,8 @@ export const DEFAULT_DB_CONFIG = {
   schemaName: "payload",
   migrationDir: "./migrations",
   prodMigrations: migrations,
-  transactionOptions: {
-    isolationLevel: "read committed" as const,
-  },
+  transactionOptions: { isolationLevel: "read committed" as const },
 };
 
 // TypeScript configuration
-export const DEFAULT_TYPESCRIPT_CONFIG = {
-  outputFile: "./payload-types.ts",
-};
+export const DEFAULT_TYPESCRIPT_CONFIG = { outputFile: "./payload-types.ts" };

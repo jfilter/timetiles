@@ -168,10 +168,7 @@ const getOrCreateDefaultImportUser = async (testEnv: TestEnvironment): Promise<a
 
   if (cachedUser) {
     try {
-      return await testEnv.payload.findByID({
-        collection: "users",
-        id: cachedUser.id,
-      });
+      return await testEnv.payload.findByID({ collection: "users", id: cachedUser.id });
     } catch {
       // User was likely removed by a test reset. Fall through and recreate it.
     }
@@ -183,9 +180,7 @@ const getOrCreateDefaultImportUser = async (testEnv: TestEnvironment): Promise<a
     role: "user",
   });
 
-  defaultImportUserCache.set(cacheKey, {
-    id: user.id,
-  });
+  defaultImportUserCache.set(cacheKey, { id: user.id });
 
   return user;
 };
@@ -203,11 +198,7 @@ export class TestEnvironmentBuilder {
       return { environment: await sharedWorkerEnvironmentPromise, created: false };
     }
 
-    logger.info("Creating shared worker test environment", {
-      dbName,
-      workerId,
-      collections: collections.length,
-    });
+    logger.info("Creating shared worker test environment", { dbName, workerId, collections: collections.length });
 
     const loadEnvironment = async (): Promise<SharedWorkerEnvironment> => {
       // The global setup already clones a worker database. This remains as a fallback
@@ -268,9 +259,7 @@ export class TestEnvironmentBuilder {
   }
 
   private static async resetSharedWorkerDatabase(environment: SharedWorkerEnvironment): Promise<void> {
-    logger.info("Resetting shared worker database", {
-      dbName: environment.dbName,
-    });
+    logger.info("Resetting shared worker database", { dbName: environment.dbName });
     await environment.seedManager.truncate();
   }
 
@@ -284,10 +273,7 @@ export class TestEnvironmentBuilder {
       resetDatabase = true,
     } = options;
 
-    logger.info("Creating test environment", {
-      collections,
-      resetDatabase,
-    });
+    logger.info("Creating test environment", { collections, resetDatabase });
 
     // Generate unique identifiers for temp directories only
     const testId = randomUUID();
@@ -308,11 +294,7 @@ export class TestEnvironmentBuilder {
     const dbUrl = process.env.DATABASE_URL ?? getTestDatabaseUrl();
     const dbName = parseDatabaseUrl(dbUrl).database;
 
-    logger.debug("Initializing test database", {
-      workerId,
-      dbName,
-      collections: collections.length,
-    });
+    logger.debug("Initializing test database", { workerId, dbName, collections: collections.length });
 
     // Upload directory is already configured in global-setup.ts
     // Just ensure it exists for this test run
@@ -353,10 +335,7 @@ export class TestEnvironmentBuilder {
     // Track active environment for cleanup
     TestEnvironmentBuilder.activeEnvironments.add(testEnv);
 
-    logger.info("Test environment created successfully", {
-      workerId,
-      tempDir: tempDir ? "created" : "none",
-    });
+    logger.info("Test environment created successfully", { workerId, tempDir: tempDir ? "created" : "none" });
 
     return testEnv;
   }
@@ -432,14 +411,9 @@ export class TestEnvironmentBuilder {
       // 2. Truncating here with active Payload connections causes deadlocks
       // 3. Suites that need a clean slate either reset on create or truncate in beforeEach
 
-      logger.debug("Test environment cleanup completed", {
-        dbName: testEnv.dbName,
-      });
+      logger.debug("Test environment cleanup completed", { dbName: testEnv.dbName });
     } catch (error) {
-      logger.warn("Error during test environment cleanup", {
-        error: (error as any).message,
-        dbName: testEnv.dbName,
-      });
+      logger.warn("Error during test environment cleanup", { error: (error as any).message, dbName: testEnv.dbName });
     }
   }
 }
@@ -507,18 +481,11 @@ export const runJobsUntilImportSettled = async (
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     await payload.jobs.run({ allQueues: true, limit: queueLimit });
 
-    importFile = await payload.findByID({
-      collection: "import-files",
-      id: importFileId,
-    });
+    importFile = await payload.findByID({ collection: "import-files", id: importFileId });
 
     const settled = importFile.status === "completed" || importFile.status === "failed";
     if (settled) {
-      return {
-        settled: true,
-        iterations: iteration,
-        importFile,
-      };
+      return { settled: true, iterations: iteration, importFile };
     }
 
     if (onPending) {
@@ -528,11 +495,7 @@ export const runJobsUntilImportSettled = async (
     await wait(delayMs);
   }
 
-  return {
-    settled: false,
-    iterations: maxIterations,
-    importFile,
-  };
+  return { settled: false, iterations: maxIterations, importFile };
 };
 
 export const runJobsUntilImportJobStage = async (
@@ -556,11 +519,7 @@ export const runJobsUntilImportJobStage = async (
 
     importJob = importJobs.docs[0] ?? null;
     if (importJob && isDone(importJob)) {
-      return {
-        matched: true,
-        iterations: iteration,
-        importJob,
-      };
+      return { matched: true, iterations: iteration, importJob };
     }
 
     if (onPending) {
@@ -570,11 +529,7 @@ export const runJobsUntilImportJobStage = async (
     await wait(delayMs);
   }
 
-  return {
-    matched: false,
-    iterations: maxIterations,
-    importJob,
-  };
+  return { matched: false, iterations: maxIterations, importJob };
 };
 
 export const runJobsUntilImportJobExists = async (
@@ -596,13 +551,7 @@ export const runJobsUntilImportJobExists = async (
  */
 export const withCatalog = async (
   testEnv: TestEnvironment,
-  options: {
-    name?: string;
-    slug?: string;
-    description?: string;
-    isPublic?: boolean;
-    user: any;
-  }
+  options: { name?: string; slug?: string; description?: string; isPublic?: boolean; user: any }
 ): Promise<TestEnvironment & { catalog: any }> => {
   const timestamp = Date.now();
   const randomSuffix = Math.random().toString(36).substring(2, 8);
@@ -649,10 +598,7 @@ export const withDataset = async (
     };
     currentSchema?: any;
     isPublic?: boolean;
-    idStrategy?: {
-      type?: string;
-      duplicateStrategy?: string;
-    };
+    idStrategy?: { type?: string; duplicateStrategy?: string };
     description?: any;
     importTransforms?: any[];
   }
@@ -666,10 +612,7 @@ export const withDataset = async (
       slug: options?.slug ?? `test-dataset-${timestamp}`,
       catalog: catalogId as number,
       language: options?.language ?? "eng",
-      schemaConfig: options?.schemaConfig ?? {
-        locked: false,
-        autoGrow: true,
-      },
+      schemaConfig: options?.schemaConfig ?? { locked: false, autoGrow: true },
       isPublic: options?.isPublic ?? false,
       idStrategy: options?.idStrategy as any,
       description: options?.description,
@@ -844,12 +787,7 @@ const generateFieldMetadata = (schemaProperties: Record<string, any>, newFields:
 const addApprovalFields = (
   data: Record<string, any>,
   status: "draft" | "published",
-  options: {
-    approvalRequired?: boolean;
-    autoApproved?: boolean;
-    approvedBy?: string | number;
-    approvalNotes?: string;
-  }
+  options: { approvalRequired?: boolean; autoApproved?: boolean; approvedBy?: string | number; approvalNotes?: string }
 ) => {
   if (status === "draft") {
     data.approvalRequired = options.approvalRequired ?? true;
@@ -902,11 +840,7 @@ export const withSchemaVersion = async (
     dataset: datasetId,
     versionNumber,
     _status: status,
-    schema: {
-      type: "object",
-      properties: schemaProperties,
-      required,
-    },
+    schema: { type: "object", properties: schemaProperties, required },
     fieldMetadata,
     schemaSummary: {
       totalFields: Object.keys(schemaProperties).length,
@@ -919,23 +853,14 @@ export const withSchemaVersion = async (
 
   // Add import source if provided
   if (options?.importJob !== undefined) {
-    data.importSources = [
-      {
-        import: options.importJob,
-        recordCount: 100,
-        batchCount: 1,
-      },
-    ];
+    data.importSources = [{ import: options.importJob, recordCount: 100, batchCount: 1 }];
   }
 
   // Add approval fields
   addApprovalFields(data, status, options ?? {});
 
   // @ts-expect-error -- data is dynamically constructed from test options
-  const schema = await testEnv.payload.create({
-    collection: "dataset-schemas",
-    data,
-  });
+  const schema = await testEnv.payload.create({ collection: "dataset-schemas", data });
 
   return { ...testEnv, schema };
 };
@@ -983,12 +908,7 @@ const createImportFileWithUpload = async (
     typeof fileContent === "string" ? new Uint8Array(Buffer.from(fileContent, "utf8")) : new Uint8Array(fileContent);
 
   // Create file object with Buffer data (Payload expects Buffer for file uploads)
-  const file = {
-    data: Buffer.from(fileBuffer),
-    mimetype: mimeType,
-    name: fileName,
-    size: fileBuffer.length,
-  };
+  const file = { data: Buffer.from(fileBuffer), mimetype: mimeType, name: fileName, size: fileBuffer.length };
 
   // Use Payload's Local API with file parameter
   // If user is provided, pass it to make req.user available in hooks
@@ -1045,9 +965,7 @@ export const withImportFile = async (
   }
 ): Promise<TestEnvironment & { importFile: any }> => {
   // Build data object dynamically based on provided options
-  const data: Record<string, any> = {
-    status: options?.status ?? "pending",
-  };
+  const data: Record<string, any> = { status: options?.status ?? "pending" };
 
   // Add catalog if provided
   if (catalogId !== null) {
@@ -1060,10 +978,7 @@ export const withImportFile = async (
     data.user = options.user;
     // Try to get the full user object for context
     try {
-      userContext = await testEnv.payload.findByID({
-        collection: "users",
-        id: options.user,
-      });
+      userContext = await testEnv.payload.findByID({ collection: "users", id: options.user });
     } catch {
       // User might not exist, just use ID
     }

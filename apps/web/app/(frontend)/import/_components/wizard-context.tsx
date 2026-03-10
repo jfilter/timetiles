@@ -217,16 +217,10 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         return { ...state, currentStep: action.step };
 
       case "NEXT_STEP":
-        return {
-          ...state,
-          currentStep: Math.min(state.currentStep + 1, 6) as WizardStep,
-        };
+        return { ...state, currentStep: Math.min(state.currentStep + 1, 6) as WizardStep };
 
       case "PREV_STEP":
-        return {
-          ...state,
-          currentStep: Math.max(state.currentStep - 1, 1) as WizardStep,
-        };
+        return { ...state, currentStep: Math.max(state.currentStep - 1, 1) as WizardStep };
 
       case "SET_AUTH":
         return {
@@ -284,17 +278,10 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
       }
 
       case "SET_SOURCE_URL":
-        return {
-          ...state,
-          sourceUrl: action.sourceUrl,
-          authConfig: action.authConfig ?? state.authConfig,
-        };
+        return { ...state, sourceUrl: action.sourceUrl, authConfig: action.authConfig ?? state.authConfig };
 
       case "SET_SCHEDULE_CONFIG":
-        return {
-          ...state,
-          scheduleConfig: action.scheduleConfig,
-        };
+        return { ...state, scheduleConfig: action.scheduleConfig };
 
       case "CLEAR_FILE":
         return {
@@ -321,11 +308,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         const index = mappings.findIndex((m) => m.sheetIndex === action.sheetIndex);
         const currentMapping = mappings[index];
         if (index >= 0 && currentMapping) {
-          mappings[index] = {
-            ...currentMapping,
-            ...action.mapping,
-            sheetIndex: currentMapping.sheetIndex,
-          };
+          mappings[index] = { ...currentMapping, ...action.mapping, sheetIndex: currentMapping.sheetIndex };
         }
         return { ...state, sheetMappings: mappings };
       }
@@ -338,11 +321,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         const index = mappings.findIndex((m) => m.sheetIndex === action.sheetIndex);
         const currentMapping = mappings[index];
         if (index >= 0 && currentMapping) {
-          mappings[index] = {
-            ...currentMapping,
-            ...action.mapping,
-            sheetIndex: currentMapping.sheetIndex,
-          };
+          mappings[index] = { ...currentMapping, ...action.mapping, sheetIndex: currentMapping.sheetIndex };
         }
         return { ...state, fieldMappings: mappings };
       }
@@ -367,11 +346,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         };
 
       case "SET_ERROR":
-        return {
-          ...state,
-          error: action.error,
-          isProcessing: false,
-        };
+        return { ...state, error: action.error, isProcessing: false };
 
       case "COMPLETE":
         return { ...initialState };
@@ -430,10 +405,7 @@ const WizardContext = createContext<WizardContextValue | null>(null);
 // Storage helpers
 const saveToStorage = (state: WizardState) => {
   try {
-    const data = {
-      state,
-      expiresAt: new Date(Date.now() + STORAGE_EXPIRY_HOURS * 60 * 60 * 1000).toISOString(),
-    };
+    const data = { state, expiresAt: new Date(Date.now() + STORAGE_EXPIRY_HOURS * 60 * 60 * 1000).toISOString() };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
     // Ignore storage errors
@@ -494,10 +466,7 @@ export interface NavigationConfig {
   showNext?: boolean;
 }
 
-const defaultNavigationConfig: NavigationConfig = {
-  showBack: true,
-  showNext: true,
-};
+const defaultNavigationConfig: NavigationConfig = { showBack: true, showNext: true };
 
 // Provider
 export interface WizardProviderProps {

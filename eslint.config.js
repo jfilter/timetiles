@@ -9,12 +9,7 @@ export default [
   {
     // Override the base tsconfigRootDir for root files
     files: ["**/*.ts", "**/*.tsx"],
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
   },
   {
     // Only lint specific files in root to avoid noise

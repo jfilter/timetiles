@@ -4,7 +4,7 @@
  * Unified Payload Generation Script.
  *
  * This script generates all Payload-related files (types and database schema)
- * and automatically formats them with Prettier to ensure consistent formatting
+ * and formats them with oxfmt to ensure consistent formatting
  * across all environments (local development and CI/CD).
  *
  * @module
@@ -39,45 +39,20 @@ const fixCircularReferences = (filePath: string) => {
   // Remove any existing @ts-nocheck (no longer needed with proper fix)
   content = content.replace(/\/\/ @ts-nocheck[^\n]*\n/g, "");
 
-  // Step 1: Collect table definition order
-  const tablePattern = /export const (\w+) = db_schema\.table\(/g;
-  const tableOrder: string[] = [];
-  let match;
-  while ((match = tablePattern.exec(content)) !== null) {
-    tableOrder.push(match[1]!);
-  }
-
-  // Step 2: For each .references(() => tableName.id, ...) call,
-  // check if tableName is defined AFTER the current position (forward reference).
-  // If so, annotate the arrow function with (): AnyPgColumn =>
+  // Annotate ALL .references() calls with AnyPgColumn for platform independence.
+  // Payload generates tables in different order on macOS vs Linux, so we can't
+  // reliably detect which references are "forward" references. Using AnyPgColumn
+  // on all references is harmless and ensures identical output across platforms.
+  const refPattern = /\.references\(\s*\(\) => (\w+)\.id/g;
   let needsImport = false;
-  const refPattern = /\.references\(\(\) => (\w+)\.id/g;
-  const fixedContent = content.replace(refPattern, (fullMatch, tableName, offset) => {
-    // Find which table this reference is inside of
-    let currentTable = "";
-    for (const table of tableOrder) {
-      const tableDefPos = content.indexOf(`export const ${table} = db_schema.table(`);
-      if (tableDefPos <= offset) {
-        currentTable = table;
-      }
-    }
-
-    // Find position of the referenced table
-    const refTablePos = content.indexOf(`export const ${tableName} = db_schema.table(`);
-    const currentTablePos = content.indexOf(`export const ${currentTable} = db_schema.table(`);
-
-    // If referenced table is defined after current table, it's a forward reference
-    if (refTablePos > currentTablePos) {
-      needsImport = true;
-      return `.references((): AnyPgColumn => ${tableName}.id`;
-    }
-    return fullMatch;
+  const fixedContent = content.replace(refPattern, (_fullMatch, tableName) => {
+    needsImport = true;
+    return `.references((): AnyPgColumn => ${tableName}.id`;
   });
 
-  // Step 3: Add AnyPgColumn import if needed
+  // Add AnyPgColumn import if needed
   let finalContent = fixedContent;
   if (needsImport && !finalContent.includes("import { type AnyPgColumn }")) {
-    // Add a separate type import after the existing pg-core import
     finalContent = finalContent.replace(
       /(from\s+["']@payloadcms\/db-postgres\/drizzle\/pg-core["'];?\n)/,
       `$1import { type AnyPgColumn } from "@payloadcms/db-postgres/drizzle/pg-core";\n`
@@ -108,6 +83,11 @@ const generate = () => {
 
     // Fix circular foreign key references in generated schema
     fixCircularReferences("payload-generated-schema.ts");
+
+    // Format generated files with oxfmt for consistent output across platforms
+    logger.info("🎨 Formatting generated files...");
+    execSync("pnpm exec oxfmt --write payload-types.ts payload-generated-schema.ts", { stdio: "pipe" });
+    logger.info("✓ Files formatted");
 
     logger.info("✅ Successfully generated all Payload files!");
     logger.info("Files updated: payload-types.ts, payload-generated-schema.ts");

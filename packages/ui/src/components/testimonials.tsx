@@ -28,9 +28,7 @@ const testimonialsVariants = cva("w-full", {
       masonry: "columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6",
     },
   },
-  defaultVariants: {
-    variant: "single",
-  },
+  defaultVariants: { variant: "single" },
 });
 
 /**

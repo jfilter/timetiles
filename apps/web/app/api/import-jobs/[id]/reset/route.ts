@@ -66,12 +66,7 @@ export const POST = withRateLimit(
 
         // Get the import job (admins have access to all jobs)
         const importJob = await payload
-          .findByID({
-            collection: "import-jobs",
-            id,
-            user: request.user,
-            overrideAccess: false,
-          })
+          .findByID({ collection: "import-jobs", id, user: request.user, overrideAccess: false })
           .catch(() => null);
 
         if (!importJob) {

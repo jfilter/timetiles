@@ -224,10 +224,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
         id: `transform-${transform.id}`,
         type: "transform",
         position,
-        data: {
-          transform,
-          isEditing: false,
-        } as TransformNodeData,
+        data: { transform, isEditing: false } as TransformNodeData,
       };
       setNodes((nds) => [...nds, newNode]);
     },

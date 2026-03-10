@@ -17,46 +17,22 @@ describe("Cron Parser Utilities", () => {
   describe("parseCronExpression", () => {
     it("should parse valid 5-part cron expression", () => {
       const result = parseCronExpression("0 12 * * 1");
-      expect(result).toEqual({
-        minute: "0",
-        hour: "12",
-        dayOfMonth: "*",
-        month: "*",
-        dayOfWeek: "1",
-      });
+      expect(result).toEqual({ minute: "0", hour: "12", dayOfMonth: "*", month: "*", dayOfWeek: "1" });
     });
 
     it("should handle wildcards", () => {
       const result = parseCronExpression("* * * * *");
-      expect(result).toEqual({
-        minute: "*",
-        hour: "*",
-        dayOfMonth: "*",
-        month: "*",
-        dayOfWeek: "*",
-      });
+      expect(result).toEqual({ minute: "*", hour: "*", dayOfMonth: "*", month: "*", dayOfWeek: "*" });
     });
 
     it("should handle extra whitespace", () => {
       const result = parseCronExpression("  0   12   *   *   1  ");
-      expect(result).toEqual({
-        minute: "0",
-        hour: "12",
-        dayOfMonth: "*",
-        month: "*",
-        dayOfWeek: "1",
-      });
+      expect(result).toEqual({ minute: "0", hour: "12", dayOfMonth: "*", month: "*", dayOfWeek: "1" });
     });
 
     it("should handle multiple spaces between parts", () => {
       const result = parseCronExpression("0    12    *    *    1");
-      expect(result).toEqual({
-        minute: "0",
-        hour: "12",
-        dayOfMonth: "*",
-        month: "*",
-        dayOfWeek: "1",
-      });
+      expect(result).toEqual({ minute: "0", hour: "12", dayOfMonth: "*", month: "*", dayOfWeek: "1" });
     });
 
     it("should throw error for less than 5 parts", () => {
@@ -75,13 +51,7 @@ describe("Cron Parser Utilities", () => {
 
     it("should handle numeric values", () => {
       const result = parseCronExpression("15 8 25 12 5");
-      expect(result).toEqual({
-        minute: "15",
-        hour: "8",
-        dayOfMonth: "25",
-        month: "12",
-        dayOfWeek: "5",
-      });
+      expect(result).toEqual({ minute: "15", hour: "8", dayOfMonth: "25", month: "12", dayOfWeek: "5" });
     });
   });
 

@@ -11,35 +11,24 @@ import type { GlobalConfig } from "payload";
 
 export const Footer: GlobalConfig = {
   slug: "footer",
-  admin: {
-    group: "Content",
-  },
+  admin: { group: "Content" },
   versions: {
-    drafts: {
-      autosave: true,
-    },
+    drafts: { autosave: true },
     max: 0, // Keep all versions
   },
-  access: {
-    read: () => true,
-    update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
-  },
+  access: { read: () => true, update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor" },
   fields: [
     {
       name: "tagline",
       type: "text",
       required: true,
-      admin: {
-        description: "Brief tagline or description for your brand",
-      },
+      admin: { description: "Brief tagline or description for your brand" },
     },
     {
       name: "socialLinks",
       type: "array",
       maxRows: 6,
-      admin: {
-        description: "Social media links (e.g., Twitter, GitHub, LinkedIn)",
-      },
+      admin: { description: "Social media links (e.g., Twitter, GitHub, LinkedIn)" },
       fields: [
         {
           name: "platform",
@@ -56,11 +45,7 @@ export const Footer: GlobalConfig = {
             { label: "YouTube", value: "youtube" },
           ],
         },
-        {
-          name: "url",
-          type: "text",
-          required: true,
-        },
+        { name: "url", type: "text", required: true },
       ],
     },
     {
@@ -68,26 +53,14 @@ export const Footer: GlobalConfig = {
       type: "array",
       maxRows: 3,
       fields: [
-        {
-          name: "title",
-          type: "text",
-          required: true,
-        },
+        { name: "title", type: "text", required: true },
         {
           name: "links",
           type: "array",
           maxRows: 10,
           fields: [
-            {
-              name: "label",
-              type: "text",
-              required: true,
-            },
-            {
-              name: "url",
-              type: "text",
-              required: true,
-            },
+            { name: "label", type: "text", required: true },
+            { name: "url", type: "text", required: true },
           ],
         },
       ],
@@ -95,44 +68,31 @@ export const Footer: GlobalConfig = {
     {
       name: "newsletter",
       type: "group",
-      admin: {
-        description: "Newsletter subscription form settings",
-      },
+      admin: { description: "Newsletter subscription form settings" },
       fields: [
         {
           name: "enabled",
           type: "checkbox",
           defaultValue: true,
-          admin: {
-            description: "Show newsletter signup in footer",
-          },
+          admin: { description: "Show newsletter signup in footer" },
         },
         {
           name: "headline",
           type: "text",
           defaultValue: "Stay Mapped In",
-          admin: {
-            description: "Newsletter section headline",
-            condition: (data) => data.newsletter?.enabled,
-          },
+          admin: { description: "Newsletter section headline", condition: (data) => data.newsletter?.enabled },
         },
         {
           name: "placeholder",
           type: "text",
           defaultValue: "your@email.address",
-          admin: {
-            description: "Email input placeholder text",
-            condition: (data) => data.newsletter?.enabled,
-          },
+          admin: { description: "Email input placeholder text", condition: (data) => data.newsletter?.enabled },
         },
         {
           name: "buttonText",
           type: "text",
           defaultValue: "Subscribe",
-          admin: {
-            description: "Submit button text",
-            condition: (data) => data.newsletter?.enabled,
-          },
+          admin: { description: "Submit button text", condition: (data) => data.newsletter?.enabled },
         },
       ],
     },
@@ -140,16 +100,8 @@ export const Footer: GlobalConfig = {
       name: "copyright",
       type: "text",
       required: true,
-      admin: {
-        description: "Copyright text (e.g., © 2024 TimeTiles. All rights reserved.)",
-      },
+      admin: { description: "Copyright text (e.g., © 2024 TimeTiles. All rights reserved.)" },
     },
-    {
-      name: "credits",
-      type: "text",
-      admin: {
-        description: "Optional credits or attribution text",
-      },
-    },
+    { name: "credits", type: "text", admin: { description: "Optional credits or attribution text" } },
   ],
 };

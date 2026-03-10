@@ -42,11 +42,7 @@ const ID_STRATEGY_LABELS: Record<string, string> = {
   hybrid: "External + fallback",
 };
 
-const DUPLICATE_LABELS: Record<string, string> = {
-  skip: "Skip",
-  update: "Update",
-  version: "New version",
-};
+const DUPLICATE_LABELS: Record<string, string> = { skip: "Skip", update: "Update", version: "New version" };
 
 // Default schedule config
 const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
@@ -105,10 +101,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   // Handler for frequency change
   const handleFrequencyChange = useCallback((value: string) => {
-    setLocalScheduleConfig((prev) => ({
-      ...prev,
-      frequency: value as "hourly" | "daily" | "weekly" | "monthly",
-    }));
+    setLocalScheduleConfig((prev) => ({ ...prev, frequency: value as "hourly" | "daily" | "weekly" | "monthly" }));
   }, []);
 
   // Handler for cron expression change
@@ -118,10 +111,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   // Handler for schema mode change
   const handleSchemaModeChange = useCallback((value: string) => {
-    setLocalScheduleConfig((prev) => ({
-      ...prev,
-      schemaMode: value as "strict" | "additive" | "flexible",
-    }));
+    setLocalScheduleConfig((prev) => ({ ...prev, schemaMode: value as "strict" | "additive" | "flexible" }));
   }, []);
 
   // Handle the import start - called from navigation
@@ -193,11 +183,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   // Configure navigation for this step
   useEffect(() => {
-    setNavigationConfig({
-      onNext: handleStartImport,
-      nextLabel: "Start Import",
-      isLoading: isSubmitting,
-    });
+    setNavigationConfig({ onNext: handleStartImport, nextLabel: "Start Import", isLoading: isSubmitting });
     return () => setNavigationConfig({});
   }, [setNavigationConfig, handleStartImport, isSubmitting]);
 

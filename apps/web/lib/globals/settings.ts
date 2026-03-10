@@ -13,13 +13,8 @@ import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 
 export const Settings: GlobalConfig = {
   slug: "settings",
-  admin: {
-    group: "System",
-  },
-  access: {
-    read: () => true,
-    update: ({ req: { user } }) => user?.role === "admin",
-  },
+  admin: { group: "System" },
+  access: { read: () => true, update: ({ req: { user } }) => user?.role === "admin" },
   hooks: {
     afterChange: [
       async ({ doc, previousDoc, req }) => {
@@ -56,10 +51,7 @@ export const Settings: GlobalConfig = {
             action: AUDIT_ACTIONS.SETTINGS_CHANGED,
             userId: req.user.id,
             userEmail: req.user.email,
-            details: {
-              geocodingChanged: prevGeo !== newGeo,
-              newsletterChanged: prevNewsletter !== newNewsletter,
-            },
+            details: { geocodingChanged: prevGeo !== newGeo, newsletterChanged: prevNewsletter !== newNewsletter },
           });
         }
 
@@ -107,18 +99,14 @@ export const Settings: GlobalConfig = {
           type: "checkbox",
           label: "Enable Geocoding",
           defaultValue: true,
-          admin: {
-            description: "Enable or disable geocoding globally for event imports",
-          },
+          admin: { description: "Enable or disable geocoding globally for event imports" },
         },
         {
           name: "fallbackEnabled",
           type: "checkbox",
           label: "Enable Provider Fallback",
           defaultValue: true,
-          admin: {
-            description: "When enabled, will try alternative providers if the primary provider fails",
-          },
+          admin: { description: "When enabled, will try alternative providers if the primary provider fails" },
         },
         {
           name: "providerSelection",
@@ -134,9 +122,7 @@ export const Settings: GlobalConfig = {
                 { label: "Priority-based", value: "priority" },
                 { label: "Tag-based", value: "tag-based" },
               ],
-              admin: {
-                description: "How to select which geocoding provider to use",
-              },
+              admin: { description: "How to select which geocoding provider to use" },
             },
             {
               name: "requiredTags",
@@ -168,9 +154,7 @@ export const Settings: GlobalConfig = {
               type: "checkbox",
               label: "Enable Cache",
               defaultValue: true,
-              admin: {
-                description: "Cache geocoding results to reduce API calls and improve performance",
-              },
+              admin: { description: "Cache geocoding results to reduce API calls and improve performance" },
             },
             {
               name: "ttlDays",
@@ -179,9 +163,7 @@ export const Settings: GlobalConfig = {
               defaultValue: 30,
               min: 1,
               max: 365,
-              admin: {
-                description: "How long to keep cached geocoding results (in days)",
-              },
+              admin: { description: "How long to keep cached geocoding results (in days)" },
             },
           ],
         },
@@ -191,81 +173,63 @@ export const Settings: GlobalConfig = {
       name: "featureFlags",
       type: "group",
       label: "Feature Flags",
-      admin: {
-        description: "Enable or disable major application features",
-      },
+      admin: { description: "Enable or disable major application features" },
       fields: [
         {
           name: "allowPrivateImports",
           type: "checkbox",
           label: "Allow Private Imports",
           defaultValue: true,
-          admin: {
-            description: "When enabled, users can create private imports visible only to themselves",
-          },
+          admin: { description: "When enabled, users can create private imports visible only to themselves" },
         },
         {
           name: "enableScheduledImports",
           type: "checkbox",
           label: "Enable Scheduled Imports",
           defaultValue: true,
-          admin: {
-            description: "When enabled, users can create automated URL-based import schedules",
-          },
+          admin: { description: "When enabled, users can create automated URL-based import schedules" },
         },
         {
           name: "enableRegistration",
           type: "checkbox",
           label: "Enable Public Registration",
           defaultValue: true,
-          admin: {
-            description: "When enabled, new users can self-register accounts",
-          },
+          admin: { description: "When enabled, new users can self-register accounts" },
         },
         {
           name: "enableEventCreation",
           type: "checkbox",
           label: "Enable Event Creation",
           defaultValue: true,
-          admin: {
-            description: "When enabled, new events can be created (via imports or API)",
-          },
+          admin: { description: "When enabled, new events can be created (via imports or API)" },
         },
         {
           name: "enableDatasetCreation",
           type: "checkbox",
           label: "Enable Dataset Creation",
           defaultValue: true,
-          admin: {
-            description: "When enabled, users can create new datasets",
-          },
+          admin: { description: "When enabled, users can create new datasets" },
         },
         {
           name: "enableImportCreation",
           type: "checkbox",
           label: "Enable Import Creation",
           defaultValue: true,
-          admin: {
-            description: "When enabled, users can create new import jobs",
-          },
+          admin: { description: "When enabled, users can create new import jobs" },
         },
         {
           name: "enableScheduledJobExecution",
           type: "checkbox",
           label: "Enable Scheduled Job Execution",
           defaultValue: true,
-          admin: {
-            description: "When enabled, scheduled import jobs will execute automatically",
-          },
+          admin: { description: "When enabled, scheduled import jobs will execute automatically" },
         },
         {
           name: "enableUrlFetchCaching",
           type: "checkbox",
           label: "Enable URL Fetch Caching",
           defaultValue: true,
-          admin: {
-            description: "When enabled, URL fetches for scheduled imports are cached to reduce requests",
-          },
+          admin: { description: "When enabled, URL fetches for scheduled imports are cached to reduce requests" },
         },
       ],
     },

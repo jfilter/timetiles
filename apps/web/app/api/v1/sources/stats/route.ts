@@ -45,14 +45,8 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
 
     // If no accessible catalogs, return empty result
     if (accessibleCatalogIds.length === 0) {
-      logger.info("No accessible catalogs for user", {
-        user: request.user?.email ?? "anonymous",
-      });
-      return NextResponse.json({
-        catalogCounts: {},
-        datasetCounts: {},
-        totalEvents: 0,
-      });
+      logger.info("No accessible catalogs for user", { user: request.user?.email ?? "anonymous" });
+      return NextResponse.json({ catalogCounts: {}, datasetCounts: {}, totalEvents: 0 });
     }
 
     // Build access control condition
@@ -68,9 +62,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
       JOIN payload.datasets d ON e.dataset_id = d.id
       WHERE ${accessCondition}
       GROUP BY d.catalog_id
-    `)) as {
-      rows: Array<{ id: number; count: number }>;
-    };
+    `)) as { rows: Array<{ id: number; count: number }> };
 
     // Query event counts by dataset
     const datasetResult = (await payload.db.drizzle.execute(sql`
@@ -81,9 +73,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
       JOIN payload.datasets d ON e.dataset_id = d.id
       WHERE ${accessCondition}
       GROUP BY e.dataset_id
-    `)) as {
-      rows: Array<{ id: number; count: number }>;
-    };
+    `)) as { rows: Array<{ id: number; count: number }> };
 
     // Transform results to Record<string, number>
     const catalogCounts: Record<string, number> = {};
@@ -105,11 +95,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
       totalEvents,
     });
 
-    const response: DataSourceStatsResponse = {
-      catalogCounts,
-      datasetCounts,
-      totalEvents,
-    };
+    const response: DataSourceStatsResponse = { catalogCounts, datasetCounts, totalEvents };
 
     return NextResponse.json(response);
   } catch (error) {

@@ -391,21 +391,9 @@ export default {
       type: {
         description: "Select the type of change you're committing",
         enum: {
-          feat: {
-            description: "A new feature for users",
-            title: "Features",
-            emoji: "✨",
-          },
-          fix: {
-            description: "A bug fix",
-            title: "Bug Fixes",
-            emoji: "🐛",
-          },
-          docs: {
-            description: "Documentation only changes",
-            title: "Documentation",
-            emoji: "📚",
-          },
+          feat: { description: "A new feature for users", title: "Features", emoji: "✨" },
+          fix: { description: "A bug fix", title: "Bug Fixes", emoji: "🐛" },
+          docs: { description: "Documentation only changes", title: "Documentation", emoji: "📚" },
           style: {
             description: "Code style changes (formatting, missing semicolons, etc)",
             title: "Styles",
@@ -416,36 +404,12 @@ export default {
             title: "Code Refactoring",
             emoji: "📦",
           },
-          perf: {
-            description: "Performance improvements",
-            title: "Performance",
-            emoji: "🚀",
-          },
-          test: {
-            description: "Adding or updating tests",
-            title: "Tests",
-            emoji: "🚨",
-          },
-          build: {
-            description: "Changes to build system or dependencies",
-            title: "Builds",
-            emoji: "🛠",
-          },
-          ci: {
-            description: "CI/CD configuration and scripts",
-            title: "CI",
-            emoji: "⚙️",
-          },
-          chore: {
-            description: "Other changes that don't affect src or test files",
-            title: "Chores",
-            emoji: "♻️",
-          },
-          revert: {
-            description: "Revert a previous commit",
-            title: "Reverts",
-            emoji: "🗑",
-          },
+          perf: { description: "Performance improvements", title: "Performance", emoji: "🚀" },
+          test: { description: "Adding or updating tests", title: "Tests", emoji: "🚨" },
+          build: { description: "Changes to build system or dependencies", title: "Builds", emoji: "🛠" },
+          ci: { description: "CI/CD configuration and scripts", title: "CI", emoji: "⚙️" },
+          chore: { description: "Other changes that don't affect src or test files", title: "Chores", emoji: "♻️" },
+          revert: { description: "Revert a previous commit", title: "Reverts", emoji: "🗑" },
         },
       },
       scope: {

@@ -11,11 +11,7 @@ import * as React from "react";
 
 // Type the ReactECharts component properly for strict TypeScript
 // Add ref support to the props
-type ReactEChartsWithRef = React.ComponentType<
-  EChartsReactProps & {
-    ref?: React.Ref<ReactEChartsLib>;
-  }
->;
+type ReactEChartsWithRef = React.ComponentType<EChartsReactProps & { ref?: React.Ref<ReactEChartsLib> }>;
 
 const ReactECharts = ReactEChartsLib as ReactEChartsWithRef;
 

@@ -43,51 +43,25 @@ describe("applyThemeToOption - basic application", () => {
   });
 
   it("applies axis line colors correctly", () => {
-    const option: EChartsOption = {
-      xAxis: { type: "category" },
-      yAxis: { type: "value" },
-      series: [],
-    };
+    const option: EChartsOption = { xAxis: { type: "category" }, yAxis: { type: "value" }, series: [] };
 
     const result = applyThemeToOption(option, defaultLightTheme);
 
     expect(result.xAxis).toMatchObject({
-      axisLine: {
-        lineStyle: {
-          color: defaultLightTheme.axisLineColor,
-        },
-      },
-      axisLabel: {
-        color: defaultLightTheme.textColor,
-      },
-      splitLine: {
-        lineStyle: {
-          color: defaultLightTheme.splitLineColor,
-        },
-      },
+      axisLine: { lineStyle: { color: defaultLightTheme.axisLineColor } },
+      axisLabel: { color: defaultLightTheme.textColor },
+      splitLine: { lineStyle: { color: defaultLightTheme.splitLineColor } },
     });
 
     expect(result.yAxis).toMatchObject({
-      axisLine: {
-        lineStyle: {
-          color: defaultLightTheme.axisLineColor,
-        },
-      },
-      axisLabel: {
-        color: defaultLightTheme.textColor,
-      },
-      splitLine: {
-        lineStyle: {
-          color: defaultLightTheme.splitLineColor,
-        },
-      },
+      axisLine: { lineStyle: { color: defaultLightTheme.axisLineColor } },
+      axisLabel: { color: defaultLightTheme.textColor },
+      splitLine: { lineStyle: { color: defaultLightTheme.splitLineColor } },
     });
   });
 
   it("applies item color to series", () => {
-    const option: EChartsOption = {
-      series: [{ type: "bar", data: [1, 2, 3] }],
-    };
+    const option: EChartsOption = { series: [{ type: "bar", data: [1, 2, 3] }] };
 
     const result = applyThemeToOption(option, defaultLightTheme);
 
@@ -96,9 +70,7 @@ describe("applyThemeToOption - basic application", () => {
       expect(result.series[0]).toMatchObject({
         type: "bar",
         data: [1, 2, 3],
-        itemStyle: {
-          color: defaultLightTheme.itemColor,
-        },
+        itemStyle: { color: defaultLightTheme.itemColor },
       });
     }
   });
@@ -106,36 +78,19 @@ describe("applyThemeToOption - basic application", () => {
 
 describe("applyThemeToOption - edge cases", () => {
   it("preserves existing series data and type", () => {
-    const option: EChartsOption = {
-      series: [
-        {
-          type: "line",
-          data: [10, 20, 30],
-          name: "Test Series",
-        },
-      ],
-    };
+    const option: EChartsOption = { series: [{ type: "line", data: [10, 20, 30], name: "Test Series" }] };
 
     const result = applyThemeToOption(option, defaultDarkTheme);
 
     if (Array.isArray(result.series)) {
-      expect(result.series[0]).toMatchObject({
-        type: "line",
-        data: [10, 20, 30],
-        name: "Test Series",
-      });
+      expect(result.series[0]).toMatchObject({ type: "line", data: [10, 20, 30], name: "Test Series" });
     }
   });
 
   it("handles array itemColor correctly", () => {
-    const themeWithArrayColor = {
-      ...defaultLightTheme,
-      itemColor: ["#ff0000", "#00ff00", "#0000ff"],
-    };
+    const themeWithArrayColor = { ...defaultLightTheme, itemColor: ["#ff0000", "#00ff00", "#0000ff"] };
 
-    const option: EChartsOption = {
-      series: [{ type: "bar", data: [1, 2, 3] }],
-    };
+    const option: EChartsOption = { series: [{ type: "bar", data: [1, 2, 3] }] };
 
     const result = applyThemeToOption(option, themeWithArrayColor);
 
@@ -149,9 +104,7 @@ describe("applyThemeToOption - edge cases", () => {
   });
 
   it("handles non-array series gracefully", () => {
-    const option: EChartsOption = {
-      series: { type: "bar", data: [1, 2, 3] },
-    };
+    const option: EChartsOption = { series: { type: "bar", data: [1, 2, 3] } };
 
     const result = applyThemeToOption(option, defaultLightTheme);
 
@@ -161,27 +114,14 @@ describe("applyThemeToOption - edge cases", () => {
 
   it("preserves existing itemStyle properties", () => {
     const option: EChartsOption = {
-      series: [
-        {
-          type: "bar",
-          data: [1, 2, 3],
-          itemStyle: {
-            borderWidth: 2,
-            opacity: 0.8,
-          },
-        },
-      ],
+      series: [{ type: "bar", data: [1, 2, 3], itemStyle: { borderWidth: 2, opacity: 0.8 } }],
     };
 
     const result = applyThemeToOption(option, defaultLightTheme);
 
     if (Array.isArray(result.series)) {
       expect(result.series[0]).toMatchObject({
-        itemStyle: {
-          borderWidth: 2,
-          opacity: 0.8,
-          color: defaultLightTheme.itemColor,
-        },
+        itemStyle: { borderWidth: 2, opacity: 0.8, color: defaultLightTheme.itemColor },
       });
     }
   });

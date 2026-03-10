@@ -17,22 +17,12 @@ vi.mock("next-themes", () => ({
 // Mock the UI charts package
 vi.mock("@timetiles/ui/charts", async () => {
   const actual = await vi.importActual("@timetiles/ui/charts");
-  return {
-    ...(actual as any),
-    useChartTheme: () => ({ backgroundColor: "#ffffff", textColor: "#000000" }),
-  };
+  return { ...(actual as any), useChartTheme: () => ({ backgroundColor: "#ffffff", textColor: "#000000" }) };
 });
 
 // Mock the filters hook
 vi.mock("../../../lib/filters", () => ({
-  useFilters: () => ({
-    filters: {
-      catalog: null,
-      datasets: [],
-      startDate: null,
-      endDate: null,
-    },
-  }),
+  useFilters: () => ({ filters: { catalog: null, datasets: [], startDate: null, endDate: null } }),
 }));
 
 // Mock the UI store
@@ -48,9 +38,7 @@ vi.mock("../../../lib/store", () => ({
 }));
 
 // Mock the React Query hook
-vi.mock("../../../lib/hooks/use-events-queries", () => ({
-  useHistogramQuery: vi.fn(),
-}));
+vi.mock("../../../lib/hooks/use-events-queries", () => ({ useHistogramQuery: vi.fn() }));
 
 // Mock the chart hooks
 vi.mock("../../../lib/hooks/use-chart-query", () => ({
@@ -62,11 +50,7 @@ vi.mock("../../../lib/hooks/use-chart-query", () => ({
 }));
 
 vi.mock("../../../lib/hooks/use-chart-filters", () => ({
-  useChartFilters: () => ({
-    handleDateClick: vi.fn(),
-    handleDatasetClick: vi.fn(),
-    handleCatalogClick: vi.fn(),
-  }),
+  useChartFilters: () => ({ handleDateClick: vi.fn(), handleDatasetClick: vi.fn(), handleCatalogClick: vi.fn() }),
 }));
 
 // Mock ECharts component
@@ -92,11 +76,7 @@ describe.sequential("EventHistogram", () => {
 
   it("renders loading state", () => {
     // Mock the query as loading
-    mockUseHistogramQuery.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-    });
+    mockUseHistogramQuery.mockReturnValue({ data: undefined, isLoading: true, error: null });
 
     renderWithProviders(<EventHistogram />);
     // Check for skeleton loading state (ChartSkeleton uses animate-pulse)
@@ -106,11 +86,7 @@ describe.sequential("EventHistogram", () => {
 
   it("renders no data state when histogram data is empty", async () => {
     // Mock the query with empty data
-    mockUseHistogramQuery.mockReturnValue({
-      data: { histogram: [] },
-      isLoading: false,
-      error: null,
-    });
+    mockUseHistogramQuery.mockReturnValue({ data: { histogram: [] }, isLoading: false, error: null });
 
     renderWithProviders(<EventHistogram />);
 

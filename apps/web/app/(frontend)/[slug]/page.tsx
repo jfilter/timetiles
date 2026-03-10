@@ -15,24 +15,16 @@ import { PageLayout } from "@/components/layout/page-layout";
 import config from "@/payload.config";
 
 interface PageProps {
-  params: Promise<{
-    slug: string;
-  }>;
+  params: Promise<{ slug: string }>;
 }
 
 export default async function Page({ params }: Readonly<PageProps>) {
   const { slug } = await params;
-  const payload = await getPayload({
-    config,
-  });
+  const payload = await getPayload({ config });
 
   const pages = await payload.find({
     collection: "pages",
-    where: {
-      slug: {
-        equals: slug,
-      },
-    },
+    where: { slug: { equals: slug } },
     depth: 2, // Populate nested arrays (timeline items, testimonials items, etc.)
   });
 

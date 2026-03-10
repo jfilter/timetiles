@@ -120,11 +120,7 @@ describe("MemoryCacheStorage", () => {
 
     it("should set multiple values", async () => {
       // Create fresh storage for this test to avoid interference
-      const testStorage = new MemoryCacheStorage({
-        maxEntries: 10,
-        maxSize: 1024 * 1024,
-        defaultTTL: 60,
-      });
+      const testStorage = new MemoryCacheStorage({ maxEntries: 10, maxSize: 1024 * 1024, defaultTTL: 60 });
 
       const entries = new Map([
         ["batch-set-1", "value1"],
@@ -147,11 +143,7 @@ describe("MemoryCacheStorage", () => {
   describe("pattern matching", () => {
     it("should clear entries by pattern", async () => {
       // Create fresh storage for this test to avoid interference
-      const testStorage = new MemoryCacheStorage({
-        maxEntries: 10,
-        maxSize: 1024 * 1024,
-        defaultTTL: 60,
-      });
+      const testStorage = new MemoryCacheStorage({ maxEntries: 10, maxSize: 1024 * 1024, defaultTTL: 60 });
 
       await testStorage.set("user:1", "data1");
       await testStorage.set("user:2", "data2");
@@ -169,11 +161,7 @@ describe("MemoryCacheStorage", () => {
 
     it("should get keys by pattern", async () => {
       // Create fresh storage for this test to avoid interference
-      const testStorage = new MemoryCacheStorage({
-        maxEntries: 10,
-        maxSize: 1024 * 1024,
-        defaultTTL: 60,
-      });
+      const testStorage = new MemoryCacheStorage({ maxEntries: 10, maxSize: 1024 * 1024, defaultTTL: 60 });
 
       await testStorage.set("user:1", "data1");
       await testStorage.set("user:2", "data2");
@@ -193,9 +181,7 @@ describe("MemoryCacheStorage", () => {
   describe("eviction and limits", () => {
     it("should evict LRU entries when max entries exceeded", async () => {
       // Create storage with max 3 entries
-      const limitedStorage = new MemoryCacheStorage({
-        maxEntries: 3,
-      });
+      const limitedStorage = new MemoryCacheStorage({ maxEntries: 3 });
 
       await limitedStorage.set("lru-1", "value1");
       await limitedStorage.set("lru-2", "value2");
@@ -214,9 +200,7 @@ describe("MemoryCacheStorage", () => {
     });
 
     it("should track eviction count", async () => {
-      const limitedStorage = new MemoryCacheStorage({
-        maxEntries: 2,
-      });
+      const limitedStorage = new MemoryCacheStorage({ maxEntries: 2 });
 
       await limitedStorage.set("evict-1", "value1");
       await limitedStorage.set("evict-2", "value2");
@@ -230,11 +214,7 @@ describe("MemoryCacheStorage", () => {
   describe("statistics", () => {
     it("should track hits and misses", async () => {
       // Create fresh storage for this test to avoid interference
-      const testStorage = new MemoryCacheStorage({
-        maxEntries: 10,
-        maxSize: 1024 * 1024,
-        defaultTTL: 60,
-      });
+      const testStorage = new MemoryCacheStorage({ maxEntries: 10, maxSize: 1024 * 1024, defaultTTL: 60 });
 
       await testStorage.set("stats-key", "value1");
 
@@ -279,11 +259,7 @@ describe("MemoryCacheStorage", () => {
   describe("cleanup", () => {
     it("should cleanup stale entries", async () => {
       // Create fresh storage for this test to avoid interference
-      const testStorage = new MemoryCacheStorage({
-        maxEntries: 10,
-        maxSize: 1024 * 1024,
-        defaultTTL: 60,
-      });
+      const testStorage = new MemoryCacheStorage({ maxEntries: 10, maxSize: 1024 * 1024, defaultTTL: 60 });
 
       await testStorage.set("stale-1", "value1", { ttl: 0.1 }); // Expires in 100ms
       await testStorage.set("stale-2", "value2", { ttl: 10 }); // Expires in 10s
@@ -301,11 +277,7 @@ describe("MemoryCacheStorage", () => {
 
     it("should clear all entries", async () => {
       // Create fresh storage for this test to avoid interference
-      const testStorage = new MemoryCacheStorage({
-        maxEntries: 10,
-        maxSize: 1024 * 1024,
-        defaultTTL: 60,
-      });
+      const testStorage = new MemoryCacheStorage({ maxEntries: 10, maxSize: 1024 * 1024, defaultTTL: 60 });
 
       await testStorage.set("clear-1", "value1");
       await testStorage.set("clear-2", "value2");
@@ -323,10 +295,7 @@ describe("MemoryCacheStorage", () => {
 
   describe("tags and metadata", () => {
     it("should store tags with entries", async () => {
-      await storage.set("tags-key", "value1", {
-        tags: ["tag1", "tag2"],
-        metadata: { custom: "data" },
-      });
+      await storage.set("tags-key", "value1", { tags: ["tag1", "tag2"], metadata: { custom: "data" } });
 
       const entry = await storage.get("tags-key");
       expect(entry?.metadata.tags).toEqual(["tag1", "tag2"]);

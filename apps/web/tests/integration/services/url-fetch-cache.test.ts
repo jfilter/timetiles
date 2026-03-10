@@ -44,19 +44,10 @@ describe.sequential("HTTP Cache Integration", () => {
         res.end(JSON.stringify({ uuid: `${Date.now()}-${Math.random()}` }));
       })
       .respond("/post", { status: 200, body: "POST response" })
-      .respond("/headers", {
-        headers: { "X-Custom-Header": "test" },
-        body: "Headers response",
-      })
+      .respond("/headers", { headers: { "X-Custom-Header": "test" }, body: "Headers response" })
       .respond("/delay", { body: "Delayed response", delay: 100 })
-      .respond("/etag", {
-        headers: { ETag: '"test-etag"' },
-        body: "ETag response",
-      })
-      .respond("/cache-control", {
-        headers: { "Cache-Control": "max-age=2" },
-        body: "Cache control response",
-      })
+      .respond("/etag", { headers: { ETag: '"test-etag"' }, body: "ETag response" })
+      .respond("/cache-control", { headers: { "Cache-Control": "max-age=2" }, body: "Cache control response" })
       .setDefaultHandler((req: IncomingMessage, res: ServerResponse) => {
         // Handle /get with query parameters
         if (req.url?.startsWith("/get")) {
@@ -97,17 +88,13 @@ describe.sequential("HTTP Cache Integration", () => {
       const testUrl = `${serverUrl}/json`;
 
       // First request - should hit the server
-      const result1 = await fetchWithRetry(testUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(testUrl, { cacheOptions: { useCache: true } });
       const data1 = JSON.parse(result1.data.toString());
       expect(data1).toHaveProperty("slideshow");
       expect(result1.cacheStatus).toBe("MISS");
 
       // Second request - should hit the cache
-      const result2 = await fetchWithRetry(testUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result2 = await fetchWithRetry(testUrl, { cacheOptions: { useCache: true } });
       const data2 = JSON.parse(result2.data.toString());
       expect(data2).toEqual(data1);
       expect(result2.cacheStatus).toBe("HIT");
@@ -117,11 +104,7 @@ describe.sequential("HTTP Cache Integration", () => {
       // Test 404 response - fetchWithRetry will throw on 404
       const notFoundUrl = `${serverUrl}/status/404`;
 
-      await expect(
-        fetchWithRetry(notFoundUrl, {
-          cacheOptions: { useCache: true },
-        })
-      ).rejects.toThrow("HTTP 404");
+      await expect(fetchWithRetry(notFoundUrl, { cacheOptions: { useCache: true } })).rejects.toThrow("HTTP 404");
     });
 
     it("should handle query parameters", async () => {
@@ -129,23 +112,17 @@ describe.sequential("HTTP Cache Integration", () => {
 
       // Different query params should be cached separately
       const url1 = `${baseUrl}?foo=bar`;
-      const result1 = await fetchWithRetry(url1, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(url1, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
       const url2 = `${baseUrl}?foo=baz`;
-      const result2 = await fetchWithRetry(url2, {
-        cacheOptions: { useCache: true },
-      });
+      const result2 = await fetchWithRetry(url2, { cacheOptions: { useCache: true } });
       expect(result2.cacheStatus).toBe("MISS");
 
       // Same query should hit cache
       const url3 = `${baseUrl}?foo=bar`; // Same as url1
       console.log(`Fetching ${url3} - expecting HIT (same as ${url1})`);
-      const result3 = await fetchWithRetry(url3, {
-        cacheOptions: { useCache: true },
-      });
+      const result3 = await fetchWithRetry(url3, { cacheOptions: { useCache: true } });
       console.log(`Result3 status: ${result3.cacheStatus}`);
       expect(result3.cacheStatus).toBe("HIT");
     });
@@ -154,17 +131,13 @@ describe.sequential("HTTP Cache Integration", () => {
       const testUrl = `${serverUrl}/uuid`;
 
       // First request
-      const result1 = await fetchWithRetry(testUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(testUrl, { cacheOptions: { useCache: true } });
       const data1 = JSON.parse(result1.data.toString());
       expect(data1).toHaveProperty("uuid");
       expect(result1.cacheStatus).toBe("MISS");
 
       // Second request with cache bypass
-      const result2 = await fetchWithRetry(testUrl, {
-        cacheOptions: { useCache: false },
-      });
+      const result2 = await fetchWithRetry(testUrl, { cacheOptions: { useCache: false } });
       const data2 = JSON.parse(result2.data.toString());
       expect(data2).toHaveProperty("uuid");
       expect(result2.cacheStatus).toBe("MISS");
@@ -197,15 +170,11 @@ describe.sequential("HTTP Cache Integration", () => {
       const testUrl = `${serverUrl}/headers`;
 
       // First request
-      const result1 = await fetchWithRetry(testUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(testUrl, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
       // Same URL should hit cache
-      const result2 = await fetchWithRetry(testUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result2 = await fetchWithRetry(testUrl, { cacheOptions: { useCache: true } });
       expect(result2.cacheStatus).toBe("HIT");
     });
   });
@@ -213,17 +182,11 @@ describe.sequential("HTTP Cache Integration", () => {
   describe("Cache management", () => {
     it("should clear cache", async () => {
       // Cache multiple URLs
-      await fetchWithRetry(`${serverUrl}/json`, {
-        cacheOptions: { useCache: true },
-      });
-      await fetchWithRetry(`${serverUrl}/uuid`, {
-        cacheOptions: { useCache: true },
-      });
+      await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
+      await fetchWithRetry(`${serverUrl}/uuid`, { cacheOptions: { useCache: true } });
 
       // Verify they are cached
-      const jsonCached = await fetchWithRetry(`${serverUrl}/json`, {
-        cacheOptions: { useCache: true },
-      });
+      const jsonCached = await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
       expect(jsonCached.cacheStatus).toBe("HIT");
 
       // Clear all cache
@@ -231,20 +194,14 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(cleared).toBeGreaterThan(0);
 
       // JSON endpoint should no longer be cached
-      const jsonAfterClear = await fetchWithRetry(`${serverUrl}/json`, {
-        cacheOptions: { useCache: true },
-      });
+      const jsonAfterClear = await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
       expect(jsonAfterClear.cacheStatus).toBe("MISS");
     });
 
     it("should provide cache statistics", async () => {
       // Make some cached requests
-      await fetchWithRetry(`${serverUrl}/json`, {
-        cacheOptions: { useCache: true },
-      });
-      await fetchWithRetry(`${serverUrl}/json`, {
-        cacheOptions: { useCache: true },
-      }); // Hit
+      await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
+      await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } }); // Hit
 
       const stats = await urlFetchCache.getStats();
       expect(stats.entries).toBeGreaterThan(0);
@@ -258,10 +215,7 @@ describe.sequential("HTTP Cache Integration", () => {
 
       // Should throw error, not cache
       await expect(
-        fetchWithRetry(invalidUrl, {
-          cacheOptions: { useCache: true },
-          retryConfig: { maxRetries: 0 },
-        })
+        fetchWithRetry(invalidUrl, { cacheOptions: { useCache: true }, retryConfig: { maxRetries: 0 } })
       ).rejects.toThrow();
     });
 
@@ -286,18 +240,11 @@ describe.sequential("HTTP Cache Integration", () => {
       const etagUrl = `${serverUrl}/etag`;
 
       // First fetch - cache with ETag
-      const result1 = await fetchWithRetry(etagUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(etagUrl, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
       // Force revalidation
-      const result2 = await fetchWithRetry(etagUrl, {
-        cacheOptions: {
-          useCache: true,
-          forceRevalidate: true,
-        },
-      });
+      const result2 = await fetchWithRetry(etagUrl, { cacheOptions: { useCache: true, forceRevalidate: true } });
 
       // Should either be REVALIDATED (304) or MISS
       expect(["REVALIDATED", "MISS"]).toContain(result2.cacheStatus);
@@ -307,24 +254,18 @@ describe.sequential("HTTP Cache Integration", () => {
       const cacheUrl = `${serverUrl}/cache-control`; // 2 second cache
 
       // First fetch
-      const result1 = await fetchWithRetry(cacheUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(cacheUrl, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
       // Immediate second fetch - should be cached
-      const result2 = await fetchWithRetry(cacheUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result2 = await fetchWithRetry(cacheUrl, { cacheOptions: { useCache: true } });
       expect(result2.cacheStatus).toBe("HIT");
 
       // Wait for cache to expire
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
       // Third fetch - cache should be stale
-      const result3 = await fetchWithRetry(cacheUrl, {
-        cacheOptions: { useCache: true },
-      });
+      const result3 = await fetchWithRetry(cacheUrl, { cacheOptions: { useCache: true } });
       expect(["MISS", "REVALIDATED"]).toContain(result3.cacheStatus);
     });
   });
@@ -335,15 +276,11 @@ describe.sequential("HTTP Cache Integration", () => {
       const url2 = `${serverUrl.toLowerCase()}/json`;
 
       // Fetch with uppercase hostname
-      const result1 = await fetchWithRetry(url1, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(url1, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
       // Fetch with lowercase hostname - should hit cache
-      const result2 = await fetchWithRetry(url2, {
-        cacheOptions: { useCache: true },
-      });
+      const result2 = await fetchWithRetry(url2, { cacheOptions: { useCache: true } });
       expect(result2.cacheStatus).toBe("HIT");
     });
 
@@ -351,15 +288,11 @@ describe.sequential("HTTP Cache Integration", () => {
       const url1 = `${serverUrl}/json`;
       const url2 = `${serverUrl}/json/`;
 
-      const result1 = await fetchWithRetry(url1, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(url1, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
       // URL with trailing slash should hit same cache entry
-      const result2 = await fetchWithRetry(url2, {
-        cacheOptions: { useCache: true },
-      });
+      const result2 = await fetchWithRetry(url2, { cacheOptions: { useCache: true } });
       expect(result2.cacheStatus).toBe("HIT");
     });
 
@@ -367,15 +300,11 @@ describe.sequential("HTTP Cache Integration", () => {
       const url1 = `${serverUrl}/get?b=2&a=1`;
       const url2 = `${serverUrl}/get?a=1&b=2`;
 
-      const result1 = await fetchWithRetry(url1, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(url1, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
       // Different param order should hit same cache entry
-      const result2 = await fetchWithRetry(url2, {
-        cacheOptions: { useCache: true },
-      });
+      const result2 = await fetchWithRetry(url2, { cacheOptions: { useCache: true } });
       expect(result2.cacheStatus).toBe("HIT");
     });
 
@@ -383,15 +312,11 @@ describe.sequential("HTTP Cache Integration", () => {
       const url1 = `${serverUrl}/json`;
       const url2 = `${serverUrl}/json#section`;
 
-      const result1 = await fetchWithRetry(url1, {
-        cacheOptions: { useCache: true },
-      });
+      const result1 = await fetchWithRetry(url1, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
       // URL with fragment should hit same cache entry
-      const result2 = await fetchWithRetry(url2, {
-        cacheOptions: { useCache: true },
-      });
+      const result2 = await fetchWithRetry(url2, { cacheOptions: { useCache: true } });
       expect(result2.cacheStatus).toBe("HIT");
     });
   });

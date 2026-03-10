@@ -8,13 +8,9 @@ import "@/tests/mocks/services/logger";
 
 import { describe, expect, it, vi } from "vitest";
 
-const { mockGetService } = vi.hoisted(() => ({
-  mockGetService: vi.fn(),
-}));
+const { mockGetService } = vi.hoisted(() => ({ mockGetService: vi.fn() }));
 
-vi.mock("@/lib/services/account-deletion-service", () => ({
-  getAccountDeletionService: mockGetService,
-}));
+vi.mock("@/lib/services/account-deletion-service", () => ({ getAccountDeletionService: mockGetService }));
 
 import { executeAccountDeletionJob } from "@/lib/jobs/handlers/execute-account-deletion-job";
 
@@ -37,10 +33,7 @@ describe("executeAccountDeletionJob", () => {
     const execDel = vi.fn().mockResolvedValue(undefined);
     mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel } as never);
 
-    const result = await executeAccountDeletionJob.handler({
-      job: { id: "job-1" },
-      req: { payload: {} as never },
-    });
+    const result = await executeAccountDeletionJob.handler({ job: { id: "job-1" }, req: { payload: {} as never } });
 
     expect(result.output.success).toBe(true);
     expect(result.output.totalDue).toBe(2);
@@ -55,10 +48,7 @@ describe("executeAccountDeletionJob", () => {
     const execDel = vi.fn();
     mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel } as never);
 
-    const result = await executeAccountDeletionJob.handler({
-      job: { id: "job-1" },
-      req: { payload: {} as never },
-    });
+    const result = await executeAccountDeletionJob.handler({ job: { id: "job-1" }, req: { payload: {} as never } });
 
     expect(result.output.totalDue).toBe(0);
     expect(result.output.successfulDeletions).toBe(0);
@@ -73,10 +63,7 @@ describe("executeAccountDeletionJob", () => {
     const execDel = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("Deletion failed"));
     mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel } as never);
 
-    const result = await executeAccountDeletionJob.handler({
-      job: { id: "job-1" },
-      req: { payload: {} as never },
-    });
+    const result = await executeAccountDeletionJob.handler({ job: { id: "job-1" }, req: { payload: {} as never } });
 
     expect(result.output.successfulDeletions).toBe(1);
     expect(result.output.failedDeletions).toBe(1);
@@ -87,10 +74,7 @@ describe("executeAccountDeletionJob", () => {
     mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: vi.fn() } as never);
 
     await expect(
-      executeAccountDeletionJob.handler({
-        job: { id: "job-1" },
-        req: { payload: {} as never },
-      })
+      executeAccountDeletionJob.handler({ job: { id: "job-1" }, req: { payload: {} as never } })
     ).rejects.toThrow("DB error");
   });
 });

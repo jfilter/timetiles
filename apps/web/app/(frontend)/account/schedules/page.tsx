@@ -14,10 +14,7 @@ import config from "@/payload.config";
 
 import { SchedulesListClient } from "./_components/schedules-list-client";
 
-export const metadata = {
-  title: "Scheduled Imports | TimeTiles",
-  description: "Manage your scheduled data imports",
-};
+export const metadata = { title: "Scheduled Imports | TimeTiles", description: "Manage your scheduled data imports" };
 
 export default async function SchedulesPage() {
   const payload = await getPayload({ config });
@@ -32,9 +29,7 @@ export default async function SchedulesPage() {
   // Fetch user's scheduled imports
   const schedulesResult = await payload.find({
     collection: "scheduled-imports",
-    where: {
-      createdBy: { equals: user.id },
-    },
+    where: { createdBy: { equals: user.id } },
     sort: "-updatedAt",
     limit: 200,
     pagination: false,

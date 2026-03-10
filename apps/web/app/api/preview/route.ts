@@ -38,11 +38,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
     }
 
     // Use Payload's auth method to validate JWT and get user
-    const { user } = await payload.auth({
-      headers: new Headers({
-        Authorization: `Bearer ${authCookie.value}`,
-      }),
-    });
+    const { user } = await payload.auth({ headers: new Headers({ Authorization: `Bearer ${authCookie.value}` }) });
 
     if (!user) {
       return new Response("Authentication required", { status: 401 });
@@ -64,11 +60,7 @@ export const GET = async (request: NextRequest): Promise<Response> => {
       }
     })();
 
-    logger.info("Preview mode enabled", {
-      collection,
-      slug,
-      userId: user.id,
-    });
+    logger.info("Preview mode enabled", { collection, slug, userId: user.id });
 
     redirect(redirectPath);
   } catch (error) {

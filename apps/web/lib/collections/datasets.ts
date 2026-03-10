@@ -30,11 +30,7 @@ import {
 const Datasets: CollectionConfig = {
   slug: "datasets",
   ...createCommonConfig(),
-  admin: {
-    useAsTitle: "name",
-    defaultColumns: ["name", "catalog", "language", "isPublic"],
-    group: "Data",
-  },
+  admin: { useAsTitle: "name", defaultColumns: ["name", "catalog", "language", "isPublic"], group: "Data" },
   access: {
     read: access.read,
     create: access.create,
@@ -42,38 +38,23 @@ const Datasets: CollectionConfig = {
     delete: access.deleteAccess,
     readVersions: access.readVersions,
   },
-  hooks: {
-    beforeChange: [validatePublicCatalogDataset],
-    afterChange: [syncIsPublicToEvents],
-  },
+  hooks: { beforeChange: [validatePublicCatalogDataset], afterChange: [syncIsPublicToEvents] },
   fields: [
     ...basicMetadataFields,
     createSlugField("datasets"),
-    {
-      name: "catalog",
-      type: "relationship",
-      relationTo: "catalogs",
-      required: true,
-      hasMany: false,
-    },
+    { name: "catalog", type: "relationship", relationTo: "catalogs", required: true, hasMany: false },
     {
       name: "catalogCreatorId",
       type: "number",
       index: true,
-      admin: {
-        hidden: true,
-        description: "Denormalized from catalog.createdBy for zero-query owner access control",
-      },
+      admin: { hidden: true, description: "Denormalized from catalog.createdBy for zero-query owner access control" },
     },
     {
       name: "catalogIsPublic",
       type: "checkbox",
       defaultValue: false,
       index: true,
-      admin: {
-        hidden: true,
-        description: "Denormalized from catalog.isPublic for zero-query access control",
-      },
+      admin: { hidden: true, description: "Denormalized from catalog.isPublic for zero-query access control" },
     },
     {
       name: "language",
@@ -87,9 +68,7 @@ const Datasets: CollectionConfig = {
         if (!/^[a-z]{3}$/.test(value)) return "Language code must be 3 lowercase letters (e.g., eng, deu, fra)";
         return true;
       },
-      admin: {
-        description: "ISO-639-3 code: 3 lowercase letters (e.g., eng, deu, fra)",
-      },
+      admin: { description: "ISO-639-3 code: 3 lowercase letters (e.g., eng, deu, fra)" },
     },
     createIsPublicField({ showPrivateNotice: true }),
     createCreatedByField("User who created this dataset"),
@@ -98,9 +77,7 @@ const Datasets: CollectionConfig = {
     {
       name: "idStrategy",
       type: "group",
-      admin: {
-        condition: editorOrAdminCondition,
-      },
+      admin: { condition: editorOrAdminCondition },
       fields: [
         {
           name: "type",
@@ -113,9 +90,7 @@ const Datasets: CollectionConfig = {
           ],
           required: true,
           defaultValue: "auto",
-          admin: {
-            description: "How to generate unique IDs for events",
-          },
+          admin: { description: "How to generate unique IDs for events" },
         },
         {
           name: "externalIdPath",
@@ -133,9 +108,7 @@ const Datasets: CollectionConfig = {
               name: "fieldPath",
               type: "text",
               required: true,
-              admin: {
-                description: "Path to field to include in hash",
-              },
+              admin: { description: "Path to field to include in hash" },
             },
           ],
           admin: {
@@ -152,9 +125,7 @@ const Datasets: CollectionConfig = {
             { label: "Create New Version", value: "version" },
           ],
           defaultValue: "skip",
-          admin: {
-            description: "What to do when duplicate is found",
-          },
+          admin: { description: "What to do when duplicate is found" },
         },
       ],
     },
@@ -162,57 +133,43 @@ const Datasets: CollectionConfig = {
     {
       name: "schemaConfig",
       type: "group",
-      admin: {
-        condition: editorOrAdminCondition,
-      },
+      admin: { condition: editorOrAdminCondition },
       fields: [
         {
           name: "enabled",
           type: "checkbox",
           defaultValue: false,
-          admin: {
-            description: "Enable schema detection and validation",
-          },
+          admin: { description: "Enable schema detection and validation" },
         },
         {
           name: "locked",
           type: "checkbox",
           defaultValue: false,
-          admin: {
-            description: "Require manual approval for ALL schema changes",
-          },
+          admin: { description: "Require manual approval for ALL schema changes" },
         },
         {
           name: "autoGrow",
           type: "checkbox",
           defaultValue: true,
-          admin: {
-            description: "Allow automatic schema growth (new optional fields, new enum values)",
-          },
+          admin: { description: "Allow automatic schema growth (new optional fields, new enum values)" },
         },
         {
           name: "autoApproveNonBreaking",
           type: "checkbox",
           defaultValue: false,
-          admin: {
-            description: "Automatically approve non-breaking schema changes",
-          },
+          admin: { description: "Automatically approve non-breaking schema changes" },
         },
         {
           name: "strictValidation",
           type: "checkbox",
           defaultValue: false,
-          admin: {
-            description: "Block entire import if any events fail validation",
-          },
+          admin: { description: "Block entire import if any events fail validation" },
         },
         {
           name: "allowTransformations",
           type: "checkbox",
           defaultValue: true,
-          admin: {
-            description: "Allow automatic type transformations during import",
-          },
+          admin: { description: "Allow automatic type transformations during import" },
         },
         {
           name: "maxSchemaDepth",
@@ -220,17 +177,13 @@ const Datasets: CollectionConfig = {
           defaultValue: 3,
           min: 1,
           max: 10,
-          admin: {
-            description: "Maximum nesting depth for schema detection",
-          },
+          admin: { description: "Maximum nesting depth for schema detection" },
         },
         {
           name: "enumThreshold",
           type: "number",
           defaultValue: 50,
-          admin: {
-            description: "Threshold for enum detection",
-          },
+          admin: { description: "Threshold for enum detection" },
         },
         {
           name: "enumMode",
@@ -240,9 +193,7 @@ const Datasets: CollectionConfig = {
             { label: "By Percentage", value: "percentage" },
           ],
           defaultValue: "count",
-          admin: {
-            description: "How to detect enum fields",
-          },
+          admin: { description: "How to detect enum fields" },
         },
       ],
     },
@@ -250,17 +201,13 @@ const Datasets: CollectionConfig = {
     {
       name: "deduplicationConfig",
       type: "group",
-      admin: {
-        condition: editorOrAdminCondition,
-      },
+      admin: { condition: editorOrAdminCondition },
       fields: [
         {
           name: "enabled",
           type: "checkbox",
           defaultValue: true,
-          admin: {
-            description: "Enable duplicate detection during imports",
-          },
+          admin: { description: "Enable duplicate detection during imports" },
         },
         {
           name: "strategy",
@@ -271,19 +218,14 @@ const Datasets: CollectionConfig = {
             { label: "Create New Version", value: "version" },
           ],
           defaultValue: "skip",
-          admin: {
-            description: "What to do when duplicate is found",
-          },
+          admin: { description: "What to do when duplicate is found" },
         },
       ],
     },
     {
       name: "fieldMetadata",
       type: "json",
-      admin: {
-        readOnly: true,
-        description: "Statistics and metadata about each field",
-      },
+      admin: { readOnly: true, description: "Statistics and metadata about each field" },
     },
     // Type Transformations and Import Transforms (extracted to separate file)
     ...transformationFields,
@@ -291,9 +233,7 @@ const Datasets: CollectionConfig = {
     {
       name: "enumDetection",
       type: "group",
-      admin: {
-        condition: editorOrAdminCondition,
-      },
+      admin: { condition: editorOrAdminCondition },
       fields: [
         {
           name: "mode",
@@ -320,31 +260,23 @@ const Datasets: CollectionConfig = {
     {
       name: "geoFieldDetection",
       type: "group",
-      admin: {
-        condition: editorOrAdminCondition,
-      },
+      admin: { condition: editorOrAdminCondition },
       fields: [
         {
           name: "autoDetect",
           type: "checkbox",
           defaultValue: true,
-          admin: {
-            description: "Automatically detect latitude/longitude fields",
-          },
+          admin: { description: "Automatically detect latitude/longitude fields" },
         },
         {
           name: "latitudePath",
           type: "text",
-          admin: {
-            description: "Override: JSON path to latitude (detected: location.lat, lat, latitude)",
-          },
+          admin: { description: "Override: JSON path to latitude (detected: location.lat, lat, latitude)" },
         },
         {
           name: "longitudePath",
           type: "text",
-          admin: {
-            description: "Override: JSON path to longitude (detected: location.lng, lng, lon, longitude)",
-          },
+          admin: { description: "Override: JSON path to longitude (detected: location.lng, lng, lon, longitude)" },
         },
       ],
     },
@@ -362,51 +294,37 @@ const Datasets: CollectionConfig = {
         {
           name: "titlePath",
           type: "text",
-          admin: {
-            description: "Override detected title field (e.g., 'event_name', 'titel', 'titre')",
-          },
+          admin: { description: "Override detected title field (e.g., 'event_name', 'titel', 'titre')" },
         },
         {
           name: "descriptionPath",
           type: "text",
-          admin: {
-            description: "Override detected description field (e.g., 'details', 'beschreibung', 'détails')",
-          },
+          admin: { description: "Override detected description field (e.g., 'details', 'beschreibung', 'détails')" },
         },
         {
           name: "locationNamePath",
           type: "text",
-          admin: {
-            description: "Override detected location name field (e.g., 'venue', 'place', 'ort', 'lieu')",
-          },
+          admin: { description: "Override detected location name field (e.g., 'venue', 'place', 'ort', 'lieu')" },
         },
         {
           name: "timestampPath",
           type: "text",
-          admin: {
-            description: "Override detected timestamp field (e.g., 'created_at', 'datum', 'date')",
-          },
+          admin: { description: "Override detected timestamp field (e.g., 'created_at', 'datum', 'date')" },
         },
         {
           name: "latitudePath",
           type: "text",
-          admin: {
-            description: "Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')",
-          },
+          admin: { description: "Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')" },
         },
         {
           name: "longitudePath",
           type: "text",
-          admin: {
-            description: "Override detected longitude field (e.g., 'lon', 'longitude', 'x_coord')",
-          },
+          admin: { description: "Override detected longitude field (e.g., 'lon', 'longitude', 'x_coord')" },
         },
         {
           name: "locationPath",
           type: "text",
-          admin: {
-            description: "Override detected location field (e.g., 'address', 'location', 'venue', 'city')",
-          },
+          admin: { description: "Override detected location field (e.g., 'address', 'location', 'venue', 'city')" },
         },
       ],
     },

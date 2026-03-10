@@ -102,3 +102,4 @@ apps/docs/content/reference/api/**/_meta.js
 .gemini/
 .github/skills/
 .opencode/
+tmp/

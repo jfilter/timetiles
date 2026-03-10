@@ -164,11 +164,7 @@ describe.sequential("Schema Inference Service", () => {
       });
 
       // Delete one event
-      await payload.delete({
-        collection: "events",
-        id: eventIds[0]!,
-        overrideAccess: true,
-      });
+      await payload.delete({ collection: "events", id: eventIds[0]!, overrideAccess: true });
 
       const freshness = await getSchemaFreshness(payload, testDatasetId, schema);
 
@@ -348,9 +344,7 @@ describe.sequential("Schema Inference Service", () => {
         });
       }
 
-      const result = await SchemaInferenceService.inferSchemaFromEvents(payload, testDatasetId, {
-        sampleSize: 5,
-      });
+      const result = await SchemaInferenceService.inferSchemaFromEvents(payload, testDatasetId, { sampleSize: 5 });
 
       expect(result.generated).toBe(true);
       expect(result.eventsSampled).toBeLessThanOrEqual(5);

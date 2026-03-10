@@ -79,16 +79,9 @@ const checkSlugUniqueness = async <T extends keyof Config["collections"]>(
   req: PayloadRequest,
   currentId?: string | number
 ): Promise<boolean> => {
-  const where = {
-    slug: { equals: slug },
-    ...(currentId != null && { id: { not_equals: currentId } }),
-  };
+  const where = { slug: { equals: slug }, ...(currentId != null && { id: { not_equals: currentId } }) };
 
-  const result = await req.payload.find({
-    collection,
-    where,
-    limit: 1,
-  });
+  const result = await req.payload.find({ collection, where, limit: 1 });
 
   return result.docs.length === 0;
 };

@@ -96,11 +96,7 @@ export const sendExportReadyEmail = async (
   `;
 
   try {
-    await payload.sendEmail({
-      to: email,
-      subject: "Your TimeTiles data export is ready",
-      html,
-    });
+    await payload.sendEmail({ to: email, subject: "Your TimeTiles data export is ready", html });
     logger.info({ email }, "Export ready email sent");
   } catch (error) {
     logError(error, "Failed to send export ready email", { email });
@@ -167,11 +163,7 @@ export const sendExportFailedEmail = async (
   `;
 
   try {
-    await payload.sendEmail({
-      to: email,
-      subject: "Your TimeTiles data export could not be completed",
-      html,
-    });
+    await payload.sendEmail({ to: email, subject: "Your TimeTiles data export could not be completed", html });
     logger.info({ email }, "Export failed email sent");
   } catch (error) {
     logError(error, "Failed to send export failed email", { email });

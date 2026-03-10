@@ -33,9 +33,7 @@ export const TEST_CREDENTIALS = {
     secretKey: "secret-key-123",
     shortSecretKey: "secret-key",
   },
-  database: {
-    password: "test123456",
-  },
+  database: { password: "test123456" },
 } as const;
 
 // Additional test tokens
@@ -50,9 +48,7 @@ export const TEST_TOKENS = {
 } as const;
 
 // Test environment secrets
-export const TEST_SECRETS = {
-  payloadSecret: "test-secret-key",
-} as const;
+export const TEST_SECRETS = { payloadSecret: "test-secret-key" } as const;
 
 // Test user emails
 export const TEST_EMAILS = {

@@ -189,11 +189,7 @@ export class ConfigDrivenSeeding {
 
     try {
       // Find all datasets
-      const datasets = await payload.find({
-        collection: "datasets",
-        limit: 500,
-        overrideAccess: true,
-      });
+      const datasets = await payload.find({ collection: "datasets", limit: 500, overrideAccess: true });
 
       if (datasets.docs.length === 0) {
         logger.info("No datasets found, skipping schema generation");

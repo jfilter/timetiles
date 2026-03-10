@@ -42,11 +42,7 @@ interface FlowEditorClientProps {
 }
 
 // Define custom node types
-const nodeTypes = {
-  "source-column": SourceColumnNode,
-  "target-field": TargetFieldNode,
-  transform: TransformNode,
-};
+const nodeTypes = { "source-column": SourceColumnNode, "target-field": TargetFieldNode, transform: TransformNode };
 
 // Minimap color function
 const getNodeColor = (node: Node): string => {
@@ -104,10 +100,7 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
       const bounds = reactFlowWrapper.current?.getBoundingClientRect();
       if (!bounds) return;
 
-      const position = {
-        x: event.clientX - bounds.left,
-        y: event.clientY - bounds.top,
-      };
+      const position = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
 
       addTransformNode(transformType, position);
     },

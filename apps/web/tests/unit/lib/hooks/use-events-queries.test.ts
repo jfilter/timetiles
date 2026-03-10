@@ -16,14 +16,7 @@ import { useImportUploadMutation } from "@/lib/hooks/use-events-queries";
 const createWrapper =
   () =>
   ({ children }: { children: ReactNode }) => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          gcTime: 0,
-        },
-      },
-    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
 
     return React.createElement(QueryClientProvider, { client: queryClient }, children);
   };
@@ -47,9 +40,7 @@ describe.sequential("useImportUploadMutation", () => {
   });
 
   it("does not coerce partially numeric catalog ids into upload payloads", async () => {
-    const { result } = renderHook(() => useImportUploadMutation(), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(() => useImportUploadMutation(), { wrapper: createWrapper() });
 
     const formData = new FormData();
     formData.append("file", new File(["id,title\n1,Test"], "events.csv", { type: "text/csv" }));
@@ -60,9 +51,7 @@ describe.sequential("useImportUploadMutation", () => {
     });
 
     const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    const payload = JSON.parse((options.body as FormData).get("_payload") as string) as {
-      catalog?: number;
-    };
+    const payload = JSON.parse((options.body as FormData).get("_payload") as string) as { catalog?: number };
 
     expect(payload.catalog).toBeUndefined();
   });

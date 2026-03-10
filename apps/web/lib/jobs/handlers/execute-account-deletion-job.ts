@@ -38,27 +38,17 @@ export const executeAccountDeletionJob = {
 
       for (const user of dueDeletions) {
         try {
-          await deletionService.executeDeletion(user.id, {
-            deletionType: "scheduled",
-          });
+          await deletionService.executeDeletion(user.id, { deletionType: "scheduled" });
           successCount++;
           logger.info({ userId: user.id }, "Successfully executed scheduled deletion");
         } catch (error) {
           errorCount++;
-          logError(error, "Failed to execute scheduled deletion", {
-            userId: user.id,
-            email: user.email,
-          });
+          logError(error, "Failed to execute scheduled deletion", { userId: user.id, email: user.email });
         }
       }
 
       logger.info(
-        {
-          jobId: job?.id,
-          totalDue: dueDeletions.length,
-          success: successCount,
-          errors: errorCount,
-        },
+        { jobId: job?.id, totalDue: dueDeletions.length, success: successCount, errors: errorCount },
         "Account deletion execution job completed"
       );
 

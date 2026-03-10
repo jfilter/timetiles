@@ -75,10 +75,7 @@ export const parseExcelFile = (
   if (!worksheet) {
     throw new Error(`Worksheet '${firstSheetName}' not found`);
   }
-  const jsonData = xlsxUtils.sheet_to_json(worksheet, {
-    header: 1,
-    defval: "",
-  });
+  const jsonData = xlsxUtils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
   if (jsonData.length === 0) {
     logger.warn("Excel file contains no data");

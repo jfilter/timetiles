@@ -15,16 +15,8 @@ import { GET } from "../../../app/api/v1/events/geo/route";
 
 interface MapClusterFeature {
   type: "Feature";
-  geometry: {
-    type: "Point";
-    coordinates: [number, number];
-  };
-  properties: {
-    id: string;
-    type: "event-cluster" | "event-point";
-    count?: number;
-    title?: string;
-  };
+  geometry: { type: "Point"; coordinates: [number, number] };
+  properties: { id: string; type: "event-cluster" | "event-point"; count?: number; title?: string };
 }
 
 describe("/api/v1/events/geo", () => {
@@ -67,13 +59,7 @@ describe("/api/v1/events/geo", () => {
             children: [
               {
                 type: "paragraph",
-                children: [
-                  {
-                    type: "text",
-                    text: "Test dataset for clustering integration tests",
-                    version: 1,
-                  },
-                ],
+                children: [{ type: "text", text: "Test dataset for clustering integration tests", version: 1 }],
                 version: 1,
               },
             ],
@@ -115,17 +101,9 @@ describe("/api/v1/events/geo", () => {
           data: {
             title: `Test Event ${i + 1}`,
             description: `Test event for clustering at ${testLocations[i]?.lat}, ${testLocations[i]?.lng}`,
-            venue: {
-              city: i < 4 ? "Berlin" : "Paris",
-              address: {
-                city: i < 4 ? "Berlin" : "Paris",
-              },
-            },
+            venue: { city: i < 4 ? "Berlin" : "Paris", address: { city: i < 4 ? "Berlin" : "Paris" } },
           },
-          location: {
-            latitude: testLocations[i]?.lat,
-            longitude: testLocations[i]?.lng,
-          },
+          location: { latitude: testLocations[i]?.lat, longitude: testLocations[i]?.lng },
           eventTimestamp: new Date(2024, 0, i + 1).toISOString(),
         },
       });
@@ -145,12 +123,7 @@ describe("/api/v1/events/geo", () => {
   });
 
   it("should return clustered events for global view", async () => {
-    const bounds = {
-      north: 90,
-      south: -90,
-      east: 180,
-      west: -180,
-    };
+    const bounds = { north: 90, south: -90, east: 180, west: -180 };
 
     const request = new NextRequest(
       `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=2`
@@ -192,12 +165,7 @@ describe("/api/v1/events/geo", () => {
 
   it("should return individual events at high zoom", async () => {
     // Tight bounds around SF test events (37.7749-37.7752, -122.4193 to -122.4196)
-    const bounds = {
-      north: 37.78,
-      south: 37.77,
-      east: -122.41,
-      west: -122.43,
-    };
+    const bounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
 
     // Test request construction (for documentation)
     // new NextRequest(
@@ -248,10 +216,7 @@ describe("/api/v1/events/geo", () => {
       };
     });
 
-    const data = {
-      type: "FeatureCollection",
-      features: clusters,
-    };
+    const data = { type: "FeatureCollection", features: clusters };
 
     // At zoom level 16 in SF area, we should see results (either clusters or individual events)
     expect(data.features.length).toBeGreaterThan(0);
@@ -282,12 +247,7 @@ describe("/api/v1/events/geo", () => {
   });
 
   it("should filter by dataset", async () => {
-    const bounds = {
-      north: 90,
-      south: -90,
-      east: 180,
-      west: -180,
-    };
+    const bounds = { north: 90, south: -90, east: 180, west: -180 };
 
     const request = new NextRequest(
       `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(
@@ -314,12 +274,7 @@ describe("/api/v1/events/geo", () => {
   });
 
   it("should filter by date range", async () => {
-    const bounds = {
-      north: 90,
-      south: -90,
-      east: 180,
-      west: -180,
-    };
+    const bounds = { north: 90, south: -90, east: 180, west: -180 };
 
     const startDate = new Date(2024, 0, 5).toISOString().split("T")[0];
     const endDate = new Date(2024, 0, 8).toISOString().split("T")[0];
@@ -352,12 +307,7 @@ describe("/api/v1/events/geo", () => {
   });
 
   it("should filter clusters by deeply nested field path", async () => {
-    const bounds = {
-      north: 90,
-      south: -90,
-      east: 180,
-      west: -180,
-    };
+    const bounds = { north: 90, south: -90, east: 180, west: -180 };
     const fieldFilters = JSON.stringify({ "venue.address.city": ["Berlin"] });
 
     const request = new NextRequest(
@@ -403,12 +353,7 @@ describe("/api/v1/events/geo", () => {
 
   it("should use tile-based clustering for stable cluster positions", async () => {
     // Test that clusters at zoom 10 stay at the same positions when zooming to 11
-    const bounds = {
-      north: 38,
-      south: 37.5,
-      east: -122,
-      west: -123,
-    };
+    const bounds = { north: 38, south: 37.5, east: -122, west: -123 };
 
     // Get clusters at zoom 10
     const result10 = (await testEnv.payload.db.drizzle.execute(
@@ -455,12 +400,7 @@ describe("/api/v1/events/geo", () => {
 
   it("should maintain cluster subdivision across zoom levels", async () => {
     // Test bounds around SF events
-    const sfBounds = {
-      north: 37.78,
-      south: 37.77,
-      east: -122.41,
-      west: -122.43,
-    };
+    const sfBounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
 
     // Test zoom levels 8, 10, 12, 14
     const results: Record<number, any[]> = {};
@@ -503,12 +443,7 @@ describe("/api/v1/events/geo", () => {
   });
 
   it("should produce deterministic cluster IDs based on tile coordinates", async () => {
-    const bounds = {
-      north: 38,
-      south: 37.5,
-      east: -122,
-      west: -123,
-    };
+    const bounds = { north: 38, south: 37.5, east: -122, west: -123 };
 
     // Run the same query twice
     const result1 = (await testEnv.payload.db.drizzle.execute(

@@ -90,11 +90,7 @@ describe("scheduled-imports beforeChange hook", () => {
     });
 
     it("should set nextRun for frequency-based schedules", () => {
-      const data: Record<string, unknown> = {
-        scheduleType: "frequency",
-        frequency: "daily",
-        enabled: true,
-      };
+      const data: Record<string, unknown> = { scheduleType: "frequency", frequency: "daily", enabled: true };
 
       const result = beforeChangeHook({
         data,
@@ -150,11 +146,7 @@ describe("scheduled-imports beforeChange hook", () => {
     });
 
     it("should clear frequency when scheduleType is cron", () => {
-      const data: Record<string, unknown> = {
-        scheduleType: "cron",
-        cronExpression: "0 12 * * *",
-        frequency: "daily",
-      };
+      const data: Record<string, unknown> = { scheduleType: "cron", cronExpression: "0 12 * * *", frequency: "daily" };
 
       const result = beforeChangeHook({
         data,
@@ -169,11 +161,7 @@ describe("scheduled-imports beforeChange hook", () => {
     });
 
     it("should initialize statistics on create", () => {
-      const data: Record<string, unknown> = {
-        scheduleType: "cron",
-        cronExpression: "0 12 * * *",
-        enabled: true,
-      };
+      const data: Record<string, unknown> = { scheduleType: "cron", cronExpression: "0 12 * * *", enabled: true };
 
       const result = beforeChangeHook({
         data,
@@ -184,12 +172,7 @@ describe("scheduled-imports beforeChange hook", () => {
         collection: {} as never,
       });
 
-      expect(result.statistics).toEqual({
-        totalRuns: 0,
-        successfulRuns: 0,
-        failedRuns: 0,
-        averageDuration: 0,
-      });
+      expect(result.statistics).toEqual({ totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 });
     });
   });
 });

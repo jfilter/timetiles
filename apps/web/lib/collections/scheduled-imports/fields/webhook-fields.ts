@@ -15,10 +15,7 @@ export const webhookFields: Field[] = [
     name: "webhookEnabled",
     type: "checkbox",
     defaultValue: false,
-    admin: {
-      position: "sidebar",
-      description: "Enable webhook URL for triggering this import on-demand",
-    },
+    admin: { position: "sidebar", description: "Enable webhook URL for triggering this import on-demand" },
   },
   {
     name: "webhookToken",

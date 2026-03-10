@@ -344,11 +344,7 @@ describe("Data Validation Utilities", () => {
     });
 
     it("should prioritize 'tags' field over other fields", () => {
-      const row = {
-        tags: "tag1, tag2",
-        categories: "cat1, cat2",
-        keywords: "key1, key2",
-      };
+      const row = { tags: "tag1, tag2", categories: "cat1, cat2", keywords: "key1, key2" };
       const result = parseTagsFromRow(row);
       expect(result).toEqual(["tag1", "tag2"]);
     });
@@ -396,9 +392,7 @@ describe("Data Validation Utilities", () => {
     });
 
     it("should limit to 10 tags", () => {
-      const row = {
-        tags: "tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10, tag11, tag12",
-      };
+      const row = { tags: "tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10, tag11, tag12" };
       const result = parseTagsFromRow(row);
       expect(result).toHaveLength(10);
       expect(result).toEqual(["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"]);

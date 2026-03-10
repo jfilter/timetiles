@@ -50,10 +50,7 @@ describe("/api/v1/events - location filtering", () => {
           uniqueId: `with-coords-${i + 1}`,
           dataset: testDatasetId,
           data: { title: `Event with coords ${i + 1}` },
-          location: {
-            latitude: 40.7128 + i * 0.01,
-            longitude: -74.006 + i * 0.01,
-          },
+          location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
         },
       });

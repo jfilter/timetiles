@@ -11,30 +11,16 @@ import "@/tests/mocks/services/logger";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@payloadcms/db-postgres", () => ({
-  sql: {
-    join: vi.fn(),
-  },
-}));
+vi.mock("@payloadcms/db-postgres", () => ({ sql: { join: vi.fn() } }));
 
-const { mockGetPayload } = vi.hoisted(() => ({
-  mockGetPayload: vi.fn(),
-}));
+const { mockGetPayload } = vi.hoisted(() => ({ mockGetPayload: vi.fn() }));
 
-vi.mock("payload", () => ({
-  getPayload: mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mockGetPayload }));
 
-vi.mock("../../payload.config", () => ({
-  default: {},
-}));
+vi.mock("../../payload.config", () => ({ default: {} }));
 
 vi.mock("node:fs/promises", () => ({
-  default: {
-    access: vi.fn(),
-    readdir: vi.fn(),
-    constants: { W_OK: 2 },
-  },
+  default: { access: vi.fn(), readdir: vi.fn(), constants: { W_OK: 2 } },
   access: vi.fn(),
   readdir: vi.fn(),
   constants: { W_OK: 2 },
@@ -54,9 +40,7 @@ describe("health", () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
         db: {
-          drizzle: {
-            execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }),
-          },
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
         },
       };
       mockGetPayload.mockResolvedValue(mockPayload);
@@ -119,9 +103,7 @@ describe("health", () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
         db: {
-          drizzle: {
-            execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }),
-          },
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
         },
       };
       mockGetPayload.mockResolvedValue(mockPayload);
@@ -150,9 +132,7 @@ describe("health", () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
         db: {
-          drizzle: {
-            execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }),
-          },
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
         },
       };
       mockGetPayload.mockResolvedValue(mockPayload);
@@ -189,9 +169,7 @@ describe("health", () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
         db: {
-          drizzle: {
-            execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }),
-          },
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
         },
       };
       mockGetPayload.mockResolvedValue(mockPayload);
@@ -233,9 +211,7 @@ describe("health", () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
         db: {
-          drizzle: {
-            execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }),
-          },
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
         },
       };
       mockGetPayload.mockResolvedValue(mockPayload);
@@ -277,9 +253,7 @@ describe("health", () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
         db: {
-          drizzle: {
-            execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }),
-          },
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
         },
       };
       mockGetPayload.mockResolvedValue(mockPayload);
@@ -316,9 +290,7 @@ describe("health", () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 0, docs: [] }),
         db: {
-          drizzle: {
-            execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }),
-          },
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
         },
       };
       mockGetPayload.mockResolvedValue(mockPayload);
@@ -345,9 +317,7 @@ describe("health", () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
         db: {
-          drizzle: {
-            execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }),
-          },
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
         },
       };
       mockGetPayload.mockResolvedValue(mockPayload);

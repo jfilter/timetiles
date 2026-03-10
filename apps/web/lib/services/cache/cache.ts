@@ -240,13 +240,7 @@ export class Cache {
       return await this.storage.getStats();
     } catch (error) {
       logger.error("Cache getStats error", { error });
-      return {
-        entries: 0,
-        totalSize: 0,
-        hits: 0,
-        misses: 0,
-        evictions: 0,
-      };
+      return { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 };
     }
   }
 
@@ -270,10 +264,7 @@ export class Cache {
    * Create a namespaced cache instance
    */
   namespace(namespace: string): Cache {
-    return new Cache({
-      ...this.config,
-      keyPrefix: this.keyPrefix + namespace + ":",
-    });
+    return new Cache({ ...this.config, keyPrefix: this.keyPrefix + namespace + ":" });
   }
 
   /**

@@ -118,11 +118,7 @@ test.describe("Explore Page - Basic Functionality", () => {
     // Check if we can interact with form elements via keyboard
     const focusedElement = await page.evaluate(() => {
       const el = document.activeElement;
-      return {
-        tagName: el?.tagName,
-        id: el?.id,
-        type: (el as HTMLInputElement)?.type,
-      };
+      return { tagName: el?.tagName, id: el?.id, type: (el as HTMLInputElement)?.type };
     });
 
     // We should be on some interactive element (link, select, input, button, or custom component)

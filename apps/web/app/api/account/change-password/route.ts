@@ -74,13 +74,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     if (verifyError) return verifyError;
 
     // Update the password
-    await payload.update({
-      collection: "users",
-      id: user.id,
-      data: {
-        password: newPassword,
-      },
-    });
+    await payload.update({ collection: "users", id: user.id, data: { password: newPassword } });
 
     await auditLog(payload, {
       action: AUDIT_ACTIONS.PASSWORD_CHANGED,
@@ -91,10 +85,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
 
     logger.info({ userId: user.id, clientId }, "Password changed successfully");
 
-    return NextResponse.json({
-      success: true,
-      message: "Password changed successfully",
-    });
+    return NextResponse.json({ success: true, message: "Password changed successfully" });
   } catch (error) {
     return handleError(error);
   }

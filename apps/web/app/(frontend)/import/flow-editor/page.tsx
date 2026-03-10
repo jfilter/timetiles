@@ -21,12 +21,7 @@ export const metadata: Metadata = {
 };
 
 interface FlowEditorPageProps {
-  searchParams: Promise<{
-    previewId?: string;
-    sheetIndex?: string;
-    scheduleId?: string;
-    datasetId?: string;
-  }>;
+  searchParams: Promise<{ previewId?: string; sheetIndex?: string; scheduleId?: string; datasetId?: string }>;
 }
 
 export default async function FlowEditorPage({ searchParams }: Readonly<FlowEditorPageProps>) {

@@ -33,18 +33,9 @@ export interface ContentStateProps {
 }
 
 const defaults: Record<ContentStateProps["variant"], { title: string; subtitle: string }> = {
-  empty: {
-    title: "No data yet",
-    subtitle: "There's nothing to show",
-  },
-  "no-match": {
-    title: "No matching results",
-    subtitle: "Try adjusting your filters",
-  },
-  error: {
-    title: "Something went wrong",
-    subtitle: "There was a problem loading this content",
-  },
+  empty: { title: "No data yet", subtitle: "There's nothing to show" },
+  "no-match": { title: "No matching results", subtitle: "Try adjusting your filters" },
+  error: { title: "Something went wrong", subtitle: "There was a problem loading this content" },
 };
 
 const defaultIcons: Record<ContentStateProps["variant"], ReactNode> = {

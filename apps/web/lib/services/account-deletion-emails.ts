@@ -23,12 +23,7 @@ const formatDeletionDate = (deletionScheduledAt: string): string => {
     return "Unknown";
   }
 
-  return deletionDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return deletionDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 };
 
 /**
@@ -85,11 +80,7 @@ export const sendDeletionScheduledEmail = async (
   `;
 
   try {
-    await payload.sendEmail({
-      to: email,
-      subject: "Your TimeTiles account deletion is scheduled",
-      html,
-    });
+    await payload.sendEmail({ to: email, subject: "Your TimeTiles account deletion is scheduled", html });
     logger.info({ email }, "Deletion scheduled email sent");
   } catch (error) {
     logError(error, "Failed to send deletion scheduled email", { email });
@@ -133,11 +124,7 @@ export const sendDeletionCancelledEmail = async (
   `;
 
   try {
-    await payload.sendEmail({
-      to: email,
-      subject: "Your TimeTiles account deletion has been cancelled",
-      html,
-    });
+    await payload.sendEmail({ to: email, subject: "Your TimeTiles account deletion has been cancelled", html });
     logger.info({ email }, "Deletion cancelled email sent");
   } catch (error) {
     logError(error, "Failed to send deletion cancelled email", { email });
@@ -199,11 +186,7 @@ export const sendDeletionCompletedEmail = async (
   `;
 
   try {
-    await payload.sendEmail({
-      to: email,
-      subject: "Your TimeTiles account has been deleted",
-      html,
-    });
+    await payload.sendEmail({ to: email, subject: "Your TimeTiles account has been deleted", html });
     logger.info({ email }, "Deletion completed email sent");
   } catch (error) {
     logError(error, "Failed to send deletion completed email", { email });

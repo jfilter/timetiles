@@ -35,9 +35,7 @@ const baseConfig: pino.LoggerOptions = {
     },
   },
   timestamp: pino.stdTimeFunctions.isoTime,
-  base: {
-    env: process.env.NODE_ENV,
-  },
+  base: { env: process.env.NODE_ENV },
 };
 
 // Development configuration with pretty printing
@@ -65,46 +63,23 @@ export const createLogger = (module: string) => {
 
 // Helper to create request logger
 export const createRequestLogger = (requestId: string, userId?: string | number) => {
-  return logger.child({
-    requestId,
-    userId,
-    type: "request",
-  });
+  return logger.child({ requestId, userId, type: "request" });
 };
 
 // Helper to create job logger
 export const createJobLogger = (jobId: string | number, taskType: string) => {
-  return logger.child({
-    jobId,
-    taskType,
-    type: "job",
-  });
+  return logger.child({ jobId, taskType, type: "job" });
 };
 
 // Performance logging helper
 export const logPerformance = (operation: string, duration: number, metadata?: Record<string, unknown>) => {
-  logger.info(
-    {
-      type: "performance",
-      operation,
-      duration,
-      ...metadata,
-    },
-    `${operation} completed in ${duration}ms`
-  );
+  logger.info({ type: "performance", operation, duration, ...metadata }, `${operation} completed in ${duration}ms`);
 };
 
 // Error logging helper with context
 export const logError = (error: unknown, context: string, metadata?: Record<string, unknown>) => {
   const err = error instanceof Error ? error : new Error(String(error));
-  logger.error(
-    {
-      err,
-      context,
-      ...metadata,
-    },
-    `Error in ${context}: ${err.message}`
-  );
+  logger.error({ err, context, ...metadata }, `Error in ${context}: ${err.message}`);
 };
 
 // Export log levels for convenience

@@ -27,12 +27,7 @@ interface SonarCloudIssue {
   project: string;
   line?: number;
   hash?: string;
-  textRange?: {
-    startLine: number;
-    endLine: number;
-    startOffset: number;
-    endOffset: number;
-  };
+  textRange?: { startLine: number; endLine: number; startOffset: number; endOffset: number };
   flows: unknown[];
   status: string;
   message: string;
@@ -88,16 +83,10 @@ async function checkLatestCommitAnalyzed(): Promise<void> {
 
     // Get latest analysis from SonarCloud
     const analysisUrl = `https://sonarcloud.io/api/project_analyses/search?project=${projectKey}&ps=1`;
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      "User-Agent": "Node.js SonarCloud Client",
-    };
+    const headers = { Authorization: `Bearer ${token}`, "User-Agent": "Node.js SonarCloud Client" };
 
     console.log("Checking SonarCloud for latest analysis...");
-    const response = await fetch(analysisUrl, {
-      method: "GET",
-      headers: headers,
-    });
+    const response = await fetch(analysisUrl, { method: "GET", headers: headers });
 
     if (!response.ok) {
       throw new Error(`SonarCloud API error: ${response.status} ${response.statusText}`);
@@ -165,10 +154,7 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
     const severities = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"];
     const types = ["BUG", "VULNERABILITY", "CODE_SMELL", "SECURITY_HOTSPOT"];
 
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      "User-Agent": "Node.js SonarCloud Client",
-    };
+    const headers = { Authorization: `Bearer ${token}`, "User-Agent": "Node.js SonarCloud Client" };
 
     let allIssues: SonarCloudIssue[] = [];
     let page = 1;
@@ -179,10 +165,7 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
     while (page <= totalPages) {
       const issuesUrl = `https://sonarcloud.io/api/issues/search?componentKeys=${projectKey}&resolved=false&ps=${pageSize}&p=${page}`;
 
-      const response = await fetch(issuesUrl, {
-        method: "GET",
-        headers: headers,
-      });
+      const response = await fetch(issuesUrl, { method: "GET", headers: headers });
 
       if (!response.ok) {
         throw new Error(`SonarCloud API error: ${response.status} ${response.statusText}`);

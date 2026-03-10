@@ -57,12 +57,7 @@ interface HeroBlock {
   subtitle?: string | null;
   description?: string | null;
   background?: "gradient" | "grid" | null;
-  buttons?: Array<{
-    text: string;
-    link: string;
-    variant?: "default" | "outline" | null;
-    id?: string | null;
-  }> | null;
+  buttons?: Array<{ text: string; link: string; variant?: "default" | "outline" | null; id?: string | null }> | null;
   id?: string | null;
   blockName?: string | null;
 }

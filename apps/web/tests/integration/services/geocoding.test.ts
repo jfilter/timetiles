@@ -81,12 +81,7 @@ describe("GeocodingService", () => {
           enabled: true,
           priority: 1,
           rateLimit: 50,
-          config: {
-            google: {
-              apiKey: TEST_CREDENTIALS.apiKey.key,
-              language: "en",
-            },
-          },
+          config: { google: { apiKey: TEST_CREDENTIALS.apiKey.key, language: "en" } },
           tags: ["testing"],
         },
       });
@@ -146,10 +141,7 @@ describe("GeocodingService", () => {
   // Helper function to create test providers in the collection
   const createTestProviders = async (withGoogleApi = false) => {
     const uniqueId = `${testCounter}-${Date.now()}`;
-    const providerNames: { google: string | null; nominatim: string | null } = {
-      google: null,
-      nominatim: null,
-    };
+    const providerNames: { google: string | null; nominatim: string | null } = { google: null, nominatim: null };
 
     if (withGoogleApi) {
       const googleName = `Google Maps (Test ${uniqueId})`;
@@ -161,12 +153,7 @@ describe("GeocodingService", () => {
           enabled: true,
           priority: 1,
           rateLimit: 50,
-          config: {
-            google: {
-              apiKey: TEST_CREDENTIALS.apiKey.key,
-              language: "en",
-            },
-          },
+          config: { google: { apiKey: TEST_CREDENTIALS.apiKey.key, language: "en" } },
           tags: ["testing", "production"],
         },
       });
@@ -246,10 +233,7 @@ describe("GeocodingService", () => {
         state: "CA",
         zipcode: "94102",
         country: "USA",
-        extra: {
-          googlePlaceId: "ChIJd8BlQ2BZwokRAFUEcm_qrcA",
-          confidence: 0.9,
-        },
+        extra: { googlePlaceId: "ChIJd8BlQ2BZwokRAFUEcm_qrcA", confidence: 0.9 },
       };
 
       // Set up mocks BEFORE creating service
@@ -300,10 +284,7 @@ describe("GeocodingService", () => {
           city: "San Francisco",
           state: "California",
           country: "USA",
-          extra: {
-            osmId: "123456",
-            importance: 0.7,
-          },
+          extra: { osmId: "123456", importance: 0.7 },
         },
       ]);
 
@@ -332,10 +313,7 @@ describe("GeocodingService", () => {
           city: "San Francisco",
           state: "California",
           country: "USA",
-          extra: {
-            osmId: "123456",
-            importance: 0.7,
-          },
+          extra: { osmId: "123456", importance: 0.7 },
         },
       ]);
 
@@ -401,10 +379,7 @@ describe("GeocodingService", () => {
       expect(mockNominatimGeocode).not.toHaveBeenCalled();
 
       // Verify hit count was updated
-      const updatedCache = await payload.findByID({
-        collection: "location-cache",
-        id: cachedResult.id as string,
-      });
+      const updatedCache = await payload.findByID({ collection: "location-cache", id: cachedResult.id as string });
       expect(updatedCache.hitCount).toBe(2);
     });
 
@@ -636,10 +611,7 @@ describe("GeocodingService", () => {
         streetName: "Main St",
         city: "San Francisco",
         country: "USA",
-        extra: {
-          googlePlaceId: "ChIJd8BlQ2BZwokRAFUEcm_qrcA",
-          confidence: 0.9,
-        },
+        extra: { googlePlaceId: "ChIJd8BlQ2BZwokRAFUEcm_qrcA", confidence: 0.9 },
       };
 
       // Set up mocks BEFORE creating service
@@ -662,10 +634,7 @@ describe("GeocodingService", () => {
         streetName: "Main St",
         city: "San Francisco",
         country: "USA",
-        extra: {
-          osmId: "123456",
-          importance: 0.7,
-        },
+        extra: { osmId: "123456", importance: 0.7 },
       };
 
       // Set up mocks BEFORE creating service
@@ -759,18 +728,14 @@ describe("GeocodingService", () => {
       await payload.update({
         collection: "location-cache",
         id: oldEntry.id,
-        data: {
-          createdAt: oldDate.toISOString(),
-        },
+        data: { createdAt: oldDate.toISOString() },
       });
 
       await geocodingService.cleanupCache();
 
       const remainingEntries = await payload.find({
         collection: "location-cache",
-        where: {
-          originalAddress: { equals: uniqueAddress },
-        },
+        where: { originalAddress: { equals: uniqueAddress } },
       });
 
       expect(remainingEntries.docs).toHaveLength(0);
@@ -807,9 +772,7 @@ describe("GeocodingService", () => {
 
       const remainingEntries = await payload.find({
         collection: "location-cache",
-        where: {
-          originalAddress: { equals: uniqueAddress },
-        },
+        where: { originalAddress: { equals: uniqueAddress } },
       });
 
       expect(remainingEntries.docs).toHaveLength(1);

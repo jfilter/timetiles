@@ -96,13 +96,7 @@ Users are assigned trust levels that determine their resource quotas and rate li
 Set user-specific overrides in the admin panel (`/admin/users`):
 
 ```json
-{
-  "quotas": {
-    "maxActiveSchedules": 50,
-    "maxFileUploadsPerDay": 100,
-    "maxTotalEvents": 1000000
-  }
-}
+{ "quotas": { "maxActiveSchedules": 50, "maxFileUploadsPerDay": 100, "maxTotalEvents": 1000000 } }
 ```
 
 Custom quotas override trust level defaults.

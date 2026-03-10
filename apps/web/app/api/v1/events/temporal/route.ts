@@ -44,11 +44,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
 
-    const filters = buildEventFilters({
-      parameters,
-      accessibleCatalogIds,
-      bounds,
-    });
+    const filters = buildEventFilters({ parameters, accessibleCatalogIds, bounds });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyAccess === true || filters.denyResults === true) {
@@ -71,11 +67,7 @@ const executeHistogramQuery = async (
   bounds: MapBounds | null,
   accessibleCatalogIds: number[]
 ) => {
-  const filters = buildEventFilters({
-    parameters,
-    accessibleCatalogIds,
-    bounds,
-  });
+  const filters = buildEventFilters({ parameters, accessibleCatalogIds, bounds });
 
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM calculate_event_histogram(
@@ -85,12 +77,7 @@ const executeHistogramQuery = async (
       ${parameters.maxBuckets}::integer
     )
   `)) as {
-    rows: Array<{
-      bucket_start: string;
-      bucket_end: string;
-      bucket_size_seconds: number;
-      event_count: number;
-    }>;
+    rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>;
   };
 };
 
@@ -108,12 +95,7 @@ const buildEmptyHistogramResponse = () => ({
 });
 
 const buildHistogramResponse = (
-  rows: Array<{
-    bucket_start: string;
-    bucket_end: string;
-    bucket_size_seconds: number;
-    event_count: number;
-  }>
+  rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>
 ) => {
   const total = rows.reduce((sum: number, row) => sum + parseInt(String(row.event_count), 10), 0);
 
@@ -127,10 +109,7 @@ const buildHistogramResponse = (
     histogram,
     metadata: {
       total,
-      dateRange: {
-        min: rows[0]?.bucket_start ?? null,
-        max: rows[rows.length - 1]?.bucket_end ?? null,
-      },
+      dateRange: { min: rows[0]?.bucket_start ?? null, max: rows[rows.length - 1]?.bucket_end ?? null },
       bucketSizeSeconds: rows[0]?.bucket_size_seconds ?? null,
       bucketCount: rows.length,
       counts: { datasets: 0, catalogs: 0 },

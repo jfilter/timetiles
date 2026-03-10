@@ -1,9 +1,7 @@
 {
   "extends": "@timetiles/typescript-config/react-library.json",
   "compilerOptions": {
-    "paths": {
-      "@timetiles/ui/*": ["./src/*"]
-    },
+    "paths": { "@timetiles/ui/*": ["./src/*"] },
     "moduleResolution": "bundler",
     "module": "ESNext",
     "allowSyntheticDefaultImports": true,

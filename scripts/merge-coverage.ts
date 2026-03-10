@@ -49,9 +49,7 @@ console.log(`\n📊 Merging ${coverageFiles.length} coverage reports...`);
 
 try {
   // Use nyc to merge and generate reports
-  execSync(`npx nyc merge ${NYC_OUTPUT_DIR} ${join(COVERAGE_DIR, "coverage-final.json")}`, {
-    stdio: "pipe",
-  });
+  execSync(`npx nyc merge ${NYC_OUTPUT_DIR} ${join(COVERAGE_DIR, "coverage-final.json")}`, { stdio: "pipe" });
 
   // Generate text-summary for single number
   const summaryOutput = execSync(`npx nyc report --temp-dir ${NYC_OUTPUT_DIR} --reporter=text-summary`, {
@@ -61,9 +59,7 @@ try {
   // Generate full reports
   execSync(
     `npx nyc report --temp-dir ${NYC_OUTPUT_DIR} --report-dir ${COVERAGE_DIR} --reporter=text --reporter=lcov --reporter=html --reporter=json-summary`,
-    {
-      stdio: "inherit",
-    }
+    { stdio: "inherit" }
   );
 
   // Parse and display the summary

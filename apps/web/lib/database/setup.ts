@@ -167,10 +167,7 @@ export const runMigrations = (connectionString: string): void => {
     // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
     execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate`, {
       stdio: "inherit",
-      env: {
-        ...process.env,
-        DATABASE_URL: connectionString,
-      },
+      env: { ...process.env, DATABASE_URL: connectionString },
     });
 
     logger.info("Migrations completed successfully");
@@ -233,10 +230,7 @@ const resolveDatabaseConnection = (
   }
 
   const baseComponents = parseDatabaseUrl(baseUrl);
-  const connString = constructDatabaseUrl({
-    ...baseComponents,
-    database: databaseName,
-  });
+  const connString = constructDatabaseUrl({ ...baseComponents, database: databaseName });
 
   return { dbName: databaseName, connString };
 };

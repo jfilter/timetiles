@@ -23,9 +23,7 @@ export const read: Access = ({ req: { user } }): boolean | Where => {
 
   // Logged-in users can see: public views OR views they created
   if (user) {
-    return {
-      or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }],
-    } as Where;
+    return { or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }] } as Where;
   }
 
   // Anonymous users only see public views

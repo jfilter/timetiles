@@ -33,11 +33,7 @@ const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
 };
 
 const TRANSFORM_COLORS: Record<TransformType, { bg: string; border: string; text: string }> = {
-  rename: {
-    bg: "bg-cartographic-blue/5",
-    border: "border-cartographic-blue/50",
-    text: "text-cartographic-blue",
-  },
+  rename: { bg: "bg-cartographic-blue/5", border: "border-cartographic-blue/50", text: "text-cartographic-blue" },
   "date-parse": {
     bg: "bg-cartographic-terracotta/5",
     border: "border-cartographic-terracotta/50",
@@ -48,21 +44,9 @@ const TRANSFORM_COLORS: Record<TransformType, { bg: string; border: string; text
     border: "border-cartographic-forest/50",
     text: "text-cartographic-forest",
   },
-  concatenate: {
-    bg: "bg-cartographic-navy/5",
-    border: "border-cartographic-navy/50",
-    text: "text-cartographic-navy",
-  },
-  split: {
-    bg: "bg-purple-500/5",
-    border: "border-purple-500/50",
-    text: "text-purple-600",
-  },
-  "type-cast": {
-    bg: "bg-amber-500/5",
-    border: "border-amber-500/50",
-    text: "text-amber-600",
-  },
+  concatenate: { bg: "bg-cartographic-navy/5", border: "border-cartographic-navy/50", text: "text-cartographic-navy" },
+  split: { bg: "bg-purple-500/5", border: "border-purple-500/50", text: "text-purple-600" },
+  "type-cast": { bg: "bg-amber-500/5", border: "border-amber-500/50", text: "text-amber-600" },
 };
 
 /**

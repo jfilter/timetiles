@@ -267,10 +267,7 @@ export class QuotaService {
 
     // If user has custom quotas JSON field, merge those too
     if (user.customQuotas && typeof user.customQuotas === "object") {
-      return {
-        ...effectiveQuotas,
-        ...(user.customQuotas as Partial<UserQuotas>),
-      };
+      return { ...effectiveQuotas, ...(user.customQuotas as Partial<UserQuotas>) };
     }
 
     return effectiveQuotas;
@@ -321,25 +318,13 @@ export class QuotaService {
 
     // Check if unlimited (-1)
     if (limit === -1) {
-      return {
-        allowed: true,
-        current: 0,
-        limit: -1,
-        remaining: -1,
-        quotaType,
-      };
+      return { allowed: true, current: 0, limit: -1, remaining: -1, quotaType };
     }
 
     // For unauthenticated users, only check the limit
     if (!user) {
       const allowed = amount <= limit;
-      return {
-        allowed,
-        current: 0,
-        limit,
-        remaining: allowed ? limit - amount : 0,
-        quotaType,
-      };
+      return { allowed, current: 0, limit, remaining: allowed ? limit - amount : 0, quotaType };
     }
 
     // Map quota type to usage type
@@ -347,13 +332,7 @@ export class QuotaService {
 
     if (!usageKey) {
       // For quotas without usage tracking (like file size)
-      return {
-        allowed: amount <= limit,
-        current: 0,
-        limit,
-        remaining: limit,
-        quotaType,
-      };
+      return { allowed: amount <= limit, current: 0, limit, remaining: limit, quotaType };
     }
 
     // Get current usage from user-usage collection
@@ -362,13 +341,7 @@ export class QuotaService {
     if (!usage) {
       // No usage record yet - will be created on first increment
       logger.debug("User has no usage record, using defaults", { userId: user.id });
-      return {
-        allowed: amount <= limit,
-        current: 0,
-        limit,
-        remaining: limit,
-        quotaType,
-      };
+      return { allowed: amount <= limit, current: 0, limit, remaining: limit, quotaType };
     }
 
     const current = usage[usageKey] || 0;
@@ -384,26 +357,12 @@ export class QuotaService {
         // Assume reset and return current=0
         // The actual reset will happen on next increment
         logger.debug("Daily quota needs reset, assuming current=0 for check", { userId: user.id, quotaType });
-        return {
-          allowed: amount <= limit,
-          current: 0,
-          limit,
-          remaining: limit,
-          resetTime,
-          quotaType,
-        };
+        return { allowed: amount <= limit, current: 0, limit, remaining: limit, resetTime, quotaType };
       }
     }
 
     logger.debug("checkQuota: Returning final result", { wouldExceed, current, limit });
-    return {
-      allowed: !wouldExceed,
-      current,
-      limit,
-      remaining: Math.max(0, limit - current),
-      resetTime,
-      quotaType,
-    };
+    return { allowed: !wouldExceed, current, limit, remaining: Math.max(0, limit - current), resetTime, quotaType };
   }
 
   /**
@@ -448,21 +407,13 @@ export class QuotaService {
         const col = user_usage[usageType];
         await drizzle
           .update(user_usage)
-          .set({
-            [usageType]: sql`COALESCE(${col}, 0) + ${amount}`,
-            updatedAt: sql`NOW()`,
-          })
+          .set({ [usageType]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
           .where(eq(user_usage.user, normalizedUserId));
       }
 
       logger.debug("Usage incremented", { userId: normalizedUserId, usageType, amount });
     } catch (error) {
-      logger.error("Failed to increment usage", {
-        error,
-        userId: normalizedUserId,
-        usageType,
-        amount,
-      });
+      logger.error("Failed to increment usage", { error, userId: normalizedUserId, usageType, amount });
       throw error;
     }
   }
@@ -489,20 +440,12 @@ export class QuotaService {
       const col = user_usage[usageType];
       await drizzle
         .update(user_usage)
-        .set({
-          [usageType]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`,
-          updatedAt: sql`NOW()`,
-        })
+        .set({ [usageType]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`, updatedAt: sql`NOW()` })
         .where(eq(user_usage.user, normalizedUserId));
 
       logger.debug("Usage decremented", { userId: normalizedUserId, usageType, amount });
     } catch (error) {
-      logger.error("Failed to decrement usage", {
-        error,
-        userId: normalizedUserId,
-        usageType,
-        amount,
-      });
+      logger.error("Failed to decrement usage", { error, userId: normalizedUserId, usageType, amount });
       throw error;
     }
   }
@@ -531,12 +474,7 @@ export class QuotaService {
       await this.payload.update({
         collection: USER_USAGE_COLLECTION,
         id: usageRecord.id,
-        data: {
-          urlFetchesToday: 0,
-          fileUploadsToday: 0,
-          importJobsToday: 0,
-          lastResetDate: new Date().toISOString(),
-        },
+        data: { urlFetchesToday: 0, fileUploadsToday: 0, importJobsToday: 0, lastResetDate: new Date().toISOString() },
         overrideAccess: true,
       });
 
@@ -560,12 +498,7 @@ export class QuotaService {
       const result = await this.payload.update({
         collection: USER_USAGE_COLLECTION,
         where: {}, // Empty where = update all
-        data: {
-          urlFetchesToday: 0,
-          fileUploadsToday: 0,
-          importJobsToday: 0,
-          lastResetDate: now,
-        },
+        data: { urlFetchesToday: 0, fileUploadsToday: 0, importJobsToday: 0, lastResetDate: now },
         overrideAccess: true,
       });
 

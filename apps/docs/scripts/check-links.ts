@@ -135,9 +135,7 @@ const checkExternalLink = async (url: string): Promise<{ valid: boolean; error?:
     const response = await fetch(url, {
       method: "HEAD",
       signal: controller.signal,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; LinkChecker/1.0)",
-      },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; LinkChecker/1.0)" },
     });
 
     clearTimeout(timeout);
@@ -151,9 +149,7 @@ const checkExternalLink = async (url: string): Promise<{ valid: boolean; error?:
       const response = await fetch(url, {
         method: "GET",
         signal: controller.signal,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; LinkChecker/1.0)",
-        },
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; LinkChecker/1.0)" },
       });
 
       clearTimeout(timeout);
@@ -206,11 +202,7 @@ const extractLinksFromFiles = (
     const lines = content.split("\n");
 
     for (const link of links) {
-      const linkInfo: LinkInfo = {
-        url: link,
-        file: path.relative(docsDir, file),
-        line: findLineNumber(lines, link),
-      };
+      const linkInfo: LinkInfo = { url: link, file: path.relative(docsDir, file), line: findLineNumber(lines, link) };
 
       classifyLink(linkInfo, link, file, brokenLinks, externalLinks);
       allLinks.push(linkInfo);

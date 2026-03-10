@@ -1,4 +1,1 @@
-export default {
-  "getting-started": "Getting Started",
-  "use-cases": "Use Cases",
-};
+export default { "getting-started": "Getting Started", "use-cases": "Use Cases" };

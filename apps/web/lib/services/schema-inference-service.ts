@@ -157,11 +157,7 @@ export class SchemaInferenceService {
     const eventCount = freshness.currentEventCount;
 
     if (forceRegenerate || !latestSchema) {
-      return {
-        skipGeneration: false,
-        result: { generated: false, schema: latestSchema, message: "" },
-        eventCount,
-      };
+      return { skipGeneration: false, result: { generated: false, schema: latestSchema, message: "" }, eventCount };
     }
 
     if (!freshness.stale) {
@@ -180,11 +176,7 @@ export class SchemaInferenceService {
       schemaEventCount: freshness.schemaEventCount,
     });
 
-    return {
-      skipGeneration: false,
-      result: { generated: false, schema: latestSchema, message: "" },
-      eventCount,
-    };
+    return { skipGeneration: false, result: { generated: false, schema: latestSchema, message: "" }, eventCount };
   }
 
   /** Generate schema by sampling events */

@@ -5,24 +5,13 @@
  * @category Tests
  */
 const mocks = vi.hoisted(() => ({
-  mockSqlJoin: vi.fn((parts: unknown[], separator: unknown) => ({
-    type: "join",
-    parts,
-    separator,
-  })),
+  mockSqlJoin: vi.fn((parts: unknown[], separator: unknown) => ({ type: "join", parts, separator })),
 }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign(
-    (strings: TemplateStringsArray, ...values: unknown[]) => ({
-      type: "sql",
-      strings: Array.from(strings),
-      values,
-    }),
-    {
-      join: mocks.mockSqlJoin,
-      raw: vi.fn((value: string) => ({ type: "raw", value })),
-    }
+    (strings: TemplateStringsArray, ...values: unknown[]) => ({ type: "sql", strings: Array.from(strings), values }),
+    { join: mocks.mockSqlJoin, raw: vi.fn((value: string) => ({ type: "raw", value })) }
   ),
 }));
 
@@ -71,17 +60,7 @@ describe("aggregation-filters", () => {
 
   describe("buildAggregationWhereClause", () => {
     it("builds an OR longitude clause for antimeridian-crossing bounds", () => {
-      const clause = buildAggregationWhereClause(
-        {
-          bounds: {
-            north: 10,
-            south: -10,
-            west: 170,
-            east: -170,
-          },
-        },
-        [1]
-      );
+      const clause = buildAggregationWhereClause({ bounds: { north: 10, south: -10, west: 170, east: -170 } }, [1]);
 
       const queryText = collectQueryStrings(clause).join(" ");
 
@@ -91,12 +70,7 @@ describe("aggregation-filters", () => {
     });
 
     it("returns no results instead of broadening when the requested catalog is inaccessible", () => {
-      const clause = buildAggregationWhereClause(
-        {
-          catalog: "999",
-        },
-        [1, 2]
-      );
+      const clause = buildAggregationWhereClause({ catalog: "999" }, [1, 2]);
 
       const queryText = collectQueryStrings(clause).join(" ");
 
@@ -105,12 +79,7 @@ describe("aggregation-filters", () => {
     });
 
     it("returns no results instead of broadening when all dataset filters are invalid", () => {
-      const clause = buildAggregationWhereClause(
-        {
-          datasets: ["abc", "def"],
-        },
-        [1]
-      );
+      const clause = buildAggregationWhereClause({ datasets: ["abc", "def"] }, [1]);
 
       const queryText = collectQueryStrings(clause).join(" ");
 
@@ -119,12 +88,7 @@ describe("aggregation-filters", () => {
     });
 
     it("returns no results when the catalog filter is only partially numeric", () => {
-      const clause = buildAggregationWhereClause(
-        {
-          catalog: "1abc",
-        },
-        [1, 2]
-      );
+      const clause = buildAggregationWhereClause({ catalog: "1abc" }, [1, 2]);
 
       const queryText = collectQueryStrings(clause).join(" ");
 

@@ -59,10 +59,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
     ]);
 
     // Transform to lightweight format
-    const catalogs: DataSourceCatalog[] = catalogsResult.docs.map((c) => ({
-      id: c.id,
-      name: c.name,
-    }));
+    const catalogs: DataSourceCatalog[] = catalogsResult.docs.map((c) => ({ id: c.id, name: c.name }));
 
     const datasets: DataSourceDataset[] = datasetsResult.docs.map((d) => ({
       id: d.id,

@@ -62,9 +62,7 @@ describe.sequential("Scheduled Imports Integration", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create shared test data once
-    const { users } = await withUsers(envWithServer, {
-      testUser: { role: "admin" },
-    });
+    const { users } = await withUsers(envWithServer, { testUser: { role: "admin" } });
     testUser = users.testUser;
 
     testCatalog = await payload.create({
@@ -85,10 +83,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         catalog: testCatalog.id,
         language: "eng",
         isPublic: false,
-        idStrategy: {
-          type: "external",
-          duplicateStrategy: "skip",
-        },
+        idStrategy: { type: "external", duplicateStrategy: "skip" },
       },
     });
   });
@@ -125,11 +120,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         description: "Imports data from API every day",
         scheduleType: "cron",
         cronExpression: "0 0 * * *", // Daily at midnight
-        authConfig: {
-          type: "api-key",
-          apiKey: "test-key-123",
-          apiKeyHeader: "X-API-Key",
-        },
+        authConfig: { type: "api-key", apiKey: "test-key-123", apiKeyHeader: "X-API-Key" },
         importNameTemplate: "{{name}} - {{date}}",
         user: testUser,
       });
@@ -190,10 +181,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         name: "Daily Import",
         frequency: "daily",
         authConfig: { type: "none" },
-        datasetMapping: {
-          mappingType: "single",
-          singleDataset: testDataset.id,
-        },
+        datasetMapping: { mappingType: "single", singleDataset: testDataset.id },
         importNameTemplate: "{{name}} - {{date}}",
         additionalData: {
           lastRun: new Date("2024-01-14T00:00:00.000Z"), // Yesterday at midnight UTC
@@ -212,16 +200,10 @@ describe.sequential("Scheduled Imports Integration", () => {
       vi.setSystemTime(new Date("2024-01-15T01:00:00.000Z"));
 
       // Check the schedule before running
-      const scheduleBeforeRun = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const scheduleBeforeRun = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       // Run schedule manager
-      const result = await scheduleManagerJob.handler({
-        job: { id: "test-job" },
-        req: { payload },
-      });
+      const result = await scheduleManagerJob.handler({ job: { id: "test-job" }, req: { payload } });
 
       // Debug if not triggering
       if (result.output.triggered !== 1) {
@@ -234,12 +216,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         });
       }
 
-      expect(result.output).toEqual({
-        success: true,
-        totalScheduled: 1,
-        triggered: 1,
-        errors: 0,
-      });
+      expect(result.output).toEqual({ success: true, totalScheduled: 1, triggered: 1, errors: 0 });
 
       // With fake timers, we need to advance time manually
       await vi.advanceTimersByTimeAsync(100);
@@ -249,10 +226,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       // runs asynchronously. In a real scenario, the job queue would process it.
 
       // Verify scheduled import was updated
-      const updatedSchedule = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updatedSchedule = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       // Schedule manager runs at 01:00:00 UTC, so lastRun should be that time
       expect(new Date(updatedSchedule.lastRun)).toEqual(new Date("2024-01-15T01:00:00.000Z"));
@@ -281,10 +255,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         user: testUser,
       });
 
-      const result = await scheduleManagerJob.handler({
-        job: { id: "test-job" },
-        req: { payload },
-      });
+      const result = await scheduleManagerJob.handler({ job: { id: "test-job" }, req: { payload } });
 
       expect(result.output.triggered).toBe(0);
     });
@@ -348,10 +319,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       // There should be exactly 3 schedules
       expect(schedulesBeforeRun.docs).toHaveLength(3);
 
-      const result = await scheduleManagerJob.handler({
-        job: { id: "test-job" },
-        req: { payload },
-      });
+      const result = await scheduleManagerJob.handler({ job: { id: "test-job" }, req: { payload } });
 
       // Debug: log what actually happened
       if (result.output.triggered !== 2) {
@@ -399,10 +367,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         data: {
           name: "Test URL Fetch",
           sourceUrl: `${testServerUrl}/auth-data.csv`,
-          authConfig: {
-            type: "bearer",
-            bearerToken: "token-123",
-          },
+          authConfig: { type: "bearer", bearerToken: "token-123" },
           catalog: testCatalog.id,
           enabled: true,
           scheduleType: "cron",
@@ -443,9 +408,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       const successOutput = result.output as UrlFetchSuccessOutput;
       const importFiles = await payload.find({
         collection: "import-files",
-        where: {
-          id: { equals: successOutput.importFileId },
-        },
+        where: { id: { equals: successOutput.importFileId } },
       });
 
       expect(importFiles.docs).toHaveLength(1);
@@ -543,9 +506,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "hourly",
-          advancedOptions: {
-            skipDuplicateChecking: false,
-          },
+          advancedOptions: { skipDuplicateChecking: false },
         },
         user: testUser,
       });
@@ -576,9 +537,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       await payload.update({
         collection: "import-files",
         id: successForUpdate.importFileId,
-        data: {
-          status: "completed",
-        },
+        data: { status: "completed" },
       });
 
       // Server will return same content for second request
@@ -602,11 +561,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       // Verify import files
       const importFiles = await payload.find({
         collection: "import-files",
-        where: {
-          "metadata.scheduledExecution.scheduledImportId": {
-            equals: scheduledImport.id,
-          },
-        },
+        where: { "metadata.scheduledExecution.scheduledImportId": { equals: scheduledImport.id } },
         sort: "createdAt", // Ensure consistent order
       });
 
@@ -626,9 +581,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "hourly",
-          advancedOptions: {
-            skipDuplicateChecking: true,
-          },
+          advancedOptions: { skipDuplicateChecking: true },
         },
         user: testUser,
       });
@@ -683,9 +636,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "daily",
-          advancedOptions: {
-            expectedContentType: "csv",
-          },
+          advancedOptions: { expectedContentType: "csv" },
         },
         user: testUser,
       });
@@ -737,10 +688,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       testServer.respond("/large-file", {
         status: 200,
         body: largeData,
-        headers: {
-          "Content-Type": "text/csv",
-          "Content-Length": String(2 * 1024 * 1024),
-        },
+        headers: { "Content-Type": "text/csv", "Content-Length": String(2 * 1024 * 1024) },
       });
 
       const result = await urlFetchJob.handler({
@@ -771,10 +719,7 @@ describe.sequential("Scheduled Imports Integration", () => {
             type: "api-key",
             apiKey: "test-key",
             apiKeyHeader: "X-API-Key",
-            customHeaders: JSON.stringify({
-              "X-Custom-Header": "custom-value",
-              "Accept-Language": "en-US",
-            }),
+            customHeaders: JSON.stringify({ "X-Custom-Header": "custom-value", "Accept-Language": "en-US" }),
           },
           catalog: testCatalog.id,
           scheduleType: "frequency",
@@ -812,13 +757,7 @@ describe.sequential("Scheduled Imports Integration", () => {
     it("should pass through dataset mapping configuration", async () => {
       const multiSheetConfig = {
         enabled: true,
-        sheets: [
-          {
-            sheetIdentifier: "Sheet1",
-            dataset: testDataset.id,
-            skipIfMissing: false,
-          },
-        ],
+        sheets: [{ sheetIdentifier: "Sheet1", dataset: testDataset.id, skipIfMissing: false }],
       };
 
       const scheduledImport = await payload.create({
@@ -856,10 +795,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       const successOutput = result.output as UrlFetchSuccessOutput;
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: successOutput.importFileId,
-      });
+      const importFile = await payload.findByID({ collection: "import-files", id: successOutput.importFileId });
 
       // The dataset field might be populated with the full object
       expect(importFile.metadata.datasetMapping).toMatchObject({
@@ -886,12 +822,7 @@ describe.sequential("Scheduled Imports Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "hourly",
-          statistics: {
-            totalRuns: 2,
-            successfulRuns: 2,
-            failedRuns: 0,
-            averageDuration: 3.5,
-          },
+          statistics: { totalRuns: 2, successfulRuns: 2, failedRuns: 0, averageDuration: 3.5 },
         },
         user: testUser,
       });
@@ -917,18 +848,10 @@ describe.sequential("Scheduled Imports Integration", () => {
         req: { payload },
       });
 
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       // Should update with new average: (3.5 * 2 + 2) / 3 = 3
-      expect(updated.statistics).toMatchObject({
-        totalRuns: 3,
-        successfulRuns: 3,
-        failedRuns: 0,
-        averageDuration: 3,
-      });
+      expect(updated.statistics).toMatchObject({ totalRuns: 3, successfulRuns: 3, failedRuns: 0, averageDuration: 3 });
 
       vi.restoreAllMocks();
     });
@@ -977,17 +900,11 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       // Verify retry succeeded after 3 attempts
-      expect(result.output).toMatchObject({
-        success: true,
-        isDuplicate: false,
-      });
+      expect(result.output).toMatchObject({ success: true, isDuplicate: false });
 
       // Verify import file was created successfully
       const successOutput = result.output as UrlFetchSuccessOutput;
-      const importFile = await payload.findByID({
-        collection: "import-files",
-        id: successOutput.importFileId,
-      });
+      const importFile = await payload.findByID({ collection: "import-files", id: successOutput.importFileId });
 
       expect(importFile).toMatchObject({
         status: "parsing",
@@ -1018,11 +935,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         });
 
         // Set up a slow endpoint that will timeout
-        testServer.respond("/timeout-test", {
-          delay: 1000,
-          status: 200,
-          body: "Should timeout",
-        });
+        testServer.respond("/timeout-test", { delay: 1000, status: 200, body: "Should timeout" });
 
         const result = await urlFetchJob.handler({
           input: {
@@ -1041,20 +954,13 @@ describe.sequential("Scheduled Imports Integration", () => {
         expect(failureOutput.error).toMatch(/timeout/i);
 
         // Verify scheduled import was updated with failure
-        const updated = await payload.findByID({
-          collection: "scheduled-imports",
-          id: scheduledImport.id,
-        });
+        const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
         expect(updated).toMatchObject({
           lastStatus: "failed",
           lastError: expect.stringContaining("timeout"),
           currentRetries: 1,
-          statistics: expect.objectContaining({
-            totalRuns: 1,
-            failedRuns: 1,
-            successfulRuns: 0,
-          }),
+          statistics: expect.objectContaining({ totalRuns: 1, failedRuns: 1, successfulRuns: 0 }),
         });
       } finally {
         if (previousTestTimeout === undefined) {
@@ -1095,10 +1001,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       testServer.respondWithCSV("/products.csv", mockCsvData);
 
       // Run schedule manager
-      const scheduleResult = await scheduleManagerJob.handler({
-        job: { id: "schedule-job" },
-        req: { payload },
-      });
+      const scheduleResult = await scheduleManagerJob.handler({ job: { id: "schedule-job" }, req: { payload } });
 
       expect(scheduleResult.output.triggered).toBe(1);
 
@@ -1120,10 +1023,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       expect(fetchResult.output.success).toBe(true);
 
       // Verify complete state
-      const finalSchedule = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const finalSchedule = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       // The schedule should have been triggered
       expect(finalSchedule.statistics.totalRuns).toBeGreaterThanOrEqual(1);
@@ -1134,9 +1034,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       const fetchSuccessOutput = fetchResult.output as UrlFetchSuccessOutput;
       const importFiles = await payload.find({
         collection: "import-files",
-        where: {
-          id: { equals: fetchSuccessOutput.importFileId },
-        },
+        where: { id: { equals: fetchSuccessOutput.importFileId } },
       });
 
       expect(importFiles.docs).toHaveLength(1);

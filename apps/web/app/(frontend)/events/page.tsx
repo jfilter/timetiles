@@ -23,11 +23,7 @@ export default async function EventsListPage() {
     collection: "events",
     limit: 50,
     sort: "-eventTimestamp",
-    where: {
-      _status: {
-        equals: "published",
-      },
-    },
+    where: { _status: { equals: "published" } },
     depth: 1, // Include dataset info
   });
 

@@ -39,9 +39,7 @@ export const auditLogIpCleanupJob = {
       // Find entries older than retention period that still have raw IPs
       const entries = await payload.find({
         collection: "audit-log",
-        where: {
-          and: [{ timestamp: { less_than: cutoffDate.toISOString() } }, { ipAddress: { exists: true } }],
-        },
+        where: { and: [{ timestamp: { less_than: cutoffDate.toISOString() } }, { ipAddress: { exists: true } }] },
         limit: 500,
         overrideAccess: true,
       });
@@ -62,13 +60,7 @@ export const auditLogIpCleanupJob = {
 
       logger.info({ jobId: job?.id, cleared, total: entries.totalDocs }, "Audit log IP cleanup completed");
 
-      return {
-        output: {
-          success: true,
-          cleared,
-          totalEligible: entries.totalDocs,
-        },
-      };
+      return { output: { success: true, cleared, totalEligible: entries.totalDocs } };
     } catch (error) {
       logError(error, "Audit log IP cleanup job failed", { jobId: job?.id });
       throw error;

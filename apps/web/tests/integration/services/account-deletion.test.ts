@@ -108,10 +108,7 @@ describe.sequential("Account Deletion Service", () => {
 
     it("should allow deleting admin if another admin exists", async () => {
       const env = { payload, seedManager: { truncate } } as any;
-      const { users } = await withUsers(env, {
-        admin1: { role: "admin" },
-        admin2: { role: "admin" },
-      });
+      const { users } = await withUsers(env, { admin1: { role: "admin" }, admin2: { role: "admin" } });
 
       const result = await deletionService.canDeleteUser(users.admin1.id);
       expect(result.allowed).toBe(true);
@@ -175,11 +172,7 @@ describe.sequential("Account Deletion Service", () => {
       expect(result.deletionScheduledAt).toBeDefined();
 
       // Verify user status updated
-      const updatedUser = await payload.findByID({
-        collection: "users",
-        id: users.testUser.id,
-        overrideAccess: true,
-      });
+      const updatedUser = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
 
       expect(updatedUser.deletionStatus).toBe("pending_deletion");
       expect(updatedUser.deletionScheduledAt).toBe(result.deletionScheduledAt);
@@ -212,11 +205,7 @@ describe.sequential("Account Deletion Service", () => {
       await deletionService.cancelDeletion(users.testUser.id);
 
       // Verify user status
-      const updatedUser = await payload.findByID({
-        collection: "users",
-        id: users.testUser.id,
-        overrideAccess: true,
-      });
+      const updatedUser = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
 
       expect(updatedUser.deletionStatus).toBe("active");
       expect(updatedUser.deletionScheduledAt).toBeNull();
@@ -336,11 +325,7 @@ describe.sequential("Account Deletion Service", () => {
 
       await deletionService.executeDeletion(users.testUser.id);
 
-      const deletedUser = await payload.findByID({
-        collection: "users",
-        id: users.testUser.id,
-        overrideAccess: true,
-      });
+      const deletedUser = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
 
       expect(deletedUser.deletionStatus).toBe("deleted");
       expect(deletedUser.email).not.toBe(originalEmail);
@@ -379,10 +364,7 @@ describe.sequential("Account Deletion Service", () => {
       await payload.update({
         collection: "users",
         id: users.testUser.id,
-        data: {
-          deletionStatus: "pending_deletion",
-          deletionScheduledAt: pastDate,
-        },
+        data: { deletionStatus: "pending_deletion", deletionScheduledAt: pastDate },
         overrideAccess: true,
       });
 
@@ -401,10 +383,7 @@ describe.sequential("Account Deletion Service", () => {
       await payload.update({
         collection: "users",
         id: users.testUser.id,
-        data: {
-          deletionStatus: "pending_deletion",
-          deletionScheduledAt: futureDate,
-        },
+        data: { deletionStatus: "pending_deletion", deletionScheduledAt: futureDate },
         overrideAccess: true,
       });
 

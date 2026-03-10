@@ -29,11 +29,7 @@ export default [
       "react-compiler": reactCompiler,
       "react-perf": reactPerf,
     },
-    settings: {
-      react: {
-        version: "detect",
-      },
-    },
+    settings: { react: { version: "detect" } },
     rules: {
       // React Compiler rules
       "react-compiler/react-compiler": "error",

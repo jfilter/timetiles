@@ -21,21 +21,14 @@ import { EventDetailContent } from "@/components/events";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 }
 
 export const generateMetadata = async ({ params }: PageProps): Promise<Metadata> => {
   const { id } = await params;
   const payload = await getPayload({ config: configPromise });
 
-  const result = await payload.find({
-    collection: "events",
-    where: { id: { equals: id } },
-    depth: 1,
-    limit: 1,
-  });
+  const result = await payload.find({ collection: "events", where: { id: { equals: id } }, depth: 1, limit: 1 });
 
   const event = result.docs[0];
   const eventData = event?.data as Record<string, unknown> | undefined;
@@ -48,9 +41,7 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
 };
 
 interface EventDetailsPageProps {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 }
 
 // Draft mode banner component
@@ -89,11 +80,7 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
   // Fetch the event with draft mode support
   const result = await payload.find({
     collection: "events",
-    where: {
-      id: {
-        equals: id,
-      },
-    },
+    where: { id: { equals: id } },
     depth: 2, // Include related data like dataset
     draft: isDraftMode,
     overrideAccess: false, // Never bypass access control on public pages

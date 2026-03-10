@@ -23,12 +23,7 @@ interface SchemaInferenceResponse {
   generated: boolean;
   message: string;
   eventsSampled?: number;
-  schema: {
-    id: number;
-    versionNumber: number;
-    createdAt: string;
-    eventCountAtCreation?: number;
-  } | null;
+  schema: { id: number; versionNumber: number; createdAt: string; eventCountAtCreation?: number } | null;
 }
 
 /**
@@ -54,9 +49,7 @@ export const useInferSchemaForDataset = () => {
     mutationFn: async ({ datasetId, ...options }) => {
       const response = await fetch(`/api/v1/datasets/${datasetId}/schema/infer`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(options),
       });
 

@@ -39,9 +39,7 @@ export class QueryBuilders {
   private buildUsersWhereClause(item: Record<string, unknown>): Where {
     const where: Where = {};
     if (item.email != null) {
-      where.email = {
-        equals: item.email,
-      };
+      where.email = { equals: item.email };
     }
     return where;
   }
@@ -53,13 +51,9 @@ export class QueryBuilders {
   private buildSlugOrNameWhereClause(item: Record<string, unknown>): Where {
     const where: Where = {};
     if (item.slug != null) {
-      where.slug = {
-        equals: item.slug,
-      };
+      where.slug = { equals: item.slug };
     } else if (item.name != null) {
-      where.name = {
-        equals: item.name,
-      };
+      where.name = { equals: item.name };
     }
     return where;
   }
@@ -82,11 +76,7 @@ export class QueryBuilders {
    * Helper to build where clause using only slug.
    */
   private buildSlugOnlyWhereClause(item: Record<string, unknown>): Where {
-    return {
-      slug: {
-        equals: item.slug,
-      },
-    };
+    return { slug: { equals: item.slug } };
   }
 
   /**
@@ -97,18 +87,7 @@ export class QueryBuilders {
     const where: Where = {};
 
     if (item.title != null && item.title !== "" && item.date != null && item.date !== "") {
-      where.and = [
-        {
-          title: {
-            equals: item.title,
-          },
-        },
-        {
-          date: {
-            equals: item.date,
-          },
-        },
-      ];
+      where.and = [{ title: { equals: item.title } }, { date: { equals: item.date } }];
     }
 
     return where;

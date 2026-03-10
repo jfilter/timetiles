@@ -98,9 +98,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
   // Configure navigation for this step
   useEffect(() => {
-    setNavigationConfig({
-      onNext: () => nextStep(),
-    });
+    setNavigationConfig({ onNext: () => nextStep() });
     return () => setNavigationConfig({});
   }, [setNavigationConfig, nextStep]);
 
@@ -123,9 +121,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   useEffect(() => {
     const fetchCatalogs = async () => {
       try {
-        const response = await fetch("/api/wizard/catalogs", {
-          credentials: "include",
-        });
+        const response = await fetch("/api/wizard/catalogs", { credentials: "include" });
 
         if (!response.ok) {
           throw new Error("Failed to fetch catalogs");

@@ -47,11 +47,7 @@ describe.sequential("Import Job Retry API", () => {
 
     // Create test user first (catalog needs an owner for import-file validation)
     const { users } = await withUsers(testEnv, {
-      retryTestUser: {
-        email: TEST_EMAILS.user,
-        password: TEST_CREDENTIALS.basic.password,
-        role: "user",
-      },
+      retryTestUser: { email: TEST_EMAILS.user, password: TEST_CREDENTIALS.basic.password, role: "user" },
     });
     testUserId = users.retryTestUser.id;
 
@@ -80,11 +76,7 @@ Event 2,2024-01-02,Location 2`;
       // Create dataset
       const dataset = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Retry Test Dataset",
-          catalog: testCatalogId,
-          language: "eng",
-        },
+        data: { name: "Retry Test Dataset", catalog: testCatalogId, language: "eng" },
       });
 
       // Create a failed import job
@@ -96,18 +88,9 @@ Event 2,2024-01-02,Location 2`;
           stage: PROCESSING_STAGE.FAILED,
           retryAttempts: 0,
           schema: { title: { type: "string" }, date: { type: "date" }, location: { type: "string" } },
-          progress: {
-            stages: {},
-            overallPercentage: 0,
-            estimatedCompletionTime: null,
-          },
-          duplicates: {
-            summary: { uniqueRows: 0 },
-          },
-          errorLog: {
-            lastError: "Connection timeout - simulated failure",
-            timestamp: new Date().toISOString(),
-          },
+          progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+          duplicates: { summary: { uniqueRows: 0 } },
+          errorLog: { lastError: "Connection timeout - simulated failure", timestamp: new Date().toISOString() },
         },
       });
 
@@ -126,10 +109,7 @@ Event 2,2024-01-02,Location 2`;
       expect(result.nextRetryAt).toBeDefined();
 
       // Verify job was updated
-      const updatedJob = await payload.findByID({
-        collection: "import-jobs",
-        id: failedJob.id,
-      });
+      const updatedJob = await payload.findByID({ collection: "import-jobs", id: failedJob.id });
 
       expect(updatedJob.retryAttempts).toBe(1);
       expect(updatedJob.lastRetryAt).toBeDefined();
@@ -150,11 +130,7 @@ Event,2024-01-01`;
       // Create dataset
       const dataset = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Not Failed Dataset",
-          catalog: testCatalogId,
-          language: "eng",
-        },
+        data: { name: "Not Failed Dataset", catalog: testCatalogId, language: "eng" },
       });
 
       // Create a job in COMPLETED state
@@ -165,14 +141,8 @@ Event,2024-01-01`;
           dataset: dataset.id,
           stage: PROCESSING_STAGE.COMPLETED,
           schema: { title: { type: "string" }, date: { type: "date" } },
-          progress: {
-            stages: {},
-            overallPercentage: 100,
-            estimatedCompletionTime: null,
-          },
-          duplicates: {
-            summary: { uniqueRows: 1 },
-          },
+          progress: { stages: {}, overallPercentage: 100, estimatedCompletionTime: null },
+          duplicates: { summary: { uniqueRows: 1 } },
         },
       });
 
@@ -196,11 +166,7 @@ Event,2024-01-01`;
 
       const dataset = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Max Retries Dataset",
-          catalog: testCatalogId,
-          language: "eng",
-        },
+        data: { name: "Max Retries Dataset", catalog: testCatalogId, language: "eng" },
       });
 
       // Create a job that has already hit max retries
@@ -212,18 +178,9 @@ Event,2024-01-01`;
           stage: PROCESSING_STAGE.FAILED,
           retryAttempts: 3, // Max retries
           schema: { title: { type: "string" }, date: { type: "date" } },
-          progress: {
-            stages: {},
-            overallPercentage: 0,
-            estimatedCompletionTime: null,
-          },
-          duplicates: {
-            summary: { uniqueRows: 0 },
-          },
-          errorLog: {
-            lastError: "Connection timeout",
-            timestamp: new Date().toISOString(),
-          },
+          progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+          duplicates: { summary: { uniqueRows: 0 } },
+          errorLog: { lastError: "Connection timeout", timestamp: new Date().toISOString() },
         },
       });
 
@@ -249,11 +206,7 @@ Event,2024-01-01`;
 
       const dataset = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Reset Test Dataset",
-          catalog: testCatalogId,
-          language: "eng",
-        },
+        data: { name: "Reset Test Dataset", catalog: testCatalogId, language: "eng" },
       });
 
       const failedJob = await payload.create({
@@ -264,18 +217,9 @@ Event,2024-01-01`;
           stage: PROCESSING_STAGE.FAILED,
           retryAttempts: 2,
           schema: { title: { type: "string" }, date: { type: "date" } },
-          progress: {
-            stages: {},
-            overallPercentage: 0,
-            estimatedCompletionTime: null,
-          },
-          duplicates: {
-            summary: { uniqueRows: 0 },
-          },
-          errorLog: {
-            lastError: "Geocoding error",
-            timestamp: new Date().toISOString(),
-          },
+          progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+          duplicates: { summary: { uniqueRows: 0 } },
+          errorLog: { lastError: "Geocoding error", timestamp: new Date().toISOString() },
         },
       });
 
@@ -291,10 +235,7 @@ Event,2024-01-01`;
       expect(result.action).toBe("manual_reset");
 
       // Verify job was reset
-      const resetJob = await payload.findByID({
-        collection: "import-jobs",
-        id: failedJob.id,
-      });
+      const resetJob = await payload.findByID({ collection: "import-jobs", id: failedJob.id });
 
       expect(resetJob.stage).toBe(PROCESSING_STAGE.GEOCODE_BATCH);
       expect(resetJob.retryAttempts).toBe(0); // Should be cleared
@@ -319,11 +260,7 @@ Event 2,2024-01-02`;
 
       const dataset1 = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Recommendations Dataset 1",
-          catalog: testCatalogId,
-          language: "eng",
-        },
+        data: { name: "Recommendations Dataset 1", catalog: testCatalogId, language: "eng" },
       });
 
       const importJob1 = await payload.create({
@@ -334,18 +271,9 @@ Event 2,2024-01-02`;
           stage: PROCESSING_STAGE.FAILED,
           retryAttempts: 0,
           schema: { title: { type: "string" }, date: { type: "date" } },
-          progress: {
-            stages: {},
-            overallPercentage: 0,
-            estimatedCompletionTime: null,
-          },
-          duplicates: {
-            summary: { uniqueRows: 0 },
-          },
-          errorLog: {
-            lastError: "Connection timeout",
-            timestamp: new Date().toISOString(),
-          },
+          progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+          duplicates: { summary: { uniqueRows: 0 } },
+          errorLog: { lastError: "Connection timeout", timestamp: new Date().toISOString() },
         },
       });
 
@@ -358,11 +286,7 @@ Event 2,2024-01-02`;
 
       const dataset2 = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Recommendations Dataset 2",
-          catalog: testCatalogId,
-          language: "eng",
-        },
+        data: { name: "Recommendations Dataset 2", catalog: testCatalogId, language: "eng" },
       });
 
       const importJob2 = await payload.create({
@@ -373,18 +297,9 @@ Event 2,2024-01-02`;
           stage: PROCESSING_STAGE.FAILED,
           retryAttempts: 3, // Max retries
           schema: { title: { type: "string" }, date: { type: "date" } },
-          progress: {
-            stages: {},
-            overallPercentage: 0,
-            estimatedCompletionTime: null,
-          },
-          duplicates: {
-            summary: { uniqueRows: 0 },
-          },
-          errorLog: {
-            lastError: "Connection timeout",
-            timestamp: new Date().toISOString(),
-          },
+          progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+          duplicates: { summary: { uniqueRows: 0 } },
+          errorLog: { lastError: "Connection timeout", timestamp: new Date().toISOString() },
         },
       });
 

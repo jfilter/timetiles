@@ -253,9 +253,7 @@ describe("useDebounceWithComparison", () => {
 
     const { result, rerender } = renderHook(
       ({ value, delay, compareFn }) => useDebounceWithComparison(value, delay, compareFn),
-      {
-        initialProps: { value: obj1, delay: 500, compareFn: compare },
-      }
+      { initialProps: { value: obj1, delay: 500, compareFn: compare } }
     );
 
     expect(result.current).toEqual(obj1);
@@ -283,9 +281,7 @@ describe("useDebounceWithComparison", () => {
 
     const { result, rerender } = renderHook(
       ({ value, delay, compareFn }) => useDebounceWithComparison(value, delay, compareFn),
-      {
-        initialProps: { value: "initial", delay: 300, compareFn: compare },
-      }
+      { initialProps: { value: "initial", delay: 300, compareFn: compare } }
     );
 
     rerender({ value: "changed", delay: 300, compareFn: compare });
@@ -301,9 +297,7 @@ describe("useDebounceWithComparison", () => {
 
     const { result, rerender } = renderHook(
       ({ value, delay, compareFn }) => useDebounceWithComparison(value, delay, compareFn),
-      {
-        initialProps: { value: "initial", delay: 300, compareFn: compare },
-      }
+      { initialProps: { value: "initial", delay: 300, compareFn: compare } }
     );
 
     rerender({ value: "changed", delay: 300, compareFn: compare });
@@ -325,9 +319,7 @@ describe("useDebounceWithComparison", () => {
 
     const { result, rerender } = renderHook(
       ({ value, delay, compareFn }) => useDebounceWithComparison(value, delay, compareFn),
-      {
-        initialProps: { value: obj1, delay: 300, compareFn: deepCompare },
-      }
+      { initialProps: { value: obj1, delay: 300, compareFn: deepCompare } }
     );
 
     // Change to obj2 (deep equal, should not update)
@@ -363,9 +355,7 @@ describe("useDebounceWithComparison", () => {
 
     const { result, rerender } = renderHook(
       ({ value, delay, compareFn }) => useDebounceWithComparison(value, delay, compareFn),
-      {
-        initialProps: { value: "initial", delay: 300, compareFn: compare1 },
-      }
+      { initialProps: { value: "initial", delay: 300, compareFn: compare1 } }
     );
 
     rerender({ value: "changed", delay: 300, compareFn: compare2 });
@@ -397,9 +387,7 @@ describe("useDebounceWithComparison", () => {
 
     const { result, rerender } = renderHook(
       ({ value, delay, compareFn }) => useDebounceWithComparison(value, delay, compareFn),
-      {
-        initialProps: { value: 10, delay: 300, compareFn: compare },
-      }
+      { initialProps: { value: 10, delay: 300, compareFn: compare } }
     );
 
     // Change to 12 (within 5, should not update)

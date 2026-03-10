@@ -40,9 +40,7 @@ describe.sequential("Job Queueing Tests", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      approver: { role: "admin" },
-    });
+    const { users } = await withUsers(testEnv, { approver: { role: "admin" } });
     approverUserId = users.approver.id;
 
     const { catalog } = await withCatalog(testEnv, {
@@ -161,12 +159,7 @@ describe.sequential("Job Queueing Tests", () => {
 
       // Check that exactly 3 events were created (matching the 3 rows in events-german.csv)
       const datasetId = extractRelationId(importJob.dataset);
-      const events = await payload.find({
-        collection: "events",
-        where: {
-          dataset: { equals: datasetId },
-        },
-      });
+      const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } } });
 
       // Should have exactly 3 events, not 6 (which would indicate double-processing)
       expect(events.docs).toHaveLength(3);

@@ -46,10 +46,7 @@ const DataExports: CollectionConfig = {
       relationTo: "users",
       required: true,
       index: true,
-      admin: {
-        description: "User who requested the export",
-        readOnly: true,
-      },
+      admin: { description: "User who requested the export", readOnly: true },
     },
     {
       name: "status",
@@ -63,20 +60,13 @@ const DataExports: CollectionConfig = {
         { label: "Failed", value: "failed" },
         { label: "Expired", value: "expired" },
       ],
-      admin: {
-        position: "sidebar",
-        description: "Current status of the export request",
-      },
+      admin: { position: "sidebar", description: "Current status of the export request" },
     },
     {
       name: "requestedAt",
       type: "date",
       required: true,
-      admin: {
-        date: { pickerAppearance: "dayAndTime" },
-        readOnly: true,
-        description: "When the export was requested",
-      },
+      admin: { date: { pickerAppearance: "dayAndTime" }, readOnly: true, description: "When the export was requested" },
     },
     {
       name: "completedAt",
@@ -104,31 +94,14 @@ const DataExports: CollectionConfig = {
         condition: () => false, // Hidden from admin UI
       },
     },
-    {
-      name: "fileSize",
-      type: "number",
-      admin: {
-        description: "File size in bytes",
-        readOnly: true,
-      },
-    },
+    { name: "fileSize", type: "number", admin: { description: "File size in bytes", readOnly: true } },
     {
       name: "downloadCount",
       type: "number",
       defaultValue: 0,
-      admin: {
-        description: "Number of times the export has been downloaded",
-        readOnly: true,
-      },
+      admin: { description: "Number of times the export has been downloaded", readOnly: true },
     },
-    {
-      name: "summary",
-      type: "json",
-      admin: {
-        description: "Export summary with record counts",
-        readOnly: true,
-      },
-    },
+    { name: "summary", type: "json", admin: { description: "Export summary with record counts", readOnly: true } },
     {
       name: "errorLog",
       type: "textarea",

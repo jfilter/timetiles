@@ -117,11 +117,7 @@ test.describe("Access Control - User Perspective", () => {
 
       if (data.docs && data.docs.length > 0) {
         // Check that returned datasets are either public or in public catalogs
-        const datasetInfo = data.docs.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          isPublic: d.isPublic,
-        }));
+        const datasetInfo = data.docs.map((d: any) => ({ id: d.id, name: d.name, isPublic: d.isPublic }));
         console.log("Dataset visibility:", datasetInfo);
       }
     });
@@ -143,11 +139,7 @@ test.describe("Access Control - User Perspective", () => {
     test("should block create operations without authentication", async ({ request }) => {
       // Try to create a catalog without authentication
       const createResponse = await request.post("/api/catalogs", {
-        data: {
-          name: "Unauthorized Catalog",
-          description: "Should not be created",
-          isPublic: true,
-        },
+        data: { name: "Unauthorized Catalog", description: "Should not be created", isPublic: true },
       });
 
       // Should be unauthorized
@@ -156,11 +148,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should block update operations without authentication", async ({ request }) => {
       // Try to update a catalog without authentication
-      const updateResponse = await request.patch("/api/catalogs/1", {
-        data: {
-          name: "Hacked Catalog Name",
-        },
-      });
+      const updateResponse = await request.patch("/api/catalogs/1", { data: { name: "Hacked Catalog Name" } });
 
       // Should be unauthorized
       expect([401, 403, 404]).toContain(updateResponse.status());
@@ -187,10 +175,7 @@ test.describe("Access Control - User Perspective", () => {
     test("should require authentication for import file creation", async ({ request }) => {
       // Unauthenticated uploads are no longer supported - all imports require authentication
       const response = await request.post("/api/import-files", {
-        data: {
-          originalName: "test-unauthenticated.csv",
-          status: "pending",
-        },
+        data: { originalName: "test-unauthenticated.csv", status: "pending" },
       });
 
       // Should be unauthorized - authentication is required
@@ -307,9 +292,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should handle CORS properly for API endpoints", async ({ request }) => {
       // Test CORS preflight
-      const response = await request.fetch("/api/v1/events/list", {
-        method: "OPTIONS",
-      });
+      const response = await request.fetch("/api/v1/events/list", { method: "OPTIONS" });
 
       // Should handle OPTIONS request
       expect([200, 204, 404]).toContain(response.status());
@@ -347,10 +330,7 @@ test.describe("Access Control - Error Handling", () => {
       await route.fulfill({
         status: 403,
         contentType: "application/json",
-        body: JSON.stringify({
-          error: "Forbidden",
-          message: "You do not have permission to access this resource",
-        }),
+        body: JSON.stringify({ error: "Forbidden", message: "You do not have permission to access this resource" }),
       });
     });
 

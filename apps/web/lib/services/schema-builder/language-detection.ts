@@ -136,12 +136,7 @@ const isNonTextValue = (value: string): boolean => {
  */
 export const detectLanguage = (text: string): LanguageDetectionResult => {
   // Default result for when detection fails
-  const defaultResult: LanguageDetectionResult = {
-    code: "eng",
-    name: "English",
-    confidence: 0,
-    isReliable: false,
-  };
+  const defaultResult: LanguageDetectionResult = { code: "eng", name: "English", confidence: 0, isReliable: false };
 
   // Not enough text for reliable detection
   if (text.length < MIN_TEXT_LENGTH) {
@@ -150,10 +145,7 @@ export const detectLanguage = (text: string): LanguageDetectionResult => {
 
   try {
     // Get all language possibilities with scores
-    const results = francAll(text, {
-      only: [...SUPPORTED_LANGUAGES],
-      minLength: MIN_TEXT_LENGTH,
-    });
+    const results = francAll(text, { only: [...SUPPORTED_LANGUAGES], minLength: MIN_TEXT_LENGTH });
 
     // franc returns 'und' (undefined) when it can't detect
     const topResult = results[0];
@@ -179,12 +171,7 @@ export const detectLanguage = (text: string): LanguageDetectionResult => {
       }
     }
 
-    return {
-      code,
-      name: LANGUAGE_NAMES[code] ?? code,
-      confidence,
-      isReliable: confidence >= RELIABILITY_THRESHOLD,
-    };
+    return { code, name: LANGUAGE_NAMES[code] ?? code, confidence, isReliable: confidence >= RELIABILITY_THRESHOLD };
   } catch {
     return defaultResult;
   }

@@ -19,14 +19,8 @@ describe("Job Context Utilities", () => {
     it("should extract payload from req.payload", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
-        req: {
-          payload: mockPayload,
-        },
-        input: {
-          importJobId: 123,
-          filePath: "/path/to/file.csv",
-          fileType: "csv" as const,
-        },
+        req: { payload: mockPayload },
+        input: { importJobId: 123, filePath: "/path/to/file.csv", fileType: "csv" as const },
       };
 
       const result = extractFileParsingContext(context);
@@ -40,11 +34,7 @@ describe("Job Context Utilities", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
         payload: mockPayload,
-        input: {
-          importJobId: 456,
-          filePath: "/path/to/file.xlsx",
-          fileType: "xlsx" as const,
-        },
+        input: { importJobId: 456, filePath: "/path/to/file.xlsx", fileType: "xlsx" as const },
       };
 
       const result = extractFileParsingContext(context);
@@ -56,15 +46,9 @@ describe("Job Context Utilities", () => {
       const reqPayload = { collections: {}, source: "req" } as any;
       const contextPayload = { collections: {}, source: "context" } as any;
       const context: JobHandlerContext = {
-        req: {
-          payload: reqPayload,
-        },
+        req: { payload: reqPayload },
         payload: contextPayload,
-        input: {
-          importJobId: 789,
-          filePath: "/path/to/file.csv",
-          fileType: "csv" as const,
-        },
+        input: { importJobId: 789, filePath: "/path/to/file.csv", fileType: "csv" as const },
       };
 
       const result = extractFileParsingContext(context);
@@ -79,10 +63,7 @@ describe("Job Context Utilities", () => {
         filePath: "/uploads/data.csv",
         fileType: "csv",
       };
-      const context: JobHandlerContext = {
-        req: { payload: mockPayload },
-        input,
-      };
+      const context: JobHandlerContext = { req: { payload: mockPayload }, input };
 
       const result = extractFileParsingContext(context);
       expect(result.input).toEqual(input);
@@ -90,11 +71,7 @@ describe("Job Context Utilities", () => {
 
     it("should throw error when payload is missing", () => {
       const context: JobHandlerContext = {
-        input: {
-          importJobId: 123,
-          filePath: "/path/to/file.csv",
-          fileType: "csv" as const,
-        },
+        input: { importJobId: 123, filePath: "/path/to/file.csv", fileType: "csv" as const },
       };
 
       expect(() => extractFileParsingContext(context)).toThrow("Payload instance not found in job context");
@@ -103,11 +80,7 @@ describe("Job Context Utilities", () => {
     it("should throw error when payload is null", () => {
       const context: JobHandlerContext = {
         req: { payload: null as any },
-        input: {
-          importJobId: 123,
-          filePath: "/path/to/file.csv",
-          fileType: "csv" as const,
-        },
+        input: { importJobId: 123, filePath: "/path/to/file.csv", fileType: "csv" as const },
       };
 
       expect(() => extractFileParsingContext(context)).toThrow("Payload instance not found in job context");
@@ -117,10 +90,7 @@ describe("Job Context Utilities", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
         req: { payload: mockPayload },
-        input: {
-          filePath: "/path/to/file.csv",
-          fileType: "csv" as const,
-        } as any,
+        input: { filePath: "/path/to/file.csv", fileType: "csv" as const } as any,
       };
 
       expect(() => extractFileParsingContext(context)).toThrow("Import Job ID is required for file parsing job");
@@ -130,11 +100,7 @@ describe("Job Context Utilities", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
         req: { payload: mockPayload },
-        input: {
-          importJobId: null as any,
-          filePath: "/path/to/file.csv",
-          fileType: "csv" as const,
-        },
+        input: { importJobId: null as any, filePath: "/path/to/file.csv", fileType: "csv" as const },
       };
 
       expect(() => extractFileParsingContext(context)).toThrow("Import Job ID is required for file parsing job");
@@ -142,9 +108,7 @@ describe("Job Context Utilities", () => {
 
     it("should throw error when input is missing", () => {
       const mockPayload = { collections: {} } as any;
-      const context: JobHandlerContext = {
-        req: { payload: mockPayload },
-      };
+      const context: JobHandlerContext = { req: { payload: mockPayload } };
 
       expect(() => extractFileParsingContext(context)).toThrow("Import Job ID is required for file parsing job");
     });
@@ -153,15 +117,8 @@ describe("Job Context Utilities", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
         req: { payload: mockPayload },
-        input: {
-          importJobId: 123,
-          filePath: "/path/to/file.csv",
-          fileType: "csv" as const,
-        },
-        job: {
-          id: "job-123",
-          taskStatus: { progress: 50 },
-        },
+        input: { importJobId: 123, filePath: "/path/to/file.csv", fileType: "csv" as const },
+        job: { id: "job-123", taskStatus: { progress: 50 } },
         customProperty: "custom-value",
       };
 
@@ -175,14 +132,8 @@ describe("Job Context Utilities", () => {
     it("should extract payload from req.payload", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
-        req: {
-          payload: mockPayload,
-        },
-        input: {
-          importJobId: 123,
-          processedData: [{ id: 1 }, { id: 2 }],
-          batchNumber: 1,
-        },
+        req: { payload: mockPayload },
+        input: { importJobId: 123, processedData: [{ id: 1 }, { id: 2 }], batchNumber: 1 },
       };
 
       const result = extractEventCreationContext(context);
@@ -196,11 +147,7 @@ describe("Job Context Utilities", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
         payload: mockPayload,
-        input: {
-          importJobId: 456,
-          processedData: [],
-          batchNumber: 2,
-        },
+        input: { importJobId: 456, processedData: [], batchNumber: 2 },
       };
 
       const result = extractEventCreationContext(context);
@@ -212,15 +159,9 @@ describe("Job Context Utilities", () => {
       const reqPayload = { collections: {}, source: "req" } as any;
       const contextPayload = { collections: {}, source: "context" } as any;
       const context: JobHandlerContext = {
-        req: {
-          payload: reqPayload,
-        },
+        req: { payload: reqPayload },
         payload: contextPayload,
-        input: {
-          importJobId: 789,
-          processedData: [{ data: "test" }],
-          batchNumber: 3,
-        },
+        input: { importJobId: 789, processedData: [{ data: "test" }], batchNumber: 3 },
       };
 
       const result = extractEventCreationContext(context);
@@ -235,23 +176,14 @@ describe("Job Context Utilities", () => {
         processedData: [{ field: "value" }],
         batchNumber: 5,
       };
-      const context: JobHandlerContext = {
-        req: { payload: mockPayload },
-        input,
-      };
+      const context: JobHandlerContext = { req: { payload: mockPayload }, input };
 
       const result = extractEventCreationContext(context);
       expect(result.input).toEqual(input);
     });
 
     it("should throw error when payload is missing", () => {
-      const context: JobHandlerContext = {
-        input: {
-          importJobId: 123,
-          processedData: [],
-          batchNumber: 1,
-        },
-      };
+      const context: JobHandlerContext = { input: { importJobId: 123, processedData: [], batchNumber: 1 } };
 
       expect(() => extractEventCreationContext(context)).toThrow("Payload instance not found in job context");
     });
@@ -259,11 +191,7 @@ describe("Job Context Utilities", () => {
     it("should throw error when payload is null", () => {
       const context: JobHandlerContext = {
         req: { payload: null as any },
-        input: {
-          importJobId: 123,
-          processedData: [],
-          batchNumber: 1,
-        },
+        input: { importJobId: 123, processedData: [], batchNumber: 1 },
       };
 
       expect(() => extractEventCreationContext(context)).toThrow("Payload instance not found in job context");
@@ -273,10 +201,7 @@ describe("Job Context Utilities", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
         req: { payload: mockPayload },
-        input: {
-          processedData: [],
-          batchNumber: 1,
-        } as any,
+        input: { processedData: [], batchNumber: 1 } as any,
       };
 
       expect(() => extractEventCreationContext(context)).toThrow("Import Job ID is required for event creation job");
@@ -286,11 +211,7 @@ describe("Job Context Utilities", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
         req: { payload: mockPayload },
-        input: {
-          importJobId: null as any,
-          processedData: [],
-          batchNumber: 1,
-        },
+        input: { importJobId: null as any, processedData: [], batchNumber: 1 },
       };
 
       expect(() => extractEventCreationContext(context)).toThrow("Import Job ID is required for event creation job");
@@ -298,9 +219,7 @@ describe("Job Context Utilities", () => {
 
     it("should throw error when input is missing", () => {
       const mockPayload = { collections: {} } as any;
-      const context: JobHandlerContext = {
-        req: { payload: mockPayload },
-      };
+      const context: JobHandlerContext = { req: { payload: mockPayload } };
 
       expect(() => extractEventCreationContext(context)).toThrow("Import Job ID is required for event creation job");
     });
@@ -309,11 +228,7 @@ describe("Job Context Utilities", () => {
       const mockPayload = { collections: {} } as any;
       const context: JobHandlerContext = {
         req: { payload: mockPayload },
-        input: {
-          importJobId: 123,
-          processedData: [],
-          batchNumber: 1,
-        },
+        input: { importJobId: 123, processedData: [], batchNumber: 1 },
       };
 
       const result = extractEventCreationContext(context);
@@ -325,11 +240,7 @@ describe("Job Context Utilities", () => {
       const largeArray = Array.from({ length: 1000 }, (_, i) => ({ id: i }));
       const context: JobHandlerContext = {
         req: { payload: mockPayload },
-        input: {
-          importJobId: 123,
-          processedData: largeArray,
-          batchNumber: 10,
-        },
+        input: { importJobId: 123, processedData: largeArray, batchNumber: 10 },
       };
 
       const result = extractEventCreationContext(context);

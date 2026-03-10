@@ -163,13 +163,7 @@ export class ProgressTrackingService {
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
       id: normalizedJobId,
-      data: {
-        progress: {
-          stages: this.serializeStages(stages),
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
-      },
+      data: { progress: { stages: this.serializeStages(stages), overallPercentage: 0, estimatedCompletionTime: null } },
     });
   }
 
@@ -191,10 +185,7 @@ export class ProgressTrackingService {
     rowsTotal: number
   ): Promise<void> {
     const normalizedJobId = this.normalizeJobId(jobId);
-    const job = await payload.findByID({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: normalizedJobId,
-    });
+    const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
     const batchSize = this.getBatchSizeForStage(stage);
@@ -248,10 +239,7 @@ export class ProgressTrackingService {
     currentBatchRows: number
   ): Promise<void> {
     const normalizedJobId = this.normalizeJobId(jobId);
-    const job = await payload.findByID({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: normalizedJobId,
-    });
+    const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
     const stageData = stages[stage];
@@ -268,13 +256,7 @@ export class ProgressTrackingService {
     const rowsRemaining = stageData.rowsTotal - rowsProcessed;
     const estimatedSecondsRemaining = rowsPerSecond && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
 
-    stages[stage] = {
-      ...stageData,
-      rowsProcessed,
-      currentBatchRows,
-      rowsPerSecond,
-      estimatedSecondsRemaining,
-    };
+    stages[stage] = { ...stageData, rowsProcessed, currentBatchRows, rowsPerSecond, estimatedSecondsRemaining };
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -308,10 +290,7 @@ export class ProgressTrackingService {
     batchNumber: number
   ): Promise<void> {
     const normalizedJobId = this.normalizeJobId(jobId);
-    const job = await payload.findByID({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: normalizedJobId,
-    });
+    const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
     const stageData = stages[stage];
@@ -320,11 +299,7 @@ export class ProgressTrackingService {
       throw new Error(`Stage ${stage} not initialized`);
     }
 
-    stages[stage] = {
-      ...stageData,
-      batchesProcessed: batchNumber,
-      currentBatchRows: 0,
-    };
+    stages[stage] = { ...stageData, batchesProcessed: batchNumber, currentBatchRows: 0 };
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -351,10 +326,7 @@ export class ProgressTrackingService {
    */
   static async completeStage(payload: Payload, jobId: string | number, stage: ProcessingStage): Promise<void> {
     const normalizedJobId = this.normalizeJobId(jobId);
-    const job = await payload.findByID({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: normalizedJobId,
-    });
+    const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
     const stageData = stages[stage];
@@ -396,10 +368,7 @@ export class ProgressTrackingService {
    */
   static async skipStage(payload: Payload, jobId: string | number, stage: ProcessingStage): Promise<void> {
     const normalizedJobId = this.normalizeJobId(jobId);
-    const job = await payload.findByID({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: normalizedJobId,
-    });
+    const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
     const stageData = stages[stage];
@@ -408,12 +377,7 @@ export class ProgressTrackingService {
       throw new Error(`Stage ${stage} not initialized`);
     }
 
-    stages[stage] = {
-      ...stageData,
-      status: "skipped",
-      completedAt: new Date(),
-      estimatedSecondsRemaining: 0,
-    };
+    stages[stage] = { ...stageData, status: "skipped", completedAt: new Date(), estimatedSecondsRemaining: 0 };
 
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -563,10 +527,7 @@ export class ProgressTrackingService {
     uniqueRows: number
   ): Promise<void> {
     const normalizedJobId = this.normalizeJobId(jobId);
-    const job = await payload.findByID({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: normalizedJobId,
-    });
+    const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
 
@@ -584,11 +545,7 @@ export class ProgressTrackingService {
         const batchSize = this.getBatchSizeForStage(stage);
         const estimatedBatches = batchSize ? Math.ceil(uniqueRows / batchSize) : 1;
 
-        stages[stage] = {
-          ...stages[stage],
-          rowsTotal: uniqueRows,
-          batchesTotal: estimatedBatches,
-        };
+        stages[stage] = { ...stages[stage], rowsTotal: uniqueRows, batchesTotal: estimatedBatches };
       }
     }
 

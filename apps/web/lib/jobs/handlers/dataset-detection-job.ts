@@ -49,11 +49,7 @@ const processCSVFile = (filePath: string): { sheets: SheetInfo[]; workbook: unkn
   logger.info("Processing CSV file", { filePath });
   const csvContent = fs.readFileSync(filePath, "utf8");
 
-  const parseResult = Papa.parse(csvContent, {
-    header: false,
-    skipEmptyLines: true,
-    dynamicTyping: true,
-  });
+  const parseResult = Papa.parse(csvContent, { header: false, skipEmptyLines: true, dynamicTyping: true });
 
   const rows = parseResult.data as string[][];
   if (rows.length === 0) {
@@ -70,12 +66,7 @@ const processCSVFile = (filePath: string): { sheets: SheetInfo[]; workbook: unkn
     },
   ];
 
-  const workbook = {
-    SheetNames: ["Sheet1"],
-    Sheets: {
-      Sheet1: utils.aoa_to_sheet(rows),
-    },
-  };
+  const workbook = { SheetNames: ["Sheet1"], Sheets: { Sheet1: utils.aoa_to_sheet(rows) } };
 
   return { sheets, workbook };
 };
@@ -120,11 +111,7 @@ const validateDatasetAccessForUser = async (
   const catalogId = extractRelationId(dataset.catalog);
   if (!catalogId) return;
 
-  const catalog = await payload.findByID({
-    collection: "catalogs",
-    id: catalogId,
-    overrideAccess: true,
-  });
+  const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
 
   const catalogOwnerId = extractRelationId(catalog?.createdBy);
   const isPublicCatalog = catalog?.isPublic ?? false;
@@ -149,10 +136,7 @@ const handleSingleSheet = async (
   if (datasetMapping?.mappingType === "single" && datasetMapping.singleDataset) {
     const datasetId = extractRelationId<string>(datasetMapping.singleDataset as { id: string } | string)!;
 
-    dataset = await payload.findByID({
-      collection: COLLECTION_NAMES.DATASETS,
-      id: datasetId,
-    });
+    dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId });
 
     if (!dataset) {
       throw new Error(`Configured dataset not found: ${datasetId}`);
@@ -172,11 +156,7 @@ const handleSingleSheet = async (
       dataset: dataset.id,
       sheetIndex: 0,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-      progress: {
-        stages: {},
-        overallPercentage: 0,
-        estimatedCompletionTime: null,
-      },
+      progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
     },
   });
 };
@@ -228,10 +208,7 @@ const processSheetWithMapping = async (
     if (mapping) {
       const datasetId = extractRelationId<string>(mapping.dataset as { id: string } | string);
 
-      dataset = await payload.findByID({
-        collection: COLLECTION_NAMES.DATASETS,
-        id: datasetId as string,
-      });
+      dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId as string });
 
       if (!dataset) {
         if (!mapping.skipIfMissing) {
@@ -262,11 +239,7 @@ const processSheetWithMapping = async (
       dataset: dataset.id,
       sheetIndex: sheet.index,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-      progress: {
-        stages: {},
-        overallPercentage: 0,
-        estimatedCompletionTime: null,
-      },
+      progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
     },
   });
 };
@@ -314,10 +287,7 @@ export const datasetDetectionJob = {
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_FILES,
         id: importFileId,
-        data: {
-          datasetsCount: sheets.length,
-          sheetMetadata: sheets,
-        },
+        data: { datasetsCount: sheets.length, sheetMetadata: sheets },
       });
 
       const datasetMapping = (importFile.metadata as Record<string, unknown>)?.datasetMapping as
@@ -338,22 +308,14 @@ export const datasetDetectionJob = {
         jobIds: createdJobs.map((j) => j.id),
       });
 
-      return {
-        output: {
-          sheetsDetected: sheets.length,
-          importJobsCreated: createdJobs.length,
-        },
-      };
+      return { output: { sheetsDetected: sheets.length, importJobsCreated: createdJobs.length } };
     } catch (error) {
       logError(error, "Dataset detection failed", { jobId, importFileId });
 
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_FILES,
         id: importFileId,
-        data: {
-          status: "failed",
-          errorLog: error instanceof Error ? error.message : "Unknown error",
-        },
+        data: { status: "failed", errorLog: error instanceof Error ? error.message : "Unknown error" },
       });
 
       throw error;
@@ -424,18 +386,12 @@ const findOrCreateDataset = async (
   // Try to find existing dataset in catalog
   const existingDatasets = await payload.find({
     collection: COLLECTION_NAMES.DATASETS,
-    where: {
-      catalog: { equals: catalogId },
-      name: { equals: datasetName },
-    },
+    where: { catalog: { equals: catalogId }, name: { equals: datasetName } },
     limit: 1,
   });
 
   if (existingDatasets.docs.length > 0 && existingDatasets.docs[0]) {
-    logger.info("Found existing dataset", {
-      datasetId: existingDatasets.docs[0].id,
-      name: datasetName,
-    });
+    logger.info("Found existing dataset", { datasetId: existingDatasets.docs[0].id, name: datasetName });
     return existingDatasets.docs[0];
   }
 
@@ -463,10 +419,7 @@ const findOrCreateDataset = async (
       },
       language: "eng",
       // Use default configurations
-      deduplicationConfig: {
-        enabled: true,
-        strategy: "skip",
-      },
+      deduplicationConfig: { enabled: true, strategy: "skip" },
       schemaConfig: {
         autoGrow: true,
         autoApproveNonBreaking: true,
@@ -474,20 +427,13 @@ const findOrCreateDataset = async (
         strictValidation: false,
         allowTransformations: true,
       },
-      idStrategy: {
-        type: "auto",
-        duplicateStrategy: "skip",
-      },
+      idStrategy: { type: "auto", duplicateStrategy: "skip" },
       _status: "published" as const,
       ...(userId ? { createdBy: userId } : {}),
     },
   });
 
-  logger.info("Created new dataset", {
-    datasetId: newDataset.id,
-    name: datasetName,
-    catalogId,
-  });
+  logger.info("Created new dataset", { datasetId: newDataset.id, name: datasetName, catalogId });
 
   return newDataset;
 };

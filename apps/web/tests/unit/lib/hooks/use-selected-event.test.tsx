@@ -32,18 +32,14 @@ describe("useSelectedEvent", () => {
   });
 
   it("should return null selectedEventId initially", () => {
-    const { result } = renderHook(() => useSelectedEvent(), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(() => useSelectedEvent(), { wrapper: createWrapper() });
 
     expect(result.current.selectedEventId).toBeNull();
     expect(result.current.isOpen).toBe(false);
   });
 
   it("should parse event ID from URL", () => {
-    const { result } = renderHook(() => useSelectedEvent(), {
-      wrapper: createWrapper("?event=123"),
-    });
+    const { result } = renderHook(() => useSelectedEvent(), { wrapper: createWrapper("?event=123") });
 
     expect(result.current.selectedEventId).toBe(123);
     expect(result.current.isOpen).toBe(true);
@@ -92,9 +88,7 @@ describe("useSelectedEvent", () => {
   });
 
   it("should handle non-numeric event param gracefully", () => {
-    const { result } = renderHook(() => useSelectedEvent(), {
-      wrapper: createWrapper("?event=abc"),
-    });
+    const { result } = renderHook(() => useSelectedEvent(), { wrapper: createWrapper("?event=abc") });
 
     // parseAsInteger should return null for invalid values
     expect(result.current.selectedEventId).toBeNull();
@@ -102,9 +96,7 @@ describe("useSelectedEvent", () => {
   });
 
   it("should handle empty event param", () => {
-    const { result } = renderHook(() => useSelectedEvent(), {
-      wrapper: createWrapper("?event="),
-    });
+    const { result } = renderHook(() => useSelectedEvent(), { wrapper: createWrapper("?event=") });
 
     expect(result.current.selectedEventId).toBeNull();
     expect(result.current.isOpen).toBe(false);
@@ -137,9 +129,7 @@ describe("useSelectedEvent", () => {
   });
 
   it("openEvent and closeEvent should be stable references", () => {
-    const { result, rerender } = renderHook(() => useSelectedEvent(), {
-      wrapper: createWrapper(),
-    });
+    const { result, rerender } = renderHook(() => useSelectedEvent(), { wrapper: createWrapper() });
 
     const initialOpenEvent = result.current.openEvent;
     const initialCloseEvent = result.current.closeEvent;
@@ -151,9 +141,7 @@ describe("useSelectedEvent", () => {
   });
 
   it("should handle negative event ID", () => {
-    const { result } = renderHook(() => useSelectedEvent(), {
-      wrapper: createWrapper("?event=-1"),
-    });
+    const { result } = renderHook(() => useSelectedEvent(), { wrapper: createWrapper("?event=-1") });
 
     // parseAsInteger should parse negative numbers
     expect(result.current.selectedEventId).toBe(-1);
@@ -161,9 +149,7 @@ describe("useSelectedEvent", () => {
   });
 
   it("should handle zero event ID", () => {
-    const { result } = renderHook(() => useSelectedEvent(), {
-      wrapper: createWrapper("?event=0"),
-    });
+    const { result } = renderHook(() => useSelectedEvent(), { wrapper: createWrapper("?event=0") });
 
     // 0 is a valid integer
     expect(result.current.selectedEventId).toBe(0);

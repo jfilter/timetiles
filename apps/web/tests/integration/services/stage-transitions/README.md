@@ -168,10 +168,7 @@ make test-ai FILTER=stage-transitions
 ### 1. Verify Stage After Transition
 
 ```typescript
-const updatedJob = await payload.findByID({
-  collection: "import-jobs",
-  id: importJob.id,
-});
+const updatedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
 expect(updatedJob.stage).toBe(PROCESSING_STAGE.EXPECTED_STAGE);
 ```
 
@@ -180,10 +177,7 @@ expect(updatedJob.stage).toBe(PROCESSING_STAGE.EXPECTED_STAGE);
 ```typescript
 const queuedJobs = await payload.find({
   collection: "payload-jobs",
-  where: {
-    "input.importJobId": { equals: importJob.id },
-    completedAt: { exists: false },
-  },
+  where: { "input.importJobId": { equals: importJob.id }, completedAt: { exists: false } },
 });
 expect(queuedJobs.docs.length).toBe(0);
 ```
@@ -192,11 +186,7 @@ expect(queuedJobs.docs.length).toBe(0);
 
 ```typescript
 await expect(
-  payload.update({
-    collection: "import-jobs",
-    id: importJob.id,
-    data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
-  })
+  payload.update({ collection: "import-jobs", id: importJob.id, data: { stage: PROCESSING_STAGE.GEOCODE_BATCH } })
 ).rejects.toThrow();
 ```
 

@@ -20,15 +20,8 @@ import { cn } from "../lib/utils";
  * Container variants for Timeline layout
  */
 const timelineVariants = cva("relative w-full space-y-8", {
-  variants: {
-    variant: {
-      vertical: "max-w-3xl mx-auto",
-      compact: "max-w-2xl mx-auto space-y-6",
-    },
-  },
-  defaultVariants: {
-    variant: "vertical",
-  },
+  variants: { variant: { vertical: "max-w-3xl mx-auto", compact: "max-w-2xl mx-auto space-y-6" } },
+  defaultVariants: { variant: "vertical" },
 });
 
 /**
@@ -91,10 +84,7 @@ export interface TimelineProps extends React.HTMLAttributes<HTMLDivElement>, Var
 /**
  * Timeline container component
  */
-const timelineLineStyle = {
-  animationDuration: "800ms",
-  animationFillMode: "both",
-} as const;
+const timelineLineStyle = { animationDuration: "800ms", animationFillMode: "both" } as const;
 
 export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
   ({ className, variant, children, ...props }, ref) => {

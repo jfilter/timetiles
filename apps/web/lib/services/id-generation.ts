@@ -32,13 +32,7 @@ export class IdGenerationService {
   static generateEventId(
     data: unknown,
     dataset: Dataset
-  ): {
-    uniqueId: string;
-    sourceId?: string;
-    contentHash?: string;
-    strategy: string;
-    error?: string;
-  } {
+  ): { uniqueId: string; sourceId?: string; contentHash?: string; strategy: string; error?: string } {
     const strategy = dataset.idStrategy;
 
     if (!strategy) {
@@ -75,11 +69,7 @@ export class IdGenerationService {
     data: unknown,
     strategy: { externalIdPath?: string | null },
     datasetId: string
-  ): {
-    uniqueId: string;
-    sourceId: string;
-    strategy: string;
-  } {
+  ): { uniqueId: string; sourceId: string; strategy: string } {
     const sourceId = this.extractFieldValue(data, strategy.externalIdPath ?? "");
 
     if (sourceId == null || sourceId === "") {
@@ -89,21 +79,14 @@ export class IdGenerationService {
     // Validate ID format
     const sanitizedId = this.sanitizeId(sourceId);
 
-    return {
-      uniqueId: `${datasetId}:ext:${sanitizedId}`,
-      sourceId: sanitizedId,
-      strategy: "external",
-    };
+    return { uniqueId: `${datasetId}:ext:${sanitizedId}`, sourceId: sanitizedId, strategy: "external" };
   }
 
   private static generateComputedId(
     data: unknown,
     strategy: { computedIdFields?: Array<{ fieldPath: string; id?: string | null }> | null },
     datasetId: string
-  ): {
-    uniqueId: string;
-    strategy: string;
-  } {
+  ): { uniqueId: string; strategy: string } {
     if (!strategy.computedIdFields || strategy.computedIdFields.length === 0) {
       throw new Error("computedIdFields must not be empty - at least one field is required for computed IDs");
     }
@@ -131,20 +114,13 @@ export class IdGenerationService {
 
     const hash = createHash("sha256").update(`${datasetId}:${hashInput}`).digest("hex").substring(0, 16);
 
-    return {
-      uniqueId: `${datasetId}:comp:${hash}`,
-      strategy: "computed",
-    };
+    return { uniqueId: `${datasetId}:comp:${hash}`, strategy: "computed" };
   }
 
   private static generateAutoId(
     data: unknown,
     datasetId: string
-  ): {
-    uniqueId: string;
-    contentHash: string;
-    strategy: string;
-  } {
+  ): { uniqueId: string; contentHash: string; strategy: string } {
     // Generate content hash for duplicate detection
     const contentHash = this.generateContentHash(data);
 
@@ -153,11 +129,7 @@ export class IdGenerationService {
     const timestamp = Date.now();
     const random = randomBytes(4).toString("hex"); // 8 hex characters
 
-    return {
-      uniqueId: `${datasetId}:auto:${timestamp}:${random}`,
-      contentHash,
-      strategy: "auto",
-    };
+    return { uniqueId: `${datasetId}:auto:${timestamp}:${random}`, contentHash, strategy: "auto" };
   }
 
   private static generateHybridId(
@@ -167,11 +139,7 @@ export class IdGenerationService {
       computedIdFields?: Array<{ fieldPath: string; id?: string | null }> | null;
     },
     datasetId: string
-  ): {
-    uniqueId: string;
-    sourceId?: string;
-    strategy: string;
-  } {
+  ): { uniqueId: string; sourceId?: string; strategy: string } {
     // Try external first
     try {
       return this.generateExternalId(data, strategy, datasetId);

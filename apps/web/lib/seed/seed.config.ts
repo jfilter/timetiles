@@ -118,10 +118,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: [],
-      options: {
-        includeTestUsers: true,
-        createAdminUser: true,
-      },
+      options: { includeTestUsers: true, createAdminUser: true },
     },
 
     // Catalogs - organizational structure
@@ -139,9 +136,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: [],
-      options: {
-        includeArchivedCatalogs: false,
-      },
+      options: { includeArchivedCatalogs: false },
     },
 
     // Datasets - depend on catalogs
@@ -159,10 +154,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: ["catalogs"],
-      options: {
-        includeArchivedDatasets: false,
-        generateSchemas: true,
-      },
+      options: { includeArchivedDatasets: false, generateSchemas: true },
     },
 
     // Events - depend on datasets, high volume
@@ -181,20 +173,14 @@ export const SEED_CONFIG: SeedConfiguration = {
       },
       dependencies: ["catalogs", "datasets"],
       customGenerator: "realistic-temporal-spatial-patterns",
-      options: {
-        useGeographicClustering: true,
-        temporalDistribution: "realistic",
-        includeGeocoding: true,
-      },
+      options: { useGeographicClustering: true, temporalDistribution: "realistic", includeGeocoding: true },
     },
 
     // Pages - static content (home, about, contact)
     pages: {
       count: 3, // Static: home, about, contact pages
       dependencies: [],
-      options: {
-        staticContent: true,
-      },
+      options: { staticContent: true },
     },
 
     // Media - support files
@@ -208,9 +194,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     "location-cache": {
       count: (preset) => getLocationCacheCount(preset),
       dependencies: [],
-      options: {
-        includeCommonLocations: true,
-      },
+      options: { includeCommonLocations: true },
     },
 
     // Geocoding providers - service configuration
@@ -227,9 +211,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: [],
-      options: {
-        includeTestProviders: true,
-      },
+      options: { includeTestProviders: true },
     },
   },
 
@@ -239,17 +221,13 @@ export const SEED_CONFIG: SeedConfiguration = {
     [MAIN_MENU_SLUG]: {
       count: 1, // Single global menu
       dependencies: [],
-      options: {
-        staticContent: true,
-      },
+      options: { staticContent: true },
     },
     // Footer - global footer content
     [FOOTER_SLUG]: {
       count: 1, // Single global footer
       dependencies: [],
-      options: {
-        staticContent: true,
-      },
+      options: { staticContent: true },
     },
   },
 
@@ -318,11 +296,7 @@ export const SEED_CONFIG: SeedConfiguration = {
       overrides: {
         events: {
           customGenerator: "simple-patterns",
-          options: {
-            useGeographicClustering: false,
-            temporalDistribution: "uniform",
-            includeGeocoding: false,
-          },
+          options: { useGeographicClustering: false, temporalDistribution: "uniform", includeGeocoding: false },
         },
         datasets: {
           options: { generateSchemas: false }, // Faster test execution
@@ -371,12 +345,7 @@ export const SEED_CONFIG: SeedConfiguration = {
             debugOutput: true,
           },
         },
-        datasets: {
-          options: {
-            includeArchivedDatasets: true,
-            generateExtendedSchemas: true,
-          },
-        },
+        datasets: { options: { includeArchivedDatasets: true, generateExtendedSchemas: true } },
       },
     },
   },
@@ -416,14 +385,7 @@ export const getCollectionConfig = (collection: string, preset: string): Collect
   // Apply overrides
   const overrides = presetConfig.overrides?.[collection] ?? {};
 
-  return {
-    ...baseConfig,
-    ...overrides,
-    options: {
-      ...baseConfig.options,
-      ...overrides.options,
-    },
-  };
+  return { ...baseConfig, ...overrides, options: { ...baseConfig.options, ...overrides.options } };
 };
 
 /**

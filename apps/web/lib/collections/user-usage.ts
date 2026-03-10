@@ -47,9 +47,7 @@ const UserUsage: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
-      admin: {
-        description: "The user this usage record belongs to",
-      },
+      admin: { description: "The user this usage record belongs to" },
     },
     // Daily counters (reset at midnight UTC)
     {
@@ -57,27 +55,21 @@ const UserUsage: CollectionConfig = {
       type: "number",
       defaultValue: 0,
       min: 0,
-      admin: {
-        description: "URL fetches performed today (resets at midnight UTC)",
-      },
+      admin: { description: "URL fetches performed today (resets at midnight UTC)" },
     },
     {
       name: "fileUploadsToday",
       type: "number",
       defaultValue: 0,
       min: 0,
-      admin: {
-        description: "Files uploaded today (resets at midnight UTC)",
-      },
+      admin: { description: "Files uploaded today (resets at midnight UTC)" },
     },
     {
       name: "importJobsToday",
       type: "number",
       defaultValue: 0,
       min: 0,
-      admin: {
-        description: "Import jobs created today (resets at midnight UTC)",
-      },
+      admin: { description: "Import jobs created today (resets at midnight UTC)" },
     },
     // Cumulative/current counters (never automatically reset)
     {
@@ -85,39 +77,28 @@ const UserUsage: CollectionConfig = {
       type: "number",
       defaultValue: 0,
       min: 0,
-      admin: {
-        description: "Currently active scheduled imports",
-      },
+      admin: { description: "Currently active scheduled imports" },
     },
     {
       name: "totalEventsCreated",
       type: "number",
       defaultValue: 0,
       min: 0,
-      admin: {
-        description: "Total events created by this user (lifetime)",
-      },
+      admin: { description: "Total events created by this user (lifetime)" },
     },
     {
       name: "currentCatalogs",
       type: "number",
       defaultValue: 0,
       min: 0,
-      admin: {
-        description: "Current number of catalogs owned by this user",
-      },
+      admin: { description: "Current number of catalogs owned by this user" },
     },
     // Reset tracking
     {
       name: "lastResetDate",
       type: "date",
       index: true,
-      admin: {
-        description: "Last time daily counters were reset",
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
-      },
+      admin: { description: "Last time daily counters were reset", date: { pickerAppearance: "dayAndTime" } },
     },
   ],
 };

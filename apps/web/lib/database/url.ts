@@ -90,10 +90,7 @@ export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOpt
   // Add worker ID if provided
   const derivedName = options.workerId ? `${testBaseName}_${options.workerId}` : testBaseName;
 
-  return constructDatabaseUrl({
-    ...components,
-    database: derivedName,
-  });
+  return constructDatabaseUrl({ ...components, database: derivedName });
 };
 
 /**

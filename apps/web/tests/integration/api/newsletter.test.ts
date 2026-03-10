@@ -57,12 +57,7 @@ describe.sequential("/api/newsletter/subscribe", () => {
     // Configure Settings global with mock server URL
     await payload.updateGlobal({
       slug: "settings",
-      data: {
-        newsletter: {
-          serviceUrl: `${mockServerUrl}/subscribe`,
-          authHeader: "Bearer test-token-12345",
-        },
-      },
+      data: { newsletter: { serviceUrl: `${mockServerUrl}/subscribe`, authHeader: "Bearer test-token-12345" } },
     });
   });
 
@@ -159,12 +154,7 @@ describe.sequential("/api/newsletter/subscribe", () => {
       const response = await POST(request, {} as any);
       const data = await response.json();
 
-      results.push({
-        email,
-        status: response.status,
-        data,
-        retryAfter: response.headers.get("Retry-After"),
-      });
+      results.push({ email, status: response.status, data, retryAfter: response.headers.get("Retry-After") });
     }
 
     // First request should succeed

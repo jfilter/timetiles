@@ -17,16 +17,8 @@ import * as React from "react";
 const labelVariants = cva(
   "flex select-none items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50 group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50",
   {
-    variants: {
-      variant: {
-        default: "text-foreground",
-        muted: "text-muted-foreground",
-        error: "text-destructive",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
+    variants: { variant: { default: "text-foreground", muted: "text-muted-foreground", error: "text-destructive" } },
+    defaultVariants: { variant: "default" },
   }
 );
 

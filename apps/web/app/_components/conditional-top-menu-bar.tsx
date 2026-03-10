@@ -18,9 +18,7 @@ import { AdaptiveHeader } from "./adaptive-header";
 
 const getMainMenu = async (): Promise<MainMenu> => {
   const payload = await getPayload({ config });
-  return payload.findGlobal({
-    slug: "main-menu",
-  });
+  return payload.findGlobal({ slug: "main-menu" });
 };
 
 const getUser = async (): Promise<User | null> => {

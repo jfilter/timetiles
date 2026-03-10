@@ -109,12 +109,7 @@ describe("event-params", () => {
       });
 
       it("should strip malformed dotted field paths", () => {
-        const ff = JSON.stringify({
-          ".leading": ["A"],
-          "trailing.": ["B"],
-          "double..dot": ["C"],
-          valid: ["D"],
-        });
+        const ff = JSON.stringify({ ".leading": ["A"], "trailing.": ["B"], "double..dot": ["C"], valid: ["D"] });
         const params = new URLSearchParams(`ff=${ff}`);
         const result = extractBaseEventParameters(params);
         expect(result.fieldFilters).toEqual({ valid: ["D"] });
@@ -337,13 +332,7 @@ describe("event-params", () => {
     });
 
     it("should skip empty values", () => {
-      const filters = {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      };
+      const filters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
       const params = buildBaseEventParams(filters);
       expect(params.toString()).toBe("");
     });
@@ -366,12 +355,7 @@ describe("event-params", () => {
 
     it("should handle LngLatBounds-like objects", () => {
       const filters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
-      const bounds = {
-        getWest: () => -74,
-        getSouth: () => 40,
-        getEast: () => -73,
-        getNorth: () => 41,
-      };
+      const bounds = { getWest: () => -74, getSouth: () => 40, getEast: () => -73, getNorth: () => 41 };
       const params = buildEventParams(filters, bounds as any);
       const parsed = JSON.parse(params.get("bounds")!);
       expect(parsed).toEqual({ west: -74, south: 40, east: -73, north: 41 });

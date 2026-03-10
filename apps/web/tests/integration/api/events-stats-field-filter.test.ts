@@ -74,14 +74,7 @@ describe("/api/v1/events stats - deeply nested field filtering", () => {
         data: {
           uniqueId: `stats-field-filter-berlin-${i + 1}`,
           dataset: berlinDatasetId,
-          data: {
-            title: `Berlin Stats Event ${i + 1}`,
-            venue: {
-              address: {
-                city: "Berlin",
-              },
-            },
-          },
+          data: { title: `Berlin Stats Event ${i + 1}`, venue: { address: { city: "Berlin" } } },
           location,
           eventTimestamp: new Date(2024, 2, 10 + i).toISOString(),
         },
@@ -97,14 +90,7 @@ describe("/api/v1/events stats - deeply nested field filtering", () => {
         data: {
           uniqueId: `stats-field-filter-paris-${i + 1}`,
           dataset: parisDatasetId,
-          data: {
-            title: `Paris Stats Event ${i + 1}`,
-            venue: {
-              address: {
-                city: "Paris",
-              },
-            },
-          },
+          data: { title: `Paris Stats Event ${i + 1}`, venue: { address: { city: "Paris" } } },
           location,
           eventTimestamp: new Date(2024, 3, 10 + i).toISOString(),
         },
@@ -129,13 +115,7 @@ describe("/api/v1/events stats - deeply nested field filtering", () => {
     const data = await response.json();
 
     expect(data.total).toBe(3);
-    expect(data.items).toEqual([
-      {
-        id: berlinDatasetId,
-        name: "Berlin Stats Dataset",
-        count: 3,
-      },
-    ]);
+    expect(data.items).toEqual([{ id: berlinDatasetId, name: "Berlin Stats Dataset", count: 3 }]);
   });
 
   it("should calculate geo stats using a deeply nested field path", async () => {
@@ -146,9 +126,7 @@ describe("/api/v1/events stats - deeply nested field filtering", () => {
     });
     const filteredResponse = await getGeoStats(
       new NextRequest(`http://localhost:3000/api/v1/events/geo/stats?ff=${encodeURIComponent(fieldFilters)}`),
-      {
-        params: Promise.resolve({}),
-      }
+      { params: Promise.resolve({}) }
     );
 
     expect(unfilteredResponse.status).toBe(200);

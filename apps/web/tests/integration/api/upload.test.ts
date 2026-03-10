@@ -38,9 +38,7 @@ describe.sequential("Import Files Collection", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "admin" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
     testUserId = users.testUser.id;
 
     const { catalog } = await withCatalog(testEnv, { user: users.testUser });

@@ -10,17 +10,9 @@
 import "@/tests/mocks/services/logger";
 
 const mocks = vi.hoisted(() => {
-  const mockPayload = {
-    find: vi.fn(),
-    update: vi.fn(),
-    jobs: {
-      queue: vi.fn(),
-    },
-  };
+  const mockPayload = { find: vi.fn(), update: vi.fn(), jobs: { queue: vi.fn() } };
   const mockGetPayload = vi.fn().mockResolvedValue(mockPayload);
-  const mockRateLimitService = {
-    checkConfiguredRateLimit: vi.fn().mockReturnValue({ allowed: true }),
-  };
+  const mockRateLimitService = { checkConfiguredRateLimit: vi.fn().mockReturnValue({ allowed: true }) };
   return { mockPayload, mockGetPayload, mockRateLimitService };
 });
 
@@ -52,9 +44,7 @@ const mockScheduledImport = {
 };
 
 const createRequest = () => {
-  return new Request("http://localhost/api/webhooks/trigger/test-token-abc", {
-    method: "POST",
-  });
+  return new Request("http://localhost/api/webhooks/trigger/test-token-abc", { method: "POST" });
 };
 
 const createContext = (token: string) => ({
@@ -72,9 +62,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
   });
 
   it("should revert lastStatus when job queue fails (Bug 22)", async () => {
-    mockPayload.find.mockResolvedValue({
-      docs: [{ ...mockScheduledImport, lastStatus: "success" }],
-    });
+    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport, lastStatus: "success" }] });
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
@@ -88,22 +76,16 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     expect(updateCalls).toHaveLength(2);
     // First call: set to "running"
     expect(updateCalls[0]![0]).toEqual(
-      expect.objectContaining({
-        data: expect.objectContaining({ lastStatus: "running" }),
-      })
+      expect.objectContaining({ data: expect.objectContaining({ lastStatus: "running" }) })
     );
     // Second call: revert to previous status "success"
     expect(updateCalls[1]![0]).toEqual(
-      expect.objectContaining({
-        data: expect.objectContaining({ lastStatus: "success" }),
-      })
+      expect.objectContaining({ data: expect.objectContaining({ lastStatus: "success" }) })
     );
   });
 
   it("should revert to null when lastStatus was undefined (Bug 22)", async () => {
-    mockPayload.find.mockResolvedValue({
-      docs: [{ ...mockScheduledImport, lastStatus: undefined }],
-    });
+    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport, lastStatus: undefined }] });
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue error"));
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
@@ -114,9 +96,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     expect(updateCalls).toHaveLength(2);
     // Second call should revert to null (the fallback for undefined)
     expect(updateCalls[1]![0]).toEqual(
-      expect.objectContaining({
-        data: expect.objectContaining({ lastStatus: null }),
-      })
+      expect.objectContaining({ data: expect.objectContaining({ lastStatus: null }) })
     );
   });
 
@@ -142,9 +122,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
   });
 
   it("should skip when import is already running", async () => {
-    mockPayload.find.mockResolvedValue({
-      docs: [{ ...mockScheduledImport, lastStatus: "running" }],
-    });
+    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport, lastStatus: "running" }] });
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 

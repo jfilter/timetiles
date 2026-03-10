@@ -14,16 +14,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 const callToActionVariants = cva("py-24", {
-  variants: {
-    variant: {
-      centered: "bg-background",
-      split: "bg-card",
-      banner: "bg-primary",
-    },
-  },
-  defaultVariants: {
-    variant: "centered",
-  },
+  variants: { variant: { centered: "bg-background", split: "bg-card", banner: "bg-primary" } },
+  defaultVariants: { variant: "centered" },
 });
 
 const CallToAction = React.forwardRef<
@@ -49,9 +41,7 @@ const callToActionContentVariants = cva("", {
       banner: "text-center",
     },
   },
-  defaultVariants: {
-    variant: "centered",
-  },
+  defaultVariants: { variant: "centered" },
 });
 
 const CallToActionContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(

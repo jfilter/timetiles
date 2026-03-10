@@ -56,10 +56,7 @@ describe.sequential("Multi-Language Import Tests", () => {
     fixtureCache = new Map();
 
     // Create test users (stable across tests)
-    const { users } = await withUsers(testEnv, {
-      importer: { role: "user" },
-      approver: { role: "admin" },
-    });
+    const { users } = await withUsers(testEnv, { importer: { role: "user" }, approver: { role: "admin" } });
     importerUserId = users.importer.id;
     approverUser = users.approver;
 
@@ -99,10 +96,7 @@ describe.sequential("Multi-Language Import Tests", () => {
   };
 
   const simulateSchemaApproval = async (importJobId: string) => {
-    const beforeJob = await payload.findByID({
-      collection: "import-jobs",
-      id: importJobId,
-    });
+    const beforeJob = await payload.findByID({ collection: "import-jobs", id: importJobId });
 
     const updatedSchemaValidation = {
       ...beforeJob.schemaValidation,
@@ -114,9 +108,7 @@ describe.sequential("Multi-Language Import Tests", () => {
     await payload.update({
       collection: "import-jobs",
       id: importJobId,
-      data: {
-        schemaValidation: updatedSchemaValidation,
-      },
+      data: { schemaValidation: updatedSchemaValidation },
       user: approverUser, // Pass user context for authentication
     });
   };
@@ -130,11 +122,7 @@ describe.sequential("Multi-Language Import Tests", () => {
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: fixtureName, // Must match importFile.originalName for dataset-detection to reuse it
       language,
-      schemaConfig: {
-        locked: false,
-        autoGrow: true,
-        autoApproveNonBreaking: true,
-      },
+      schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
     });
 
     // Upload CSV file - dataset-detection will find our pre-created dataset by name
@@ -184,11 +172,7 @@ describe.sequential("Multi-Language Import Tests", () => {
 
   const assertDetectedFieldMappings = (
     importJob: any,
-    expectedMappings: {
-      titlePath: string;
-      descriptionPath: string;
-      timestampPath: string;
-    }
+    expectedMappings: { titlePath: string; descriptionPath: string; timestampPath: string }
   ) => {
     expect(importJob.detectedFieldMappings).toBeDefined();
     expect(importJob.detectedFieldMappings.titlePath).toBe(expectedMappings.titlePath);
@@ -200,9 +184,7 @@ describe.sequential("Multi-Language Import Tests", () => {
     const datasetId = extractRelationId(importJob.dataset);
     const events = await payload.find({
       collection: "events",
-      where: {
-        dataset: { equals: datasetId },
-      },
+      where: { dataset: { equals: datasetId } },
       sort: "eventTimestamp",
     });
 
@@ -221,11 +203,7 @@ describe.sequential("Multi-Language Import Tests", () => {
       description: "German field mappings and event creation",
       fixtureName: "events-german.csv",
       language: "deu",
-      expectedMappings: {
-        titlePath: "titel",
-        descriptionPath: "beschreibung",
-        timestampPath: "datum",
-      },
+      expectedMappings: { titlePath: "titel", descriptionPath: "beschreibung", timestampPath: "datum" },
       expectedEventCount: 3,
       expectedFields: ["titel", "beschreibung"],
     },
@@ -233,11 +211,7 @@ describe.sequential("Multi-Language Import Tests", () => {
       description: "French field mappings and event creation",
       fixtureName: "events-french.csv",
       language: "fra",
-      expectedMappings: {
-        titlePath: "titre",
-        descriptionPath: "description",
-        timestampPath: "date",
-      },
+      expectedMappings: { titlePath: "titre", descriptionPath: "description", timestampPath: "date" },
       expectedEventCount: 3,
       expectedFields: ["titre", "description"],
     },
@@ -245,11 +219,7 @@ describe.sequential("Multi-Language Import Tests", () => {
       description: "Spanish field mappings and event creation",
       fixtureName: "events-spanish.csv",
       language: "spa",
-      expectedMappings: {
-        titlePath: "título",
-        descriptionPath: "descripción",
-        timestampPath: "fecha",
-      },
+      expectedMappings: { titlePath: "título", descriptionPath: "descripción", timestampPath: "fecha" },
       expectedEventCount: 3,
       expectedFields: ["título", "descripción"],
     },
@@ -257,11 +227,7 @@ describe.sequential("Multi-Language Import Tests", () => {
       description: "English fallback mappings for German datasets",
       fixtureName: "events-mixed-english-german.csv",
       language: "deu",
-      expectedMappings: {
-        titlePath: "title",
-        descriptionPath: "description",
-        timestampPath: "datum",
-      },
+      expectedMappings: { titlePath: "title", descriptionPath: "description", timestampPath: "datum" },
       expectedEventCount: 2,
       expectedFields: ["title", "description"],
     },

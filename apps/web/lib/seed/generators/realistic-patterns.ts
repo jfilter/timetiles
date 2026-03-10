@@ -96,10 +96,7 @@ const applyRealisticGeo = (
     const latOffset = radius * Math.cos(angle);
     const lngOffset = (radius * Math.sin(angle)) / Math.cos((cluster.lat * Math.PI) / 180);
 
-    varied.geopoint = {
-      type: "Point",
-      coordinates: [cluster.lng + lngOffset, cluster.lat + latOffset],
-    };
+    varied.geopoint = { type: "Point", coordinates: [cluster.lng + lngOffset, cluster.lat + latOffset] };
   } else {
     const [lng, lat] = geopoint.coordinates;
     varied.geopoint = {

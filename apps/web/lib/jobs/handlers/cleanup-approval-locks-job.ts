@@ -21,11 +21,6 @@ export const cleanupApprovalLocksJob = {
   handler: () => {
     const result = StageTransitionService.cleanupTask();
 
-    return {
-      output: {
-        transitionLocksCleaned: result.output.cleaned,
-        totalCleaned: result.output.cleaned,
-      },
-    };
+    return { output: { transitionLocksCleaned: result.output.cleaned, totalCleaned: result.output.cleaned } };
   },
 };

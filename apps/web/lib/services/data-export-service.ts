@@ -112,11 +112,7 @@ export class DataExportService {
    * Fetch user profile data for export (sanitized).
    */
   private async fetchUserProfile(userId: number): Promise<UserExportData> {
-    const user = await this.payload.findByID({
-      collection: "users",
-      id: userId,
-      overrideAccess: true,
-    });
+    const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     return {
       id: user.id,
@@ -184,9 +180,7 @@ export class DataExportService {
     while (true) {
       const result = await this.payload.find({
         collection: "events",
-        where: {
-          and: [{ dataset: { in: datasetIds } }, { id: { greater_than: lastId } }],
-        },
+        where: { and: [{ dataset: { in: datasetIds } }, { id: { greater_than: lastId } }] },
         limit: EVENTS_PER_CHUNK,
         sort: "id",
         overrideAccess: true,
@@ -199,12 +193,7 @@ export class DataExportService {
         datasetId: extractRelationId(e.dataset)!,
         eventTimestamp: e.eventTimestamp,
         data: e.data,
-        location: e.location
-          ? {
-              latitude: e.location.latitude,
-              longitude: e.location.longitude,
-            }
-          : null,
+        location: e.location ? { latitude: e.location.latitude, longitude: e.location.longitude } : null,
         geocodingStatus: (e.geocodingInfo as { status?: string } | null)?.status,
         validationStatus: e.validationStatus,
         createdAt: e.createdAt,
@@ -223,10 +212,7 @@ export class DataExportService {
    * Fetch import files for export.
    */
   private async fetchImportFiles(userId: number): Promise<ImportFileExportData[]> {
-    const docs = await findUserDocs(this.payload, "import-files", userId, {
-      userField: "user",
-      limit: 10000,
-    });
+    const docs = await findUserDocs(this.payload, "import-files", userId, { userField: "user", limit: 10000 });
 
     return docs.map((f: ImportFile) => ({
       id: f.id,
@@ -383,9 +369,7 @@ export class DataExportService {
       archive.append(JSON.stringify(baseData.datasets, null, 2), { name: "datasets.json" });
       archive.append(JSON.stringify(baseData.importFiles, null, 2), { name: "import-files.json" });
       archive.append(JSON.stringify(baseData.importJobs, null, 2), { name: "import-jobs.json" });
-      archive.append(JSON.stringify(baseData.scheduledImports, null, 2), {
-        name: "scheduled-imports.json",
-      });
+      archive.append(JSON.stringify(baseData.scheduledImports, null, 2), { name: "scheduled-imports.json" });
       archive.append(JSON.stringify(baseData.media, null, 2), { name: "media/metadata.json" });
 
       // Process events and media asynchronously, then finalize
@@ -468,13 +452,7 @@ export class DataExportService {
 
     logger.info({ exportId, userId, filePath, fileSize }, "Data export completed");
 
-    return {
-      success: true,
-      exportId,
-      filePath,
-      fileSize,
-      recordCounts: summary,
-    };
+    return { success: true, exportId, filePath, fileSize, recordCounts: summary };
   }
 }
 

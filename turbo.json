@@ -47,9 +47,7 @@
     "ALLOW_PRIVATE_URLS"
   ],
   "tasks": {
-    "transit": {
-      "dependsOn": ["^transit"]
-    },
+    "transit": { "dependsOn": ["^transit"] },
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
@@ -68,9 +66,7 @@
       ],
       "outputs": [".lint-results/**"]
     },
-    "format": {
-      "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"]
-    },
+    "format": { "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"] },
     "typecheck": {
       "dependsOn": ["transit"],
       "inputs": ["**/*.{ts,tsx}", "tsconfig.json", "tsconfig.*.json"],
@@ -81,10 +77,7 @@
       "inputs": ["**/*.{ts,tsx}", "tsconfig.json", "tsconfig.*.json"],
       "outputs": [".typecheck-results/**"]
     },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
+    "dev": { "cache": false, "persistent": true },
     "test": {
       "dependsOn": ["^build"],
       "inputs": [

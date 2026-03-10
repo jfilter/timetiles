@@ -28,11 +28,7 @@ export const validateCatalogOwnership = async (
   const catalogId = extractRelationId<number>(catalogRef as number | { id: number } | null | undefined);
   if (!catalogId) return;
 
-  const catalog = await payload.findByID({
-    collection: "catalogs",
-    id: catalogId,
-    overrideAccess: true,
-  });
+  const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
   const catalogOwnerId = extractRelationId(catalog?.createdBy);
   const isPublicCatalog = catalog?.isPublic ?? false;
 

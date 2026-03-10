@@ -8,20 +8,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SystemUserService } from "@/lib/services/system-user-service";
 
 vi.mock("@/lib/logger", () => ({
-  createLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
 describe.sequential("SystemUserService", () => {
-  const mockPayload = {
-    findByID: vi.fn(),
-    find: vi.fn(),
-    create: vi.fn(),
-  } as any;
+  const mockPayload = { findByID: vi.fn(), find: vi.fn(), create: vi.fn() } as any;
 
   beforeEach(() => {
     vi.clearAllMocks();

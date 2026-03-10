@@ -230,12 +230,7 @@ describe("import-transforms", () => {
     });
 
     it("should return false for unknown type", () => {
-      const invalid = {
-        id: "1",
-        type: "unknown",
-        active: true,
-        autoDetected: false,
-      } as unknown as ImportTransform;
+      const invalid = { id: "1", type: "unknown", active: true, autoDetected: false } as unknown as ImportTransform;
       expect(isTransformValid(invalid)).toBe(false);
     });
   });

@@ -47,9 +47,7 @@ export class ScheduleService {
       return;
     }
 
-    logger.info("Starting schedule service", {
-      intervalMs: this.config.intervalMs,
-    });
+    logger.info("Starting schedule service", { intervalMs: this.config.intervalMs });
 
     this.isShuttingDown = false;
 
@@ -109,16 +107,8 @@ export class ScheduleService {
   /**
    * Gets the current status of the schedule service.
    */
-  getStatus(): {
-    isRunning: boolean;
-    isActive: boolean;
-    config: Required<ScheduleServiceConfig>;
-  } {
-    return {
-      isRunning: this.isRunning,
-      isActive: !!this.intervalId,
-      config: this.config,
-    };
+  getStatus(): { isRunning: boolean; isActive: boolean; config: Required<ScheduleServiceConfig> } {
+    return { isRunning: this.isRunning, isActive: !!this.intervalId, config: this.config };
   }
 
   /**

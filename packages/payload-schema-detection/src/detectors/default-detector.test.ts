@@ -100,10 +100,7 @@ describe("defaultDetector", () => {
         fieldStats: {
           titel: createFieldStats({ typeDistribution: { string: 100 } }),
           beschreibung: createFieldStats({ typeDistribution: { string: 100 } }),
-          datum: createFieldStats({
-            typeDistribution: { string: 100 },
-            formats: { date: 100 },
-          }),
+          datum: createFieldStats({ typeDistribution: { string: 100 }, formats: { date: 100 } }),
           ort: createFieldStats({ typeDistribution: { string: 100 } }),
         },
         sampleData: [
@@ -164,11 +161,7 @@ describe("defaultDetector", () => {
     it("detects ID fields", async () => {
       const context: DetectionContext = {
         fieldStats: {
-          id: createFieldStats({
-            typeDistribution: { number: 100 },
-            uniqueValues: 100,
-            occurrences: 100,
-          }),
+          id: createFieldStats({ typeDistribution: { number: 100 }, uniqueValues: 100, occurrences: 100 }),
           title: createFieldStats({ typeDistribution: { string: 100 } }),
         },
         sampleData: [
@@ -210,9 +203,7 @@ describe("defaultDetector", () => {
 
     it("returns complete result structure", async () => {
       const context: DetectionContext = {
-        fieldStats: {
-          title: createFieldStats({ typeDistribution: { string: 100 } }),
-        },
+        fieldStats: { title: createFieldStats({ typeDistribution: { string: 100 } }) },
         sampleData: [{ title: "Test Event" }],
         headers: ["title"],
         config: { enabled: true, priority: 1 },

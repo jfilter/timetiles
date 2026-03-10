@@ -22,11 +22,7 @@ const logger = createLogger("event-creation-helpers");
  */
 export const extractCoordinates = (
   row: Record<string, unknown>,
-  fieldMappings: {
-    latitudePath?: string | null;
-    longitudePath?: string | null;
-    locationPath?: string | null;
-  },
+  fieldMappings: { latitudePath?: string | null; longitudePath?: string | null; locationPath?: string | null },
   geocodingResults: ReturnType<typeof getGeocodingResults>
 ): {
   location?: { latitude: number; longitude: number };
@@ -41,10 +37,7 @@ export const extractCoordinates = (
 
     // Validate both type and coordinate bounds
     if (typeof lat === "number" && typeof lng === "number" && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      return {
-        location: { latitude: lat, longitude: lng },
-        coordinateSource: { type: "import" as const },
-      };
+      return { location: { latitude: lat, longitude: lng }, coordinateSource: { type: "import" as const } };
     }
   }
 
@@ -56,10 +49,7 @@ export const extractCoordinates = (
       const geocoded = geocodingResults[trimmed];
       if (geocoded) {
         return {
-          location: {
-            latitude: geocoded.coordinates.lat,
-            longitude: geocoded.coordinates.lng,
-          },
+          location: { latitude: geocoded.coordinates.lat, longitude: geocoded.coordinates.lng },
           coordinateSource: {
             type: "geocoded" as const,
             confidence: geocoded.confidence,
@@ -71,9 +61,7 @@ export const extractCoordinates = (
   }
 
   // No coordinates available
-  return {
-    coordinateSource: { type: "none" as const },
-  };
+  return { coordinateSource: { type: "none" as const } };
 };
 
 /**

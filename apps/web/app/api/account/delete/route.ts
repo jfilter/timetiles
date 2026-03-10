@@ -88,10 +88,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     // Check if already pending deletion
     if (user.deletionStatus === "pending_deletion") {
       return NextResponse.json(
-        {
-          error: "Deletion already scheduled",
-          deletionScheduledAt: user.deletionScheduledAt,
-        },
+        { error: "Deletion already scheduled", deletionScheduledAt: user.deletionScheduledAt },
         { status: 400 }
       );
     }
@@ -108,11 +105,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     });
 
     logger.info(
-      {
-        userId: user.id,
-        deletionScheduledAt: result.deletionScheduledAt,
-        clientId,
-      },
+      { userId: user.id, deletionScheduledAt: result.deletionScheduledAt, clientId },
       "Account deletion scheduled"
     );
 

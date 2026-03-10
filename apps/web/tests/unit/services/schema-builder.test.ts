@@ -24,12 +24,7 @@ describe("ProgressiveSchemaBuilder", () => {
       expect(result1.schemaChanged).toBe(true);
       expect(result1.changes).toHaveLength(3); // 3 new fields
       expect(result1.changes).toContainEqual(
-        expect.objectContaining({
-          type: "new_field",
-          path: "id",
-          severity: "info",
-          autoApprovable: true,
-        })
+        expect.objectContaining({ type: "new_field", path: "id", severity: "info", autoApprovable: true })
       );
 
       // Second batch with additional field
@@ -37,10 +32,7 @@ describe("ProgressiveSchemaBuilder", () => {
 
       expect(result2.schemaChanged).toBe(true);
       expect(result2.changes).toHaveLength(1); // 1 new field (category)
-      expect(result2.changes[0]).toMatchObject({
-        type: "new_field",
-        path: "category",
-      });
+      expect(result2.changes[0]).toMatchObject({ type: "new_field", path: "category" });
     });
 
     it("tracks field statistics correctly", () => {
@@ -58,12 +50,7 @@ describe("ProgressiveSchemaBuilder", () => {
       expect(state.fieldStats["id"]?.nullCount).toBe(0);
       expect(state.fieldStats["name"]?.occurrences).toBe(3);
       expect(state.fieldStats["name"]?.nullCount).toBe(1);
-      expect(state.fieldStats["value"]?.numericStats).toMatchObject({
-        min: 100,
-        max: 200,
-        avg: 150,
-        isInteger: true,
-      });
+      expect(state.fieldStats["value"]?.numericStats).toMatchObject({ min: 100, max: 200, avg: 150, isInteger: true });
     });
 
     it("detects type conflicts", () => {
@@ -75,12 +62,7 @@ describe("ProgressiveSchemaBuilder", () => {
       const result = builder.processBatch([{ id: "2", value: "123" }]);
 
       expect(result.changes).toContainEqual(
-        expect.objectContaining({
-          type: "type_change",
-          path: "value",
-          severity: "warning",
-          autoApprovable: false,
-        })
+        expect.objectContaining({ type: "type_change", path: "value", severity: "warning", autoApprovable: false })
       );
 
       const state = builder.getState();
@@ -94,15 +76,7 @@ describe("ProgressiveSchemaBuilder", () => {
     it("respects max depth configuration", () => {
       const deepBuilder = new ProgressiveSchemaBuilder(undefined, { maxDepth: 2 });
 
-      const deepObject = {
-        level1: {
-          level2: {
-            level3: {
-              level4: "too deep",
-            },
-          },
-        },
-      };
+      const deepObject = { level1: { level2: { level3: { level4: "too deep" } } } };
 
       deepBuilder.processBatch([deepObject]);
       const state = deepBuilder.getState();
@@ -274,10 +248,7 @@ describe("ProgressiveSchemaBuilder", () => {
       const builder = new ProgressiveSchemaBuilder();
       const previousSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          name: { type: "string" },
-        },
+        properties: { id: { type: "string" }, name: { type: "string" } },
         required: [], // Explicitly state no required fields
       };
 
@@ -328,11 +299,7 @@ describe("ProgressiveSchemaBuilder", () => {
       const builder = new ProgressiveSchemaBuilder();
       const previousSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          name: { type: "string" },
-          deprecated: { type: "string" },
-        },
+        properties: { id: { type: "string" }, name: { type: "string" }, deprecated: { type: "string" } },
         required: [],
       };
 
@@ -367,10 +334,7 @@ describe("ProgressiveSchemaBuilder", () => {
       const builder = new ProgressiveSchemaBuilder();
       const previousSchema = {
         type: "object",
-        properties: {
-          id: { type: "number" },
-          name: { type: "string" },
-        },
+        properties: { id: { type: "number" }, name: { type: "string" } },
         required: [],
       };
 
@@ -406,9 +370,7 @@ describe("ProgressiveSchemaBuilder", () => {
       const builder = new ProgressiveSchemaBuilder();
       const previousSchema = {
         type: "object",
-        properties: {
-          status: { type: "string", enum: ["active", "pending"] },
-        },
+        properties: { status: { type: "string", enum: ["active", "pending"] } },
         required: [],
       };
 
@@ -451,9 +413,7 @@ describe("ProgressiveSchemaBuilder", () => {
       const builder = new ProgressiveSchemaBuilder();
       const previousSchema = {
         type: "object",
-        properties: {
-          status: { type: "string", enum: ["active", "pending", "archived"] },
-        },
+        properties: { status: { type: "string", enum: ["active", "pending", "archived"] } },
         required: [],
       };
 
@@ -562,19 +522,7 @@ describe("ProgressiveSchemaBuilder", () => {
 
     it("handles very long field paths", () => {
       const builder = new ProgressiveSchemaBuilder();
-      const deepObject = {
-        very: {
-          deeply: {
-            nested: {
-              structure: {
-                with: {
-                  value: "test",
-                },
-              },
-            },
-          },
-        },
-      };
+      const deepObject = { very: { deeply: { nested: { structure: { with: { value: "test" } } } } } };
 
       builder.processBatch([deepObject]);
       const state = builder.getState();
@@ -590,10 +538,7 @@ describe("ProgressiveSchemaBuilder", () => {
       const builder = new ProgressiveSchemaBuilder();
       const records = Array(100)
         .fill(null)
-        .map((_, i) => ({
-          id: i,
-          status: i % 2 === 0 ? "active" : "inactive",
-        }));
+        .map((_, i) => ({ id: i, status: i % 2 === 0 ? "active" : "inactive" }));
       builder.processBatch(records);
       builder.detectEnumFields();
 

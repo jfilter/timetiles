@@ -29,11 +29,7 @@ const mockEvents = [
     dataset: "Historical Exhibitions",
     datasetColor: "blue" as const,
     geocoding: { provider: "google", confidence: 0.95, status: "success" },
-    additionalFields: {
-      organizer: "Prince Albert",
-      visitors: "6 million",
-      exhibitors: "14,000",
-    },
+    additionalFields: { organizer: "Prince Albert", visitors: "6 million", exhibitors: "14,000" },
   },
   {
     id: 2,
@@ -78,11 +74,7 @@ const mockEvents = [
     dataset: "Art & Culture",
     datasetColor: "navy" as const,
     geocoding: { provider: "google", confidence: 0.98, status: "success" },
-    additionalFields: {
-      curator: "Dr. Maria Rosetti",
-      artworks: "200+",
-      ticketPrice: "$25",
-    },
+    additionalFields: { curator: "Dr. Maria Rosetti", artworks: "200+", ticketPrice: "$25" },
   },
 ];
 

@@ -42,9 +42,7 @@ describe.sequential("Failure Transitions Integration", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
     testUserId = users.testUser.id;
 
     const { catalog } = await withCatalog(testEnv, {
@@ -82,18 +80,12 @@ describe.sequential("Failure Transitions Integration", () => {
 
       await expect(datasetDetectionJob.handler(detectionContext)).rejects.toThrow("No data rows found");
 
-      const failedImportFile = await payload.findByID({
-        collection: "import-files",
-        id: importFile.id,
-      });
+      const failedImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
       expect(failedImportFile.status).toBe("failed");
 
       const queuedJobs = await payload.find({
         collection: "payload-jobs",
-        where: {
-          "input.importFileId": { equals: importFile.id },
-          completedAt: { exists: false },
-        },
+        where: { "input.importFileId": { equals: importFile.id }, completedAt: { exists: false } },
       });
       expect(queuedJobs.docs.length).toBeLessThanOrEqual(1);
     });
@@ -125,10 +117,7 @@ describe.sequential("Failure Transitions Integration", () => {
 
       const duplicateContext = {
         payload,
-        job: {
-          id: "duplicate-job",
-          input: { importJobId: nonExistentJobId, batchNumber: 0 },
-        },
+        job: { id: "duplicate-job", input: { importJobId: nonExistentJobId, batchNumber: 0 } },
       };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
@@ -137,10 +126,7 @@ describe.sequential("Failure Transitions Integration", () => {
       // Verify no jobs were queued for this non-existent job
       const queuedJobs = await payload.find({
         collection: "payload-jobs",
-        where: {
-          "input.importJobId": { equals: nonExistentJobId },
-          completedAt: { exists: false },
-        },
+        where: { "input.importJobId": { equals: nonExistentJobId }, completedAt: { exists: false } },
       });
       expect(queuedJobs.docs).toHaveLength(0);
     });
@@ -152,10 +138,7 @@ describe.sequential("Failure Transitions Integration", () => {
 
       const schemaContext = {
         payload,
-        job: {
-          id: "schema-job",
-          input: { importJobId: nonExistentJobId, batchNumber: 0 },
-        },
+        job: { id: "schema-job", input: { importJobId: nonExistentJobId, batchNumber: 0 } },
       };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
@@ -202,10 +185,7 @@ Event 2,2024-01-02,San Francisco CA`;
       await expect(
         geocodeBatchJob.handler({
           payload,
-          job: {
-            id: "geocoding-job",
-            input: { importJobId: "non-existent", batchNumber: 0 },
-          },
+          job: { id: "geocoding-job", input: { importJobId: "non-existent", batchNumber: 0 } },
         })
       ).rejects.toThrow("Not Found");
     });
@@ -215,10 +195,7 @@ Event 2,2024-01-02,San Francisco CA`;
     it("should handle event creation errors when import job not found", async () => {
       const eventContext = {
         payload,
-        job: {
-          id: "event-job",
-          input: { importJobId: "non-existent", batchNumber: 0 },
-        },
+        job: { id: "event-job", input: { importJobId: "non-existent", batchNumber: 0 } },
       };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
@@ -243,10 +220,7 @@ Event 2,2024-01-02,San Francisco CA`;
 
       await expect(datasetDetectionJob.handler(detectionContext)).rejects.toThrow();
 
-      const failedImportFile = await payload.findByID({
-        collection: "import-files",
-        id: importFile.id,
-      });
+      const failedImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
       expect(failedImportFile.status).toBe("failed");
     });
   });

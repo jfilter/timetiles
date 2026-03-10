@@ -156,13 +156,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     if (verifyError) return verifyError;
 
     // Check if new email is already in use
-    const existingUser = await payload.find({
-      collection: "users",
-      where: {
-        email: { equals: newEmail },
-      },
-      limit: 1,
-    });
+    const existingUser = await payload.find({ collection: "users", where: { email: { equals: newEmail } }, limit: 1 });
 
     if (existingUser.docs.length > 0) {
       return badRequest("Email is already in use");

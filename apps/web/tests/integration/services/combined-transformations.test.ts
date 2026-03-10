@@ -49,9 +49,7 @@ describe.sequential("Combined Transformations Integration", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      approver: { role: "admin" },
-    });
+    const { users } = await withUsers(testEnv, { approver: { role: "admin" } });
     approverUser = users.approver;
 
     const { catalog } = await withCatalog(testEnv, {
@@ -93,10 +91,7 @@ describe.sequential("Combined Transformations Integration", () => {
 
   const simulateSchemaApproval = async (importJobId: string) => {
     // Get the current job
-    const beforeJob = await payload.findByID({
-      collection: "import-jobs",
-      id: importJobId,
-    });
+    const beforeJob = await payload.findByID({ collection: "import-jobs", id: importJobId });
 
     // Update the approval fields
     const updatedSchemaValidation = {
@@ -109,9 +104,7 @@ describe.sequential("Combined Transformations Integration", () => {
     await payload.update({
       collection: "import-jobs",
       id: importJobId,
-      data: {
-        schemaValidation: updatedSchemaValidation,
-      },
+      data: { schemaValidation: updatedSchemaValidation },
       user: approverUser, // Pass user context for authentication
     });
   };
@@ -142,18 +135,9 @@ describe.sequential("Combined Transformations Integration", () => {
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Combined Transform Dataset ${Date.now()}`,
       language: "deu", // German
-      schemaConfig: {
-        allowTransformations: true,
-      },
+      schemaConfig: { allowTransformations: true },
       importTransforms: [
-        {
-          id: "transform-1",
-          type: "rename",
-          from: "Ereignis_Titel",
-          to: "titel",
-          active: true,
-          autoDetected: false,
-        },
+        { id: "transform-1", type: "rename", from: "Ereignis_Titel", to: "titel", active: true, autoDetected: false },
         {
           id: "transform-2",
           type: "type-cast",
@@ -164,9 +148,7 @@ describe.sequential("Combined Transformations Integration", () => {
           active: true,
         },
       ],
-      idStrategy: {
-        type: "auto",
-      },
+      idStrategy: { type: "auto" },
     });
 
     // Upload German CSV with datasetMapping metadata to specify which dataset to use
@@ -175,14 +157,7 @@ describe.sequential("Combined Transformations Integration", () => {
       filename: "events-combined-transforms-german.csv",
       mimeType: "text/csv",
       user: approverUser.id,
-      additionalData: {
-        metadata: {
-          datasetMapping: {
-            mappingType: "single",
-            singleDataset: dataset.id,
-          },
-        },
-      },
+      additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
     });
 
     // Wait for schema detection to complete
@@ -196,10 +171,7 @@ describe.sequential("Combined Transformations Integration", () => {
     expect(completed).toBe(true);
 
     // Reload import job to see detected field mappings
-    const completedJob = await payload.findByID({
-      collection: "import-jobs",
-      id: importJob!.id,
-    });
+    const completedJob = await payload.findByID({ collection: "import-jobs", id: importJob!.id });
 
     // Verify field mappings were detected (after import transform applied)
     expect(completedJob.detectedFieldMappings).toBeDefined();
@@ -265,9 +237,7 @@ describe.sequential("Combined Transformations Integration", () => {
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Order Test Dataset ${Date.now()}`,
       language: "deu",
-      schemaConfig: {
-        allowTransformations: true,
-      },
+      schemaConfig: { allowTransformations: true },
       // First: rename attendee_count → Teilnehmer_Anzahl, then convert to number
       importTransforms: [
         {
@@ -288,9 +258,7 @@ describe.sequential("Combined Transformations Integration", () => {
           active: true,
         },
       ],
-      idStrategy: {
-        type: "auto",
-      },
+      idStrategy: { type: "auto" },
     });
 
     // Create CSV with original field name "attendee_count"
@@ -302,14 +270,7 @@ Festival,2500,Music festival`;
       user: approverUser.id,
       filename: "order-test.csv",
       mimeType: "text/csv",
-      additionalData: {
-        metadata: {
-          datasetMapping: {
-            mappingType: "single",
-            singleDataset: dataset.id,
-          },
-        },
-      },
+      additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
     });
 
     // Wait for schema detection to complete
@@ -361,9 +322,7 @@ Festival,2500,Music festival`;
           autoDetected: false,
         },
       ],
-      idStrategy: {
-        type: "auto",
-      },
+      idStrategy: { type: "auto" },
     });
 
     const csvContent = `event_name,description,date
@@ -374,14 +333,7 @@ Workshop,Learning session,2024-02-20`;
       user: approverUser.id,
       filename: "mapping-interaction-test.csv",
       mimeType: "text/csv",
-      additionalData: {
-        metadata: {
-          datasetMapping: {
-            mappingType: "single",
-            singleDataset: dataset.id,
-          },
-        },
-      },
+      additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
     });
 
     // Wait for schema detection to complete
@@ -406,18 +358,9 @@ Workshop,Learning session,2024-02-20`;
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Type Interaction Dataset ${Date.now()}`,
       language: "eng",
-      schemaConfig: {
-        allowTransformations: true,
-      },
+      schemaConfig: { allowTransformations: true },
       importTransforms: [
-        {
-          id: "transform-1",
-          type: "rename",
-          from: "count",
-          to: "anzahl",
-          active: true,
-          autoDetected: false,
-        },
+        { id: "transform-1", type: "rename", from: "count", to: "anzahl", active: true, autoDetected: false },
         {
           id: "transform-2",
           type: "type-cast",
@@ -428,9 +371,7 @@ Workshop,Learning session,2024-02-20`;
           active: true,
         },
       ],
-      idStrategy: {
-        type: "auto",
-      },
+      idStrategy: { type: "auto" },
     });
 
     const csvContent = `name,count,description
@@ -441,14 +382,7 @@ Event B,200,Second event`;
       user: approverUser.id,
       filename: "type-interaction-test.csv",
       mimeType: "text/csv",
-      additionalData: {
-        metadata: {
-          datasetMapping: {
-            mappingType: "single",
-            singleDataset: dataset.id,
-          },
-        },
-      },
+      additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
     });
 
     // Wait for schema detection to complete

@@ -40,10 +40,7 @@ const accentOptions = [
 export const Pages: CollectionConfig = {
   slug: "pages",
   ...createCommonConfig(),
-  admin: {
-    useAsTitle: "title",
-    group: "Content",
-  },
+  admin: { useAsTitle: "title", group: "Content" },
   access: {
     read: () => true,
     create: isEditorOrAdmin,
@@ -52,11 +49,7 @@ export const Pages: CollectionConfig = {
     readVersions: isEditorOrAdmin,
   },
   fields: [
-    {
-      name: "title",
-      type: "text",
-      required: true,
-    },
+    { name: "title", type: "text", required: true },
     createSlugField("pages", "title"),
     {
       name: "pageBuilder",
@@ -65,24 +58,11 @@ export const Pages: CollectionConfig = {
       blocks: [
         {
           slug: "hero",
-          labels: {
-            singular: "Hero Section",
-            plural: "Hero Sections",
-          },
+          labels: { singular: "Hero Section", plural: "Hero Sections" },
           fields: [
-            {
-              name: "title",
-              type: "text",
-              required: true,
-            },
-            {
-              name: "subtitle",
-              type: "text",
-            },
-            {
-              name: "description",
-              type: "textarea",
-            },
+            { name: "title", type: "text", required: true },
+            { name: "subtitle", type: "text" },
+            { name: "description", type: "textarea" },
             {
               name: "background",
               type: "select",
@@ -96,16 +76,8 @@ export const Pages: CollectionConfig = {
               name: "buttons",
               type: "array",
               fields: [
-                {
-                  name: "text",
-                  type: "text",
-                  required: true,
-                },
-                {
-                  name: "link",
-                  type: "text",
-                  required: true,
-                },
+                { name: "text", type: "text", required: true },
+                { name: "link", type: "text", required: true },
                 {
                   name: "variant",
                   type: "select",
@@ -121,21 +93,10 @@ export const Pages: CollectionConfig = {
         },
         {
           slug: "features",
-          labels: {
-            singular: "Features Section",
-            plural: "Features Sections",
-          },
+          labels: { singular: "Features Section", plural: "Features Sections" },
           fields: [
-            {
-              name: "sectionTitle",
-              type: "text",
-              label: "Section Title",
-            },
-            {
-              name: "sectionDescription",
-              type: "textarea",
-              label: "Section Description",
-            },
+            { name: "sectionTitle", type: "text", label: "Section Title" },
+            { name: "sectionDescription", type: "textarea", label: "Section Description" },
             {
               name: "columns",
               type: "select",
@@ -153,38 +114,17 @@ export const Pages: CollectionConfig = {
               required: true,
               minRows: 1,
               fields: [
-                {
-                  name: "icon",
-                  type: "select",
-                  required: true,
-                  options: iconOptions,
-                },
-                {
-                  name: "title",
-                  type: "text",
-                  required: true,
-                },
-                {
-                  name: "description",
-                  type: "textarea",
-                  required: true,
-                },
-                {
-                  name: "accent",
-                  type: "select",
-                  defaultValue: "none",
-                  options: accentOptions,
-                },
+                { name: "icon", type: "select", required: true, options: iconOptions },
+                { name: "title", type: "text", required: true },
+                { name: "description", type: "textarea", required: true },
+                { name: "accent", type: "select", defaultValue: "none", options: accentOptions },
               ],
             },
           ],
         },
         {
           slug: "stats",
-          labels: {
-            singular: "Stats Section",
-            plural: "Stats Sections",
-          },
+          labels: { singular: "Stats Section", plural: "Stats Sections" },
           fields: [
             {
               name: "stats",
@@ -192,37 +132,18 @@ export const Pages: CollectionConfig = {
               required: true,
               minRows: 1,
               fields: [
-                {
-                  name: "value",
-                  type: "text",
-                  required: true,
-                },
-                {
-                  name: "label",
-                  type: "text",
-                  required: true,
-                },
-                {
-                  name: "icon",
-                  type: "select",
-                  options: iconOptions,
-                },
+                { name: "value", type: "text", required: true },
+                { name: "label", type: "text", required: true },
+                { name: "icon", type: "select", options: iconOptions },
               ],
             },
           ],
         },
         {
           slug: "detailsGrid",
-          labels: {
-            singular: "Details Grid Section",
-            plural: "Details Grid Sections",
-          },
+          labels: { singular: "Details Grid Section", plural: "Details Grid Sections" },
           fields: [
-            {
-              name: "sectionTitle",
-              type: "text",
-              label: "Section Title (optional)",
-            },
+            { name: "sectionTitle", type: "text", label: "Section Title (optional)" },
             {
               name: "variant",
               type: "select",
@@ -240,42 +161,19 @@ export const Pages: CollectionConfig = {
               required: true,
               minRows: 1,
               fields: [
-                {
-                  name: "icon",
-                  type: "select",
-                  required: true,
-                  options: iconOptions,
-                },
-                {
-                  name: "label",
-                  type: "text",
-                  required: true,
-                },
-                {
-                  name: "value",
-                  type: "text",
-                  required: true,
-                },
-                {
-                  name: "link",
-                  type: "text",
-                },
+                { name: "icon", type: "select", required: true, options: iconOptions },
+                { name: "label", type: "text", required: true },
+                { name: "value", type: "text", required: true },
+                { name: "link", type: "text" },
               ],
             },
           ],
         },
         {
           slug: "timeline",
-          labels: {
-            singular: "Timeline Section",
-            plural: "Timeline Sections",
-          },
+          labels: { singular: "Timeline Section", plural: "Timeline Sections" },
           fields: [
-            {
-              name: "sectionTitle",
-              type: "text",
-              label: "Section Title (optional)",
-            },
+            { name: "sectionTitle", type: "text", label: "Section Title (optional)" },
             {
               name: "variant",
               type: "select",
@@ -295,36 +193,19 @@ export const Pages: CollectionConfig = {
                   name: "date",
                   type: "text",
                   required: true,
-                  admin: {
-                    description: "Display date (e.g., '2024', 'March 2024', 'Q1 2024')",
-                  },
+                  admin: { description: "Display date (e.g., '2024', 'March 2024', 'Q1 2024')" },
                 },
-                {
-                  name: "title",
-                  type: "text",
-                  required: true,
-                },
-                {
-                  name: "description",
-                  type: "textarea",
-                  required: true,
-                },
+                { name: "title", type: "text", required: true },
+                { name: "description", type: "textarea", required: true },
               ],
             },
           ],
         },
         {
           slug: "testimonials",
-          labels: {
-            singular: "Testimonials Section",
-            plural: "Testimonials Sections",
-          },
+          labels: { singular: "Testimonials Section", plural: "Testimonials Sections" },
           fields: [
-            {
-              name: "sectionTitle",
-              type: "text",
-              label: "Section Title (optional)",
-            },
+            { name: "sectionTitle", type: "text", label: "Section Title (optional)" },
             {
               name: "variant",
               type: "select",
@@ -341,30 +222,18 @@ export const Pages: CollectionConfig = {
               required: true,
               minRows: 1,
               fields: [
-                {
-                  name: "quote",
-                  type: "textarea",
-                  required: true,
-                },
-                {
-                  name: "author",
-                  type: "text",
-                  required: true,
-                },
+                { name: "quote", type: "textarea", required: true },
+                { name: "author", type: "text", required: true },
                 {
                   name: "role",
                   type: "text",
-                  admin: {
-                    description: "Optional role or title (e.g., 'Open Source Contributor')",
-                  },
+                  admin: { description: "Optional role or title (e.g., 'Open Source Contributor')" },
                 },
                 {
                   name: "avatar",
                   type: "select",
                   options: iconOptions,
-                  admin: {
-                    description: "Optional icon to display as avatar",
-                  },
+                  admin: { description: "Optional icon to display as avatar" },
                 },
               ],
             },
@@ -372,118 +241,71 @@ export const Pages: CollectionConfig = {
         },
         {
           slug: "richText",
-          labels: {
-            singular: "Rich Text",
-            plural: "Rich Text Blocks",
-          },
-          fields: [
-            {
-              name: "content",
-              type: "richText",
-              required: true,
-            },
-          ],
+          labels: { singular: "Rich Text", plural: "Rich Text Blocks" },
+          fields: [{ name: "content", type: "richText", required: true }],
         },
         {
           slug: "cta",
-          labels: {
-            singular: "Call to Action",
-            plural: "Call to Action Blocks",
-          },
+          labels: { singular: "Call to Action", plural: "Call to Action Blocks" },
           fields: [
-            {
-              name: "headline",
-              type: "text",
-              required: true,
-            },
-            {
-              name: "description",
-              type: "textarea",
-            },
-            {
-              name: "buttonText",
-              type: "text",
-              required: true,
-            },
-            {
-              name: "buttonLink",
-              type: "text",
-              required: true,
-            },
+            { name: "headline", type: "text", required: true },
+            { name: "description", type: "textarea" },
+            { name: "buttonText", type: "text", required: true },
+            { name: "buttonLink", type: "text", required: true },
           ],
         },
         {
           slug: "newsletterForm",
-          labels: {
-            singular: "Newsletter Form (Compact)",
-            plural: "Newsletter Forms (Compact)",
-          },
+          labels: { singular: "Newsletter Form (Compact)", plural: "Newsletter Forms (Compact)" },
           fields: [
             {
               name: "headline",
               type: "text",
               defaultValue: "Stay Mapped In",
-              admin: {
-                description: "Optional headline text (default: 'Stay Mapped In')",
-              },
+              admin: { description: "Optional headline text (default: 'Stay Mapped In')" },
             },
             {
               name: "placeholder",
               type: "text",
               defaultValue: "your@email.address",
-              admin: {
-                description: "Email input placeholder text",
-              },
+              admin: { description: "Email input placeholder text" },
             },
             {
               name: "buttonText",
               type: "text",
               defaultValue: "Subscribe",
-              admin: {
-                description: "Submit button text",
-              },
+              admin: { description: "Submit button text" },
             },
           ],
         },
         {
           slug: "newsletterCTA",
-          labels: {
-            singular: "Newsletter CTA (Large)",
-            plural: "Newsletter CTAs (Large)",
-          },
+          labels: { singular: "Newsletter CTA (Large)", plural: "Newsletter CTAs (Large)" },
           fields: [
             {
               name: "headline",
               type: "text",
               defaultValue: "Never Miss a Discovery",
-              admin: {
-                description: "Main headline text",
-              },
+              admin: { description: "Main headline text" },
             },
             {
               name: "description",
               type: "textarea",
               defaultValue:
                 "Join our community of explorers. Get curated event highlights, spatial insights, and new dataset releases delivered to your inbox.",
-              admin: {
-                description: "Supporting description text",
-              },
+              admin: { description: "Supporting description text" },
             },
             {
               name: "placeholder",
               type: "text",
               defaultValue: "your@email.address",
-              admin: {
-                description: "Email input placeholder text",
-              },
+              admin: { description: "Email input placeholder text" },
             },
             {
               name: "buttonText",
               type: "text",
               defaultValue: "Subscribe to Updates",
-              admin: {
-                description: "Submit button text",
-              },
+              admin: { description: "Submit button text" },
             },
             {
               name: "variant",

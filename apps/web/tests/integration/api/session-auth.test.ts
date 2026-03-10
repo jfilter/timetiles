@@ -29,11 +29,7 @@ describe("Session Authentication", () => {
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
       const { users } = await withUsers(testEnv, {
-        sessionTestUser: {
-          email: testEmail,
-          password: testPassword,
-          _verified: true,
-        },
+        sessionTestUser: { email: testEmail, password: testPassword, _verified: true },
       });
       const user = users.sessionTestUser;
 
@@ -49,10 +45,7 @@ describe("Session Authentication", () => {
       // Login
       const loginResult = await payload.login({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: testPassword,
-        },
+        data: { email: testEmail, password: testPassword },
       });
 
       expect(loginResult.token).toBeDefined();
@@ -80,21 +73,12 @@ describe("Session Authentication", () => {
       const testEmail = `auth-test-${timestamp}@test.com`;
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
-      await withUsers(testEnv, {
-        authTestUser: {
-          email: testEmail,
-          password: testPassword,
-          _verified: true,
-        },
-      });
+      await withUsers(testEnv, { authTestUser: { email: testEmail, password: testPassword, _verified: true } });
 
       // Login to get token
       const loginResult = await payload.login({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: testPassword,
-        },
+        data: { email: testEmail, password: testPassword },
       });
 
       expect(loginResult.token).toBeDefined();
@@ -106,9 +90,7 @@ describe("Session Authentication", () => {
 
       // Validate using payload.auth() with Bearer token
       const { user: authUser } = await payload.auth({
-        headers: new Headers({
-          Authorization: `Bearer ${loginResult.token}`,
-        }),
+        headers: new Headers({ Authorization: `Bearer ${loginResult.token}` }),
       });
 
       expect(authUser).toBeDefined();
@@ -124,30 +106,19 @@ describe("Session Authentication", () => {
       const testEmail = `cookie-test-${timestamp}@test.com`;
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
-      await withUsers(testEnv, {
-        cookieTestUser: {
-          email: testEmail,
-          password: testPassword,
-          _verified: true,
-        },
-      });
+      await withUsers(testEnv, { cookieTestUser: { email: testEmail, password: testPassword, _verified: true } });
 
       // Login to get token
       const loginResult = await payload.login({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: testPassword,
-        },
+        data: { email: testEmail, password: testPassword },
       });
 
       expect(loginResult.token).toBeDefined();
 
       // Validate using payload.auth() with Cookie header (like browser would send)
       const { user: authUser } = await payload.auth({
-        headers: new Headers({
-          Cookie: `payload-token=${loginResult.token}`,
-        }),
+        headers: new Headers({ Cookie: `payload-token=${loginResult.token}` }),
       });
 
       expect(authUser).toBeDefined();
@@ -164,30 +135,21 @@ describe("Session Authentication", () => {
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
       const { users } = await withUsers(testEnv, {
-        sessionDeleteUser: {
-          email: testEmail,
-          password: testPassword,
-          _verified: true,
-        },
+        sessionDeleteUser: { email: testEmail, password: testPassword, _verified: true },
       });
       const user = users.sessionDeleteUser;
 
       // Login to get token
       const loginResult = await payload.login({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: testPassword,
-        },
+        data: { email: testEmail, password: testPassword },
       });
 
       expect(loginResult.token).toBeDefined();
 
       // Verify auth works before deleting session
       const { user: authUserBefore } = await payload.auth({
-        headers: new Headers({
-          Authorization: `Bearer ${loginResult.token}`,
-        }),
+        headers: new Headers({ Authorization: `Bearer ${loginResult.token}` }),
       });
       expect(authUserBefore).toBeDefined();
       console.log("Auth before session delete: success");
@@ -198,9 +160,7 @@ describe("Session Authentication", () => {
 
       // Verify auth fails after deleting session
       const { user: authUserAfter } = await payload.auth({
-        headers: new Headers({
-          Authorization: `Bearer ${loginResult.token}`,
-        }),
+        headers: new Headers({ Authorization: `Bearer ${loginResult.token}` }),
       });
 
       console.log(`Auth after session delete: ${authUserAfter ? "success (unexpected)" : "failed (expected)"}`);
@@ -216,34 +176,16 @@ describe("Session Authentication", () => {
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
       const { users } = await withUsers(testEnv, {
-        inspectUser: {
-          email: testEmail,
-          password: testPassword,
-          _verified: true,
-        },
+        inspectUser: { email: testEmail, password: testPassword, _verified: true },
       });
       const user = users.inspectUser;
 
-      await payload.login({
-        collection: "users",
-        data: {
-          email: testEmail,
-          password: testPassword,
-        },
-      });
+      await payload.login({ collection: "users", data: { email: testEmail, password: testPassword } });
 
       // Query sessions directly
       const sessions = (await payload.db.drizzle.execute(
         sql`SELECT * FROM payload.users_sessions WHERE _parent_id = ${user.id}`
-      )) as {
-        rows: Array<{
-          _order: number;
-          _parent_id: number;
-          id: string;
-          created_at: string;
-          expires_at: string;
-        }>;
-      };
+      )) as { rows: Array<{ _order: number; _parent_id: number; id: string; created_at: string; expires_at: string }> };
 
       console.log("Sessions table contents:", JSON.stringify(sessions.rows, null, 2));
 

@@ -40,37 +40,20 @@ import { Providers } from "@/components/providers";
 import config from "@/payload.config";
 import type { Branding, Footer as FooterType } from "@/payload-types";
 
-const fontSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
+const fontSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
-const fontSerif = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: "swap",
-});
+const fontSerif = Playfair_Display({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
 
-const fontMono = Space_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  weight: ["400", "700"],
-  display: "swap",
-});
+const fontMono = Space_Mono({ subsets: ["latin"], variable: "--font-mono", weight: ["400", "700"], display: "swap" });
 
 const getFooterData = async (): Promise<FooterType> => {
   const payload = await getPayload({ config });
-  return payload.findGlobal({
-    slug: "footer",
-  });
+  return payload.findGlobal({ slug: "footer" });
 };
 
 const getBranding = async (): Promise<Branding> => {
   const payload = await getPayload({ config });
-  return payload.findGlobal({
-    slug: "branding",
-  });
+  return payload.findGlobal({ slug: "branding" });
 };
 
 export const generateMetadata = async (): Promise<Metadata> => {
@@ -96,11 +79,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-export default async function FrontendLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default async function FrontendLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const footerData = await getFooterData();
 
   return (

@@ -118,10 +118,7 @@ const readBatchFromExcel = (
   }
 
   // Convert to JSON with headers
-  const jsonData = utils.sheet_to_json(worksheet, {
-    header: 1,
-    defval: null,
-  });
+  const jsonData = utils.sheet_to_json(worksheet, { header: 1, defval: null });
 
   if (jsonData.length === 0) {
     return [];
@@ -160,10 +157,7 @@ export const getFileRowCount = (filePath: string, sheetIndex = 0): number => {
 
   if (fileExtension === "csv") {
     const fileContent = fs.readFileSync(filePath, "utf-8");
-    const result = Papa.parse(fileContent, {
-      header: true,
-      skipEmptyLines: true,
-    });
+    const result = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
     return result.data.length;
   } else if (fileExtension === "xlsx" || fileExtension === "xls" || fileExtension === "ods") {
     // xlsx library handles .xls, .xlsx, and .ods files

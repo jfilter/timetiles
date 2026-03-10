@@ -68,9 +68,5 @@ export const useChartQuery = <TData = unknown, TError = Error>(
     [queryResult.isLoading, queryResult.data, hasLoadedOnce]
   );
 
-  return {
-    ...queryResult,
-    isInitialLoad,
-    isUpdating,
-  };
+  return { ...queryResult, isInitialLoad, isUpdating };
 };

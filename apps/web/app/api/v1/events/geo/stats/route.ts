@@ -138,10 +138,7 @@ const calculateGlobalStats = async (payload: Awaited<ReturnType<typeof getPayloa
     p100: Number(row.p100),
   };
 
-  logger.debug("Global cluster stats calculated", {
-    totalClusters: Number(row.total_clusters),
-    stats,
-  });
+  logger.debug("Global cluster stats calculated", { totalClusters: Number(row.total_clusters), stats });
 
   return stats;
 };

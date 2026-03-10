@@ -55,10 +55,7 @@ describe.sequential("scheduled-imports quota hooks", () => {
     quotaMocks.mockDecrementUsage.mockRejectedValue(new Error("quota decrement failed"));
 
     await expect(
-      afterDeleteHook({
-        doc: { enabled: true, createdBy: 1 },
-        req: { user: { id: 1 }, payload: {} },
-      } as never)
+      afterDeleteHook({ doc: { enabled: true, createdBy: 1 }, req: { user: { id: 1 }, payload: {} } } as never)
     ).rejects.toThrow("quota decrement failed");
   });
 });

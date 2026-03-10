@@ -17,11 +17,7 @@ describe("ScheduleService", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    mockPayload = {
-      jobs: {
-        queue: vi.fn().mockResolvedValue({ id: "job-1" }),
-      },
-    };
+    mockPayload = { jobs: { queue: vi.fn().mockResolvedValue({ id: "job-1" }) } };
     sigintListenersBefore = process.listeners("SIGINT");
     sigtermListenersBefore = process.listeners("SIGTERM");
   });
@@ -127,10 +123,7 @@ describe("ScheduleService", () => {
       const service = new ScheduleService(mockPayload);
       await service.triggerScheduleManager();
 
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-        task: "schedule-manager",
-        input: {},
-      });
+      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({ task: "schedule-manager", input: {} });
     });
   });
 

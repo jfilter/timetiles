@@ -18,10 +18,7 @@ interface LintMessage {
   message: string;
   line: number;
   column: number;
-  fix?: {
-    range: [number, number];
-    text: string;
-  };
+  fix?: { range: [number, number]; text: string };
 }
 
 interface LintResult {
@@ -78,11 +75,7 @@ interface CheckResults {
     topRules: Array<[string, number]>;
     errors: LintResult[];
   };
-  typecheck: {
-    success: boolean;
-    errorCount: number;
-    errors: TypeScriptError[];
-  };
+  typecheck: { success: boolean; errorCount: number; errors: TypeScriptError[] };
 }
 
 const runOxlintCheck = (): OxlintResults => {
@@ -131,14 +124,7 @@ const runOxlintCheck = (): OxlintResults => {
         diagnostics: parsed.diagnostics,
       };
     } catch {
-      return {
-        success: false,
-        errorCount: 1,
-        warningCount: 0,
-        filesChecked: 0,
-        rulesChecked: 0,
-        diagnostics: [],
-      };
+      return { success: false, errorCount: 1, warningCount: 0, filesChecked: 0, rulesChecked: 0, diagnostics: [] };
     }
   }
 };
@@ -227,21 +213,11 @@ const runTypeCheck = (): CheckResults["typecheck"] => {
     execSync("pnpm exec tsc --noEmit --pretty false", { stdio: "pipe" });
 
     // No errors, save empty results
-    const results = {
-      success: true,
-      errorCount: 0,
-      warningCount: 0,
-      errors: [],
-      timestamp: new Date().toISOString(),
-    };
+    const results = { success: true, errorCount: 0, warningCount: 0, errors: [], timestamp: new Date().toISOString() };
 
     fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
 
-    return {
-      success: true,
-      errorCount: 0,
-      errors: [],
-    };
+    return { success: true, errorCount: 0, errors: [] };
   } catch (error) {
     // Parse TypeScript output
     const errorWithOutput = error as { stdout?: Buffer | string; stderr?: Buffer | string };

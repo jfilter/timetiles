@@ -32,30 +32,11 @@ const styles = {
     borderBottom: "1px solid var(--theme-elevation-100)",
     background: "var(--theme-elevation-0)",
   },
-  leftSection: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  },
-  logoImage: {
-    borderRadius: "4px",
-  },
-  brandText: {
-    fontSize: "16px",
-    fontWeight: 600,
-    color: "var(--theme-elevation-800)",
-  },
-  dashboardBadge: {
-    marginLeft: "8px",
-    fontSize: "12px",
-    fontWeight: 400,
-    color: "var(--theme-elevation-500)",
-  },
-  rightSection: {
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-  },
+  leftSection: { display: "flex", alignItems: "center", gap: "12px" },
+  logoImage: { borderRadius: "4px" },
+  brandText: { fontSize: "16px", fontWeight: 600, color: "var(--theme-elevation-800)" },
+  dashboardBadge: { marginLeft: "8px", fontSize: "12px", fontWeight: 400, color: "var(--theme-elevation-500)" },
+  rightSection: { display: "flex", alignItems: "center", gap: "16px" },
   backLink: {
     display: "flex",
     alignItems: "center",

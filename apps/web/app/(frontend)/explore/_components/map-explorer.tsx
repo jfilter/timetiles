@@ -126,10 +126,7 @@ export const MapExplorer = () => {
   const setMapStats = useUIStore((state) => state.setMapStats);
   useEffect(() => {
     if (eventsData != null && totalEventsData != null) {
-      setMapStats({
-        visibleEvents: events.length,
-        totalEvents: totalEventsData.total,
-      });
+      setMapStats({ visibleEvents: events.length, totalEvents: totalEventsData.total });
     }
   }, [events.length, eventsData, totalEventsData, setMapStats]);
 

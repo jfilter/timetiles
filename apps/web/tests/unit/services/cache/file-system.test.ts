@@ -103,9 +103,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       // handles cleanup. The index is already persisted by set().
 
       // Create new instance with same cache directory
-      const newStorage = new FileSystemCacheStorage({
-        cacheDir: tempDir,
-      });
+      const newStorage = new FileSystemCacheStorage({ cacheDir: tempDir });
 
       // Should be able to retrieve the data
       const entry = await newStorage.get(key);
@@ -116,9 +114,7 @@ describe.sequential("FileSystemCacheStorage", () => {
 
     it("should handle cache directory creation", async () => {
       const nestedDir = path.join(tempDir, "nested", "deep", "cache");
-      const tempStorage = new FileSystemCacheStorage({
-        cacheDir: nestedDir,
-      });
+      const tempStorage = new FileSystemCacheStorage({ cacheDir: nestedDir });
 
       await tempStorage.set("test", "value");
 
@@ -227,9 +223,7 @@ describe.sequential("FileSystemCacheStorage", () => {
     it("should handle large values", async () => {
       const largeData = {
         data: "x".repeat(100000), // 100KB string
-        nested: {
-          array: Array(1000).fill("item"),
-        },
+        nested: { array: Array(1000).fill("item") },
       };
 
       await storage.set("large-key", largeData);
@@ -330,9 +324,7 @@ describe.sequential("FileSystemCacheStorage", () => {
   describe("statistics", () => {
     it("should track hits and misses", async () => {
       // Create fresh storage for accurate stats
-      const statsStorage = new FileSystemCacheStorage({
-        cacheDir: path.join(tempDir, "stats"),
-      });
+      const statsStorage = new FileSystemCacheStorage({ cacheDir: path.join(tempDir, "stats") });
 
       await statsStorage.set("stats-key", "value1");
 
@@ -362,10 +354,7 @@ describe.sequential("FileSystemCacheStorage", () => {
 
   describe("tags and metadata", () => {
     it("should store tags with entries", async () => {
-      await storage.set("fs-tags-key", "value1", {
-        tags: ["tag1", "tag2"],
-        metadata: { custom: "data" },
-      });
+      await storage.set("fs-tags-key", "value1", { tags: ["tag1", "tag2"], metadata: { custom: "data" } });
 
       const entry = await storage.get("fs-tags-key");
       expect(entry?.metadata.tags).toEqual(["tag1", "tag2"]);

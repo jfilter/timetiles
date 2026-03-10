@@ -38,61 +38,32 @@ describe("view-resolver utilities", () => {
     });
 
     it("should return catalogIds for catalogs mode", () => {
-      const view = {
-        dataScope: {
-          mode: "catalogs" as const,
-          catalogs: [1, 2, 3],
-        },
-      } as unknown as View;
+      const view = { dataScope: { mode: "catalogs" as const, catalogs: [1, 2, 3] } } as unknown as View;
       expect(getViewDataScopeFilter(view)).toEqual({ catalogIds: [1, 2, 3] });
     });
 
     it("should handle catalog objects with id property", () => {
-      const view = {
-        dataScope: {
-          mode: "catalogs" as const,
-          catalogs: [{ id: 1 }, { id: 2 }],
-        },
-      } as unknown as View;
+      const view = { dataScope: { mode: "catalogs" as const, catalogs: [{ id: 1 }, { id: 2 }] } } as unknown as View;
       expect(getViewDataScopeFilter(view)).toEqual({ catalogIds: [1, 2] });
     });
 
     it("should return datasetIds for datasets mode", () => {
-      const view = {
-        dataScope: {
-          mode: "datasets" as const,
-          datasets: [10, 20],
-        },
-      } as unknown as View;
+      const view = { dataScope: { mode: "datasets" as const, datasets: [10, 20] } } as unknown as View;
       expect(getViewDataScopeFilter(view)).toEqual({ datasetIds: [10, 20] });
     });
 
     it("should return empty object for all mode", () => {
-      const view = {
-        dataScope: {
-          mode: "all" as const,
-        },
-      } as unknown as View;
+      const view = { dataScope: { mode: "all" as const } } as unknown as View;
       expect(getViewDataScopeFilter(view)).toEqual({});
     });
 
     it("should return empty object for empty catalogs array", () => {
-      const view = {
-        dataScope: {
-          mode: "catalogs" as const,
-          catalogs: [],
-        },
-      } as unknown as View;
+      const view = { dataScope: { mode: "catalogs" as const, catalogs: [] } } as unknown as View;
       expect(getViewDataScopeFilter(view)).toEqual({});
     });
 
     it("should return empty object for empty datasets array", () => {
-      const view = {
-        dataScope: {
-          mode: "datasets" as const,
-          datasets: [],
-        },
-      } as unknown as View;
+      const view = { dataScope: { mode: "datasets" as const, datasets: [] } } as unknown as View;
       expect(getViewDataScopeFilter(view)).toEqual({});
     });
   });

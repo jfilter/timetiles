@@ -100,14 +100,8 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
 
     // If no accessible catalogs, return empty result
     if (accessibleCatalogIds.length === 0 && !catalog) {
-      logger.info("No accessible catalogs for user", {
-        user: request.user?.email ?? "anonymous",
-      });
-      return NextResponse.json({
-        items: [],
-        total: 0,
-        groupedBy: groupBy,
-      });
+      logger.info("No accessible catalogs for user", { user: request.user?.email ?? "anonymous" });
+      return NextResponse.json({ items: [], total: 0, groupedBy: groupBy });
     }
 
     // Build filters object
@@ -184,13 +178,7 @@ const executeAggregationQuery = async (
     WHERE ${whereClause}
     GROUP BY ${groupByClause}
     ORDER BY count DESC
-  `)) as {
-    rows: Array<{
-      id: number;
-      name: string | null;
-      count: number;
-    }>;
-  };
+  `)) as { rows: Array<{ id: number; name: string | null; count: number }> };
 
   // Transform results into a map for easy lookup
   const resultMap = new Map<number, AggregationItem>();
@@ -221,17 +209,11 @@ const executeAggregationQuery = async (
           accessibleCatalogIds.map((id) => sql`${id}`),
           sql`, `
         )})
-      `)) as {
-        rows: Array<{ id: number; name: string | null }>;
-      };
+      `)) as { rows: Array<{ id: number; name: string | null }> };
 
       // Add missing datasets with 0 count
       for (const row of missingDatasetsResult.rows) {
-        resultMap.set(row.id, {
-          id: row.id,
-          name: row.name ?? `Dataset ${row.id}`,
-          count: 0,
-        });
+        resultMap.set(row.id, { id: row.id, name: row.name ?? `Dataset ${row.id}`, count: 0 });
       }
     }
   }
@@ -242,15 +224,7 @@ const executeAggregationQuery = async (
   // Calculate total events
   const total = items.reduce((sum, item) => sum + item.count, 0);
 
-  logger.info("Aggregation query executed", {
-    groupBy,
-    itemCount: items.length,
-    totalEvents: total,
-  });
+  logger.info("Aggregation query executed", { groupBy, itemCount: items.length, totalEvents: total });
 
-  return {
-    items,
-    total,
-    groupedBy: groupBy,
-  };
+  return { items, total, groupedBy: groupBy };
 };

@@ -18,10 +18,7 @@ import type { CollectionConfig, Field } from "payload";
  */
 export const createSchemaDetectorsCollection = (slug: string = "schema-detectors"): CollectionConfig => ({
   slug,
-  labels: {
-    singular: "Schema Detector",
-    plural: "Schema Detectors",
-  },
+  labels: { singular: "Schema Detector", plural: "Schema Detectors" },
   admin: {
     group: "System",
     description: "Configure schema detection providers for import workflows",
@@ -40,32 +37,15 @@ export const createSchemaDetectorsCollection = (slug: string = "schema-detectors
       type: "text",
       required: true,
       unique: true,
-      admin: {
-        description: "Unique identifier for this detector (matches detector.name in code)",
-      },
+      admin: { description: "Unique identifier for this detector (matches detector.name in code)" },
     },
-    {
-      name: "label",
-      type: "text",
-      required: true,
-      admin: {
-        description: "Human-readable name shown in UI",
-      },
-    },
-    {
-      name: "description",
-      type: "textarea",
-      admin: {
-        description: "Description of what this detector handles",
-      },
-    },
+    { name: "label", type: "text", required: true, admin: { description: "Human-readable name shown in UI" } },
+    { name: "description", type: "textarea", admin: { description: "Description of what this detector handles" } },
     {
       name: "enabled",
       type: "checkbox",
       defaultValue: true,
-      admin: {
-        description: "Whether this detector is available for selection",
-      },
+      admin: { description: "Whether this detector is available for selection" },
     },
     {
       name: "priority",
@@ -73,35 +53,17 @@ export const createSchemaDetectorsCollection = (slug: string = "schema-detectors
       defaultValue: 100,
       min: 1,
       max: 1000,
-      admin: {
-        description: "Priority for auto-selection (lower = higher priority)",
-      },
+      admin: { description: "Priority for auto-selection (lower = higher priority)" },
     },
-    {
-      name: "options",
-      type: "json",
-      admin: {
-        description: "Detector-specific configuration options (JSON)",
-      },
-    },
+    { name: "options", type: "json", admin: { description: "Detector-specific configuration options (JSON)" } },
     {
       name: "statistics",
       type: "group",
       label: "Usage Statistics",
-      admin: {
-        description: "Automatically updated usage statistics",
-        readOnly: true,
-      },
+      admin: { description: "Automatically updated usage statistics", readOnly: true },
       fields: [
-        {
-          name: "totalRuns",
-          type: "number",
-          defaultValue: 0,
-        },
-        {
-          name: "lastUsed",
-          type: "date",
-        },
+        { name: "totalRuns", type: "number", defaultValue: 0 },
+        { name: "lastUsed", type: "date" },
       ],
     },
   ],
@@ -120,8 +82,5 @@ export const createDetectorSelectionField = (collectionSlug: string = "schema-de
   // This is safe because the plugin ensures the collection exists
   relationTo: collectionSlug as never,
   hasMany: false,
-  admin: {
-    description: "Select a schema detector for this dataset (leave empty to use default)",
-    position: "sidebar",
-  },
+  admin: { description: "Select a schema detector for this dataset (leave empty to use default)", position: "sidebar" },
 });

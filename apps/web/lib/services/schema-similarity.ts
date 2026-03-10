@@ -459,11 +459,7 @@ export const calculateSchemaSimilarity = (
 export const findSimilarDatasets = (
   uploadedSchema: UploadedSchema,
   datasetSchemas: DatasetSchema[],
-  options: {
-    minScore?: number;
-    maxResults?: number;
-    detectedLanguage?: string;
-  } = {}
+  options: { minScore?: number; maxResults?: number; detectedLanguage?: string } = {}
 ): SimilarityResult[] => {
   const { minScore = 30, maxResults = 5, detectedLanguage } = options;
 

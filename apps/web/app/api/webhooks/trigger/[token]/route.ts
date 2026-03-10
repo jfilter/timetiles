@@ -48,9 +48,7 @@ const createRateLimitResponse = (rateLimitCheck: {
     },
     {
       status: 429,
-      headers: {
-        "Retry-After": Math.ceil(((rateLimitCheck.resetTime ?? Date.now()) - Date.now()) / 1000).toString(),
-      },
+      headers: { "Retry-After": Math.ceil(((rateLimitCheck.resetTime ?? Date.now()) - Date.now()) / 1000).toString() },
     }
   );
 };
@@ -71,21 +69,10 @@ const generateImportName = (scheduledImport: ScheduledImport, currentTime: Date)
  * when processing finishes.
  */
 const updateStatisticsOnTrigger = async (payload: Payload, scheduledImport: ScheduledImport): Promise<void> => {
-  const stats = scheduledImport.statistics ?? {
-    totalRuns: 0,
-    successfulRuns: 0,
-    failedRuns: 0,
-    averageDuration: 0,
-  };
+  const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
   stats.totalRuns = (stats.totalRuns ?? 0) + 1;
 
-  await payload.update({
-    collection: "scheduled-imports",
-    id: scheduledImport.id,
-    data: {
-      statistics: stats,
-    },
-  });
+  await payload.update({ collection: "scheduled-imports", id: scheduledImport.id, data: { statistics: stats } });
 };
 
 /** Queue the import job and update statistics for a validated scheduled import. */
@@ -98,10 +85,7 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
   await payload.update({
     collection: "scheduled-imports",
     id: scheduledImport.id,
-    data: {
-      lastStatus: "running",
-      lastRun: currentTime.toISOString(),
-    },
+    data: { lastStatus: "running", lastRun: currentTime.toISOString() },
   });
 
   // Queue URL fetch job - wrapped in try/catch to revert status on failure
@@ -128,9 +112,7 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
     await payload.update({
       collection: "scheduled-imports",
       id: scheduledImport.id,
-      data: {
-        lastStatus: previousStatus,
-      },
+      data: { lastStatus: previousStatus },
     });
     return internalError("Failed to queue import job") as NextResponse;
   }
@@ -146,12 +128,7 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
   });
 
   return NextResponse.json(
-    {
-      success: true,
-      message: "Import triggered successfully",
-      status: "triggered",
-      jobId: urlFetchJob.id.toString(),
-    },
+    { success: true, message: "Import triggered successfully", status: "triggered", jobId: urlFetchJob.id.toString() },
     { status: 200 }
   );
 };
@@ -173,18 +150,14 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
     // Find scheduled import by token
     const scheduledImports = await payload.find({
       collection: "scheduled-imports",
-      where: {
-        webhookToken: { equals: token },
-      },
+      where: { webhookToken: { equals: token } },
       limit: 1,
     });
 
     // Security: Return same error message for invalid token and disabled webhook
     // to prevent token enumeration attacks
     if (scheduledImports.docs.length === 0) {
-      logger.warn("Webhook trigger failed - invalid token", {
-        token: token.substring(0, 8) + "...",
-      });
+      logger.warn("Webhook trigger failed - invalid token", { token: token.substring(0, 8) + "..." });
       return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
@@ -205,20 +178,14 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
         name: scheduledImport.name,
       });
       return NextResponse.json(
-        {
-          success: true,
-          message: "Import already running, skipped",
-          status: "skipped",
-        },
+        { success: true, message: "Import already running, skipped", status: "skipped" },
         { status: 200 }
       );
     }
 
     return await queueImportAndRespond(payload, scheduledImport);
   } catch (error) {
-    logError(error, "Webhook trigger failed", {
-      token: token.substring(0, 8) + "...",
-    });
+    logError(error, "Webhook trigger failed", { token: token.substring(0, 8) + "..." });
     return internalError("Internal server error");
   }
 };

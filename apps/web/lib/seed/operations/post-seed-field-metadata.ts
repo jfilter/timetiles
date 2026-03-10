@@ -143,11 +143,7 @@ export const generateFieldMetadataForAllDatasets = async (payload: Payload): Pro
   logger.info("Generating fieldMetadata for datasets...");
 
   // Get all datasets
-  const datasets = await payload.find({
-    collection: "datasets",
-    limit: 1000,
-    depth: 0,
-  });
+  const datasets = await payload.find({ collection: "datasets", limit: 1000, depth: 0 });
 
   let updated = 0;
   let skipped = 0;
@@ -157,11 +153,7 @@ export const generateFieldMetadataForAllDatasets = async (payload: Payload): Pro
       const fieldMetadata = await generateFieldMetadataForDataset(payload, dataset.id);
 
       if (fieldMetadata) {
-        await payload.update({
-          collection: "datasets",
-          id: dataset.id,
-          data: { fieldMetadata },
-        });
+        await payload.update({ collection: "datasets", id: dataset.id, data: { fieldMetadata } });
         updated++;
         logger.debug(`Updated fieldMetadata for dataset: ${dataset.name}`);
       } else {

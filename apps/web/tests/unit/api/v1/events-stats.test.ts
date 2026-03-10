@@ -23,17 +23,11 @@ vi.mock("@/lib/middleware/auth", () => ({
   withAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({
-  getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
+vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
 
-vi.mock("@/lib/geospatial", () => ({
-  parseBoundsParameter: mocks.mockParseBoundsParameter,
-}));
+vi.mock("@/lib/geospatial", () => ({ parseBoundsParameter: mocks.mockParseBoundsParameter }));
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractBaseEventParameters: mocks.mockExtractBaseEventParameters,
@@ -80,9 +74,7 @@ const createRequest = (queryString: string, user: unknown = null) => {
  * Sets up default mock implementations for a standard successful request.
  */
 const setupDefaults = () => {
-  mocks.mockGetPayload.mockResolvedValue({
-    db: { drizzle: { execute: mocks.mockDrizzleExecute } },
-  });
+  mocks.mockGetPayload.mockResolvedValue({ db: { drizzle: { execute: mocks.mockDrizzleExecute } } });
 
   mocks.mockExtractBaseEventParameters.mockReturnValue({
     catalog: null,
@@ -154,11 +146,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toEqual({
-        items: [],
-        total: 0,
-        groupedBy: "catalog",
-      });
+      expect(data).toEqual({ items: [], total: 0, groupedBy: "catalog" });
       // Should not execute any SQL query
       expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
     });
@@ -221,9 +209,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       // First execute: main aggregation query returns only dataset 10
       mocks.mockDrizzleExecute
-        .mockResolvedValueOnce({
-          rows: [{ id: 10, name: "Dataset X", count: 5 }],
-        })
+        .mockResolvedValueOnce({ rows: [{ id: 10, name: "Dataset X", count: 5 }] })
         // Second execute: fetch missing dataset names for 20 and 30
         .mockResolvedValueOnce({
           rows: [

@@ -13,11 +13,7 @@ import * as React from "react";
 
 const heroVariants = cva("relative flex items-center justify-center overflow-hidden bg-background", {
   variants: {
-    variant: {
-      centered: "text-center",
-      split: "text-left",
-      "full-bleed": "min-h-screen",
-    },
+    variant: { centered: "text-center", split: "text-left", "full-bleed": "min-h-screen" },
     size: {
       default: "min-h-[70vh] py-24 md:py-32",
       sm: "min-h-[50vh] py-16 md:py-20",
@@ -29,11 +25,7 @@ const heroVariants = cva("relative flex items-center justify-center overflow-hid
       none: "",
     },
   },
-  defaultVariants: {
-    variant: "centered",
-    size: "default",
-    background: "grid",
-  },
+  defaultVariants: { variant: "centered", size: "default", background: "grid" },
 });
 
 const gridBackgroundStyle = {

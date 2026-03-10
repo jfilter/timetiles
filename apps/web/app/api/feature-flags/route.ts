@@ -20,9 +20,7 @@ export const GET = async (): Promise<Response> => {
     const flags = await getFeatureFlags(payload);
 
     return NextResponse.json(flags, {
-      headers: {
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-      },
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
     });
   } catch (error) {
     logError(error, "Failed to fetch feature flags");

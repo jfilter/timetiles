@@ -164,10 +164,7 @@ export const useSelectedEvent = () => {
   // URL state for selected event - uses history: "push" for browser back button support
   const [selectedEventId, setSelectedEventId] = useQueryState(
     "event",
-    parseAsInteger.withOptions({
-      history: "push",
-      shallow: true,
-    })
+    parseAsInteger.withOptions({ history: "push", shallow: true })
   );
 
   const openEvent = useCallback(
@@ -181,12 +178,7 @@ export const useSelectedEvent = () => {
     void setSelectedEventId(null);
   }, [setSelectedEventId]);
 
-  return {
-    selectedEventId,
-    isOpen: selectedEventId !== null,
-    openEvent,
-    closeEvent,
-  };
+  return { selectedEventId, isOpen: selectedEventId !== null, openEvent, closeEvent };
 };
 
 /**
@@ -210,38 +202,16 @@ export interface MapPosition {
  * @returns Map position state and handlers
  */
 export const useMapPosition = () => {
-  const [latitude, setLatitude] = useQueryState(
-    "lat",
-    parseAsFloat.withOptions({
-      history: "replace",
-      shallow: true,
-    })
-  );
+  const [latitude, setLatitude] = useQueryState("lat", parseAsFloat.withOptions({ history: "replace", shallow: true }));
 
   const [longitude, setLongitude] = useQueryState(
     "lng",
-    parseAsFloat.withOptions({
-      history: "replace",
-      shallow: true,
-    })
+    parseAsFloat.withOptions({ history: "replace", shallow: true })
   );
 
-  const [zoom, setZoom] = useQueryState(
-    "zoom",
-    parseAsFloat.withOptions({
-      history: "replace",
-      shallow: true,
-    })
-  );
+  const [zoom, setZoom] = useQueryState("zoom", parseAsFloat.withOptions({ history: "replace", shallow: true }));
 
-  const mapPosition: MapPosition = useMemo(
-    () => ({
-      latitude,
-      longitude,
-      zoom,
-    }),
-    [latitude, longitude, zoom]
-  );
+  const mapPosition: MapPosition = useMemo(() => ({ latitude, longitude, zoom }), [latitude, longitude, zoom]);
 
   const hasMapPosition = latitude !== null && longitude !== null && zoom !== null;
 
@@ -261,10 +231,5 @@ export const useMapPosition = () => {
     void setZoom(null);
   }, [setLatitude, setLongitude, setZoom]);
 
-  return {
-    mapPosition,
-    hasMapPosition,
-    setMapPosition,
-    clearMapPosition,
-  };
+  return { mapPosition, hasMapPosition, setMapPosition, clearMapPosition };
 };

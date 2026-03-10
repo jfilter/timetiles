@@ -32,10 +32,7 @@ const toTitle = (name: string, parentPath?: string): string => {
   const baseName = name.replace(/\.(mdx?|ts|tsx|js|jsx)$/, "");
 
   // Handle special top-level cases for better naming
-  const topLevelCases: Record<string, string> = {
-    app: "API Routes",
-    lib: "Library",
-  };
+  const topLevelCases: Record<string, string> = { app: "API Routes", lib: "Library" };
 
   // If this is a top-level directory in the API folder, use custom naming
   if (parentPath && path.basename(parentPath) === "api" && topLevelCases[baseName]) {

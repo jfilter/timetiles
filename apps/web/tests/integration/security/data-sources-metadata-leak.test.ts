@@ -35,10 +35,7 @@ describe.sequential("Data Sources Metadata Leak Vulnerability", () => {
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    const { users } = await withUsers(testEnv, {
-      adminUser: { role: "admin" },
-      ownerUser: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { adminUser: { role: "admin" }, ownerUser: { role: "user" } });
     adminUser = users.adminUser;
     ownerUser = users.ownerUser;
 
@@ -56,16 +53,9 @@ describe.sequential("Data Sources Metadata Leak Vulnerability", () => {
     });
 
     // Create a public catalog with a public dataset — should be visible to everyone
-    const publicCatResult = await withCatalog(testEnv, {
-      name: "Public Catalog",
-      isPublic: true,
-      user: ownerUser,
-    });
+    const publicCatResult = await withCatalog(testEnv, { name: "Public Catalog", isPublic: true, user: ownerUser });
 
-    await withDataset(testEnv, publicCatResult.catalog.id, {
-      name: "Visible Public Dataset",
-      isPublic: true,
-    });
+    await withDataset(testEnv, publicCatResult.catalog.id, { name: "Visible Public Dataset", isPublic: true });
   }, 60000);
 
   afterAll(async () => {

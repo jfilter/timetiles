@@ -21,19 +21,7 @@ export type DatasetSeed = Omit<Dataset, "id" | "createdAt" | "updatedAt" | "cata
 const createDescription = (text: string) => ({
   root: {
     type: "root",
-    children: [
-      {
-        type: "paragraph",
-        version: 1,
-        children: [
-          {
-            type: "text",
-            text,
-            version: 1,
-          },
-        ],
-      },
-    ],
+    children: [{ type: "paragraph", version: 1, children: [{ type: "text", text, version: 1 }] }],
     direction: "ltr" as const,
     format: "" as const,
     indent: 0,
@@ -102,11 +90,7 @@ const DATASET_TEMPLATES = {
       description: "Theater, music, and arts performance schedules",
       slug: "performance-schedule",
     },
-    {
-      name: "Exhibition Archive",
-      description: "Museum and gallery exhibition records",
-      slug: "exhibition-archive",
-    },
+    { name: "Exhibition Archive", description: "Museum and gallery exhibition records", slug: "exhibition-archive" },
   ],
   government: [
     {
@@ -119,11 +103,7 @@ const DATASET_TEMPLATES = {
       description: "Federal funding and grant program information",
       slug: "federal-grant-programs",
     },
-    {
-      name: "Legislative Data",
-      description: "Bills, laws, and legislative proceedings",
-      slug: "legislative-data",
-    },
+    { name: "Legislative Data", description: "Bills, laws, and legislative proceedings", slug: "legislative-data" },
   ],
 };
 

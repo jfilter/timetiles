@@ -22,28 +22,15 @@ vi.mock("@/lib/logger", () => ({
     debug: mockLoggerDebug,
     trace: vi.fn(),
     fatal: vi.fn(),
-    child: vi.fn(() => ({
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-    })),
+    child: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })),
   },
   logError: mockLogError,
-  createJobLogger: vi.fn(() => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  })),
+  createJobLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })),
 }));
 
 import { cleanupStuckScheduledImportsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-imports-job";
 
-type MockPayload = {
-  find: ReturnType<typeof vi.fn>;
-  update: ReturnType<typeof vi.fn>;
-};
+type MockPayload = { find: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
 
 describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
   let mockPayload: MockPayload;
@@ -54,19 +41,11 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
     vi.clearAllMocks();
 
     // Mock payload
-    mockPayload = {
-      find: vi.fn(),
-      update: vi.fn(),
-    };
+    mockPayload = { find: vi.fn(), update: vi.fn() };
 
-    mockJob = {
-      id: "job-1",
-      input: {},
-    };
+    mockJob = { id: "job-1", input: {} };
 
-    mockReq = {
-      payload: mockPayload as unknown as BasePayload,
-    };
+    mockReq = { payload: mockPayload as unknown as BasePayload };
   });
 
   afterEach(() => {
@@ -82,31 +61,16 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         lastStatus: "running",
         lastRun: threeHoursAgo.toISOString(),
         executionHistory: [],
-        statistics: {
-          totalRuns: 5,
-          successfulRuns: 4,
-          failedRuns: 0,
-          averageDuration: 5000,
-        },
+        statistics: { totalRuns: 5, successfulRuns: 4, failedRuns: 0, averageDuration: 5000 },
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [stuckImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [stuckImport], totalDocs: 1 });
 
-      const result = await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "scheduled-imports",
-        where: {
-          lastStatus: {
-            equals: "running",
-          },
-        },
+        where: { lastStatus: { equals: "running" } },
         limit: 1000,
         pagination: false,
       });
@@ -120,13 +84,7 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         }),
       });
 
-      expect(result.output).toEqual({
-        success: true,
-        totalRunning: 1,
-        stuckCount: 1,
-        resetCount: 1,
-        dryRun: false,
-      });
+      expect(result.output).toEqual({ success: true, totalRunning: 1, stuckCount: 1, resetCount: 1, dryRun: false });
     });
 
     it("should not find imports running for less than 2 hours", async () => {
@@ -140,25 +98,13 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         statistics: {},
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [runningImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [runningImport], totalDocs: 1 });
 
-      const result = await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.update).not.toHaveBeenCalled();
 
-      expect(result.output).toEqual({
-        success: true,
-        totalRunning: 1,
-        stuckCount: 0,
-        resetCount: 0,
-        dryRun: false,
-      });
+      expect(result.output).toEqual({ success: true, totalRunning: 1, stuckCount: 0, resetCount: 0, dryRun: false });
     });
 
     it("should handle pagination limit of 100", async () => {
@@ -176,18 +122,11 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         totalDocs: 100,
       });
 
-      const result = await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "scheduled-imports",
-        where: {
-          lastStatus: {
-            equals: "running",
-          },
-        },
+        where: { lastStatus: { equals: "running" } },
         limit: 1000,
         pagination: false,
       });
@@ -219,15 +158,9 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({
-        docs: stuckImports,
-        totalDocs: 2,
-      });
+      mockPayload.find.mockResolvedValue({ docs: stuckImports, totalDocs: 2 });
 
-      const result = await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.update).toHaveBeenCalledTimes(2);
       expect(result.output.resetCount).toBe(2);
@@ -253,27 +186,17 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({
-        docs: stuckImports,
-        totalDocs: 2,
-      });
+      mockPayload.find.mockResolvedValue({ docs: stuckImports, totalDocs: 2 });
 
       // Make the first update fail
       mockPayload.update.mockRejectedValueOnce(new Error("Update failed")).mockResolvedValueOnce({ id: "import-2" });
 
-      const result = await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.update).toHaveBeenCalledTimes(2);
       expect(result.output.resetCount).toBe(1);
       expect(result.output.errors).toHaveLength(1);
-      expect(result.output.errors?.[0]).toEqual({
-        id: "import-1",
-        name: "Import 1",
-        error: "Update failed",
-      });
+      expect(result.output.errors?.[0]).toEqual({ id: "import-1", name: "Import 1", error: "Update failed" });
     });
   });
 
@@ -288,49 +211,29 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         statistics: {},
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [stuckImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [stuckImport], totalDocs: 1 });
 
       mockJob.input = { dryRun: true };
 
-      const result = await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.update).not.toHaveBeenCalled();
-      expect(result.output).toEqual({
-        success: true,
-        totalRunning: 1,
-        stuckCount: 1,
-        resetCount: 0,
-        dryRun: true,
-      });
+      expect(result.output).toEqual({ success: true, totalRunning: 1, stuckCount: 1, resetCount: 0, dryRun: true });
     });
   });
 
   describe("Logging", () => {
     it("should not log summary when no imports are cleaned", async () => {
-      mockPayload.find.mockResolvedValue({
-        docs: [],
-        totalDocs: 0,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [], totalDocs: 0 });
 
-      await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       // Should have initial log and completion log
       expect(mockLoggerInfo).toHaveBeenCalledTimes(3);
       expect(mockLoggerInfo).toHaveBeenCalledWith("Starting cleanup stuck scheduled imports job", expect.any(Object));
       expect(mockLoggerInfo).toHaveBeenCalledWith(
         "Found running scheduled imports",
-        expect.objectContaining({
-          count: 0,
-        })
+        expect.objectContaining({ count: 0 })
       );
     });
 
@@ -338,12 +241,9 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
       const error = new Error("Database connection failed");
       (mockPayload.find as any).mockRejectedValue(error);
 
-      await expect(
-        cleanupStuckScheduledImportsJob.handler({
-          job: mockJob,
-          req: mockReq,
-        })
-      ).rejects.toThrow("Database connection failed");
+      await expect(cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq })).rejects.toThrow(
+        "Database connection failed"
+      );
 
       expect(mockLogError).toHaveBeenCalledWith(
         error,
@@ -364,22 +264,14 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         statistics: {},
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [stuckImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [stuckImport], totalDocs: 1 });
 
-      const result = await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "scheduled-imports",
         id: "import-1",
-        data: expect.objectContaining({
-          lastStatus: "failed",
-        }),
+        data: expect.objectContaining({ lastStatus: "failed" }),
       });
 
       expect(result.output.resetCount).toBe(1);
@@ -398,33 +290,18 @@ describe.sequential("Cleanup Stuck Scheduled Imports Job", () => {
         lastStatus: "running",
         lastRun: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
         executionHistory: existingHistory,
-        statistics: {
-          totalRuns: 12,
-          successfulRuns: 12,
-          failedRuns: 0,
-          averageDuration: 5000,
-        },
+        statistics: { totalRuns: 12, successfulRuns: 12, failedRuns: 0, averageDuration: 5000 },
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [stuckImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [stuckImport], totalDocs: 1 });
 
-      await cleanupStuckScheduledImportsJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      await cleanupStuckScheduledImportsJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "scheduled-imports",
         id: "import-1",
         data: expect.objectContaining({
-          executionHistory: expect.arrayContaining([
-            expect.objectContaining({
-              status: "failed",
-            }),
-          ]),
+          executionHistory: expect.arrayContaining([expect.objectContaining({ status: "failed" })]),
         }),
       });
 

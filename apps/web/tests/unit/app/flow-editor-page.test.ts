@@ -7,9 +7,7 @@
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  FlowEditorWrapper: vi.fn(() => null),
-}));
+const mocks = vi.hoisted(() => ({ FlowEditorWrapper: vi.fn(() => null) }));
 
 vi.mock("@/app/(frontend)/import/flow-editor/_components/flow-editor-wrapper", () => ({
   FlowEditorWrapper: mocks.FlowEditorWrapper,

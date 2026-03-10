@@ -33,16 +33,9 @@ const newsletterCtaVariants = cva("relative overflow-hidden", {
       elevated: "bg-card border border-border shadow-lg",
       centered: "bg-gradient-to-b from-background via-parchment/20 to-background",
     },
-    size: {
-      default: "py-24 px-8",
-      lg: "py-32 px-8",
-      xl: "py-40 px-12",
-    },
+    size: { default: "py-24 px-8", lg: "py-32 px-8", xl: "py-40 px-12" },
   },
-  defaultVariants: {
-    variant: "default",
-    size: "default",
-  },
+  defaultVariants: { variant: "default", size: "default" },
 });
 
 export interface NewsletterCTAProps extends VariantProps<typeof newsletterCtaVariants> {

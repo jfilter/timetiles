@@ -29,11 +29,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
   const [currentUser, setCurrentUser] = useState(user);
 
   const handleDeletionScheduled = useCallback((deletionScheduledAt: string) => {
-    setCurrentUser((prev) => ({
-      ...prev,
-      deletionStatus: "pending_deletion" as const,
-      deletionScheduledAt,
-    }));
+    setCurrentUser((prev) => ({ ...prev, deletionStatus: "pending_deletion" as const, deletionScheduledAt }));
     setShowDeleteModal(false);
   }, []);
 
@@ -47,10 +43,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
   }, []);
 
   const handleEmailChanged = useCallback((newEmail: string) => {
-    setCurrentUser((prev) => ({
-      ...prev,
-      email: newEmail,
-    }));
+    setCurrentUser((prev) => ({ ...prev, email: newEmail }));
   }, []);
 
   const handleOpenDeleteModal = useCallback(() => {

@@ -14,16 +14,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 const featuresVariants = cva("py-24 bg-card", {
-  variants: {
-    layout: {
-      grid: "",
-      list: "",
-      cards: "",
-    },
-  },
-  defaultVariants: {
-    layout: "grid",
-  },
+  variants: { layout: { grid: "", list: "", cards: "" } },
+  defaultVariants: { layout: "grid" },
 });
 
 const Features = React.forwardRef<
@@ -74,9 +66,7 @@ const featuresGridVariants = cva("", {
       4: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12",
     },
   },
-  defaultVariants: {
-    columns: 3,
-  },
+  defaultVariants: { columns: 3 },
 });
 
 const FeaturesGrid = React.forwardRef<
@@ -99,18 +89,8 @@ const featureVariants = cva(
     "hover:bg-accent/[0.02]",
   ],
   {
-    variants: {
-      accent: {
-        primary: "",
-        secondary: "",
-        accent: "",
-        muted: "",
-        none: "",
-      },
-    },
-    defaultVariants: {
-      accent: "none",
-    },
+    variants: { accent: { primary: "", secondary: "", accent: "", muted: "", none: "" } },
+    defaultVariants: { accent: "none" },
   }
 );
 

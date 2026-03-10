@@ -65,10 +65,7 @@ export class GeocodingOperations {
     const cached = await this.cacheManager.getCachedResult(address);
     if (cached != null) {
       logger.debug("Cache hit for address", { address });
-      logPerformance("Geocoding (cache hit)", Date.now() - startTime, {
-        address,
-        provider: cached.provider,
-      });
+      logPerformance("Geocoding (cache hit)", Date.now() - startTime, { address, provider: cached.provider });
       return cached;
     }
     return null;
@@ -122,12 +119,7 @@ export class GeocodingOperations {
 
   async batchGeocode(addresses: string[], batchSize: number = 10): Promise<BatchGeocodingResult> {
     const results = new Map<string, GeocodingResult | GeocodingError>();
-    const summary = {
-      total: addresses.length,
-      successful: 0,
-      failed: 0,
-      cached: 0,
-    };
+    const summary = { total: addresses.length, successful: 0, failed: 0, cached: 0 };
 
     const batches = this.createBatches(addresses, batchSize);
 
@@ -184,28 +176,15 @@ export class GeocodingOperations {
           const firstResult = providerResults[0];
           if (firstResult) {
             const geocodingResult = this.convertNodeGeocoderResult(firstResult, provider.name);
-            results[provider.name] = {
-              success: true,
-              result: geocodingResult,
-            };
+            results[provider.name] = { success: true, result: geocodingResult };
           } else {
-            results[provider.name] = {
-              success: false,
-              error: "No valid results",
-              latency: 0,
-            };
+            results[provider.name] = { success: false, error: "No valid results", latency: 0 };
           }
         } else {
-          results[provider.name] = {
-            success: false,
-            error: "No valid results returned",
-          };
+          results[provider.name] = { success: false, error: "No valid results returned" };
         }
       } catch (error) {
-        results[provider.name] = {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
+        results[provider.name] = { success: false, error: error instanceof Error ? error.message : "Unknown error" };
       }
     }
 

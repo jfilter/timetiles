@@ -325,12 +325,7 @@ Organize filters into logical groups:
 ```typescript
 {
   groups: [
-    {
-      id: "basic",
-      labels: { en: "Basic Information" },
-      order: 1,
-      filters: ["name", "status", "category"],
-    },
+    { id: "basic", labels: { en: "Basic Information" }, order: 1, filters: ["name", "status", "category"] },
     {
       id: "location",
       labels: { en: "Location" },
@@ -339,12 +334,7 @@ Organize filters into logical groups:
       collapsible: true,
       defaultExpanded: false,
     },
-    {
-      id: "temporal",
-      labels: { en: "Time & Date" },
-      order: 3,
-      filters: ["createdAt", "eventDate", "year"],
-    },
+    { id: "temporal", labels: { en: "Time & Date" }, order: 3, filters: ["createdAt", "eventDate", "year"] },
   ];
 }
 ```
@@ -568,10 +558,7 @@ Define filter relationships:
       parent: "country",
       child: "city",
       type: "values", // Filter city values based on country
-      mapping: {
-        USA: ["New York", "Los Angeles", "Chicago"],
-        UK: ["London", "Manchester", "Birmingham"],
-      },
+      mapping: { USA: ["New York", "Los Angeles", "Chicago"], UK: ["London", "Manchester", "Birmingham"] },
     },
   ];
 }
@@ -584,13 +571,7 @@ Create filters from multiple fields:
 ```typescript
 {
   computedFilters: [
-    {
-      id: "fullName",
-      label: "Full Name",
-      fields: ["firstName", "lastName"],
-      operator: "concat",
-      searchable: true,
-    },
+    { id: "fullName", label: "Full Name", fields: ["firstName", "lastName"], operator: "concat", searchable: true },
   ];
 }
 ```

@@ -63,9 +63,7 @@ export class SchemaVersioningService {
 
     const existingSchemas = await payload.find({
       collection: COLLECTION_NAMES.DATASET_SCHEMAS,
-      where: {
-        dataset: { equals: normalizedDatasetId },
-      },
+      where: { dataset: { equals: normalizedDatasetId } },
       sort: "-versionNumber",
       limit: 1,
       req,
@@ -95,18 +93,10 @@ export class SchemaVersioningService {
       dataset: Dataset | string | number;
       schema: unknown;
       fieldMetadata?: Record<string, unknown>;
-      fieldMappings?: {
-        titlePath?: string | null;
-        descriptionPath?: string | null;
-        timestampPath?: string | null;
-      };
+      fieldMappings?: { titlePath?: string | null; descriptionPath?: string | null; timestampPath?: string | null };
       autoApproved?: boolean;
       approvedBy?: string | number | null;
-      importSources?: Array<{
-        import: string | number;
-        recordCount?: number;
-        batchCount?: number;
-      }>;
+      importSources?: Array<{ import: string | number; recordCount?: number; batchCount?: number }>;
       /** Number of events in the dataset when this schema was generated */
       eventCountAtCreation?: number;
       req?: PayloadRequest;
@@ -190,9 +180,7 @@ export class SchemaVersioningService {
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
       id: normalizedImportJobId,
-      data: {
-        datasetSchemaVersion: normalizedSchemaVersionId,
-      },
+      data: { datasetSchemaVersion: normalizedSchemaVersionId },
       req,
       overrideAccess: true,
     });

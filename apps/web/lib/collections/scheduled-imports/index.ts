@@ -179,9 +179,7 @@ const ScheduledImports: CollectionConfig = {
     defaultColumns: ["name", "sourceUrl", "enabled", "nextRun", "lastRun", "updatedAt"],
     group: "Import",
     description: "Manage scheduled URL imports that run automatically",
-    components: {
-      beforeList: ["/components/admin/scheduled-imports-banner"],
-    },
+    components: { beforeList: ["/components/admin/scheduled-imports-banner"] },
   },
   access: {
     // Users can only read their own scheduled imports, editors and admins can read all
@@ -190,9 +188,7 @@ const ScheduledImports: CollectionConfig = {
       if (!user) return false;
       if (user.role === "admin" || user.role === "editor") return true;
 
-      return {
-        createdBy: { equals: user.id },
-      };
+      return { createdBy: { equals: user.id } };
     },
 
     // Anyone authenticated can create, but createdBy will be set automatically

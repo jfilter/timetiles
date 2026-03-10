@@ -58,17 +58,10 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
 
   beforeEach(async () => {
     // Create owner's catalog, dataset, and import file
-    const catResult = await withCatalog(testEnv, {
-      name: "Owner Private Catalog",
-      isPublic: false,
-      user: ownerUser,
-    });
+    const catResult = await withCatalog(testEnv, { name: "Owner Private Catalog", isPublic: false, user: ownerUser });
     ownerCatalog = catResult.catalog;
 
-    const dsResult = await withDataset(testEnv, ownerCatalog.id, {
-      name: "Owner Dataset",
-      isPublic: false,
-    });
+    const dsResult = await withDataset(testEnv, ownerCatalog.id, { name: "Owner Dataset", isPublic: false });
     ownerDataset = dsResult.dataset;
 
     const csvContent = "name,location\nTest Event,Berlin";
@@ -138,11 +131,7 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
     it("owner can create import job with their own importFile and dataset", async () => {
       const job = await payload.create({
         collection: "import-jobs",
-        data: {
-          importFile: ownerImportFile.id,
-          dataset: ownerDataset.id,
-          stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-        },
+        data: { importFile: ownerImportFile.id, dataset: ownerDataset.id, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES },
         user: ownerUser,
         overrideAccess: false,
       });
@@ -152,11 +141,7 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
     it("admin can create import job for any importFile/dataset", async () => {
       const job = await payload.create({
         collection: "import-jobs",
-        data: {
-          importFile: ownerImportFile.id,
-          dataset: ownerDataset.id,
-          stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-        },
+        data: { importFile: ownerImportFile.id, dataset: ownerDataset.id, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES },
         user: adminUser,
         overrideAccess: false,
       });

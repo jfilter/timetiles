@@ -8,10 +8,7 @@ import type { ChartTheme } from "../components/charts/types";
 
 // Type for ECharts series configuration
 interface EChartsSeriesItem {
-  itemStyle?: {
-    color?: string;
-    [key: string]: unknown;
-  };
+  itemStyle?: { color?: string; [key: string]: unknown };
   [key: string]: unknown;
 }
 
@@ -72,45 +69,23 @@ export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EC
   const result: EChartsOption = {
     ...option,
     backgroundColor: theme.backgroundColor,
-    textStyle: {
-      color: theme.textColor,
-    },
+    textStyle: { color: theme.textColor },
   };
 
   // Handle xAxis safely
   result.xAxis = {
     ...safeSpreadAxis(option.xAxis),
-    axisLine: {
-      lineStyle: {
-        color: theme.axisLineColor,
-      },
-    },
-    axisLabel: {
-      color: theme.textColor,
-    },
-    splitLine: {
-      lineStyle: {
-        color: theme.splitLineColor,
-      },
-    },
+    axisLine: { lineStyle: { color: theme.axisLineColor } },
+    axisLabel: { color: theme.textColor },
+    splitLine: { lineStyle: { color: theme.splitLineColor } },
   };
 
   // Handle yAxis safely
   result.yAxis = {
     ...safeSpreadAxis(option.yAxis),
-    axisLine: {
-      lineStyle: {
-        color: theme.axisLineColor,
-      },
-    },
-    axisLabel: {
-      color: theme.textColor,
-    },
-    splitLine: {
-      lineStyle: {
-        color: theme.splitLineColor,
-      },
-    },
+    axisLine: { lineStyle: { color: theme.axisLineColor } },
+    axisLabel: { color: theme.textColor },
+    splitLine: { lineStyle: { color: theme.splitLineColor } },
   };
 
   // Handle series safely
@@ -122,10 +97,7 @@ export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EC
 
       return {
         ...s,
-        itemStyle: {
-          ...s.itemStyle,
-          color: Array.isArray(theme.itemColor) ? theme.itemColor[0] : theme.itemColor,
-        },
+        itemStyle: { ...s.itemStyle, color: Array.isArray(theme.itemColor) ? theme.itemColor[0] : theme.itemColor },
       } satisfies SeriesOption;
     });
   } else {

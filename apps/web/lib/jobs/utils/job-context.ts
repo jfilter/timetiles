@@ -15,49 +15,26 @@ import type { ImportJob } from "@/payload-types";
 
 // Enhanced job payload types using current import system
 export interface FileParsingJobPayload {
-  input: {
-    importJobId: ImportJob["id"];
-    filePath: string;
-    fileType: "csv" | "xlsx";
-  };
+  input: { importJobId: ImportJob["id"]; filePath: string; fileType: "csv" | "xlsx" };
 }
 
 export interface BatchProcessingJobPayload {
-  input: {
-    importJobId: ImportJob["id"];
-    batchNumber: number;
-    batchData: Record<string, unknown>[];
-  };
+  input: { importJobId: ImportJob["id"]; batchNumber: number; batchData: Record<string, unknown>[] };
 }
 
 export interface GeocodingBatchJobPayload {
-  input: {
-    importJobId: ImportJob["id"];
-    eventIds?: number[];
-    batchNumber?: number;
-  };
+  input: { importJobId: ImportJob["id"]; eventIds?: number[]; batchNumber?: number };
 }
 
 export interface EventCreationJobPayload {
-  input: {
-    importJobId: ImportJob["id"];
-    processedData: Record<string, unknown>[];
-    batchNumber: number;
-  };
+  input: { importJobId: ImportJob["id"]; processedData: Record<string, unknown>[]; batchNumber: number };
 }
 
 // Job handler context type that works with both Payload types and test mocks
 export type JobHandlerContext<T = unknown> = {
   input?: T;
-  job?: {
-    id: string | number;
-    taskStatus?: Record<string, unknown>;
-    [key: string]: unknown;
-  };
-  req?: {
-    payload: Payload;
-    user?: unknown;
-  };
+  job?: { id: string | number; taskStatus?: Record<string, unknown>; [key: string]: unknown };
+  req?: { payload: Payload; user?: unknown };
   // Legacy test support - payload directly on context
   payload?: Payload;
   // Support any additional properties for backwards compatibility

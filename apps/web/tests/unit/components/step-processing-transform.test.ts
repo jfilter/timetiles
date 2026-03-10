@@ -25,9 +25,7 @@ interface ProgressApiResponse {
     datasetName?: string;
     currentStage: string;
     overallProgress: number;
-    results?: {
-      totalEvents?: number;
-    };
+    results?: { totalEvents?: number };
   }>;
   errorLog?: string | null;
   completedAt?: string | null;
@@ -90,9 +88,7 @@ describe("transformProgressResponse", () => {
         datasetName: "Test Dataset",
         currentStage: "COMPLETED",
         overallProgress: 100,
-        results: {
-          totalEvents: 10,
-        },
+        results: { totalEvents: 10 },
       },
     ],
     errorLog: null,
@@ -109,9 +105,7 @@ describe("transformProgressResponse", () => {
           datasetName: "Dataset 3",
           currentStage: "COMPLETED",
           overallProgress: 100,
-          results: {
-            totalEvents: 10,
-          },
+          results: { totalEvents: 10 },
         },
       ],
     });
@@ -187,9 +181,7 @@ describe("transformProgressResponse", () => {
           datasetName: "Dataset 3",
           currentStage: "COMPLETED",
           overallProgress: 100,
-          results: {
-            totalEvents: undefined,
-          },
+          results: { totalEvents: undefined },
         },
       ],
     });

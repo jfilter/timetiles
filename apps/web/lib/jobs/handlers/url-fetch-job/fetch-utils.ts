@@ -73,10 +73,7 @@ export const detectFileTypeFromResponse = (
   const extensionMap: Record<string, { mimeType: string; fileExtension: string }> = {
     ".csv": { mimeType: "text/csv", fileExtension: ".csv" },
     ".xls": { mimeType: "application/vnd.ms-excel", fileExtension: ".xls" },
-    ".xlsx": {
-      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      fileExtension: ".xlsx",
-    },
+    ".xlsx": { mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileExtension: ".xlsx" },
     ".txt": { mimeType: "text/plain", fileExtension: ".txt" },
     ".json": { mimeType: "application/json", fileExtension: ".json" },
   };
@@ -91,10 +88,7 @@ export const detectFileTypeFromResponse = (
   // Excel files have specific magic bytes
   if (header.startsWith("504b0304")) {
     // XLSX (ZIP format)
-    return {
-      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      fileExtension: ".xlsx",
-    };
+    return { mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileExtension: ".xlsx" };
   }
 
   if (header.startsWith("d0cf11e0")) {
@@ -115,12 +109,7 @@ export const detectFileTypeFromResponse = (
 /**
  * Setup abort controller for fetch timeout.
  */
-const setupAbortController = (
-  timeout: number
-): {
-  controller?: AbortController;
-  timeoutId?: NodeJS.Timeout;
-} => {
+const setupAbortController = (timeout: number): { controller?: AbortController; timeoutId?: NodeJS.Timeout } => {
   let controller: AbortController | undefined;
   let timeoutId: NodeJS.Timeout | undefined;
 
@@ -146,10 +135,7 @@ const setupAbortController = (
  * Build fetch options with signal support.
  */
 const buildFetchOptions = (method: string, headers: HeadersInit, controller?: AbortController): RequestInit => {
-  const fetchOptions: RequestInit = {
-    method,
-    headers,
-  };
+  const fetchOptions: RequestInit = { method, headers };
 
   // Only add signal if controller was successfully created
   if (controller?.signal) {
@@ -188,10 +174,7 @@ const readResponseBody = async (
     chunks.push(chunk);
   }
 
-  return {
-    data: Buffer.concat(chunks),
-    contentLength: totalSize,
-  };
+  return { data: Buffer.concat(chunks), contentLength: totalSize };
 };
 
 /**
@@ -200,11 +183,7 @@ const readResponseBody = async (
 export const fetchUrlData = async (
   sourceUrl: string,
   options: FetchOptions = {}
-): Promise<{
-  data: Buffer;
-  contentType: string | undefined;
-  contentLength: number | undefined;
-}> => {
+): Promise<{ data: Buffer; contentType: string | undefined; contentLength: number | undefined }> => {
   const {
     method = "GET",
     headers = {},
@@ -236,11 +215,7 @@ export const fetchUrlData = async (
 
     const { data, contentLength: totalSize } = await readResponseBody(response, maxSize);
 
-    return {
-      data,
-      contentType,
-      contentLength: totalSize,
-    };
+    return { data, contentType, contentLength: totalSize };
   } catch (error) {
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -383,11 +358,7 @@ export const fetchWithRetry = async (
 
   for (let attempt = 1; attempt <= attemptCount; attempt++) {
     try {
-      logger.info(`Fetching URL (attempt ${attempt}/${attemptCount})`, {
-        url: sourceUrl,
-        attempt,
-        useCache,
-      });
+      logger.info(`Fetching URL (attempt ${attempt}/${attemptCount})`, { url: sourceUrl, attempt, useCache });
 
       const fetchOpts = buildCacheOptions(authHeaders, fetchOptions, useCache, cacheOptions, userId);
       return await processFetchResponse(urlFetchCache, sourceUrl, fetchOpts, fetchOptions, attempt);

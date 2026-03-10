@@ -12,9 +12,7 @@ export const executionFields: Field[] = [
   {
     name: "retryConfig",
     type: "group",
-    admin: {
-      description: "Retry behavior configuration",
-    },
+    admin: { description: "Retry behavior configuration" },
     fields: [
       {
         name: "maxRetries",
@@ -22,9 +20,7 @@ export const executionFields: Field[] = [
         defaultValue: 3,
         min: 0,
         max: 10,
-        admin: {
-          description: "Maximum number of retry attempts",
-        },
+        admin: { description: "Maximum number of retry attempts" },
       },
       {
         name: "retryDelayMinutes",
@@ -32,17 +28,13 @@ export const executionFields: Field[] = [
         defaultValue: 5,
         min: 1,
         max: 60,
-        admin: {
-          description: "Delay between retries in minutes",
-        },
+        admin: { description: "Delay between retries in minutes" },
       },
       {
         name: "exponentialBackoff",
         type: "checkbox",
         defaultValue: true,
-        admin: {
-          description: "Use exponential backoff for retries",
-        },
+        admin: { description: "Use exponential backoff for retries" },
       },
     ],
   },
@@ -51,9 +43,7 @@ export const executionFields: Field[] = [
   {
     name: "advancedOptions",
     type: "group",
-    admin: {
-      description: "Advanced import options",
-    },
+    admin: { description: "Advanced import options" },
     fields: [
       {
         name: "timeoutMinutes",
@@ -61,80 +51,54 @@ export const executionFields: Field[] = [
         defaultValue: 30,
         min: 1,
         max: 120,
-        admin: {
-          description: "Maximum time to wait for response in minutes",
-        },
+        admin: { description: "Maximum time to wait for response in minutes" },
       },
       {
         name: "skipDuplicateChecking",
         type: "checkbox",
         defaultValue: false,
-        admin: {
-          description: "Skip duplicate content checking",
-        },
+        admin: { description: "Skip duplicate content checking" },
       },
       {
         name: "autoApproveSchema",
         type: "checkbox",
         defaultValue: false,
-        admin: {
-          description: "Automatically approve schema changes",
-        },
+        admin: { description: "Automatically approve schema changes" },
       },
       {
         name: "maxFileSizeMB",
         type: "number",
         min: 1,
         max: 1000,
-        admin: {
-          description: "Maximum file size in MB (leave empty for no limit)",
-        },
+        admin: { description: "Maximum file size in MB (leave empty for no limit)" },
       },
       {
         name: "useHttpCache",
         type: "checkbox",
         defaultValue: true,
-        admin: {
-          description: "Enable HTTP caching for URL responses",
-        },
+        admin: { description: "Enable HTTP caching for URL responses" },
       },
       {
         name: "bypassCacheOnManual",
         type: "checkbox",
         defaultValue: false,
-        admin: {
-          description: "Bypass cache when manually triggering the import",
-        },
+        admin: { description: "Bypass cache when manually triggering the import" },
       },
       {
         name: "respectCacheControl",
         type: "checkbox",
         defaultValue: true,
-        admin: {
-          description: "Respect Cache-Control headers from the server",
-        },
+        admin: { description: "Respect Cache-Control headers from the server" },
       },
     ],
   },
 
   // Execution Status Fields
-  {
-    name: "lastRun",
-    type: "date",
-    admin: {
-      position: "sidebar",
-      readOnly: true,
-      description: "Last execution time",
-    },
-  },
+  { name: "lastRun", type: "date", admin: { position: "sidebar", readOnly: true, description: "Last execution time" } },
   {
     name: "nextRun",
     type: "date",
-    admin: {
-      position: "sidebar",
-      readOnly: true,
-      description: "Next scheduled execution time",
-    },
+    admin: { position: "sidebar", readOnly: true, description: "Next scheduled execution time" },
   },
   {
     name: "lastStatus",
@@ -144,70 +108,39 @@ export const executionFields: Field[] = [
       { label: "Failed", value: "failed" },
       { label: "Running", value: "running" },
     ],
-    admin: {
-      position: "sidebar",
-      readOnly: true,
-      description: "Status of last execution",
-    },
+    admin: { position: "sidebar", readOnly: true, description: "Status of last execution" },
   },
   {
     name: "lastError",
     type: "text",
-    admin: {
-      readOnly: true,
-      description: "Error message from last failed execution",
-    },
+    admin: { readOnly: true, description: "Error message from last failed execution" },
   },
   {
     name: "currentRetries",
     type: "number",
     defaultValue: 0,
-    admin: {
-      readOnly: true,
-      description: "Current retry attempt count",
-    },
+    admin: { readOnly: true, description: "Current retry attempt count" },
   },
 
   // Statistics
   {
     name: "statistics",
     type: "group",
-    admin: {
-      description: "Execution statistics",
-      readOnly: true,
-    },
+    admin: { description: "Execution statistics", readOnly: true },
     fields: [
-      {
-        name: "totalRuns",
-        type: "number",
-        defaultValue: 0,
-        admin: {
-          description: "Total number of executions",
-        },
-      },
+      { name: "totalRuns", type: "number", defaultValue: 0, admin: { description: "Total number of executions" } },
       {
         name: "successfulRuns",
         type: "number",
         defaultValue: 0,
-        admin: {
-          description: "Number of successful executions",
-        },
+        admin: { description: "Number of successful executions" },
       },
-      {
-        name: "failedRuns",
-        type: "number",
-        defaultValue: 0,
-        admin: {
-          description: "Number of failed executions",
-        },
-      },
+      { name: "failedRuns", type: "number", defaultValue: 0, admin: { description: "Number of failed executions" } },
       {
         name: "averageDuration",
         type: "number",
         defaultValue: 0,
-        admin: {
-          description: "Average execution duration in milliseconds",
-        },
+        admin: { description: "Average execution duration in milliseconds" },
       },
     ],
   },
@@ -217,16 +150,9 @@ export const executionFields: Field[] = [
     name: "executionHistory",
     type: "array",
     maxRows: 10,
-    admin: {
-      description: "History of recent executions",
-      readOnly: true,
-    },
+    admin: { description: "History of recent executions", readOnly: true },
     fields: [
-      {
-        name: "executedAt",
-        type: "date",
-        required: true,
-      },
+      { name: "executedAt", type: "date", required: true },
       {
         name: "status",
         type: "select",
@@ -236,28 +162,10 @@ export const executionFields: Field[] = [
           { label: "Failed", value: "failed" },
         ],
       },
-      {
-        name: "duration",
-        type: "number",
-        admin: {
-          description: "Duration in milliseconds",
-        },
-      },
-      {
-        name: "recordsImported",
-        type: "number",
-      },
-      {
-        name: "error",
-        type: "text",
-      },
-      {
-        name: "jobId",
-        type: "text",
-        admin: {
-          description: "Background job ID",
-        },
-      },
+      { name: "duration", type: "number", admin: { description: "Duration in milliseconds" } },
+      { name: "recordsImported", type: "number" },
+      { name: "error", type: "text" },
+      { name: "jobId", type: "text", admin: { description: "Background job ID" } },
       {
         name: "triggeredBy",
         type: "select",
@@ -269,9 +177,7 @@ export const executionFields: Field[] = [
           { label: "System", value: "system" },
         ],
         defaultValue: "schedule",
-        admin: {
-          description: "How this execution was triggered",
-        },
+        admin: { description: "How this execution was triggered" },
       },
     ],
   },

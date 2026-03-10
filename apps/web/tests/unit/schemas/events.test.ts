@@ -24,11 +24,7 @@ describe("event schemas", () => {
     });
 
     it("should accept catalog and dates", () => {
-      const result = EventFiltersSchema.safeParse({
-        catalog: "1",
-        startDate: "2024-01-01",
-        endDate: "2024-12-31",
-      });
+      const result = EventFiltersSchema.safeParse({ catalog: "1", startDate: "2024-01-01", endDate: "2024-12-31" });
       expect(result.success).toBe(true);
     });
   });
@@ -105,17 +101,12 @@ describe("event schemas", () => {
 
   describe("MapClustersQuerySchema", () => {
     it("should accept required bounds and zoom", () => {
-      const result = MapClustersQuerySchema.safeParse({
-        bounds: '{"north":52}',
-        zoom: 10,
-      });
+      const result = MapClustersQuerySchema.safeParse({ bounds: '{"north":52}', zoom: 10 });
       expect(result.success).toBe(true);
     });
 
     it("should default zoom to 10", () => {
-      const result = MapClustersQuerySchema.safeParse({
-        bounds: '{"north":52}',
-      });
+      const result = MapClustersQuerySchema.safeParse({ bounds: '{"north":52}' });
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.zoom).toBe(10);

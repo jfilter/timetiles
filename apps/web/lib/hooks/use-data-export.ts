@@ -57,10 +57,7 @@ export const dataExportKeys = {
  * Fetch the user's data exports.
  */
 const fetchDataExports = async (): Promise<ExportListResponse> => {
-  const response = await fetch("/api/account/download-data", {
-    method: "GET",
-    credentials: "include",
-  });
+  const response = await fetch("/api/account/download-data", { method: "GET", credentials: "include" });
 
   if (!response.ok) {
     const error = await response.json();
@@ -74,10 +71,7 @@ const fetchDataExports = async (): Promise<ExportListResponse> => {
  * Request a new data export.
  */
 const requestDataExport = async (): Promise<RequestExportResponse> => {
-  const response = await fetch("/api/account/download-data", {
-    method: "POST",
-    credentials: "include",
-  });
+  const response = await fetch("/api/account/download-data", { method: "POST", credentials: "include" });
 
   if (!response.ok) {
     const error: RequestExportError = await response.json();
@@ -122,10 +116,7 @@ export const useLatestExportQuery = () => {
       (exp) => exp.status === "pending" || exp.status === "processing" || exp.status === "ready"
     ) ?? query.data?.exports?.[0];
 
-  return {
-    ...query,
-    latestExport,
-  };
+  return { ...query, latestExport };
 };
 
 /**

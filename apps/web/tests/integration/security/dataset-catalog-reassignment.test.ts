@@ -49,32 +49,16 @@ describe.sequential("Dataset Catalog Reassignment Vulnerability", () => {
     userB = users.userB;
 
     // Create catalogs once to avoid quota issues
-    const catAResult = await withCatalog(testEnv, {
-      name: "UserA Private Catalog",
-      isPublic: false,
-      user: userA,
-    });
+    const catAResult = await withCatalog(testEnv, { name: "UserA Private Catalog", isPublic: false, user: userA });
     catalogA = catAResult.catalog;
 
-    const catA2Result = await withCatalog(testEnv, {
-      name: "UserA Second Catalog",
-      isPublic: false,
-      user: userA,
-    });
+    const catA2Result = await withCatalog(testEnv, { name: "UserA Second Catalog", isPublic: false, user: userA });
     catalogA2 = catA2Result.catalog;
 
-    const catBResult = await withCatalog(testEnv, {
-      name: "UserB Private Catalog",
-      isPublic: false,
-      user: userB,
-    });
+    const catBResult = await withCatalog(testEnv, { name: "UserB Private Catalog", isPublic: false, user: userB });
     catalogB = catBResult.catalog;
 
-    const pubCatResult = await withCatalog(testEnv, {
-      name: "Public Catalog",
-      isPublic: true,
-      user: userA,
-    });
+    const pubCatResult = await withCatalog(testEnv, { name: "Public Catalog", isPublic: true, user: userA });
     publicCatalog = pubCatResult.catalog;
   }, 60000);
 
@@ -84,10 +68,7 @@ describe.sequential("Dataset Catalog Reassignment Vulnerability", () => {
 
   /** Helper to create a fresh dataset in catalogA for each test */
   const createDatasetInCatalogA = async (): Promise<Dataset> => {
-    const result = await withDataset(testEnv, catalogA.id, {
-      name: `Test Dataset ${Date.now()}`,
-      isPublic: false,
-    });
+    const result = await withDataset(testEnv, catalogA.id, { name: `Test Dataset ${Date.now()}`, isPublic: false });
     return result.dataset;
   };
 
@@ -100,9 +81,7 @@ describe.sequential("Dataset Catalog Reassignment Vulnerability", () => {
         payload.update({
           collection: "datasets",
           id: dataset.id,
-          data: {
-            catalog: catalogB.id,
-          },
+          data: { catalog: catalogB.id },
           user: userA,
           overrideAccess: false,
         })
@@ -117,9 +96,7 @@ describe.sequential("Dataset Catalog Reassignment Vulnerability", () => {
       const updated = await payload.update({
         collection: "datasets",
         id: dataset.id,
-        data: {
-          catalog: catalogB.id,
-        },
+        data: { catalog: catalogB.id },
         user: adminUser,
         overrideAccess: false,
       });
@@ -133,10 +110,7 @@ describe.sequential("Dataset Catalog Reassignment Vulnerability", () => {
       const updated = await payload.update({
         collection: "datasets",
         id: dataset.id,
-        data: {
-          catalog: publicCatalog.id,
-          isPublic: true,
-        },
+        data: { catalog: publicCatalog.id, isPublic: true },
         user: userA,
         overrideAccess: false,
       });
@@ -150,9 +124,7 @@ describe.sequential("Dataset Catalog Reassignment Vulnerability", () => {
       const updated = await payload.update({
         collection: "datasets",
         id: dataset.id,
-        data: {
-          catalog: catalogA2.id,
-        },
+        data: { catalog: catalogA2.id },
         user: userA,
         overrideAccess: false,
       });

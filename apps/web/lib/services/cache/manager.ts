@@ -50,12 +50,7 @@ export class CacheManager {
     const selectedBackend = backend ?? this.getBackendFromEnv();
     const storage = this.createStorage(selectedBackend, name);
 
-    return new Cache({
-      storage,
-      keyPrefix: `${name}:`,
-      defaultTTL: this.getDefaultTTL(),
-      ...config,
-    });
+    return new Cache({ storage, keyPrefix: `${name}:`, defaultTTL: this.getDefaultTTL(), ...config });
   }
 
   /**

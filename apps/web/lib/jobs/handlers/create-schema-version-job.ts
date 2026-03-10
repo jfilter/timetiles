@@ -20,10 +20,7 @@ import type { JobHandlerContext } from "../utils/job-context";
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
   datasetSchemaVersion?: unknown;
-  schemaValidation?: {
-    approved?: boolean | null;
-    requiresApproval?: boolean | null;
-  };
+  schemaValidation?: { approved?: boolean | null; requiresApproval?: boolean | null };
 }): { skip: boolean; reason: string } => {
   let result: { skip: boolean; reason: string } = { skip: false, reason: "" };
 
@@ -79,10 +76,7 @@ export const createSchemaVersionJob = {
 
     try {
       // Get import job
-      const job = await payload.findByID({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
-      });
+      const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
       if (!job) {
         throw new Error(`Import job not found: ${importJobId}`);
@@ -121,12 +115,7 @@ export const createSchemaVersionJob = {
       const isAutoApproved = !job.schemaValidation?.requiresApproval;
       const approvedById = isAutoApproved ? null : getApprovedById(job.schemaValidation?.approvedBy);
 
-      logger.info("Creating schema version", {
-        importJobId,
-        datasetId: dataset.id,
-        isAutoApproved,
-        approvedById,
-      });
+      logger.info("Creating schema version", { importJobId, datasetId: dataset.id, isAutoApproved, approvedById });
 
       // Create schema version
       const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
@@ -144,15 +133,10 @@ export const createSchemaVersionJob = {
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
-        data: {
-          datasetSchemaVersion: schemaVersion.id,
-        },
+        data: { datasetSchemaVersion: schemaVersion.id },
       });
 
-      logger.info("Schema version created successfully", {
-        importJobId,
-        schemaVersionId: schemaVersion.id,
-      });
+      logger.info("Schema version created successfully", { importJobId, schemaVersionId: schemaVersion.id });
 
       // Complete CREATE_SCHEMA_VERSION stage
       await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
@@ -161,9 +145,7 @@ export const createSchemaVersionJob = {
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
-        data: {
-          stage: PROCESSING_STAGE.GEOCODE_BATCH,
-        },
+        data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
       });
 
       return { output: { schemaVersionId: schemaVersion.id } };

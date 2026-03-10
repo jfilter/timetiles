@@ -57,12 +57,23 @@ jobs:
         run: pnpm payload:validate
         working-directory: apps/web
 
+      - name: Upload generated files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payload-generated-files
+          path: |
+            apps/web/payload-generated-schema.ts
+            apps/web/payload-types.ts
+          retention-days: 5
+
       - name: Check for uncommitted changes
         run: |
           if [[ -n $(git status --porcelain) ]]; then
             echo "❌ Payload generated files are out of sync!"
             echo "Please run 'pnpm payload:generate' and commit the changes."
             git status
+            git diff --stat
             exit 1
           else
             echo "✅ Payload generated files are in sync!"

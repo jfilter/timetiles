@@ -24,9 +24,7 @@ export default [
   ...pluginQuery.configs["flat/recommended"],
   {
     files: ["**/*.ts", "**/*.tsx"],
-    plugins: {
-      "@next/next": nextPlugin,
-    },
+    plugins: { "@next/next": nextPlugin },
     rules: {
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs["core-web-vitals"].rules,

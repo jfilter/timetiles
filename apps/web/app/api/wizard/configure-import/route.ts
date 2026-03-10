@@ -112,11 +112,7 @@ const createScheduledImport = async (
   const schemaConfig = translateSchemaMode(scheduleConfig.schemaMode);
   await Promise.all(
     datasetMappingEntries.map(async (entry) => {
-      await payload.update({
-        collection: "datasets",
-        id: entry.dataset,
-        data: { schemaConfig },
-      });
+      await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig } });
       logger.info("Updated dataset schema config for schedule", {
         datasetId: entry.dataset,
         schemaMode: scheduleConfig.schemaMode,
@@ -152,10 +148,7 @@ const createScheduledImport = async (
         : undefined,
   };
 
-  const scheduledImport = await payload.create({
-    collection: "scheduled-imports",
-    data: baseData,
-  });
+  const scheduledImport = await payload.create({ collection: "scheduled-imports", data: baseData });
 
   logger.info("Created scheduled import from wizard", {
     scheduledImportId: scheduledImport.id,

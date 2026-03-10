@@ -137,10 +137,7 @@ const typecheckIssues: TypeScriptError[] = [];
 const targetFilesSet = new Set(resolvedFiles.map((f) => path.resolve(f)));
 
 try {
-  execSync("pnpm exec tsgo --noEmit --pretty false 2>&1", {
-    encoding: "utf-8",
-    cwd: pkgPath,
-  });
+  execSync("pnpm exec tsgo --noEmit --pretty false 2>&1", { encoding: "utf-8", cwd: pkgPath });
   // No errors at all
 } catch (error) {
   const errorWithOutput = error as { stdout?: string | Buffer; stderr?: string | Buffer };

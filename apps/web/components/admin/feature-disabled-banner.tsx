@@ -35,33 +35,12 @@ const styles = {
     alignItems: "flex-start",
     gap: "12px",
   },
-  iconContainer: {
-    flexShrink: 0,
-    marginTop: "2px",
-  },
-  icon: {
-    width: "20px",
-    height: "20px",
-    color: "#d97706",
-  },
-  content: {
-    flex: 1,
-  },
-  title: {
-    margin: "0 0 4px 0",
-    fontSize: "14px",
-    fontWeight: 600,
-    color: "#92400e",
-  },
-  description: {
-    margin: 0,
-    fontSize: "13px",
-    color: "#a16207",
-    lineHeight: 1.5,
-  },
-  hidden: {
-    display: "none",
-  },
+  iconContainer: { flexShrink: 0, marginTop: "2px" },
+  icon: { width: "20px", height: "20px", color: "#d97706" },
+  content: { flex: 1 },
+  title: { margin: "0 0 4px 0", fontSize: "14px", fontWeight: 600, color: "#92400e" },
+  description: { margin: 0, fontSize: "13px", color: "#a16207", lineHeight: 1.5 },
+  hidden: { display: "none" },
 } as const;
 
 export const FeatureDisabledBanner = ({ featureFlag, title, description }: FeatureDisabledBannerProps) => {

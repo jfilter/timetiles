@@ -42,10 +42,7 @@ export const cacheCleanupJob = {
     const input = (context.input ?? context.job?.input) as CacheCleanupJobInput;
 
     const startTime = Date.now();
-    logger.info("Starting cache cleanup job", {
-      cacheNames: input.cacheNames,
-      force: input.force,
-    });
+    logger.info("Starting cache cleanup job", { cacheNames: input.cacheNames, force: input.force });
 
     try {
       let totalCleaned = 0;
@@ -56,10 +53,7 @@ export const cacheCleanupJob = {
       const urlFetchCache = getUrlFetchCache();
       const urlFetchCleaned = await urlFetchCache.cleanup();
       totalCleaned += urlFetchCleaned;
-      results.urlFetchCache = {
-        cleaned: urlFetchCleaned,
-        stats: await urlFetchCache.getStats(),
-      };
+      results.urlFetchCache = { cleaned: urlFetchCleaned, stats: await urlFetchCache.getStats() };
 
       // Clean other cache instances if specified
       if (input.cacheNames && input.cacheNames.length > 0) {
@@ -68,10 +62,7 @@ export const cacheCleanupJob = {
           if (cache) {
             const cleaned = await cache.cleanup();
             totalCleaned += cleaned;
-            results[cacheName] = {
-              cleaned,
-              stats: await cache.getStats(),
-            };
+            results[cacheName] = { cleaned, stats: await cache.getStats() };
           } else {
             logger.warn("Cache instance not found", { cacheName });
           }
@@ -84,45 +75,21 @@ export const cacheCleanupJob = {
           if (cache) {
             const cleaned = await cache.cleanup();
             totalCleaned += cleaned;
-            results[cacheName] = {
-              cleaned,
-              stats: await cache.getStats(),
-            };
+            results[cacheName] = { cleaned, stats: await cache.getStats() };
           }
         }
       }
 
       const duration = Date.now() - startTime;
 
-      logger.info("Cache cleanup completed", {
-        totalCleaned,
-        totalEvicted,
-        duration,
-        results,
-      });
+      logger.info("Cache cleanup completed", { totalCleaned, totalEvicted, duration, results });
 
-      return {
-        output: {
-          success: true,
-          totalCleaned,
-          totalEvicted,
-          duration,
-          results,
-        },
-      };
+      return { output: { success: true, totalCleaned, totalEvicted, duration, results } };
     } catch (error) {
       const errorObj = error as Error;
-      logger.error("Cache cleanup job failed", {
-        error: errorObj.message,
-        stack: errorObj.stack,
-      });
+      logger.error("Cache cleanup job failed", { error: errorObj.message, stack: errorObj.stack });
 
-      return {
-        output: {
-          success: false,
-          error: errorObj.message,
-        },
-      };
+      return { output: { success: false, error: errorObj.message } };
     }
   },
 };

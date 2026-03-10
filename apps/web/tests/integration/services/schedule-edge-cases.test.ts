@@ -36,9 +36,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
     cleanup = env.cleanup;
 
     // Create test user
-    const { users } = await withUsers(env, {
-      testUser: { role: "admin", email: TEST_EMAILS.schedule },
-    });
+    const { users } = await withUsers(env, { testUser: { role: "admin", email: TEST_EMAILS.schedule } });
     testUser = users.testUser;
 
     // Create test catalog
@@ -65,17 +63,11 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
     // Clean up all scheduled imports created during the test to prevent interference
     try {
-      const allScheduledImports = await payload.find({
-        collection: "scheduled-imports",
-        limit: 1000,
-      });
+      const allScheduledImports = await payload.find({ collection: "scheduled-imports", limit: 1000 });
 
       for (const scheduledImport of allScheduledImports.docs) {
         // Only delete imports that aren't the test catalog's initial data
-        await payload.delete({
-          collection: "scheduled-imports",
-          id: scheduledImport.id,
-        });
+        await payload.delete({ collection: "scheduled-imports", id: scheduledImport.id });
       }
     } catch {
       // Ignore cleanup errors
@@ -158,10 +150,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const updated = await payload.update({
         collection: "scheduled-imports",
         id: scheduledImport.id,
-        data: {
-          scheduleType: "cron",
-          cronExpression: "0 0 * * *",
-        },
+        data: { scheduleType: "cron", cronExpression: "0 0 * * *" },
       });
 
       expect(updated.frequency).toBeNull();
@@ -180,10 +169,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const updated = await payload.update({
         collection: "scheduled-imports",
         id: scheduledImport.id,
-        data: {
-          scheduleType: "frequency",
-          frequency: "hourly",
-        },
+        data: { scheduleType: "frequency", frequency: "hourly" },
       });
 
       expect(updated.cronExpression).toBeNull();
@@ -224,10 +210,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
       // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-      const result = await scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager" },
-        req: { payload },
-      });
+      const result = await scheduleManagerJob.handler({ job: { id: "test-schedule-manager" }, req: { payload } });
 
       expect(result.output.success).toBe(true);
       expect(result.output.triggered).toBe(3);
@@ -258,10 +241,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
       // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-      const result = await scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-2" },
-        req: { payload },
-      });
+      const result = await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-2" }, req: { payload } });
 
       expect(result.output.triggered).toBe(1);
       // The enabled schedule should have been processed
@@ -276,10 +256,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
         user: testUser,
         name: "Running Import",
         frequency: "hourly",
-        additionalData: {
-          lastRun: new Date("2024-01-01T11:00:00.000Z"),
-          lastStatus: "running",
-        },
+        additionalData: { lastRun: new Date("2024-01-01T11:00:00.000Z"), lastStatus: "running" },
       });
 
       // Move time forward to next hour (13:00) since lastRun was 11:00 and we want it to trigger
@@ -287,10 +264,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
       // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-      const result = await scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-3" },
-        req: { payload },
-      });
+      const result = await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-3" }, req: { payload } });
 
       // Should NOT trigger because it's already running (prevent concurrency)
       expect(result.output.triggered).toBe(0);
@@ -313,16 +287,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
       // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-      await scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-4" },
-        req: { payload },
-      });
+      await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-4" }, req: { payload } });
 
       // Check the updated schedule
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       expect(new Date(updated.nextRun)).toEqual(new Date("2024-01-01T14:00:00.000Z"));
     });
@@ -342,16 +310,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
       // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-      await scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-5" },
-        req: { payload },
-      });
+      await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-5" }, req: { payload } });
 
       // Check the updated schedule
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       expect(new Date(updated.nextRun)).toEqual(new Date("2024-01-14T00:00:00.000Z"));
     });
@@ -371,16 +333,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
       // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-      await scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-6" },
-        req: { payload },
-      });
+      await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-6" }, req: { payload } });
 
       // Check the updated schedule
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       expect(new Date(updated.nextRun)).toEqual(new Date("2024-03-01T00:00:00.000Z"));
     });
@@ -395,10 +351,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
       await expect(
-        scheduleManagerJob.handler({
-          job: { id: "test-schedule-manager-error" },
-          req: { payload },
-        })
+        scheduleManagerJob.handler({ job: { id: "test-schedule-manager-error" }, req: { payload } })
       ).rejects.toThrow("Database connection lost");
 
       findSpy.mockRestore();
@@ -467,10 +420,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
       expect(result.output.triggered).toBe(1);
 
       // Check that lastRun and nextRun are now set
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       expect(updated.lastRun).toBeTruthy();
       expect(updated.nextRun).toBeTruthy();

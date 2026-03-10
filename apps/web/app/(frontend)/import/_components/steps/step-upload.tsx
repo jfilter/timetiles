@@ -50,9 +50,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
   // Configure navigation for this step
   useEffect(() => {
-    setNavigationConfig({
-      onNext: () => nextStep(),
-    });
+    setNavigationConfig({ onNext: () => nextStep() });
     return () => setNavigationConfig({});
   }, [setNavigationConfig, nextStep]);
 
@@ -148,11 +146,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         const data = await response.json();
 
         setFile(
-          {
-            name: selectedFile.name,
-            size: selectedFile.size,
-            mimeType: selectedFile.type,
-          },
+          { name: selectedFile.name, size: selectedFile.size, mimeType: selectedFile.type },
           data.sheets,
           data.previewId
         );
@@ -182,10 +176,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       const response = await fetch("/api/wizard/preview-schema", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceUrl: urlInput.trim(),
-          authConfig: authPayload,
-        }),
+        body: JSON.stringify({ sourceUrl: urlInput.trim(), authConfig: authPayload }),
         credentials: "include",
       });
 

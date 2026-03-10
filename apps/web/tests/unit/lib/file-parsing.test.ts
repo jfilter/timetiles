@@ -121,10 +121,7 @@ describe("File Parsing", () => {
 
       fs.writeFileSync(csvPath, invalidCsvContent, "utf8");
       const fileContent = fs.readFileSync(csvPath, "utf8");
-      const parseResult = Papa.parse(fileContent, {
-        header: true,
-        skipEmptyLines: true,
-      });
+      const parseResult = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
 
       // Papa.parse is quite forgiving, should still get some data
       expect(parseResult.data.length).toBeGreaterThan(0);
@@ -138,10 +135,7 @@ describe("File Parsing", () => {
       // Use malformed data fixture
       const fixturePath = getFixturePath("malformed-data.csv");
       const fileContent = fs.readFileSync(fixturePath, "utf8");
-      const parseResult = Papa.parse(fileContent, {
-        header: true,
-        skipEmptyLines: true,
-      });
+      const parseResult = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
 
       // Should still get some data despite malformed entries
       expect(parseResult.data.length).toBeGreaterThan(0);
@@ -180,20 +174,11 @@ Event 2,2024-03-16
 
       fs.writeFileSync(csvPath, csvContent, "utf8");
       const fileContent = fs.readFileSync(csvPath, "utf8");
-      const parseResult = Papa.parse(fileContent, {
-        header: true,
-        skipEmptyLines: true,
-      });
+      const parseResult = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
 
       expect(parseResult.data).toHaveLength(2);
-      expect(parseResult.data[0]).toMatchObject({
-        title: "Event 1",
-        date: "2024-03-15",
-      });
-      expect(parseResult.data[1]).toMatchObject({
-        title: "Event 2",
-        date: "2024-03-16",
-      });
+      expect(parseResult.data[0]).toMatchObject({ title: "Event 1", date: "2024-03-15" });
+      expect(parseResult.data[1]).toMatchObject({ title: "Event 2", date: "2024-03-16" });
     });
   });
 
@@ -205,10 +190,7 @@ Event 2,2024-03-16
       const workbook = read(fileBuffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName!];
-      const jsonData = utils.sheet_to_json(worksheet!, {
-        header: 1,
-        defval: "",
-      });
+      const jsonData = utils.sheet_to_json(worksheet!, { header: 1, defval: "" });
 
       expect(jsonData).toHaveLength(5); // header + 4 data rows
       expect(jsonData[0]).toEqual(["title", "description", "date", "location", "category"]);
@@ -233,19 +215,13 @@ Event 2,2024-03-16
       utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
       // Write to buffer instead of file
-      const excelBuffer = write(workbook, {
-        type: "buffer",
-        bookType: "xlsx",
-      });
+      const excelBuffer = write(workbook, { type: "buffer", bookType: "xlsx" });
 
       // Read from buffer (simulating real file reading)
       const readWorkbook = read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const jsonData = utils.sheet_to_json(readWorksheet!, {
-        header: 1,
-        defval: "",
-      });
+      const jsonData = utils.sheet_to_json(readWorksheet!, { header: 1, defval: "" });
 
       expect(jsonData).toHaveLength(3);
       expect(jsonData[0]).toEqual(["title", "description", "date"]);
@@ -273,10 +249,7 @@ Event 2,2024-03-16
       utils.book_append_sheet(workbook, worksheet2, "Locations");
 
       // Write to buffer and read back
-      const excelBuffer = write(workbook, {
-        type: "buffer",
-        bookType: "xlsx",
-      });
+      const excelBuffer = write(workbook, { type: "buffer", bookType: "xlsx" });
       const readWorkbook = read(excelBuffer, { type: "buffer" });
 
       expect(readWorkbook.SheetNames).toHaveLength(2);
@@ -325,19 +298,11 @@ Event 2,2024-03-16
       utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
       // Write to buffer and read back
-      const excelBuffer = write(workbook, {
-        type: "buffer",
-        bookType: "xlsx",
-      });
+      const excelBuffer = write(workbook, { type: "buffer", bookType: "xlsx" });
       const readWorkbook = read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const rawData = readWorksheet
-        ? utils.sheet_to_json(readWorksheet, {
-            header: 1,
-            defval: "",
-          })
-        : ([] as any[]);
+      const rawData = readWorksheet ? utils.sheet_to_json(readWorksheet, { header: 1, defval: "" }) : ([] as any[]);
 
       // Convert to object format (same logic as in import jobs)
       const headers = (rawData[0] as string[]).map((h) => h.toString().trim().toLowerCase());
@@ -370,17 +335,11 @@ Event 2,2024-03-16
       utils.book_append_sheet(workbook, worksheet, "Empty");
 
       // Write to buffer and read back
-      const excelBuffer = write(workbook, {
-        type: "buffer",
-        bookType: "xlsx",
-      });
+      const excelBuffer = write(workbook, { type: "buffer", bookType: "xlsx" });
       const readWorkbook = read(excelBuffer, { type: "buffer" });
       const sheetName = readWorkbook.SheetNames[0];
       const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const jsonData = utils.sheet_to_json(readWorksheet!, {
-        header: 1,
-        defval: "",
-      });
+      const jsonData = utils.sheet_to_json(readWorksheet!, { header: 1, defval: "" });
 
       expect(jsonData).toHaveLength(0);
     });

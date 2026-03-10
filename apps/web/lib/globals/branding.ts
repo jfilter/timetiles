@@ -14,34 +14,23 @@ import { generateFaviconsHook } from "./branding-hooks";
 
 export const Branding: GlobalConfig = {
   slug: "branding",
-  admin: {
-    group: "Content",
-  },
-  access: {
-    read: () => true,
-    update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
-  },
-  hooks: {
-    afterChange: [generateFaviconsHook],
-  },
+  admin: { group: "Content" },
+  access: { read: () => true, update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor" },
+  hooks: { afterChange: [generateFaviconsHook] },
   fields: [
     {
       name: "siteName",
       type: "text",
       label: "Site Name",
       defaultValue: "TimeTiles",
-      admin: {
-        description: "The name displayed in the header and browser tab title",
-      },
+      admin: { description: "The name displayed in the header and browser tab title" },
     },
     {
       name: "siteDescription",
       type: "textarea",
       label: "Site Description",
       defaultValue: "Making spatial and temporal data analysis accessible to everyone.",
-      admin: {
-        description: "Meta description for SEO and social sharing (og:description)",
-      },
+      admin: { description: "Meta description for SEO and social sharing (og:description)" },
     },
     {
       type: "row",

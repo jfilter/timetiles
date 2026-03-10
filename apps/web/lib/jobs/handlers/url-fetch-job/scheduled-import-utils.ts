@@ -52,12 +52,7 @@ export const updateScheduledImportSuccess = async (
   duration: number
 ): Promise<void> => {
   try {
-    const stats = scheduledImport.statistics ?? {
-      totalRuns: 0,
-      successfulRuns: 0,
-      failedRuns: 0,
-      averageDuration: 0,
-    };
+    const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
 
     // Update statistics
     const newTotalRuns = (stats.totalRuns ?? 0) + 1;
@@ -97,9 +92,7 @@ export const updateScheduledImportSuccess = async (
       },
     });
   } catch (error) {
-    logError(error, "Failed to update scheduled import success status", {
-      scheduledImportId: scheduledImport.id,
-    });
+    logError(error, "Failed to update scheduled import success status", { scheduledImportId: scheduledImport.id });
   }
 };
 
@@ -112,12 +105,7 @@ export const updateScheduledImportFailure = async (
   error: Error
 ): Promise<void> => {
   try {
-    const stats = scheduledImport.statistics ?? {
-      totalRuns: 0,
-      successfulRuns: 0,
-      failedRuns: 0,
-      averageDuration: 0,
-    };
+    const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
 
     const currentRetries = (scheduledImport.currentRetries ?? 0) + 1;
     // maxRetries is intentionally unused - keeping for future retry logic
@@ -125,11 +113,7 @@ export const updateScheduledImportFailure = async (
 
     // Update execution history
     const executionHistory = scheduledImport.executionHistory ?? [];
-    executionHistory.unshift({
-      executedAt: new Date().toISOString(),
-      status: "failed",
-      error: error.message,
-    });
+    executionHistory.unshift({ executedAt: new Date().toISOString(), status: "failed", error: error.message });
 
     // Keep only last 10 executions
     if (executionHistory.length > 10) {
@@ -145,11 +129,7 @@ export const updateScheduledImportFailure = async (
         lastError: error.message,
         currentRetries,
         executionHistory,
-        statistics: {
-          ...stats,
-          totalRuns: (stats.totalRuns ?? 0) + 1,
-          failedRuns: (stats.failedRuns ?? 0) + 1,
-        },
+        statistics: { ...stats, totalRuns: (stats.totalRuns ?? 0) + 1, failedRuns: (stats.failedRuns ?? 0) + 1 },
       },
     });
   } catch (updateError) {
@@ -189,10 +169,7 @@ export const checkForDuplicateContent = async (
       if (existingFile) {
         return {
           isDuplicate: true,
-          existingFile: {
-            id: existingFile.id.toString(),
-            filename: existingFile.filename ?? "unknown",
-          },
+          existingFile: { id: existingFile.id.toString(), filename: existingFile.filename ?? "unknown" },
         };
       }
     }

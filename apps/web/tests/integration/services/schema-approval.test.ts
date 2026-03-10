@@ -74,11 +74,7 @@ describe.sequential("Schema Approval Workflow", () => {
       },
       currentSchema: {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          date: { type: "string", format: "date" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" }, date: { type: "string", format: "date" } },
         required: ["id", "title", "date"],
       },
     });
@@ -95,12 +91,7 @@ describe.sequential("Schema Approval Workflow", () => {
     // Create test import job
     const importJob = await payload.create({
       collection: "import-jobs",
-      data: {
-        importFile: testImportFileId,
-        dataset: testDatasetId,
-        stage: "completed",
-        sheetIndex: 0,
-      },
+      data: { importFile: testImportFileId, dataset: testDatasetId, stage: "completed", sheetIndex: 0 },
     });
     testImportJobId = importJob.id;
   });
@@ -145,11 +136,7 @@ describe.sequential("Schema Approval Workflow", () => {
       const approvedSchema = await payload.update({
         collection: "dataset-schemas",
         id: draftSchema.id,
-        data: {
-          _status: "published",
-          approvedBy: adminUser.id,
-          approvalNotes: "Looks good, approved",
-        },
+        data: { _status: "published", approvedBy: adminUser.id, approvalNotes: "Looks good, approved" },
         req: { user: adminUser } as any,
       });
 
@@ -172,20 +159,13 @@ describe.sequential("Schema Approval Workflow", () => {
       });
 
       // Mock editor context (who has access to the catalog)
-      const mockReq = {
-        user: editorUser,
-        payload,
-        id: draftSchema.id,
-      };
+      const mockReq = { user: editorUser, payload, id: draftSchema.id };
 
       // Editor should be able to approve
       const approvedSchema = await payload.update({
         collection: "dataset-schemas",
         id: draftSchema.id,
-        data: {
-          _status: "published",
-          approvedBy: editorUser.id,
-        },
+        data: { _status: "published", approvedBy: editorUser.id },
         req: mockReq,
       });
 
@@ -235,24 +215,10 @@ describe.sequential("Schema Approval Workflow", () => {
             },
           },
           fieldMetadata: {},
-          schemaSummary: {
-            totalFields: 2,
-            typeChanges: [
-              {
-                path: "id",
-                oldType: "string",
-                newType: "number",
-              },
-            ],
-          },
+          schemaSummary: { totalFields: 2, typeChanges: [{ path: "id", oldType: "string", newType: "number" }] },
           approvalRequired: true,
           conflicts: [
-            {
-              type: "type_change",
-              path: "id",
-              details: { oldType: "string", newType: "number" },
-              severity: "error",
-            },
+            { type: "type_change", path: "id", details: { oldType: "string", newType: "number" }, severity: "error" },
           ],
         },
       });
@@ -279,13 +245,7 @@ describe.sequential("Schema Approval Workflow", () => {
       await payload.update({
         collection: "datasets",
         id: testDatasetId,
-        data: {
-          schemaConfig: {
-            locked: false,
-            autoGrow: true,
-            strictValidation: false,
-          },
-        },
+        data: { schemaConfig: { locked: false, autoGrow: true, strictValidation: false } },
       });
 
       // Create schema with only new optional fields
@@ -329,12 +289,7 @@ describe.sequential("Schema Approval Workflow", () => {
       await payload.update({
         collection: "datasets",
         id: testDatasetId,
-        data: {
-          schemaConfig: {
-            locked: false,
-            autoGrow: true,
-          },
-        },
+        data: { schemaConfig: { locked: false, autoGrow: true } },
       });
 
       // Create schema with additional enum value
@@ -354,13 +309,7 @@ describe.sequential("Schema Approval Workflow", () => {
           fieldMetadata: {},
           schemaSummary: {
             totalFields: 2,
-            enumChanges: [
-              {
-                path: "status",
-                addedValues: ["completed"],
-                removedValues: [],
-              },
-            ],
+            enumChanges: [{ path: "status", addedValues: ["completed"], removedValues: [] }],
           },
           approvalRequired: false,
           autoApproved: true,
@@ -389,13 +338,7 @@ describe.sequential("Schema Approval Workflow", () => {
           fieldMetadata: {},
           schemaSummary: {
             totalFields: 2,
-            enumChanges: [
-              {
-                path: "status",
-                addedValues: [],
-                removedValues: ["pending"],
-              },
-            ],
+            enumChanges: [{ path: "status", addedValues: [], removedValues: ["pending"] }],
           },
           approvalRequired: true,
           autoApproved: false,
@@ -419,13 +362,7 @@ describe.sequential("Schema Approval Workflow", () => {
             dataset: testDatasetId,
             versionNumber: i,
             _status: i === 4 ? "published" : "draft",
-            schema: {
-              type: "object",
-              properties: {
-                id: { type: "string" },
-                [`field${i}`]: { type: "string" },
-              },
-            },
+            schema: { type: "object", properties: { id: { type: "string" }, [`field${i}`]: { type: "string" } } },
             fieldMetadata: {},
             schemaSummary: { totalFields: i },
           },
@@ -441,9 +378,7 @@ describe.sequential("Schema Approval Workflow", () => {
       // Query schema history
       const schemaHistory = await payload.find({
         collection: "dataset-schemas",
-        where: {
-          dataset: { equals: testDatasetId },
-        },
+        where: { dataset: { equals: testDatasetId } },
         sort: "-versionNumber",
       });
 
@@ -455,11 +390,7 @@ describe.sequential("Schema Approval Workflow", () => {
     it("updates dataset current schema when approved", async () => {
       const newSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          newField: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" }, newField: { type: "string" } },
       };
 
       // Create and activate new schema
@@ -470,11 +401,7 @@ describe.sequential("Schema Approval Workflow", () => {
           versionNumber: 2,
           _status: "published",
           schema: newSchema,
-          fieldMetadata: {
-            id: { occurrences: 100 },
-            title: { occurrences: 100 },
-            newField: { occurrences: 50 },
-          },
+          fieldMetadata: { id: { occurrences: 100 }, title: { occurrences: 100 }, newField: { occurrences: 50 } },
           schemaSummary: { totalFields: 3 },
         },
       });
@@ -496,13 +423,7 @@ describe.sequential("Schema Approval Workflow", () => {
           dataset: testDatasetId,
           stage: "await-approval",
           sheetIndex: 0,
-          schema: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              title: { type: "string" },
-            },
-          },
+          schema: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
         },
       });
 
@@ -513,21 +434,10 @@ describe.sequential("Schema Approval Workflow", () => {
           dataset: testDatasetId,
           versionNumber: 2,
           _status: "published",
-          schema: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              title: { type: "string" },
-            },
-          },
+          schema: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
           fieldMetadata: {},
           schemaSummary: { totalFields: 2 },
-          importSources: [
-            {
-              import: importRecord.id,
-              recordCount: 100,
-            },
-          ],
+          importSources: [{ import: importRecord.id, recordCount: 100 }],
           approvedBy: adminUser.id,
           approvalNotes: "Approved for testing",
         },
@@ -547,10 +457,7 @@ describe.sequential("Schema Approval Workflow", () => {
 
       // The import record should still be in await-approval stage
       // (actual progression would happen via hooks in production)
-      const updatedImport = await payload.findByID({
-        collection: "import-jobs",
-        id: importRecord.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "import-jobs", id: importRecord.id });
       expect(updatedImport.stage).toBe("await-approval");
     });
 
@@ -560,12 +467,7 @@ describe.sequential("Schema Approval Workflow", () => {
       for (let i = 1; i <= 3; i++) {
         const imp = await payload.create({
           collection: "import-jobs",
-          data: {
-            importFile: testImportFileId,
-            dataset: testDatasetId,
-            stage: "await-approval",
-            sheetIndex: 0,
-          },
+          data: { importFile: testImportFileId, dataset: testDatasetId, stage: "await-approval", sheetIndex: 0 },
         });
         imports.push(imp);
       }
@@ -594,13 +496,7 @@ describe.sequential("Schema Approval Workflow", () => {
           fieldMetadata: {},
           schemaSummary: {
             totalFields: 3,
-            typeChanges: [
-              {
-                path: "id",
-                oldType: "string",
-                newType: "number",
-              },
-            ],
+            typeChanges: [{ path: "id", oldType: "string", newType: "number" }],
             removedFields: [
               {
                 path: "required_field", // Was required, now missing
@@ -612,21 +508,14 @@ describe.sequential("Schema Approval Workflow", () => {
             {
               type: "type_change",
               path: "id",
-              details: {
-                oldType: "string",
-                newType: "number",
-                impact: "All existing IDs will fail validation",
-              },
+              details: { oldType: "string", newType: "number", impact: "All existing IDs will fail validation" },
               severity: "error",
               autoApprovable: false,
             },
             {
               type: "removed_field",
               path: "required_field",
-              details: {
-                wasRequired: true,
-                impact: "Events missing this field will be invalid",
-              },
+              details: { wasRequired: true, impact: "Events missing this field will be invalid" },
               severity: "error",
               autoApprovable: false,
             },
@@ -646,20 +535,12 @@ describe.sequential("Schema Approval Workflow", () => {
       // Create another catalog without our editor
       const otherCatalog = await payload.create({
         collection: "catalogs",
-        data: {
-          name: "Other Catalog",
-          slug: `other-catalog-${Date.now()}`,
-        },
+        data: { name: "Other Catalog", slug: `other-catalog-${Date.now()}` },
       });
 
       await payload.create({
         collection: "datasets",
-        data: {
-          name: "Other Dataset",
-          slug: `other-dataset-${Date.now()}`,
-          catalog: otherCatalog.id,
-          language: "eng",
-        },
+        data: { name: "Other Dataset", slug: `other-dataset-${Date.now()}`, catalog: otherCatalog.id, language: "eng" },
       });
 
       // Create schema for other dataset

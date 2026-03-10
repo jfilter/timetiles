@@ -27,18 +27,9 @@ export interface ChartEmptyStateProps {
 }
 
 const chartMessages: Record<ChartEmptyStateProps["variant"], { title: string; subtitle: string }> = {
-  "no-data": {
-    title: "No data yet",
-    subtitle: "Import events to see visualizations",
-  },
-  "no-match": {
-    title: "No matching events",
-    subtitle: "Try adjusting your filters",
-  },
-  error: {
-    title: "Unable to load chart",
-    subtitle: "Something went wrong",
-  },
+  "no-data": { title: "No data yet", subtitle: "Import events to see visualizations" },
+  "no-match": { title: "No matching events", subtitle: "Try adjusting your filters" },
+  error: { title: "Unable to load chart", subtitle: "Something went wrong" },
 };
 
 /**

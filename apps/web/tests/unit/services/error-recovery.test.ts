@@ -13,20 +13,11 @@ import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import type { ImportJob } from "@/payload-types";
 
 // Mock payload
-const mockPayload = {
-  findByID: vi.fn(),
-  update: vi.fn(),
-  find: vi.fn(),
-  jobs: {
-    queue: vi.fn(),
-  },
-} as any;
+const mockPayload = { findByID: vi.fn(), update: vi.fn(), find: vi.fn(), jobs: { queue: vi.fn() } } as any;
 
 // Mock quota service
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: () => ({
-    checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 5 }),
-  }),
+  getQuotaService: () => ({ checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 5 }) }),
 }));
 
 describe.sequential("ErrorRecoveryService", () => {
@@ -39,9 +30,7 @@ describe.sequential("ErrorRecoveryService", () => {
       const job = {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
-        errorLog: {
-          lastError: "ENOENT: file not found",
-        },
+        errorLog: { lastError: "ENOENT: file not found" },
       } as unknown as ImportJob;
 
       const classification = (ErrorRecoveryService as any).classifyError(job);
@@ -55,9 +44,7 @@ describe.sequential("ErrorRecoveryService", () => {
       const job = {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
-        errorLog: {
-          lastError: "Connection timeout",
-        },
+        errorLog: { lastError: "Connection timeout" },
       } as unknown as ImportJob;
 
       const classification = (ErrorRecoveryService as any).classifyError(job);
@@ -71,9 +58,7 @@ describe.sequential("ErrorRecoveryService", () => {
       const job = {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
-        errorLog: {
-          lastError: "Quota limit exceeded",
-        },
+        errorLog: { lastError: "Quota limit exceeded" },
       } as unknown as ImportJob;
 
       const classification = (ErrorRecoveryService as any).classifyError(job);
@@ -87,9 +72,7 @@ describe.sequential("ErrorRecoveryService", () => {
       const job = {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
-        errorLog: {
-          lastError: "Too many requests - 429 rate limit",
-        },
+        errorLog: { lastError: "Too many requests - 429 rate limit" },
       } as unknown as ImportJob;
 
       const classification = (ErrorRecoveryService as any).classifyError(job);
@@ -103,9 +86,7 @@ describe.sequential("ErrorRecoveryService", () => {
       const job = {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
-        errorLog: {
-          lastError: "Out of memory",
-        },
+        errorLog: { lastError: "Out of memory" },
       } as unknown as ImportJob;
 
       const classification = (ErrorRecoveryService as any).classifyError(job);
@@ -118,9 +99,7 @@ describe.sequential("ErrorRecoveryService", () => {
       const job = {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
-        errorLog: {
-          lastError: "Permission denied",
-        },
+        errorLog: { lastError: "Permission denied" },
       } as unknown as ImportJob;
 
       const classification = (ErrorRecoveryService as any).classifyError(job);
@@ -133,9 +112,7 @@ describe.sequential("ErrorRecoveryService", () => {
       const job = {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
-        errorLog: {
-          lastError: "Schema validation failed",
-        },
+        errorLog: { lastError: "Schema validation failed" },
       } as unknown as ImportJob;
 
       const classification = (ErrorRecoveryService as any).classifyError(job);
@@ -149,9 +126,7 @@ describe.sequential("ErrorRecoveryService", () => {
       const job = {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
-        errorLog: {
-          lastError: "Some unknown error occurred",
-        },
+        errorLog: { lastError: "Some unknown error occurred" },
       } as unknown as ImportJob;
 
       const classification = (ErrorRecoveryService as any).classifyError(job);
@@ -182,22 +157,14 @@ describe.sequential("ErrorRecoveryService", () => {
         lastSuccessfulStage: PROCESSING_STAGE.GEOCODE_BATCH,
       } as unknown as ImportJob;
 
-      const classification = {
-        type: "user-action-required",
-        retryable: true,
-        reason: "schema validation error",
-      };
+      const classification = { type: "user-action-required", retryable: true, reason: "schema validation error" };
       const recoveryStage = (ErrorRecoveryService as any).determineRecoveryStage(job, classification);
 
       expect(recoveryStage).toBe(PROCESSING_STAGE.VALIDATE_SCHEMA);
     });
 
     it("should default to ANALYZE_DUPLICATES if no last successful stage", () => {
-      const job = {
-        id: 1,
-        stage: PROCESSING_STAGE.FAILED,
-        lastSuccessfulStage: null,
-      } as unknown as ImportJob;
+      const job = { id: 1, stage: PROCESSING_STAGE.FAILED, lastSuccessfulStage: null } as unknown as ImportJob;
 
       const classification = { type: "recoverable", retryable: true, reason: "test" };
       const recoveryStage = (ErrorRecoveryService as any).determineRecoveryStage(job, classification);
@@ -210,11 +177,7 @@ describe.sequential("ErrorRecoveryService", () => {
     it("rejects partially numeric job ids before loading the job", async () => {
       const result = await ErrorRecoveryService.recoverFailedJob(mockPayload, "123abc");
 
-      expect(result).toMatchObject({
-        success: false,
-        action: "recovery_failed",
-        error: "Invalid import job ID",
-      });
+      expect(result).toMatchObject({ success: false, action: "recovery_failed", error: "Invalid import job ID" });
       expect(mockPayload.findByID).not.toHaveBeenCalled();
     });
 
@@ -228,10 +191,7 @@ describe.sequential("ErrorRecoveryService", () => {
     });
 
     it("should reject retry if job not in failed state", async () => {
-      mockPayload.findByID.mockResolvedValue({
-        id: 1,
-        stage: PROCESSING_STAGE.COMPLETED,
-      });
+      mockPayload.findByID.mockResolvedValue({ id: 1, stage: PROCESSING_STAGE.COMPLETED });
 
       const result = await ErrorRecoveryService.recoverFailedJob(mockPayload, 1);
 
@@ -244,24 +204,17 @@ describe.sequential("ErrorRecoveryService", () => {
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
         importFile: { id: "file1" },
-        errorLog: {
-          lastError: "Permission denied",
-        },
+        errorLog: { lastError: "Permission denied" },
       });
 
       mockPayload.findByID.mockResolvedValueOnce({
         id: 1,
         stage: PROCESSING_STAGE.FAILED,
         importFile: "file1",
-        errorLog: {
-          lastError: "Permission denied",
-        },
+        errorLog: { lastError: "Permission denied" },
       });
 
-      mockPayload.findByID.mockResolvedValueOnce({
-        id: "file1",
-        user: null,
-      });
+      mockPayload.findByID.mockResolvedValueOnce({ id: "file1", user: null });
 
       const result = await ErrorRecoveryService.recoverFailedJob(mockPayload, 1);
 
@@ -282,9 +235,7 @@ describe.sequential("ErrorRecoveryService", () => {
             stage: PROCESSING_STAGE.FAILED,
             importFile: "file1",
             retryAttempts: 3, // Max retries
-            errorLog: {
-              lastError: "Connection timeout",
-            },
+            errorLog: { lastError: "Connection timeout" },
           };
         } else if (callCount === 2) {
           return {
@@ -319,9 +270,7 @@ describe.sequential("ErrorRecoveryService", () => {
             stage: PROCESSING_STAGE.FAILED,
             importFile: "file1",
             retryAttempts: 2, // Third attempt
-            errorLog: {
-              lastError: "Connection timeout",
-            },
+            errorLog: { lastError: "Connection timeout" },
           };
         } else if (callCount === 2) {
           // Second call: get import file
@@ -364,9 +313,7 @@ describe.sequential("ErrorRecoveryService", () => {
             stage: PROCESSING_STAGE.FAILED,
             importFile: "file1",
             retryAttempts: 10, // Would exceed max delay without cap
-            errorLog: {
-              lastError: "Connection timeout",
-            },
+            errorLog: { lastError: "Connection timeout" },
           };
         } else if (callCount === 2) {
           // Second call: get import file
@@ -400,19 +347,12 @@ describe.sequential("ErrorRecoveryService", () => {
         true
       );
 
-      expect(result).toMatchObject({
-        success: false,
-        action: "reset_failed",
-        error: "Invalid import job ID",
-      });
+      expect(result).toMatchObject({ success: false, action: "reset_failed", error: "Invalid import job ID" });
       expect(mockPayload.findByID).not.toHaveBeenCalled();
     });
 
     it("should allow resetting to any valid stage", async () => {
-      mockPayload.findByID.mockResolvedValue({
-        id: 1,
-        stage: PROCESSING_STAGE.FAILED,
-      });
+      mockPayload.findByID.mockResolvedValue({ id: 1, stage: PROCESSING_STAGE.FAILED });
 
       mockPayload.update.mockResolvedValue({});
 
@@ -424,31 +364,20 @@ describe.sequential("ErrorRecoveryService", () => {
         expect.objectContaining({
           collection: "import-jobs",
           id: 1,
-          data: expect.objectContaining({
-            stage: PROCESSING_STAGE.GEOCODE_BATCH,
-            retryAttempts: 0,
-          }),
+          data: expect.objectContaining({ stage: PROCESSING_STAGE.GEOCODE_BATCH, retryAttempts: 0 }),
         })
       );
     });
 
     it("should preserve retry count if clearRetries is false", async () => {
-      mockPayload.findByID.mockResolvedValue({
-        id: 1,
-        stage: PROCESSING_STAGE.FAILED,
-        retryAttempts: 2,
-      });
+      mockPayload.findByID.mockResolvedValue({ id: 1, stage: PROCESSING_STAGE.FAILED, retryAttempts: 2 });
 
       mockPayload.update.mockResolvedValue({});
 
       await ErrorRecoveryService.resetJobToStage(mockPayload, 1, PROCESSING_STAGE.ANALYZE_DUPLICATES, false);
 
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.not.objectContaining({
-            retryAttempts: expect.anything(),
-          }),
-        })
+        expect.objectContaining({ data: expect.not.objectContaining({ retryAttempts: expect.anything() }) })
       );
     });
   });
@@ -457,24 +386,9 @@ describe.sequential("ErrorRecoveryService", () => {
     it("should provide recommendations for all failed jobs", async () => {
       mockPayload.find.mockResolvedValue({
         docs: [
-          {
-            id: 1,
-            stage: PROCESSING_STAGE.FAILED,
-            retryAttempts: 0,
-            errorLog: { lastError: "Connection timeout" },
-          },
-          {
-            id: 2,
-            stage: PROCESSING_STAGE.FAILED,
-            retryAttempts: 3,
-            errorLog: { lastError: "Connection timeout" },
-          },
-          {
-            id: 3,
-            stage: PROCESSING_STAGE.FAILED,
-            retryAttempts: 1,
-            errorLog: { lastError: "Permission denied" },
-          },
+          { id: 1, stage: PROCESSING_STAGE.FAILED, retryAttempts: 0, errorLog: { lastError: "Connection timeout" } },
+          { id: 2, stage: PROCESSING_STAGE.FAILED, retryAttempts: 3, errorLog: { lastError: "Connection timeout" } },
+          { id: 3, stage: PROCESSING_STAGE.FAILED, retryAttempts: 1, errorLog: { lastError: "Permission denied" } },
         ],
       });
 

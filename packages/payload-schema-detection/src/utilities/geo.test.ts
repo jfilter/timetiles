@@ -28,11 +28,7 @@ const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatis
 describe("detectIdFields", () => {
   it("detects field named 'id'", () => {
     const fieldStats: Record<string, FieldStatistics> = {
-      id: createFieldStats({
-        typeDistribution: { number: 100 },
-        uniqueValues: 100,
-        occurrences: 100,
-      }),
+      id: createFieldStats({ typeDistribution: { number: 100 }, uniqueValues: 100, occurrences: 100 }),
     };
 
     const result = detectIdFields(fieldStats);
@@ -42,16 +38,8 @@ describe("detectIdFields", () => {
 
   it("detects fields with _id suffix", () => {
     const fieldStats: Record<string, FieldStatistics> = {
-      user_id: createFieldStats({
-        typeDistribution: { string: 100 },
-        uniqueValues: 100,
-        occurrences: 100,
-      }),
-      event_id: createFieldStats({
-        typeDistribution: { string: 100 },
-        uniqueValues: 100,
-        occurrences: 100,
-      }),
+      user_id: createFieldStats({ typeDistribution: { string: 100 }, uniqueValues: 100, occurrences: 100 }),
+      event_id: createFieldStats({ typeDistribution: { string: 100 }, uniqueValues: 100, occurrences: 100 }),
     };
 
     const result = detectIdFields(fieldStats);
@@ -62,16 +50,8 @@ describe("detectIdFields", () => {
 
   it("detects uuid/guid fields", () => {
     const fieldStats: Record<string, FieldStatistics> = {
-      uuid: createFieldStats({
-        typeDistribution: { string: 100 },
-        uniqueValues: 100,
-        occurrences: 100,
-      }),
-      guid: createFieldStats({
-        typeDistribution: { string: 100 },
-        uniqueValues: 100,
-        occurrences: 100,
-      }),
+      uuid: createFieldStats({ typeDistribution: { string: 100 }, uniqueValues: 100, occurrences: 100 }),
+      guid: createFieldStats({ typeDistribution: { string: 100 }, uniqueValues: 100, occurrences: 100 }),
     };
 
     const result = detectIdFields(fieldStats);
@@ -82,11 +62,7 @@ describe("detectIdFields", () => {
 
   it("detects fields with unique values as potential IDs", () => {
     const fieldStats: Record<string, FieldStatistics> = {
-      record_number: createFieldStats({
-        typeDistribution: { number: 100 },
-        uniqueValues: 100,
-        occurrences: 100,
-      }),
+      record_number: createFieldStats({ typeDistribution: { number: 100 }, uniqueValues: 100, occurrences: 100 }),
     };
 
     const result = detectIdFields(fieldStats);
@@ -96,11 +72,7 @@ describe("detectIdFields", () => {
 
   it("does not detect fields with non-unique values", () => {
     const fieldStats: Record<string, FieldStatistics> = {
-      category: createFieldStats({
-        typeDistribution: { string: 100 },
-        uniqueValues: 5,
-        occurrences: 100,
-      }),
+      category: createFieldStats({ typeDistribution: { string: 100 }, uniqueValues: 5, occurrences: 100 }),
     };
 
     const result = detectIdFields(fieldStats);
@@ -191,11 +163,7 @@ describe("detectEnumFields", () => {
 describe("detectPatterns", () => {
   it("returns both id and enum fields", () => {
     const fieldStats: Record<string, FieldStatistics> = {
-      id: createFieldStats({
-        typeDistribution: { number: 100 },
-        uniqueValues: 100,
-        occurrences: 100,
-      }),
+      id: createFieldStats({ typeDistribution: { number: 100 }, uniqueValues: 100, occurrences: 100 }),
       status: createFieldStats({
         typeDistribution: { string: 100 },
         uniqueValues: 3,

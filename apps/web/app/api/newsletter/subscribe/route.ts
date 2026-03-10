@@ -23,10 +23,7 @@ interface SubscribeRequest {
 }
 
 interface Settings {
-  newsletter?: {
-    serviceUrl?: string;
-    authHeader?: string;
-  };
+  newsletter?: { serviceUrl?: string; authHeader?: string };
 }
 
 export const POST = withRateLimit(
@@ -48,9 +45,7 @@ export const POST = withRateLimit(
 
       // Get newsletter service configuration from Payload settings
       const payload = await getPayload({ config });
-      const settings = (await payload.findGlobal({
-        slug: "settings",
-      })) as Settings;
+      const settings = (await payload.findGlobal({ slug: "settings" })) as Settings;
 
       const serviceUrl = settings.newsletter?.serviceUrl;
 

@@ -62,10 +62,7 @@ export const findViewByDomain = async (payload: Payload, domain: string): Promis
   try {
     const result = await payload.find({
       collection: "views",
-      where: {
-        "branding.domain": { equals: domain },
-        _status: { equals: "published" },
-      },
+      where: { "branding.domain": { equals: domain }, _status: { equals: "published" } },
       limit: 1,
       sort: "createdAt",
       depth: 1, // Include logo/favicon media
@@ -98,10 +95,7 @@ export const findViewBySlug = async (payload: Payload, slug: string): Promise<Vi
   try {
     const result = await payload.find({
       collection: "views",
-      where: {
-        slug: { equals: slug },
-        _status: { equals: "published" },
-      },
+      where: { slug: { equals: slug }, _status: { equals: "published" } },
       limit: 1,
       depth: 1,
     });
@@ -132,10 +126,7 @@ export const findDefaultView = async (payload: Payload): Promise<View | null> =>
   try {
     const result = await payload.find({
       collection: "views",
-      where: {
-        isDefault: { equals: true },
-        _status: { equals: "published" },
-      },
+      where: { isDefault: { equals: true }, _status: { equals: "published" } },
       limit: 1,
       depth: 1,
     });
@@ -176,10 +167,7 @@ export const extractViewSlugFromPath = (pathname: string): string | null => {
  */
 export const resolveView = async (
   payload: Payload,
-  options: {
-    host?: string | null;
-    pathname?: string | null;
-  }
+  options: { host?: string | null; pathname?: string | null }
 ): Promise<View | null> => {
   const { host, pathname } = options;
 
@@ -231,12 +219,7 @@ export const clearViewCache = (): void => {
  * @param view - The view configuration
  * @returns Filter constraints for data queries
  */
-export const getViewDataScopeFilter = (
-  view: View | null
-): {
-  catalogIds?: number[];
-  datasetIds?: number[];
-} => {
+export const getViewDataScopeFilter = (view: View | null): { catalogIds?: number[]; datasetIds?: number[] } => {
   if (!view?.dataScope) {
     return {};
   }

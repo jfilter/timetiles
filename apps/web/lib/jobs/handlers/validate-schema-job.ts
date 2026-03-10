@@ -33,10 +33,7 @@ import type { JobHandlerContext } from "../utils/job-context";
 
 // Helper function to load required resources
 const loadResources = async (payload: Payload, importJobId: number) => {
-  const job = await payload.findByID({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
-  });
+  const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
   if (!job) {
     throw new Error(`Import job not found: ${importJobId}`);
@@ -90,9 +87,7 @@ const getSchemaFromCache = async (job: {
 const getCurrentSchema = async (payload: Payload, datasetId: number | string): Promise<Record<string, unknown>> => {
   const currentSchemaDoc = await payload.find({
     collection: COLLECTION_NAMES.DATASET_SCHEMAS,
-    where: {
-      dataset: { equals: datasetId },
-    },
+    where: { dataset: { equals: datasetId } },
     sort: "-versionNumber",
     limit: 1,
   });
@@ -172,11 +167,7 @@ const evaluateSchemaMode = (
     case "flexible":
       // Breaking changes still fail, but all non-breaking changes auto-approve
       if (comparison.isBreaking) {
-        return {
-          shouldFail: true,
-          requiresApproval: false,
-          failureReason: "Breaking schema changes detected",
-        };
+        return { shouldFail: true, requiresApproval: false, failureReason: "Breaking schema changes detected" };
       }
       // All non-breaking changes auto-approve (including transforms)
       return { shouldFail: false, requiresApproval: false };
@@ -246,10 +237,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
       id: jobIdTyped,
-      data: {
-        stage: PROCESSING_STAGE.FAILED,
-        errors: [{ row: 0, error: errorMessage }],
-      },
+      data: { stage: PROCESSING_STAGE.FAILED, errors: [{ row: 0, error: errorMessage }] },
     });
 
     throw new Error(errorMessage);
@@ -264,10 +252,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
       id: jobIdTyped,
-      data: {
-        stage: PROCESSING_STAGE.FAILED,
-        errors: [{ row: 0, error: errorMessage }],
-      },
+      data: { stage: PROCESSING_STAGE.FAILED, errors: [{ row: 0, error: errorMessage }] },
     });
 
     throw new Error(errorMessage);

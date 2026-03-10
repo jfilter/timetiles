@@ -23,18 +23,11 @@ export default defineConfig({
     execArgv: ["--no-warnings"], // Suppress Node.js warnings
     maxWorkers: 4,
     fileParallelism: true,
-    sequence: {
-      concurrent: true,
-    },
+    sequence: { concurrent: true },
     coverage: {
       provider: "v8",
       reportOnFailure: true, // Generate coverage even when tests fail
-      thresholds: {
-        lines: 48,
-        functions: 46,
-        branches: 42,
-        statements: 47,
-      },
+      thresholds: { lines: 48, functions: 46, branches: 42, statements: 47 },
       include: [
         "lib/**/*.ts",
         "lib/**/*.tsx",
@@ -114,34 +107,15 @@ export default defineConfig({
           // Integration test hooks need time for database setup
           hookTimeout: 45000,
           // Server-side dependency optimization for better caching
-          server: {
-            deps: {
-              inline: [/tests\/utils/, /tests\/helpers/, /@payload-config/],
-              fallbackCJS: true,
-            },
-          },
-          deps: {
-            optimizer: {
-              web: {
-                enabled: true,
-                include: ["@tanstack/react-query", "papaparse"],
-              },
-            },
-          },
+          server: { deps: { inline: [/tests\/utils/, /tests\/helpers/, /@payload-config/], fallbackCJS: true } },
+          deps: { optimizer: { web: { enabled: true, include: ["@tanstack/react-query", "papaparse"] } } },
         },
-        resolve: {
-          alias: {
-            "@payload-config": path.resolve(__dirname, "payload.config.ts"),
-          },
-        },
+        resolve: { alias: { "@payload-config": path.resolve(__dirname, "payload.config.ts") } },
       },
     ],
   },
   resolve: {
     ...baseConfig.resolve,
-    alias: {
-      ...baseConfig.resolve?.alias,
-      "@payload-config": path.resolve(__dirname, "payload.config.ts"),
-    },
+    alias: { ...baseConfig.resolve?.alias, "@payload-config": path.resolve(__dirname, "payload.config.ts") },
   },
 });

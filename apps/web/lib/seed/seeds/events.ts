@@ -38,156 +38,48 @@ const getBaseDatasetConfigs = () => [
     catalogType: "environmental",
     name: "Water Quality Assessments",
   },
-  {
-    slug: "environmental-data-climate-station-data",
-    catalogType: "environmental",
-    name: "Climate Station Data",
-  },
+  { slug: "environmental-data-climate-station-data", catalogType: "environmental", name: "Climate Station Data" },
   // Economic datasets
-  {
-    slug: "economic-indicators-gdp-growth-rates",
-    catalogType: "economic",
-    name: "GDP Growth Rates",
-  },
-  {
-    slug: "economic-indicators-employment-statistics",
-    catalogType: "economic",
-    name: "Employment Statistics",
-  },
-  {
-    slug: "economic-indicators-consumer-price-index",
-    catalogType: "economic",
-    name: "Consumer Price Index",
-  },
+  { slug: "economic-indicators-gdp-growth-rates", catalogType: "economic", name: "GDP Growth Rates" },
+  { slug: "economic-indicators-employment-statistics", catalogType: "economic", name: "Employment Statistics" },
+  { slug: "economic-indicators-consumer-price-index", catalogType: "economic", name: "Consumer Price Index" },
   // Academic datasets
-  {
-    slug: "academic-research-portal-research-study-results",
-    catalogType: "academic",
-    name: "Research Study Results",
-  },
-  {
-    slug: "academic-research-portal-survey-response-data",
-    catalogType: "academic",
-    name: "Survey Response Data",
-  },
+  { slug: "academic-research-portal-research-study-results", catalogType: "academic", name: "Research Study Results" },
+  { slug: "academic-research-portal-survey-response-data", catalogType: "academic", name: "Survey Response Data" },
 ];
 
 // Development-only dataset configurations
 const getDevelopmentDatasetConfigs = () => [
   // Cultural Events catalog
-  {
-    slug: "cultural-events-performance-schedule",
-    catalogType: "cultural",
-    name: "Performance Schedule",
-  },
-  {
-    slug: "cultural-events-exhibition-archive",
-    catalogType: "cultural",
-    name: "Exhibition Archive",
-  },
+  { slug: "cultural-events-performance-schedule", catalogType: "cultural", name: "Performance Schedule" },
+  { slug: "cultural-events-exhibition-archive", catalogType: "cultural", name: "Exhibition Archive" },
   // Community Events Portal catalog
-  {
-    slug: "community-events-portal-local-events-calendar",
-    catalogType: "community",
-    name: "Local Events Calendar",
-  },
+  { slug: "community-events-portal-local-events-calendar", catalogType: "community", name: "Local Events Calendar" },
   // Cultural Heritage Archives catalog
-  {
-    slug: "cultural-heritage-archives-performance-schedule",
-    catalogType: "cultural",
-    name: "Performance Schedule",
-  },
-  {
-    slug: "cultural-heritage-archives-exhibition-archive",
-    catalogType: "cultural",
-    name: "Exhibition Archive",
-  },
+  { slug: "cultural-heritage-archives-performance-schedule", catalogType: "cultural", name: "Performance Schedule" },
+  { slug: "cultural-heritage-archives-exhibition-archive", catalogType: "cultural", name: "Exhibition Archive" },
   // Government Data catalog
-  {
-    slug: "government-data-public-records-database",
-    catalogType: "government",
-    name: "Public Records Database",
-  },
-  {
-    slug: "government-data-federal-grant-programs",
-    catalogType: "government",
-    name: "Federal Grant Programs",
-  },
-  {
-    slug: "government-data-legislative-data",
-    catalogType: "government",
-    name: "Legislative Data",
-  },
+  { slug: "government-data-public-records-database", catalogType: "government", name: "Public Records Database" },
+  { slug: "government-data-federal-grant-programs", catalogType: "government", name: "Federal Grant Programs" },
+  { slug: "government-data-legislative-data", catalogType: "government", name: "Legislative Data" },
   // Historical Records catalog
-  {
-    slug: "historical-records-research-study-results",
-    catalogType: "academic",
-    name: "Research Study Results",
-  },
-  {
-    slug: "historical-records-survey-response-data",
-    catalogType: "academic",
-    name: "Survey Response Data",
-  },
+  { slug: "historical-records-research-study-results", catalogType: "academic", name: "Research Study Results" },
+  { slug: "historical-records-survey-response-data", catalogType: "academic", name: "Survey Response Data" },
   // Health & Medical Data catalog
-  {
-    slug: "health-medical-data-research-study-results",
-    catalogType: "academic",
-    name: "Research Study Results",
-  },
-  {
-    slug: "health-medical-data-survey-response-data",
-    catalogType: "academic",
-    name: "Survey Response Data",
-  },
+  { slug: "health-medical-data-research-study-results", catalogType: "academic", name: "Research Study Results" },
+  { slug: "health-medical-data-survey-response-data", catalogType: "academic", name: "Survey Response Data" },
   // Transportation Data catalog
-  {
-    slug: "transportation-data-public-records-database",
-    catalogType: "government",
-    name: "Public Records Database",
-  },
-  {
-    slug: "transportation-data-federal-grant-programs",
-    catalogType: "government",
-    name: "Federal Grant Programs",
-  },
-  {
-    slug: "transportation-data-legislative-data",
-    catalogType: "government",
-    name: "Legislative Data",
-  },
+  { slug: "transportation-data-public-records-database", catalogType: "government", name: "Public Records Database" },
+  { slug: "transportation-data-federal-grant-programs", catalogType: "government", name: "Federal Grant Programs" },
+  { slug: "transportation-data-legislative-data", catalogType: "government", name: "Legislative Data" },
   // Education Statistics catalog
-  {
-    slug: "education-statistics-public-records-database",
-    catalogType: "government",
-    name: "Public Records Database",
-  },
-  {
-    slug: "education-statistics-federal-grant-programs",
-    catalogType: "government",
-    name: "Federal Grant Programs",
-  },
-  {
-    slug: "education-statistics-legislative-data",
-    catalogType: "government",
-    name: "Legislative Data",
-  },
+  { slug: "education-statistics-public-records-database", catalogType: "government", name: "Public Records Database" },
+  { slug: "education-statistics-federal-grant-programs", catalogType: "government", name: "Federal Grant Programs" },
+  { slug: "education-statistics-legislative-data", catalogType: "government", name: "Legislative Data" },
   // Urban Planning catalog
-  {
-    slug: "urban-planning-public-records-database",
-    catalogType: "government",
-    name: "Public Records Database",
-  },
-  {
-    slug: "urban-planning-federal-grant-programs",
-    catalogType: "government",
-    name: "Federal Grant Programs",
-  },
-  {
-    slug: "urban-planning-legislative-data",
-    catalogType: "government",
-    name: "Legislative Data",
-  },
+  { slug: "urban-planning-public-records-database", catalogType: "government", name: "Public Records Database" },
+  { slug: "urban-planning-federal-grant-programs", catalogType: "government", name: "Federal Grant Programs" },
+  { slug: "urban-planning-legislative-data", catalogType: "government", name: "Legislative Data" },
 ];
 
 // Get dataset configurations for different environments
@@ -236,15 +128,10 @@ const generateEventsForDataset = (
       coordinateSource: needsLocation
         ? {
             type: "import" as const,
-            importColumns: {
-              latitudeColumn: "latitude",
-              longitudeColumn: "longitude",
-            },
+            importColumns: { latitudeColumn: "latitude", longitudeColumn: "longitude" },
             validationStatus: "valid" as const,
           }
-        : {
-            type: "none" as const,
-          },
+        : { type: "none" as const },
     });
   }
 

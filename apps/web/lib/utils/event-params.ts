@@ -317,12 +317,7 @@ export const buildEventParams = (
   if (bounds) {
     const boundsData =
       "getWest" in bounds
-        ? {
-            west: bounds.getWest(),
-            south: bounds.getSouth(),
-            east: bounds.getEast(),
-            north: bounds.getNorth(),
-          }
+        ? { west: bounds.getWest(), south: bounds.getSouth(), east: bounds.getEast(), north: bounds.getNorth() }
         : bounds;
 
     params.append("bounds", JSON.stringify(boundsData));

@@ -65,9 +65,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    const { users } = await withUsers(envWithServer, {
-      testUser: { role: "admin", email: TEST_EMAILS.performance },
-    });
+    const { users } = await withUsers(envWithServer, { testUser: { role: "admin", email: TEST_EMAILS.performance } });
     testUser = users.testUser;
 
     // Create test catalog
@@ -122,10 +120,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
       // Set up test server endpoint
       testServer.respond("/stream.csv", {
         body: csvBuffer,
-        headers: {
-          "Content-Type": "text/csv",
-          "Content-Length": String(csvBuffer.length),
-        },
+        headers: { "Content-Type": "text/csv", "Content-Length": String(csvBuffer.length) },
       });
 
       // Import the job handler
@@ -282,15 +277,9 @@ describe.sequential("Performance and Concurrency Tests", () => {
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
       // Run schedule manager twice quickly
-      const run1 = await scheduleManagerJob.handler({
-        job: { id: `test-schedule-manager-1` },
-        req: { payload },
-      });
+      const run1 = await scheduleManagerJob.handler({ job: { id: `test-schedule-manager-1` }, req: { payload } });
 
-      const run2 = await scheduleManagerJob.handler({
-        job: { id: `test-schedule-manager-2` },
-        req: { payload },
-      });
+      const run2 = await scheduleManagerJob.handler({ job: { id: `test-schedule-manager-2` }, req: { payload } });
 
       // At least one should have triggered
       const totalTriggered = (run1.output?.triggered ?? 0) + (run2.output?.triggered ?? 0);
@@ -405,13 +394,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
         testEnv,
         testCatalogId,
         `${testServerUrl}/rate-limited.csv`,
-        {
-          user: testUser,
-          name: "Rate Limited Import",
-          frequency: "hourly",
-          maxRetries: 3,
-          retryDelayMinutes: 1,
-        }
+        { user: testUser, name: "Rate Limited Import", frequency: "hourly", maxRetries: 3, retryDelayMinutes: 1 }
       );
 
       // Set up test server endpoint with rate limiting
@@ -430,10 +413,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
         } else {
           // Third attempt succeeds
           const csvContent = "test,data\n1,2";
-          res.writeHead(200, {
-            "Content-Type": "text/csv",
-            "Content-Length": String(Buffer.byteLength(csvContent)),
-          });
+          res.writeHead(200, { "Content-Type": "text/csv", "Content-Length": String(Buffer.byteLength(csvContent)) });
           res.end(csvContent);
         }
       });

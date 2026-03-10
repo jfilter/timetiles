@@ -30,9 +30,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     cleanup = env.cleanup;
 
     // Create test data
-    const { users } = await withUsers(env, {
-      testUser: { role: "admin" },
-    });
+    const { users } = await withUsers(env, { testUser: { role: "admin" } });
     testUser = users.testUser;
 
     const { catalog } = await withCatalog(env, {
@@ -127,14 +125,8 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
 
     // Run two schedule managers concurrently (TRUE parallel execution)
     const [run1, run2] = await Promise.all([
-      scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-1" },
-        req: { payload },
-      }),
-      scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-2" },
-        req: { payload },
-      }),
+      scheduleManagerJob.handler({ job: { id: "test-schedule-manager-1" }, req: { payload } }),
+      scheduleManagerJob.handler({ job: { id: "test-schedule-manager-2" }, req: { payload } }),
     ]);
 
     // Both should complete successfully
@@ -163,10 +155,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     }
 
     // Verify the scheduled import was updated
-    const updatedImport = await payload.findByID({
-      collection: "scheduled-imports",
-      id: scheduledImport.id,
-    });
+    const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
     // lastStatus should be "running" (set by one or both managers)
     expect(updatedImport.lastStatus).toBe("running");

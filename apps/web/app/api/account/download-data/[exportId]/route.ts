@@ -135,20 +135,14 @@ export const GET = async (
     // Check status
     if (exportRecord.status === "pending" || exportRecord.status === "processing") {
       return NextResponse.json(
-        {
-          status: exportRecord.status,
-          message: "Export is still processing. Please wait.",
-        },
+        { status: exportRecord.status, message: "Export is still processing. Please wait." },
         { status: 202 }
       );
     }
 
     if (exportRecord.status === "failed") {
       return NextResponse.json(
-        {
-          error: "Export failed",
-          reason: exportRecord.errorLog ?? "Unknown error",
-        },
+        { error: "Export failed", reason: exportRecord.errorLog ?? "Unknown error" },
         { status: 500 }
       );
     }

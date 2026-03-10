@@ -19,27 +19,11 @@ export interface FieldStatistics {
   uniqueValues: number;
   uniqueSamples: Array<string | number | boolean | null | Record<string, unknown>>;
   typeDistribution: Record<string, number>;
-  formats: {
-    email?: number;
-    url?: number;
-    dateTime?: number;
-    date?: number;
-    numeric?: number;
-  };
-  numericStats?: {
-    min: number;
-    max: number;
-    avg: number;
-    isInteger: boolean;
-  };
+  formats: { email?: number; url?: number; dateTime?: number; date?: number; numeric?: number };
+  numericStats?: { min: number; max: number; avg: number; isInteger: boolean };
   isEnumCandidate: boolean;
   enumValues?: Array<{ value: unknown; count: number; percent: number }>;
-  geoHints?: {
-    isLatitude: boolean;
-    isLongitude: boolean;
-    fieldNamePattern: string;
-    valueRange: boolean;
-  };
+  geoHints?: { isLatitude: boolean; isLongitude: boolean; fieldNamePattern: string; valueRange: boolean };
   firstSeen: Date;
   lastSeen: Date;
   depth: number;
@@ -135,10 +119,7 @@ export interface GeoFieldMapping {
   /** For separate lat/lng columns */
   longitude?: FieldMapping;
   /** For combined coordinate field (e.g., "lat,lng" or GeoJSON) */
-  combined?: {
-    path: string;
-    format: "lat,lng" | "lng,lat" | "geojson" | "wkt" | (string & {});
-  };
+  combined?: { path: string; format: string };
   /** Address/location field for geocoding (when coordinates not available) */
   locationField?: FieldMapping;
 }

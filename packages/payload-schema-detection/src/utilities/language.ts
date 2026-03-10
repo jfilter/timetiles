@@ -116,22 +116,14 @@ export const extractTextForLanguageDetection = (sampleData: Record<string, unkno
  * @returns Language detection result
  */
 export const detectLanguageFromText = (text: string): LanguageResult => {
-  const defaultResult: LanguageResult = {
-    code: "eng",
-    name: "English",
-    confidence: 0,
-    isReliable: false,
-  };
+  const defaultResult: LanguageResult = { code: "eng", name: "English", confidence: 0, isReliable: false };
 
   if (text.length < MIN_TEXT_LENGTH) {
     return defaultResult;
   }
 
   try {
-    const results = francAll(text, {
-      only: [...SUPPORTED_LANGUAGES],
-      minLength: MIN_TEXT_LENGTH,
-    });
+    const results = francAll(text, { only: [...SUPPORTED_LANGUAGES], minLength: MIN_TEXT_LENGTH });
 
     const topResult = results[0];
     if (results.length === 0 || !topResult || topResult[0] === "und") {
@@ -152,12 +144,7 @@ export const detectLanguageFromText = (text: string): LanguageResult => {
       }
     }
 
-    return {
-      code,
-      name: LANGUAGE_NAMES[code] ?? code,
-      confidence,
-      isReliable: confidence >= RELIABILITY_THRESHOLD,
-    };
+    return { code, name: LANGUAGE_NAMES[code] ?? code, confidence, isReliable: confidence >= RELIABILITY_THRESHOLD };
   } catch {
     return defaultResult;
   }

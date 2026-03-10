@@ -45,9 +45,7 @@ export const Providers = ({ children }: Readonly<{ children: ReactNode }>) => {
               return failureCount < 3;
             },
           },
-          mutations: {
-            retry: false,
-          },
+          mutations: { retry: false },
         },
       })
   );

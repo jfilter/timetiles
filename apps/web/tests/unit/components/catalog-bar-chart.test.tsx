@@ -6,40 +6,23 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 
 // Mock next-themes
-vi.mock("next-themes", () => ({
-  useTheme: () => ({ theme: "light" }),
-}));
+vi.mock("next-themes", () => ({ useTheme: () => ({ theme: "light" }) }));
 
 // Mock nuqs
 vi.mock("nuqs", () => ({
-  parseAsString: {
-    withDefault: () => {},
-  },
-  parseAsArrayOf: () => ({
-    withDefault: () => ({}),
-  }),
+  parseAsString: { withDefault: () => {} },
+  parseAsArrayOf: () => ({ withDefault: () => ({}) }),
   useQueryState: () => [null, vi.fn()],
 }));
 
 // Mock filters hook
 vi.mock("../../../lib/filters", () => ({
-  useFilters: () => ({
-    filters: {
-      catalog: null,
-      datasets: [],
-      startDate: null,
-      endDate: null,
-    },
-  }),
+  useFilters: () => ({ filters: { catalog: null, datasets: [], startDate: null, endDate: null } }),
 }));
 
 // Mock chart hooks
 vi.mock("../../../lib/hooks/use-chart-query", () => ({
-  useChartQuery: (query: any) => ({
-    ...query,
-    isInitialLoad: false,
-    isUpdating: false,
-  }),
+  useChartQuery: (query: any) => ({ ...query, isInitialLoad: false, isUpdating: false }),
 }));
 
 vi.mock("@timetiles/ui/charts", () => ({
@@ -65,23 +48,13 @@ vi.mock("../../../lib/hooks/use-events-queries", () => {
   const mockEventsAggregationQuery = vi.fn((_filters, _bounds, groupBy) => ({
     data:
       groupBy === "catalog"
-        ? {
-            items: [{ id: 1, name: "Catalog 1", count: 3 }],
-            total: 3,
-            groupedBy: "catalog",
-          }
-        : {
-            items: [],
-            total: 0,
-            groupedBy: "dataset",
-          },
+        ? { items: [{ id: 1, name: "Catalog 1", count: 3 }], total: 3, groupedBy: "catalog" }
+        : { items: [], total: 0, groupedBy: "dataset" },
     isLoading: false,
     error: null,
   }));
 
-  return {
-    useEventsAggregationQuery: mockEventsAggregationQuery,
-  };
+  return { useEventsAggregationQuery: mockEventsAggregationQuery };
 });
 
 // Mock ECharts component

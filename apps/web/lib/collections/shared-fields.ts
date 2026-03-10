@@ -56,17 +56,8 @@ export const setCreatedByHook: CollectionBeforeChangeHook = ({ data, req, operat
 
 // Basic metadata fields common to many entities
 export const basicMetadataFields: Field[] = [
-  {
-    name: "name",
-    type: "text",
-    required: true,
-    maxLength: 255,
-  },
-  {
-    name: "description",
-    type: "richText",
-    editor: lexicalEditor({}),
-  },
+  { name: "name", type: "text", required: true, maxLength: 255 },
+  { name: "description", type: "richText", editor: lexicalEditor({}) },
 ];
 
 // Slug field with customizable source
@@ -75,13 +66,8 @@ export const createSlugField = <T extends keyof Config["collections"]>(collectio
   type: "text",
   maxLength: 255,
   unique: true,
-  admin: {
-    position: "sidebar",
-    description: "URL-friendly identifier (auto-generated from name if not provided)",
-  },
-  hooks: {
-    beforeValidate: [createSlugHook(collection, { sourceField })],
-  },
+  admin: { position: "sidebar", description: "URL-friendly identifier (auto-generated from name if not provided)" },
+  hooks: { beforeValidate: [createSlugHook(collection, { sourceField })] },
 });
 
 // Field factories for common field definitions
@@ -92,11 +78,7 @@ export const createCreatedByField = (description: string, options?: { required?:
   type: "relationship",
   relationTo: "users",
   ...(options?.required && { required: true }),
-  admin: {
-    position: "sidebar",
-    readOnly: true,
-    description,
-  },
+  admin: { position: "sidebar", readOnly: true, description },
 });
 
 /** Create an isPublic checkbox field with optional private visibility notice. */
@@ -112,9 +94,7 @@ export const createIsPublicField = (options?: {
     position: "sidebar",
     ...(options?.description && { description: options.description }),
     ...((options?.showPrivateNotice ?? false) && {
-      components: {
-        afterInput: ["/components/admin/private-visibility-notice"],
-      },
+      components: { afterInput: ["/components/admin/private-visibility-notice"] },
     }),
   },
 });
@@ -127,9 +107,7 @@ export const editorOrAdminCondition = ({ req }: { req?: { user?: { role?: string
 export const metadataField: Field = {
   name: "metadata",
   type: "json",
-  admin: {
-    description: "Additional metadata for the entity",
-  },
+  admin: { description: "Additional metadata for the entity" },
 };
 
 // Collection configuration helpers
@@ -147,30 +125,15 @@ export const createCommonConfig = (options: CommonCollectionOptions = {}) => {
   const config: {
     timestamps: boolean;
     trash: boolean;
-    versions?: {
-      maxPerDoc: number;
-      drafts?: {
-        autosave: boolean;
-      };
-    };
-  } = {
-    timestamps,
-    trash,
-  };
+    versions?: { maxPerDoc: number; drafts?: { autosave: boolean } };
+  } = { timestamps, trash };
 
   if (versions && drafts) {
-    config.versions = {
-      maxPerDoc,
-      drafts: {
-        autosave: true,
-      },
-    };
+    config.versions = { maxPerDoc, drafts: { autosave: true } };
   }
 
   if (versions && !drafts) {
-    config.versions = {
-      maxPerDoc,
-    };
+    config.versions = { maxPerDoc };
   }
 
   return config;

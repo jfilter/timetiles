@@ -22,9 +22,7 @@ export const POST = async (request: Request): Promise<Response> => {
     const payload = await getPayload({ config });
 
     // Authenticate user from session
-    const { user } = await payload.auth({
-      headers: request.headers,
-    });
+    const { user } = await payload.auth({ headers: request.headers });
 
     if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -39,11 +37,7 @@ export const POST = async (request: Request): Promise<Response> => {
     const deletionService = getAccountDeletionService(payload);
     await deletionService.cancelDeletion(user.id);
 
-    await auditLog(payload, {
-      action: AUDIT_ACTIONS.DELETION_CANCELLED,
-      userId: user.id,
-      userEmail: user.email,
-    });
+    await auditLog(payload, { action: AUDIT_ACTIONS.DELETION_CANCELLED, userId: user.id, userEmail: user.email });
 
     logger.info({ userId: user.id }, "Account deletion cancelled");
 

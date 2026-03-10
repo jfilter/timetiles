@@ -31,11 +31,7 @@ hooks: {
   afterChange: [
     async ({ doc, req }) => {
       // This starts a NEW transaction, causing deadlock
-      await req.payload.update({
-        collection: "users",
-        id: doc.userId,
-        data: { lastUpdated: new Date() },
-      });
+      await req.payload.update({ collection: "users", id: doc.userId, data: { lastUpdated: new Date() } });
     },
   ];
 }

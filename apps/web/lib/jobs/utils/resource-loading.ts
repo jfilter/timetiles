@@ -20,10 +20,7 @@ import { getImportFilePath } from "./upload-path";
  * Load import job by ID
  */
 export const loadImportJob = async (payload: Payload, importJobId: number | string): Promise<ImportJob> => {
-  const job = await payload.findByID({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
-  });
+  const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
   if (!job) {
     throw new Error(`Import job not found: ${importJobId}`);

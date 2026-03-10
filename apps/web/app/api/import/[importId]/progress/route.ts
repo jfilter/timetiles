@@ -34,19 +34,9 @@ interface FormattedStage {
   weight: number;
   startedAt: string | null;
   completedAt: string | null;
-  batches: {
-    current: number;
-    total: number;
-  };
-  currentBatch: {
-    rowsProcessed: number;
-    rowsTotal: number;
-    percentage: number;
-  };
-  performance: {
-    rowsPerSecond: number | null;
-    estimatedSecondsRemaining: number | null;
-  };
+  batches: { current: number; total: number };
+  currentBatch: { rowsProcessed: number; rowsTotal: number; percentage: number };
+  performance: { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null };
 }
 
 /**
@@ -61,10 +51,7 @@ interface FormattedJobProgress {
   estimatedCompletionTime: string | null;
   stages: FormattedStage[];
   errors: number;
-  duplicates: {
-    internal: number;
-    external: number;
-  };
+  duplicates: { internal: number; external: number };
   schemaValidation?: ImportJob["schemaValidation"];
   results?: ImportJob["results"];
 }
@@ -112,10 +99,7 @@ const formatStage = (stageName: string, stageData: StageProgress): FormattedStag
     weight: STAGE_TIME_WEIGHTS[stageName as keyof typeof STAGE_TIME_WEIGHTS] || 0,
     startedAt: stageData.startedAt ? new Date(stageData.startedAt).toISOString() : null,
     completedAt: stageData.completedAt ? new Date(stageData.completedAt).toISOString() : null,
-    batches: {
-      current: stageData.batchesProcessed,
-      total: stageData.batchesTotal,
-    },
+    batches: { current: stageData.batchesProcessed, total: stageData.batchesTotal },
     currentBatch: {
       rowsProcessed: stageData.currentBatchRows,
       rowsTotal: stageData.currentBatchTotal,
@@ -189,11 +173,7 @@ export const GET = withRateLimit(
         // Get all related import jobs with dataset details
         const importJobs = await payload.find({
           collection: "import-jobs",
-          where: {
-            importFile: {
-              equals: importId,
-            },
-          },
+          where: { importFile: { equals: importId } },
           pagination: false,
           depth: 1, // Include dataset details
           user: request.user,

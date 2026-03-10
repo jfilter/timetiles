@@ -14,12 +14,7 @@ import { DEFAULT_QUOTAS, TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { QuotaService } from "@/lib/services/quota-service";
 
 vi.mock("@/lib/logger", () => ({
-  createLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
 /** Create a chainable mock for Drizzle's .update().set().where() pattern */
@@ -70,11 +65,7 @@ describe("QuotaService", () => {
       const { payload } = createMockPayload();
       const service = new QuotaService(payload);
 
-      const quotas = service.getEffectiveQuotas({
-        id: 42,
-        trustLevel: "0x1",
-        quotas: null,
-      } as never);
+      const quotas = service.getEffectiveQuotas({ id: 42, trustLevel: "0x1", quotas: null } as never);
 
       expect(quotas).toEqual(DEFAULT_QUOTAS[TRUST_LEVELS.REGULAR]);
     });
@@ -87,15 +78,9 @@ describe("QuotaService", () => {
 
       await service.getOrCreateUsageRecord({ id: 42 });
 
-      expect(findMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { user: { equals: 42 } },
-        })
-      );
+      expect(findMock).toHaveBeenCalledWith(expect.objectContaining({ where: { user: { equals: 42 } } }));
       expect(payload.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ user: 42 }),
-        })
+        expect.objectContaining({ data: expect.objectContaining({ user: 42 }) })
       );
     });
 

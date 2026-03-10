@@ -62,18 +62,10 @@ export const getAccessibleCatalogIds = async (payload: Payload, user?: User | nu
     // Combine all accessible catalog IDs (removing duplicates)
     const allAccessibleIds = [...new Set([...publicCatalogIds, ...ownedCatalogIds])];
 
-    return {
-      publicCatalogIds,
-      ownedCatalogIds,
-      allAccessibleIds,
-    };
+    return { publicCatalogIds, ownedCatalogIds, allAccessibleIds };
   } catch (error) {
     logger.warn("Error fetching accessible catalogs", { error });
-    return {
-      publicCatalogIds: [],
-      ownedCatalogIds: [],
-      allAccessibleIds: [],
-    };
+    return { publicCatalogIds: [], ownedCatalogIds: [], allAccessibleIds: [] };
   }
 };
 

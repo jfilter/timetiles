@@ -61,10 +61,7 @@ export class ProgressiveSchemaBuilder {
     };
   }
 
-  processBatch(records: DataRecord[]): {
-    schemaChanged: boolean;
-    changes: SchemaChange[];
-  } {
+  processBatch(records: DataRecord[]): { schemaChanged: boolean; changes: SchemaChange[] } {
     const changes: SchemaChange[] = [];
 
     // Update samples (rotating buffer)
@@ -140,11 +137,7 @@ export class ProgressiveSchemaBuilder {
     let conflict = this.state.typeConflicts.find((c) => c.path === fieldPath);
 
     if (!conflict) {
-      conflict = {
-        path: fieldPath,
-        types: {},
-        samples: [],
-      };
+      conflict = { path: fieldPath, types: {}, samples: [] };
 
       // Add all existing non-null types
       for (const [type, count] of Object.entries(stats.typeDistribution)) {
@@ -234,22 +227,14 @@ export class ProgressiveSchemaBuilder {
 
   async getSchema(): Promise<Record<string, unknown>> {
     if (this.state.dataSamples.length === 0) {
-      return {
-        type: "object",
-        properties: {},
-        required: [],
-        additionalProperties: false,
-      };
+      return { type: "object", properties: {}, required: [], additionalProperties: false };
     }
 
     try {
       // Use quicktype to generate schema from samples
       const jsonInput = jsonInputForTargetLanguage("schema");
 
-      await jsonInput.addSource({
-        name: "DataSample",
-        samples: this.state.dataSamples.map((s) => JSON.stringify(s)),
-      });
+      await jsonInput.addSource({ name: "DataSample", samples: this.state.dataSamples.map((s) => JSON.stringify(s)) });
 
       const inputData = new InputData();
       inputData.addInput(jsonInput);
@@ -378,20 +363,11 @@ export class ProgressiveSchemaBuilder {
   }
 
   private createArrayProperty(): Record<string, unknown> {
-    return {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {},
-      },
-    };
+    return { type: "array", items: { type: "object", properties: {} } };
   }
 
   private createObjectProperty(): Record<string, unknown> {
-    return {
-      type: "object",
-      properties: {},
-    };
+    return { type: "object", properties: {} };
   }
 
   private processFieldPath(
@@ -433,12 +409,7 @@ export class ProgressiveSchemaBuilder {
       this.processFieldPath(properties, fieldPath, stats, required);
     }
 
-    return {
-      type: "object",
-      properties,
-      required,
-      additionalProperties: false,
-    };
+    return { type: "object", properties, required, additionalProperties: false };
   }
 
   private buildPropertySchema(stats: FieldStatistics): Record<string, unknown> {
@@ -518,12 +489,7 @@ export class ProgressiveSchemaBuilder {
     detectEnums(this.state, this.config);
   }
 
-  getSummary(): {
-    recordCount: number;
-    fieldCount: number;
-    version: number;
-    enumFields: string[];
-  } {
+  getSummary(): { recordCount: number; fieldCount: number; version: number; enumFields: string[] } {
     const enumFields = Object.entries(this.state.fieldStats)
       .filter(([, stats]) => stats.isEnumCandidate)
       .map(([field]) => field);

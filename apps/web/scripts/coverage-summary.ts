@@ -28,12 +28,7 @@ interface CoverageMetric {
 }
 
 interface CoverageSummary {
-  total: {
-    lines: CoverageMetric;
-    statements: CoverageMetric;
-    functions: CoverageMetric;
-    branches: CoverageMetric;
-  };
+  total: { lines: CoverageMetric; statements: CoverageMetric; functions: CoverageMetric; branches: CoverageMetric };
   [filePath: string]: unknown;
 }
 

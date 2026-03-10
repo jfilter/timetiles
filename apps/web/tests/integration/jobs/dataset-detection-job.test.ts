@@ -34,9 +34,7 @@ describe.sequential("Dataset Detection Job", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      uploader: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { uploader: { role: "user" } });
     uploadUserId = users.uploader.id;
 
     const { catalog } = await withCatalog(testEnv, {
@@ -93,10 +91,7 @@ describe.sequential("Dataset Detection Job", () => {
     expect(Object.keys(result2.jobStatus).length).toBeGreaterThan(0);
 
     // Verify import-job progressed past analyze-duplicates stage
-    const updatedJob = await payload.findByID({
-      collection: "import-jobs",
-      id: importJob.id,
-    });
+    const updatedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
 
     expect(updatedJob.stage).not.toBe("analyze-duplicates");
     expect(updatedJob.stage).toBe("detect-schema"); // Should be at next stage
@@ -110,10 +105,7 @@ describe.sequential("Dataset Detection Job", () => {
     const { dataset: preCreatedDataset } = await withDataset(testEnv, testCatalogId, {
       name: filename, // Name must match for dataset-detection to find it
       language: "deu", // German
-      schemaConfig: {
-        locked: false,
-        autoGrow: true,
-      },
+      schemaConfig: { locked: false, autoGrow: true },
     });
 
     // Create import file with matching originalName
@@ -144,10 +136,7 @@ describe.sequential("Dataset Detection Job", () => {
     expect(datasetId).toBe(preCreatedDataset.id);
 
     // Fetch the dataset to verify language is preserved
-    const usedDataset = await payload.findByID({
-      collection: "datasets",
-      id: datasetId,
-    });
+    const usedDataset = await payload.findByID({ collection: "datasets", id: datasetId });
     expect(usedDataset.language).toBe("deu");
   });
 
@@ -184,10 +173,7 @@ describe.sequential("Dataset Detection Job", () => {
     // Creates a new dataset because originalName is null
     expect(datasetId).not.toBe(preCreatedDataset.id);
 
-    const usedDataset = await payload.findByID({
-      collection: "datasets",
-      id: datasetId,
-    });
+    const usedDataset = await payload.findByID({ collection: "datasets", id: datasetId });
     // New dataset has default language "eng"
     expect(usedDataset.language).toBe("eng");
   });

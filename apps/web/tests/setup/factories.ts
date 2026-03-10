@@ -51,19 +51,7 @@ export const createCSVContent = (headers: string[], rows: string[][]) => {
 export const createRichText = (text: string) => ({
   root: {
     type: "root",
-    children: [
-      {
-        type: "paragraph",
-        version: 1,
-        children: [
-          {
-            type: "text",
-            text,
-            version: 1,
-          },
-        ],
-      },
-    ],
+    children: [{ type: "paragraph", version: 1, children: [{ type: "text", text, version: 1 }] }],
     direction: "ltr" as const,
     format: "" as const,
     indent: 0,
@@ -173,13 +161,8 @@ export const createEvent = (overrides: Partial<Event> = {}): Event => ({
     category: "conference",
     tags: ["tech", "test"],
   },
-  location: {
-    latitude: 40.7128,
-    longitude: -74.006,
-  },
-  coordinateSource: {
-    type: "import",
-  },
+  location: { latitude: 40.7128, longitude: -74.006 },
+  coordinateSource: { type: "import" },
   updatedAt: "2024-01-01T00:00:00Z",
   createdAt: "2024-01-01T00:00:00Z",
   ...overrides,
@@ -196,10 +179,7 @@ export const createEvents = (count: number = 3): Event[] => {
         description: `Description for event ${i + 1}`,
         date: `2024-03-${15 + i}T10:00:00Z`,
       },
-      location: {
-        latitude: 40.7128 + i * 0.01,
-        longitude: -74.006 + i * 0.01,
-      },
+      location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
     })
   );
 };
@@ -245,11 +225,7 @@ export const TEST_IDS = {
 /**
  * Standard test filenames to avoid magic strings.
  */
-export const TEST_FILENAMES = {
-  CSV: "test.csv",
-  EXCEL: "test.xlsx",
-  EMPTY: "empty.csv",
-} as const;
+export const TEST_FILENAMES = { CSV: "test.csv", EXCEL: "test.xlsx", EMPTY: "empty.csv" } as const;
 
 // =============================================================================
 // Mock Infrastructure Factories (for Unit Tests)
@@ -277,9 +253,7 @@ export const createMockPayload = (overrides: Partial<any> = {}): any => {
     find: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
-    jobs: {
-      queue: vi.fn().mockResolvedValue({}),
-    },
+    jobs: { queue: vi.fn().mockResolvedValue({}) },
     ...overrides,
   };
 };
@@ -306,14 +280,7 @@ export const createMockContext = <T = unknown>(
   input: T,
   jobId: string = TEST_IDS.JOB
 ): JobHandlerContext => {
-  return {
-    payload,
-    job: {
-      id: jobId,
-      taskStatus: "running",
-    },
-    input,
-  } as unknown as JobHandlerContext;
+  return { payload, job: { id: jobId, taskStatus: "running" }, input } as unknown as JobHandlerContext;
 };
 
 /**
@@ -384,22 +351,12 @@ export const createMockImportJob = (options: MockImportJobOptions = {}) => {
       ? {
           internal: [{ rowNumber: 1, uniqueId: "dup-1" }],
           external: [{ rowNumber: 2, uniqueId: "dup-2" }],
-          summary: {
-            totalRows: 3,
-            uniqueRows: 1,
-            internalDuplicates: 1,
-            externalDuplicates: 1,
-          },
+          summary: { totalRows: 3, uniqueRows: 1, internalDuplicates: 1, externalDuplicates: 1 },
         }
       : {
           internal: [],
           external: [],
-          summary: {
-            totalRows: 100,
-            uniqueRows: 100,
-            internalDuplicates: 0,
-            externalDuplicates: 0,
-          },
+          summary: { totalRows: 100, uniqueRows: 100, internalDuplicates: 0, externalDuplicates: 0 },
         },
     progress: options.progress ?? defaultProgress,
     errors: options.errors ?? [],
@@ -428,27 +385,14 @@ export const createMockImportJob = (options: MockImportJobOptions = {}) => {
 export const createMockDataset = (
   id: string | number = TEST_IDS.DATASET,
   name: string = "Test Dataset",
-  options: {
-    schemaConfig?: unknown;
-    deduplicationConfig?: unknown;
-    idStrategy?: unknown;
-  } = {}
+  options: { schemaConfig?: unknown; deduplicationConfig?: unknown; idStrategy?: unknown } = {}
 ) => {
   return {
     id,
     name,
-    schemaConfig: options.schemaConfig ?? {
-      autoGrow: true,
-      autoApproveNonBreaking: true,
-      locked: false,
-    },
-    deduplicationConfig: options.deduplicationConfig ?? {
-      enabled: true,
-    },
-    idStrategy: options.idStrategy ?? {
-      type: "external" as const,
-      externalIdPath: "id",
-    },
+    schemaConfig: options.schemaConfig ?? { autoGrow: true, autoApproveNonBreaking: true, locked: false },
+    deduplicationConfig: options.deduplicationConfig ?? { enabled: true },
+    idStrategy: options.idStrategy ?? { type: "external" as const, externalIdPath: "id" },
   };
 };
 
@@ -469,15 +413,7 @@ export const createMockDataset = (
 export const createMockImportFile = (
   id: string | number = TEST_IDS.IMPORT_FILE,
   filename: string = TEST_FILENAMES.CSV,
-  options: {
-    filePath?: string;
-    status?: string;
-  } = {}
+  options: { filePath?: string; status?: string } = {}
 ) => {
-  return {
-    id,
-    filename,
-    filePath: options.filePath ?? `/tmp/${filename}`,
-    status: options.status ?? "uploaded",
-  };
+  return { id, filename, filePath: options.filePath ?? `/tmp/${filename}`, status: options.status ?? "uploaded" };
 };

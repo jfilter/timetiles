@@ -76,19 +76,10 @@ export const BarChart = ({
       animationEasingUpdate: "cubicOut",
 
       // Grid
-      grid: {
-        left: "15%",
-        right: "10%",
-        bottom: "10%",
-        top: "5%",
-        containLabel: true,
-      },
+      grid: { left: "15%", right: "10%", bottom: "10%", top: "5%", containLabel: true },
 
       // Horizontal bar chart
-      xAxis: {
-        type: "value",
-        name: "Count",
-      },
+      xAxis: { type: "value", name: "Count" },
       yAxis: {
         type: "category",
         data: labels, // Fixed category order

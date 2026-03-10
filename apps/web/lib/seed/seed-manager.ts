@@ -163,10 +163,7 @@ export class SeedManager extends SeedManagerBase {
         });
       }
 
-      const tableCount = await truncateTables(dbUrl, {
-        schema: "payload",
-        excludePatterns: ["payload_migrations%"],
-      });
+      const tableCount = await truncateTables(dbUrl, { schema: "payload", excludePatterns: ["payload_migrations%"] });
       logger.info(`Truncated ${tableCount} tables successfully`);
     } else {
       // Truncate specific collections using direct SQL with CASCADE

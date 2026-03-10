@@ -31,9 +31,7 @@ const VerifyEmailContent = () => {
       try {
         const response = await fetch(`/api/users/verify/${verificationToken}`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         });
 
         if (response.ok) {

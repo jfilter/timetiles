@@ -74,16 +74,14 @@ const selectTopEnumFields = (
     return aDistance - bDistance;
   });
 
-  return enumCandidates.slice(0, maxFields).map((field) => ({
-    path: field.path,
-    label: humanizeFieldPath(field.path),
-    values: field.enumValues.map((v) => ({
-      value: String(v.value),
-      count: v.count,
-      percent: v.percent,
-    })),
-    cardinality: field.enumValues.length,
-  }));
+  return enumCandidates
+    .slice(0, maxFields)
+    .map((field) => ({
+      path: field.path,
+      label: humanizeFieldPath(field.path),
+      values: field.enumValues.map((v) => ({ value: String(v.value), count: v.count, percent: v.percent })),
+      cardinality: field.enumValues.length,
+    }));
 };
 
 /**

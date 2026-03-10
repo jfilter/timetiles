@@ -42,9 +42,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
     setError(null);
 
     try {
-      const response = await fetch("/api/account/deletion-summary", {
-        credentials: "include",
-      });
+      const response = await fetch("/api/account/deletion-summary", { credentials: "include" });
 
       if (!response.ok) {
         const data = await response.json();

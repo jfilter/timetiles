@@ -31,9 +31,7 @@ describe.sequential("Wizard API Endpoints", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      wizardTestUser: { role: "user", trustLevel: "5" },
-    });
+    const { users } = await withUsers(testEnv, { wizardTestUser: { role: "user", trustLevel: "5" } });
     testUser = users.wizardTestUser;
   });
 
@@ -57,17 +55,11 @@ describe.sequential("Wizard API Endpoints", () => {
       // Create a test catalog directly without user dependency
       const catalog = await payload.create({
         collection: "catalogs",
-        data: {
-          name: "Test Catalog",
-          slug: `test-catalog-${Date.now()}`,
-        },
+        data: { name: "Test Catalog", slug: `test-catalog-${Date.now()}` },
       });
 
       // Fetch all catalogs (testing the basic functionality)
-      const catalogsResult = await payload.find({
-        collection: "catalogs",
-        limit: 100,
-      });
+      const catalogsResult = await payload.find({ collection: "catalogs", limit: 100 });
 
       expect(catalogsResult.docs.length).toBeGreaterThan(0);
       expect(catalogsResult.docs.some((c: any) => c.id === catalog.id)).toBe(true);
@@ -80,20 +72,13 @@ describe.sequential("Wizard API Endpoints", () => {
       // Create a dataset in the catalog
       await payload.create({
         collection: "datasets",
-        data: {
-          name: "Test Dataset",
-          slug: `test-dataset-${Date.now()}`,
-          catalog: catalog.id,
-          language: "eng",
-        },
+        data: { name: "Test Dataset", slug: `test-dataset-${Date.now()}`, catalog: catalog.id, language: "eng" },
       });
 
       // Fetch catalogs
       const catalogsResult = await payload.find({
         collection: "catalogs",
-        where: {
-          id: { equals: catalog.id },
-        },
+        where: { id: { equals: catalog.id } },
         limit: 100,
       });
 
@@ -102,9 +87,7 @@ describe.sequential("Wizard API Endpoints", () => {
       // Fetch datasets for the catalog
       const datasetsResult = await payload.find({
         collection: "datasets",
-        where: {
-          catalog: { equals: catalog.id },
-        },
+        where: { catalog: { equals: catalog.id } },
         limit: 100,
       });
 
@@ -117,26 +100,18 @@ describe.sequential("Wizard API Endpoints", () => {
       const timestamp = Date.now();
       const catalog1 = await payload.create({
         collection: "catalogs",
-        data: {
-          name: `Alpha Catalog ${timestamp}`,
-          slug: `alpha-catalog-${timestamp}`,
-        },
+        data: { name: `Alpha Catalog ${timestamp}`, slug: `alpha-catalog-${timestamp}` },
       });
 
       const catalog2 = await payload.create({
         collection: "catalogs",
-        data: {
-          name: `Beta Catalog ${timestamp}`,
-          slug: `beta-catalog-${timestamp}`,
-        },
+        data: { name: `Beta Catalog ${timestamp}`, slug: `beta-catalog-${timestamp}` },
       });
 
       // Filter by name containing "Alpha"
       const filtered = await payload.find({
         collection: "catalogs",
-        where: {
-          name: { contains: "Alpha" },
-        },
+        where: { name: { contains: "Alpha" } },
         limit: 100,
       });
 
@@ -210,10 +185,7 @@ describe.sequential("Wizard API Endpoints", () => {
       const csvContent = fs.readFileSync(csvPath, "utf-8");
 
       const Papa = await import("papaparse");
-      const result = Papa.parse(csvContent, {
-        header: true,
-        skipEmptyLines: true,
-      });
+      const result = Papa.parse(csvContent, { header: true, skipEmptyLines: true });
 
       expect(result.data).toHaveLength(0);
     });
@@ -225,10 +197,7 @@ describe.sequential("Wizard API Endpoints", () => {
 
       const catalog = await payload.create({
         collection: "catalogs",
-        data: {
-          name: catalogName,
-          slug: `new-test-catalog-${Date.now()}`,
-        },
+        data: { name: catalogName, slug: `new-test-catalog-${Date.now()}` },
       });
 
       expect(catalog.id).toBeDefined();
@@ -246,15 +215,8 @@ describe.sequential("Wizard API Endpoints", () => {
           slug: `new-test-dataset-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          fieldMappingOverrides: {
-            titlePath: "title",
-            timestampPath: "date",
-            locationPath: "location",
-          },
-          idStrategy: {
-            type: "auto",
-            duplicateStrategy: "skip",
-          },
+          fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationPath: "location" },
+          idStrategy: { type: "auto", duplicateStrategy: "skip" },
         },
       });
 
@@ -267,9 +229,7 @@ describe.sequential("Wizard API Endpoints", () => {
 
     it("updates existing dataset with new field mappings", async () => {
       const { catalog } = await withCatalog(testEnv, { user: testUser });
-      const { dataset } = await withDataset(testEnv, catalog.id, {
-        name: "Existing Dataset",
-      });
+      const { dataset } = await withDataset(testEnv, catalog.id, { name: "Existing Dataset" });
 
       // Update dataset with field mapping overrides
       const updated = await payload.update({
@@ -283,11 +243,7 @@ describe.sequential("Wizard API Endpoints", () => {
             latitudePath: "lat",
             longitudePath: "lng",
           },
-          idStrategy: {
-            type: "external",
-            externalIdPath: "event_id",
-            duplicateStrategy: "update",
-          },
+          idStrategy: { type: "external", externalIdPath: "event_id", duplicateStrategy: "update" },
         },
       });
 
@@ -307,10 +263,7 @@ describe.sequential("Wizard API Endpoints", () => {
       // so we test the metadata structure building here
       const wizardMetadata = {
         source: "import-wizard",
-        datasetMapping: {
-          mappingType: "single",
-          singleDataset: dataset.id,
-        },
+        datasetMapping: { mappingType: "single", singleDataset: dataset.id },
         geocodingEnabled: true,
         deduplicationStrategy: "skip",
         wizardConfig: {
@@ -349,22 +302,12 @@ describe.sequential("Wizard API Endpoints", () => {
       // Create two datasets
       const dataset1 = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Dataset 1",
-          slug: `dataset-1-${Date.now()}`,
-          catalog: catalog.id,
-          language: "eng",
-        },
+        data: { name: "Dataset 1", slug: `dataset-1-${Date.now()}`, catalog: catalog.id, language: "eng" },
       });
 
       const dataset2 = await payload.create({
         collection: "datasets",
-        data: {
-          name: "Dataset 2",
-          slug: `dataset-2-${Date.now()}`,
-          catalog: catalog.id,
-          language: "eng",
-        },
+        data: { name: "Dataset 2", slug: `dataset-2-${Date.now()}`, catalog: catalog.id, language: "eng" },
       });
 
       // Simulate multi-sheet mapping
@@ -373,10 +316,7 @@ describe.sequential("Wizard API Endpoints", () => {
         { sheetIdentifier: "1", dataset: dataset2.id, skipIfMissing: false },
       ];
 
-      const datasetMapping = {
-        mappingType: "multiple",
-        sheetMappings: datasetMappingEntries,
-      };
+      const datasetMapping = { mappingType: "multiple", sheetMappings: datasetMappingEntries };
 
       expect(datasetMapping.mappingType).toBe("multiple");
       expect(datasetMapping.sheetMappings).toHaveLength(2);
@@ -402,11 +342,7 @@ describe.sequential("Wizard API Endpoints", () => {
             latitudePath: "lat",
             longitudePath: "lng",
           },
-          geoFieldDetection: {
-            autoDetect: false,
-            latitudePath: "lat",
-            longitudePath: "lng",
-          },
+          geoFieldDetection: { autoDetect: false, latitudePath: "lat", longitudePath: "lng" },
         },
       });
 
@@ -426,14 +362,8 @@ describe.sequential("Wizard API Endpoints", () => {
           slug: `location-test-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          fieldMappingOverrides: {
-            titlePath: "title",
-            timestampPath: "date",
-            locationPath: "address",
-          },
-          geoFieldDetection: {
-            autoDetect: true,
-          },
+          fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationPath: "address" },
+          geoFieldDetection: { autoDetect: true },
         },
       });
 
@@ -452,11 +382,7 @@ describe.sequential("Wizard API Endpoints", () => {
           slug: `external-id-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          idStrategy: {
-            type: "external",
-            externalIdPath: "event_id",
-            duplicateStrategy: "update",
-          },
+          idStrategy: { type: "external", externalIdPath: "event_id", duplicateStrategy: "update" },
         },
       });
 
@@ -472,10 +398,7 @@ describe.sequential("Wizard API Endpoints", () => {
           slug: `computed-id-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          idStrategy: {
-            type: "computed",
-            duplicateStrategy: "version",
-          },
+          idStrategy: { type: "computed", duplicateStrategy: "version" },
         },
       });
 
@@ -495,10 +418,7 @@ describe.sequential("Wizard API Endpoints", () => {
           slug: `skip-dedup-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          deduplicationConfig: {
-            enabled: true,
-            strategy: "skip",
-          },
+          deduplicationConfig: { enabled: true, strategy: "skip" },
         },
       });
 
@@ -516,10 +436,7 @@ describe.sequential("Wizard API Endpoints", () => {
           slug: `update-dedup-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          deduplicationConfig: {
-            enabled: true,
-            strategy: "update",
-          },
+          deduplicationConfig: { enabled: true, strategy: "update" },
         },
       });
 
@@ -536,10 +453,7 @@ describe.sequential("Wizard API Endpoints", () => {
           slug: `version-dedup-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          deduplicationConfig: {
-            enabled: true,
-            strategy: "version",
-          },
+          deduplicationConfig: { enabled: true, strategy: "version" },
         },
       });
 

@@ -39,17 +39,13 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
 vi.mock("@/lib/services/rate-limit-service", () => ({
   getClientIdentifier: vi.fn().mockReturnValue("test-client"),
-  getRateLimitService: vi.fn().mockReturnValue({
-    checkConfiguredRateLimit: mocks.mockCheckRateLimit,
-  }),
+  getRateLimitService: vi.fn().mockReturnValue({ checkConfiguredRateLimit: mocks.mockCheckRateLimit }),
   RATE_LIMITS: {
     EMAIL_CHANGE: { windows: [] },
     PASSWORD_CHANGE: { windows: [] },
@@ -72,12 +68,14 @@ vi.mock("@/lib/middleware/auth", () => ({
 }));
 
 vi.mock("@/lib/services/account-deletion-service", () => ({
-  getAccountDeletionService: vi.fn().mockReturnValue({
-    canDeleteUser: mocks.mockCanDeleteUser,
-    scheduleDeletion: mocks.mockScheduleDeletion,
-    cancelDeletion: mocks.mockCancelDeletion,
-    getDeletionSummary: mocks.mockGetDeletionSummary,
-  }),
+  getAccountDeletionService: vi
+    .fn()
+    .mockReturnValue({
+      canDeleteUser: mocks.mockCanDeleteUser,
+      scheduleDeletion: mocks.mockScheduleDeletion,
+      cancelDeletion: mocks.mockCancelDeletion,
+      getDeletionSummary: mocks.mockGetDeletionSummary,
+    }),
   DELETION_GRACE_PERIOD_DAYS: 7,
 }));
 
@@ -122,9 +120,7 @@ const createJsonRequest = (url: string, body: unknown, method = "POST") => {
 const createGetRequest = (url: string) => {
   return new Request(url, {
     method: "GET",
-    headers: new Headers({
-      Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}`,
-    }),
+    headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
   }) as unknown as NextRequest;
 };
 
@@ -143,16 +139,16 @@ beforeEach(() => {
 
   mockCheckRateLimit.mockReset().mockReturnValue({ allowed: true });
   mockCanDeleteUser.mockReset().mockResolvedValue({ allowed: true });
-  mockScheduleDeletion.mockReset().mockResolvedValue({
-    deletionScheduledAt: new Date().toISOString(),
-    summary: { catalogs: 0, datasets: 0, events: 0 },
-  });
+  mockScheduleDeletion
+    .mockReset()
+    .mockResolvedValue({
+      deletionScheduledAt: new Date().toISOString(),
+      summary: { catalogs: 0, datasets: 0, events: 0 },
+    });
   mockCancelDeletion.mockReset().mockResolvedValue(undefined);
-  mockGetDeletionSummary.mockReset().mockResolvedValue({
-    catalogs: { total: 0, public: 0, private: 0 },
-    datasets: { total: 0 },
-    events: { total: 0 },
-  });
+  mockGetDeletionSummary
+    .mockReset()
+    .mockResolvedValue({ catalogs: { total: 0, public: 0, private: 0 }, datasets: { total: 0 }, events: { total: 0 } });
 });
 
 describe.sequential("POST /api/account/change-email", () => {
@@ -172,10 +168,7 @@ describe.sequential("POST /api/account/change-email", () => {
   });
 
   it("should return 400 when missing email or password", async () => {
-    const request = createJsonRequest("http://localhost/api/account/change-email", {
-      newEmail: "",
-      password: "",
-    });
+    const request = createJsonRequest("http://localhost/api/account/change-email", { newEmail: "", password: "" });
 
     const response = await changeEmail(request, undefined as any);
 
@@ -258,17 +251,11 @@ describe.sequential("POST /api/account/change-email", () => {
         collection: "users",
         id: mockUser.id,
         overrideAccess: true,
-        data: expect.objectContaining({
-          email: "new@example.com",
-          _verified: false,
-        }),
+        data: expect.objectContaining({ email: "new@example.com", _verified: false }),
       })
     );
     expect(mockPayload.sendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "new@example.com",
-        subject: expect.stringContaining("Verify"),
-      })
+      expect.objectContaining({ to: "new@example.com", subject: expect.stringContaining("Verify") })
     );
   });
 
@@ -352,9 +339,7 @@ describe.sequential("POST /api/account/change-password", () => {
 
 describe.sequential("POST /api/account/delete", () => {
   it("should return 400 when missing password", async () => {
-    const request = createJsonRequest("http://localhost/api/account/delete", {
-      password: "",
-    });
+    const request = createJsonRequest("http://localhost/api/account/delete", { password: "" });
 
     const response = await deleteAccount(request, undefined as any);
 

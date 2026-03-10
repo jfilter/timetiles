@@ -49,21 +49,13 @@ describe.sequential("Hierarchical Access Control", () => {
     // Create test catalogs (as owner) - Note: user context matters for access control
     publicCatalog = await payload.create({
       collection: "catalogs",
-      data: {
-        name: "Public Test Catalog",
-        description: "A public catalog for testing",
-        isPublic: true,
-      },
+      data: { name: "Public Test Catalog", description: "A public catalog for testing", isPublic: true },
       user: ownerUser,
     });
 
     privateCatalog = await payload.create({
       collection: "catalogs",
-      data: {
-        name: "Private Test Catalog",
-        description: "A private catalog for testing",
-        isPublic: false,
-      },
+      data: { name: "Private Test Catalog", description: "A private catalog for testing", isPublic: false },
       user: ownerUser,
     });
 
@@ -217,20 +209,12 @@ describe.sequential("Hierarchical Access Control", () => {
       // Create a catalog to delete
       const tempCatalog = await payload.create({
         collection: "catalogs",
-        data: {
-          name: "Temp Catalog for Delete Test",
-          isPublic: true,
-        },
+        data: { name: "Temp Catalog for Delete Test", isPublic: true },
         user: ownerUser,
       });
 
       await expect(
-        payload.delete({
-          collection: "catalogs",
-          id: tempCatalog.id,
-          user: otherUser,
-          overrideAccess: false,
-        })
+        payload.delete({ collection: "catalogs", id: tempCatalog.id, user: otherUser, overrideAccess: false })
       ).rejects.toThrow();
     });
   });
@@ -422,11 +406,7 @@ describe.sequential("Hierarchical Access Control", () => {
 
     it("should allow anyone to read event in public dataset/catalog", async () => {
       // Anonymous user
-      const event = await payload.findByID({
-        collection: "events",
-        id: publicEvent.id,
-        overrideAccess: false,
-      });
+      const event = await payload.findByID({ collection: "events", id: publicEvent.id, overrideAccess: false });
       expect(event.id).toBe(publicEvent.id);
 
       // Other user
@@ -442,12 +422,7 @@ describe.sequential("Hierarchical Access Control", () => {
     it("should restrict event access based on dataset and catalog privacy", async () => {
       // Other user cannot read event in private dataset/catalog
       await expect(
-        payload.findByID({
-          collection: "events",
-          id: privateEvent.id,
-          user: otherUser,
-          overrideAccess: false,
-        })
+        payload.findByID({ collection: "events", id: privateEvent.id, user: otherUser, overrideAccess: false })
       ).rejects.toThrow();
 
       // Owner can read
@@ -494,23 +469,14 @@ describe.sequential("Hierarchical Access Control", () => {
 
     it("should prevent non-owner from deleting event", async () => {
       await expect(
-        payload.delete({
-          collection: "events",
-          id: publicEvent.id,
-          user: otherUser,
-          overrideAccess: false,
-        })
+        payload.delete({ collection: "events", id: publicEvent.id, user: otherUser, overrideAccess: false })
       ).rejects.toThrow();
     });
   });
 
   describe("Cross-User Access Restrictions", () => {
     it("should not allow user to see other user's private catalogs", async () => {
-      const catalogs = await payload.find({
-        collection: "catalogs",
-        user: otherUser,
-        overrideAccess: false,
-      });
+      const catalogs = await payload.find({ collection: "catalogs", user: otherUser, overrideAccess: false });
 
       // otherUser should only see public catalogs, not ownerUser's private catalog
       const privateCatalogVisible = catalogs.docs.some((cat: Catalog) => cat.id === privateCatalog.id);
@@ -521,11 +487,7 @@ describe.sequential("Hierarchical Access Control", () => {
       await expect(
         payload.create({
           collection: "datasets",
-          data: {
-            name: "Unauthorized Dataset",
-            catalog: privateCatalog.id,
-            language: "eng",
-          },
+          data: { name: "Unauthorized Dataset", catalog: privateCatalog.id, language: "eng" },
           user: otherUser,
           overrideAccess: false,
         })
@@ -559,11 +521,7 @@ describe.sequential("Hierarchical Access Control", () => {
 
   describe("Admin Override", () => {
     it("should allow admin to access all catalogs regardless of privacy", async () => {
-      const allCatalogs = await payload.find({
-        collection: "catalogs",
-        user: adminUser,
-        overrideAccess: false,
-      });
+      const allCatalogs = await payload.find({ collection: "catalogs", user: adminUser, overrideAccess: false });
 
       const hasPublicCatalog = allCatalogs.docs.some((cat: Catalog) => cat.id === publicCatalog.id);
       const hasPrivateCatalog = allCatalogs.docs.some((cat: Catalog) => cat.id === privateCatalog.id);
@@ -596,21 +554,11 @@ describe.sequential("Hierarchical Access Control", () => {
       });
 
       // Admin can delete it
-      await payload.delete({
-        collection: "events",
-        id: tempEvent.id,
-        user: adminUser,
-        overrideAccess: false,
-      });
+      await payload.delete({ collection: "events", id: tempEvent.id, user: adminUser, overrideAccess: false });
 
       // Verify deletion
       await expect(
-        payload.findByID({
-          collection: "events",
-          id: tempEvent.id,
-          user: adminUser,
-          overrideAccess: false,
-        })
+        payload.findByID({ collection: "events", id: tempEvent.id, user: adminUser, overrideAccess: false })
       ).rejects.toThrow();
     });
   });
@@ -620,10 +568,7 @@ describe.sequential("Hierarchical Access Control", () => {
       // Create and update a catalog to generate versions
       const testCatalog = await payload.create({
         collection: "catalogs",
-        data: {
-          name: "Version Test Catalog",
-          isPublic: true,
-        },
+        data: { name: "Version Test Catalog", isPublic: true },
         user: ownerUser,
       });
 
@@ -641,9 +586,7 @@ describe.sequential("Hierarchical Access Control", () => {
       try {
         await payload.findVersions({
           collection: "catalogs",
-          where: {
-            parent: { equals: testCatalog.id },
-          },
+          where: { parent: { equals: testCatalog.id } },
           user: ownerUser,
           overrideAccess: false,
         });
@@ -658,9 +601,7 @@ describe.sequential("Hierarchical Access Control", () => {
       // Admin should be able to access versions
       const adminVersions = await payload.findVersions({
         collection: "catalogs",
-        where: {
-          parent: { equals: testCatalog.id },
-        },
+        where: { parent: { equals: testCatalog.id } },
         user: adminUser,
         overrideAccess: false,
       });

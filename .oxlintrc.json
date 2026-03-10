@@ -1,14 +1,8 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "promise", "import", "unicorn", "jsdoc", "vitest", "jsx-a11y"],
-  "categories": {
-    "correctness": "off"
-  },
-  "env": {
-    "browser": true,
-    "node": true,
-    "es2024": true
-  },
+  "categories": { "correctness": "off" },
+  "env": { "browser": true, "node": true, "es2024": true },
   "ignorePatterns": [
     "**/node_modules/**",
     "**/dist/**",
@@ -48,12 +42,7 @@
     "no-dupe-else-if": "error",
     "no-dupe-keys": "error",
     "no-duplicate-case": "error",
-    "no-empty": [
-      "error",
-      {
-        "allowEmptyCatch": false
-      }
-    ],
+    "no-empty": ["error", { "allowEmptyCatch": false }],
     "no-empty-character-class": "error",
     "no-empty-pattern": "error",
     "no-empty-static-block": "error",
@@ -84,12 +73,7 @@
     "no-unsafe-optional-chaining": "error",
     "no-unused-labels": "error",
     "no-unused-private-class-members": "error",
-    "no-unused-vars": [
-      "warn",
-      {
-        "varsIgnorePattern": "^_"
-      }
-    ],
+    "no-unused-vars": ["warn", { "varsIgnorePattern": "^_" }],
     "no-useless-backreference": "error",
     "no-useless-catch": "error",
     "no-useless-escape": "error",
@@ -163,18 +147,9 @@
       "error",
       {
         "patterns": [
-          {
-            "group": ["../**/apps/*"],
-            "message": "Don't import across app boundaries"
-          },
-          {
-            "group": ["*/index", "*/index.js", "*/index.ts", "*/index.tsx"],
-            "message": "Avoid barrel imports"
-          },
-          {
-            "group": ["./index", "./index.js", "./index.ts", "./index.tsx"],
-            "message": "Avoid local index imports"
-          },
+          { "group": ["../**/apps/*"], "message": "Don't import across app boundaries" },
+          { "group": ["*/index", "*/index.js", "*/index.ts", "*/index.tsx"], "message": "Avoid barrel imports" },
+          { "group": ["./index", "./index.js", "./index.ts", "./index.tsx"], "message": "Avoid local index imports" },
           {
             "group": ["../../../../*", "../../../../../*"],
             "message": "Use @/ path alias instead of deep relative imports (more than 3 levels)"
@@ -182,18 +157,8 @@
         ]
       }
     ],
-    "jsdoc/check-tag-names": [
-      "error",
-      {
-        "definedTags": ["module", "category"]
-      }
-    ],
-    "jsdoc/empty-tags": [
-      "error",
-      {
-        "tags": ["module"]
-      }
-    ],
+    "jsdoc/check-tag-names": ["error", { "definedTags": ["module", "category"] }],
+    "jsdoc/empty-tags": ["error", { "tags": ["module"] }],
     "jsdoc/check-property-names": "error",
     "jsdoc/implements-on-classes": "error",
     "jsdoc/no-defaults": "error",
@@ -222,11 +187,7 @@
     "import/default": "error",
     "import/namespace": "error"
   },
-  "settings": {
-    "react": {
-      "version": "999.999.999"
-    }
-  },
+  "settings": { "react": { "version": "999.999.999" } },
   "overrides": [
     {
       "files": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
@@ -301,11 +262,7 @@
         "@typescript-eslint/strict-boolean-expressions": "off",
         "@typescript-eslint/prefer-nullish-coalescing": [
           "error",
-          {
-            "ignoreTernaryTests": false,
-            "ignoreConditionalTests": false,
-            "ignoreMixedLogicalExpressions": false
-          }
+          { "ignoreTernaryTests": false, "ignoreConditionalTests": false, "ignoreMixedLogicalExpressions": false }
         ],
         "@typescript-eslint/no-meaningless-void-operator": "error",
         "@typescript-eslint/no-mixed-enums": "error",
@@ -322,13 +279,7 @@
         "react/react-in-jsx-scope": "off",
         "react/display-name": "warn",
         "react/jsx-boolean-value": ["error", "never"],
-        "react/jsx-curly-brace-presence": [
-          "error",
-          {
-            "props": "never",
-            "children": "never"
-          }
-        ],
+        "react/jsx-curly-brace-presence": ["error", { "props": "never", "children": "never" }],
         "react/jsx-fragments": ["error", "syntax"],
         "react/jsx-pascal-case": "error",
         "react/self-closing-comp": "error",
@@ -455,11 +406,7 @@
         "@typescript-eslint/require-await": "off",
         "@typescript-eslint/consistent-type-imports": [
           "error",
-          {
-            "prefer": "type-imports",
-            "disallowTypeAnnotations": false,
-            "fixStyle": "separate-type-imports"
-          }
+          { "prefer": "type-imports", "disallowTypeAnnotations": false, "fixStyle": "separate-type-imports" }
         ],
         "@typescript-eslint/no-unused-vars": "off",
         "no-unused-vars": "off",
@@ -489,10 +436,7 @@
         "@typescript-eslint/no-unused-vars": "off"
       }
     },
-    {
-      "files": ["**/seed/**/*.ts", "**/seed/**/*.js", "**/seeds/**/*.ts"],
-      "rules": {}
-    },
+    { "files": ["**/seed/**/*.ts", "**/seed/**/*.js", "**/seeds/**/*.ts"], "rules": {} },
     {
       "files": ["scripts/**/*.ts", "scripts/**/*.js", "**/scripts/**/*.ts", "**/scripts/**/*.js"],
       "rules": {
@@ -556,15 +500,7 @@
     },
     {
       "files": ["**/*.spec.{ts,tsx,js,jsx}"],
-      "rules": {
-        "unicorn/filename-case": [
-          "error",
-          {
-            "case": "kebabCase",
-            "ignore": ["$^"]
-          }
-        ]
-      }
+      "rules": { "unicorn/filename-case": ["error", { "case": "kebabCase", "ignore": ["$^"] }] }
     },
     {
       "files": [
@@ -575,13 +511,7 @@
       ],
       "rules": {}
     },
-    {
-      "files": ["**/*.jsx"],
-      "rules": {}
-    },
-    {
-      "files": ["**/app/(frontend)/explore/_components/map-explorer.tsx"],
-      "rules": {}
-    }
+    { "files": ["**/*.jsx"], "rules": {} },
+    { "files": ["**/app/(frontend)/explore/_components/map-explorer.tsx"], "rules": {} }
   ]
 }

@@ -14,26 +14,19 @@ export const importJobFields: Field[] = [
     type: "relationship",
     relationTo: "import-files",
     required: true,
-    admin: {
-      description: "Source file for this import job",
-    },
+    admin: { description: "Source file for this import job" },
   },
   {
     name: "dataset",
     type: "relationship",
     relationTo: "datasets",
     required: true,
-    admin: {
-      description: "Target dataset for imported data",
-    },
+    admin: { description: "Target dataset for imported data" },
   },
   {
     name: "sheetIndex",
     type: "number",
-    admin: {
-      description: "Sheet index for Excel files (0-based)",
-      condition: (data) => data.sheetIndex !== undefined,
-    },
+    admin: { description: "Sheet index for Excel files (0-based)", condition: (data) => data.sheetIndex !== undefined },
   },
 
   // Processing Stage
@@ -53,10 +46,7 @@ export const importJobFields: Field[] = [
       { label: "Completed", value: PROCESSING_STAGE.COMPLETED },
       { label: "Failed", value: PROCESSING_STAGE.FAILED },
     ],
-    admin: {
-      position: "sidebar",
-      description: "Current processing stage",
-    },
+    admin: { position: "sidebar", description: "Current processing stage" },
   },
 
   // Progress Tracking
@@ -67,24 +57,18 @@ export const importJobFields: Field[] = [
       {
         name: "stages",
         type: "json",
-        admin: {
-          description: "Detailed progress information for each processing stage",
-        },
+        admin: { description: "Detailed progress information for each processing stage" },
       },
       {
         name: "overallPercentage",
         type: "number",
         defaultValue: 0,
-        admin: {
-          description: "Overall progress percentage (0-100), weighted by stage time estimates",
-        },
+        admin: { description: "Overall progress percentage (0-100), weighted by stage time estimates" },
       },
       {
         name: "estimatedCompletionTime",
         type: "date",
-        admin: {
-          description: "Estimated completion time for the entire import",
-        },
+        admin: { description: "Estimated completion time for the entire import" },
       },
     ],
   },
@@ -93,10 +77,7 @@ export const importJobFields: Field[] = [
   {
     name: "schema",
     type: "json",
-    admin: {
-      description: "Detected JSON Schema from data",
-      condition: (data) => data.schema,
-    },
+    admin: { description: "Detected JSON Schema from data", condition: (data) => data.schema },
   },
   {
     name: "schemaBuilderState",
@@ -126,58 +107,37 @@ export const importJobFields: Field[] = [
       {
         name: "titlePath",
         type: "text",
-        admin: {
-          description: "Path to title/name field in source data",
-          readOnly: true,
-        },
+        admin: { description: "Path to title/name field in source data", readOnly: true },
       },
       {
         name: "descriptionPath",
         type: "text",
-        admin: {
-          description: "Path to description/details field in source data",
-          readOnly: true,
-        },
+        admin: { description: "Path to description/details field in source data", readOnly: true },
       },
       {
         name: "locationNamePath",
         type: "text",
-        admin: {
-          description: "Path to location/venue name field in source data (for display)",
-          readOnly: true,
-        },
+        admin: { description: "Path to location/venue name field in source data (for display)", readOnly: true },
       },
       {
         name: "timestampPath",
         type: "text",
-        admin: {
-          description: "Path to timestamp/date field in source data",
-          readOnly: true,
-        },
+        admin: { description: "Path to timestamp/date field in source data", readOnly: true },
       },
       {
         name: "latitudePath",
         type: "text",
-        admin: {
-          description: "Path to latitude coordinate field in source data",
-          readOnly: true,
-        },
+        admin: { description: "Path to latitude coordinate field in source data", readOnly: true },
       },
       {
         name: "longitudePath",
         type: "text",
-        admin: {
-          description: "Path to longitude coordinate field in source data",
-          readOnly: true,
-        },
+        admin: { description: "Path to longitude coordinate field in source data", readOnly: true },
       },
       {
         name: "locationPath",
         type: "text",
-        admin: {
-          description: "Path to location/address field in source data (for geocoding)",
-          readOnly: true,
-        },
+        admin: { description: "Path to location/address field in source data (for geocoding)", readOnly: true },
       },
     ],
   },
@@ -201,9 +161,7 @@ export const importJobFields: Field[] = [
       {
         name: "isCompatible",
         type: "checkbox",
-        admin: {
-          description: "Whether schema is compatible with dataset schema",
-        },
+        admin: { description: "Whether schema is compatible with dataset schema" },
       },
       {
         name: "breakingChanges",
@@ -229,13 +187,7 @@ export const importJobFields: Field[] = [
           condition: (data) => data.schemaValidation?.transformSuggestions?.length > 0,
         },
       },
-      {
-        name: "requiresApproval",
-        type: "checkbox",
-        admin: {
-          description: "Whether manual approval is required",
-        },
-      },
+      { name: "requiresApproval", type: "checkbox", admin: { description: "Whether manual approval is required" } },
       {
         name: "approvalReason",
         type: "text",
@@ -256,18 +208,12 @@ export const importJobFields: Field[] = [
         name: "approvedBy",
         type: "relationship",
         relationTo: "users",
-        admin: {
-          description: "User who approved the schema",
-          condition: (data) => data.schemaValidation?.approved,
-        },
+        admin: { description: "User who approved the schema", condition: (data) => data.schemaValidation?.approved },
       },
       {
         name: "approvedAt",
         type: "date",
-        admin: {
-          description: "When schema was approved",
-          condition: (data) => data.schemaValidation?.approved,
-        },
+        admin: { description: "When schema was approved", condition: (data) => data.schemaValidation?.approved },
       },
     ],
   },
@@ -302,56 +248,18 @@ export const importJobFields: Field[] = [
       {
         name: "strategy",
         type: "text",
-        admin: {
-          description: "Deduplication strategy used (external-id, computed-hash, etc.)",
-        },
+        admin: { description: "Deduplication strategy used (external-id, computed-hash, etc.)" },
       },
-      {
-        name: "internal",
-        type: "json",
-        admin: {
-          description: "Duplicates found within this import",
-        },
-      },
-      {
-        name: "external",
-        type: "json",
-        admin: {
-          description: "Duplicates found with existing events",
-        },
-      },
+      { name: "internal", type: "json", admin: { description: "Duplicates found within this import" } },
+      { name: "external", type: "json", admin: { description: "Duplicates found with existing events" } },
       {
         name: "summary",
         type: "group",
         fields: [
-          {
-            name: "totalRows",
-            type: "number",
-            admin: {
-              description: "Total rows analyzed",
-            },
-          },
-          {
-            name: "uniqueRows",
-            type: "number",
-            admin: {
-              description: "Unique rows after deduplication",
-            },
-          },
-          {
-            name: "internalDuplicates",
-            type: "number",
-            admin: {
-              description: "Duplicates within import",
-            },
-          },
-          {
-            name: "externalDuplicates",
-            type: "number",
-            admin: {
-              description: "Duplicates with existing data",
-            },
-          },
+          { name: "totalRows", type: "number", admin: { description: "Total rows analyzed" } },
+          { name: "uniqueRows", type: "number", admin: { description: "Unique rows after deduplication" } },
+          { name: "internalDuplicates", type: "number", admin: { description: "Duplicates within import" } },
+          { name: "externalDuplicates", type: "number", admin: { description: "Duplicates with existing data" } },
         ],
       },
     ],
@@ -381,21 +289,10 @@ export const importJobFields: Field[] = [
   {
     name: "errors",
     type: "array",
-    admin: {
-      description: "Processing errors by row",
-      condition: (data) => data.errors?.length > 0,
-    },
+    admin: { description: "Processing errors by row", condition: (data) => data.errors?.length > 0 },
     fields: [
-      {
-        name: "row",
-        type: "number",
-        required: true,
-      },
-      {
-        name: "error",
-        type: "text",
-        required: true,
-      },
+      { name: "row", type: "number", required: true },
+      { name: "error", type: "text", required: true },
     ],
   },
 
@@ -408,21 +305,12 @@ export const importJobFields: Field[] = [
       condition: (data) => data.stage === "failed" || data.retryAttempts > 0,
     },
   },
-  {
-    name: "retryAttempts",
-    type: "number",
-    defaultValue: 0,
-    admin: {
-      description: "Number of retry attempts made",
-    },
-  },
+  { name: "retryAttempts", type: "number", defaultValue: 0, admin: { description: "Number of retry attempts made" } },
   {
     name: "lastRetryAt",
     type: "date",
     admin: {
-      date: {
-        pickerAppearance: "dayAndTime",
-      },
+      date: { pickerAppearance: "dayAndTime" },
       description: "Timestamp of last retry attempt",
       condition: (data) => data.retryAttempts > 0,
     },
@@ -431,9 +319,7 @@ export const importJobFields: Field[] = [
     name: "nextRetryAt",
     type: "date",
     admin: {
-      date: {
-        pickerAppearance: "dayAndTime",
-      },
+      date: { pickerAppearance: "dayAndTime" },
       description: "Scheduled time for next retry attempt",
       condition: (data) => data.stage === "failed" && data.retryAttempts > 0,
     },
@@ -460,9 +346,7 @@ export const importJobFields: Field[] = [
     name: "displayTitle",
     type: "text",
     virtual: true,
-    admin: {
-      hidden: true,
-    },
+    admin: { hidden: true },
     hooks: {
       afterRead: [
         ({ data }) => {

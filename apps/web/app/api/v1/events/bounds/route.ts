@@ -36,12 +36,7 @@ import config from "@/payload.config";
  */
 export interface BoundsResponse {
   /** Geographic bounds of matching events, or null if no events match */
-  bounds: {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-  } | null;
+  bounds: { north: number; south: number; east: number; west: number } | null;
   /** Total count of events within bounds */
   count: number;
 }
@@ -75,10 +70,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && !hasCatalogFilter) {
-      return NextResponse.json<BoundsResponse>({
-        bounds: null,
-        count: 0,
-      });
+      return NextResponse.json<BoundsResponse>({ bounds: null, count: 0 });
     }
 
     // Build SQL conditions
@@ -138,10 +130,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
 
     // Check if we have any results with valid bounds
     if (!row || row.count === 0 || row.west == null || row.south == null || row.east == null || row.north == null) {
-      return NextResponse.json<BoundsResponse>({
-        bounds: null,
-        count: 0,
-      });
+      return NextResponse.json<BoundsResponse>({ bounds: null, count: 0 });
     }
 
     logger.debug("Computed event bounds", {

@@ -38,13 +38,7 @@ export const triggerEndpoint: Omit<Endpoint, "root"> = {
     try {
       // Fetch schedule with access control enforced by Payload
       const existingSchedule = await req.payload
-        .findByID({
-          collection: "scheduled-imports",
-          id: numericId,
-          depth: 1,
-          user: req.user,
-          overrideAccess: false,
-        })
+        .findByID({ collection: "scheduled-imports", id: numericId, depth: 1, user: req.user, overrideAccess: false })
         .catch(() => null);
 
       if (!existingSchedule) {
@@ -57,14 +51,8 @@ export const triggerEndpoint: Omit<Endpoint, "root"> = {
       // Use overrideAccess: true because access was already verified above.
       const claimResult = await req.payload.update({
         collection: "scheduled-imports",
-        where: {
-          id: { equals: numericId },
-          lastStatus: { not_equals: "running" },
-        },
-        data: {
-          lastRun: new Date().toISOString(),
-          lastStatus: "running",
-        },
+        where: { id: { equals: numericId }, lastStatus: { not_equals: "running" } },
+        data: { lastRun: new Date().toISOString(), lastStatus: "running" },
         overrideAccess: true,
       });
 

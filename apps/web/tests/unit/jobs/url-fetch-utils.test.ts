@@ -20,13 +20,7 @@ const createMockResponse = (data: string, headers: Record<string, string> = {}) 
     headers: new Headers(headers),
     body: {
       getReader: () => ({
-        read: vi
-          .fn()
-          .mockResolvedValueOnce({
-            done: false,
-            value: dataBuffer,
-          })
-          .mockResolvedValueOnce({ done: true }),
+        read: vi.fn().mockResolvedValueOnce({ done: false, value: dataBuffer }).mockResolvedValueOnce({ done: true }),
       }),
     },
   } as unknown as Response;
@@ -39,15 +33,10 @@ describe.sequential("fetchUrlData", () => {
 
   it("ignores malformed content-length headers and enforces size using the actual body", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      createMockResponse("ok", {
-        "content-length": "9abc",
-        "content-type": "text/plain",
-      })
+      createMockResponse("ok", { "content-length": "9abc", "content-type": "text/plain" })
     );
 
-    const result = await fetchUrlData("https://example.com/data.txt", {
-      maxSize: 8,
-    });
+    const result = await fetchUrlData("https://example.com/data.txt", { maxSize: 8 });
 
     expect(result.data.toString("utf8")).toBe("ok");
     expect(result.contentLength).toBe(2);

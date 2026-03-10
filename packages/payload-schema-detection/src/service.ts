@@ -128,23 +128,9 @@ export class SchemaDetectionService {
    */
   private getEmptyResult(): DetectionResult {
     return {
-      language: {
-        code: "eng",
-        name: "English",
-        confidence: 0,
-        isReliable: false,
-      },
-      fieldMappings: {
-        title: null,
-        description: null,
-        timestamp: null,
-        locationName: null,
-        geo: null,
-      },
-      patterns: {
-        idFields: [],
-        enumFields: [],
-      },
+      language: { code: "eng", name: "English", confidence: 0, isReliable: false },
+      fieldMappings: { title: null, description: null, timestamp: null, locationName: null, geo: null },
+      patterns: { idFields: [], enumFields: [] },
     };
   }
 }

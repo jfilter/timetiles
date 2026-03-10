@@ -92,11 +92,7 @@ export const MobileTabs = ({ activeTab, onTabChange, mapContent, chartContent, l
     [activeTab, onTabChange]
   );
 
-  const contentMap: Record<TabType, ReactNode> = {
-    map: mapContent,
-    chart: chartContent,
-    list: listContent,
-  };
+  const contentMap: Record<TabType, ReactNode> = { map: mapContent, chart: chartContent, list: listContent };
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] flex-col">

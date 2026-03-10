@@ -42,13 +42,8 @@ export const enforceSingleDefault: CollectionBeforeChangeHook<View> = async ({
     // Unset isDefault on all other views (overrideAccess to clear across all users)
     await req.payload.update({
       collection: "views",
-      where: {
-        isDefault: { equals: true },
-        ...(idFilter && { id: idFilter }),
-      },
-      data: {
-        isDefault: false,
-      },
+      where: { isDefault: { equals: true }, ...(idFilter && { id: idFilter }) },
+      data: { isDefault: false },
       depth: 0,
       overrideAccess: true,
       context: {

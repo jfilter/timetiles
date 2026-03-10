@@ -171,11 +171,7 @@ const validateSlugUniqueness = async (
 const Catalogs: CollectionConfig = {
   slug: "catalogs",
   ...createCommonConfig(),
-  admin: {
-    useAsTitle: "name",
-    defaultColumns: ["name", "isPublic", "createdBy"],
-    group: "Data",
-  },
+  admin: { useAsTitle: "name", defaultColumns: ["name", "isPublic", "createdBy"], group: "Data" },
   access: {
     // Public catalogs can be read by anyone, private ones only by creator or admins
     // @ts-expect-error - Payload access control allows returning true | Where query object
@@ -186,15 +182,11 @@ const Catalogs: CollectionConfig = {
 
       // Users (including not logged in) can read public catalogs OR their own private catalogs
       if (user) {
-        return {
-          or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }],
-        };
+        return { or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }] };
       }
 
       // Not logged in - only public catalogs
-      return {
-        isPublic: { equals: true },
-      };
+      return { isPublic: { equals: true } };
     },
 
     // Only authenticated users can create catalogs

@@ -13,175 +13,154 @@
  * via the `definition` "supportedTimezones".
  */
 export type SupportedTimezones =
-  | 'Pacific/Midway'
-  | 'Pacific/Niue'
-  | 'Pacific/Honolulu'
-  | 'Pacific/Rarotonga'
-  | 'America/Anchorage'
-  | 'Pacific/Gambier'
-  | 'America/Los_Angeles'
-  | 'America/Tijuana'
-  | 'America/Denver'
-  | 'America/Phoenix'
-  | 'America/Chicago'
-  | 'America/Guatemala'
-  | 'America/New_York'
-  | 'America/Bogota'
-  | 'America/Caracas'
-  | 'America/Santiago'
-  | 'America/Buenos_Aires'
-  | 'America/Sao_Paulo'
-  | 'Atlantic/South_Georgia'
-  | 'Atlantic/Azores'
-  | 'Atlantic/Cape_Verde'
-  | 'Europe/London'
-  | 'Europe/Berlin'
-  | 'Africa/Lagos'
-  | 'Europe/Athens'
-  | 'Africa/Cairo'
-  | 'Europe/Moscow'
-  | 'Asia/Riyadh'
-  | 'Asia/Dubai'
-  | 'Asia/Baku'
-  | 'Asia/Karachi'
-  | 'Asia/Tashkent'
-  | 'Asia/Calcutta'
-  | 'Asia/Dhaka'
-  | 'Asia/Almaty'
-  | 'Asia/Jakarta'
-  | 'Asia/Bangkok'
-  | 'Asia/Shanghai'
-  | 'Asia/Singapore'
-  | 'Asia/Tokyo'
-  | 'Asia/Seoul'
-  | 'Australia/Brisbane'
-  | 'Australia/Sydney'
-  | 'Pacific/Guam'
-  | 'Pacific/Noumea'
-  | 'Pacific/Auckland'
-  | 'Pacific/Fiji';
+  | "Pacific/Midway"
+  | "Pacific/Niue"
+  | "Pacific/Honolulu"
+  | "Pacific/Rarotonga"
+  | "America/Anchorage"
+  | "Pacific/Gambier"
+  | "America/Los_Angeles"
+  | "America/Tijuana"
+  | "America/Denver"
+  | "America/Phoenix"
+  | "America/Chicago"
+  | "America/Guatemala"
+  | "America/New_York"
+  | "America/Bogota"
+  | "America/Caracas"
+  | "America/Santiago"
+  | "America/Buenos_Aires"
+  | "America/Sao_Paulo"
+  | "Atlantic/South_Georgia"
+  | "Atlantic/Azores"
+  | "Atlantic/Cape_Verde"
+  | "Europe/London"
+  | "Europe/Berlin"
+  | "Africa/Lagos"
+  | "Europe/Athens"
+  | "Africa/Cairo"
+  | "Europe/Moscow"
+  | "Asia/Riyadh"
+  | "Asia/Dubai"
+  | "Asia/Baku"
+  | "Asia/Karachi"
+  | "Asia/Tashkent"
+  | "Asia/Calcutta"
+  | "Asia/Dhaka"
+  | "Asia/Almaty"
+  | "Asia/Jakarta"
+  | "Asia/Bangkok"
+  | "Asia/Shanghai"
+  | "Asia/Singapore"
+  | "Asia/Tokyo"
+  | "Asia/Seoul"
+  | "Australia/Brisbane"
+  | "Australia/Sydney"
+  | "Pacific/Guam"
+  | "Pacific/Noumea"
+  | "Pacific/Auckland"
+  | "Pacific/Fiji";
 
 export interface Config {
-  auth: {
-    users: UserAuthOperations;
-  };
+  auth: { users: UserAuthOperations };
   blocks: {};
   collections: {
     catalogs: Catalog;
-    'data-exports': DataExport;
+    "data-exports": DataExport;
     datasets: Dataset;
-    'dataset-schemas': DatasetSchema;
-    'audit-log': AuditLog;
-    'import-files': ImportFile;
-    'import-jobs': ImportJob;
-    'scheduled-imports': ScheduledImport;
+    "dataset-schemas": DatasetSchema;
+    "audit-log": AuditLog;
+    "import-files": ImportFile;
+    "import-jobs": ImportJob;
+    "scheduled-imports": ScheduledImport;
     events: Event;
     users: User;
-    'user-usage': UserUsage;
+    "user-usage": UserUsage;
     media: Media;
-    'location-cache': LocationCache;
-    'geocoding-providers': GeocodingProvider;
+    "location-cache": LocationCache;
+    "geocoding-providers": GeocodingProvider;
     pages: Page;
     views: View;
-    'schema-detectors': SchemaDetector;
-    'payload-kv': PayloadKv;
-    'payload-jobs': PayloadJob;
-    'payload-locked-documents': PayloadLockedDocument;
-    'payload-preferences': PayloadPreference;
-    'payload-migrations': PayloadMigration;
+    "schema-detectors": SchemaDetector;
+    "payload-kv": PayloadKv;
+    "payload-jobs": PayloadJob;
+    "payload-locked-documents": PayloadLockedDocument;
+    "payload-preferences": PayloadPreference;
+    "payload-migrations": PayloadMigration;
   };
   collectionsJoins: {};
   collectionsSelect: {
     catalogs: CatalogsSelect<false> | CatalogsSelect<true>;
-    'data-exports': DataExportsSelect<false> | DataExportsSelect<true>;
+    "data-exports": DataExportsSelect<false> | DataExportsSelect<true>;
     datasets: DatasetsSelect<false> | DatasetsSelect<true>;
-    'dataset-schemas': DatasetSchemasSelect<false> | DatasetSchemasSelect<true>;
-    'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
-    'import-files': ImportFilesSelect<false> | ImportFilesSelect<true>;
-    'import-jobs': ImportJobsSelect<false> | ImportJobsSelect<true>;
-    'scheduled-imports': ScheduledImportsSelect<false> | ScheduledImportsSelect<true>;
+    "dataset-schemas": DatasetSchemasSelect<false> | DatasetSchemasSelect<true>;
+    "audit-log": AuditLogSelect<false> | AuditLogSelect<true>;
+    "import-files": ImportFilesSelect<false> | ImportFilesSelect<true>;
+    "import-jobs": ImportJobsSelect<false> | ImportJobsSelect<true>;
+    "scheduled-imports": ScheduledImportsSelect<false> | ScheduledImportsSelect<true>;
     events: EventsSelect<false> | EventsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
-    'user-usage': UserUsageSelect<false> | UserUsageSelect<true>;
+    "user-usage": UserUsageSelect<false> | UserUsageSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
-    'location-cache': LocationCacheSelect<false> | LocationCacheSelect<true>;
-    'geocoding-providers': GeocodingProvidersSelect<false> | GeocodingProvidersSelect<true>;
+    "location-cache": LocationCacheSelect<false> | LocationCacheSelect<true>;
+    "geocoding-providers": GeocodingProvidersSelect<false> | GeocodingProvidersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     views: ViewsSelect<false> | ViewsSelect<true>;
-    'schema-detectors': SchemaDetectorsSelect<false> | SchemaDetectorsSelect<true>;
-    'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
-    'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
-    'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
-    'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
-    'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
+    "schema-detectors": SchemaDetectorsSelect<false> | SchemaDetectorsSelect<true>;
+    "payload-kv": PayloadKvSelect<false> | PayloadKvSelect<true>;
+    "payload-jobs": PayloadJobsSelect<false> | PayloadJobsSelect<true>;
+    "payload-locked-documents": PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
+    "payload-preferences": PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
+    "payload-migrations": PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
-  db: {
-    defaultIDType: number;
-  };
+  db: { defaultIDType: number };
   fallbackLocale: null;
   globals: {
-    'main-menu': MainMenu;
+    "main-menu": MainMenu;
     footer: Footer;
     branding: Branding;
     settings: Setting;
-    'payload-jobs-stats': PayloadJobsStat;
+    "payload-jobs-stats": PayloadJobsStat;
   };
   globalsSelect: {
-    'main-menu': MainMenuSelect<false> | MainMenuSelect<true>;
+    "main-menu": MainMenuSelect<false> | MainMenuSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
     branding: BrandingSelect<false> | BrandingSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
-    'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
+    "payload-jobs-stats": PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
-  user: User & {
-    collection: 'users';
-  };
+  user: User & { collection: "users" };
   jobs: {
     tasks: {
-      'dataset-detection': TaskDatasetDetection;
-      'detect-schema': TaskDetectSchema;
-      'analyze-duplicates': TaskAnalyzeDuplicates;
-      'validate-schema': TaskValidateSchema;
-      'create-schema-version': TaskCreateSchemaVersion;
-      'geocode-batch': TaskGeocodeBatch;
-      'create-events': TaskCreateEvents;
-      'cleanup-approval-locks': TaskCleanupApprovalLocks;
-      'url-fetch': TaskUrlFetch;
-      'schedule-manager': TaskScheduleManager;
-      'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
-      'process-pending-retries': TaskProcessPendingRetries;
-      'quota-reset': TaskQuotaReset;
-      'cache-cleanup': TaskCacheCleanup;
-      'schema-maintenance': TaskSchemaMaintenance;
-      'data-export': TaskDataExport;
-      'data-export-cleanup': TaskDataExportCleanup;
-      'audit-log-ip-cleanup': TaskAuditLogIpCleanup;
-      inline: {
-        input: unknown;
-        output: unknown;
-      };
+      "dataset-detection": TaskDatasetDetection;
+      "detect-schema": TaskDetectSchema;
+      "analyze-duplicates": TaskAnalyzeDuplicates;
+      "validate-schema": TaskValidateSchema;
+      "create-schema-version": TaskCreateSchemaVersion;
+      "geocode-batch": TaskGeocodeBatch;
+      "create-events": TaskCreateEvents;
+      "cleanup-approval-locks": TaskCleanupApprovalLocks;
+      "url-fetch": TaskUrlFetch;
+      "schedule-manager": TaskScheduleManager;
+      "cleanup-stuck-scheduled-imports": TaskCleanupStuckScheduledImports;
+      "process-pending-retries": TaskProcessPendingRetries;
+      "quota-reset": TaskQuotaReset;
+      "cache-cleanup": TaskCacheCleanup;
+      "schema-maintenance": TaskSchemaMaintenance;
+      "data-export": TaskDataExport;
+      "data-export-cleanup": TaskDataExportCleanup;
+      "audit-log-ip-cleanup": TaskAuditLogIpCleanup;
+      inline: { input: unknown; output: unknown };
     };
     workflows: unknown;
   };
 }
 export interface UserAuthOperations {
-  forgotPassword: {
-    email: string;
-    password: string;
-  };
-  login: {
-    email: string;
-    password: string;
-  };
-  registerFirstUser: {
-    email: string;
-    password: string;
-  };
-  unlock: {
-    email: string;
-    password: string;
-  };
+  forgotPassword: { email: string; password: string };
+  login: { email: string; password: string };
+  registerFirstUser: { email: string; password: string };
+  unlock: { email: string; password: string };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -193,13 +172,9 @@ export interface Catalog {
   description?: {
     root: {
       type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      children: { type: any; version: number; [k: string]: unknown }[];
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
@@ -217,7 +192,7 @@ export interface Catalog {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -227,17 +202,17 @@ export interface User {
   id: number;
   firstName?: string | null;
   lastName?: string | null;
-  role?: ('user' | 'admin' | 'editor') | null;
+  role?: ("user" | "admin" | "editor") | null;
   isActive?: boolean | null;
   lastLoginAt?: string | null;
   /**
    * How this user account was created
    */
-  registrationSource?: ('admin' | 'self') | null;
+  registrationSource?: ("admin" | "self") | null;
   /**
    * User trust level determines resource quotas and rate limits
    */
-  trustLevel: '0' | '1' | '2' | '3' | '4' | '5';
+  trustLevel: "0" | "1" | "2" | "3" | "4" | "5";
   /**
    * Resource quotas for this user (automatically set based on trust level)
    */
@@ -278,19 +253,11 @@ export interface User {
   /**
    * Custom quota overrides (JSON format) - overrides trust level defaults
    */
-  customQuotas?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  customQuotas?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Account deletion status
    */
-  deletionStatus?: ('active' | 'pending_deletion' | 'deleted') | null;
+  deletionStatus?: ("active" | "pending_deletion" | "deleted") | null;
   /**
    * When the user requested account deletion
    */
@@ -311,13 +278,7 @@ export interface User {
   _verificationToken?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
+  sessions?: { id: string; createdAt?: string | null; expiresAt: string }[] | null;
   password?: string | null;
 }
 /**
@@ -335,7 +296,7 @@ export interface DataExport {
   /**
    * Current status of the export request
    */
-  status: 'pending' | 'processing' | 'ready' | 'failed' | 'expired';
+  status: "pending" | "processing" | "ready" | "failed" | "expired";
   /**
    * When the export was requested
    */
@@ -363,15 +324,7 @@ export interface DataExport {
   /**
    * Export summary with record counts
    */
-  summary?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  summary?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Error details if export failed
    */
@@ -389,13 +342,9 @@ export interface Dataset {
   description?: {
     root: {
       type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      children: { type: any; version: number; [k: string]: unknown }[];
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
@@ -426,20 +375,12 @@ export interface Dataset {
   /**
    * Additional metadata for the entity
    */
-  metadata?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  metadata?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   idStrategy?: {
     /**
      * How to generate unique IDs for events
      */
-    type: 'external' | 'computed' | 'auto' | 'hybrid';
+    type: "external" | "computed" | "auto" | "hybrid";
     /**
      * JSON path to ID field (e.g., 'id' or 'metadata.uuid')
      */
@@ -459,7 +400,7 @@ export interface Dataset {
     /**
      * What to do when duplicate is found
      */
-    duplicateStrategy?: ('skip' | 'update' | 'version') | null;
+    duplicateStrategy?: ("skip" | "update" | "version") | null;
   };
   schemaConfig?: {
     /**
@@ -497,7 +438,7 @@ export interface Dataset {
     /**
      * How to detect enum fields
      */
-    enumMode?: ('count' | 'percentage') | null;
+    enumMode?: ("count" | "percentage") | null;
   };
   deduplicationConfig?: {
     /**
@@ -507,20 +448,12 @@ export interface Dataset {
     /**
      * What to do when duplicate is found
      */
-    strategy?: ('skip' | 'update' | 'version') | null;
+    strategy?: ("skip" | "update" | "version") | null;
   };
   /**
    * Statistics and metadata about each field
    */
-  fieldMetadata?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  fieldMetadata?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Transform rules applied to incoming data before validation (e.g., field renames)
    */
@@ -533,7 +466,7 @@ export interface Dataset {
         /**
          * Type of transformation to apply
          */
-        type: 'rename' | 'date-parse' | 'string-op' | 'concatenate' | 'split' | 'type-cast';
+        type: "rename" | "date-parse" | "string-op" | "concatenate" | "split" | "type-cast";
         /**
          * Source field path in import file (e.g., 'date' or 'user.email')
          */
@@ -545,11 +478,11 @@ export interface Dataset {
         /**
          * Expected input date format
          */
-        inputFormat?: ('DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD' | 'DD-MM-YYYY' | 'MM-DD-YYYY' | 'DD.MM.YYYY') | null;
+        inputFormat?: ("DD/MM/YYYY" | "MM/DD/YYYY" | "YYYY-MM-DD" | "DD-MM-YYYY" | "MM-DD-YYYY" | "DD.MM.YYYY") | null;
         /**
          * Output date format
          */
-        outputFormat?: ('YYYY-MM-DD' | 'DD/MM/YYYY' | 'MM/DD/YYYY') | null;
+        outputFormat?: ("YYYY-MM-DD" | "DD/MM/YYYY" | "MM/DD/YYYY") | null;
         /**
          * Optional timezone (e.g., 'America/New_York')
          */
@@ -557,7 +490,7 @@ export interface Dataset {
         /**
          * String operation to apply
          */
-        operation?: ('uppercase' | 'lowercase' | 'trim' | 'replace') | null;
+        operation?: ("uppercase" | "lowercase" | "trim" | "replace") | null;
         /**
          * Text pattern to find (for replace operation)
          */
@@ -569,15 +502,7 @@ export interface Dataset {
         /**
          * Array of source field paths to concatenate (e.g., ["first_name", "last_name"])
          */
-        fromFields?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
+        fromFields?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
         /**
          * Separator between concatenated values
          */
@@ -589,27 +514,19 @@ export interface Dataset {
         /**
          * Array of target field names for split values (e.g., ["first_name", "last_name"])
          */
-        toFields?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
+        toFields?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
         /**
          * Expected source type
          */
-        fromType?: ('string' | 'number' | 'boolean' | 'date' | 'array' | 'object' | 'null') | null;
+        fromType?: ("string" | "number" | "boolean" | "date" | "array" | "object" | "null") | null;
         /**
          * Target type to convert to
          */
-        toType?: ('string' | 'number' | 'boolean' | 'date' | 'array' | 'object') | null;
+        toType?: ("string" | "number" | "boolean" | "date" | "array" | "object") | null;
         /**
          * Strategy for performing the conversion
          */
-        strategy?: ('parse' | 'cast' | 'custom' | 'reject') | null;
+        strategy?: ("parse" | "cast" | "custom" | "reject") | null;
         /**
          * Custom JavaScript: (value, context) => transformedValue
          */
@@ -637,7 +554,7 @@ export interface Dataset {
       }[]
     | null;
   enumDetection?: {
-    mode?: ('count' | 'percentage' | 'disabled') | null;
+    mode?: ("count" | "percentage" | "disabled") | null;
     /**
      * Max unique values (count mode) or min percentage (percentage mode)
      */
@@ -697,7 +614,7 @@ export interface Dataset {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * Configure schema detection providers for import workflows
@@ -730,22 +647,11 @@ export interface SchemaDetector {
   /**
    * Detector-specific configuration options (JSON)
    */
-  options?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  options?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Automatically updated usage statistics
    */
-  statistics?: {
-    totalRuns?: number | null;
-    lastUsed?: string | null;
-  };
+  statistics?: { totalRuns?: number | null; lastUsed?: string | null };
   updatedAt: string;
   createdAt: string;
 }
@@ -777,74 +683,27 @@ export interface DatasetSchema {
   /**
    * JSON Schema Draft 7
    */
-  schema:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  schema: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Field statistics and metadata
    */
-  fieldMetadata:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  fieldMetadata: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Number of events in the dataset when this schema was generated
    */
   eventCountAtCreation?: number | null;
   schemaSummary?: {
     totalFields?: number | null;
-    newFields?:
-      | {
-          path?: string | null;
-          id?: string | null;
-        }[]
-      | null;
-    removedFields?:
-      | {
-          path?: string | null;
-          id?: string | null;
-        }[]
-      | null;
+    newFields?: { path?: string | null; id?: string | null }[] | null;
+    removedFields?: { path?: string | null; id?: string | null }[] | null;
     typeChanges?:
-      | {
-          path?: string | null;
-          oldType?: string | null;
-          newType?: string | null;
-          id?: string | null;
-        }[]
+      | { path?: string | null; oldType?: string | null; newType?: string | null; id?: string | null }[]
       | null;
     enumChanges?:
       | {
           path?: string | null;
-          addedValues?:
-            | {
-                [k: string]: unknown;
-              }
-            | unknown[]
-            | string
-            | number
-            | boolean
-            | null;
-          removedValues?:
-            | {
-                [k: string]: unknown;
-              }
-            | unknown[]
-            | string
-            | number
-            | boolean
-            | null;
+          addedValues?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
+          removedValues?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
           id?: string | null;
         }[]
       | null;
@@ -853,12 +712,7 @@ export interface DatasetSchema {
    * Import jobs that contributed to this schema
    */
   importSources?:
-    | {
-        import: number | ImportJob;
-        recordCount?: number | null;
-        batchCount?: number | null;
-        id?: string | null;
-      }[]
+    | { import: number | ImportJob; recordCount?: number | null; batchCount?: number | null; id?: string | null }[]
     | null;
   /**
    * Whether this schema requires manual approval
@@ -873,15 +727,7 @@ export interface DatasetSchema {
   /**
    * Conflicts that require manual resolution
    */
-  conflicts?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  conflicts?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Detected or configured field mappings for standard event properties
    */
@@ -906,7 +752,7 @@ export interface DatasetSchema {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * Unified import processing pipeline
@@ -932,28 +778,20 @@ export interface ImportJob {
    * Current processing stage
    */
   stage:
-    | 'analyze-duplicates'
-    | 'detect-schema'
-    | 'validate-schema'
-    | 'await-approval'
-    | 'create-schema-version'
-    | 'geocode-batch'
-    | 'create-events'
-    | 'completed'
-    | 'failed';
+    | "analyze-duplicates"
+    | "detect-schema"
+    | "validate-schema"
+    | "await-approval"
+    | "create-schema-version"
+    | "geocode-batch"
+    | "create-events"
+    | "completed"
+    | "failed";
   progress?: {
     /**
      * Detailed progress information for each processing stage
      */
-    stages?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    stages?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
     /**
      * Overall progress percentage (0-100), weighted by stage time estimates
      */
@@ -966,27 +804,11 @@ export interface ImportJob {
   /**
    * Detected JSON Schema from data
    */
-  schema?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  schema?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Progressive schema builder state for continuity across batches
    */
-  schemaBuilderState?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  schemaBuilderState?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Detected or configured field mappings for standard event properties
    */
@@ -1028,39 +850,15 @@ export interface ImportJob {
     /**
      * List of breaking schema changes
      */
-    breakingChanges?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    breakingChanges?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
     /**
      * New fields detected (auto-grow candidates)
      */
-    newFields?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    newFields?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
     /**
      * Auto-detected field rename suggestions with confidence scores
      */
-    transformSuggestions?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    transformSuggestions?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
     /**
      * Whether manual approval is required
      */
@@ -1094,27 +892,11 @@ export interface ImportJob {
     /**
      * Duplicates found within this import
      */
-    internal?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    internal?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
     /**
      * Duplicates found with existing events
      */
-    external?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    external?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
     summary?: {
       /**
        * Total rows analyzed
@@ -1137,49 +919,19 @@ export interface ImportJob {
   /**
    * Geocoding results by location string (locationString → coordinates)
    */
-  geocodingResults?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  geocodingResults?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Processing results and statistics
    */
-  results?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  results?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Processing errors by row
    */
-  errors?:
-    | {
-        row: number;
-        error: string;
-        id?: string | null;
-      }[]
-    | null;
+  errors?: { row: number; error: string; id?: string | null }[] | null;
   /**
    * Detailed error information and recovery attempts
    */
-  errorLog?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  errorLog?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Number of retry attempts made
    */
@@ -1197,12 +949,12 @@ export interface ImportJob {
    */
   lastSuccessfulStage?:
     | (
-        | 'analyze-duplicates'
-        | 'detect-schema'
-        | 'validate-schema'
-        | 'await-approval'
-        | 'geocode-batch'
-        | 'create-events'
+        | "analyze-duplicates"
+        | "detect-schema"
+        | "validate-schema"
+        | "await-approval"
+        | "geocode-batch"
+        | "create-events"
       )
     | null;
   displayTitle?: string | null;
@@ -1232,7 +984,7 @@ export interface ImportFile {
    * User who initiated the import
    */
   user: number | User;
-  status?: ('pending' | 'parsing' | 'processing' | 'completed' | 'failed') | null;
+  status?: ("pending" | "parsing" | "processing" | "completed" | "failed") | null;
   /**
    * Number of datasets detected in this catalog import
    */
@@ -1244,15 +996,7 @@ export interface ImportFile {
   /**
    * Information about detected sheets/datasets in the file
    */
-  sheetMetadata?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  sheetMetadata?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Payload job ID for tracking the catalog parsing job
    */
@@ -1266,39 +1010,15 @@ export interface ImportFile {
   /**
    * Rate limiting information for this import
    */
-  rateLimitInfo?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  rateLimitInfo?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Additional import context and metadata
    */
-  metadata?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  metadata?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Processing options for scheduled imports (schemaMode, skipDuplicateChecking, etc.)
    */
-  processingOptions?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  processingOptions?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Target dataset for scheduled imports
    */
@@ -1307,15 +1027,7 @@ export interface ImportFile {
    * Reference to the scheduled import that triggered this file
    */
   scheduledImport?: (number | null) | ScheduledImport;
-  quotaInfo?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  quotaInfo?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -1361,7 +1073,7 @@ export interface ScheduledImport {
    * Authentication configuration for accessing the URL
    */
   authConfig?: {
-    type?: ('none' | 'api-key' | 'bearer' | 'basic') | null;
+    type?: ("none" | "api-key" | "bearer" | "basic") | null;
     /**
      * API key to include in request header
      */
@@ -1385,15 +1097,7 @@ export interface ScheduledImport {
     /**
      * Additional custom headers as JSON object
      */
-    customHeaders?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    customHeaders?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   };
   /**
    * Catalog to import data into
@@ -1435,11 +1139,11 @@ export interface ScheduledImport {
   /**
    * Choose scheduling method
    */
-  scheduleType: 'frequency' | 'cron';
+  scheduleType: "frequency" | "cron";
   /**
    * How often to run the import
    */
-  frequency?: ('hourly' | 'daily' | 'weekly' | 'monthly') | null;
+  frequency?: ("hourly" | "daily" | "weekly" | "monthly") | null;
   /**
    * Cron expression (e.g., '0 * /6 * * *' for every 6 hours)
    */
@@ -1451,7 +1155,7 @@ export interface ScheduledImport {
   /**
    * How to handle schema changes during scheduled executions. Strict: fail if schema differs. Additive: auto-accept new fields. Flexible: require approval for changes.
    */
-  schemaMode?: ('strict' | 'additive' | 'flexible') | null;
+  schemaMode?: ("strict" | "additive" | "flexible") | null;
   /**
    * The original import file this schedule was created from (via wizard)
    */
@@ -1526,7 +1230,7 @@ export interface ScheduledImport {
   /**
    * Status of last execution
    */
-  lastStatus?: ('success' | 'failed' | 'running') | null;
+  lastStatus?: ("success" | "failed" | "running") | null;
   /**
    * Error message from last failed execution
    */
@@ -1562,7 +1266,7 @@ export interface ScheduledImport {
   executionHistory?:
     | {
         executedAt: string;
-        status: 'success' | 'failed';
+        status: "success" | "failed";
         /**
          * Duration in milliseconds
          */
@@ -1576,14 +1280,14 @@ export interface ScheduledImport {
         /**
          * How this execution was triggered
          */
-        triggeredBy?: ('schedule' | 'webhook' | 'manual' | 'system') | null;
+        triggeredBy?: ("schedule" | "webhook" | "manual" | "system") | null;
         id?: string | null;
       }[]
     | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * Immutable audit trail of sensitive account actions
@@ -1624,15 +1328,7 @@ export interface AuditLog {
   /**
    * Action-specific structured data
    */
-  details?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  details?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1658,27 +1354,16 @@ export interface Event {
   /**
    * Generic data in JSON format (JSONB indexed for fast queries)
    */
-  data:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  data: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Geographic coordinates (WGS84)
    */
-  location?: {
-    latitude?: number | null;
-    longitude?: number | null;
-  };
+  location?: { latitude?: number | null; longitude?: number | null };
   /**
    * Source and validation of coordinate data
    */
   coordinateSource?: {
-    type?: ('import' | 'geocoded' | 'manual' | 'none') | null;
+    type?: ("import" | "geocoded" | "manual" | "none") | null;
     importColumns?: {
       /**
        * Column name containing latitude
@@ -1705,7 +1390,7 @@ export interface Event {
      * Normalized address returned by geocoder
      */
     normalizedAddress?: string | null;
-    validationStatus?: ('valid' | 'out_of_range' | 'suspicious_zero' | 'swapped' | 'invalid') | null;
+    validationStatus?: ("valid" | "out_of_range" | "suspicious_zero" | "swapped" | "invalid") | null;
   };
   /**
    * When the actual event occurred
@@ -1718,15 +1403,7 @@ export interface Event {
   /**
    * Validation errors if any
    */
-  validationErrors?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  validationErrors?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Geocoding metadata and information
    */
@@ -1738,11 +1415,11 @@ export interface Event {
     /**
      * Geocoding processing status
      */
-    geocodingStatus?: ('pending' | 'success' | 'failed') | null;
+    geocodingStatus?: ("pending" | "success" | "failed") | null;
     /**
      * Geocoding provider used
      */
-    provider?: ('google' | 'nominatim' | 'manual') | null;
+    provider?: ("google" | "nominatim" | "manual") | null;
     /**
      * Geocoding confidence score (0-1)
      */
@@ -1772,23 +1449,15 @@ export interface Event {
    * Schema version number this event was validated against
    */
   schemaVersionNumber?: number | null;
-  validationStatus?: ('pending' | 'valid' | 'invalid' | 'transformed') | null;
+  validationStatus?: ("pending" | "valid" | "invalid" | "transformed") | null;
   /**
    * Record of any type transformations applied
    */
-  transformations?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  transformations?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1849,7 +1518,7 @@ export interface Media {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
   url?: string | null;
   thumbnailURL?: string | null;
   filename?: string | null;
@@ -1956,19 +1625,11 @@ export interface LocationCache {
   /**
    * Additional provider-specific metadata
    */
-  metadata?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  metadata?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * Manage geocoding provider configurations
@@ -1985,7 +1646,7 @@ export interface GeocodingProvider {
   /**
    * The geocoding service provider
    */
-  type: 'google' | 'nominatim' | 'opencage';
+  type: "google" | "nominatim" | "opencage";
   /**
    * Enable this provider instance
    */
@@ -2060,14 +1721,8 @@ export interface GeocodingProvider {
        */
       bounds?: {
         enabled?: boolean | null;
-        southwest?: {
-          lat?: number | null;
-          lng?: number | null;
-        };
-        northeast?: {
-          lat?: number | null;
-          lng?: number | null;
-        };
+        southwest?: { lat?: number | null; lng?: number | null };
+        northeast?: { lat?: number | null; lng?: number | null };
       };
       /**
        * Include additional metadata like timezone, currency, etc.
@@ -2084,20 +1739,20 @@ export interface GeocodingProvider {
    */
   tags?:
     | (
-        | 'production'
-        | 'development'
-        | 'testing'
-        | 'backup'
-        | 'primary'
-        | 'secondary'
-        | 'region-us'
-        | 'region-eu'
-        | 'region-asia'
-        | 'region-global'
-        | 'high-volume'
-        | 'low-volume'
-        | 'free-tier'
-        | 'paid-tier'
+        | "production"
+        | "development"
+        | "testing"
+        | "backup"
+        | "primary"
+        | "secondary"
+        | "region-us"
+        | "region-eu"
+        | "region-asia"
+        | "region-global"
+        | "high-volume"
+        | "low-volume"
+        | "free-tier"
+        | "paid-tier"
       )[]
     | null;
   /**
@@ -2117,7 +1772,7 @@ export interface GeocodingProvider {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2135,48 +1790,41 @@ export interface Page {
         title: string;
         subtitle?: string | null;
         description?: string | null;
-        background?: ('gradient' | 'grid') | null;
-        buttons?:
-          | {
-              text: string;
-              link: string;
-              variant?: ('default' | 'outline') | null;
-              id?: string | null;
-            }[]
-          | null;
+        background?: ("gradient" | "grid") | null;
+        buttons?: { text: string; link: string; variant?: ("default" | "outline") | null; id?: string | null }[] | null;
         id?: string | null;
         blockName?: string | null;
-        blockType: 'hero';
+        blockType: "hero";
       }
     | {
         sectionTitle?: string | null;
         sectionDescription?: string | null;
-        columns?: ('1' | '2' | '3' | '4') | null;
+        columns?: ("1" | "2" | "3" | "4") | null;
         features: {
           icon:
-            | 'email'
-            | 'business'
-            | 'support'
-            | 'location'
-            | 'map'
-            | 'timeline'
-            | 'insights'
-            | 'github'
-            | 'bluesky'
-            | 'mastodon'
-            | 'linkedin'
-            | 'facebook'
-            | 'instagram'
-            | 'youtube'
-            | 'x';
+            | "email"
+            | "business"
+            | "support"
+            | "location"
+            | "map"
+            | "timeline"
+            | "insights"
+            | "github"
+            | "bluesky"
+            | "mastodon"
+            | "linkedin"
+            | "facebook"
+            | "instagram"
+            | "youtube"
+            | "x";
           title: string;
           description: string;
-          accent?: ('none' | 'primary' | 'secondary' | 'accent' | 'muted') | null;
+          accent?: ("none" | "primary" | "secondary" | "accent" | "muted") | null;
           id?: string | null;
         }[];
         id?: string | null;
         blockName?: string | null;
-        blockType: 'features';
+        blockType: "features";
       }
     | {
         stats: {
@@ -2184,49 +1832,49 @@ export interface Page {
           label: string;
           icon?:
             | (
-                | 'email'
-                | 'business'
-                | 'support'
-                | 'location'
-                | 'map'
-                | 'timeline'
-                | 'insights'
-                | 'github'
-                | 'bluesky'
-                | 'mastodon'
-                | 'linkedin'
-                | 'facebook'
-                | 'instagram'
-                | 'youtube'
-                | 'x'
+                | "email"
+                | "business"
+                | "support"
+                | "location"
+                | "map"
+                | "timeline"
+                | "insights"
+                | "github"
+                | "bluesky"
+                | "mastodon"
+                | "linkedin"
+                | "facebook"
+                | "instagram"
+                | "youtube"
+                | "x"
               )
             | null;
           id?: string | null;
         }[];
         id?: string | null;
         blockName?: string | null;
-        blockType: 'stats';
+        blockType: "stats";
       }
     | {
         sectionTitle?: string | null;
-        variant?: ('grid-2' | 'grid-3' | 'grid-4' | 'compact') | null;
+        variant?: ("grid-2" | "grid-3" | "grid-4" | "compact") | null;
         items: {
           icon:
-            | 'email'
-            | 'business'
-            | 'support'
-            | 'location'
-            | 'map'
-            | 'timeline'
-            | 'insights'
-            | 'github'
-            | 'bluesky'
-            | 'mastodon'
-            | 'linkedin'
-            | 'facebook'
-            | 'instagram'
-            | 'youtube'
-            | 'x';
+            | "email"
+            | "business"
+            | "support"
+            | "location"
+            | "map"
+            | "timeline"
+            | "insights"
+            | "github"
+            | "bluesky"
+            | "mastodon"
+            | "linkedin"
+            | "facebook"
+            | "instagram"
+            | "youtube"
+            | "x";
           label: string;
           value: string;
           link?: string | null;
@@ -2234,11 +1882,11 @@ export interface Page {
         }[];
         id?: string | null;
         blockName?: string | null;
-        blockType: 'detailsGrid';
+        blockType: "detailsGrid";
       }
     | {
         sectionTitle?: string | null;
-        variant?: ('vertical' | 'compact') | null;
+        variant?: ("vertical" | "compact") | null;
         items: {
           /**
            * Display date (e.g., '2024', 'March 2024', 'Q1 2024')
@@ -2250,11 +1898,11 @@ export interface Page {
         }[];
         id?: string | null;
         blockName?: string | null;
-        blockType: 'timeline';
+        blockType: "timeline";
       }
     | {
         sectionTitle?: string | null;
-        variant?: ('grid' | 'single' | 'masonry') | null;
+        variant?: ("grid" | "single" | "masonry") | null;
         items: {
           quote: string;
           author: string;
@@ -2267,40 +1915,36 @@ export interface Page {
            */
           avatar?:
             | (
-                | 'email'
-                | 'business'
-                | 'support'
-                | 'location'
-                | 'map'
-                | 'timeline'
-                | 'insights'
-                | 'github'
-                | 'bluesky'
-                | 'mastodon'
-                | 'linkedin'
-                | 'facebook'
-                | 'instagram'
-                | 'youtube'
-                | 'x'
+                | "email"
+                | "business"
+                | "support"
+                | "location"
+                | "map"
+                | "timeline"
+                | "insights"
+                | "github"
+                | "bluesky"
+                | "mastodon"
+                | "linkedin"
+                | "facebook"
+                | "instagram"
+                | "youtube"
+                | "x"
               )
             | null;
           id?: string | null;
         }[];
         id?: string | null;
         blockName?: string | null;
-        blockType: 'testimonials';
+        blockType: "testimonials";
       }
     | {
         content: {
           root: {
             type: string;
-            children: {
-              type: any;
-              version: number;
-              [k: string]: unknown;
-            }[];
-            direction: ('ltr' | 'rtl') | null;
-            format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+            children: { type: any; version: number; [k: string]: unknown }[];
+            direction: ("ltr" | "rtl") | null;
+            format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
             indent: number;
             version: number;
           };
@@ -2308,7 +1952,7 @@ export interface Page {
         };
         id?: string | null;
         blockName?: string | null;
-        blockType: 'richText';
+        blockType: "richText";
       }
     | {
         headline: string;
@@ -2317,7 +1961,7 @@ export interface Page {
         buttonLink: string;
         id?: string | null;
         blockName?: string | null;
-        blockType: 'cta';
+        blockType: "cta";
       }
     | {
         /**
@@ -2334,7 +1978,7 @@ export interface Page {
         buttonText?: string | null;
         id?: string | null;
         blockName?: string | null;
-        blockType: 'newsletterForm';
+        blockType: "newsletterForm";
       }
     | {
         /**
@@ -2353,17 +1997,17 @@ export interface Page {
          * Submit button text
          */
         buttonText?: string | null;
-        variant?: ('default' | 'elevated' | 'centered') | null;
-        size?: ('default' | 'lg' | 'xl') | null;
+        variant?: ("default" | "elevated" | "centered") | null;
+        size?: ("default" | "lg" | "xl") | null;
         id?: string | null;
         blockName?: string | null;
-        blockType: 'newsletterCTA';
+        blockType: "newsletterCTA";
       }
   )[];
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * Configure UI views with custom data scope, filters, and branding
@@ -2389,7 +2033,7 @@ export interface View {
    * Which data is visible in this view
    */
   dataScope?: {
-    mode?: ('all' | 'catalogs' | 'datasets') | null;
+    mode?: ("all" | "catalogs" | "datasets") | null;
     /**
      * Only show data from these catalogs
      */
@@ -2403,7 +2047,7 @@ export interface View {
    * Configure which fields appear as filters
    */
   filterConfig?: {
-    mode?: ('auto' | 'manual' | 'disabled') | null;
+    mode?: ("auto" | "manual" | "disabled") | null;
     /**
      * Maximum number of filter dropdowns to display
      */
@@ -2439,15 +2083,7 @@ export interface View {
     /**
      * Pre-set filter values on load (e.g., {"status": ["active"]})
      */
-    defaultFilters?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
+    defaultFilters?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   };
   /**
    * Custom branding for this view
@@ -2536,7 +2172,7 @@ export interface View {
     /**
      * Base map style
      */
-    baseMapStyle?: ('default' | 'light' | 'dark' | 'satellite') | null;
+    baseMapStyle?: ("default" | "light" | "dark" | "satellite") | null;
     /**
      * Custom MapLibre style URL (overrides baseMapStyle)
      */
@@ -2553,7 +2189,7 @@ export interface View {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2562,15 +2198,7 @@ export interface View {
 export interface PayloadKv {
   id: number;
   key: string;
-  data:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  data: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2581,24 +2209,8 @@ export interface PayloadJob {
   /**
    * Input data provided to the job
    */
-  input?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  taskStatus?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  input?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
+  taskStatus?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   completedAt?: string | null;
   totalTried?: number | null;
   /**
@@ -2608,15 +2220,7 @@ export interface PayloadJob {
   /**
    * If hasError is true, this is the error that caused it
    */
-  error?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  error?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   /**
    * Task execution log
    */
@@ -2625,92 +2229,60 @@ export interface PayloadJob {
         executedAt: string;
         completedAt: string;
         taskSlug:
-          | 'inline'
-          | 'dataset-detection'
-          | 'detect-schema'
-          | 'analyze-duplicates'
-          | 'validate-schema'
-          | 'create-schema-version'
-          | 'geocode-batch'
-          | 'create-events'
-          | 'cleanup-approval-locks'
-          | 'url-fetch'
-          | 'schedule-manager'
-          | 'cleanup-stuck-scheduled-imports'
-          | 'process-pending-retries'
-          | 'quota-reset'
-          | 'cache-cleanup'
-          | 'schema-maintenance'
-          | 'data-export'
-          | 'data-export-cleanup'
-          | 'audit-log-ip-cleanup';
+          | "inline"
+          | "dataset-detection"
+          | "detect-schema"
+          | "analyze-duplicates"
+          | "validate-schema"
+          | "create-schema-version"
+          | "geocode-batch"
+          | "create-events"
+          | "cleanup-approval-locks"
+          | "url-fetch"
+          | "schedule-manager"
+          | "cleanup-stuck-scheduled-imports"
+          | "process-pending-retries"
+          | "quota-reset"
+          | "cache-cleanup"
+          | "schema-maintenance"
+          | "data-export"
+          | "data-export-cleanup"
+          | "audit-log-ip-cleanup";
         taskID: string;
-        input?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
-        output?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
-        state: 'failed' | 'succeeded';
-        error?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
+        input?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
+        output?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
+        state: "failed" | "succeeded";
+        error?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
         id?: string | null;
       }[]
     | null;
   taskSlug?:
     | (
-        | 'inline'
-        | 'dataset-detection'
-        | 'detect-schema'
-        | 'analyze-duplicates'
-        | 'validate-schema'
-        | 'create-schema-version'
-        | 'geocode-batch'
-        | 'create-events'
-        | 'cleanup-approval-locks'
-        | 'url-fetch'
-        | 'schedule-manager'
-        | 'cleanup-stuck-scheduled-imports'
-        | 'process-pending-retries'
-        | 'quota-reset'
-        | 'cache-cleanup'
-        | 'schema-maintenance'
-        | 'data-export'
-        | 'data-export-cleanup'
-        | 'audit-log-ip-cleanup'
+        | "inline"
+        | "dataset-detection"
+        | "detect-schema"
+        | "analyze-duplicates"
+        | "validate-schema"
+        | "create-schema-version"
+        | "geocode-batch"
+        | "create-events"
+        | "cleanup-approval-locks"
+        | "url-fetch"
+        | "schedule-manager"
+        | "cleanup-stuck-scheduled-imports"
+        | "process-pending-retries"
+        | "quota-reset"
+        | "cache-cleanup"
+        | "schema-maintenance"
+        | "data-export"
+        | "data-export-cleanup"
+        | "audit-log-ip-cleanup"
       )
     | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
-  meta?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  meta?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2721,79 +2293,25 @@ export interface PayloadJob {
 export interface PayloadLockedDocument {
   id: number;
   document?:
-    | ({
-        relationTo: 'catalogs';
-        value: number | Catalog;
-      } | null)
-    | ({
-        relationTo: 'data-exports';
-        value: number | DataExport;
-      } | null)
-    | ({
-        relationTo: 'datasets';
-        value: number | Dataset;
-      } | null)
-    | ({
-        relationTo: 'dataset-schemas';
-        value: number | DatasetSchema;
-      } | null)
-    | ({
-        relationTo: 'audit-log';
-        value: number | AuditLog;
-      } | null)
-    | ({
-        relationTo: 'import-files';
-        value: number | ImportFile;
-      } | null)
-    | ({
-        relationTo: 'import-jobs';
-        value: number | ImportJob;
-      } | null)
-    | ({
-        relationTo: 'scheduled-imports';
-        value: number | ScheduledImport;
-      } | null)
-    | ({
-        relationTo: 'events';
-        value: number | Event;
-      } | null)
-    | ({
-        relationTo: 'users';
-        value: number | User;
-      } | null)
-    | ({
-        relationTo: 'user-usage';
-        value: number | UserUsage;
-      } | null)
-    | ({
-        relationTo: 'media';
-        value: number | Media;
-      } | null)
-    | ({
-        relationTo: 'location-cache';
-        value: number | LocationCache;
-      } | null)
-    | ({
-        relationTo: 'geocoding-providers';
-        value: number | GeocodingProvider;
-      } | null)
-    | ({
-        relationTo: 'pages';
-        value: number | Page;
-      } | null)
-    | ({
-        relationTo: 'views';
-        value: number | View;
-      } | null)
-    | ({
-        relationTo: 'schema-detectors';
-        value: number | SchemaDetector;
-      } | null);
+    | ({ relationTo: "catalogs"; value: number | Catalog } | null)
+    | ({ relationTo: "data-exports"; value: number | DataExport } | null)
+    | ({ relationTo: "datasets"; value: number | Dataset } | null)
+    | ({ relationTo: "dataset-schemas"; value: number | DatasetSchema } | null)
+    | ({ relationTo: "audit-log"; value: number | AuditLog } | null)
+    | ({ relationTo: "import-files"; value: number | ImportFile } | null)
+    | ({ relationTo: "import-jobs"; value: number | ImportJob } | null)
+    | ({ relationTo: "scheduled-imports"; value: number | ScheduledImport } | null)
+    | ({ relationTo: "events"; value: number | Event } | null)
+    | ({ relationTo: "users"; value: number | User } | null)
+    | ({ relationTo: "user-usage"; value: number | UserUsage } | null)
+    | ({ relationTo: "media"; value: number | Media } | null)
+    | ({ relationTo: "location-cache"; value: number | LocationCache } | null)
+    | ({ relationTo: "geocoding-providers"; value: number | GeocodingProvider } | null)
+    | ({ relationTo: "pages"; value: number | Page } | null)
+    | ({ relationTo: "views"; value: number | View } | null)
+    | ({ relationTo: "schema-detectors"; value: number | SchemaDetector } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user: { relationTo: "users"; value: number | User };
   updatedAt: string;
   createdAt: string;
 }
@@ -2803,20 +2321,9 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: number;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user: { relationTo: "users"; value: number | User };
   key?: string | null;
-  value?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  value?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2881,17 +2388,7 @@ export interface DatasetsSelect<T extends boolean = true> {
   metadata?: T;
   idStrategy?:
     | T
-    | {
-        type?: T;
-        externalIdPath?: T;
-        computedIdFields?:
-          | T
-          | {
-              fieldPath?: T;
-              id?: T;
-            };
-        duplicateStrategy?: T;
-      };
+    | { type?: T; externalIdPath?: T; computedIdFields?: T | { fieldPath?: T; id?: T }; duplicateStrategy?: T };
   schemaConfig?:
     | T
     | {
@@ -2905,12 +2402,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         enumThreshold?: T;
         enumMode?: T;
       };
-  deduplicationConfig?:
-    | T
-    | {
-        enabled?: T;
-        strategy?: T;
-      };
+  deduplicationConfig?: T | { enabled?: T; strategy?: T };
   fieldMetadata?: T;
   importTransforms?:
     | T
@@ -2939,19 +2431,8 @@ export interface DatasetsSelect<T extends boolean = true> {
         confidence?: T;
         autoDetected?: T;
       };
-  enumDetection?:
-    | T
-    | {
-        mode?: T;
-        threshold?: T;
-      };
-  geoFieldDetection?:
-    | T
-    | {
-        autoDetect?: T;
-        latitudePath?: T;
-        longitudePath?: T;
-      };
+  enumDetection?: T | { mode?: T; threshold?: T };
+  geoFieldDetection?: T | { autoDetect?: T; latitudePath?: T; longitudePath?: T };
   fieldMappingOverrides?:
     | T
     | {
@@ -2986,56 +2467,18 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
     | T
     | {
         totalFields?: T;
-        newFields?:
-          | T
-          | {
-              path?: T;
-              id?: T;
-            };
-        removedFields?:
-          | T
-          | {
-              path?: T;
-              id?: T;
-            };
-        typeChanges?:
-          | T
-          | {
-              path?: T;
-              oldType?: T;
-              newType?: T;
-              id?: T;
-            };
-        enumChanges?:
-          | T
-          | {
-              path?: T;
-              addedValues?: T;
-              removedValues?: T;
-              id?: T;
-            };
+        newFields?: T | { path?: T; id?: T };
+        removedFields?: T | { path?: T; id?: T };
+        typeChanges?: T | { path?: T; oldType?: T; newType?: T; id?: T };
+        enumChanges?: T | { path?: T; addedValues?: T; removedValues?: T; id?: T };
       };
-  importSources?:
-    | T
-    | {
-        import?: T;
-        recordCount?: T;
-        batchCount?: T;
-        id?: T;
-      };
+  importSources?: T | { import?: T; recordCount?: T; batchCount?: T; id?: T };
   approvalRequired?: T;
   approvedBy?: T;
   approvalNotes?: T;
   autoApproved?: T;
   conflicts?: T;
-  fieldMappings?:
-    | T
-    | {
-        titlePath?: T;
-        descriptionPath?: T;
-        locationNamePath?: T;
-        timestampPath?: T;
-      };
+  fieldMappings?: T | { titlePath?: T; descriptionPath?: T; locationNamePath?: T; timestampPath?: T };
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -3102,13 +2545,7 @@ export interface ImportJobsSelect<T extends boolean = true> {
   dataset?: T;
   sheetIndex?: T;
   stage?: T;
-  progress?:
-    | T
-    | {
-        stages?: T;
-        overallPercentage?: T;
-        estimatedCompletionTime?: T;
-      };
+  progress?: T | { stages?: T; overallPercentage?: T; estimatedCompletionTime?: T };
   schema?: T;
   schemaBuilderState?: T;
   detectedFieldMappings?:
@@ -3142,24 +2579,11 @@ export interface ImportJobsSelect<T extends boolean = true> {
         strategy?: T;
         internal?: T;
         external?: T;
-        summary?:
-          | T
-          | {
-              totalRows?: T;
-              uniqueRows?: T;
-              internalDuplicates?: T;
-              externalDuplicates?: T;
-            };
+        summary?: T | { totalRows?: T; uniqueRows?: T; internalDuplicates?: T; externalDuplicates?: T };
       };
   geocodingResults?: T;
   results?: T;
-  errors?:
-    | T
-    | {
-        row?: T;
-        error?: T;
-        id?: T;
-      };
+  errors?: T | { row?: T; error?: T; id?: T };
   errorLog?: T;
   retryAttempts?: T;
   lastRetryAt?: T;
@@ -3182,30 +2606,10 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   sourceUrl?: T;
   authConfig?:
     | T
-    | {
-        type?: T;
-        apiKey?: T;
-        apiKeyHeader?: T;
-        bearerToken?: T;
-        username?: T;
-        password?: T;
-        customHeaders?: T;
-      };
+    | { type?: T; apiKey?: T; apiKeyHeader?: T; bearerToken?: T; username?: T; password?: T; customHeaders?: T };
   catalog?: T;
   dataset?: T;
-  multiSheetConfig?:
-    | T
-    | {
-        enabled?: T;
-        sheets?:
-          | T
-          | {
-              sheetIdentifier?: T;
-              dataset?: T;
-              skipIfMissing?: T;
-              id?: T;
-            };
-      };
+  multiSheetConfig?: T | { enabled?: T; sheets?: T | { sheetIdentifier?: T; dataset?: T; skipIfMissing?: T; id?: T } };
   scheduleType?: T;
   frequency?: T;
   cronExpression?: T;
@@ -3215,13 +2619,7 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   webhookEnabled?: T;
   webhookToken?: T;
   webhookUrl?: T;
-  retryConfig?:
-    | T
-    | {
-        maxRetries?: T;
-        retryDelayMinutes?: T;
-        exponentialBackoff?: T;
-      };
+  retryConfig?: T | { maxRetries?: T; retryDelayMinutes?: T; exponentialBackoff?: T };
   advancedOptions?:
     | T
     | {
@@ -3238,26 +2636,10 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   lastStatus?: T;
   lastError?: T;
   currentRetries?: T;
-  statistics?:
-    | T
-    | {
-        totalRuns?: T;
-        successfulRuns?: T;
-        failedRuns?: T;
-        averageDuration?: T;
-      };
+  statistics?: T | { totalRuns?: T; successfulRuns?: T; failedRuns?: T; averageDuration?: T };
   executionHistory?:
     | T
-    | {
-        executedAt?: T;
-        status?: T;
-        duration?: T;
-        recordsImported?: T;
-        error?: T;
-        jobId?: T;
-        triggeredBy?: T;
-        id?: T;
-      };
+    | { executedAt?: T; status?: T; duration?: T; recordsImported?: T; error?: T; jobId?: T; triggeredBy?: T; id?: T };
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -3273,24 +2655,12 @@ export interface EventsSelect<T extends boolean = true> {
   catalogOwnerId?: T;
   importJob?: T;
   data?: T;
-  location?:
-    | T
-    | {
-        latitude?: T;
-        longitude?: T;
-      };
+  location?: T | { latitude?: T; longitude?: T };
   coordinateSource?:
     | T
     | {
         type?: T;
-        importColumns?:
-          | T
-          | {
-              latitudeColumn?: T;
-              longitudeColumn?: T;
-              combinedColumn?: T;
-              format?: T;
-            };
+        importColumns?: T | { latitudeColumn?: T; longitudeColumn?: T; combinedColumn?: T; format?: T };
         confidence?: T;
         normalizedAddress?: T;
         validationStatus?: T;
@@ -3298,15 +2668,7 @@ export interface EventsSelect<T extends boolean = true> {
   eventTimestamp?: T;
   locationName?: T;
   validationErrors?: T;
-  geocodingInfo?:
-    | T
-    | {
-        originalAddress?: T;
-        geocodingStatus?: T;
-        provider?: T;
-        confidence?: T;
-        normalizedAddress?: T;
-      };
+  geocodingInfo?: T | { originalAddress?: T; geocodingStatus?: T; provider?: T; confidence?: T; normalizedAddress?: T };
   uniqueId?: T;
   sourceId?: T;
   contentHash?: T;
@@ -3359,13 +2721,7 @@ export interface UsersSelect<T extends boolean = true> {
   _verificationToken?: T;
   loginAttempts?: T;
   lockUntil?: T;
-  sessions?:
-    | T
-    | {
-        id?: T;
-        createdAt?: T;
-        expiresAt?: T;
-      };
+  sessions?: T | { id?: T; createdAt?: T; expiresAt?: T };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3407,36 +2763,9 @@ export interface MediaSelect<T extends boolean = true> {
   sizes?:
     | T
     | {
-        thumbnail?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        card?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        tablet?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
+        thumbnail?: T | { url?: T; width?: T; height?: T; mimeType?: T; filesize?: T; filename?: T };
+        card?: T | { url?: T; width?: T; height?: T; mimeType?: T; filesize?: T; filename?: T };
+        tablet?: T | { url?: T; width?: T; height?: T; mimeType?: T; filesize?: T; filename?: T };
       };
 }
 /**
@@ -3452,16 +2781,7 @@ export interface LocationCacheSelect<T extends boolean = true> {
   confidence?: T;
   hitCount?: T;
   lastUsed?: T;
-  components?:
-    | T
-    | {
-        streetNumber?: T;
-        streetName?: T;
-        city?: T;
-        region?: T;
-        postalCode?: T;
-        country?: T;
-      };
+  components?: T | { streetNumber?: T; streetName?: T; city?: T; region?: T; postalCode?: T; country?: T };
   metadata?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -3481,46 +2801,15 @@ export interface GeocodingProvidersSelect<T extends boolean = true> {
   config?:
     | T
     | {
-        google?:
-          | T
-          | {
-              apiKey?: T;
-              region?: T;
-              language?: T;
-            };
-        nominatim?:
-          | T
-          | {
-              baseUrl?: T;
-              userAgent?: T;
-              email?: T;
-              countrycodes?: T;
-              addressdetails?: T;
-              extratags?: T;
-            };
+        google?: T | { apiKey?: T; region?: T; language?: T };
+        nominatim?: T | { baseUrl?: T; userAgent?: T; email?: T; countrycodes?: T; addressdetails?: T; extratags?: T };
         opencage?:
           | T
           | {
               apiKey?: T;
               language?: T;
               countrycode?: T;
-              bounds?:
-                | T
-                | {
-                    enabled?: T;
-                    southwest?:
-                      | T
-                      | {
-                          lat?: T;
-                          lng?: T;
-                        };
-                    northeast?:
-                      | T
-                      | {
-                          lat?: T;
-                          lng?: T;
-                        };
-                  };
+              bounds?: T | { enabled?: T; southwest?: T | { lat?: T; lng?: T }; northeast?: T | { lat?: T; lng?: T } };
               annotations?: T;
               abbrv?: T;
             };
@@ -3528,13 +2817,7 @@ export interface GeocodingProvidersSelect<T extends boolean = true> {
   tags?: T;
   statistics?:
     | T
-    | {
-        totalRequests?: T;
-        successfulRequests?: T;
-        failedRequests?: T;
-        lastUsed?: T;
-        averageResponseTime?: T;
-      };
+    | { totalRequests?: T; successfulRequests?: T; failedRequests?: T; lastUsed?: T; averageResponseTime?: T };
   notes?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -3558,14 +2841,7 @@ export interface PagesSelect<T extends boolean = true> {
               subtitle?: T;
               description?: T;
               background?: T;
-              buttons?:
-                | T
-                | {
-                    text?: T;
-                    link?: T;
-                    variant?: T;
-                    id?: T;
-                  };
+              buttons?: T | { text?: T; link?: T; variant?: T; id?: T };
               id?: T;
               blockName?: T;
             };
@@ -3575,46 +2851,17 @@ export interface PagesSelect<T extends boolean = true> {
               sectionTitle?: T;
               sectionDescription?: T;
               columns?: T;
-              features?:
-                | T
-                | {
-                    icon?: T;
-                    title?: T;
-                    description?: T;
-                    accent?: T;
-                    id?: T;
-                  };
+              features?: T | { icon?: T; title?: T; description?: T; accent?: T; id?: T };
               id?: T;
               blockName?: T;
             };
-        stats?:
-          | T
-          | {
-              stats?:
-                | T
-                | {
-                    value?: T;
-                    label?: T;
-                    icon?: T;
-                    id?: T;
-                  };
-              id?: T;
-              blockName?: T;
-            };
+        stats?: T | { stats?: T | { value?: T; label?: T; icon?: T; id?: T }; id?: T; blockName?: T };
         detailsGrid?:
           | T
           | {
               sectionTitle?: T;
               variant?: T;
-              items?:
-                | T
-                | {
-                    icon?: T;
-                    label?: T;
-                    value?: T;
-                    link?: T;
-                    id?: T;
-                  };
+              items?: T | { icon?: T; label?: T; value?: T; link?: T; id?: T };
               id?: T;
               blockName?: T;
             };
@@ -3623,14 +2870,7 @@ export interface PagesSelect<T extends boolean = true> {
           | {
               sectionTitle?: T;
               variant?: T;
-              items?:
-                | T
-                | {
-                    date?: T;
-                    title?: T;
-                    description?: T;
-                    id?: T;
-                  };
+              items?: T | { date?: T; title?: T; description?: T; id?: T };
               id?: T;
               blockName?: T;
             };
@@ -3639,44 +2879,13 @@ export interface PagesSelect<T extends boolean = true> {
           | {
               sectionTitle?: T;
               variant?: T;
-              items?:
-                | T
-                | {
-                    quote?: T;
-                    author?: T;
-                    role?: T;
-                    avatar?: T;
-                    id?: T;
-                  };
+              items?: T | { quote?: T; author?: T; role?: T; avatar?: T; id?: T };
               id?: T;
               blockName?: T;
             };
-        richText?:
-          | T
-          | {
-              content?: T;
-              id?: T;
-              blockName?: T;
-            };
-        cta?:
-          | T
-          | {
-              headline?: T;
-              description?: T;
-              buttonText?: T;
-              buttonLink?: T;
-              id?: T;
-              blockName?: T;
-            };
-        newsletterForm?:
-          | T
-          | {
-              headline?: T;
-              placeholder?: T;
-              buttonText?: T;
-              id?: T;
-              blockName?: T;
-            };
+        richText?: T | { content?: T; id?: T; blockName?: T };
+        cta?: T | { headline?: T; description?: T; buttonText?: T; buttonLink?: T; id?: T; blockName?: T };
+        newsletterForm?: T | { headline?: T; placeholder?: T; buttonText?: T; id?: T; blockName?: T };
         newsletterCTA?:
           | T
           | {
@@ -3703,28 +2912,13 @@ export interface ViewsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   isDefault?: T;
-  dataScope?:
-    | T
-    | {
-        mode?: T;
-        catalogs?: T;
-        datasets?: T;
-      };
+  dataScope?: T | { mode?: T; catalogs?: T; datasets?: T };
   filterConfig?:
     | T
     | {
         mode?: T;
         maxFilters?: T;
-        fields?:
-          | T
-          | {
-              fieldPath?: T;
-              enabled?: T;
-              label?: T;
-              displayOrder?: T;
-              maxValues?: T;
-              id?: T;
-            };
+        fields?: T | { fieldPath?: T; enabled?: T; label?: T; displayOrder?: T; maxValues?: T; id?: T };
         defaultFilters?: T;
       };
   branding?:
@@ -3734,33 +2928,15 @@ export interface ViewsSelect<T extends boolean = true> {
         title?: T;
         logo?: T;
         favicon?: T;
-        colors?:
-          | T
-          | {
-              primary?: T;
-              secondary?: T;
-              background?: T;
-            };
+        colors?: T | { primary?: T; secondary?: T; background?: T };
         headerHtml?: T;
       };
   mapSettings?:
     | T
     | {
-        defaultBounds?:
-          | T
-          | {
-              north?: T;
-              south?: T;
-              east?: T;
-              west?: T;
-            };
+        defaultBounds?: T | { north?: T; south?: T; east?: T; west?: T };
         defaultZoom?: T;
-        defaultCenter?:
-          | T
-          | {
-              latitude?: T;
-              longitude?: T;
-            };
+        defaultCenter?: T | { latitude?: T; longitude?: T };
         baseMapStyle?: T;
         customStyleUrl?: T;
       };
@@ -3782,12 +2958,7 @@ export interface SchemaDetectorsSelect<T extends boolean = true> {
   enabled?: T;
   priority?: T;
   options?: T;
-  statistics?:
-    | T
-    | {
-        totalRuns?: T;
-        lastUsed?: T;
-      };
+  statistics?: T | { totalRuns?: T; lastUsed?: T };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3869,14 +3040,8 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
  */
 export interface MainMenu {
   id: number;
-  navItems?:
-    | {
-        label: string;
-        url: string;
-        id?: string | null;
-      }[]
-    | null;
-  _status?: ('draft' | 'published') | null;
+  navItems?: { label: string; url: string; id?: string | null }[] | null;
+  _status?: ("draft" | "published") | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -3895,23 +3060,13 @@ export interface Footer {
    */
   socialLinks?:
     | {
-        platform: 'x' | 'bluesky' | 'mastodon' | 'github' | 'linkedin' | 'facebook' | 'instagram' | 'youtube';
+        platform: "x" | "bluesky" | "mastodon" | "github" | "linkedin" | "facebook" | "instagram" | "youtube";
         url: string;
         id?: string | null;
       }[]
     | null;
   columns?:
-    | {
-        title: string;
-        links?:
-          | {
-              label: string;
-              url: string;
-              id?: string | null;
-            }[]
-          | null;
-        id?: string | null;
-      }[]
+    | { title: string; links?: { label: string; url: string; id?: string | null }[] | null; id?: string | null }[]
     | null;
   /**
    * Newsletter subscription form settings
@@ -3942,7 +3097,7 @@ export interface Footer {
    * Optional credits or attribution text
    */
   credits?: string | null;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -4008,11 +3163,11 @@ export interface Setting {
       /**
        * How to select which geocoding provider to use
        */
-      strategy?: ('priority' | 'tag-based') | null;
+      strategy?: ("priority" | "tag-based") | null;
       /**
        * Only use providers with these tags (for tag-based strategy)
        */
-      requiredTags?: ('production' | 'development' | 'testing' | 'primary' | 'secondary' | 'backup')[] | null;
+      requiredTags?: ("production" | "development" | "testing" | "primary" | "secondary" | "backup")[] | null;
     };
     caching?: {
       /**
@@ -4071,15 +3226,7 @@ export interface Setting {
  */
 export interface PayloadJobsStat {
   id: number;
-  stats?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  stats?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -4088,13 +3235,7 @@ export interface PayloadJobsStat {
  * via the `definition` "main-menu_select".
  */
 export interface MainMenuSelect<T extends boolean = true> {
-  navItems?:
-    | T
-    | {
-        label?: T;
-        url?: T;
-        id?: T;
-      };
+  navItems?: T | { label?: T; url?: T; id?: T };
   _status?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -4106,34 +3247,9 @@ export interface MainMenuSelect<T extends boolean = true> {
  */
 export interface FooterSelect<T extends boolean = true> {
   tagline?: T;
-  socialLinks?:
-    | T
-    | {
-        platform?: T;
-        url?: T;
-        id?: T;
-      };
-  columns?:
-    | T
-    | {
-        title?: T;
-        links?:
-          | T
-          | {
-              label?: T;
-              url?: T;
-              id?: T;
-            };
-        id?: T;
-      };
-  newsletter?:
-    | T
-    | {
-        enabled?: T;
-        headline?: T;
-        placeholder?: T;
-        buttonText?: T;
-      };
+  socialLinks?: T | { platform?: T; url?: T; id?: T };
+  columns?: T | { title?: T; links?: T | { label?: T; url?: T; id?: T }; id?: T };
+  newsletter?: T | { enabled?: T; headline?: T; placeholder?: T; buttonText?: T };
   copyright?: T;
   credits?: T;
   _status?: T;
@@ -4161,29 +3277,14 @@ export interface BrandingSelect<T extends boolean = true> {
  * via the `definition` "settings_select".
  */
 export interface SettingsSelect<T extends boolean = true> {
-  newsletter?:
-    | T
-    | {
-        serviceUrl?: T;
-        authHeader?: T;
-      };
+  newsletter?: T | { serviceUrl?: T; authHeader?: T };
   geocoding?:
     | T
     | {
         enabled?: T;
         fallbackEnabled?: T;
-        providerSelection?:
-          | T
-          | {
-              strategy?: T;
-              requiredTags?: T;
-            };
-        caching?:
-          | T
-          | {
-              enabled?: T;
-              ttlDays?: T;
-            };
+        providerSelection?: T | { strategy?: T; requiredTags?: T };
+        caching?: T | { enabled?: T; ttlDays?: T };
       };
   featureFlags?:
     | T
@@ -4363,7 +3464,6 @@ export interface Auth {
   [k: string]: unknown;
 }
 
-
-declare module 'payload' {
+declare module "payload" {
   export interface GeneratedTypes extends Config {}
 }

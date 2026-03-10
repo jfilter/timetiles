@@ -46,9 +46,7 @@ export default defineConfig({
   timeout: isCI ? 120000 : 60000,
 
   /* Expect timeout - shorter expect assertions timeout */
-  expect: {
-    timeout: isCI ? 10000 : 5000,
-  },
+  expect: { timeout: isCI ? 10000 : 5000 },
 
   /* Global setup creates template database with migrations and seed data */
   globalSetup: "./tests/e2e/global-setup.ts",
@@ -87,43 +85,28 @@ export default defineConfig({
           { name: "setup", testMatch: /auth\.setup\.ts/ },
           {
             name: "chromium",
-            use: {
-              ...devices["Desktop Chrome"],
-              storageState: "test-results/.auth/admin.json",
-            },
+            use: { ...devices["Desktop Chrome"], storageState: "test-results/.auth/admin.json" },
             dependencies: ["setup"],
           },
           {
             name: "firefox",
-            use: {
-              ...devices["Desktop Firefox"],
-              storageState: "test-results/.auth/admin.json",
-            },
+            use: { ...devices["Desktop Firefox"], storageState: "test-results/.auth/admin.json" },
             dependencies: ["setup"],
           },
           {
             name: "webkit",
-            use: {
-              ...devices["Desktop Safari"],
-              storageState: "test-results/.auth/admin.json",
-            },
+            use: { ...devices["Desktop Safari"], storageState: "test-results/.auth/admin.json" },
             dependencies: ["setup"],
           },
           /* Test against mobile viewports. */
           {
             name: "Mobile Chrome",
-            use: {
-              ...devices["Pixel 5"],
-              storageState: "test-results/.auth/admin.json",
-            },
+            use: { ...devices["Pixel 5"], storageState: "test-results/.auth/admin.json" },
             dependencies: ["setup"],
           },
           {
             name: "Mobile Safari",
-            use: {
-              ...devices["iPhone 12"],
-              storageState: "test-results/.auth/admin.json",
-            },
+            use: { ...devices["iPhone 12"], storageState: "test-results/.auth/admin.json" },
             dependencies: ["setup"],
           },
         ]
@@ -132,10 +115,7 @@ export default defineConfig({
           { name: "setup", testMatch: /auth\.setup\.ts/ },
           {
             name: "chromium",
-            use: {
-              ...devices["Desktop Chrome"],
-              storageState: "test-results/.auth/admin.json",
-            },
+            use: { ...devices["Desktop Chrome"], storageState: "test-results/.auth/admin.json" },
             dependencies: ["setup"],
           },
         ],

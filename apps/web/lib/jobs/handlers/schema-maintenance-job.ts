@@ -97,17 +97,10 @@ const processDataset = async (
 
   const skipCheck = shouldSkipDataset(freshness, forceRegenerate);
   if (skipCheck.skip) {
-    return {
-      datasetId: dataset.id,
-      datasetName: dataset.name,
-      action: "skipped",
-      reason: skipCheck.reason,
-    };
+    return { datasetId: dataset.id, datasetName: dataset.name, action: "skipped", reason: skipCheck.reason };
   }
 
-  const result = await SchemaInferenceService.inferSchemaFromEvents(payload, dataset.id, {
-    forceRegenerate,
-  });
+  const result = await SchemaInferenceService.inferSchemaFromEvents(payload, dataset.id, { forceRegenerate });
 
   if (result.generated) {
     logger.info("Schema regenerated for dataset", {
@@ -124,12 +117,7 @@ const processDataset = async (
     };
   }
 
-  return {
-    datasetId: dataset.id,
-    datasetName: dataset.name,
-    action: "skipped",
-    reason: result.message,
-  };
+  return { datasetId: dataset.id, datasetName: dataset.name, action: "skipped", reason: result.message };
 };
 
 /** Process all datasets and collect results */
@@ -189,22 +177,14 @@ export const schemaMaintenanceJob = {
     const maxDatasets = input?.maxDatasets ?? 100;
     const forceRegenerate = input?.forceRegenerate ?? false;
 
-    logger.info("Starting schema maintenance job", {
-      datasetIds: input?.datasetIds,
-      forceRegenerate,
-      maxDatasets,
-    });
+    logger.info("Starting schema maintenance job", { datasetIds: input?.datasetIds, forceRegenerate, maxDatasets });
 
     try {
       const datasets = await getDatasetsToCheck(payload, input?.datasetIds, maxDatasets);
       const { details, stats } = await processAllDatasets(payload, datasets, forceRegenerate);
       const duration = Date.now() - startTime;
 
-      logger.info("Schema maintenance completed", {
-        datasetsChecked: datasets.length,
-        ...stats,
-        duration,
-      });
+      logger.info("Schema maintenance completed", { datasetsChecked: datasets.length, ...stats, duration });
 
       return {
         output: {
@@ -219,9 +199,7 @@ export const schemaMaintenanceJob = {
       };
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error("Schema maintenance job failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.error("Schema maintenance job failed", { error: error instanceof Error ? error.message : String(error) });
 
       return {
         output: {

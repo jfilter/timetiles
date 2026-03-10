@@ -40,20 +40,12 @@ const handleExportFailure = async (payload: Payload, exportId: number, error: un
     await payload.update({
       collection: DATA_EXPORTS_COLLECTION,
       id: exportId,
-      data: {
-        status: "failed",
-        completedAt: new Date().toISOString(),
-        errorLog: errorMessage,
-      },
+      data: { status: "failed", completedAt: new Date().toISOString(), errorLog: errorMessage },
       overrideAccess: true,
     });
 
     // Send failure notification
-    const user = await payload.findByID({
-      collection: "users",
-      id: userId,
-      overrideAccess: true,
-    });
+    const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     if (user) {
       await sendExportFailedEmail(payload, user.email, user.firstName, errorMessage);
@@ -107,11 +99,7 @@ export const dataExportJob = {
       const userId = extractRelationId(exportRecord.user)!;
 
       // Fetch user for email
-      const user = await payload.findByID({
-        collection: "users",
-        id: userId,
-        overrideAccess: true,
-      });
+      const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
       if (!user) {
         throw new Error(`User not found: ${userId}`);
@@ -155,14 +143,7 @@ export const dataExportJob = {
 
       logger.info({ jobId: job?.id, exportId, fileSize: result.fileSize }, "Data export completed successfully");
 
-      return {
-        output: {
-          success: true,
-          exportId,
-          fileSize: result.fileSize,
-          recordCounts: result.recordCounts,
-        },
-      };
+      return { output: { success: true, exportId, fileSize: result.fileSize, recordCounts: result.recordCounts } };
     } catch (error) {
       logError(error, "Data export job failed", { exportId });
       await handleExportFailure(payload, exportId, error);

@@ -48,10 +48,7 @@ const extractUniqueLocations = (
     }
   }
 
-  logger.info("Extracted unique locations", {
-    totalRows: rows.length,
-    uniqueLocations: uniqueLocations.size,
-  });
+  logger.info("Extracted unique locations", { totalRows: rows.length, uniqueLocations: uniqueLocations.size });
 
   return uniqueLocations;
 };
@@ -88,10 +85,7 @@ const geocodeUniqueLocations = async (
     try {
       const result = await geocodeAddress(location);
       results[location] = {
-        coordinates: {
-          lat: result.latitude,
-          lng: result.longitude,
-        },
+        coordinates: { lat: result.latitude, lng: result.longitude },
         confidence: result.confidence ?? 0,
         formattedAddress: result.normalizedAddress,
       };
@@ -118,11 +112,7 @@ const geocodeUniqueLocations = async (
     }
   }
 
-  logger.info("Geocoding completed", {
-    total: locations.size,
-    success: successCount,
-    failed: failureCount,
-  });
+  logger.info("Geocoding completed", { total: locations.size, success: successCount, failed: failureCount });
 
   return { results, successCount, failureCount, failures };
 };
@@ -133,15 +123,8 @@ const geocodeUniqueLocations = async (
 const getJobResources = async (
   payload: Payload,
   importJobId: string | number
-): Promise<{
-  job: ImportJob;
-  dataset: Dataset;
-  importFile: ImportFile;
-}> => {
-  const job = await payload.findByID({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
-  });
+): Promise<{ job: ImportJob; dataset: Dataset; importFile: ImportFile }> => {
+  const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
   if (!job) {
     throw new Error(`Import job not found: ${importJobId}`);
@@ -263,10 +246,7 @@ export const geocodeBatchJob = {
         await payload.update({
           collection: COLLECTION_NAMES.IMPORT_FILES,
           id: importFile.id,
-          data: {
-            status: "failed",
-            errorLog: detailedError,
-          },
+          data: { status: "failed", errorLog: detailedError },
         });
 
         return {
@@ -286,10 +266,7 @@ export const geocodeBatchJob = {
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
-        data: {
-          geocodingResults: results,
-          stage: PROCESSING_STAGE.CREATE_EVENTS,
-        },
+        data: { geocodingResults: results, stage: PROCESSING_STAGE.CREATE_EVENTS },
       });
 
       logPerformance("Unique location geocoding", Date.now() - startTime, {
@@ -317,13 +294,7 @@ export const geocodeBatchJob = {
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            error: errorMessage,
-            context: "geocode-batch",
-          },
-        },
+        data: { stage: PROCESSING_STAGE.FAILED, errorLog: { error: errorMessage, context: "geocode-batch" } },
       });
 
       throw error;

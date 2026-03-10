@@ -15,25 +15,17 @@ export interface BaseJobInput {
 
 // For jobs that operate on import files (dataset detection)
 export interface FileJobInput extends BaseJobInput {
-  input: {
-    importFileId: string;
-    catalogId?: string;
-  };
+  input: { importFileId: string; catalogId?: string };
 }
 
 // For jobs that operate on import jobs (most pipeline jobs)
 export interface ImportJobInput extends BaseJobInput {
-  input: {
-    importJobId: string | number;
-  };
+  input: { importJobId: string | number };
 }
 
 // For jobs that process data in batches
 export interface BatchJobInput extends BaseJobInput {
-  input: {
-    importJobId: string | number;
-    batchNumber: number;
-  };
+  input: { importJobId: string | number; batchNumber: number };
 }
 
 // Specific job input types

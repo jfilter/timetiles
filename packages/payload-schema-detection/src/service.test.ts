@@ -14,34 +14,38 @@ const createMockDefaultDetector = (): SchemaDetector => ({
   name: "default",
   label: "Default Detector",
   canHandle: vi.fn().mockReturnValue(true),
-  detect: vi.fn().mockResolvedValue({
-    language: { code: "eng", name: "English", confidence: 0.9, isReliable: true },
-    fieldMappings: {
-      title: { path: "title", confidence: 0.8 },
-      description: null,
-      timestamp: null,
-      locationName: null,
-      geo: null,
-    },
-    patterns: { idFields: [], enumFields: [] },
-  }),
+  detect: vi
+    .fn()
+    .mockResolvedValue({
+      language: { code: "eng", name: "English", confidence: 0.9, isReliable: true },
+      fieldMappings: {
+        title: { path: "title", confidence: 0.8 },
+        description: null,
+        timestamp: null,
+        locationName: null,
+        geo: null,
+      },
+      patterns: { idFields: [], enumFields: [] },
+    }),
 });
 
 const createMockCustomDetector = (): SchemaDetector => ({
   name: "custom",
   label: "Custom Detector",
   canHandle: vi.fn().mockReturnValue(true),
-  detect: vi.fn().mockResolvedValue({
-    language: { code: "deu", name: "German", confidence: 0.95, isReliable: true },
-    fieldMappings: {
-      title: { path: "titel", confidence: 0.9 },
-      description: { path: "beschreibung", confidence: 0.85 },
-      timestamp: null,
-      locationName: null,
-      geo: null,
-    },
-    patterns: { idFields: ["id"], enumFields: ["status"] },
-  }),
+  detect: vi
+    .fn()
+    .mockResolvedValue({
+      language: { code: "deu", name: "German", confidence: 0.95, isReliable: true },
+      fieldMappings: {
+        title: { path: "titel", confidence: 0.9 },
+        description: { path: "beschreibung", confidence: 0.85 },
+        timestamp: null,
+        locationName: null,
+        geo: null,
+      },
+      patterns: { idFields: ["id"], enumFields: ["status"] },
+    }),
 });
 
 const createMockUnableDetector = (): SchemaDetector => ({
@@ -79,10 +83,7 @@ const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatis
 });
 
 const createContext = (): DetectionContext => ({
-  fieldStats: {
-    title: createFieldStats(),
-    date: createFieldStats({ formats: { date: 100 } }),
-  },
+  fieldStats: { title: createFieldStats(), date: createFieldStats({ formats: { date: 100 } }) },
   sampleData: [
     { title: "Event 1", date: "2024-01-15" },
     { title: "Event 2", date: "2024-01-16" },
@@ -116,11 +117,13 @@ describe("SchemaDetectionService", () => {
         name: "fallback",
         label: "Fallback",
         canHandle: vi.fn().mockReturnValue(true),
-        detect: vi.fn().mockResolvedValue({
-          language: { code: "fra", name: "French", confidence: 0.8, isReliable: true },
-          fieldMappings: { title: null, description: null, timestamp: null, locationName: null, geo: null },
-          patterns: { idFields: [], enumFields: [] },
-        }),
+        detect: vi
+          .fn()
+          .mockResolvedValue({
+            language: { code: "fra", name: "French", confidence: 0.8, isReliable: true },
+            fieldMappings: { title: null, description: null, timestamp: null, locationName: null, geo: null },
+            patterns: { idFields: [], enumFields: [] },
+          }),
       };
 
       // Create a custom detector that cannot handle

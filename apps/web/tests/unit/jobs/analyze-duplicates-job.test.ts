@@ -12,10 +12,7 @@ import { createMockImportFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
-  return {
-    readBatchFromFile: vi.fn(),
-    generateUniqueId: vi.fn(),
-  };
+  return { readBatchFromFile: vi.fn(), generateUniqueId: vi.fn() };
 });
 
 // Mock external dependencies
@@ -31,13 +28,9 @@ vi.mock("@/lib/services/progress-tracking", () => ({
   },
 }));
 
-vi.mock("@/lib/utils/file-readers", () => ({
-  readBatchFromFile: mocks.readBatchFromFile,
-}));
+vi.mock("@/lib/utils/file-readers", () => ({ readBatchFromFile: mocks.readBatchFromFile }));
 
-vi.mock("@/lib/services/id-generation", () => ({
-  generateUniqueId: mocks.generateUniqueId,
-}));
+vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
@@ -53,25 +46,13 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
     vi.clearAllMocks();
 
     // Mock payload
-    mockPayload = {
-      findByID: vi.fn(),
-      update: vi.fn(),
-      find: vi.fn(),
-      jobs: {
-        queue: vi.fn().mockResolvedValue({}),
-      },
-    };
+    mockPayload = { findByID: vi.fn(), update: vi.fn(), find: vi.fn(), jobs: { queue: vi.fn().mockResolvedValue({}) } };
 
     // Mock context
     mockContext = {
       payload: mockPayload,
-      job: {
-        id: "test-job-1",
-        taskStatus: "running",
-      } as any,
-      input: {
-        importJobId: "import-123",
-      } as any,
+      job: { id: "test-job-1", taskStatus: "running" } as any,
+      input: { importJobId: "import-123" } as any,
     };
   });
 
@@ -82,20 +63,11 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       // Mock dataset with deduplication disabled
-      const mockDataset = {
-        id: "dataset-456",
-        deduplicationConfig: {
-          enabled: false,
-        },
-      };
+      const mockDataset = { id: "dataset-456", deduplicationConfig: { enabled: false } };
 
       // Mock import file
       const mockImportFile = createMockImportFile();
@@ -123,22 +95,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       // Verify payload calls - includes refetch after progress initialization
       expect(mockPayload.findByID).toHaveBeenCalledTimes(4);
-      expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, {
-        collection: "import-jobs",
-        id: "import-123",
-      });
-      expect(mockPayload.findByID).toHaveBeenNthCalledWith(2, {
-        collection: "datasets",
-        id: "dataset-456",
-      });
-      expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, {
-        collection: "import-files",
-        id: "file-789",
-      });
-      expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, {
-        collection: "import-jobs",
-        id: "import-123",
-      });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, { collection: "import-jobs", id: "import-123" });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(2, { collection: "datasets", id: "dataset-456" });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, { collection: "import-files", id: "file-789" });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, { collection: "import-jobs", id: "import-123" });
 
       // Verify update call
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -150,12 +110,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
             strategy: "disabled",
             internal: [],
             external: [],
-            summary: {
-              totalRows: 100,
-              uniqueRows: 100,
-              internalDuplicates: 0,
-              externalDuplicates: 0,
-            },
+            summary: { totalRows: 100, uniqueRows: 100, internalDuplicates: 0, externalDuplicates: 0 },
           },
         },
       });
@@ -168,11 +123,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         dataset: "dataset-456", // Reference to dataset
         importFile: "file-789",
         sheetIndex: 0,
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       // Mock dataset with deduplication enabled - note the nested structure
@@ -181,10 +132,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         deduplicationConfig: {
           enabled: true, // This must be true for analysis to run
         },
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-        },
+        idStrategy: { type: "external", externalIdPath: "id" },
       };
 
       // Mock import file
@@ -224,14 +172,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({
-        output: {
-          totalRows: 3,
-          uniqueRows: 3,
-          internalDuplicates: 0,
-          externalDuplicates: 0,
-        },
-      });
+      expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
 
       // Verify file reading (called 4 times: 2 for countTotalRows, 2 for analyzeInternalDuplicates)
       expect(mocks.readBatchFromFile).toHaveBeenCalledTimes(4);
@@ -273,11 +214,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       // Mock dataset with deduplication enabled
@@ -286,10 +223,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         deduplicationConfig: {
           enabled: true, // This must be true for analysis to run
         },
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-        },
+        idStrategy: { type: "external", externalIdPath: "id" },
       };
 
       // Mock import file
@@ -344,11 +278,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       // Mock dataset with deduplication enabled
@@ -357,10 +287,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         deduplicationConfig: {
           enabled: true, // This must be true for analysis to run
         },
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-        },
+        idStrategy: { type: "external", externalIdPath: "id" },
       };
 
       // Mock import file
@@ -373,10 +300,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       ];
 
       // Mock existing event (external duplicate)
-      const mockExistingEvent = {
-        id: "existing-event-123",
-        uniqueId: "dataset-456:ext:1",
-      };
+      const mockExistingEvent = { id: "existing-event-123", uniqueId: "dataset-456:ext:1" };
 
       // Setup mocks
       mockPayload.findByID
@@ -418,18 +342,11 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Import job not found: import-123");
 
-      expect(mockPayload.findByID).toHaveBeenCalledWith({
-        collection: "import-jobs",
-        id: "import-123",
-      });
+      expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "import-jobs", id: "import-123" });
     });
 
     it("should throw error when dataset not found", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        importFile: "file-789",
-      };
+      const mockImportJob = { id: "import-123", dataset: "dataset-456", importFile: "file-789" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
 
@@ -437,18 +354,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should throw error when import file not found", async () => {
-      const mockImportJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        importFile: "file-789",
-      };
+      const mockImportJob = { id: "import-123", dataset: "dataset-456", importFile: "file-789" };
 
-      const mockDataset = {
-        id: "dataset-456",
-        deduplicationConfig: {
-          enabled: true,
-        },
-      };
+      const mockDataset = { id: "dataset-456", deduplicationConfig: { enabled: true } };
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -466,22 +374,13 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         dataset: "dataset-456",
         importFile: "file-789",
         sheetIndex: 0,
-        progress: {
-          stages: {},
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = {
         id: "dataset-456",
-        deduplicationConfig: {
-          enabled: true,
-        },
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-        },
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id" },
       };
 
       const mockImportFile = createMockImportFile();
@@ -503,14 +402,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       // Verify result for empty file
-      expect(result).toEqual({
-        output: {
-          totalRows: 0,
-          uniqueRows: 0,
-          internalDuplicates: 0,
-          externalDuplicates: 0,
-        },
-      });
+      expect(result).toEqual({ output: { totalRows: 0, uniqueRows: 0, internalDuplicates: 0, externalDuplicates: 0 } });
 
       // Verify no external duplicate check was made
       expect(mockPayload.find).not.toHaveBeenCalled();

@@ -32,10 +32,7 @@ const Views: CollectionConfig = {
     delete: access.deleteAccess,
     readVersions: access.readVersions,
   },
-  hooks: {
-    beforeChange: [setCreatedBy, enforceSingleDefault],
-    afterChange: [invalidateViewCache],
-  },
+  hooks: { beforeChange: [setCreatedBy, enforceSingleDefault], afterChange: [invalidateViewCache] },
   fields: [
     // ============ IDENTITY ============
     {
@@ -43,9 +40,7 @@ const Views: CollectionConfig = {
       type: "text",
       required: true,
       maxLength: 255,
-      admin: {
-        description: "Internal name for this view",
-      },
+      admin: { description: "Internal name for this view" },
     },
     createSlugField("views"),
     {
@@ -56,10 +51,7 @@ const Views: CollectionConfig = {
         create: ({ req: { user } }) => user?.role === "admin",
         update: ({ req: { user } }) => user?.role === "admin",
       },
-      admin: {
-        position: "sidebar",
-        description: "Use as default view when no view specified (admin only)",
-      },
+      admin: { position: "sidebar", description: "Use as default view when no view specified (admin only)" },
     },
 
     // ============ DATA SCOPE ============
@@ -67,9 +59,7 @@ const Views: CollectionConfig = {
       type: "group",
       name: "dataScope",
       label: "Data Scope",
-      admin: {
-        description: "Which data is visible in this view",
-      },
+      admin: { description: "Which data is visible in this view" },
       fields: [
         {
           name: "mode",
@@ -109,9 +99,7 @@ const Views: CollectionConfig = {
       type: "group",
       name: "filterConfig",
       label: "Filter Configuration",
-      admin: {
-        description: "Configure which fields appear as filters",
-      },
+      admin: { description: "Configure which fields appear as filters" },
       fields: [
         {
           name: "mode",
@@ -147,32 +135,20 @@ const Views: CollectionConfig = {
               name: "fieldPath",
               type: "text",
               required: true,
-              admin: {
-                description: "Field path from dataset's fieldMetadata (e.g., 'status', 'category')",
-              },
+              admin: { description: "Field path from dataset's fieldMetadata (e.g., 'status', 'category')" },
             },
             {
               name: "enabled",
               type: "checkbox",
               defaultValue: true,
-              admin: {
-                description: "Show this field as a filter",
-              },
+              admin: { description: "Show this field as a filter" },
             },
-            {
-              name: "label",
-              type: "text",
-              admin: {
-                description: "Custom display label (auto-generated if empty)",
-              },
-            },
+            { name: "label", type: "text", admin: { description: "Custom display label (auto-generated if empty)" } },
             {
               name: "displayOrder",
               type: "number",
               defaultValue: 0,
-              admin: {
-                description: "Sort order (lower numbers appear first)",
-              },
+              admin: { description: "Sort order (lower numbers appear first)" },
             },
             {
               name: "maxValues",
@@ -180,18 +156,14 @@ const Views: CollectionConfig = {
               defaultValue: 15,
               min: 5,
               max: 50,
-              admin: {
-                description: "Maximum values to show in dropdown",
-              },
+              admin: { description: "Maximum values to show in dropdown" },
             },
           ],
         },
         {
           name: "defaultFilters",
           type: "json",
-          admin: {
-            description: 'Pre-set filter values on load (e.g., {"status": ["active"]})',
-          },
+          admin: { description: 'Pre-set filter values on load (e.g., {"status": ["active"]})' },
         },
       ],
     },
@@ -201,77 +173,26 @@ const Views: CollectionConfig = {
       type: "group",
       name: "branding",
       label: "Branding",
-      admin: {
-        description: "Custom branding for this view",
-      },
+      admin: { description: "Custom branding for this view" },
       fields: [
-        {
-          name: "domain",
-          type: "text",
-          unique: true,
-          admin: {
-            description: "Custom domain (e.g., events.city.gov)",
-          },
-        },
-        {
-          name: "title",
-          type: "text",
-          admin: {
-            description: "Page title (defaults to app name)",
-          },
-        },
-        {
-          name: "logo",
-          type: "upload",
-          relationTo: "media",
-          admin: {
-            description: "Custom logo image",
-          },
-        },
-        {
-          name: "favicon",
-          type: "upload",
-          relationTo: "media",
-          admin: {
-            description: "Custom favicon",
-          },
-        },
+        { name: "domain", type: "text", unique: true, admin: { description: "Custom domain (e.g., events.city.gov)" } },
+        { name: "title", type: "text", admin: { description: "Page title (defaults to app name)" } },
+        { name: "logo", type: "upload", relationTo: "media", admin: { description: "Custom logo image" } },
+        { name: "favicon", type: "upload", relationTo: "media", admin: { description: "Custom favicon" } },
         {
           name: "colors",
           type: "group",
-          admin: {
-            description: "Custom color scheme",
-          },
+          admin: { description: "Custom color scheme" },
           fields: [
-            {
-              name: "primary",
-              type: "text",
-              admin: {
-                description: "Primary color (hex, e.g., #3b82f6)",
-              },
-            },
-            {
-              name: "secondary",
-              type: "text",
-              admin: {
-                description: "Secondary color (hex)",
-              },
-            },
-            {
-              name: "background",
-              type: "text",
-              admin: {
-                description: "Background color (hex)",
-              },
-            },
+            { name: "primary", type: "text", admin: { description: "Primary color (hex, e.g., #3b82f6)" } },
+            { name: "secondary", type: "text", admin: { description: "Secondary color (hex)" } },
+            { name: "background", type: "text", admin: { description: "Background color (hex)" } },
           ],
         },
         {
           name: "headerHtml",
           type: "textarea",
-          admin: {
-            description: "Custom HTML for header (analytics scripts, etc.)",
-          },
+          admin: { description: "Custom HTML for header (analytics scripts, etc.)" },
         },
       ],
     },
@@ -281,65 +202,27 @@ const Views: CollectionConfig = {
       type: "group",
       name: "mapSettings",
       label: "Map Settings",
-      admin: {
-        description: "Default map configuration",
-      },
+      admin: { description: "Default map configuration" },
       fields: [
         {
           name: "defaultBounds",
           type: "group",
-          admin: {
-            description: "Initial map bounds (leave empty for auto-fit to data)",
-          },
+          admin: { description: "Initial map bounds (leave empty for auto-fit to data)" },
           fields: [
-            {
-              name: "north",
-              type: "number",
-              admin: { description: "North latitude" },
-            },
-            {
-              name: "south",
-              type: "number",
-              admin: { description: "South latitude" },
-            },
-            {
-              name: "east",
-              type: "number",
-              admin: { description: "East longitude" },
-            },
-            {
-              name: "west",
-              type: "number",
-              admin: { description: "West longitude" },
-            },
+            { name: "north", type: "number", admin: { description: "North latitude" } },
+            { name: "south", type: "number", admin: { description: "South latitude" } },
+            { name: "east", type: "number", admin: { description: "East longitude" } },
+            { name: "west", type: "number", admin: { description: "West longitude" } },
           ],
         },
-        {
-          name: "defaultZoom",
-          type: "number",
-          min: 0,
-          max: 22,
-          admin: {
-            description: "Default zoom level (0-22)",
-          },
-        },
+        { name: "defaultZoom", type: "number", min: 0, max: 22, admin: { description: "Default zoom level (0-22)" } },
         {
           name: "defaultCenter",
           type: "group",
-          admin: {
-            description: "Default map center",
-          },
+          admin: { description: "Default map center" },
           fields: [
-            {
-              name: "latitude",
-              type: "number",
-              admin: { description: "Center latitude" },
-            },
-            {
-              name: "longitude",
-              type: "number",
-              admin: { description: "Center longitude" },
-            },
+            { name: "latitude", type: "number", admin: { description: "Center latitude" } },
+            { name: "longitude", type: "number", admin: { description: "Center longitude" } },
           ],
         },
         {
@@ -352,16 +235,12 @@ const Views: CollectionConfig = {
             { label: "Satellite", value: "satellite" },
           ],
           defaultValue: "default",
-          admin: {
-            description: "Base map style",
-          },
+          admin: { description: "Base map style" },
         },
         {
           name: "customStyleUrl",
           type: "text",
-          admin: {
-            description: "Custom MapLibre style URL (overrides baseMapStyle)",
-          },
+          admin: { description: "Custom MapLibre style URL (overrides baseMapStyle)" },
         },
       ],
     },

@@ -52,11 +52,7 @@ export class AccountDeletionService {
   async canDeleteUser(userId: number): Promise<CanDeleteResult> {
     let user;
     try {
-      user = await this.payload.findByID({
-        collection: "users",
-        id: userId,
-        overrideAccess: true,
-      });
+      user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
     } catch {
       return { allowed: false, reason: USER_NOT_FOUND };
     }
@@ -100,11 +96,7 @@ export class AccountDeletionService {
       where: {
         and: [
           { "dataset.createdBy": { equals: userId } },
-          {
-            stage: {
-              not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED],
-            },
-          },
+          { stage: { not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED] } },
         ],
       },
       limit: 1,
@@ -112,10 +104,7 @@ export class AccountDeletionService {
     });
 
     if (activeJobs.docs.length > 0) {
-      return {
-        allowed: false,
-        reason: "User has active import jobs. Please wait for them to complete.",
-      };
+      return { allowed: false, reason: "User has active import jobs. Please wait for them to complete." };
     }
 
     return { allowed: true };
@@ -174,18 +163,9 @@ export class AccountDeletionService {
     ]);
 
     return {
-      catalogs: {
-        public: publicCatalogs,
-        private: privateCatalogs,
-      },
-      datasets: {
-        public: publicDatasets,
-        private: privateDatasets,
-      },
-      events: {
-        inPublicDatasets: eventsInPublic,
-        inPrivateDatasets: eventsInPrivate,
-      },
+      catalogs: { public: publicCatalogs, private: privateCatalogs },
+      datasets: { public: publicDatasets, private: privateDatasets },
+      events: { inPublicDatasets: eventsInPublic, inPrivateDatasets: eventsInPrivate },
       scheduledImports,
       importFiles,
       media,
@@ -203,11 +183,7 @@ export class AccountDeletionService {
       throw new Error(canDelete.reason);
     }
 
-    const user = await this.payload.findByID({
-      collection: "users",
-      id: userId,
-      overrideAccess: true,
-    });
+    const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     if (!user) {
       throw new Error(USER_NOT_FOUND);
@@ -235,22 +211,14 @@ export class AccountDeletionService {
     const cancelUrl = `${baseUrl}/account/settings`;
     await sendDeletionScheduledEmail(this.payload, user.email, user.firstName, deletionDate.toISOString(), cancelUrl);
 
-    return {
-      success: true,
-      deletionScheduledAt: deletionDate.toISOString(),
-      summary,
-    };
+    return { success: true, deletionScheduledAt: deletionDate.toISOString(), summary };
   }
 
   /**
    * Cancel a scheduled deletion.
    */
   async cancelDeletion(userId: number): Promise<void> {
-    const user = await this.payload.findByID({
-      collection: "users",
-      id: userId,
-      overrideAccess: true,
-    });
+    const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     if (!user) {
       throw new Error(USER_NOT_FOUND);
@@ -263,11 +231,7 @@ export class AccountDeletionService {
     await this.payload.update({
       collection: "users",
       id: userId,
-      data: {
-        deletionStatus: "active",
-        deletionRequestedAt: null,
-        deletionScheduledAt: null,
-      },
+      data: { deletionStatus: "active", deletionRequestedAt: null, deletionScheduledAt: null },
       overrideAccess: true,
     });
 
@@ -282,19 +246,11 @@ export class AccountDeletionService {
    */
   async executeDeletion(
     userId: number,
-    options: {
-      deletedBy?: number;
-      deletionType?: "self" | "admin" | "scheduled";
-      ipAddress?: string;
-    } = {}
+    options: { deletedBy?: number; deletionType?: "self" | "admin" | "scheduled"; ipAddress?: string } = {}
   ): Promise<ExecuteDeletionResult> {
     const { deletedBy, deletionType = "scheduled", ipAddress } = options;
 
-    const user = await this.payload.findByID({
-      collection: "users",
-      id: userId,
-      overrideAccess: true,
-    });
+    const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     if (!user) {
       throw new Error(USER_NOT_FOUND);
@@ -358,9 +314,7 @@ export class AccountDeletionService {
     const isPublicFilter = [{ isPublic: { equals: true } }];
 
     // Transfer public catalogs
-    const publicCatalogs = await findUserDocs(this.payload, "catalogs", userId, {
-      extraWhere: isPublicFilter,
-    });
+    const publicCatalogs = await findUserDocs(this.payload, "catalogs", userId, { extraWhere: isPublicFilter });
 
     for (const catalog of publicCatalogs) {
       await this.payload.update({
@@ -379,9 +333,7 @@ export class AccountDeletionService {
     }
 
     // Transfer public datasets
-    const publicDatasets = await findUserDocs(this.payload, "datasets", userId, {
-      extraWhere: isPublicFilter,
-    });
+    const publicDatasets = await findUserDocs(this.payload, "datasets", userId, { extraWhere: isPublicFilter });
 
     for (const dataset of publicDatasets) {
       await this.payload.update({
@@ -407,9 +359,7 @@ export class AccountDeletionService {
     const isPrivateFilter = [{ isPublic: { equals: false } }];
 
     // Delete private datasets and their events
-    const privateDatasets = await findUserDocs(this.payload, "datasets", userId, {
-      extraWhere: isPrivateFilter,
-    });
+    const privateDatasets = await findUserDocs(this.payload, "datasets", userId, { extraWhere: isPrivateFilter });
 
     for (const dataset of privateDatasets) {
       // Delete events in this dataset
@@ -421,34 +371,20 @@ export class AccountDeletionService {
       });
 
       for (const event of events.docs) {
-        await this.payload.delete({
-          collection: "events",
-          id: event.id,
-          overrideAccess: true,
-        });
+        await this.payload.delete({ collection: "events", id: event.id, overrideAccess: true });
         result.dataDeleted.events++;
       }
 
       // Delete the dataset
-      await this.payload.delete({
-        collection: "datasets",
-        id: dataset.id,
-        overrideAccess: true,
-      });
+      await this.payload.delete({ collection: "datasets", id: dataset.id, overrideAccess: true });
       result.dataDeleted.datasets++;
     }
 
     // Delete private catalogs
-    const privateCatalogs = await findUserDocs(this.payload, "catalogs", userId, {
-      extraWhere: isPrivateFilter,
-    });
+    const privateCatalogs = await findUserDocs(this.payload, "catalogs", userId, { extraWhere: isPrivateFilter });
 
     for (const catalog of privateCatalogs) {
-      await this.payload.delete({
-        collection: "catalogs",
-        id: catalog.id,
-        overrideAccess: true,
-      });
+      await this.payload.delete({ collection: "catalogs", id: catalog.id, overrideAccess: true });
       result.dataDeleted.catalogs++;
     }
   }
@@ -461,25 +397,15 @@ export class AccountDeletionService {
     const scheduledImports = await findUserDocs(this.payload, "scheduled-imports", userId);
 
     for (const schedule of scheduledImports) {
-      await this.payload.delete({
-        collection: "scheduled-imports",
-        id: schedule.id,
-        overrideAccess: true,
-      });
+      await this.payload.delete({ collection: "scheduled-imports", id: schedule.id, overrideAccess: true });
       result.dataDeleted.scheduledImports++;
     }
 
     // Delete import files
-    const importFiles = await findUserDocs(this.payload, "import-files", userId, {
-      userField: "user",
-    });
+    const importFiles = await findUserDocs(this.payload, "import-files", userId, { userField: "user" });
 
     for (const file of importFiles) {
-      await this.payload.delete({
-        collection: "import-files",
-        id: file.id,
-        overrideAccess: true,
-      });
+      await this.payload.delete({ collection: "import-files", id: file.id, overrideAccess: true });
       result.dataDeleted.importFiles++;
     }
 
@@ -492,11 +418,7 @@ export class AccountDeletionService {
     });
 
     for (const view of views.docs) {
-      await this.payload.delete({
-        collection: "views",
-        id: view.id,
-        overrideAccess: true,
-      });
+      await this.payload.delete({ collection: "views", id: view.id, overrideAccess: true });
     }
 
     if (views.docs.length > 0) {
@@ -512,11 +434,7 @@ export class AccountDeletionService {
     });
 
     for (const exportRecord of dataExports.docs) {
-      await this.payload.delete({
-        collection: "data-exports",
-        id: exportRecord.id,
-        overrideAccess: true,
-      });
+      await this.payload.delete({ collection: "data-exports", id: exportRecord.id, overrideAccess: true });
     }
 
     if (dataExports.docs.length > 0) {

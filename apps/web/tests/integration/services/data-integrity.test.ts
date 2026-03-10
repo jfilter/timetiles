@@ -44,9 +44,7 @@ describe.sequential("Data Integrity Tests", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    const { users } = await withUsers(envWithServer, {
-      testUser: { role: "admin", email: TEST_EMAILS.integrity },
-    });
+    const { users } = await withUsers(envWithServer, { testUser: { role: "admin", email: TEST_EMAILS.integrity } });
     testUser = users.testUser;
 
     // Create test catalog
@@ -113,10 +111,7 @@ describe.sequential("Data Integrity Tests", () => {
         expect(successOutput.contentHash).toBe(expectedHash);
 
         // Check that the import file was created with the hash
-        const importFile = await payload.findByID({
-          collection: "import-files",
-          id: successOutput.importFileId,
-        });
+        const importFile = await payload.findByID({ collection: "import-files", id: successOutput.importFileId });
 
         expect(importFile.metadata?.urlFetch?.contentHash).toBe(expectedHash);
       }
@@ -160,9 +155,7 @@ describe.sequential("Data Integrity Tests", () => {
         await payload.update({
           collection: "import-files",
           id: successOutput.importFileId,
-          data: {
-            status: "completed",
-          },
+          data: { status: "completed" },
         });
       }
 
@@ -252,10 +245,7 @@ describe.sequential("Data Integrity Tests", () => {
       testServer.route("/history.csv", (_req: IncomingMessage, res: ServerResponse) => {
         const timestamp = Date.now();
         const csvContent = `timestamp,value\n${timestamp},${Math.random()}`;
-        res.writeHead(200, {
-          "Content-Type": "text/csv",
-          "Content-Length": String(Buffer.byteLength(csvContent)),
-        });
+        res.writeHead(200, { "Content-Type": "text/csv", "Content-Length": String(Buffer.byteLength(csvContent)) });
         res.end(csvContent);
       });
 
@@ -315,10 +305,7 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       // Fetch the updated scheduled import
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       // Check execution history
       expect(updated.executionHistory).toHaveLength(3);
@@ -363,16 +350,10 @@ describe.sequential("Data Integrity Tests", () => {
       for (let i = 0; i < 15; i++) {
         vi.setSystemTime(new Date(baseTime.getTime() + (i + 1) * 3600000)); // Each hour
 
-        await scheduleManagerJob.handler({
-          job: { id: `test-schedule-history-limit-${i}` },
-          req: { payload },
-        });
+        await scheduleManagerJob.handler({ job: { id: `test-schedule-history-limit-${i}` }, req: { payload } });
 
         // Manually update the scheduled import with execution history
-        const currentScheduled = await payload.findByID({
-          collection: "scheduled-imports",
-          id: scheduledImport.id,
-        });
+        const currentScheduled = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
         const executionEntry = {
           executedAt: new Date(baseTime.getTime() + (i + 1) * 3600000).toISOString(),
@@ -402,10 +383,7 @@ describe.sequential("Data Integrity Tests", () => {
       }
 
       // Fetch the updated scheduled import
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       // Should only keep last 10 entries
       expect(updated.executionHistory).toHaveLength(10);
@@ -440,10 +418,7 @@ describe.sequential("Data Integrity Tests", () => {
           res.end("Internal Server Error");
         } else {
           const csvContent = "test,data\n1,2";
-          res.writeHead(200, {
-            "Content-Type": "text/csv",
-            "Content-Length": String(Buffer.byteLength(csvContent)),
-          });
+          res.writeHead(200, { "Content-Type": "text/csv", "Content-Length": String(Buffer.byteLength(csvContent)) });
           res.end(csvContent);
         }
       });
@@ -465,16 +440,10 @@ describe.sequential("Data Integrity Tests", () => {
         const shouldFail = i === 1 || i === 3; // Fail on 2nd and 4th runs
 
         try {
-          await scheduleManagerJob.handler({
-            job: { id: `test-schedule-stats-${i}` },
-            req: { payload },
-          });
+          await scheduleManagerJob.handler({ job: { id: `test-schedule-stats-${i}` }, req: { payload } });
 
           // Manually update statistics
-          const currentScheduled = await payload.findByID({
-            collection: "scheduled-imports",
-            id: scheduledImport.id,
-          });
+          const currentScheduled = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
           const stats = currentScheduled.statistics ?? {
             totalRuns: 0,
@@ -501,10 +470,7 @@ describe.sequential("Data Integrity Tests", () => {
       }
 
       // Fetch the updated scheduled import
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       // Check statistics accuracy
       expect(updated.statistics.totalRuns).toBeGreaterThan(0);
@@ -519,14 +485,7 @@ describe.sequential("Data Integrity Tests", () => {
         user: testUser,
         name: "Duration Test Import",
         frequency: "hourly",
-        additionalData: {
-          statistics: {
-            totalRuns: 0,
-            successfulRuns: 0,
-            failedRuns: 0,
-            averageDuration: 0,
-          },
-        },
+        additionalData: { statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 } },
       });
 
       // Set up test server endpoint with varying delays
@@ -536,10 +495,7 @@ describe.sequential("Data Integrity Tests", () => {
         const delay = delays[callIndex++] ?? 100;
         await new Promise((resolve) => setTimeout(resolve, delay));
         const csvContent = "test,data\n1,2";
-        res.writeHead(200, {
-          "Content-Type": "text/csv",
-          "Content-Length": String(Buffer.byteLength(csvContent)),
-        });
+        res.writeHead(200, { "Content-Type": "text/csv", "Content-Length": String(Buffer.byteLength(csvContent)) });
         res.end(csvContent);
       });
 
@@ -554,16 +510,10 @@ describe.sequential("Data Integrity Tests", () => {
       for (let i = 0; i < 5; i++) {
         vi.setSystemTime(new Date(baseTime.getTime() + (i + 1) * 3600000));
 
-        await scheduleManagerJob.handler({
-          job: { id: `test-schedule-duration-${i}` },
-          req: { payload },
-        });
+        await scheduleManagerJob.handler({ job: { id: `test-schedule-duration-${i}` }, req: { payload } });
 
         // Manually update statistics with duration
-        const currentScheduled = await payload.findByID({
-          collection: "scheduled-imports",
-          id: scheduledImport.id,
-        });
+        const currentScheduled = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
         const stats = currentScheduled.statistics ?? {
           totalRuns: 0,
@@ -603,10 +553,7 @@ describe.sequential("Data Integrity Tests", () => {
       }
 
       // Fetch the updated scheduled import
-      const updated = await payload.findByID({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
-      });
+      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
 
       // Average duration should be calculated
       expect(updated.statistics.averageDuration).toBeGreaterThan(0);

@@ -92,10 +92,7 @@ export const listTestDatabases = async (pattern: string = "timetiles_test%"): Pr
  * ```
  */
 export const getDatabaseInfo = async (databaseName: string): Promise<DatabaseInfo> => {
-  const info: DatabaseInfo = {
-    name: databaseName,
-    exists: false,
-  };
+  const info: DatabaseInfo = { name: databaseName, exists: false };
 
   // Check if database exists
   const postgresClient = createDatabaseClient({ database: "postgres" });

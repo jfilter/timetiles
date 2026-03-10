@@ -14,10 +14,7 @@ export interface GeocodingCandidate {
 
 export interface GeocodingResult {
   /** Geographic coordinates */
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
+  coordinates: { lat: number; lng: number };
   /** Confidence score (0-1) */
   confidence: number;
   /** Formatted/normalized address */

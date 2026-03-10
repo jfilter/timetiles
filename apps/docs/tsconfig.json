@@ -2,14 +2,8 @@
   "extends": "@timetiles/typescript-config/nextjs.json",
   "compilerOptions": {
     "moduleResolution": "bundler",
-    "paths": {
-      "@timetiles/ui/*": ["../../packages/ui/src/*"]
-    },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "paths": { "@timetiles/ui/*": ["../../packages/ui/src/*"] },
+    "plugins": [{ "name": "next" }]
   },
   "include": [
     "next-env.d.ts",

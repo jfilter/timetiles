@@ -36,21 +36,11 @@ describe.sequential("Password Reset Flow", () => {
 
     await payload.create({
       collection: "users",
-      data: {
-        email: testEmail,
-        password: "SecurePassword123!",
-        trustLevel: `${TRUST_LEVELS.BASIC}`,
-      },
+      data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
       disableVerificationEmail: true,
     });
 
-    const token = await payload.forgotPassword({
-      collection: "users",
-      data: {
-        email: testEmail,
-      },
-      disableEmail: true,
-    });
+    const token = await payload.forgotPassword({ collection: "users", data: { email: testEmail }, disableEmail: true });
 
     expect(token).toBeDefined();
   });
@@ -61,13 +51,7 @@ describe.sequential("Password Reset Flow", () => {
     // Payload's forgotPassword should not throw for unknown emails
     // to prevent user enumeration
     await expect(
-      payload.forgotPassword({
-        collection: "users",
-        data: {
-          email: "nonexistent@test.com",
-        },
-        disableEmail: true,
-      })
+      payload.forgotPassword({ collection: "users", data: { email: "nonexistent@test.com" }, disableEmail: true })
     ).resolves.not.toThrow();
   });
 
@@ -77,10 +61,7 @@ describe.sequential("Password Reset Flow", () => {
     await expect(
       payload.resetPassword({
         collection: "users",
-        data: {
-          token: "invalid-token-12345",
-          password: "NewSecurePassword123!",
-        },
+        data: { token: "invalid-token-12345", password: "NewSecurePassword123!" },
         overrideAccess: true,
       })
     ).rejects.toThrow();

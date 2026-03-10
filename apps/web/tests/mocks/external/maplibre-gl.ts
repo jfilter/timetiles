@@ -143,12 +143,7 @@ class MockPopup {
 
 class MockNavigationControl {}
 
-const mockMapLibre = {
-  Map: MockMap,
-  Marker: MockMarker,
-  Popup: MockPopup,
-  NavigationControl: MockNavigationControl,
-};
+const mockMapLibre = { Map: MockMap, Marker: MockMarker, Popup: MockPopup, NavigationControl: MockNavigationControl };
 
 // Default export required by mock system
 export default mockMapLibre;

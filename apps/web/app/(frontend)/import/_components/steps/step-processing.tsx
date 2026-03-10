@@ -39,14 +39,8 @@ interface ProgressApiResponse {
     datasetName?: string;
     currentStage: string;
     overallProgress: number;
-    stages?: Array<{
-      name: string;
-      status: string;
-      progress: number;
-    }>;
-    results?: {
-      totalEvents?: number;
-    };
+    stages?: Array<{ name: string; status: string; progress: number }>;
+    results?: { totalEvents?: number };
   }>;
   errorLog?: string | null;
   completedAt?: string | null;
@@ -171,10 +165,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
 
   // Hide navigation on processing step (it has custom action buttons)
   useEffect(() => {
-    setNavigationConfig({
-      showBack: false,
-      showNext: false,
-    });
+    setNavigationConfig({ showBack: false, showNext: false });
     return () => setNavigationConfig({});
   }, [setNavigationConfig]);
 
@@ -190,9 +181,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
 
     const fetchProgress = async () => {
       try {
-        const response = await fetch(`/api/import/${importFileId}/progress`, {
-          credentials: "include",
-        });
+        const response = await fetch(`/api/import/${importFileId}/progress`, { credentials: "include" });
 
         if (!response.ok) {
           throw new Error("Failed to fetch progress");

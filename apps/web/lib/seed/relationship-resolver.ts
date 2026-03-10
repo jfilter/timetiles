@@ -409,11 +409,7 @@ export class RelationshipResolver {
 
       return await this.payload.find({
         collection: collectionSlug,
-        where: {
-          [field]: {
-            equals: value,
-          },
-        },
+        where: { [field]: { equals: value } },
         limit: 1,
         depth: 0, // Minimal depth for performance
       });
@@ -482,12 +478,7 @@ export class RelationshipResolver {
 
       const duration = performance.now() - startTime;
       logger.info(
-        {
-          collection,
-          keyField,
-          count: idMap.size,
-          duration: `${duration.toFixed(2)}ms`,
-        },
+        { collection, keyField, count: idMap.size, duration: `${duration.toFixed(2)}ms` },
         `Built ID map for ${collection}: ${idMap.size} items in ${duration.toFixed(2)}ms`
       );
 

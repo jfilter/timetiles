@@ -317,10 +317,7 @@ describe("Wizard Reducer", () => {
 
   describe("Dataset Selection", () => {
     it("SET_CATALOG sets catalog ID", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_CATALOG",
-        catalogId: 42,
-      });
+      const result = wizardReducer(initialState, { type: "SET_CATALOG", catalogId: 42 });
 
       expect(result.selectedCatalogId).toBe(42);
     });
@@ -379,11 +376,7 @@ describe("Wizard Reducer", () => {
       const result = wizardReducer(state, {
         type: "SET_FIELD_MAPPING",
         sheetIndex: 0,
-        mapping: {
-          titleField: "name",
-          dateField: "created_at",
-          locationField: "address",
-        },
+        mapping: { titleField: "name", dateField: "created_at", locationField: "address" },
       });
 
       expect(result.fieldMappings[0]?.titleField).toBe("name");
@@ -424,20 +417,14 @@ describe("Wizard Reducer", () => {
 
   describe("Import Options", () => {
     it("SET_IMPORT_OPTIONS updates deduplication strategy", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_IMPORT_OPTIONS",
-        deduplicationStrategy: "update",
-      });
+      const result = wizardReducer(initialState, { type: "SET_IMPORT_OPTIONS", deduplicationStrategy: "update" });
 
       expect(result.deduplicationStrategy).toBe("update");
       expect(result.geocodingEnabled).toBe(true); // Unchanged
     });
 
     it("SET_IMPORT_OPTIONS updates geocoding toggle", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_IMPORT_OPTIONS",
-        geocodingEnabled: false,
-      });
+      const result = wizardReducer(initialState, { type: "SET_IMPORT_OPTIONS", geocodingEnabled: false });
 
       expect(result.geocodingEnabled).toBe(false);
       expect(result.deduplicationStrategy).toBe("skip"); // Unchanged
@@ -457,10 +444,7 @@ describe("Wizard Reducer", () => {
 
   describe("Processing", () => {
     it("START_PROCESSING sets processing state", () => {
-      const result = wizardReducer(initialState, {
-        type: "START_PROCESSING",
-        importFileId: 456,
-      });
+      const result = wizardReducer(initialState, { type: "START_PROCESSING", importFileId: 456 });
 
       expect(result.importFileId).toBe(456);
       expect(result.isProcessing).toBe(true);
@@ -469,10 +453,7 @@ describe("Wizard Reducer", () => {
 
     it("SET_ERROR sets error and clears processing", () => {
       const state = { ...initialState, isProcessing: true };
-      const result = wizardReducer(state, {
-        type: "SET_ERROR",
-        error: "Import failed: invalid data",
-      });
+      const result = wizardReducer(state, { type: "SET_ERROR", error: "Import failed: invalid data" });
 
       expect(result.error).toBe("Import failed: invalid data");
       expect(result.isProcessing).toBe(false);
@@ -506,12 +487,7 @@ describe("Wizard Reducer", () => {
     });
 
     it("RESET resets to initial state", () => {
-      const state = {
-        ...initialState,
-        currentStep: 3 as WizardStep,
-        selectedCatalogId: 42,
-        error: "Some error",
-      };
+      const state = { ...initialState, currentStep: 3 as WizardStep, selectedCatalogId: 42, error: "Some error" };
 
       const result = wizardReducer(state, { type: "RESET" });
 
@@ -572,22 +548,12 @@ describe("canProceed Validation", () => {
     });
 
     it("blocks if only authenticated but not verified", () => {
-      const state = {
-        ...initialState,
-        currentStep: 1 as WizardStep,
-        isAuthenticated: true,
-        isEmailVerified: false,
-      };
+      const state = { ...initialState, currentStep: 1 as WizardStep, isAuthenticated: true, isEmailVerified: false };
       expect(computeCanProceed(state)).toBe(false);
     });
 
     it("blocks if only verified but not authenticated", () => {
-      const state = {
-        ...initialState,
-        currentStep: 1 as WizardStep,
-        isAuthenticated: false,
-        isEmailVerified: true,
-      };
+      const state = { ...initialState, currentStep: 1 as WizardStep, isAuthenticated: false, isEmailVerified: true };
       expect(computeCanProceed(state)).toBe(false);
     });
 
@@ -605,12 +571,7 @@ describe("canProceed Validation", () => {
 
   describe("Step 2: File Upload", () => {
     it("blocks with null file", () => {
-      const state = {
-        ...initialState,
-        currentStep: 2 as WizardStep,
-        file: null,
-        sheets: [],
-      };
+      const state = { ...initialState, currentStep: 2 as WizardStep, file: null, sheets: [] };
       expect(computeCanProceed(state)).toBe(false);
     });
 
@@ -647,12 +608,7 @@ describe("canProceed Validation", () => {
     });
 
     it("blocks with empty sheetMappings", () => {
-      const state = {
-        ...initialState,
-        currentStep: 3 as WizardStep,
-        selectedCatalogId: 1,
-        sheetMappings: [],
-      };
+      const state = { ...initialState, currentStep: 3 as WizardStep, selectedCatalogId: 1, sheetMappings: [] };
       expect(computeCanProceed(state)).toBe(false);
     });
 
@@ -696,14 +652,7 @@ describe("canProceed Validation", () => {
       const state = {
         ...initialState,
         currentStep: 4 as WizardStep,
-        fieldMappings: [
-          {
-            ...baseFieldMapping,
-            titleField: null,
-            dateField: "date",
-            locationField: "address",
-          },
-        ],
+        fieldMappings: [{ ...baseFieldMapping, titleField: null, dateField: "date", locationField: "address" }],
       };
       expect(computeCanProceed(state)).toBe(false);
     });
@@ -712,14 +661,7 @@ describe("canProceed Validation", () => {
       const state = {
         ...initialState,
         currentStep: 4 as WizardStep,
-        fieldMappings: [
-          {
-            ...baseFieldMapping,
-            titleField: "name",
-            dateField: null,
-            locationField: "address",
-          },
-        ],
+        fieldMappings: [{ ...baseFieldMapping, titleField: "name", dateField: null, locationField: "address" }],
       };
       expect(computeCanProceed(state)).toBe(false);
     });
@@ -747,13 +689,7 @@ describe("canProceed Validation", () => {
         ...initialState,
         currentStep: 4 as WizardStep,
         fieldMappings: [
-          {
-            ...baseFieldMapping,
-            titleField: "name",
-            dateField: "date",
-            latitudeField: "lat",
-            longitudeField: null,
-          },
+          { ...baseFieldMapping, titleField: "name", dateField: "date", latitudeField: "lat", longitudeField: null },
         ],
       };
       expect(computeCanProceed(state)).toBe(false);
@@ -764,13 +700,7 @@ describe("canProceed Validation", () => {
         ...initialState,
         currentStep: 4 as WizardStep,
         fieldMappings: [
-          {
-            ...baseFieldMapping,
-            titleField: "name",
-            dateField: "date",
-            latitudeField: null,
-            longitudeField: "lng",
-          },
+          { ...baseFieldMapping, titleField: "name", dateField: "date", latitudeField: null, longitudeField: "lng" },
         ],
       };
       expect(computeCanProceed(state)).toBe(false);
@@ -780,14 +710,7 @@ describe("canProceed Validation", () => {
       const state = {
         ...initialState,
         currentStep: 4 as WizardStep,
-        fieldMappings: [
-          {
-            ...baseFieldMapping,
-            titleField: "name",
-            dateField: "date",
-            locationField: "address",
-          },
-        ],
+        fieldMappings: [{ ...baseFieldMapping, titleField: "name", dateField: "date", locationField: "address" }],
       };
       expect(computeCanProceed(state)).toBe(true);
     });
@@ -797,13 +720,7 @@ describe("canProceed Validation", () => {
         ...initialState,
         currentStep: 4 as WizardStep,
         fieldMappings: [
-          {
-            ...baseFieldMapping,
-            titleField: "name",
-            dateField: "date",
-            latitudeField: "lat",
-            longitudeField: "lng",
-          },
+          { ...baseFieldMapping, titleField: "name", dateField: "date", latitudeField: "lat", longitudeField: "lng" },
         ],
       };
       expect(computeCanProceed(state)).toBe(true);
@@ -832,13 +749,7 @@ describe("canProceed Validation", () => {
         ...initialState,
         currentStep: 4 as WizardStep,
         fieldMappings: [
-          {
-            ...baseFieldMapping,
-            sheetIndex: 0,
-            titleField: "name",
-            dateField: "date",
-            locationField: "address",
-          },
+          { ...baseFieldMapping, sheetIndex: 0, titleField: "name", dateField: "date", locationField: "address" },
           {
             ...baseFieldMapping,
             sheetIndex: 1,
@@ -856,13 +767,7 @@ describe("canProceed Validation", () => {
         ...initialState,
         currentStep: 4 as WizardStep,
         fieldMappings: [
-          {
-            ...baseFieldMapping,
-            sheetIndex: 0,
-            titleField: "name",
-            dateField: "date",
-            locationField: "address",
-          },
+          { ...baseFieldMapping, sheetIndex: 0, titleField: "name", dateField: "date", locationField: "address" },
           {
             ...baseFieldMapping,
             sheetIndex: 1,
@@ -878,11 +783,7 @@ describe("canProceed Validation", () => {
 
     it("allows proceeding with empty fieldMappings (edge case)", () => {
       // This is a valid edge case - if there are no sheets, all mappings are valid
-      const state = {
-        ...initialState,
-        currentStep: 4 as WizardStep,
-        fieldMappings: [],
-      };
+      const state = { ...initialState, currentStep: 4 as WizardStep, fieldMappings: [] };
       // Array.every() returns true for empty arrays
       expect(computeCanProceed(state)).toBe(true);
     });
@@ -890,10 +791,7 @@ describe("canProceed Validation", () => {
 
   describe("Step 5: Review", () => {
     it("always allows proceeding from review step", () => {
-      const state = {
-        ...initialState,
-        currentStep: 5 as WizardStep,
-      };
+      const state = { ...initialState, currentStep: 5 as WizardStep };
       expect(computeCanProceed(state)).toBe(true);
     });
 
@@ -911,39 +809,24 @@ describe("canProceed Validation", () => {
 
   describe("Step 6: Processing", () => {
     it("never allows proceeding from processing step", () => {
-      const state = {
-        ...initialState,
-        currentStep: 6 as WizardStep,
-        isProcessing: true,
-      };
+      const state = { ...initialState, currentStep: 6 as WizardStep, isProcessing: true };
       expect(computeCanProceed(state)).toBe(false);
     });
 
     it("blocks even after processing completes", () => {
-      const state = {
-        ...initialState,
-        currentStep: 6 as WizardStep,
-        isProcessing: false,
-        importFileId: 123,
-      };
+      const state = { ...initialState, currentStep: 6 as WizardStep, isProcessing: false, importFileId: 123 };
       expect(computeCanProceed(state)).toBe(false);
     });
   });
 
   describe("Invalid Steps", () => {
     it("returns false for invalid step numbers", () => {
-      const state = {
-        ...initialState,
-        currentStep: 0 as WizardStep,
-      };
+      const state = { ...initialState, currentStep: 0 as WizardStep };
       expect(computeCanProceed(state)).toBe(false);
     });
 
     it("returns false for step 7 (out of range)", () => {
-      const state = {
-        ...initialState,
-        currentStep: 7 as WizardStep,
-      };
+      const state = { ...initialState, currentStep: 7 as WizardStep };
       expect(computeCanProceed(state)).toBe(false);
     });
   });

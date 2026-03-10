@@ -49,18 +49,9 @@ export type EventListQuery = z.infer<typeof EventListQuerySchema>;
 export const EventItemSchema = z
   .object({
     id: z.number(),
-    dataset: z.object({
-      id: z.number(),
-      title: z.string().optional(),
-      catalog: z.string().optional(),
-    }),
+    dataset: z.object({ id: z.number(), title: z.string().optional(), catalog: z.string().optional() }),
     data: z.record(z.string(), z.unknown()),
-    location: z
-      .object({
-        longitude: z.number(),
-        latitude: z.number(),
-      })
-      .nullable(),
+    location: z.object({ longitude: z.number(), latitude: z.number() }).nullable(),
     eventTimestamp: z.string(),
     isValid: z.boolean(),
   })
@@ -94,9 +85,9 @@ export type EventListResponse = z.infer<typeof EventListResponseSchema>;
 /**
  * Query parameters for GET /api/events/aggregate
  */
-export const AggregateQuerySchema = EventFiltersSchema.extend({
-  groupBy: z.enum(["catalog", "dataset"]),
-}).openapi("AggregateQuery");
+export const AggregateQuerySchema = EventFiltersSchema.extend({ groupBy: z.enum(["catalog", "dataset"]) }).openapi(
+  "AggregateQuery"
+);
 
 export type AggregateQuery = z.infer<typeof AggregateQuerySchema>;
 
@@ -104,22 +95,14 @@ export type AggregateQuery = z.infer<typeof AggregateQuerySchema>;
  * Single item in aggregation response.
  */
 export const AggregationItemSchema = z
-  .object({
-    id: z.union([z.number(), z.string()]),
-    name: z.string(),
-    count: z.number().int(),
-  })
+  .object({ id: z.union([z.number(), z.string()]), name: z.string(), count: z.number().int() })
   .openapi("AggregationItem");
 
 /**
  * Response for GET /api/events/aggregate
  */
 export const AggregateResponseSchema = z
-  .object({
-    items: z.array(AggregationItemSchema),
-    total: z.number().int(),
-    groupedBy: z.string(),
-  })
+  .object({ items: z.array(AggregationItemSchema), total: z.number().int(), groupedBy: z.string() })
   .openapi("AggregateResponse");
 
 export type AggregateResponse = z.infer<typeof AggregateResponseSchema>;
@@ -158,16 +141,10 @@ export const HistogramResponseSchema = z
     histogram: z.array(HistogramBucketSchema),
     metadata: z.object({
       total: z.number().int(),
-      dateRange: z.object({
-        min: z.string().nullable(),
-        max: z.string().nullable(),
-      }),
+      dateRange: z.object({ min: z.string().nullable(), max: z.string().nullable() }),
       bucketSizeSeconds: z.number().nullable(),
       bucketCount: z.number().int(),
-      counts: z.object({
-        datasets: z.number().int(),
-        catalogs: z.number().int(),
-      }),
+      counts: z.object({ datasets: z.number().int(), catalogs: z.number().int() }),
       topDatasets: z.array(z.unknown()),
       topCatalogs: z.array(z.unknown()),
     }),
@@ -197,10 +174,7 @@ export const ClusterFeatureSchema = z
   .object({
     type: z.literal("Feature"),
     id: z.union([z.number(), z.string()]),
-    geometry: z.object({
-      type: z.literal("Point"),
-      coordinates: z.tuple([z.number(), z.number()]),
-    }),
+    geometry: z.object({ type: z.literal("Point"), coordinates: z.tuple([z.number(), z.number()]) }),
     properties: z.object({
       type: z.enum(["event-cluster", "event-point"]),
       count: z.number().int().optional(),
@@ -213,10 +187,7 @@ export const ClusterFeatureSchema = z
  * Response for GET /api/events/map-clusters
  */
 export const MapClustersResponseSchema = z
-  .object({
-    type: z.literal("FeatureCollection"),
-    features: z.array(ClusterFeatureSchema),
-  })
+  .object({ type: z.literal("FeatureCollection"), features: z.array(ClusterFeatureSchema) })
   .openapi("MapClustersResponse");
 
 export type MapClustersResponse = z.infer<typeof MapClustersResponseSchema>;
@@ -236,13 +207,7 @@ export type ClusterStatsQuery = z.infer<typeof ClusterStatsQuerySchema>;
  * Response for GET /api/events/cluster-stats
  */
 export const ClusterStatsResponseSchema = z
-  .object({
-    p20: z.number(),
-    p40: z.number(),
-    p60: z.number(),
-    p80: z.number(),
-    p100: z.number(),
-  })
+  .object({ p20: z.number(), p40: z.number(), p60: z.number(), p80: z.number(), p100: z.number() })
   .openapi("ClusterStatsResponse");
 
 export type ClusterStatsResponse = z.infer<typeof ClusterStatsResponseSchema>;

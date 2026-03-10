@@ -13,11 +13,7 @@ describe("IdGenerationService", () => {
     describe("external ID strategy", () => {
       const mockDataset: Partial<Dataset> = {
         id: mockDatasetId,
-        idStrategy: {
-          type: "external",
-          externalIdPath: "id",
-          duplicateStrategy: "skip",
-        },
+        idStrategy: { type: "external", externalIdPath: "id", duplicateStrategy: "skip" },
       };
 
       it("generates ID from external field", () => {
@@ -34,17 +30,10 @@ describe("IdGenerationService", () => {
       it("handles nested external ID path", () => {
         const datasetWithNestedPath: Partial<Dataset> = {
           ...mockDataset,
-          idStrategy: {
-            type: "external",
-            externalIdPath: "metadata.uuid",
-            duplicateStrategy: "skip",
-          },
+          idStrategy: { type: "external", externalIdPath: "metadata.uuid", duplicateStrategy: "skip" },
         };
 
-        const data = {
-          name: "Test",
-          metadata: { uuid: "uuid-789" },
-        };
+        const data = { name: "Test", metadata: { uuid: "uuid-789" } };
 
         const result = IdGenerationService.generateEventId(data, datasetWithNestedPath as Dataset);
 
@@ -122,11 +111,7 @@ describe("IdGenerationService", () => {
       };
 
       it("generates hash from specified fields", () => {
-        const data = {
-          title: "Test Event",
-          date: "2024-03-15",
-          description: "Should not be included",
-        };
+        const data = { title: "Test Event", date: "2024-03-15", description: "Should not be included" };
 
         const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
 
@@ -165,10 +150,7 @@ describe("IdGenerationService", () => {
           },
         };
 
-        const data = {
-          metadata: { id: "meta-123" },
-          location: { name: "NYC" },
-        };
+        const data = { metadata: { id: "meta-123" }, location: { name: "NYC" } };
 
         const result = IdGenerationService.generateEventId(data, datasetWithNestedFields as Dataset);
 
@@ -196,11 +178,7 @@ describe("IdGenerationService", () => {
       it("returns error when computedIdFields is empty array", () => {
         const emptyFieldsDataset: Partial<Dataset> = {
           id: mockDatasetId,
-          idStrategy: {
-            type: "computed",
-            computedIdFields: [],
-            duplicateStrategy: "skip",
-          },
+          idStrategy: { type: "computed", computedIdFields: [], duplicateStrategy: "skip" },
         };
 
         const data = { title: "Event A", date: "2024-01-01" };
@@ -214,10 +192,7 @@ describe("IdGenerationService", () => {
     describe("auto ID strategy", () => {
       const mockDataset: Partial<Dataset> = {
         id: mockDatasetId,
-        idStrategy: {
-          type: "auto",
-          duplicateStrategy: "skip",
-        },
+        idStrategy: { type: "auto", duplicateStrategy: "skip" },
       };
 
       it("generates unique auto ID with content hash", () => {
@@ -303,11 +278,7 @@ describe("IdGenerationService", () => {
       };
 
       it("uses external ID when available", () => {
-        const data = {
-          id: "ext-123",
-          title: "Test Event",
-          date: "2024-03-15",
-        };
+        const data = { id: "ext-123", title: "Test Event", date: "2024-03-15" };
 
         const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
 
@@ -316,10 +287,7 @@ describe("IdGenerationService", () => {
       });
 
       it("falls back to computed ID when external missing", () => {
-        const data = {
-          title: "Test Event",
-          date: "2024-03-15",
-        };
+        const data = { title: "Test Event", date: "2024-03-15" };
 
         const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
 
@@ -346,10 +314,7 @@ describe("IdGenerationService", () => {
       it("returns error for unknown strategy", () => {
         const mockDataset: Partial<Dataset> = {
           id: mockDatasetId,
-          idStrategy: {
-            type: "unknown" as any,
-            duplicateStrategy: "skip",
-          },
+          idStrategy: { type: "unknown" as any, duplicateStrategy: "skip" },
         };
 
         const result = IdGenerationService.generateEventId({ id: 1 }, mockDataset as Dataset);
@@ -361,10 +326,7 @@ describe("IdGenerationService", () => {
 
     describe("error handling", () => {
       it("throws error when idStrategy is null or undefined", () => {
-        const mockDataset: Partial<Dataset> = {
-          id: mockDatasetId,
-          idStrategy: null as any,
-        };
+        const mockDataset: Partial<Dataset> = { id: mockDatasetId, idStrategy: null as any };
 
         expect(() => IdGenerationService.generateEventId({ id: 1 }, mockDataset as Dataset)).toThrow(
           "Dataset idStrategy is required but was undefined"
@@ -375,57 +337,33 @@ describe("IdGenerationService", () => {
 
   describe("helper methods", () => {
     it("extracts nested field values correctly", () => {
-      const data = {
-        level1: {
-          level2: {
-            level3: "value",
-          },
-        },
-      };
+      const data = { level1: { level2: { level3: "value" } } };
 
       // This would be a private method, but we can test through the public API
       const mockDataset: Partial<Dataset> = {
         id: mockDatasetId,
-        idStrategy: {
-          type: "external",
-          externalIdPath: "level1.level2.level3",
-          duplicateStrategy: "skip",
-        },
+        idStrategy: { type: "external", externalIdPath: "level1.level2.level3", duplicateStrategy: "skip" },
       };
 
-      expect(IdGenerationService.generateEventId(data, mockDataset as Dataset)).toMatchObject({
-        sourceId: "value",
-      });
+      expect(IdGenerationService.generateEventId(data, mockDataset as Dataset)).toMatchObject({ sourceId: "value" });
     });
 
     it("handles array notation in paths", () => {
-      const data = {
-        items: [{ id: "first" }, { id: "second" }],
-      };
+      const data = { items: [{ id: "first" }, { id: "second" }] };
 
       const mockDataset: Partial<Dataset> = {
         id: mockDatasetId,
-        idStrategy: {
-          type: "external",
-          externalIdPath: "items.0.id",
-          duplicateStrategy: "skip",
-        },
+        idStrategy: { type: "external", externalIdPath: "items.0.id", duplicateStrategy: "skip" },
       };
 
-      expect(IdGenerationService.generateEventId(data, mockDataset as Dataset)).toMatchObject({
-        sourceId: "first",
-      });
+      expect(IdGenerationService.generateEventId(data, mockDataset as Dataset)).toMatchObject({ sourceId: "first" });
     });
   });
 
   describe("generateUniqueId wrapper", () => {
     it("throws error when external ID is missing", () => {
       const data = { name: "Test Event" }; // Missing external ID field
-      const idStrategy = {
-        type: "external" as const,
-        externalIdPath: "id",
-        duplicateStrategy: "skip" as const,
-      };
+      const idStrategy = { type: "external" as const, externalIdPath: "id", duplicateStrategy: "skip" as const };
 
       expect(() => generateUniqueId(data, idStrategy)).toThrow(
         "Failed to generate unique ID: Missing external ID at path: id"
@@ -434,11 +372,7 @@ describe("IdGenerationService", () => {
 
     it("throws error when external ID is empty string", () => {
       const data = { id: "" }; // Empty string
-      const idStrategy = {
-        type: "external" as const,
-        externalIdPath: "id",
-        duplicateStrategy: "skip" as const,
-      };
+      const idStrategy = { type: "external" as const, externalIdPath: "id", duplicateStrategy: "skip" as const };
 
       expect(() => generateUniqueId(data, idStrategy)).toThrow(
         "Failed to generate unique ID: Missing external ID at path: id"
@@ -447,11 +381,7 @@ describe("IdGenerationService", () => {
 
     it("throws error when external ID is null", () => {
       const data = { id: null };
-      const idStrategy = {
-        type: "external" as const,
-        externalIdPath: "id",
-        duplicateStrategy: "skip" as const,
-      };
+      const idStrategy = { type: "external" as const, externalIdPath: "id", duplicateStrategy: "skip" as const };
 
       expect(() => generateUniqueId(data, idStrategy)).toThrow(
         "Failed to generate unique ID: Missing external ID at path: id"
@@ -473,11 +403,7 @@ describe("IdGenerationService", () => {
 
     it("succeeds when external ID is present", () => {
       const data = { id: "test-123", name: "Test Event" };
-      const idStrategy = {
-        type: "external" as const,
-        externalIdPath: "id",
-        duplicateStrategy: "skip" as const,
-      };
+      const idStrategy = { type: "external" as const, externalIdPath: "id", duplicateStrategy: "skip" as const };
 
       const result = generateUniqueId(data, idStrategy);
       expect(result).toMatch(/^undefined:ext:test-123$/);
@@ -485,10 +411,7 @@ describe("IdGenerationService", () => {
 
     it("succeeds with auto strategy", () => {
       const data = { name: "Test Event" };
-      const idStrategy = {
-        type: "auto" as const,
-        duplicateStrategy: "skip" as const,
-      };
+      const idStrategy = { type: "auto" as const, duplicateStrategy: "skip" as const };
 
       const result = generateUniqueId(data, idStrategy);
       expect(result).toMatch(/^undefined:auto:\d+:[a-f0-9]{8}$/);

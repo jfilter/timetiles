@@ -56,10 +56,7 @@ export interface PayloadConfigOptions {
   collections?: CollectionName[];
 
   // Database pool configuration
-  poolConfig?: {
-    max?: number;
-    connectionString?: string;
-  };
+  poolConfig?: { max?: number; connectionString?: string };
 
   // Logging configuration
   logLevel?: "debug" | "info" | "warn" | "error" | "fatal" | "silent";
@@ -107,10 +104,7 @@ const getEtherealCredentials = async (): Promise<EtherealCredentials> => {
 
   // Create new ethereal account
   const testAccount = await nodemailer.createTestAccount();
-  const credentials: EtherealCredentials = {
-    user: testAccount.user,
-    pass: testAccount.pass,
-  };
+  const credentials: EtherealCredentials = { user: testAccount.user, pass: testAccount.pass };
 
   // Cache to file
   try {
@@ -147,11 +141,7 @@ const createDbAdapter = (
 ) =>
   postgresAdapter({
     ...DEFAULT_DB_CONFIG,
-    pool: {
-      connectionString: databaseUrl ?? "",
-      max: environment === "test" ? 5 : undefined,
-      ...poolConfig,
-    },
+    pool: { connectionString: databaseUrl ?? "", max: environment === "test" ? 5 : undefined, ...poolConfig },
     prodMigrations: runMigrations ? DEFAULT_DB_CONFIG.prodMigrations : undefined,
   });
 
@@ -189,15 +179,11 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   // Build configuration
   const config: Config = {
     secret: secret ?? "default-secret-key",
-    routes: {
-      admin: "/dashboard",
-    },
+    routes: { admin: "/dashboard" },
     admin: {
       user: collections?.includes("users") ? Users.slug : undefined,
       disable: disableAdmin || environment === "test",
-      components: {
-        header: ["/components/admin/admin-header"],
-      },
+      components: { header: ["/components/admin/admin-header"] },
     },
     logger: getLogger(logLevel, environment),
     debug: environment === "development",
@@ -211,17 +197,13 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     },
     plugins: [
       // Schema detection plugin (always enabled, provides language-aware field detection)
-      schemaDetectionPlugin({
-        extendDatasets: collections?.includes("datasets") ?? false,
-      }),
+      schemaDetectionPlugin({ extendDatasets: collections?.includes("datasets") ?? false }),
       ...plugins,
     ],
     editor: lexicalEditor({}),
     typescript: DEFAULT_TYPESCRIPT_CONFIG,
     db: createDbAdapter(databaseUrl, environment, poolConfig, runMigrations),
-    graphQL: {
-      disable: disableGraphQL,
-    },
+    graphQL: { disable: disableGraphQL },
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any
     sharp: sharp as any,
   };
@@ -246,10 +228,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
         host: process.env.EMAIL_SMTP_HOST,
         port: smtpPort,
         auth: process.env.EMAIL_SMTP_USER
-          ? {
-              user: process.env.EMAIL_SMTP_USER,
-              pass: process.env.EMAIL_SMTP_PASS,
-            }
+          ? { user: process.env.EMAIL_SMTP_USER, pass: process.env.EMAIL_SMTP_PASS }
           : undefined,
       },
     });
@@ -259,14 +238,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     config.email = nodemailerAdapter({
       defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.app",
       defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
-      transportOptions: {
-        host: "smtp.ethereal.email",
-        port: 587,
-        auth: {
-          user: ethereal.user,
-          pass: ethereal.pass,
-        },
-      },
+      transportOptions: { host: "smtp.ethereal.email", port: 587, auth: { user: ethereal.user, pass: ethereal.pass } },
     });
   }
 
@@ -287,8 +259,6 @@ export const createTestConfig = async (options: Partial<PayloadConfigOptions> = 
     disableAdmin: true,
     disableGraphQL: true,
     logLevel: "silent",
-    poolConfig: {
-      max: 5,
-    },
+    poolConfig: { max: 5 },
     ...options,
   });

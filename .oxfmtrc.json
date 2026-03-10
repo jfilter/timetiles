@@ -12,6 +12,7 @@
   "bracketSpacing": true,
   "bracketSameLine": false,
   "arrowParens": "always",
+  "objectWrap": "collapse",
   "endOfLine": "lf",
   "sortPackageJson": true,
   "ignorePatterns": [
@@ -21,7 +22,6 @@
     "build/",
     "node_modules/",
     "*.generated.*",
-    "payload-generated-schema.ts",
     "apps/docs/content/reference/api/**/*.md",
     "apps/docs/content/reference/api/**/*.mdx",
     "apps/docs/content/reference/api/**/_meta.js",
@@ -44,7 +44,6 @@
     "playwright-report/",
     ".lint-results/",
     ".typecheck-results/",
-    "payload-types.ts",
     "migrations/",
     "uploads/"
   ]

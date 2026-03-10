@@ -111,9 +111,7 @@ test.describe("Explore Page - Map Interactions", () => {
       await explorePage.clickMapMarker(0);
 
       // Wait for popup to appear
-      await expect(page.locator(".maplibregl-popup")).toBeVisible({
-        timeout: 5000,
-      });
+      await expect(page.locator(".maplibregl-popup")).toBeVisible({ timeout: 5000 });
 
       // Popup should contain some content
       const popupContent = await explorePage.getPopupContent();

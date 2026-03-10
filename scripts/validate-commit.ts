@@ -357,10 +357,7 @@ function validateRedundantTypeScopePairs(parsed: ParsedCommit, errors: Validatio
   };
 
   if (parsed.type === parsed.scope && redundantCombinations[parsed.type]) {
-    errors.push({
-      rule: RULE_TYPE_SCOPE_COMBINATION,
-      message: redundantCombinations[parsed.type],
-    });
+    errors.push({ rule: RULE_TYPE_SCOPE_COMBINATION, message: redundantCombinations[parsed.type] });
   }
 }
 
@@ -414,10 +411,7 @@ function validateSubject(parsed: ParsedCommit, errors: ValidationError[], warnin
   const lowerSubject = parsed.subject.toLowerCase();
   for (const term of vagueTerms) {
     if (lowerSubject.includes(term)) {
-      warnings.push({
-        rule: "no-vague-subjects",
-        message: `Avoid vague terms like "${term}" in commit subjects`,
-      });
+      warnings.push({ rule: "no-vague-subjects", message: `Avoid vague terms like "${term}" in commit subjects` });
     }
   }
 }

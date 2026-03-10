@@ -95,12 +95,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
   const exists = checkDatabaseExists();
 
   if (!exists) {
-    return {
-      exists: false,
-      hasPostGIS: false,
-      hasPayloadSchema: false,
-      tableCount: 0,
-    };
+    return { exists: false, hasPostGIS: false, hasPayloadSchema: false, tableCount: 0 };
   }
 
   try {
@@ -146,20 +141,10 @@ const getDatabaseInfo = (): DatabaseInfo => {
       tableCount = parseInt(tableLines[0]?.trim() || "0");
     }
 
-    return {
-      exists: true,
-      hasPostGIS,
-      hasPayloadSchema,
-      tableCount,
-    };
+    return { exists: true, hasPostGIS, hasPayloadSchema, tableCount };
   } catch (error) {
     logger.warn("Failed to get complete database info", { error });
-    return {
-      exists: true,
-      hasPostGIS: false,
-      hasPayloadSchema: false,
-      tableCount: 0,
-    };
+    return { exists: true, hasPostGIS: false, hasPayloadSchema: false, tableCount: 0 };
   }
 };
 
@@ -297,12 +282,7 @@ export const validateTestDatabaseSchema = async (): Promise<SchemaValidationResu
     }
   }
 
-  return {
-    isValid,
-    issues,
-    suggestions,
-    migrationState,
-  };
+  return { isValid, issues, suggestions, migrationState };
 };
 
 export const resetTestDatabase = async (force: boolean = false): Promise<void> => {

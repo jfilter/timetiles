@@ -20,9 +20,7 @@ describe("getFeatureFlags", () => {
   });
 
   it("should return all flags as false when payload.findGlobal throws", async () => {
-    const mockPayload = {
-      findGlobal: vi.fn().mockRejectedValue(new Error("DB down")),
-    };
+    const mockPayload = { findGlobal: vi.fn().mockRejectedValue(new Error("DB down")) };
 
     const flags = await getFeatureFlags(mockPayload as any);
 
@@ -33,12 +31,9 @@ describe("getFeatureFlags", () => {
 
   it("should return actual flag values when settings load succeeds", async () => {
     const mockPayload = {
-      findGlobal: vi.fn().mockResolvedValue({
-        featureFlags: {
-          allowPrivateImports: false,
-          enableScheduledImports: true,
-        },
-      }),
+      findGlobal: vi
+        .fn()
+        .mockResolvedValue({ featureFlags: { allowPrivateImports: false, enableScheduledImports: true } }),
     };
 
     const flags = await getFeatureFlags(mockPayload as any);
@@ -48,13 +43,7 @@ describe("getFeatureFlags", () => {
   });
 
   it("should use default (true) for missing individual flags when settings load succeeds", async () => {
-    const mockPayload = {
-      findGlobal: vi.fn().mockResolvedValue({
-        featureFlags: {
-          allowPrivateImports: false,
-        },
-      }),
-    };
+    const mockPayload = { findGlobal: vi.fn().mockResolvedValue({ featureFlags: { allowPrivateImports: false } }) };
 
     const flags = await getFeatureFlags(mockPayload as any);
 
@@ -65,13 +54,7 @@ describe("getFeatureFlags", () => {
   });
 
   it("should cache flags and reuse them on subsequent calls", async () => {
-    const mockPayload = {
-      findGlobal: vi.fn().mockResolvedValue({
-        featureFlags: {
-          allowPrivateImports: false,
-        },
-      }),
-    };
+    const mockPayload = { findGlobal: vi.fn().mockResolvedValue({ featureFlags: { allowPrivateImports: false } }) };
 
     await getFeatureFlags(mockPayload as any);
     await getFeatureFlags(mockPayload as any);
@@ -84,9 +67,7 @@ describe("getFeatureFlags", () => {
       findGlobal: vi
         .fn()
         .mockRejectedValueOnce(new Error("DB down"))
-        .mockResolvedValueOnce({
-          featureFlags: { allowPrivateImports: true },
-        }),
+        .mockResolvedValueOnce({ featureFlags: { allowPrivateImports: true } }),
     };
 
     const errorFlags = await getFeatureFlags(mockPayload as any);
@@ -102,9 +83,7 @@ describe("getFeatureFlags", () => {
   });
 
   it("should return all expected flag keys on error", async () => {
-    const mockPayload = {
-      findGlobal: vi.fn().mockRejectedValue(new Error("DB down")),
-    };
+    const mockPayload = { findGlobal: vi.fn().mockRejectedValue(new Error("DB down")) };
 
     const flags = await getFeatureFlags(mockPayload as any);
     const expectedKeys: (keyof FeatureFlags)[] = [

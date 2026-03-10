@@ -14,7 +14,7 @@
     "lint:all": "eslint app content scripts --cache && tsx scripts/check-links.ts",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "typecheck:fast": "tsgo --noEmit",
-        "format": "eslint app content scripts --cache --fix --quiet && oxfmt --write ."
+    "format": "eslint app content scripts --cache --fix --quiet && oxfmt --write ."
   },
   "dependencies": {
     "@timetiles/assets": "workspace:*",

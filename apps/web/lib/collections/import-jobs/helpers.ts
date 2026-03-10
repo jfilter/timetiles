@@ -21,9 +21,7 @@ export const handleJobCompletion = async (payload: Payload, doc: ImportJob, req?
   // Check if all jobs for this import file are completed before marking file as completed
   const allJobs = await payload.find({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
-    where: {
-      importFile: { equals: importFileId },
-    },
+    where: { importFile: { equals: importFileId } },
     pagination: false,
   });
 

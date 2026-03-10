@@ -116,10 +116,7 @@ export class SeedingOperations {
         if (!payload) {
           throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
         }
-        await payload.updateGlobal({
-          slug: MAIN_MENU_SLUG,
-          data: menuData as Config["globals"]["main-menu"],
-        });
+        await payload.updateGlobal({ slug: MAIN_MENU_SLUG, data: menuData as Config["globals"]["main-menu"] });
         logger.info(`Seeded ${MAIN_MENU_SLUG} global successfully!`);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -132,10 +129,7 @@ export class SeedingOperations {
         if (!payload) {
           throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
         }
-        await payload.updateGlobal({
-          slug: FOOTER_SLUG,
-          data: footerData as Config["globals"]["footer"],
-        });
+        await payload.updateGlobal({ slug: FOOTER_SLUG, data: footerData as Config["globals"]["footer"] });
         logger.info(`Seeded ${FOOTER_SLUG} global successfully!`);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -153,12 +147,7 @@ export class SeedingOperations {
     const BATCH_SIZE = 10; // Process in smaller batches
     const isCI = process.env.CI === "true";
 
-    const result: SeedResult = {
-      created: 0,
-      skipped: 0,
-      failed: 0,
-      errors: [],
-    };
+    const result: SeedResult = { created: 0, skipped: 0, failed: 0, errors: [] };
 
     // Process in batches to prevent overwhelming the database
     for (let i = 0; i < resolvedSeedData.length; i += BATCH_SIZE) {
@@ -233,12 +222,7 @@ export class SeedingOperations {
     config: CollectionConfig,
     isCI: boolean
   ): Promise<SeedResult> {
-    const result: SeedResult = {
-      created: 0,
-      skipped: 0,
-      failed: 0,
-      errors: [],
-    };
+    const result: SeedResult = { created: 0, skipped: 0, failed: 0, errors: [] };
 
     // Process items sequentially to avoid overwhelming the database
     for (const resolvedItem of batch) {
@@ -333,11 +317,7 @@ export class SeedingOperations {
       errorType = "database";
     }
 
-    return {
-      item: itemName,
-      error: errorMessage,
-      type: errorType,
-    };
+    return { item: itemName, error: errorMessage, type: errorType };
   }
 
   private async delayBetweenBatches(
@@ -400,16 +380,9 @@ export class SeedingOperations {
     } else if (collectionName === "users") {
       // Disable verification email for seeded users (they're already pre-verified)
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic seeding requires type flexibility
-      await (payload.create as any)({
-        collection: "users",
-        data: resolvedItem,
-        disableVerificationEmail: true,
-      });
+      await (payload.create as any)({ collection: "users", data: resolvedItem, disableVerificationEmail: true });
     } else {
-      await payload.create({
-        collection: collectionName as keyof Config["collections"],
-        data: resolvedItem,
-      });
+      await payload.create({ collection: collectionName as keyof Config["collections"], data: resolvedItem });
     }
 
     const displayName = this.queryBuilders.getDisplayName(resolvedItem);
@@ -430,11 +403,7 @@ export class SeedingOperations {
       if (!payload) {
         throw new Error("Payload not initialized");
       }
-      const result = await payload.find({
-        collection: collection as keyof Config["collections"],
-        where,
-        limit: 1,
-      });
+      const result = await payload.find({ collection: collection as keyof Config["collections"], where, limit: 1 });
 
       return result.docs.length > 0 ? result.docs[0] : null;
     } catch (error) {

@@ -170,11 +170,7 @@ curl -X POST https://your-domain.com/api/import-jobs/123/reset \
 **Response**:
 
 ```json
-{
-  "success": true,
-  "message": "Import job reset successfully",
-  "stage": "ANALYZE_DUPLICATES"
-}
+{ "success": true, "message": "Import job reset successfully", "stage": "ANALYZE_DUPLICATES" }
 ```
 
 **Available Reset Stages**:
@@ -220,11 +216,7 @@ curl https://your-domain.com/api/import-jobs/failed/recommendations \
       "importFileName": "events-2024.csv",
       "stage": "GEOCODE_BATCH",
       "failedAt": "2024-01-15T10:00:00.000Z",
-      "errorClassification": {
-        "type": "recoverable",
-        "retryable": true,
-        "reason": "Rate limit exceeded (429)"
-      },
+      "errorClassification": { "type": "recoverable", "retryable": true, "reason": "Rate limit exceeded (429)" },
       "recommendedAction": "automatic_retry",
       "retryCount": 1,
       "nextRetryAt": "2024-01-15T10:30:00.000Z",
@@ -235,11 +227,7 @@ curl https://your-domain.com/api/import-jobs/failed/recommendations \
       "importFileName": "invalid-data.csv",
       "stage": "VALIDATE_SCHEMA",
       "failedAt": "2024-01-15T09:00:00.000Z",
-      "errorClassification": {
-        "type": "permanent",
-        "retryable": false,
-        "reason": "File not found (ENOENT)"
-      },
+      "errorClassification": { "type": "permanent", "retryable": false, "reason": "File not found (ENOENT)" },
       "recommendedAction": "manual_intervention",
       "retryCount": 0,
       "details": "File not found. Verify file exists and is accessible. Upload file again or delete this import job."

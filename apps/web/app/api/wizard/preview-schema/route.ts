@@ -129,11 +129,7 @@ const detectFieldFromHeaders = (headers: string[], fieldType: string, language: 
     const match = headers.find((h) => pattern.test(h));
     if (match) {
       const confidence = 0.9 - i * 0.1;
-      return {
-        path: match,
-        confidence: Math.max(0.5, confidence),
-        confidenceLevel: getConfidenceLevel(confidence),
-      };
+      return { path: match, confidence: Math.max(0.5, confidence), confidenceLevel: getConfidenceLevel(confidence) };
     }
   }
 
@@ -145,11 +141,7 @@ const detectFieldFromHeaders = (headers: string[], fieldType: string, language: 
       const match = headers.find((h) => pattern.test(h));
       if (match) {
         const confidence = 0.7 - i * 0.1;
-        return {
-          path: match,
-          confidence: Math.max(0.3, confidence),
-          confidenceLevel: getConfidenceLevel(confidence),
-        };
+        return { path: match, confidence: Math.max(0.3, confidence), confidenceLevel: getConfidenceLevel(confidence) };
       }
     }
   }
@@ -167,11 +159,7 @@ const detectCoordinateField = (headers: string[], patterns: RegExp[]): FieldMapp
     const match = headers.find((h) => pattern.test(h));
     if (match) {
       const confidence = 0.9 - i * 0.05;
-      return {
-        path: match,
-        confidence: Math.max(0.5, confidence),
-        confidenceLevel: getConfidenceLevel(confidence),
-      };
+      return { path: match, confidence: Math.max(0.5, confidence), confidenceLevel: getConfidenceLevel(confidence) };
     }
   }
   return { path: null, confidence: 0, confidenceLevel: "none" };
@@ -218,10 +206,7 @@ const parseCSVPreview = (filePath: string): SheetInfo[] => {
   });
 
   // Get full row count (need to parse separately)
-  const fullResult = Papa.parse(fileContent, {
-    header: true,
-    skipEmptyLines: true,
-  });
+  const fullResult = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
 
   const headers = result.meta.fields ?? [];
   const sampleData = (result.data as Record<string, unknown>[]).slice(0, SAMPLE_ROW_COUNT);
@@ -229,16 +214,7 @@ const parseCSVPreview = (filePath: string): SheetInfo[] => {
   // Detect suggested field mappings
   const suggestedMappings = detectSuggestedMappings(headers, sampleData);
 
-  return [
-    {
-      index: 0,
-      name: "Sheet1",
-      rowCount: fullResult.data.length,
-      headers,
-      sampleData,
-      suggestedMappings,
-    },
-  ];
+  return [{ index: 0, name: "Sheet1", rowCount: fullResult.data.length, headers, sampleData, suggestedMappings }];
 };
 
 const parseExcelPreview = (filePath: string): SheetInfo[] => {
@@ -251,10 +227,7 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
     const worksheet = workbook.Sheets[sheetName];
     if (!worksheet) return;
 
-    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, {
-      header: 1,
-      defval: null,
-    });
+    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, { header: 1, defval: null });
 
     if (jsonData.length === 0) {
       sheets.push({
@@ -294,14 +267,7 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
     // Detect suggested field mappings
     const suggestedMappings = detectSuggestedMappings(headers, sampleData);
 
-    sheets.push({
-      index,
-      name: sheetName,
-      rowCount,
-      headers,
-      sampleData,
-      suggestedMappings,
-    });
+    sheets.push({ index, name: sheetName, rowCount, headers, sampleData, suggestedMappings });
   });
 
   return sheets;
@@ -475,12 +441,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
       mimeType = file.type;
       fileSize = file.size;
 
-      logger.info("File saved for preview", {
-        previewId,
-        fileName: file.name,
-        fileSize: file.size,
-        userId: user.id,
-      });
+      logger.info("File saved for preview", { previewId, fileName: file.name, fileSize: file.size, userId: user.id });
     } else {
       return badRequest("Invalid request");
     }

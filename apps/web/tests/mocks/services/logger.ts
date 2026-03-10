@@ -47,14 +47,7 @@ export const mockLogger: any = {
   logError: vi.fn(),
   logPerformance: vi.fn(),
   logger: sharedLogger,
-  LogLevel: {
-    TRACE: "trace",
-    DEBUG: "debug",
-    INFO: "info",
-    WARN: "warn",
-    ERROR: "error",
-    FATAL: "fatal",
-  },
+  LogLevel: { TRACE: "trace", DEBUG: "debug", INFO: "info", WARN: "warn", ERROR: "error", FATAL: "fatal" },
 };
 
 /**

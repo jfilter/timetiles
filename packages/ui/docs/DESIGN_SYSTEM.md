@@ -650,11 +650,7 @@ export default {
           cream: "oklch(0.88 0.01 80)",
         },
       },
-      fontFamily: {
-        serif: ["var(--font-serif)"],
-        sans: ["var(--font-sans)"],
-        mono: ["var(--font-mono)"],
-      },
+      fontFamily: { serif: ["var(--font-serif)"], sans: ["var(--font-sans)"], mono: ["var(--font-mono)"] },
     },
   },
 };

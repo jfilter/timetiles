@@ -14,25 +14,10 @@ export type MainMenuSeed = Omit<MainMenu, "id" | "createdAt" | "updatedAt">;
 
 export const mainMenuSeed: MainMenuSeed = {
   navItems: [
-    {
-      label: "Home",
-      url: "/",
-    },
-    {
-      label: "Explore",
-      url: "/explore",
-    },
-    {
-      label: "Import",
-      url: "/import",
-    },
-    {
-      label: "About",
-      url: "/about",
-    },
-    {
-      label: "Contact",
-      url: "/contact",
-    },
+    { label: "Home", url: "/" },
+    { label: "Explore", url: "/explore" },
+    { label: "Import", url: "/import" },
+    { label: "About", url: "/about" },
+    { label: "Contact", url: "/contact" },
   ],
 };

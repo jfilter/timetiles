@@ -10,19 +10,11 @@ import type { ImportJob } from "@/payload-types";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
-  return {
-    logger: {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    },
-  };
+  return { logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } };
 });
 
 // Mock external dependencies
-vi.mock("@/lib/logger", () => ({
-  logger: mocks.logger,
-}));
+vi.mock("@/lib/logger", () => ({ logger: mocks.logger }));
 
 describe.sequential("StageTransitionService", () => {
   let mockQueue: ReturnType<typeof vi.fn>;
@@ -40,11 +32,7 @@ describe.sequential("StageTransitionService", () => {
     mockQueue = vi.fn().mockResolvedValue({});
 
     // Mock payload - cast as unknown first to bypass type checking
-    mockPayload = {
-      jobs: {
-        queue: mockQueue,
-      },
-    } as unknown as Payload;
+    mockPayload = { jobs: { queue: mockQueue } } as unknown as Payload;
 
     // Mock import job
     mockImportJob = {
@@ -230,10 +218,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.VALIDATE_SCHEMA);
 
-      expect(mockQueue).toHaveBeenCalledWith({
-        task: JOB_TYPES.VALIDATE_SCHEMA,
-        input: { importJobId: newJob.id },
-      });
+      expect(mockQueue).toHaveBeenCalledWith({ task: JOB_TYPES.VALIDATE_SCHEMA, input: { importJobId: newJob.id } });
     });
 
     it("should successfully transition and queue geocode-batch job", async () => {
@@ -279,9 +264,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.queuedJobType).toBeUndefined();
 
       expect(mockQueue).not.toHaveBeenCalled();
-      expect(mocks.logger.info).toHaveBeenCalledWith("Import requires manual approval", {
-        importJobId: newJob.id,
-      });
+      expect(mocks.logger.info).toHaveBeenCalledWith("Import requires manual approval", { importJobId: newJob.id });
     });
 
     it("should handle completed stage without queuing jobs", async () => {
@@ -295,9 +278,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.queuedJobType).toBeUndefined();
 
       expect(mockQueue).not.toHaveBeenCalled();
-      expect(mocks.logger.info).toHaveBeenCalledWith("Import job completed successfully", {
-        importJobId: newJob.id,
-      });
+      expect(mocks.logger.info).toHaveBeenCalledWith("Import job completed successfully", { importJobId: newJob.id });
     });
 
     it("should handle failed stage without queuing jobs", async () => {
@@ -311,9 +292,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.queuedJobType).toBeUndefined();
 
       expect(mockQueue).not.toHaveBeenCalled();
-      expect(mocks.logger.error).toHaveBeenCalledWith("Import job failed", {
-        importJobId: newJob.id,
-      });
+      expect(mocks.logger.error).toHaveBeenCalledWith("Import job failed", { importJobId: newJob.id });
     });
 
     it("should skip processing when no stage change occurs", async () => {
@@ -581,9 +560,7 @@ describe.sequential("StageTransitionService", () => {
 
       expect(result).toEqual({ output: { cleaned: 1 } });
       expect(StageTransitionService.getTransitioningCount()).toBe(0);
-      expect(mocks.logger.info).toHaveBeenCalledWith("Cleaned up stage transition locks", {
-        count: 1,
-      });
+      expect(mocks.logger.info).toHaveBeenCalledWith("Cleaned up stage transition locks", { count: 1 });
     });
 
     it("should handle cleanup task with no locks to clean", () => {
@@ -613,21 +590,10 @@ describe.sequential("StageTransitionService", () => {
 
     it("should handle concurrent different transitions for same job", async () => {
       // Test that different transition types for the same job can run concurrently
-      const job123_to_detect = {
-        ...mockImportJob,
-        id: 123,
-        stage: PROCESSING_STAGE.DETECT_SCHEMA,
-      } as ImportJob;
-      const job123_to_validate = {
-        ...mockImportJob,
-        id: 123,
-        stage: PROCESSING_STAGE.VALIDATE_SCHEMA,
-      } as ImportJob;
+      const job123_to_detect = { ...mockImportJob, id: 123, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
+      const job123_to_validate = { ...mockImportJob, id: 123, stage: PROCESSING_STAGE.VALIDATE_SCHEMA } as ImportJob;
 
-      const prevJob_analyze = {
-        ...mockImportJob,
-        stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
-      } as ImportJob;
+      const prevJob_analyze = { ...mockImportJob, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES } as ImportJob;
       const prevJob_detect = { ...mockImportJob, stage: PROCESSING_STAGE.DETECT_SCHEMA } as ImportJob;
 
       // Both should succeed since they are different transitions

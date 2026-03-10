@@ -161,12 +161,7 @@ describe("Database URL Utilities", () => {
       const url = "postgresql://user:secret@localhost:5432/mydb";
       const info = getDatabaseInfo(url);
 
-      expect(info).toEqual({
-        username: "user",
-        host: "localhost",
-        port: "5432",
-        database: "mydb",
-      });
+      expect(info).toEqual({ username: "user", host: "localhost", port: "5432", database: "mydb" });
 
       expect(info).not.toHaveProperty("password");
       expect(info).not.toHaveProperty("fullUrl");

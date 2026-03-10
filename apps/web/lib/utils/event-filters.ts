@@ -28,12 +28,7 @@ export interface EventFilters {
   /** End date for temporal filtering */
   endDate?: string | null;
   /** Geographic bounds for spatial filtering */
-  bounds?: {
-    minLng: number;
-    maxLng: number;
-    minLat: number;
-    maxLat: number;
-  };
+  bounds?: { minLng: number; maxLng: number; minLat: number; maxLat: number };
   /** Only include events with geocoded locations */
   requireLocation?: boolean;
   /** When true, no results should be returned (user lacks access) */
@@ -123,12 +118,7 @@ export const buildEventFilters = ({
 
   // Apply bounds filter
   if (bounds != null) {
-    filters.bounds = {
-      minLng: bounds.west,
-      maxLng: bounds.east,
-      minLat: bounds.south,
-      maxLat: bounds.north,
-    };
+    filters.bounds = { minLng: bounds.west, maxLng: bounds.east, minLat: bounds.south, maxLat: bounds.north };
   }
 
   // Apply field filters for categorical filtering

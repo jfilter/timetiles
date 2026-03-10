@@ -37,9 +37,7 @@ const runJobsUntilSchemaComplete = async (
       importJob.stage === "validate-schema" ||
       importJob.stage === "await-approval" ||
       importJob.stage === "geocode-batch",
-    {
-      maxIterations,
-    }
+    { maxIterations }
   );
 };
 
@@ -64,9 +62,7 @@ describe.sequential("Schema Detection - Edge Cases", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { users } = await withUsers(testEnv, {
-      uploader: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { uploader: { role: "user" } });
     uploadUserId = users.uploader.id;
 
     const { catalog } = await withCatalog(testEnv, {
@@ -92,11 +88,7 @@ describe.sequential("Schema Detection - Edge Cases", () => {
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: TEST_FILENAME,
       language: "eng",
-      schemaConfig: {
-        locked: false,
-        autoGrow: true,
-        autoApproveNonBreaking: true,
-      },
+      schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
     });
     _testDatasetId = dataset.id;
   });

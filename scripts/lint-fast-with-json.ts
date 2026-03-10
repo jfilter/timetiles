@@ -16,14 +16,7 @@ interface OxlintDiagnostic {
   code: string;
   severity: "error" | "warning";
   filename: string;
-  labels: Array<{
-    span: {
-      offset: number;
-      length: number;
-      line: number;
-      column: number;
-    };
-  }>;
+  labels: Array<{ span: { offset: number; length: number; line: number; column: number } }>;
 }
 
 interface OxlintOutput {
@@ -56,13 +49,15 @@ const transformOxlintToEslint = (diagnostics: OxlintDiagnostic[]): ESLintFileRes
     }
 
     const label = diag.labels[0];
-    fileMap.get(filePath)!.push({
-      ruleId: diag.code,
-      severity: diag.severity === "error" ? 2 : 1,
-      message: diag.message,
-      line: label?.span.line ?? 1,
-      column: label?.span.column ?? 1,
-    });
+    fileMap
+      .get(filePath)!
+      .push({
+        ruleId: diag.code,
+        severity: diag.severity === "error" ? 2 : 1,
+        message: diag.message,
+        line: label?.span.line ?? 1,
+        column: label?.span.column ?? 1,
+      });
   }
 
   const results: ESLintFileResult[] = [];
@@ -84,9 +79,7 @@ fs.mkdirSync(historyDir, { recursive: true });
 const resultsPath = path.join(historyDir, `${createTimestamp()}.json`);
 
 try {
-  const output = execSync(`pnpm exec oxlint --config ${configPath} --format=json . 2>&1`, {
-    encoding: "utf-8",
-  });
+  const output = execSync(`pnpm exec oxlint --config ${configPath} --format=json . 2>&1`, { encoding: "utf-8" });
 
   const oxlintResult: OxlintOutput = JSON.parse(output);
   const eslintResults = transformOxlintToEslint(oxlintResult.diagnostics);

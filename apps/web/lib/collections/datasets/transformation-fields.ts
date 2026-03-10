@@ -38,10 +38,7 @@ export const transformationFields: Field[] = [
         type: "text",
         required: true,
         defaultValue: () => crypto.randomUUID(),
-        admin: {
-          readOnly: true,
-          description: "Unique identifier for this transform rule",
-        },
+        admin: { readOnly: true, description: "Unique identifier for this transform rule" },
       },
       {
         name: "type",
@@ -56,9 +53,7 @@ export const transformationFields: Field[] = [
           { label: "Convert Type", value: TRANSFORM_TYPES.TYPE_CAST },
         ],
         defaultValue: TRANSFORM_TYPES.RENAME,
-        admin: {
-          description: "Type of transformation to apply",
-        },
+        admin: { description: "Type of transformation to apply" },
       },
       // Common source field - used by rename, date-parse, string-op, split, type-cast
       {
@@ -111,10 +106,7 @@ export const transformationFields: Field[] = [
           { label: "DD/MM/YYYY", value: "DD/MM/YYYY" },
           { label: "MM/DD/YYYY", value: "MM/DD/YYYY" },
         ],
-        admin: {
-          description: "Output date format",
-          condition: (data) => data?.type === TRANSFORM_TYPES.DATE_PARSE,
-        },
+        admin: { description: "Output date format", condition: (data) => data?.type === TRANSFORM_TYPES.DATE_PARSE },
       },
       {
         name: "timezone",
@@ -178,10 +170,7 @@ export const transformationFields: Field[] = [
         name: "delimiter",
         type: "text",
         defaultValue: ",",
-        admin: {
-          description: "Delimiter to split on",
-          condition: (data) => data?.type === TRANSFORM_TYPES.SPLIT,
-        },
+        admin: { description: "Delimiter to split on", condition: (data) => data?.type === TRANSFORM_TYPES.SPLIT },
       },
       {
         name: "toFields",
@@ -204,10 +193,7 @@ export const transformationFields: Field[] = [
           { label: "Object", value: "object" },
           { label: "Null", value: "null" },
         ],
-        admin: {
-          description: "Expected source type",
-          condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST,
-        },
+        admin: { description: "Expected source type", condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST },
       },
       {
         name: "toType",
@@ -253,45 +239,27 @@ export const transformationFields: Field[] = [
         name: "active",
         type: "checkbox",
         defaultValue: true,
-        admin: {
-          description: "Uncheck to disable without deleting",
-        },
+        admin: { description: "Uncheck to disable without deleting" },
       },
-      {
-        name: "addedAt",
-        type: "date",
-        admin: {
-          readOnly: true,
-          description: "When this transform was created",
-        },
-      },
+      { name: "addedAt", type: "date", admin: { readOnly: true, description: "When this transform was created" } },
       {
         name: "addedBy",
         type: "relationship",
         relationTo: "users",
-        admin: {
-          readOnly: true,
-          description: "User who created this transform",
-        },
+        admin: { readOnly: true, description: "User who created this transform" },
       },
       {
         name: "confidence",
         type: "number",
         min: 0,
         max: 100,
-        admin: {
-          readOnly: true,
-          description: "Confidence score if auto-detected (0-100)",
-        },
+        admin: { readOnly: true, description: "Confidence score if auto-detected (0-100)" },
       },
       {
         name: "autoDetected",
         type: "checkbox",
         defaultValue: false,
-        admin: {
-          readOnly: true,
-          description: "Whether this transform was suggested by auto-detection",
-        },
+        admin: { readOnly: true, description: "Whether this transform was suggested by auto-detection" },
       },
     ],
   },

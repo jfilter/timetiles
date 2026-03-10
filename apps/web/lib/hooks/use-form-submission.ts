@@ -64,11 +64,5 @@ export const useFormSubmission = (): UseFormSubmissionReturn => {
     setError(null);
   }, []);
 
-  return {
-    status,
-    error,
-    isLoading: status === "loading",
-    submit,
-    reset,
-  };
+  return { status, error, isLoading: status === "loading", submit, reset };
 };

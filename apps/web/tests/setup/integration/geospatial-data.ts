@@ -27,18 +27,8 @@ export const TEST_COORDINATES = {
   SAN_FRANCISCO: { latitude: 37.7749, longitude: -122.4194 },
   BERLIN: { latitude: 52.52, longitude: 13.405 },
   // Test bounds
-  NYC_METRO: {
-    north: 41.2,
-    south: 40.3,
-    east: -73.4,
-    west: -74.3,
-  },
-  WORLD: {
-    north: 85,
-    south: -85,
-    east: 180,
-    west: -180,
-  },
+  NYC_METRO: { north: 41.2, south: 40.3, east: -73.4, west: -74.3 },
+  WORLD: { north: 85, south: -85, east: 180, west: -180 },
 } as const;
 
 /**
@@ -95,13 +85,7 @@ export const createMultipleClusters = (
  */
 export const validateDistribution = (
   points: Coordinates[]
-): {
-  isValid: boolean;
-  centroid: Coordinates;
-  maxDistance: number;
-  averageDistance: number;
-  issues: string[];
-} => {
+): { isValid: boolean; centroid: Coordinates; maxDistance: number; averageDistance: number; issues: string[] } => {
   const issues: string[] = [];
 
   // Check for valid coordinates
@@ -131,11 +115,5 @@ export const validateDistribution = (
     issues.push(`Maximum distance ${maxDistance.toFixed(2)}km is unrealistically large`);
   }
 
-  return {
-    isValid: issues.length === 0 && invalidPoints.length === 0,
-    centroid,
-    maxDistance,
-    averageDistance,
-    issues,
-  };
+  return { isValid: issues.length === 0 && invalidPoints.length === 0, centroid, maxDistance, averageDistance, issues };
 };

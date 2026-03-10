@@ -28,12 +28,7 @@ const validatePrivateImportAllowed = async (req: PayloadRequest, isPublic: boole
 /** Fetch catalog by ID */
 const fetchCatalog = async (req: PayloadRequest, catalogId: number | string): Promise<Catalog | null> => {
   try {
-    return await req.payload.findByID({
-      collection: "catalogs",
-      id: catalogId,
-      overrideAccess: true,
-      req,
-    });
+    return await req.payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true, req });
   } catch {
     return null;
   }
@@ -101,10 +96,7 @@ const processCatalogValidation = async (
   // Validate visibility
   validateDatasetVisibility(catalog, isPublic);
 
-  return {
-    catalogCreatorId: catalogCreatorId ?? undefined,
-    catalogIsPublic: catalog.isPublic ?? false,
-  };
+  return { catalogCreatorId: catalogCreatorId ?? undefined, catalogIsPublic: catalog.isPublic ?? false };
 };
 
 /**

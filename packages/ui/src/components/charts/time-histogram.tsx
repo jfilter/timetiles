@@ -95,11 +95,7 @@ export const formatTime = (date: Date, includeSeconds: boolean): string => {
  * @returns Formatted datetime string (e.g., "Nov 25, 2025 10:30")
  */
 export const formatDateTime = (date: Date, includeSeconds: boolean): string => {
-  const datePart = date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const datePart = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   return `${datePart} ${formatTime(date, includeSeconds)}`;
 };
 
@@ -140,11 +136,7 @@ export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: n
 
     if (sameDay) {
       // Same day: "Nov 25, 2025 10:00 - 11:00"
-      const datePart = startDate.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+      const datePart = startDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
       return `${datePart} ${formatTime(startDate, false)} - ${formatTime(endDate, false)}`;
     }
     // Different days: show full range
@@ -153,11 +145,7 @@ export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: n
 
   // If no bucket size or single day bucket, show single date
   if (!bucketSeconds || bucketSeconds <= DAY_SECONDS) {
-    return startDate.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return startDate.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   }
 
   // For yearly buckets, show just the year
@@ -167,10 +155,7 @@ export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: n
 
   // For monthly buckets, show month and year
   if (bucketSeconds >= MONTH_SECONDS) {
-    return startDate.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-    });
+    return startDate.toLocaleDateString(undefined, { year: "numeric", month: "long" });
   }
 
   // For weekly or multi-day buckets, show date range
@@ -222,37 +207,16 @@ export const TimeHistogram = ({
       xAxis: {
         type: "time",
         boundaryGap: false,
-        axisLabel: {
-          color: chartTheme.textColor,
-          fontSize: 11,
-        },
-        axisLine: {
-          lineStyle: {
-            color: chartTheme.axisLineColor,
-          },
-        },
-        splitLine: {
-          show: false,
-        },
+        axisLabel: { color: chartTheme.textColor, fontSize: 11 },
+        axisLine: { lineStyle: { color: chartTheme.axisLineColor } },
+        splitLine: { show: false },
       },
       yAxis: {
         type: "value",
-        axisLabel: {
-          color: chartTheme.textColor,
-          fontSize: 11,
-        },
-        axisLine: {
-          show: false,
-        },
-        axisTick: {
-          show: false,
-        },
-        splitLine: {
-          lineStyle: {
-            color: chartTheme.splitLineColor,
-            type: "dashed",
-          },
-        },
+        axisLabel: { color: chartTheme.textColor, fontSize: 11 },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { color: chartTheme.splitLineColor, type: "dashed" } },
       },
     }),
     []
@@ -302,11 +266,7 @@ export const TimeHistogram = ({
           color: Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor,
           borderRadius: [2, 2, 0, 0],
         },
-        emphasis: {
-          itemStyle: {
-            color: cartographicColors.navy,
-          },
-        },
+        emphasis: { itemStyle: { color: cartographicColors.navy } },
       },
     ],
     []
@@ -318,16 +278,8 @@ export const TimeHistogram = ({
 
     return {
       backgroundColor: "transparent",
-      textStyle: {
-        color: effectiveTheme.textColor,
-      },
-      grid: {
-        left: "3%",
-        right: "4%",
-        bottom: "3%",
-        top: "10%",
-        containLabel: true,
-      },
+      textStyle: { color: effectiveTheme.textColor },
+      grid: { left: "3%", right: "4%", bottom: "3%", top: "10%", containLabel: true },
       ...axisConfig,
       tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds),
       series: getSeriesConfig(effectiveTheme, data),

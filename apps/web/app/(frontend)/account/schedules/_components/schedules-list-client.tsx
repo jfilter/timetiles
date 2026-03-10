@@ -49,11 +49,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
   monthly: "Monthly",
 };
 
-const SCHEMA_MODE_LABELS: Record<string, string> = {
-  strict: "Strict",
-  additive: "Additive",
-  flexible: "Flexible",
-};
+const SCHEMA_MODE_LABELS: Record<string, string> = { strict: "Strict", additive: "Additive", flexible: "Flexible" };
 
 // Format date for display
 const formatDate = (dateStr: string | null | undefined) => {
@@ -225,19 +221,14 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
     setLoadingStates((prev) => ({ ...prev, [id]: "running" }));
 
     try {
-      const response = await fetch(`/api/scheduled-imports/${id}/trigger`, {
-        method: "POST",
-        credentials: "include",
-      });
+      const response = await fetch(`/api/scheduled-imports/${id}/trigger`, { method: "POST", credentials: "include" });
 
       if (!response.ok) {
         throw new Error("Failed to trigger import");
       }
 
       // Refresh schedule to get updated lastRun
-      const refreshResponse = await fetch(`/api/scheduled-imports/${id}`, {
-        credentials: "include",
-      });
+      const refreshResponse = await fetch(`/api/scheduled-imports/${id}`, { credentials: "include" });
 
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();
@@ -261,10 +252,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
     setLoadingStates((prev) => ({ ...prev, [id]: "deleting" }));
 
     try {
-      const response = await fetch(`/api/scheduled-imports/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await fetch(`/api/scheduled-imports/${id}`, { method: "DELETE", credentials: "include" });
 
       if (!response.ok) {
         throw new Error("Failed to delete schedule");

@@ -17,20 +17,14 @@ export declare const detectIdFields: (fieldStats: Record<string, FieldStatistics
  */
 export declare const detectEnumFields: (
   fieldStats: Record<string, FieldStatistics>,
-  config?: {
-    enumThreshold?: number;
-    enumMode?: "count" | "percentage";
-  }
+  config?: { enumThreshold?: number; enumMode?: "count" | "percentage" }
 ) => string[];
 /**
  * Detect all structural patterns in field statistics.
  */
 export declare const detectPatterns: (
   fieldStats: Record<string, FieldStatistics>,
-  config?: {
-    enumThreshold?: number;
-    enumMode?: "count" | "percentage";
-  }
+  config?: { enumThreshold?: number; enumMode?: "count" | "percentage" }
 ) => PatternResult;
 /**
  * Checks if a value looks like an ID.

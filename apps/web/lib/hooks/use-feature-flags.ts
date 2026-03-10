@@ -38,11 +38,7 @@ const fetchFeatureFlags = async (): Promise<FeatureFlags> => {
  * ```
  */
 export const useFeatureFlags = () =>
-  useQuery({
-    queryKey: FEATURE_FLAGS_QUERY_KEY,
-    queryFn: fetchFeatureFlags,
-    ...QUERY_PRESETS.standard,
-  });
+  useQuery({ queryKey: FEATURE_FLAGS_QUERY_KEY, queryFn: fetchFeatureFlags, ...QUERY_PRESETS.standard });
 
 /**
  * Hook to check if a specific feature is enabled.

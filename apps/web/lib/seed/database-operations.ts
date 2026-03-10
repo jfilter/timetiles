@@ -50,12 +50,7 @@ export class DatabaseOperations {
         const duration = performance.now() - startTime;
         logPerformance(`SQL TRUNCATE ${collection}`, duration);
 
-        return {
-          success: true,
-          itemsProcessed: sqlResult.itemsProcessed,
-          duration,
-          method: "sql-truncate",
-        };
+        return { success: true, itemsProcessed: sqlResult.itemsProcessed, duration, method: "sql-truncate" };
       }
 
       logger.warn(`SQL TRUNCATE failed for ${collection}, falling back to bulk delete`);
@@ -75,24 +70,16 @@ export class DatabaseOperations {
       const duration = performance.now() - startTime;
       logError(error, `Efficient truncation failed for ${collection}`);
 
-      return {
-        success: false,
-        itemsProcessed: 0,
-        duration,
-        method: "sql-truncate",
-        errors: [error],
-      };
+      return { success: false, itemsProcessed: 0, duration, method: "sql-truncate", errors: [error] };
     }
   }
 
   /**
    * SQL TRUNCATE with CASCADE - most efficient method.
    */
-  private async sqlTruncateWithCascade(collection: string): Promise<{
-    success: boolean;
-    itemsProcessed: number;
-    errors?: unknown[];
-  }> {
+  private async sqlTruncateWithCascade(
+    collection: string
+  ): Promise<{ success: boolean; itemsProcessed: number; errors?: unknown[] }> {
     try {
       // Check if we have direct database access
       if (this.payload.db?.drizzle == null || typeof this.payload.db.execute !== "function") {
@@ -114,20 +101,11 @@ export class DatabaseOperations {
         method: "SQL_TRUNCATE_CASCADE",
       });
 
-      return {
-        success: true,
-        itemsProcessed: initialCount,
-      };
+      return { success: true, itemsProcessed: initialCount };
     } catch (error) {
-      logger.debug(`SQL TRUNCATE failed for ${collection}`, {
-        error: (error as Error).message,
-      });
+      logger.debug(`SQL TRUNCATE failed for ${collection}`, { error: (error as Error).message });
 
-      return {
-        success: false,
-        itemsProcessed: 0,
-        errors: [error],
-      };
+      return { success: false, itemsProcessed: 0, errors: [error] };
     }
   }
 
@@ -139,11 +117,10 @@ export class DatabaseOperations {
     ids: string[]
   ): Promise<{ success: boolean; deletedCount: number }> {
     try {
-      await (
-        this.payload.db as {
-          execute: (query: string, params: unknown[]) => Promise<unknown>;
-        }
-      ).execute(`DELETE FROM payload."${collection}" WHERE id = ANY($1)`, [ids]);
+      await (this.payload.db as { execute: (query: string, params: unknown[]) => Promise<unknown> }).execute(
+        `DELETE FROM payload."${collection}" WHERE id = ANY($1)`,
+        [ids]
+      );
       return { success: true, deletedCount: ids.length };
     } catch {
       logger.debug(`SQL batch delete failed for ${collection}, falling back to individual deletes`);
@@ -160,10 +137,7 @@ export class DatabaseOperations {
   ): Promise<{ successful: number; errors: unknown[] }> {
     const deletePromises = items.map(async (item) => {
       try {
-        await this.payload.delete({
-          collection: collection as keyof Config["collections"],
-          id: item.id,
-        });
+        await this.payload.delete({ collection: collection as keyof Config["collections"], id: item.id });
         return { success: true };
       } catch (error) {
         return { success: false, error, id: item.id };
@@ -216,28 +190,20 @@ export class DatabaseOperations {
         items as unknown as Array<{ id: string }>,
         collection
       );
-      return {
-        deletedCount: fallbackResult.successful,
-        errors: fallbackResult.errors,
-      };
+      return { deletedCount: fallbackResult.successful, errors: fallbackResult.errors };
     }
 
     // Use individual deletes
     const result = await this.processIndividualDeletes(items, collection);
-    return {
-      deletedCount: result.successful,
-      errors: result.errors,
-    };
+    return { deletedCount: result.successful, errors: result.errors };
   }
 
   /**
    * Bulk delete fallback method.
    */
-  private async bulkDeleteCollection(collection: string): Promise<{
-    success: boolean;
-    itemsProcessed: number;
-    errors?: unknown[];
-  }> {
+  private async bulkDeleteCollection(
+    collection: string
+  ): Promise<{ success: boolean; itemsProcessed: number; errors?: unknown[] }> {
     const batchSize = 1000;
     let hasMore = true;
     let totalDeleted = 0;
@@ -271,16 +237,9 @@ export class DatabaseOperations {
 
     const success = totalDeleted > 0;
 
-    logger.info(`Bulk delete completed for ${collection}`, {
-      itemsDeleted: totalDeleted,
-      errors: errors.length,
-    });
+    logger.info(`Bulk delete completed for ${collection}`, { itemsDeleted: totalDeleted, errors: errors.length });
 
-    return {
-      success,
-      itemsProcessed: totalDeleted,
-      errors: errors.length > 0 ? errors : undefined,
-    };
+    return { success, itemsProcessed: totalDeleted, errors: errors.length > 0 ? errors : undefined };
   }
 
   /**
@@ -295,9 +254,7 @@ export class DatabaseOperations {
       });
       return result.totalDocs;
     } catch (error) {
-      logger.warn(`Could not get count for ${collection}`, {
-        error: (error as Error).message,
-      });
+      logger.warn(`Could not get count for ${collection}`, { error: (error as Error).message });
       return 0;
     }
   }
@@ -308,19 +265,13 @@ export class DatabaseOperations {
   private async fallbackIndividualDeletes(
     items: { id: string | number }[],
     collection: string
-  ): Promise<{
-    successful: number;
-    errors: unknown[];
-  }> {
+  ): Promise<{ successful: number; errors: unknown[] }> {
     let successful = 0;
     const errors: unknown[] = [];
 
     const deletePromises = items.map(async (item) => {
       try {
-        await this.payload.delete({
-          collection: collection as keyof Config["collections"],
-          id: item.id,
-        });
+        await this.payload.delete({ collection: collection as keyof Config["collections"], id: item.id });
         return { success: true };
       } catch (error) {
         return { success: false, error, id: item.id };
@@ -334,10 +285,7 @@ export class DatabaseOperations {
         if (result.value.success === true) {
           successful++;
         } else {
-          errors.push({
-            error: result.value.error,
-            id: result.value.id,
-          });
+          errors.push({ error: result.value.error, id: result.value.id });
         }
       } else {
         errors.push({

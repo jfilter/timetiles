@@ -53,11 +53,7 @@ describe.sequential("Authentication Flow", () => {
           trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
         disableVerificationEmail: true,
-        req: {
-          payloadAPI: "REST",
-          user: undefined,
-          payload,
-        } as any,
+        req: { payloadAPI: "REST", user: undefined, payload } as any,
       });
 
       expect(user).toBeDefined();
@@ -105,11 +101,7 @@ describe.sequential("Authentication Flow", () => {
 
       const user = await payload.create({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: "SecurePassword123!",
-          trustLevel: `${TRUST_LEVELS.BASIC}`,
-        },
+        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
@@ -126,11 +118,7 @@ describe.sequential("Authentication Flow", () => {
 
       const user = await payload.create({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: "SecurePassword123!",
-          trustLevel: `${TRUST_LEVELS.BASIC}`,
-        },
+        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
@@ -176,11 +164,7 @@ describe.sequential("Authentication Flow", () => {
 
       const user = await payload.create({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: "SecurePassword123!",
-          trustLevel: `${TRUST_LEVELS.BASIC}`,
-        },
+        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
@@ -200,23 +184,13 @@ describe.sequential("Authentication Flow", () => {
       // Create user (starts unverified)
       await payload.create({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: testPassword,
-          trustLevel: `${TRUST_LEVELS.BASIC}`,
-        },
+        data: { email: testEmail, password: testPassword, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
       // Attempt login should fail because email is not verified
       await expect(
-        payload.login({
-          collection: "users",
-          data: {
-            email: testEmail,
-            password: testPassword,
-          },
-        })
+        payload.login({ collection: "users", data: { email: testEmail, password: testPassword } })
       ).rejects.toThrow("Please verify your email before logging in");
     });
 
@@ -229,35 +203,21 @@ describe.sequential("Authentication Flow", () => {
       // Create user
       const user = await payload.create({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: testPassword,
-          trustLevel: `${TRUST_LEVELS.BASIC}`,
-        },
+        data: { email: testEmail, password: testPassword, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
       // Get verification token and verify email
-      const userWithToken = await payload.findByID({
-        collection: "users",
-        id: user.id,
-        showHiddenFields: true,
-      });
+      const userWithToken = await payload.findByID({ collection: "users", id: user.id, showHiddenFields: true });
 
       if (userWithToken._verificationToken) {
-        await payload.verifyEmail({
-          collection: "users",
-          token: userWithToken._verificationToken,
-        });
+        await payload.verifyEmail({ collection: "users", token: userWithToken._verificationToken });
       }
 
       // Now login should work
       const loginResult = await payload.login({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: testPassword,
-        },
+        data: { email: testEmail, password: testPassword },
       });
 
       expect(loginResult).toBeDefined();
@@ -274,23 +234,13 @@ describe.sequential("Authentication Flow", () => {
       // Create user
       await payload.create({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: "CorrectPassword123!",
-          trustLevel: `${TRUST_LEVELS.BASIC}`,
-        },
+        data: { email: testEmail, password: "CorrectPassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
       // Attempt login with wrong password
       await expect(
-        payload.login({
-          collection: "users",
-          data: {
-            email: testEmail,
-            password: "WrongPassword123!",
-          },
-        })
+        payload.login({ collection: "users", data: { email: testEmail, password: "WrongPassword123!" } })
       ).rejects.toThrow();
     });
 
@@ -298,13 +248,7 @@ describe.sequential("Authentication Flow", () => {
       const { payload } = testEnv;
 
       await expect(
-        payload.login({
-          collection: "users",
-          data: {
-            email: "nonexistent@test.com",
-            password: "AnyPassword123!",
-          },
-        })
+        payload.login({ collection: "users", data: { email: "nonexistent@test.com", password: "AnyPassword123!" } })
       ).rejects.toThrow();
     });
   });
@@ -318,22 +262,14 @@ describe.sequential("Authentication Flow", () => {
       // Create user (starts unverified)
       const user = await payload.create({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: "SecurePassword123!",
-          trustLevel: `${TRUST_LEVELS.BASIC}`,
-        },
+        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
       expect(user._verified).toBe(false);
 
       // Get the verification token (normally sent via email)
-      const userWithToken = await payload.findByID({
-        collection: "users",
-        id: user.id,
-        showHiddenFields: true,
-      });
+      const userWithToken = await payload.findByID({ collection: "users", id: user.id, showHiddenFields: true });
 
       // Verify the user using the token
       if (userWithToken._verificationToken) {
@@ -345,10 +281,7 @@ describe.sequential("Authentication Flow", () => {
         expect(verifiedUser).toBe(true);
 
         // Check user is now verified
-        const updatedUser = await payload.findByID({
-          collection: "users",
-          id: user.id,
-        });
+        const updatedUser = await payload.findByID({ collection: "users", id: user.id });
 
         expect(updatedUser._verified).toBe(true);
       }
@@ -357,12 +290,7 @@ describe.sequential("Authentication Flow", () => {
     it("rejects invalid verification token", async () => {
       const { payload } = testEnv;
 
-      await expect(
-        payload.verifyEmail({
-          collection: "users",
-          token: "invalid-token-12345",
-        })
-      ).rejects.toThrow();
+      await expect(payload.verifyEmail({ collection: "users", token: "invalid-token-12345" })).rejects.toThrow();
     });
   });
 
@@ -414,20 +342,12 @@ describe.sequential("Authentication Flow", () => {
       // Create user
       const user = await payload.create({
         collection: "users",
-        data: {
-          email: testEmail,
-          password: "SecurePassword123!",
-          trustLevel: `${TRUST_LEVELS.BASIC}`,
-        },
+        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
       // Read own profile with user context
-      const ownProfile = await payload.findByID({
-        collection: "users",
-        id: user.id,
-        user: user,
-      });
+      const ownProfile = await payload.findByID({ collection: "users", id: user.id, user: user });
 
       expect(ownProfile.email).toBe(testEmail);
     });
@@ -459,11 +379,7 @@ describe.sequential("Authentication Flow", () => {
 
       // When user1 queries users with overrideAccess: false
       // they should only see their own profile (access control: id.equals user.id)
-      const result = await payload.find({
-        collection: "users",
-        user: user1,
-        overrideAccess: false,
-      });
+      const result = await payload.find({ collection: "users", user: user1, overrideAccess: false });
 
       // User1 should only see their own profile
       expect(result.docs).toHaveLength(1);
@@ -489,9 +405,7 @@ describe.sequential("Authentication Flow", () => {
       const result = await payload.update({
         collection: "users",
         id: user.id,
-        data: {
-          role: "admin",
-        },
+        data: { role: "admin" },
         user: user,
         overrideAccess: false,
       });
@@ -531,9 +445,7 @@ describe.sequential("Authentication Flow", () => {
       // Admin should be able to read regular user's profile
       const result = await payload.find({
         collection: "users",
-        where: {
-          id: { equals: regularUser.id },
-        },
+        where: { id: { equals: regularUser.id } },
         user: admin,
       });
 

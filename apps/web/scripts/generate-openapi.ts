@@ -49,30 +49,13 @@ All event endpoints support common filter parameters:
 - \`startDate\` / \`endDate\`: Temporal filtering (ISO 8601 date format)
 - \`bounds\`: Geographic bounding box as JSON string
     `.trim(),
-    contact: {
-      name: "TimeTiles",
-      url: "https://github.com/timetiles/timetiles",
-    },
-    license: {
-      name: "MIT",
-      url: "https://opensource.org/licenses/MIT",
-    },
+    contact: { name: "TimeTiles", url: "https://github.com/timetiles/timetiles" },
+    license: { name: "MIT", url: "https://opensource.org/licenses/MIT" },
   },
-  servers: [
-    {
-      url: "/",
-      description: "Current server",
-    },
-  ],
+  servers: [{ url: "/", description: "Current server" }],
   tags: [
-    {
-      name: "Events",
-      description: "Event querying and aggregation endpoints",
-    },
-    {
-      name: "System",
-      description: "System health and status endpoints",
-    },
+    { name: "Events", description: "Event querying and aggregation endpoints" },
+    { name: "System", description: "System health and status endpoints" },
   ],
 });
 

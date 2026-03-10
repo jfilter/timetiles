@@ -35,9 +35,7 @@ describe("/api/v1/events/temporal", () => {
     await testEnv.seedManager.truncate(["events", "datasets", "catalogs"]);
 
     // Create test user
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
 
     // Create test catalog (make it public so unauthenticated requests can access it)
     const { catalog } = await withCatalog(testEnv, {
@@ -48,10 +46,7 @@ describe("/api/v1/events/temporal", () => {
     });
 
     // Create test dataset (must be public since catalog is public)
-    const { dataset } = await withDataset(testEnv, catalog.id, {
-      name: "Test Dataset for Histogram",
-      isPublic: true,
-    });
+    const { dataset } = await withDataset(testEnv, catalog.id, { name: "Test Dataset for Histogram", isPublic: true });
     testDatasetId = String(dataset.id);
 
     // Create test events spread across different dates
@@ -82,17 +77,9 @@ describe("/api/v1/events/temporal", () => {
           data: {
             title: `Test Event ${i + 1}`,
             description: `Test event for histogram on ${testDates[i]?.toISOString()}`,
-            venue: {
-              city: i < 3 ? "Berlin" : "Paris",
-              address: {
-                city: i < 3 ? "Berlin" : "Paris",
-              },
-            },
+            venue: { city: i < 3 ? "Berlin" : "Paris", address: { city: i < 3 ? "Berlin" : "Paris" } },
           },
-          location: {
-            latitude: 37.7749 + i * 0.01,
-            longitude: -122.4194 + i * 0.01,
-          },
+          location: { latitude: 37.7749 + i * 0.01, longitude: -122.4194 + i * 0.01 },
           eventTimestamp: testDates[i]?.toISOString(),
         },
       });
@@ -214,12 +201,7 @@ describe("/api/v1/events/temporal", () => {
   });
 
   it("should filter by bounds", async () => {
-    const bounds = {
-      north: 37.8,
-      south: 37.7,
-      east: -122.4,
-      west: -122.5,
-    };
+    const bounds = { north: 37.8, south: 37.7, east: -122.4, west: -122.5 };
 
     const request = new NextRequest(
       `http://localhost:3000/api/events/histogram?bounds=${encodeURIComponent(JSON.stringify(bounds))}`

@@ -18,11 +18,7 @@ describe.sequential("SchemaVersioningService", () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
 
-    mockPayload = {
-      find: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    };
+    mockPayload = { find: vi.fn(), create: vi.fn(), update: vi.fn() };
   });
 
   describe("getNextSchemaVersion", () => {
@@ -34,9 +30,7 @@ describe.sequential("SchemaVersioningService", () => {
       expect(result).toBe(1);
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "dataset-schemas",
-        where: {
-          dataset: { equals: 123 },
-        },
+        where: { dataset: { equals: 123 } },
         sort: "-versionNumber",
         limit: 1,
         req: undefined,
@@ -45,18 +39,14 @@ describe.sequential("SchemaVersioningService", () => {
     });
 
     it("should return incremented version number when existing schemas exist", async () => {
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ versionNumber: 3 }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: 3 }] });
 
       const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, 456);
 
       expect(result).toBe(4);
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "dataset-schemas",
-        where: {
-          dataset: { equals: 456 },
-        },
+        where: { dataset: { equals: 456 } },
         sort: "-versionNumber",
         limit: 1,
         req: undefined,
@@ -65,18 +55,14 @@ describe.sequential("SchemaVersioningService", () => {
     });
 
     it("should handle string dataset ID by converting to number", async () => {
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ versionNumber: 5 }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: 5 }] });
 
       const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, "789");
 
       expect(result).toBe(6);
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "dataset-schemas",
-        where: {
-          dataset: { equals: 789 },
-        },
+        where: { dataset: { equals: 789 } },
         sort: "-versionNumber",
         limit: 1,
         req: undefined,
@@ -85,9 +71,7 @@ describe.sequential("SchemaVersioningService", () => {
     });
 
     it("should handle case when versionNumber is undefined", async () => {
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ versionNumber: undefined }],
-      });
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: undefined }] });
 
       const result = await SchemaVersioningService.getNextSchemaVersion(mockPayload as unknown as BasePayload, 123);
 
@@ -111,10 +95,7 @@ describe.sequential("SchemaVersioningService", () => {
       const mockDataset = { id: 123, name: "Test Dataset" } as Dataset;
       const mockSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-        },
+        properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
@@ -183,13 +164,7 @@ describe.sequential("SchemaVersioningService", () => {
         fieldMetadata: mockFieldMetadata,
         autoApproved: false,
         approvedBy: "2",
-        importSources: [
-          {
-            import: "123",
-            recordCount: 500,
-            batchCount: 5,
-          },
-        ],
+        importSources: [{ import: "123", recordCount: 500, batchCount: 5 }],
       });
 
       expect(result).toEqual(mockCreatedSchema);
@@ -202,13 +177,7 @@ describe.sequential("SchemaVersioningService", () => {
           fieldMetadata: mockFieldMetadata,
           autoApproved: false,
           approvedBy: 2,
-          importSources: [
-            {
-              import: 123,
-              recordCount: 500,
-              batchCount: 5,
-            },
-          ],
+          importSources: [{ import: 123, recordCount: 500, batchCount: 5 }],
           _status: "published",
         },
         req: undefined,
@@ -283,14 +252,8 @@ describe.sequential("SchemaVersioningService", () => {
         dataset: 111,
         schema: mockSchema,
         importSources: [
-          {
-            import: 222,
-            recordCount: 1000,
-          },
-          {
-            import: 333,
-            batchCount: 10,
-          },
+          { import: 222, recordCount: 1000 },
+          { import: 333, batchCount: 10 },
         ],
       });
 
@@ -305,14 +268,8 @@ describe.sequential("SchemaVersioningService", () => {
           autoApproved: false,
           approvedBy: undefined,
           importSources: [
-            {
-              import: 222,
-              recordCount: 1000,
-            },
-            {
-              import: 333,
-              batchCount: 10,
-            },
+            { import: 222, recordCount: 1000 },
+            { import: 333, batchCount: 10 },
           ],
           _status: "published",
         },
@@ -389,9 +346,7 @@ describe.sequential("SchemaVersioningService", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 123,
-        data: {
-          datasetSchemaVersion: 456,
-        },
+        data: { datasetSchemaVersion: 456 },
         req: undefined,
         overrideAccess: true,
       });
@@ -405,9 +360,7 @@ describe.sequential("SchemaVersioningService", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 789,
-        data: {
-          datasetSchemaVersion: 101112,
-        },
+        data: { datasetSchemaVersion: 101112 },
         req: undefined,
         overrideAccess: true,
       });
@@ -421,9 +374,7 @@ describe.sequential("SchemaVersioningService", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 555,
-        data: {
-          datasetSchemaVersion: 666,
-        },
+        data: { datasetSchemaVersion: 666 },
         req: undefined,
         overrideAccess: true,
       });
@@ -440,9 +391,7 @@ describe.sequential("SchemaVersioningService", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 123,
-        data: {
-          datasetSchemaVersion: 456,
-        },
+        data: { datasetSchemaVersion: 456 },
         req: undefined,
         overrideAccess: true,
       });
@@ -464,11 +413,7 @@ describe.sequential("SchemaVersioningService", () => {
 
       const mockSchema = {
         type: "object",
-        properties: {
-          id: { type: "string" },
-          name: { type: "string" },
-          createdAt: { type: "string" },
-        },
+        properties: { id: { type: "string" }, name: { type: "string" }, createdAt: { type: "string" } },
         required: ["id", "name"],
       };
 
@@ -500,13 +445,7 @@ describe.sequential("SchemaVersioningService", () => {
         },
         autoApproved: true,
         approvedBy: 1,
-        importSources: [
-          {
-            import: 777,
-            recordCount: 200,
-            batchCount: 4,
-          },
-        ],
+        importSources: [{ import: 777, recordCount: 200, batchCount: 4 }],
       });
 
       // Link import to schema version
@@ -530,13 +469,7 @@ describe.sequential("SchemaVersioningService", () => {
           },
           autoApproved: true,
           approvedBy: 1,
-          importSources: [
-            {
-              import: 777,
-              recordCount: 200,
-              batchCount: 4,
-            },
-          ],
+          importSources: [{ import: 777, recordCount: 200, batchCount: 4 }],
           _status: "published",
         },
         req: undefined,
@@ -546,9 +479,7 @@ describe.sequential("SchemaVersioningService", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 777,
-        data: {
-          datasetSchemaVersion: 999,
-        },
+        data: { datasetSchemaVersion: 999 },
         req: undefined,
         overrideAccess: true,
       });

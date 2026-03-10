@@ -24,17 +24,10 @@ const determineHealthStatus = (results: Record<string, { status: string }>) => {
   const hasWarning = Object.values(results).some((r) => r.status === "warning");
 
   if (hasError || postgisNotFound) {
-    logger.warn("Health check returning 503 due to errors", {
-      hasError,
-      postgisNotFound,
-      results,
-    });
+    logger.warn("Health check returning 503 due to errors", { hasError, postgisNotFound, results });
     return 503;
   } else if (hasPending || hasWarning) {
-    logger.info("Health check has warnings but returning 200", {
-      hasPending,
-      hasWarning,
-    });
+    logger.info("Health check has warnings but returning 200", { hasPending, hasWarning });
     return 200;
   } else {
     logger.info("Health check passed successfully");

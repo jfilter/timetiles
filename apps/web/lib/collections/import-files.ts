@@ -49,10 +49,7 @@ const ALLOWED_MIME_TYPES = [
 const ImportFiles: CollectionConfig = {
   slug: "import-files",
   ...createCommonConfig({ drafts: false }),
-  upload: {
-    staticDir: `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`,
-    mimeTypes: ALLOWED_MIME_TYPES,
-  },
+  upload: { staticDir: `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`, mimeTypes: ALLOWED_MIME_TYPES },
   admin: {
     useAsTitle: "originalName", // Use original user-friendly filename
     defaultColumns: ["originalName", "catalog", "status", "datasetsCount", "createdAt", "user"],
@@ -74,11 +71,7 @@ const ImportFiles: CollectionConfig = {
       if (id) {
         try {
           // Fetch the file to check ownership
-          const file = await payload.findByID({
-            collection: "import-files",
-            id,
-            overrideAccess: true,
-          });
+          const file = await payload.findByID({ collection: "import-files", id, overrideAccess: true });
 
           if (file?.user) {
             const userId = extractRelationId(file.user);
@@ -92,9 +85,7 @@ const ImportFiles: CollectionConfig = {
       }
 
       // For find operations (query-based filtering)
-      return {
-        user: { equals: user.id },
-      };
+      return { user: { equals: user.id } };
     },
 
     // Only authenticated users can upload files
@@ -126,9 +117,7 @@ const ImportFiles: CollectionConfig = {
       relationTo: "catalogs",
       required: false,
       hasMany: false,
-      admin: {
-        description: "The catalog this import belongs to (optional)",
-      },
+      admin: { description: "The catalog this import belongs to (optional)" },
     },
     {
       name: "datasets",
@@ -136,96 +125,52 @@ const ImportFiles: CollectionConfig = {
       relationTo: "datasets",
       required: false,
       hasMany: true,
-      admin: {
-        description: "Datasets detected in this import (optional)",
-      },
+      admin: { description: "Datasets detected in this import (optional)" },
     },
     {
       name: "user",
       type: "relationship",
       relationTo: "users",
       required: true,
-      admin: {
-        description: "User who initiated the import",
-      },
+      admin: { description: "User who initiated the import" },
     },
     {
       name: "status",
       type: "select",
       options: [
-        {
-          label: "Pending",
-          value: "pending",
-        },
-        {
-          label: "Parsing",
-          value: "parsing",
-        },
-        {
-          label: "Processing",
-          value: "processing",
-        },
-        {
-          label: "Completed",
-          value: "completed",
-        },
-        {
-          label: "Failed",
-          value: "failed",
-        },
+        { label: "Pending", value: "pending" },
+        { label: "Parsing", value: "parsing" },
+        { label: "Processing", value: "processing" },
+        { label: "Completed", value: "completed" },
+        { label: "Failed", value: "failed" },
       ],
       defaultValue: "pending",
-      admin: {
-        position: "sidebar",
-      },
+      admin: { position: "sidebar" },
     },
     {
       name: "datasetsCount",
       type: "number",
       defaultValue: 0,
-      admin: {
-        description: "Number of datasets detected in this catalog import",
-      },
+      admin: { description: "Number of datasets detected in this catalog import" },
     },
     {
       name: "datasetsProcessed",
       type: "number",
       defaultValue: 0,
-      admin: {
-        description: "Number of datasets successfully processed",
-      },
+      admin: { description: "Number of datasets successfully processed" },
     },
     {
       name: "sheetMetadata",
       type: "json",
-      admin: {
-        description: "Information about detected sheets/datasets in the file",
-      },
+      admin: { description: "Information about detected sheets/datasets in the file" },
     },
-    {
-      name: "jobId",
-      type: "text",
-      admin: {
-        description: "Payload job ID for tracking the catalog parsing job",
-      },
-    },
-    {
-      name: "importedAt",
-      type: "date",
-      admin: {
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
-        position: "sidebar",
-      },
-    },
+    { name: "jobId", type: "text", admin: { description: "Payload job ID for tracking the catalog parsing job" } },
+    { name: "importedAt", type: "date", admin: { date: { pickerAppearance: "dayAndTime" }, position: "sidebar" } },
     {
       name: "completedAt",
       type: "date",
       admin: {
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
+        date: { pickerAppearance: "dayAndTime" },
         position: "sidebar",
         condition: (data) => data.status === "completed",
       },
@@ -233,31 +178,14 @@ const ImportFiles: CollectionConfig = {
     {
       name: "errorLog",
       type: "textarea",
-      admin: {
-        description: "Detailed error information",
-        condition: (data) => data.status === "failed",
-      },
+      admin: { description: "Detailed error information", condition: (data) => data.status === "failed" },
     },
-    {
-      name: "rateLimitInfo",
-      type: "json",
-      admin: {
-        description: "Rate limiting information for this import",
-      },
-    },
-    {
-      name: "metadata",
-      type: "json",
-      admin: {
-        description: "Additional import context and metadata",
-      },
-    },
+    { name: "rateLimitInfo", type: "json", admin: { description: "Rate limiting information for this import" } },
+    { name: "metadata", type: "json", admin: { description: "Additional import context and metadata" } },
     {
       name: "processingOptions",
       type: "json",
-      admin: {
-        description: "Processing options for scheduled imports (schemaMode, skipDuplicateChecking, etc.)",
-      },
+      admin: { description: "Processing options for scheduled imports (schemaMode, skipDuplicateChecking, etc.)" },
     },
     {
       name: "targetDataset",
@@ -265,9 +193,7 @@ const ImportFiles: CollectionConfig = {
       relationTo: "datasets",
       required: false,
       hasMany: false,
-      admin: {
-        description: "Target dataset for scheduled imports",
-      },
+      admin: { description: "Target dataset for scheduled imports" },
     },
     {
       name: "scheduledImport",
@@ -275,17 +201,13 @@ const ImportFiles: CollectionConfig = {
       relationTo: "scheduled-imports",
       required: false,
       hasMany: false,
-      admin: {
-        description: "Reference to the scheduled import that triggered this file",
-      },
+      admin: { description: "Reference to the scheduled import that triggered this file" },
     },
     {
       name: "quotaInfo",
       type: "json",
       virtual: true,
-      admin: {
-        hidden: true,
-      },
+      admin: { hidden: true },
       hooks: {
         afterRead: [
           async ({ req }) => {
@@ -308,11 +230,7 @@ const ImportFiles: CollectionConfig = {
                   limit: fileUploads.limit,
                   remaining: fileUploads.remaining,
                 },
-                importJobs: {
-                  current: importJobs.current,
-                  limit: importJobs.limit,
-                  remaining: importJobs.remaining,
-                },
+                importJobs: { current: importJobs.current, limit: importJobs.limit, remaining: importJobs.remaining },
                 totalEvents: {
                   current: totalEvents.current,
                   limit: totalEvents.limit,
@@ -350,9 +268,7 @@ const ImportFiles: CollectionConfig = {
           // If so, keep the original filename to maintain consistency
           if (originalName.startsWith("url-import-")) {
             // Keep the URL import filename as-is
-            logger.debug("Preserving URL import filename", {
-              originalName,
-            });
+            logger.debug("Preserving URL import filename", { originalName });
           } else {
             // Generate unique filename with timestamp and UUID to prevent conflicts
             const timestamp = Date.now();
@@ -363,12 +279,7 @@ const ImportFiles: CollectionConfig = {
             // Update the file name
             req.file.name = uniqueFilename;
 
-            logger.debug("Generated unique filename", {
-              originalName,
-              uniqueFilename,
-              timestamp,
-              uniqueId,
-            });
+            logger.debug("Generated unique filename", { originalName, uniqueFilename, timestamp, uniqueId });
           }
         }
       },
@@ -478,18 +389,8 @@ const ImportFiles: CollectionConfig = {
           ...data,
           originalName, // Set or preserve the original filename
           user: req.user?.id, // Set the authenticated user
-          ...(clientId && {
-            rateLimitInfo: {
-              clientId,
-              isAuthenticated: true,
-              timestamp: new Date().toISOString(),
-            },
-          }),
-          metadata: {
-            uploadSource: "api",
-            userAgent,
-            ...data.metadata,
-          },
+          ...(clientId && { rateLimitInfo: { clientId, isAuthenticated: true, timestamp: new Date().toISOString() } }),
+          metadata: { uploadSource: "api", userAgent, ...data.metadata },
           importedAt: new Date().toISOString(),
         };
       },
@@ -549,10 +450,7 @@ const ImportFiles: CollectionConfig = {
         try {
           const job = await payload.jobs.queue({
             task: "dataset-detection",
-            input: {
-              importFileId: doc.id,
-              catalogId: catalog?.id,
-            },
+            input: { importFileId: doc.id, catalogId: catalog?.id },
           });
 
           // Update with job ID
@@ -561,11 +459,7 @@ const ImportFiles: CollectionConfig = {
               collection: COLLECTION_NAMES.IMPORT_FILES,
               id: String(doc.id),
               req, // Pass req to stay in same transaction
-              data: {
-                status: "parsing",
-                jobId: String(job.id),
-                importedAt: new Date().toISOString(),
-              },
+              data: { status: "parsing", jobId: String(job.id), importedAt: new Date().toISOString() },
               context: {
                 ...req.context,
                 skipImportFileHooks: true, // Prevent infinite loops
@@ -585,10 +479,7 @@ const ImportFiles: CollectionConfig = {
                 status: "failed",
                 errorLog: `Failed to queue processing: ${error instanceof Error ? error.message : "Unknown error"}`,
               },
-              context: {
-                ...req.context,
-                skipImportFileHooks: true,
-              },
+              context: { ...req.context, skipImportFileHooks: true },
             });
           } catch (updateError) {
             logger.error("Failed to update import-file status after queue failure", updateError);

@@ -84,10 +84,7 @@ describe("detectFieldMappings", () => {
 
   it("detects timestamp field", () => {
     const fieldStats: Record<string, FieldStatistics> = {
-      date: createFieldStats({
-        typeDistribution: { string: 100 },
-        formats: { date: 100 },
-      }),
+      date: createFieldStats({ typeDistribution: { string: 100 }, formats: { date: 100 } }),
     };
 
     const result = detectFieldMappings(fieldStats, "eng");

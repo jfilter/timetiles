@@ -28,9 +28,7 @@ describe("/api/v1/events - field filter logic", () => {
     payload = testEnv.payload;
 
     // Create test user
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "user" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
@@ -41,10 +39,7 @@ describe("/api/v1/events - field filter logic", () => {
     });
 
     // Create test dataset
-    const { dataset } = await withDataset(testEnv, catalog.id, {
-      name: "Filter Logic Test Dataset",
-      isPublic: true,
-    });
+    const { dataset } = await withDataset(testEnv, catalog.id, { name: "Filter Logic Test Dataset", isPublic: true });
     testDatasetId = dataset.id;
 
     // Create events with different category and status combinations
@@ -86,10 +81,7 @@ describe("/api/v1/events - field filter logic", () => {
           uniqueId: `filter-logic-${i + 1}`,
           dataset: testDatasetId,
           data: eventData,
-          location: {
-            latitude: 40.7128 + i * 0.01,
-            longitude: -74.006 + i * 0.01,
-          },
+          location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
         },
       });

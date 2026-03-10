@@ -16,19 +16,7 @@ export type CatalogSeed = Omit<Catalog, "id" | "createdAt" | "updatedAt">;
 const createDescription = (text: string) => ({
   root: {
     type: "root",
-    children: [
-      {
-        type: "paragraph",
-        version: 1,
-        children: [
-          {
-            type: "text",
-            text,
-            version: 1,
-          },
-        ],
-      },
-    ],
+    children: [{ type: "paragraph", version: 1, children: [{ type: "text", text, version: 1 }] }],
     direction: "ltr" as const,
     format: "" as const,
     indent: 0,
@@ -43,13 +31,7 @@ const createCatalog = (
   slug: string,
   isPublic: boolean = true,
   status: "draft" | "published" = "published"
-): CatalogSeed => ({
-  name,
-  description: createDescription(description),
-  slug,
-  isPublic,
-  _status: status,
-});
+): CatalogSeed => ({ name, description: createDescription(description), slug, isPublic, _status: status });
 
 // Base catalogs shared across all environments
 const getBaseCatalogs = (): CatalogSeed[] => [

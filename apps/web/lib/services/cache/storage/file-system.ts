@@ -46,13 +46,7 @@ export class FileSystemCacheStorage implements CacheStorage {
     this.index = new Map();
     this.maxSize = options.maxSize ?? 500 * 1024 * 1024; // 500MB default
     this.defaultTTL = options.defaultTTL ?? 3600; // 1 hour default
-    this.stats = {
-      entries: 0,
-      totalSize: 0,
-      hits: 0,
-      misses: 0,
-      evictions: 0,
-    };
+    this.stats = { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 };
 
     // Initialize cache directory and index lazily
     // Initialization will happen on first use via ensureInitialized()
@@ -303,12 +297,7 @@ export class FileSystemCacheStorage implements CacheStorage {
       }
     }
 
-    return {
-      ...this.stats,
-      entries: this.index.size,
-      oldestEntry: oldestDate,
-      newestEntry: newestDate,
-    };
+    return { ...this.stats, entries: this.index.size, oldestEntry: oldestDate, newestEntry: newestDate };
   }
 
   async cleanup(): Promise<number> {
@@ -350,11 +339,7 @@ export class FileSystemCacheStorage implements CacheStorage {
 
   private async cleanupLRU(): Promise<number> {
     let cleaned = 0;
-    const entries: Array<{
-      key: string;
-      lastAccessed: number;
-      size: number;
-    }> = [];
+    const entries: Array<{ key: string; lastAccessed: number; size: number }> = [];
 
     // Collect all entries with their last access time
     for (const [key, indexEntry] of this.index) {
@@ -422,13 +407,7 @@ export class FileSystemCacheStorage implements CacheStorage {
     } catch {
       // Index doesn't exist yet or is corrupted
       this.index = new Map();
-      this.stats = {
-        entries: 0,
-        totalSize: 0,
-        hits: 0,
-        misses: 0,
-        evictions: 0,
-      };
+      this.stats = { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 };
     }
   }
 

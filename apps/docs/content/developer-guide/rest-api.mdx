@@ -741,12 +741,7 @@ Key type definitions:
 const response = await fetch(
   "https://your-instance.com/api/v1/events?" +
     new URLSearchParams({
-      bounds: JSON.stringify({
-        north: 37.8,
-        south: 37.7,
-        east: -122.3,
-        west: -122.5,
-      }),
+      bounds: JSON.stringify({ north: 37.8, south: 37.7, east: -122.3, west: -122.5 }),
       startDate: "2024-01-01",
       endDate: "2024-12-31",
       limit: "100",
@@ -762,12 +757,7 @@ const { events, pagination } = await response.json();
 const response = await fetch(
   "https://your-instance.com/api/v1/events/geo?" +
     new URLSearchParams({
-      bounds: JSON.stringify({
-        north: 37.8,
-        south: 37.7,
-        east: -122.3,
-        west: -122.5,
-      }),
+      bounds: JSON.stringify({ north: 37.8, south: 37.7, east: -122.3, west: -122.5 }),
       zoom: "12",
       catalog: "tech-events",
     })
@@ -799,11 +789,7 @@ async function pollImportProgress(importId: string) {
 ```typescript
 const response = await fetch(
   "https://your-instance.com/api/v1/events/temporal?" +
-    new URLSearchParams({
-      catalog: "my-catalog",
-      startDate: "2024-01-01",
-      endDate: "2024-12-31",
-    })
+    new URLSearchParams({ catalog: "my-catalog", startDate: "2024-01-01", endDate: "2024-12-31" })
 );
 
 const { histogram, metadata } = await response.json();

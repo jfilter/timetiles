@@ -10,17 +10,11 @@ import React from "react";
 
 import { importMap } from "./dashboard/importMap.js";
 
-type Args = {
-  children: React.ReactNode;
-};
+type Args = { children: React.ReactNode };
 
 const serverFunction: ServerFunctionClient = async (args) => {
   "use server";
-  return handleServerFunctions({
-    ...args,
-    config,
-    importMap,
-  });
+  return handleServerFunctions({ ...args, config, importMap });
 };
 
 const Layout = ({ children }: Args) => (

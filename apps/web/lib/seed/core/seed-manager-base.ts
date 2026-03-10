@@ -38,9 +38,7 @@ export abstract class SeedManagerBase {
   async initialize() {
     if (!this.payload) {
       logger.debug("Initializing Payload instance for seed manager");
-      this.payload = await getPayload({
-        config: await buildConfigWithDefaults(),
-      });
+      this.payload = await getPayload({ config: await buildConfigWithDefaults() });
       logger.debug("Payload instance initialized successfully");
 
       // Initialize relationship resolver
@@ -160,9 +158,7 @@ export abstract class SeedManagerBase {
 
   async getCollectionCount(collection: string): Promise<number> {
     await this.initialize();
-    const count = await this.payload!.count({
-      collection: collection as keyof Config["collections"],
-    });
+    const count = await this.payload!.count({ collection: collection as keyof Config["collections"] });
     return count.totalDocs;
   }
 

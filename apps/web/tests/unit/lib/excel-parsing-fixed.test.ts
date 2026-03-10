@@ -36,10 +36,7 @@ describe("Excel File Parsing - Fixed", () => {
     xlsxUtils.book_append_sheet(workbook, worksheet, "Sheet1");
 
     // Try binary string output instead of buffer
-    const binaryString = xlsxWrite(workbook, {
-      type: "binary",
-      bookType: "xlsx",
-    });
+    const binaryString = xlsxWrite(workbook, { type: "binary", bookType: "xlsx" });
 
     // Write as binary buffer
     const buffer = Buffer.from(binaryString, "binary");
@@ -65,15 +62,7 @@ describe("Excel File Parsing - Fixed", () => {
     const result = parseExcelFile(testFilePath, logger);
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({
-      title: "Event 1",
-      description: "Test Description",
-      date: "2024-01-01",
-    });
-    expect(result[1]).toEqual({
-      title: "Event 2",
-      description: "Another Test",
-      date: "2024-01-02",
-    });
+    expect(result[0]).toEqual({ title: "Event 1", description: "Test Description", date: "2024-01-01" });
+    expect(result[1]).toEqual({ title: "Event 2", description: "Another Test", date: "2024-01-02" });
   });
 });

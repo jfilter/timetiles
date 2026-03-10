@@ -69,9 +69,7 @@ describe("useMapPosition", () => {
     const searchParams = new URLSearchParams("lat=40.7128&lng=-74.006&zoom=12");
     let capturedState: ReturnType<typeof useMapPosition> | null = null;
 
-    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, {
-      searchParams,
-    });
+    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, { searchParams });
 
     expect(capturedState).not.toBeNull();
     expect(capturedState!.mapPosition.latitude).toBe(40.7128);
@@ -85,9 +83,7 @@ describe("useMapPosition", () => {
     const searchParams = new URLSearchParams("lat=40.7128&lng=-74.006");
     let capturedState: ReturnType<typeof useMapPosition> | null = null;
 
-    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, {
-      searchParams,
-    });
+    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, { searchParams });
 
     expect(capturedState).not.toBeNull();
     expect(capturedState!.mapPosition.latitude).toBe(40.7128);
@@ -115,9 +111,7 @@ describe("useMapPosition", () => {
     const searchParams = new URLSearchParams("lat=40.7128&lng=-74.006&zoom=12.5");
     let capturedState: ReturnType<typeof useMapPosition> | null = null;
 
-    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, {
-      searchParams,
-    });
+    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, { searchParams });
 
     expect(capturedState!.mapPosition.zoom).toBe(12.5);
     expect(capturedState!.hasMapPosition).toBe(true);
@@ -127,9 +121,7 @@ describe("useMapPosition", () => {
     const searchParams = new URLSearchParams("lat=-33.8688&lng=151.2093&zoom=10");
     let capturedState: ReturnType<typeof useMapPosition> | null = null;
 
-    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, {
-      searchParams,
-    });
+    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, { searchParams });
 
     // Sydney, Australia coordinates
     expect(capturedState!.mapPosition.latitude).toBe(-33.8688);

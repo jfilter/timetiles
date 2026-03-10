@@ -63,10 +63,6 @@ export const defaultDetector: SchemaDetector = {
     // Step 3: Detect structural patterns (IDs, enums)
     const patterns = detectPatterns(context.fieldStats);
 
-    return {
-      language,
-      fieldMappings,
-      patterns,
-    };
+    return { language, fieldMappings, patterns };
   },
 };

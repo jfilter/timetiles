@@ -30,10 +30,7 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
 
   // Hide navigation on auth step (it auto-advances when authenticated)
   useEffect(() => {
-    setNavigationConfig({
-      showBack: false,
-      showNext: false,
-    });
+    setNavigationConfig({ showBack: false, showNext: false });
     return () => setNavigationConfig({});
   }, [setNavigationConfig]);
 

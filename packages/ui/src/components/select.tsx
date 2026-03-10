@@ -31,16 +31,9 @@ const selectTriggerVariants = cva(
           "border-input text-foreground data-[placeholder]:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2",
         outline: "border-border text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2",
       },
-      size: {
-        default: "h-9",
-        sm: "h-8 text-xs",
-        lg: "h-11",
-      },
+      size: { default: "h-9", sm: "h-8 text-xs", lg: "h-11" },
     },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
+    defaultVariants: { variant: "default", size: "default" },
   }
 );
 
@@ -51,9 +44,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger ref={ref} className={cn(selectTriggerVariants({ variant, size, className }))} {...props}>
     {children}
     <SelectPrimitive.Icon asChild>
-      {React.createElement(ChevronDownIcon as IconComponent, {
-        className: "size-4 opacity-50",
-      })}
+      {React.createElement(ChevronDownIcon as IconComponent, { className: "size-4 opacity-50" })}
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -120,9 +111,7 @@ const SelectItem = React.forwardRef<
   >
     <span className="absolute right-2 flex size-3.5 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        {React.createElement(CheckIcon as IconComponent, {
-          className: "size-4",
-        })}
+        {React.createElement(CheckIcon as IconComponent, { className: "size-4" })}
       </SelectPrimitive.ItemIndicator>
     </span>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
@@ -147,9 +136,7 @@ const SelectScrollUpButton = React.forwardRef<
     className={cn("flex cursor-default items-center justify-center py-1", className)}
     {...props}
   >
-    {React.createElement(ChevronUpIcon as IconComponent, {
-      className: "size-4",
-    })}
+    {React.createElement(ChevronUpIcon as IconComponent, { className: "size-4" })}
   </SelectPrimitive.ScrollUpButton>
 ));
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
@@ -163,9 +150,7 @@ const SelectScrollDownButton = React.forwardRef<
     className={cn("flex cursor-default items-center justify-center py-1", className)}
     {...props}
   >
-    {React.createElement(ChevronDownIcon as IconComponent, {
-      className: "size-4",
-    })}
+    {React.createElement(ChevronDownIcon as IconComponent, { className: "size-4" })}
   </SelectPrimitive.ScrollDownButton>
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;

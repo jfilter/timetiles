@@ -30,18 +30,8 @@ const styles = {
     gap: "8px",
     fontSize: "13px",
   },
-  icon: {
-    width: "16px",
-    height: "16px",
-    color: "#0284c7",
-    flexShrink: 0,
-    marginTop: "1px",
-  },
-  text: {
-    color: "#0369a1",
-    margin: 0,
-    lineHeight: 1.4,
-  },
+  icon: { width: "16px", height: "16px", color: "#0284c7", flexShrink: 0, marginTop: "1px" },
+  text: { color: "#0369a1", margin: 0, lineHeight: 1.4 },
 } as const;
 
 export const PrivateVisibilityNotice = () => {

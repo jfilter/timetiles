@@ -48,11 +48,7 @@ const buildTransformsFromDataset = (dataset: Dataset): ImportTransform[] => {
       continue;
     }
 
-    const base = {
-      id: t.id,
-      active: true,
-      autoDetected: Boolean(t.autoDetected),
-    };
+    const base = { id: t.id, active: true, autoDetected: Boolean(t.autoDetected) };
 
     switch (t.type) {
       case "rename":
@@ -143,9 +139,7 @@ const updateImportFileStatusIfAllJobsComplete = async (
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     where: {
       importFile: { equals: importFileId },
-      stage: {
-        not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED],
-      },
+      stage: { not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED] },
     },
     limit: 1,
   });
@@ -154,22 +148,13 @@ const updateImportFileStatusIfAllJobsComplete = async (
   if (pendingJobs.docs.length === 0) {
     const failedJobs = await payload.find({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
-      where: {
-        importFile: { equals: importFileId },
-        stage: { equals: PROCESSING_STAGE.FAILED },
-      },
+      where: { importFile: { equals: importFileId }, stage: { equals: PROCESSING_STAGE.FAILED } },
       limit: 1,
     });
 
     // Update import file status based on job outcomes
     const newStatus = failedJobs.docs.length > 0 ? "failed" : "completed";
-    await payload.update({
-      collection: COLLECTION_NAMES.IMPORT_FILES,
-      id: importFileId,
-      data: {
-        status: newStatus,
-      },
-    });
+    await payload.update({ collection: COLLECTION_NAMES.IMPORT_FILES, id: importFileId, data: { status: newStatus } });
   }
 };
 
@@ -236,18 +221,12 @@ const processEventBatch = async (
         transformationChanges
       );
 
-      await payload.create({
-        collection: COLLECTION_NAMES.EVENTS,
-        data: eventData,
-      });
+      await payload.create({ collection: COLLECTION_NAMES.EVENTS, data: eventData });
 
       eventsCreated++;
     } catch (error) {
       logger.error("Failed to create event", { rowNumber, error });
-      errors.push({
-        row: rowNumber,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      errors.push({ row: rowNumber, error: error instanceof Error ? error.message : "Unknown error" });
       eventsSkipped++;
     }
   }
@@ -257,10 +236,7 @@ const processEventBatch = async (
 
 const markJobCompleted = async (payload: Payload, importJobId: string | number) => {
   // Re-query job for current state (errors may have accumulated across batches)
-  const currentJob = await payload.findByID({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
-  });
+  const currentJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
   // Count actual events created for this import job (reliable source of truth)
   const eventsResult = await payload.count({
@@ -289,17 +265,11 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number) 
 
   // Track total events created for the user's quota
   try {
-    const importJob = await payload.findByID({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: importJobId,
-    });
+    const importJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
     if (importJob?.importFile) {
       const importFileId = extractRelationId(importJob.importFile)!;
-      const importFile = await payload.findByID({
-        collection: COLLECTION_NAMES.IMPORT_FILES,
-        id: importFileId,
-      });
+      const importFile = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: importFileId });
 
       if (importFile?.user) {
         const logger = createJobLogger(String(importJobId), "create-events-batch");
@@ -309,11 +279,7 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number) 
         const quotaService = getQuotaService(payload);
         await quotaService.incrementUsage(userId, USAGE_TYPES.TOTAL_EVENTS_CREATED, totalEventsCreated);
 
-        logger.info("Event creation tracked for quota", {
-          userId,
-          eventsCreated: totalEventsCreated,
-          importJobId,
-        });
+        logger.info("Event creation tracked for quota", { userId, eventsCreated: totalEventsCreated, importJobId });
       }
     }
   } catch (error) {
@@ -323,10 +289,7 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number) 
 };
 
 const getJobResources = async (payload: Payload, importJobId: string | number) => {
-  const job = await payload.findByID({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
-  });
+  const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
   if (!job) {
     throw new Error(`Import job not found: ${importJobId}`);
@@ -390,9 +353,7 @@ const updateJobErrors = async (
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     id: importJobId,
-    data: {
-      errors: [...(job.errors ?? []), ...errors],
-    },
+    data: { errors: [...(job.errors ?? []), ...errors] },
   });
 };
 
@@ -410,10 +371,7 @@ const handleBatchCompletion = async (
     return;
   }
 
-  await payload.jobs.queue({
-    task: JOB_TYPES.CREATE_EVENTS,
-    input: { importJobId, batchNumber: batchNumber + 1 },
-  });
+  await payload.jobs.queue({ task: JOB_TYPES.CREATE_EVENTS, input: { importJobId, batchNumber: batchNumber + 1 } });
 };
 
 const handleJobError = async (payload: Payload, importJobId: string | number, batchNumber: number, error: unknown) => {
@@ -553,23 +511,12 @@ export const createEventsBatchJob = {
         errors: errors.length,
       });
 
-      return {
-        output: {
-          batchNumber,
-          eventsCreated,
-          eventsSkipped,
-          errors: errors.length,
-          hasMore,
-        },
-      };
+      return { output: { batchNumber, eventsCreated, eventsSkipped, errors: errors.length, hasMore } };
     } catch (error) {
       await handleJobError(payload, importJobId, batchNumber, error);
 
       try {
-        const failedJob = await payload.findByID({
-          collection: COLLECTION_NAMES.IMPORT_JOBS,
-          id: importJobId,
-        });
+        const failedJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
         const importFileId = extractRelationId(failedJob.importFile)!;
         await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
       } catch (updateError) {

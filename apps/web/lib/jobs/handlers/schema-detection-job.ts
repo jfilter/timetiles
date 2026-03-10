@@ -142,10 +142,7 @@ const finalizeSchemaDetection = async (
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     id: importJobId,
-    data: {
-      schema: updatedSchema,
-      schemaBuilderState: finalState as unknown as Record<string, unknown>,
-    },
+    data: { schema: updatedSchema, schemaBuilderState: finalState as unknown as Record<string, unknown> },
   });
 
   // Detect field mappings or use overrides
@@ -170,10 +167,7 @@ const finalizeSchemaDetection = async (
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     id: importJobId,
-    data: {
-      detectedFieldMappings: fieldMappings,
-      stage: PROCESSING_STAGE.VALIDATE_SCHEMA,
-    },
+    data: { detectedFieldMappings: fieldMappings, stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
   });
 };
 
@@ -200,10 +194,7 @@ const queueNextBatch = async (
   logger: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
   logger.debug("Queueing next batch", { nextBatch: batchNumber + 1 });
-  await payload.jobs.queue({
-    task: JOB_TYPES.DETECT_SCHEMA,
-    input: { importJobId, batchNumber: batchNumber + 1 },
-  });
+  await payload.jobs.queue({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId, batchNumber: batchNumber + 1 } });
 };
 
 // Helper to complete last batch with field mapping detection
@@ -214,9 +205,7 @@ const completeLastBatch = async (
   dataset: Dataset | null,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
-  logger.info("Last batch - finalizing schema detection", {
-    datasetLanguage: dataset?.language ?? "eng",
-  });
+  logger.info("Last batch - finalizing schema detection", { datasetLanguage: dataset?.language ?? "eng" });
 
   await finalizeSchemaDetection(payload, importJobId, schemaBuilder, dataset, logger);
 };
@@ -250,11 +239,7 @@ const processBatchSchema = async (
 
   const updatedSchema = await schemaBuilder.getSchema();
 
-  return {
-    nonDuplicateRows: transformedRows,
-    schemaBuilder,
-    updatedSchema,
-  };
+  return { nonDuplicateRows: transformedRows, schemaBuilder, updatedSchema };
 };
 
 // Helper to initialize stage on first batch
@@ -302,10 +287,7 @@ const updateSchemaState = async (
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     id: importJobId,
-    data: {
-      schema: updatedSchema,
-      schemaBuilderState: currentState as unknown as Record<string, unknown>,
-    },
+    data: { schema: updatedSchema, schemaBuilderState: currentState as unknown as Record<string, unknown> },
   });
 };
 
@@ -406,13 +388,7 @@ export const schemaDetectionJob = {
         hasMore,
       });
 
-      return {
-        output: {
-          batchNumber,
-          rowsProcessed: rows.length,
-          hasMore,
-        },
-      };
+      return { output: { batchNumber, rowsProcessed: rows.length, hasMore } };
     } catch (error) {
       logError(error, "Batch processing failed", { importJobId, batchNumber });
 

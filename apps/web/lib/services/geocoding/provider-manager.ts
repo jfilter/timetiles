@@ -43,11 +43,7 @@ export class ProviderManager {
       // Filter providers based on strategy
       let whereClause = {};
       if (strategy == "tag-based" && requiredTags.length > 0) {
-        whereClause = {
-          tags: {
-            in: requiredTags,
-          },
-        };
+        whereClause = { tags: { in: requiredTags } };
       }
 
       const providerResults = await this.payload.find({
@@ -217,11 +213,7 @@ export class ProviderManager {
       return null;
     }
 
-    return NodeGeocoder({
-      provider: "google",
-      apiKey: googleConfig.apiKey,
-      formatter: null,
-    });
+    return NodeGeocoder({ provider: "google", apiKey: googleConfig.apiKey, formatter: null });
   }
 
   private createNominatimGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder {
@@ -251,11 +243,7 @@ export class ProviderManager {
       return null;
     }
 
-    const config: Record<string, unknown> = {
-      provider: "opencage",
-      apiKey: openCageConfig.apiKey,
-      formatter: null,
-    };
+    const config: Record<string, unknown> = { provider: "opencage", apiKey: openCageConfig.apiKey, formatter: null };
 
     // Add bounds if configured
     const bounds = openCageConfig.bounds as

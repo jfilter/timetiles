@@ -111,26 +111,13 @@ describe.sequential("Feature Flag Service", () => {
       // Reset flags to defaults before each test
       await payload.updateGlobal({
         slug: "settings",
-        data: {
-          featureFlags: {
-            allowPrivateImports: true,
-            enableScheduledImports: true,
-            enableRegistration: true,
-          },
-        },
+        data: { featureFlags: { allowPrivateImports: true, enableScheduledImports: true, enableRegistration: true } },
       });
       clearFeatureFlagCache();
     });
 
     it("should update allowPrivateImports flag", async () => {
-      await payload.updateGlobal({
-        slug: "settings",
-        data: {
-          featureFlags: {
-            allowPrivateImports: false,
-          },
-        },
-      });
+      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
       clearFeatureFlagCache();
 
       const flags = await getFeatureFlags(payload);
@@ -138,14 +125,7 @@ describe.sequential("Feature Flag Service", () => {
     });
 
     it("should update enableScheduledImports flag", async () => {
-      await payload.updateGlobal({
-        slug: "settings",
-        data: {
-          featureFlags: {
-            enableScheduledImports: false,
-          },
-        },
-      });
+      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: false } } });
       clearFeatureFlagCache();
 
       const flags = await getFeatureFlags(payload);
@@ -153,14 +133,7 @@ describe.sequential("Feature Flag Service", () => {
     });
 
     it("should update enableRegistration flag", async () => {
-      await payload.updateGlobal({
-        slug: "settings",
-        data: {
-          featureFlags: {
-            enableRegistration: false,
-          },
-        },
-      });
+      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableRegistration: false } } });
       clearFeatureFlagCache();
 
       const flags = await getFeatureFlags(payload);
@@ -171,11 +144,7 @@ describe.sequential("Feature Flag Service", () => {
       await payload.updateGlobal({
         slug: "settings",
         data: {
-          featureFlags: {
-            allowPrivateImports: false,
-            enableScheduledImports: false,
-            enableRegistration: false,
-          },
+          featureFlags: { allowPrivateImports: false, enableScheduledImports: false, enableRegistration: false },
         },
       });
       clearFeatureFlagCache();
@@ -190,11 +159,7 @@ describe.sequential("Feature Flag Service", () => {
       await payload.updateGlobal({
         slug: "settings",
         data: {
-          featureFlags: {
-            enableEventCreation: false,
-            enableDatasetCreation: false,
-            enableImportCreation: false,
-          },
+          featureFlags: { enableEventCreation: false, enableDatasetCreation: false, enableImportCreation: false },
         },
       });
       clearFeatureFlagCache();
@@ -208,12 +173,7 @@ describe.sequential("Feature Flag Service", () => {
     it("should update job execution and caching flags", async () => {
       await payload.updateGlobal({
         slug: "settings",
-        data: {
-          featureFlags: {
-            enableScheduledJobExecution: false,
-            enableUrlFetchCaching: false,
-          },
-        },
+        data: { featureFlags: { enableScheduledJobExecution: false, enableUrlFetchCaching: false } },
       });
       clearFeatureFlagCache();
 
@@ -227,13 +187,7 @@ describe.sequential("Feature Flag Service", () => {
     beforeEach(async () => {
       await payload.updateGlobal({
         slug: "settings",
-        data: {
-          featureFlags: {
-            allowPrivateImports: true,
-            enableScheduledImports: false,
-            enableRegistration: true,
-          },
-        },
+        data: { featureFlags: { allowPrivateImports: true, enableScheduledImports: false, enableRegistration: true } },
       });
       clearFeatureFlagCache();
     });
@@ -250,14 +204,7 @@ describe.sequential("Feature Flag Service", () => {
 
   describe("Caching Behavior", () => {
     beforeEach(async () => {
-      await payload.updateGlobal({
-        slug: "settings",
-        data: {
-          featureFlags: {
-            allowPrivateImports: true,
-          },
-        },
-      });
+      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: true } } });
       clearFeatureFlagCache();
     });
 
@@ -267,14 +214,7 @@ describe.sequential("Feature Flag Service", () => {
       expect(flags1.allowPrivateImports).toBe(true);
 
       // Update directly in DB without clearing cache
-      await payload.updateGlobal({
-        slug: "settings",
-        data: {
-          featureFlags: {
-            allowPrivateImports: false,
-          },
-        },
-      });
+      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
 
       // Second call should return cached (stale) value
       const flags2 = await getFeatureFlags(payload);
@@ -287,14 +227,7 @@ describe.sequential("Feature Flag Service", () => {
       expect(flags1.allowPrivateImports).toBe(true);
 
       // Update and clear cache
-      await payload.updateGlobal({
-        slug: "settings",
-        data: {
-          featureFlags: {
-            allowPrivateImports: false,
-          },
-        },
-      });
+      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
       clearFeatureFlagCache();
 
       // Should get fresh value
@@ -305,28 +238,19 @@ describe.sequential("Feature Flag Service", () => {
 
   describe("Access Control", () => {
     it("should allow public read access to Settings global", async () => {
-      const settings = await payload.findGlobal({
-        slug: "settings",
-        overrideAccess: false,
-      });
+      const settings = await payload.findGlobal({ slug: "settings", overrideAccess: false });
 
       expect(settings).toBeDefined();
       expect(settings.featureFlags).toBeDefined();
     });
 
     it("should reject non-admin updates", async () => {
-      const { users } = await withUsers(testEnv, {
-        regularUser: { role: "user" },
-      });
+      const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
       await expect(
         payload.updateGlobal({
           slug: "settings",
-          data: {
-            featureFlags: {
-              allowPrivateImports: false,
-            },
-          },
+          data: { featureFlags: { allowPrivateImports: false } },
           user: users.regularUser,
           overrideAccess: false,
         })
@@ -334,17 +258,11 @@ describe.sequential("Feature Flag Service", () => {
     });
 
     it("should allow admin updates", async () => {
-      const { users } = await withUsers(testEnv, {
-        adminUser: { role: "admin" },
-      });
+      const { users } = await withUsers(testEnv, { adminUser: { role: "admin" } });
 
       const updated = await payload.updateGlobal({
         slug: "settings",
-        data: {
-          featureFlags: {
-            allowPrivateImports: false,
-          },
-        },
+        data: { featureFlags: { allowPrivateImports: false } },
         user: users.adminUser,
         overrideAccess: false,
       });
@@ -376,25 +294,17 @@ describe.sequential("Feature Flag Service", () => {
 
     describe("allowPrivateImports", () => {
       it("should block private catalog creation when disabled", async () => {
-        const { users } = await withUsers(testEnv, {
-          regularUser: { role: "user" },
-        });
+        const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
         // Disable private imports
-        await payload.updateGlobal({
-          slug: "settings",
-          data: { featureFlags: { allowPrivateImports: false } },
-        });
+        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
         clearFeatureFlagCache();
 
         // Attempt to create a private catalog
         await expect(
           payload.create({
             collection: "catalogs",
-            data: {
-              name: "Private Catalog",
-              isPublic: false,
-            },
+            data: { name: "Private Catalog", isPublic: false },
             user: users.regularUser,
             overrideAccess: false,
           })
@@ -402,24 +312,16 @@ describe.sequential("Feature Flag Service", () => {
       });
 
       it("should allow public catalog creation when disabled", async () => {
-        const { users } = await withUsers(testEnv, {
-          regularUser: { role: "user" },
-        });
+        const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
         // Disable private imports
-        await payload.updateGlobal({
-          slug: "settings",
-          data: { featureFlags: { allowPrivateImports: false } },
-        });
+        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
         clearFeatureFlagCache();
 
         // Public catalogs should still work
         const catalog = await payload.create({
           collection: "catalogs",
-          data: {
-            name: "Public Catalog",
-            isPublic: true,
-          },
+          data: { name: "Public Catalog", isPublic: true },
           user: users.regularUser,
           overrideAccess: false,
         });
@@ -429,9 +331,7 @@ describe.sequential("Feature Flag Service", () => {
       });
 
       it("should block private dataset creation when disabled", async () => {
-        const { users } = await withUsers(testEnv, {
-          regularUser: { role: "user" },
-        });
+        const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
         // Create a PUBLIC catalog owned by the user
         const catalog = await payload.create({
@@ -442,10 +342,7 @@ describe.sequential("Feature Flag Service", () => {
         });
 
         // Disable private imports
-        await payload.updateGlobal({
-          slug: "settings",
-          data: { featureFlags: { allowPrivateImports: false } },
-        });
+        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
         clearFeatureFlagCache();
 
         // Attempt to create a private dataset in public catalog
@@ -454,12 +351,7 @@ describe.sequential("Feature Flag Service", () => {
         await expect(
           payload.create({
             collection: "datasets",
-            data: {
-              name: "Private Dataset",
-              catalog: catalog.id,
-              isPublic: false,
-              language: "eng",
-            },
+            data: { name: "Private Dataset", catalog: catalog.id, isPublic: false, language: "eng" },
             user: users.regularUser,
             overrideAccess: false,
           })
@@ -469,9 +361,7 @@ describe.sequential("Feature Flag Service", () => {
 
     describe("enableScheduledImports", () => {
       it("should block scheduled import creation when disabled", async () => {
-        const { users } = await withUsers(testEnv, {
-          regularUser: { role: "user" },
-        });
+        const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
         // Create required catalog and dataset (use overrideAccess to simplify setup)
         const catalog = await payload.create({
@@ -486,10 +376,7 @@ describe.sequential("Feature Flag Service", () => {
         });
 
         // Disable scheduled imports
-        await payload.updateGlobal({
-          slug: "settings",
-          data: { featureFlags: { enableScheduledImports: false } },
-        });
+        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: false } } });
         clearFeatureFlagCache();
 
         // Attempt to create scheduled import - should fail access control
@@ -513,9 +400,7 @@ describe.sequential("Feature Flag Service", () => {
       });
 
       it("should allow scheduled import creation when enabled", async () => {
-        const { users } = await withUsers(testEnv, {
-          regularUser: { role: "user" },
-        });
+        const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
         // Create required catalog and dataset (use overrideAccess to simplify setup)
         const catalog = await payload.create({
@@ -530,10 +415,7 @@ describe.sequential("Feature Flag Service", () => {
         });
 
         // Ensure scheduled imports are enabled
-        await payload.updateGlobal({
-          slug: "settings",
-          data: { featureFlags: { enableScheduledImports: true } },
-        });
+        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: true } } });
         clearFeatureFlagCache();
 
         // Should succeed

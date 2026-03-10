@@ -15,11 +15,7 @@ import type { CacheEntry, CacheSetOptions, CacheStats, CacheStorage, MemoryCache
 
 export class MemoryCacheStorage implements CacheStorage {
   private readonly cache: LRUCache<string, CacheEntry>;
-  private stats: {
-    hits: number;
-    misses: number;
-    evictions: number;
-  };
+  private stats: { hits: number; misses: number; evictions: number };
 
   constructor(options: MemoryCacheOptions = {}) {
     this.stats = { hits: 0, misses: 0, evictions: 0 };

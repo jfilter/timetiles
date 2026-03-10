@@ -28,10 +28,7 @@ import { afterChangeHooks, beforeChangeHooks } from "./hooks";
 
 const ImportJobs: CollectionConfig = {
   slug: "import-jobs",
-  ...createCommonConfig({
-    drafts: false,
-    versions: true,
-  }),
+  ...createCommonConfig({ drafts: false, versions: true }),
   admin: {
     useAsTitle: "id",
     defaultColumns: ["dataset", "stage", "progress", "createdAt"],
@@ -40,10 +37,7 @@ const ImportJobs: CollectionConfig = {
   },
   access: importJobsAccess,
   fields: importJobFields,
-  hooks: {
-    beforeChange: beforeChangeHooks,
-    afterChange: afterChangeHooks,
-  },
+  hooks: { beforeChange: beforeChangeHooks, afterChange: afterChangeHooks },
 };
 
 export default ImportJobs;

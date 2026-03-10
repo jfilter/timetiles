@@ -19,22 +19,11 @@ import { createMockPayload } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
-  return {
-    fs: {
-      existsSync: vi.fn(),
-      readFileSync: vi.fn(),
-      unlinkSync: vi.fn(),
-    },
-  };
+  return { fs: { existsSync: vi.fn(), readFileSync: vi.fn(), unlinkSync: vi.fn() } };
 });
 
 // Mock external dependencies
-vi.mock("fs", () => ({
-  default: mocks.fs,
-  promises: {
-    readFile: vi.fn(),
-  },
-}));
+vi.mock("fs", () => ({ default: mocks.fs, promises: { readFile: vi.fn() } }));
 
 vi.mock("@/lib/services/progress-tracking", () => ({
   ProgressTrackingService: {
@@ -72,14 +61,8 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     // Mock context
     mockContext = {
       payload: mockPayload,
-      job: {
-        id: "test-job-1",
-        taskStatus: {},
-      },
-      input: {
-        importFileId: "import-file-123",
-        catalogId: "456",
-      },
+      job: { id: "test-job-1", taskStatus: {} },
+      input: { importFileId: "import-file-123", catalogId: "456" },
     };
   });
 
@@ -97,10 +80,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      const mockCatalog = {
-        id: 456,
-        name: "Test Catalog",
-      };
+      const mockCatalog = { id: 456, name: "Test Catalog" };
 
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportFile) // importFile
@@ -189,10 +169,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "multi-sheet.xlsx",
       };
 
-      const mockCatalog = {
-        id: 456,
-        name: "Test Catalog",
-      };
+      const mockCatalog = { id: 456, name: "Test Catalog" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
 
@@ -219,26 +196,17 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Check that datasets were created with correct names
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "datasets",
-        data: expect.objectContaining({
-          name: "Events",
-          catalog: 456,
-        }),
+        data: expect.objectContaining({ name: "Events", catalog: 456 }),
       });
 
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "datasets",
-        data: expect.objectContaining({
-          name: "Locations",
-          catalog: 456,
-        }),
+        data: expect.objectContaining({ name: "Locations", catalog: 456 }),
       });
 
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "datasets",
-        data: expect.objectContaining({
-          name: "Categories",
-          catalog: 456,
-        }),
+        data: expect.objectContaining({ name: "Categories", catalog: 456 }),
       });
 
       // Check that import jobs were created for each sheet
@@ -282,16 +250,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "existing.csv",
       };
 
-      const mockCatalog = {
-        id: 456,
-        name: "Test Catalog",
-      };
+      const mockCatalog = { id: 456, name: "Test Catalog" };
 
-      const existingDataset = {
-        id: "existing-dataset-999",
-        name: "existing",
-        catalog: 456,
-      };
+      const existingDataset = { id: "existing-dataset-999", name: "existing", catalog: 456 };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
 
@@ -332,9 +293,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-files",
         id: "import-file-123",
-        data: expect.objectContaining({
-          datasetsCount: 1,
-        }),
+        data: expect.objectContaining({ datasetsCount: 1 }),
       });
     });
 
@@ -372,9 +331,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       mockPayload.find.mockResolvedValue({ docs: [] });
       // eslint-disable promise/prefer-await-to-then -- Conditional mock
       mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
-        Promise.resolve({
-          id: collection === "datasets" ? "dataset-1" : "import-job-1",
-        })
+        Promise.resolve({ id: collection === "datasets" ? "dataset-1" : "import-job-1" })
       );
       // eslint-enable promise/prefer-await-to-then
 
@@ -383,18 +340,12 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       expect(mockPayload.create).toHaveBeenCalledTimes(1);
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "datasets",
-        data: expect.objectContaining({
-          name: "test.csv",
-          catalog: 456,
-        }),
+        data: expect.objectContaining({ name: "test.csv", catalog: 456 }),
       });
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-files",
         id: "import-file-123",
-        data: expect.objectContaining({
-          status: "failed",
-          errorLog: "Invalid import file ID",
-        }),
+        data: expect.objectContaining({ status: "failed", errorLog: "Invalid import file ID" }),
       });
     });
 
@@ -407,19 +358,14 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockContext.input = {
-        importFileId: "import-file-123",
-        catalogId: "456abc",
-      };
+      mockContext.input = { importFileId: "import-file-123", catalogId: "456abc" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       // eslint-disable promise/prefer-await-to-then -- Conditional mock
       mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
-        Promise.resolve({
-          id: collection === "datasets" ? "dataset-1" : "import-job-1",
-        })
+        Promise.resolve({ id: collection === "datasets" ? "dataset-1" : "import-job-1" })
       );
       // eslint-enable promise/prefer-await-to-then
 
@@ -430,10 +376,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-files",
         id: "import-file-123",
-        data: expect.objectContaining({
-          status: "failed",
-          errorLog: "Invalid catalog ID",
-        }),
+        data: expect.objectContaining({ status: "failed", errorLog: "Invalid catalog ID" }),
       });
     });
 
@@ -478,10 +421,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-files",
         id: "import-file-123",
-        data: expect.objectContaining({
-          status: "failed",
-          errorLog: expect.any(String),
-        }),
+        data: expect.objectContaining({ status: "failed", errorLog: expect.any(String) }),
       });
     });
 
@@ -560,10 +500,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "empty.xlsx",
       };
 
-      const mockCatalog = {
-        id: 456,
-        name: "Test Catalog",
-      };
+      const mockCatalog = { id: 456, name: "Test Catalog" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
 
@@ -596,10 +533,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "large.csv",
       };
 
-      const mockCatalog = {
-        id: 456,
-        name: "Test Catalog",
-      };
+      const mockCatalog = { id: 456, name: "Test Catalog" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
 
@@ -624,10 +558,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Check that import job was created with correct row count
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "import-jobs",
-        data: expect.objectContaining({
-          sheetIndex: 0,
-          stage: "analyze-duplicates",
-        }),
+        data: expect.objectContaining({ sheetIndex: 0, stage: "analyze-duplicates" }),
       });
     });
   });

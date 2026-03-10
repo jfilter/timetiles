@@ -239,9 +239,7 @@ describe("formatDateRange", () => {
 
 describe("getLocationDisplay", () => {
   it("should return normalized address when available", () => {
-    const event = {
-      geocodingInfo: { normalizedAddress: "123 Main St, City, Country" },
-    };
+    const event = { geocodingInfo: { normalizedAddress: "123 Main St, City, Country" } };
     expect(getLocationDisplay(event, {})).toBe("123 Main St, City, Country");
   });
 
@@ -268,9 +266,7 @@ describe("getLocationDisplay", () => {
   });
 
   it("should prefer geocoded address over city/country", () => {
-    const event = {
-      geocodingInfo: { normalizedAddress: "Geocoded Address" },
-    };
+    const event = { geocodingInfo: { normalizedAddress: "Geocoded Address" } };
     const eventData = { city: "City", country: "Country" };
     expect(getLocationDisplay(event, eventData)).toBe("Geocoded Address");
   });

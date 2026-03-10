@@ -97,10 +97,7 @@ export interface EventExportData {
   datasetId: number;
   eventTimestamp?: string | null;
   data: unknown;
-  location?: {
-    latitude?: number | null;
-    longitude?: number | null;
-  } | null;
+  location?: { latitude?: number | null; longitude?: number | null } | null;
   geocodingStatus?: string | null;
   validationStatus?: string | null;
   createdAt: string;

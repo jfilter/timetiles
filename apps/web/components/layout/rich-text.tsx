@@ -20,9 +20,7 @@ interface RichTextNode {
 }
 
 interface RootContent {
-  root: {
-    children: RichTextNode[];
-  };
+  root: { children: RichTextNode[] };
 }
 
 interface RichTextProps {

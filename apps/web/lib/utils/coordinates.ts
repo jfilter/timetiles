@@ -46,10 +46,7 @@ const getCenterLongitude = (east: number, west: number): number => {
  * ```
  */
 export const getCenterFromBounds = (bounds: MapBounds): { lat: number; lon: number } => {
-  return {
-    lat: (bounds.north + bounds.south) / 2,
-    lon: getCenterLongitude(bounds.east, bounds.west),
-  };
+  return { lat: (bounds.north + bounds.south) / 2, lon: getCenterLongitude(bounds.east, bounds.west) };
 };
 
 /**

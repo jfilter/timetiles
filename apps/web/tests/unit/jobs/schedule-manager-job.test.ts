@@ -9,18 +9,11 @@ import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 
 // Mock dependencies
 vi.mock("@/lib/logger", () => ({
-  logger: {
-    info: vi.fn(),
-    debug: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
+  logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
   logError: vi.fn(),
 }));
 
-vi.mock("@/lib/services/feature-flag-service", () => ({
-  isFeatureEnabled: vi.fn().mockResolvedValue(true),
-}));
+vi.mock("@/lib/services/feature-flag-service", () => ({ isFeatureEnabled: vi.fn().mockResolvedValue(true) }));
 
 describe.sequential("scheduleManagerJob", () => {
   beforeEach(() => {
@@ -39,18 +32,12 @@ describe.sequential("scheduleManagerJob", () => {
         find: vi.fn(),
         findByID: vi.fn(),
         update: vi.fn(),
-        jobs: {
-          queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-123" }),
-        },
+        jobs: { queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-123" }) },
       };
 
-      const mockJob = {
-        id: "schedule-job-123",
-      };
+      const mockJob = { id: "schedule-job-123" };
 
-      const mockReq = {
-        payload: mockPayload as any,
-      };
+      const mockReq = { payload: mockPayload as any };
 
       return { mockPayload, mockJob, mockReq };
     };
@@ -73,36 +60,21 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({
-        docs: mockScheduledImports,
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
 
       // Set time to after midnight to make the import due
       vi.setSystemTime(new Date("2024-01-15 00:30:00"));
 
-      const result = await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "scheduled-imports",
-        where: {
-          enabled: {
-            equals: true,
-          },
-        },
+        where: { enabled: { equals: true } },
         limit: 1000,
         pagination: false,
       });
 
-      expect(result.output).toEqual({
-        success: true,
-        totalScheduled: 1,
-        triggered: 1,
-        errors: 0,
-      });
+      expect(result.output).toEqual({ success: true, totalScheduled: 1, triggered: 1, errors: 0 });
     });
 
     it("should trigger imports that are due based on frequency", async () => {
@@ -136,15 +108,9 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({
-        docs: mockScheduledImports,
-        totalDocs: 2,
-      });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 2 });
 
-      const result = await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       // Should only queue the hourly import
       expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
@@ -184,15 +150,9 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({
-        docs: mockScheduledImports,
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
 
-      const result = await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
       expect(result.output.triggered).toBe(1);
@@ -218,15 +178,9 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({
-        docs: mockScheduledImports,
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
 
-      const result = await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
       expect(result.output.triggered).toBe(0);
@@ -253,15 +207,9 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({
-        docs: mockScheduledImports,
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
 
-      const result = await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
       expect(result.output.triggered).toBe(0);
@@ -282,15 +230,9 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({
-        docs: mockScheduledImports,
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
 
-      const result = await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       // Should find it but not trigger
       expect(mockPayload.find).toHaveBeenCalled();
@@ -314,24 +256,13 @@ describe.sequential("scheduleManagerJob", () => {
         lastRun: new Date("2024-01-15 08:00:00").toISOString(),
         catalog: "catalog-123",
         createdBy: "user-123",
-        statistics: {
-          totalRuns: 5,
-          successfulRuns: 4,
-          failedRuns: 1,
-          averageDuration: 2.5,
-        },
+        statistics: { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 2.5 },
         executionHistory: [],
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [mockScheduledImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [mockScheduledImport], totalDocs: 1 });
 
-      await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "scheduled-imports",
@@ -341,12 +272,7 @@ describe.sequential("scheduleManagerJob", () => {
           nextRun: new Date("2024-01-15 11:00:00").toISOString(), // Next hour
           lastStatus: "running",
           currentRetries: 0,
-          statistics: {
-            totalRuns: 6,
-            successfulRuns: 4,
-            failedRuns: 1,
-            averageDuration: 2.5,
-          },
+          statistics: { totalRuns: 6, successfulRuns: 4, failedRuns: 1, averageDuration: 2.5 },
         }),
       });
 
@@ -378,26 +304,15 @@ describe.sequential("scheduleManagerJob", () => {
         createdBy: "user-123",
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [mockScheduledImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [mockScheduledImport], totalDocs: 1 });
 
       // Make job queue throw an error
       mockPayload.jobs.queue.mockRejectedValue(new Error("Queue error"));
 
-      const result = await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       // Should handle error and continue
-      expect(result.output).toEqual({
-        success: true,
-        totalScheduled: 1,
-        triggered: 0,
-        errors: 1,
-      });
+      expect(result.output).toEqual({ success: true, totalScheduled: 1, triggered: 0, errors: 1 });
 
       // Should update the import with error status
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -406,12 +321,7 @@ describe.sequential("scheduleManagerJob", () => {
         data: expect.objectContaining({
           lastStatus: "failed",
           lastError: "Queue error",
-          statistics: expect.objectContaining({
-            totalRuns: 1,
-            failedRuns: 1,
-            successfulRuns: 0,
-            averageDuration: 0,
-          }),
+          statistics: expect.objectContaining({ totalRuns: 1, failedRuns: 1, successfulRuns: 0, averageDuration: 0 }),
         }),
       });
     });
@@ -461,22 +371,14 @@ describe.sequential("scheduleManagerJob", () => {
           lastRun: testCase.lastRun.toISOString(),
         };
 
-        mockPayload.find.mockResolvedValue({
-          docs: [mockImport],
-          totalDocs: 1,
-        });
+        mockPayload.find.mockResolvedValue({ docs: [mockImport], totalDocs: 1 });
 
-        await scheduleManagerJob.handler({
-          job: mockJob,
-          req: mockReq,
-        });
+        await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
         expect(mockPayload.update).toHaveBeenCalledWith({
           collection: "scheduled-imports",
           id: `${testCase.frequency}-import`,
-          data: expect.objectContaining({
-            nextRun: testCase.expectedNext.toISOString(),
-          }),
+          data: expect.objectContaining({ nextRun: testCase.expectedNext.toISOString() }),
         });
       }
     });
@@ -500,15 +402,9 @@ describe.sequential("scheduleManagerJob", () => {
         lastRun: new Date("2024-01-14 00:00:00").toISOString(), // Yesterday
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [mockImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [mockImport], totalDocs: 1 });
 
-      await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
         task: "url-fetch",
@@ -543,15 +439,9 @@ describe.sequential("scheduleManagerJob", () => {
         lastRun: new Date("2024-01-14 00:00:00").toISOString(), // Yesterday
       };
 
-      mockPayload.find.mockResolvedValue({
-        docs: [mockImport],
-        totalDocs: 1,
-      });
+      mockPayload.find.mockResolvedValue({ docs: [mockImport], totalDocs: 1 });
 
-      await scheduleManagerJob.handler({
-        job: mockJob,
-        req: mockReq,
-      });
+      await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       // Execution history should NOT be included in the update at queue time.
       // It's managed by the url-fetch job handler on completion.

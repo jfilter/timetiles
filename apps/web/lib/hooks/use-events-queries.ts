@@ -77,16 +77,10 @@ export interface HistogramResponse {
   histogram: HistogramData[];
   metadata: {
     total: number;
-    dateRange: {
-      min: string | null;
-      max: string | null;
-    };
+    dateRange: { min: string | null; max: string | null };
     bucketSizeSeconds: number | null;
     bucketCount: number;
-    counts: {
-      datasets: number;
-      catalogs: number;
-    };
+    counts: { datasets: number; catalogs: number };
     topDatasets: Array<unknown>;
     topCatalogs: Array<unknown>;
   };
@@ -114,10 +108,7 @@ export interface ImportJobProgress {
   rowsProcessed: number;
   batchNumber: number;
   errors: number;
-  duplicates: {
-    internal: number;
-    external: number;
-  };
+  duplicates: { internal: number; external: number };
   schemaValidation?: Record<string, unknown>;
   results?: Record<string, unknown>;
 }
@@ -163,9 +154,7 @@ const fetchEvents = async (
 
   logger.debug("Fetching events list", { filters, bounds, limit });
 
-  const response = await fetch(`/api/v1/events?${params.toString()}`, {
-    signal,
-  });
+  const response = await fetch(`/api/v1/events?${params.toString()}`, { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch events: ${response.statusText}`);
@@ -212,9 +201,7 @@ const fetchHistogram = async (
 
   logger.debug("Fetching histogram", { filters, bounds });
 
-  const response = await fetch(`/api/v1/events/temporal?${params.toString()}`, {
-    signal,
-  });
+  const response = await fetch(`/api/v1/events/temporal?${params.toString()}`, { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch histogram: ${response.statusText}`);
@@ -294,21 +281,14 @@ const uploadImport = async (
 
   payloadFormData.append("_payload", JSON.stringify(payloadData));
 
-  const response = await fetch("/api/import-files", {
-    method: "POST",
-    body: payloadFormData,
-    signal,
-  });
+  const response = await fetch("/api/import-files", { method: "POST", body: payloadFormData, signal });
 
   if (!response.ok) {
     throw new Error(`Failed to upload import: ${response.statusText}`);
   }
 
   const result = await response.json();
-  return {
-    importId: result.doc?.id ?? result.id,
-    success: true,
-  };
+  return { importId: result.doc?.id ?? result.id, success: true };
 };
 
 // Query key factories
@@ -432,9 +412,7 @@ export const useImportUploadMutation = () => {
     onSuccess: (data) => {
       logger.info("Import upload successful", { importId: data.importId });
       // Invalidate import progress queries to start polling
-      void queryClient.invalidateQueries({
-        queryKey: eventsQueryKeys.importProgress(data.importId),
-      });
+      void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.importProgress(data.importId) });
     },
     onError: (error) => {
       logger.error("Import upload failed", error);
@@ -454,14 +432,10 @@ export const useInvalidateEventsQueries = () => {
       void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.lists() });
     },
     invalidateClusters: () => {
-      void queryClient.invalidateQueries({
-        queryKey: eventsQueryKeys.clusters(),
-      });
+      void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.clusters() });
     },
     invalidateHistograms: () => {
-      void queryClient.invalidateQueries({
-        queryKey: eventsQueryKeys.histograms(),
-      });
+      void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.histograms() });
     },
   };
 };
@@ -511,10 +485,7 @@ const fetchEventsPage = async (
   limit: number = 20,
   signal?: AbortSignal
 ): Promise<EventsListResponse> => {
-  const params = buildEventParams(filters, bounds, {
-    limit: limit.toString(),
-    page: page.toString(),
-  });
+  const params = buildEventParams(filters, bounds, { limit: limit.toString(), page: page.toString() });
 
   logger.debug("Fetching events page", { filters, bounds, page, limit });
 
@@ -571,12 +542,7 @@ export const useEventsInfiniteFlattened = (
   // Get total from first page (all pages have same total)
   const total = query.data?.pages[0]?.total ?? 0;
 
-  return {
-    ...query,
-    events,
-    total,
-    loadedCount: events.length,
-  };
+  return { ...query, events, total, loadedCount: events.length };
 };
 
 // Fetch function for single event by ID

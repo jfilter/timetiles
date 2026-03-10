@@ -98,11 +98,7 @@ export const formatDate = (date: string | Date | null | undefined, options?: { i
       return "Invalid date";
     }
 
-    const formatOptions: Intl.DateTimeFormatOptions = {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    };
+    const formatOptions: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
 
     if (options?.includeTime !== false) {
       formatOptions.hour = "numeric";

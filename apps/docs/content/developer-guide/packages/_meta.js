@@ -1,3 +1,1 @@
-export default {
-  assets: "Assets Package",
-};
+export default { assets: "Assets Package" };

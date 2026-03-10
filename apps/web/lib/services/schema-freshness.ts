@@ -68,33 +68,16 @@ export const getSchemaFreshness = async (
 
   // Check for added events
   if (currentEventCount > schemaEventCount) {
-    return {
-      stale: true,
-      reason: "added",
-      currentEventCount,
-      schemaEventCount,
-      schemaCreatedAt,
-    };
+    return { stale: true, reason: "added", currentEventCount, schemaEventCount, schemaCreatedAt };
   }
 
   // Check for deleted events
   if (currentEventCount < schemaEventCount) {
-    return {
-      stale: true,
-      reason: "deleted",
-      currentEventCount,
-      schemaEventCount,
-      schemaCreatedAt,
-    };
+    return { stale: true, reason: "deleted", currentEventCount, schemaEventCount, schemaCreatedAt };
   }
 
   // Schema is fresh (event count matches)
-  return {
-    stale: false,
-    currentEventCount,
-    schemaEventCount,
-    schemaCreatedAt,
-  };
+  return { stale: false, currentEventCount, schemaEventCount, schemaCreatedAt };
 };
 
 /**

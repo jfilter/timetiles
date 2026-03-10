@@ -32,23 +32,11 @@ interface ChartSectionProps {
 const getChartMeta = (type: ChartType): ChartMeta => {
   switch (type) {
     case "histogram":
-      return {
-        label: "Temporal Analysis",
-        heading: "Event Timeline",
-        subtitle: "Distribution of events over time",
-      };
+      return { label: "Temporal Analysis", heading: "Event Timeline", subtitle: "Distribution of events over time" };
     case "dataset-bar":
-      return {
-        label: "Data Distribution",
-        heading: "Events by Dataset",
-        subtitle: "Event counts across datasets",
-      };
+      return { label: "Data Distribution", heading: "Events by Dataset", subtitle: "Event counts across datasets" };
     case "catalog-bar":
-      return {
-        label: "Data Distribution",
-        heading: "Events by Catalog",
-        subtitle: "Event counts across catalogs",
-      };
+      return { label: "Data Distribution", heading: "Events by Catalog", subtitle: "Event counts across catalogs" };
   }
 };
 
