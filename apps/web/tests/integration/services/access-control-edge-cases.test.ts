@@ -201,7 +201,7 @@ describe.sequential("Access Control Edge Cases", () => {
     it("should enforce access control through import-job → import-file → user chain", async () => {
       console.log("[TEST] Starting import-job access control test");
 
-      // Create catalog (admin creates private catalogs/datasets)
+      // Create catalog owned by ownerUser (who will create the import file)
       console.log("[TEST] Creating catalog...");
       const catalog = await payload.create({
         collection: "catalogs",
@@ -209,7 +209,7 @@ describe.sequential("Access Control Edge Cases", () => {
           name: "Import Test Catalog",
           isPublic: false,
         },
-        user: adminUser,
+        user: ownerUser,
       });
       console.log(`[TEST] Catalog created: ${catalog.id}`);
 

@@ -13,6 +13,8 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { logError } from "@/lib/logger";
+import type { AuthenticatedRequest } from "@/lib/middleware/auth";
+import { withOptionalAuth } from "@/lib/middleware/auth";
 import { internalError } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
@@ -32,7 +34,7 @@ export interface DataSourcesResponse {
   datasets: DataSourceDataset[];
 }
 
-export const GET = async (): Promise<NextResponse<DataSourcesResponse | { error: string }>> => {
+export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
 
@@ -42,7 +44,8 @@ export const GET = async (): Promise<NextResponse<DataSourcesResponse | { error:
         limit: 500,
         pagination: false,
         select: { id: true, name: true },
-        where: { isPublic: { equals: true } },
+        user: request.user,
+        overrideAccess: false,
       }),
       payload.find({
         collection: "datasets",
@@ -50,7 +53,8 @@ export const GET = async (): Promise<NextResponse<DataSourcesResponse | { error:
         pagination: false,
         depth: 1, // Need depth to get catalog relationship
         select: { id: true, name: true, catalog: true },
-        where: { isPublic: { equals: true } },
+        user: request.user,
+        overrideAccess: false,
       }),
     ]);
 
@@ -71,4 +75,4 @@ export const GET = async (): Promise<NextResponse<DataSourcesResponse | { error:
     logError(error, "Failed to fetch data sources");
     return internalError("Failed to fetch data sources");
   }
-};
+});

@@ -24,6 +24,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { validateCatalogOwnership } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { createRequestLogger } from "../logger";
@@ -426,7 +427,7 @@ const ImportFiles: CollectionConfig = {
       },
     ],
     beforeChange: [
-      ({ data, req, operation }) => {
+      async ({ data, req, operation }) => {
         // Only run on create operations
         if (operation !== "create") return data;
 
@@ -469,6 +470,8 @@ const ImportFiles: CollectionConfig = {
         // OR preserve the originalName if it's already set (for programmatic creation from url-fetch-job)
         const originalName =
           data.originalName ?? (req as typeof req & { originalFileName?: string }).originalFileName ?? null;
+
+        if (data.catalog && req.user) await validateCatalogOwnership(req.payload, data.catalog, req.user);
 
         // Add rate limiting and metadata info
         return {

@@ -106,6 +106,36 @@ const processExcelFile = (filePath: string): { sheets: SheetInfo[]; workbook: un
   return { sheets, workbook };
 };
 
+/**
+ * Validates that a user has access to the dataset's catalog.
+ * Throws if the user does not own the catalog and it is not public.
+ */
+const validateDatasetAccessForUser = async (
+  payload: Payload,
+  dataset: Dataset,
+  userId: number | undefined
+): Promise<void> => {
+  if (!userId) return;
+
+  const catalogId = extractRelationId(dataset.catalog);
+  if (!catalogId) return;
+
+  const catalog = await payload.findByID({
+    collection: "catalogs",
+    id: catalogId,
+    overrideAccess: true,
+  });
+
+  const catalogOwnerId = extractRelationId(catalog?.createdBy);
+  const isPublicCatalog = catalog?.isPublic ?? false;
+
+  if (catalogOwnerId !== userId && !isPublicCatalog) {
+    throw new Error(
+      `Import file owner does not have access to the target dataset (dataset ${dataset.id} in catalog ${catalogId})`
+    );
+  }
+};
+
 const handleSingleSheet = async (
   payload: Payload,
   importFile: { id: string | number; originalName?: string | null; metadata?: unknown },
@@ -127,6 +157,9 @@ const handleSingleSheet = async (
     if (!dataset) {
       throw new Error(`Configured dataset not found: ${datasetId}`);
     }
+
+    // Validate the import-file owner has access to the target dataset's catalog
+    await validateDatasetAccessForUser(payload, dataset, userId);
   } else {
     const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId, userId);
     dataset = await findOrCreateDataset(payload, resolvedCatalogId, importFile.originalName ?? "Imported Data", userId);
@@ -205,6 +238,9 @@ const processSheetWithMapping = async (
           throw new Error(`Configured dataset not found for sheet ${sheetName}`);
         }
         skipSheet = true;
+      } else {
+        // Validate the import-file owner has access to the target dataset's catalog
+        await validateDatasetAccessForUser(payload, dataset, userId);
       }
     } else {
       logger.info("No mapping found for sheet, skipping", { sheetName });
