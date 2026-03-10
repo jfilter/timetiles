@@ -26,7 +26,7 @@ describe("/api/v1/events/temporal", () => {
   let testEnv: any;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
@@ -34,11 +34,17 @@ describe("/api/v1/events/temporal", () => {
     // Truncate to avoid data leakage from other test files (isolate: false)
     await testEnv.seedManager.truncate(["events", "datasets", "catalogs"]);
 
+    // Create test user
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "user" },
+    });
+
     // Create test catalog (make it public so unauthenticated requests can access it)
     const { catalog } = await withCatalog(testEnv, {
       name: "Test Catalog for Histogram",
       description: "Test catalog for histogram integration tests",
       isPublic: true,
+      user: users.testUser,
     });
 
     // Create test dataset (must be public since catalog is public)

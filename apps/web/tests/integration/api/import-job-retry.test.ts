@@ -45,14 +45,7 @@ describe.sequential("Import Job Retry API", () => {
       "payload-jobs",
     ]);
 
-    // Create test catalog
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Retry Test Catalog",
-      description: "Catalog for testing import job retry API",
-    });
-    testCatalogId = catalog.id;
-
-    // Create test user
+    // Create test user first (catalog needs an owner for import-file validation)
     const { users } = await withUsers(testEnv, {
       retryTestUser: {
         email: TEST_EMAILS.user,
@@ -61,6 +54,14 @@ describe.sequential("Import Job Retry API", () => {
       },
     });
     testUserId = users.retryTestUser.id;
+
+    // Create test catalog owned by the test user
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Retry Test Catalog",
+      description: "Catalog for testing import job retry API",
+      user: users.retryTestUser,
+    });
+    testCatalogId = catalog.id;
   });
 
   describe("POST /api/import-jobs/[id]/retry", () => {

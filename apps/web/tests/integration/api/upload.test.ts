@@ -12,7 +12,12 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withImportFile,
+  withUsers,
+} from "../../setup/integration/environment";
 
 describe.sequential("Import Files Collection", () => {
   const collectionsToReset = [
@@ -27,12 +32,18 @@ describe.sequential("Import Files Collection", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let testUserId: string | number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { catalog } = await withCatalog(testEnv);
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "admin" },
+    });
+    testUserId = users.testUser.id;
+
+    const { catalog } = await withCatalog(testEnv, { user: users.testUser });
     testCatalogId = catalog.id;
   });
 
@@ -54,6 +65,7 @@ describe.sequential("Import Files Collection", () => {
 
     // Use the helper function that properly handles file uploads
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      user: testUserId,
       filename: fileName,
       datasetsCount: 0,
       datasetsProcessed: 0,
@@ -73,6 +85,7 @@ describe.sequential("Import Files Collection", () => {
     const fileName = "valid-events.csv";
 
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      user: testUserId,
       filename: fileName,
     });
 
@@ -105,6 +118,7 @@ describe.sequential("Import Files Collection", () => {
     const fileName = "valid-events.csv";
 
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      user: testUserId,
       filename: fileName,
     });
 

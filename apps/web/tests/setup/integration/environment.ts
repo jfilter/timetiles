@@ -478,7 +478,7 @@ export class TestEnvironmentBuilder {
  * });
  *
  * it("should process import file", async () => {
- *   const { catalog } = await withCatalog(testEnv);
+ *   const { catalog } = await withCatalog(testEnv, { user: testUser });
  *   // Test with real database...
  * });
  * ```
@@ -586,22 +586,22 @@ export const runJobsUntilImportJobExists = async (
 /**
  * Create a test catalog with smart defaults.
  *
+ * A user is required so that catalogs always have a proper `createdBy` owner,
+ * which is needed for import-file ownership validation.
+ *
  * @example
  * ```typescript
- * const { catalog } = await withCatalog(testEnv);
- * const customCatalog = await withCatalog(testEnv, { name: "My Catalog" });
+ * const { catalog } = await withCatalog(testEnv, { user: testUser });
  * ```
  */
 export const withCatalog = async (
   testEnv: TestEnvironment,
-  options?: {
+  options: {
     name?: string;
     slug?: string;
     description?: string;
-    language?: string;
-    editors?: string[];
     isPublic?: boolean;
-    user?: any;
+    user: any;
   }
 ): Promise<TestEnvironment & { catalog: any }> => {
   const timestamp = Date.now();
@@ -610,14 +610,12 @@ export const withCatalog = async (
   const catalog = await testEnv.payload.create({
     collection: "catalogs",
     data: {
-      name: options?.name ?? `Test Catalog ${timestamp}`,
-      slug: options?.slug ?? `test-catalog-${timestamp}-${randomSuffix}`,
-      description: options?.description ?? "Test catalog",
-      language: options?.language ?? "eng",
-      editors: options?.editors,
-      isPublic: options?.isPublic ?? false,
+      name: options.name ?? `Test Catalog ${timestamp}`,
+      slug: options.slug ?? `test-catalog-${timestamp}-${randomSuffix}`,
+      description: options.description ?? ("Test catalog" as any),
+      isPublic: options.isPublic ?? false,
     },
-    ...(options?.user && { user: options.user }),
+    user: options.user,
   });
 
   return { ...testEnv, catalog };

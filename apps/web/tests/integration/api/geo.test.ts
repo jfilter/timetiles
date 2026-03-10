@@ -36,9 +36,12 @@ describe("/api/v1/events/geo", () => {
   const uniqueSuffix = Date.now().toString();
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog } = await import("../../setup/integration/environment");
+    const { createIntegrationTestEnvironment, withCatalog, withUsers } =
+      await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
+
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
 
     // Create test catalog
     // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
@@ -47,6 +50,7 @@ describe("/api/v1/events/geo", () => {
       slug: `test-clustering-catalog-${uniqueSuffix}`,
       isPublic: true,
       description: "Test catalog for clustering integration tests",
+      user: users.testUser,
     });
     testCatalogId = String(testEnv.catalog.id);
 

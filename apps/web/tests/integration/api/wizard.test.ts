@@ -15,15 +15,26 @@ import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createIntegrationTestEnvironment, withCatalog, withDataset } from "../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withDataset,
+  withUsers,
+} from "../../setup/integration/environment";
 
 describe.sequential("Wizard API Endpoints", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
+  let testUser: any;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
+
+    const { users } = await withUsers(testEnv, {
+      wizardTestUser: { role: "user", trustLevel: "5" },
+    });
+    testUser = users.wizardTestUser;
   });
 
   afterAll(async () => {
@@ -64,7 +75,7 @@ describe.sequential("Wizard API Endpoints", () => {
 
     it("returns catalogs with their datasets", async () => {
       // Create a catalog
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       // Create a dataset in the catalog
       await payload.create({
@@ -225,7 +236,7 @@ describe.sequential("Wizard API Endpoints", () => {
     });
 
     it("creates new dataset when datasetId is 'new'", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const datasetName = `New Test Dataset ${Date.now()}`;
       const dataset = await payload.create({
@@ -255,7 +266,7 @@ describe.sequential("Wizard API Endpoints", () => {
     });
 
     it("updates existing dataset with new field mappings", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
       const { dataset } = await withDataset(testEnv, catalog.id, {
         name: "Existing Dataset",
       });
@@ -288,7 +299,7 @@ describe.sequential("Wizard API Endpoints", () => {
     });
 
     it("builds wizard metadata structure correctly", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
       const { dataset } = await withDataset(testEnv, catalog.id);
 
       // Build wizard metadata structure (simulating API behavior)
@@ -333,7 +344,7 @@ describe.sequential("Wizard API Endpoints", () => {
     });
 
     it("handles multiple sheets mapping to different datasets", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       // Create two datasets
       const dataset1 = await payload.create({
@@ -376,7 +387,7 @@ describe.sequential("Wizard API Endpoints", () => {
 
   describe("Field Mapping Configuration", () => {
     it("stores geo field configuration correctly", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const dataset = await payload.create({
         collection: "datasets",
@@ -406,7 +417,7 @@ describe.sequential("Wizard API Endpoints", () => {
     });
 
     it("stores location string field correctly", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const dataset = await payload.create({
         collection: "datasets",
@@ -431,7 +442,7 @@ describe.sequential("Wizard API Endpoints", () => {
     });
 
     it("stores ID strategy configuration", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       // Test external ID strategy
       const externalDataset = await payload.create({
@@ -475,7 +486,7 @@ describe.sequential("Wizard API Endpoints", () => {
 
   describe("Deduplication Configuration", () => {
     it("stores skip deduplication strategy", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const dataset = await payload.create({
         collection: "datasets",
@@ -496,7 +507,7 @@ describe.sequential("Wizard API Endpoints", () => {
     });
 
     it("stores update deduplication strategy", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const dataset = await payload.create({
         collection: "datasets",
@@ -516,7 +527,7 @@ describe.sequential("Wizard API Endpoints", () => {
     });
 
     it("stores version deduplication strategy", async () => {
-      const { catalog } = await withCatalog(testEnv);
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const dataset = await payload.create({
         collection: "datasets",

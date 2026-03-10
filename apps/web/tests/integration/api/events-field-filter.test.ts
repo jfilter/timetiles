@@ -21,16 +21,22 @@ describe("/api/v1/events - field filtering", () => {
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
+
+    // Create test user for catalog ownership
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "admin" },
+    });
 
     // Create test catalog (public for unauthenticated access)
     const { catalog } = await withCatalog(testEnv, {
       name: "Field Filter Test Catalog",
       description: "Test catalog for field filtering",
       isPublic: true,
+      user: users.testUser,
     });
 
     // Create test dataset

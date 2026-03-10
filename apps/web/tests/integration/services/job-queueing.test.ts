@@ -40,16 +40,17 @@ describe.sequential("Job Queueing Tests", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Job Queueing Test Catalog",
-      description: "Catalog for testing job queueing behavior",
-    });
-    testCatalogId = catalog.id;
-
     const { users } = await withUsers(testEnv, {
       approver: { role: "admin" },
     });
     approverUserId = users.approver.id;
+
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Job Queueing Test Catalog",
+      description: "Catalog for testing job queueing behavior",
+      user: users.approver,
+    });
+    testCatalogId = catalog.id;
   });
 
   afterAll(async () => {
@@ -73,6 +74,7 @@ describe.sequential("Job Queueing Tests", () => {
         mimeType: "text/csv",
         datasetsCount: 0,
         datasetsProcessed: 0,
+        user: approverUserId,
       });
 
       // Run dataset-detection job (automatically queued by import-files afterChange hook)
@@ -114,6 +116,7 @@ describe.sequential("Job Queueing Tests", () => {
         mimeType: "text/csv",
         datasetsCount: 0,
         datasetsProcessed: 0,
+        user: approverUserId,
       });
 
       const schemaDetectionResult = await runJobsUntilImportJobStage(
@@ -184,6 +187,7 @@ describe.sequential("Job Queueing Tests", () => {
         mimeType: "text/csv",
         datasetsCount: 0,
         datasetsProcessed: 0,
+        user: approverUserId,
       });
 
       // Stage 1: Run dataset-detection (queued by import-files afterChange hook)

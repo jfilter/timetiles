@@ -72,6 +72,7 @@ describe.sequential("Schema Detection - Edge Cases", () => {
     const { catalog } = await withCatalog(testEnv, {
       name: "Edge Case Test Catalog",
       description: "Catalog for schema detection edge case tests",
+      user: users.uploader,
     });
     testCatalogId = catalog.id;
   });

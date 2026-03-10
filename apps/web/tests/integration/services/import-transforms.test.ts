@@ -19,15 +19,22 @@ import {
   withCatalog,
   withDataset,
   withImportFile,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe("Import Transforms - Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
+  let testUser: any;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
+
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "admin" },
+    });
+    testUser = users.testUser;
   });
 
   afterAll(async () => {
@@ -52,6 +59,7 @@ describe("Import Transforms - Integration", () => {
       // Create catalog
       const { catalog } = await withCatalog(testEnv, {
         name: "Transform Test Catalog",
+        user: testUser,
       });
 
       // Create dataset with import transforms
@@ -85,6 +93,7 @@ describe("Import Transforms - Integration", () => {
 
       const { importFile } = await withImportFile(testEnv, catalog.id, csvContent, {
         filename: "transform-test.csv",
+        user: testUser.id,
       });
 
       // Create import job
@@ -129,6 +138,7 @@ describe("Import Transforms - Integration", () => {
     it("should skip inactive transforms during schema detection", async () => {
       const { catalog } = await withCatalog(testEnv, {
         name: "Inactive Transform Test Catalog",
+        user: testUser,
       });
 
       // Create dataset with inactive transform
@@ -153,6 +163,7 @@ Item 2,200`;
 
       const { importFile } = await withImportFile(testEnv, catalog.id, csvContent, {
         filename: "inactive-transform.csv",
+        user: testUser.id,
       });
 
       const importJob = await payload.create({
@@ -192,6 +203,7 @@ Item 2,200`;
     it("should detect and suggest transforms for renamed fields", async () => {
       const { catalog } = await withCatalog(testEnv, {
         name: "Transform Detection Catalog",
+        user: testUser,
       });
 
       // Create dataset without transforms (for first import)
@@ -207,6 +219,7 @@ Item 2,200`;
 
       const { importFile: importFile1 } = await withImportFile(testEnv, catalog.id, initialCsv, {
         filename: "initial.csv",
+        user: testUser.id,
       });
 
       const importJob1 = await payload.create({
@@ -250,6 +263,7 @@ Item 2,200`;
 
       const { importFile: importFile2 } = await withImportFile(testEnv, catalog.id, renamedCsv, {
         filename: "renamed.csv",
+        user: testUser.id,
       });
 
       const importJob2 = await payload.create({

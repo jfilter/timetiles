@@ -17,12 +17,14 @@ import {
   withCatalog,
   withDataset,
   withImportFile,
+  withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Geocode Batch Job - Failure Handling", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let testUserId: string | number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
@@ -41,6 +43,7 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
     vi.spyOn(geocodingModule, "initializeGeocoding").mockImplementation(() => {});
 
     await testEnv.seedManager.truncate([
+      "users",
       "catalogs",
       "datasets",
       "dataset-schemas",
@@ -50,9 +53,13 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
       "payload-jobs",
     ]);
 
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
+    testUserId = users.testUser.id;
+
     const { catalog } = await withCatalog(testEnv, {
       name: "Test Catalog",
       description: "Catalog for testing geocoding failure",
+      user: users.testUser,
     });
     testCatalogId = catalog.id;
   });
@@ -79,6 +86,7 @@ Event 3,2024-01-03,Hamburg Germany
     const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
       filename: "geocode-failure-test.csv",
       mimeType: "text/csv",
+      user: testUserId,
       additionalData: {
         originalName: "geocode-failure-test.csv",
       },

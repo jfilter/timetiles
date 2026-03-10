@@ -42,11 +42,11 @@ describe.sequential("Schema Approval Workflow", () => {
     editorUser = users.editor;
     viewerUser = users.user;
 
-    // Create test catalog with editor (stable across tests)
+    // Create test catalog with editor, owned by admin (stable across tests)
     const { catalog } = await withCatalog(testEnv, {
       name: "Schema Approval Test Catalog",
       description: "Catalog for schema approval tests",
-      editors: [editorUser.id],
+      user: adminUser,
     });
     testCatalogId = catalog.id;
   });

@@ -47,12 +47,13 @@ describe.sequential("Schema Inference Service", () => {
     await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "dataset-schemas"]);
 
     // Create test users (required for proper environment setup)
-    await withUsers(testEnv, ["admin"]);
+    const { users } = await withUsers(testEnv, ["admin"]);
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
       name: "Schema Inference Test Catalog",
       description: "Catalog for schema inference tests",
+      user: users.admin,
     });
     testCatalogId = catalog.id;
 

@@ -63,10 +63,11 @@ describe.sequential("Multi-Language Import Tests", () => {
     importerUserId = users.importer.id;
     approverUser = users.approver;
 
-    // Create test catalog (stable across tests)
+    // Create test catalog owned by the importer (stable across tests)
     const { catalog } = await withCatalog(testEnv, {
       name: "Multi-Language Test Catalog",
       description: "Catalog for testing multi-language field detection",
+      user: users.importer,
     });
     testCatalogId = catalog.id;
   });

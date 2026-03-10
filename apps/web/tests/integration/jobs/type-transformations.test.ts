@@ -16,7 +16,12 @@ import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-jo
 import * as fileReaders from "@/lib/utils/file-readers";
 import type { Catalog, Dataset, Event } from "@/payload-types";
 
-import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withImportFile,
+  withUsers,
+} from "../../setup/integration/environment";
 
 // Helper to safely access event data fields
 const getEventData = (event: Event): Record<string, unknown> => {
@@ -30,14 +35,21 @@ describe.sequential("Type Transformations Integration", () => {
   let payload: Payload;
   let cleanup: () => Promise<void>;
   let testCatalog: Catalog;
+  let testUserId: string | number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "admin" },
+    });
+    testUserId = users.testUser.id;
+
     const { catalog } = await withCatalog(testEnv, {
       name: "Transformation Test Catalog",
+      user: users.testUser,
     });
     testCatalog = catalog;
   });
@@ -98,6 +110,7 @@ describe.sequential("Type Transformations Integration", () => {
 
     const { importFile } = await withImportFile(testEnv, testCatalog.id, Buffer.from("mock,data\n1,2"), {
       filename: "test-transform.csv",
+      user: testUserId,
     });
 
     const importJob = await payload.create({
@@ -175,6 +188,7 @@ describe.sequential("Type Transformations Integration", () => {
 
     const { importFile } = await withImportFile(testEnv, testCatalog.id, Buffer.from("mock,data\n1,2"), {
       filename: "test-no-transform.csv",
+      user: testUserId,
     });
 
     const importJob = await payload.create({

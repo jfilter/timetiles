@@ -15,7 +15,12 @@ import { datasetDetectionJob } from "@/lib/jobs/handlers/dataset-detection-job";
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 
-import { createIntegrationTestEnvironment, withCatalog, withImportFile } from "../../../setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withImportFile,
+  withUsers,
+} from "../../../setup/integration/environment";
 
 describe.sequential("Failure Transitions Integration", () => {
   const collectionsToReset = [
@@ -31,14 +36,21 @@ describe.sequential("Failure Transitions Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let testUserId: string | number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "user" },
+    });
+    testUserId = users.testUser.id;
+
     const { catalog } = await withCatalog(testEnv, {
       name: "Failure Test Catalog",
       description: "Catalog for testing failure transitions",
+      user: users.testUser,
     });
     testCatalogId = catalog.id;
   });
@@ -59,6 +71,7 @@ describe.sequential("Failure Transitions Integration", () => {
       const csvFileName = `empty-${Date.now()}.csv`;
 
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        user: testUserId,
         filename: csvFileName,
       });
 
@@ -90,6 +103,7 @@ describe.sequential("Failure Transitions Integration", () => {
       const csvFileName = `inconsistent-${Date.now()}.csv`;
 
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        user: testUserId,
         filename: csvFileName,
       });
 
@@ -159,6 +173,7 @@ Event 2,2024-01-02,San Francisco CA`;
       const csvFileName = `geocoding-test-${Date.now()}.csv`;
 
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        user: testUserId,
         filename: csvFileName,
       });
 
@@ -217,6 +232,7 @@ Event 2,2024-01-02,San Francisco CA`;
       const csvFileName = `error-log-test-${Date.now()}.csv`;
 
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        user: testUserId,
         filename: csvFileName,
       });
 

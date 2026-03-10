@@ -20,16 +20,19 @@ describe("/api/v1/events - location filtering", () => {
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
+
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
 
     // Create test catalog (public for unauthenticated access)
     const { catalog } = await withCatalog(testEnv, {
       name: "Location Filter Test Catalog",
       description: "Test catalog for location filtering",
       isPublic: true,
+      user: users.testUser,
     });
 
     // Create test dataset

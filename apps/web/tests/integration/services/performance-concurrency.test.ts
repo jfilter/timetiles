@@ -74,6 +74,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
     const { catalog } = await withCatalog(testEnv, {
       name: "Performance Test Catalog",
       description: "Catalog for performance tests",
+      user: testUser,
     });
     testCatalogId = catalog.id;
   }, 60000);

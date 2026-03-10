@@ -38,11 +38,12 @@ describe.sequential("Schema Maintenance Job", () => {
 
   beforeEach(async () => {
     await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "dataset-schemas"]);
-    await withUsers(testEnv, ["admin"]);
+    const { users } = await withUsers(testEnv, ["admin"]);
 
     const { catalog } = await withCatalog(testEnv, {
       name: "Schema Maintenance Test Catalog",
       description: "Catalog for schema maintenance tests",
+      user: users.admin,
     });
     testCatalogId = catalog.id;
 

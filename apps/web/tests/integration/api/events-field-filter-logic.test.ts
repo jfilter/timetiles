@@ -22,16 +22,22 @@ describe("/api/v1/events - field filter logic", () => {
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
+
+    // Create test user
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "user" },
+    });
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
       name: "Filter Logic Test Catalog",
       description: "Test catalog for filter logic",
       isPublic: true,
+      user: users.testUser,
     });
 
     // Create test dataset

@@ -23,18 +23,21 @@ describe("/api/v1/events stats - deeply nested field filtering", () => {
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
     // Truncate events to avoid data leakage from other test files (isolate: false)
-    await testEnv.seedManager.truncate(["events", "datasets", "catalogs"]);
+    await testEnv.seedManager.truncate(["users", "events", "datasets", "catalogs"]);
+
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
 
     const { catalog } = await withCatalog(testEnv, {
       name: "Stats Field Filter Test Catalog",
       description: "Test catalog for stats field filtering",
       isPublic: true,
+      user: users.testUser,
     });
 
     const { dataset: berlinDataset } = await withDataset(testEnv, catalog.id, {

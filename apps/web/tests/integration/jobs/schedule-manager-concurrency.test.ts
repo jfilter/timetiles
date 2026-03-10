@@ -39,6 +39,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
       name: "Schedule Concurrency Catalog",
       description: "Test catalog for schedule manager concurrency",
       isPublic: false,
+      user: testUser,
     });
     testCatalog = catalog;
   });

@@ -29,16 +29,21 @@ describe("Event API Access Control Consistency", () => {
   let publicDatasetId: number;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
+
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "user" },
+    });
 
     // Create a PRIVATE catalog and dataset
     const { catalog: privateCatalog } = await withCatalog(testEnv, {
       name: "Private Test Catalog",
       description: "Private catalog for access control tests",
       isPublic: false,
+      user: users.testUser,
     });
     privateCatalogId = privateCatalog.id;
 
@@ -53,6 +58,7 @@ describe("Event API Access Control Consistency", () => {
       name: "Public Test Catalog",
       description: "Public catalog for access control tests",
       isPublic: true,
+      user: users.testUser,
     });
     publicCatalogId = publicCatalog.id;
 

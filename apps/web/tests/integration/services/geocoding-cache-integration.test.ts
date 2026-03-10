@@ -135,6 +135,7 @@ describe.sequential("Geocoding Cache Integration", () => {
     const { catalog } = await withCatalog(testEnv, {
       name: "Geocoding Test Catalog",
       description: "Catalog for geocoding cache testing",
+      user: users.importer,
     });
     testCatalogId = catalog.id;
   });

@@ -53,6 +53,7 @@ describe.sequential("Data Integrity Tests", () => {
     const { catalog } = await withCatalog(testEnv, {
       name: "Integrity Test Catalog",
       description: "Catalog for data integrity tests",
+      user: testUser,
     });
     testCatalogId = catalog.id;
   }, 60000);

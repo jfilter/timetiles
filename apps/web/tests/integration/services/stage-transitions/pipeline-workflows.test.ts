@@ -27,6 +27,7 @@ import {
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   withCatalog,
   withImportFile,
+  withUsers,
 } from "../../../setup/integration/environment";
 
 describe.sequential("Pipeline Workflow Transitions", () => {
@@ -35,14 +36,21 @@ describe.sequential("Pipeline Workflow Transitions", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;
+  let testUserId: string | number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
+    const { users } = await withUsers(testEnv, {
+      testUser: { role: "user" },
+    });
+    testUserId = users.testUser.id;
+
     const { catalog } = await withCatalog(testEnv, {
       name: "Pipeline Workflow Test Catalog",
       description: "Catalog for testing pipeline workflow transitions",
+      user: users.testUser,
     });
     testCatalogId = catalog.id;
   });
@@ -74,6 +82,7 @@ describe.sequential("Pipeline Workflow Transitions", () => {
     const csvFileName = `baseline-${Date.now()}.csv`;
     const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
       filename: csvFileName,
+      user: testUserId,
     });
 
     const detectionContext = {
@@ -112,6 +121,7 @@ describe.sequential("Pipeline Workflow Transitions", () => {
     const csvFileName = `second-${Date.now()}.csv`;
     const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
       filename: csvFileName,
+      user: testUserId,
     });
 
     const importJob2 = await payload.create({
@@ -175,6 +185,7 @@ Event 1,2024-01-01,Location 1`;
       const csvFileName = `manual-approval-${Date.now()}.csv`;
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
+        user: testUserId,
       });
 
       const dataset = await payload.create({
@@ -213,6 +224,7 @@ Event 1,2024-01-01`;
       const csvFileName = `no-approval-${Date.now()}.csv`;
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
+        user: testUserId,
       });
 
       const dataset = await payload.create({
@@ -283,6 +295,7 @@ Event 1,2024-01-01,Location 1`;
       const csvFileName = `schema-changes-${Date.now()}.csv`;
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
+        user: testUserId,
       });
 
       const detectionContext = {
@@ -327,6 +340,7 @@ Event 2,2024-01-02`;
       const csvFileName = `integrity-test-${Date.now()}.csv`;
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
+        user: testUserId,
       });
 
       const detectionContext = {
@@ -382,6 +396,7 @@ Event 2,2024-01-02,Location 2`;
       const csvFileName = `completed-test-${Date.now()}.csv`;
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
+        user: testUserId,
       });
 
       const detectionContext = {
@@ -440,6 +455,7 @@ Event 1,2024-01-01`;
       const csvFileName = `completed-transition-test-${Date.now()}.csv`;
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
+        user: testUserId,
       });
 
       const dataset = await payload.create({
@@ -478,6 +494,7 @@ Failed Event,2024-01-01`;
       const csvFileName = `failed-transition-test-${Date.now()}.csv`;
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
+        user: testUserId,
       });
 
       const dataset = await payload.create({
@@ -528,6 +545,7 @@ Event,2024-01-01`;
       const csvFileName = `failed-queue-test-${Date.now()}.csv`;
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
+        user: testUserId,
       });
 
       const dataset = await payload.create({

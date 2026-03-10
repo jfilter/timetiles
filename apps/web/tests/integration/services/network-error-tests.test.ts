@@ -79,6 +79,7 @@ describe.sequential("Network Error Handling Tests", () => {
     const { catalog } = await withCatalog(envWithServer, {
       name: "Network Test Catalog",
       description: "Catalog for network error tests",
+      user: testUser,
     });
     testCatalogId = catalog.id;
   }, 60000);

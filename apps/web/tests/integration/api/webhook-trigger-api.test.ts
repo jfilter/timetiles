@@ -63,6 +63,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
     const { catalog } = await withCatalog(testEnv, {
       name: "Webhook API Test Catalog",
+      user: testUser,
     });
     testCatalog = catalog;
   });

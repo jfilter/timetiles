@@ -37,6 +37,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
 
     const { catalog } = await withCatalog(testEnv, {
       name: "Cleanup Test Catalog",
+      user: testUser,
     });
     testCatalog = catalog;
   });

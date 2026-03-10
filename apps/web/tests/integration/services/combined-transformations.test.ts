@@ -57,6 +57,7 @@ describe.sequential("Combined Transformations Integration", () => {
     const { catalog } = await withCatalog(testEnv, {
       name: "Combined Transformations Test Catalog",
       description: "Testing all three transformation types together",
+      user: approverUser,
     });
     testCatalogId = catalog.id;
   });
@@ -173,6 +174,7 @@ describe.sequential("Combined Transformations Integration", () => {
     const { importFile } = await withImportFile(testEnv, testCatalogId, csvBuffer, {
       filename: "events-combined-transforms-german.csv",
       mimeType: "text/csv",
+      user: approverUser.id,
       additionalData: {
         metadata: {
           datasetMapping: {
@@ -297,6 +299,7 @@ Conference,150,Technical conference
 Festival,2500,Music festival`;
 
     const { importFile } = await withImportFile(testEnv, testCatalogId, Buffer.from(csvContent), {
+      user: approverUser.id,
       filename: "order-test.csv",
       mimeType: "text/csv",
       additionalData: {
@@ -368,6 +371,7 @@ Konferenz,Technical event,2024-01-15
 Workshop,Learning session,2024-02-20`;
 
     const { importFile } = await withImportFile(testEnv, testCatalogId, Buffer.from(csvContent), {
+      user: approverUser.id,
       filename: "mapping-interaction-test.csv",
       mimeType: "text/csv",
       additionalData: {
@@ -434,6 +438,7 @@ Event A,100,First event
 Event B,200,Second event`;
 
     const { importFile } = await withImportFile(testEnv, testCatalogId, Buffer.from(csvContent), {
+      user: approverUser.id,
       filename: "type-interaction-test.csv",
       mimeType: "text/csv",
       additionalData: {

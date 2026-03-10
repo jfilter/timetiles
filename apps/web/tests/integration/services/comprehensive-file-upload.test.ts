@@ -64,6 +64,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     const { catalog } = await withCatalog(testEnv, {
       name: "Comprehensive Test Catalog",
       description: "Catalog for comprehensive file upload testing",
+      user: approverUser,
     });
     testCatalogId = catalog.id;
   });
@@ -218,6 +219,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         datasetsCount: 0,
         datasetsProcessed: 0,
+        user: approverUser.id,
       });
 
       logger.debug(`✓ Created Excel import file: ${importFile.id}`);
@@ -293,6 +295,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         mimeType: "application/vnd.oasis.opendocument.spreadsheet",
         datasetsCount: 0,
         datasetsProcessed: 0,
+        user: approverUser.id,
       });
 
       logger.debug(`✓ Created ODS import file: ${importFile.id}`);
@@ -381,6 +384,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
             withImportFile(testEnv, testCatalogId, fileTest.content, {
               filename: fileTest.name,
               mimeType: fileTest.mimeType,
+              user: approverUser.id,
             })
           ).rejects.toThrow();
 
@@ -408,6 +412,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         const { importFile } = await withImportFile(testEnv, testCatalogId, corruptedContent, {
           filename: fileName,
           mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          user: approverUser.id,
         });
 
         const result = await runJobsUntilImportSettled(payload, importFile.id);
@@ -444,6 +449,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         // Create import file linked to locked dataset
         const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
           filename: "approval-test.csv",
+          user: approverUser.id,
         });
 
         await linkImportJobToDataset(importFile.id, dataset.id);
@@ -479,6 +485,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       try {
         const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
           filename: "approval-continue.csv",
+          user: approverUser.id,
         });
 
         await linkImportJobToDataset(importFile.id, dataset.id);
@@ -542,6 +549,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
       const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
         filename: "auto-approve.csv",
+        user: approverUser.id,
       });
 
       await linkImportJobToDataset(importFile.id, dataset.id);
@@ -585,6 +593,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       try {
         const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
           filename: "rejection-test.csv",
+          user: approverUser.id,
         });
 
         await linkImportJobToDataset(importFile.id, dataset.id);
@@ -630,6 +639,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       try {
         const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
           filename: "large-dataset.csv",
+          user: approverUser.id,
         });
 
         logger.debug(`✓ Created large file import (${csvContent.length} bytes)`);

@@ -34,16 +34,17 @@ describe.sequential("Dataset Detection Job", () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
 
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Test Catalog",
-      description: "Catalog for testing dataset detection",
-    });
-    testCatalogId = catalog.id;
-
     const { users } = await withUsers(testEnv, {
       uploader: { role: "user" },
     });
     uploadUserId = users.uploader.id;
+
+    const { catalog } = await withCatalog(testEnv, {
+      name: "Test Catalog",
+      description: "Catalog for testing dataset detection",
+      user: users.uploader,
+    });
+    testCatalogId = catalog.id;
   });
 
   afterAll(async () => {

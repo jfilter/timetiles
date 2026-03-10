@@ -19,16 +19,19 @@ describe("Dataset enum fields", () => {
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset } =
+    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
+
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
 
     // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
       name: "Enum Fields Test Catalog",
       description: "Test catalog for enum field detection",
       isPublic: true,
+      user: users.testUser,
     });
 
     // Create test dataset with fieldMetadata containing enum candidates

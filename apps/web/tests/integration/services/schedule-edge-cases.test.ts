@@ -45,6 +45,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
     const { catalog } = await withCatalog(env, {
       name: "Schedule Test Catalog",
       description: "Catalog for schedule edge case tests",
+      user: testUser,
     });
     testCatalogId = catalog.id;
   }, 60000);
