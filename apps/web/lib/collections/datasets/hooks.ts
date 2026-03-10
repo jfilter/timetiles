@@ -72,7 +72,8 @@ const processCatalogValidation = async (
   req: PayloadRequest,
   catalogRef: number | Catalog,
   isPublic: boolean | undefined,
-  operation: "create" | "update"
+  operation: "create" | "update",
+  originalDoc?: Partial<Dataset>
 ): Promise<CatalogFields> => {
   const catalogId = extractRelationId(catalogRef)!;
   const catalog = await fetchCatalog(req, catalogId);
@@ -86,6 +87,14 @@ const processCatalogValidation = async (
   // Validate create permission
   if (operation === "create" && req.user) {
     validateCreatePermission(req.user as User, catalog, catalogCreatorId);
+  }
+
+  // Validate update permission when catalog is being changed
+  if (operation === "update" && req.user) {
+    const previousCatalogId = originalDoc?.catalog ? extractRelationId(originalDoc.catalog) : undefined;
+    if (previousCatalogId !== catalogId) {
+      validateCreatePermission(req.user as User, catalog, catalogCreatorId);
+    }
   }
 
   // Validate visibility
@@ -102,7 +111,12 @@ const processCatalogValidation = async (
  * Also forces datasets to be public if allowPrivateImports is disabled.
  * Sets createdBy and catalogCreatorId on creation/update.
  */
-export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({ data, req, operation }) => {
+export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
+  data,
+  req,
+  operation,
+  originalDoc,
+}) => {
   // Set createdBy on creation
   if (operation === "create" && req.user) {
     data.createdBy = req.user.id;
@@ -116,7 +130,7 @@ export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
   // Process catalog validation and set denormalized fields
   if ((operation === "create" || operation === "update") && data?.catalog) {
     try {
-      const catalogFields = await processCatalogValidation(req, data.catalog, data.isPublic, operation);
+      const catalogFields = await processCatalogValidation(req, data.catalog, data.isPublic, operation, originalDoc);
       Object.assign(data, catalogFields);
     } catch (error) {
       // Re-throw validation errors, swallow others (catalog not found)

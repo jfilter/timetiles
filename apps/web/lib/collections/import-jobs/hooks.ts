@@ -111,8 +111,66 @@ const handleSchemaApproval = (
   }
 };
 
+/**
+ * Validates that a non-privileged user owns the referenced importFile and
+ * has access to the target dataset's catalog when creating an import job.
+ */
+const validateCreateOwnership = async (data: Partial<ImportJob>, req: PayloadRequest): Promise<void> => {
+  const user = req.user as { id: number; role?: string } | undefined;
+  if (!user) return;
+
+  const isPrivileged = user.role === "admin" || user.role === "editor";
+  if (isPrivileged) return;
+
+  // Validate importFile belongs to this user
+  if (data.importFile) {
+    const importFileId = extractRelationId(data.importFile);
+    if (importFileId) {
+      const importFile = await req.payload.findByID({
+        collection: "import-files",
+        id: importFileId,
+        overrideAccess: true,
+      });
+      const ownerId = extractRelationId(importFile?.user);
+      if (ownerId !== user.id) {
+        throw new Error("You can only create import jobs for your own import files");
+      }
+    }
+  }
+
+  // Validate dataset is in user's own or public catalog
+  if (data.dataset) {
+    const datasetId = extractRelationId(data.dataset);
+    if (datasetId) {
+      const dataset = await req.payload.findByID({
+        collection: "datasets",
+        id: datasetId,
+        overrideAccess: true,
+      });
+      const catalogId = extractRelationId(dataset?.catalog);
+      if (catalogId) {
+        const catalog = await req.payload.findByID({
+          collection: "catalogs",
+          id: catalogId,
+          overrideAccess: true,
+        });
+        const catalogOwnerId = extractRelationId(catalog?.createdBy);
+        const isPublicCatalog = catalog?.isPublic ?? false;
+        if (catalogOwnerId !== user.id && !isPublicCatalog) {
+          throw new Error("You can only create import jobs for datasets in your own or public catalogs");
+        }
+      }
+    }
+  }
+};
+
 export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
-  ({ data, operation, req, originalDoc }) => {
+  async ({ data, operation, req, originalDoc }) => {
+    // Validate ownership on create
+    if (operation === "create") {
+      await validateCreateOwnership(data, req);
+    }
+
     // Enforce terminal state for COMPLETED jobs
     if (operation === "update" && originalDoc) {
       const fromStage = originalDoc.stage;
