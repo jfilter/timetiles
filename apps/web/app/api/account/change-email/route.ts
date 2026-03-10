@@ -55,6 +55,57 @@ const buildVerificationEmailHtml = (verifyUrl: string, firstName: string) => `
   </html>
 `;
 
+/** Update email, send verification to new address, notify old address, and audit. */
+const updateEmailAndNotify = async (
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  user: { id: number; email: string; firstName?: string | null },
+  newEmail: string,
+  clientId: string
+): Promise<void> => {
+  const verificationToken = randomBytes(20).toString("hex");
+
+  await payload.update({
+    collection: "users",
+    id: user.id,
+    overrideAccess: true,
+    data: { email: newEmail, _verified: false, _verificationToken: verificationToken },
+  });
+
+  const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+  const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+  const firstName = user.firstName ?? "";
+
+  try {
+    await payload.sendEmail({
+      to: newEmail,
+      subject: "Verify your new TimeTiles email address",
+      html: buildVerificationEmailHtml(verifyUrl, firstName),
+    });
+  } catch (emailError) {
+    logError(emailError, "Failed to send verification email after email change");
+  }
+
+  try {
+    await payload.sendEmail({
+      to: user.email,
+      subject: "Your TimeTiles email address was changed",
+      html: buildOldEmailNotificationHtml(firstName),
+    });
+  } catch (emailError) {
+    logError(emailError, "Failed to send notification to old email after email change");
+  }
+
+  await auditLog(payload, {
+    action: AUDIT_ACTIONS.EMAIL_CHANGED,
+    userId: user.id,
+    userEmail: user.email,
+    ipAddress: clientId,
+    details: { oldEmailHash: hashEmail(user.email), newEmailHash: hashEmail(newEmail) },
+  });
+
+  logger.info({ userId: user.id, oldEmail: user.email, newEmail, clientId }, "Email changed, verification required");
+};
+
 export const POST = withAuth(async (request: AuthenticatedRequest) => {
   try {
     const payload = await getPayload({ config });
@@ -126,56 +177,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       return badRequest("Email is already in use");
     }
 
-    // Generate a verification token for the new email
-    const verificationToken = randomBytes(20).toString("hex");
-
-    // Update the email and require re-verification
-    await payload.update({
-      collection: "users",
-      id: user.id,
-      overrideAccess: true,
-      data: {
-        email: newEmail,
-        _verified: false,
-        _verificationToken: verificationToken,
-      },
-    });
-
-    // Send verification email to the new address
-    const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
-    const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
-    const firstName = user.firstName ?? "";
-
-    try {
-      await payload.sendEmail({
-        to: newEmail,
-        subject: "Verify your new TimeTiles email address",
-        html: buildVerificationEmailHtml(verifyUrl, firstName),
-      });
-    } catch (emailError) {
-      logError(emailError, "Failed to send verification email after email change");
-    }
-
-    // Notify old email address about the change (security: alert original owner)
-    try {
-      await payload.sendEmail({
-        to: user.email,
-        subject: "Your TimeTiles email address was changed",
-        html: buildOldEmailNotificationHtml(firstName),
-      });
-    } catch (emailError) {
-      logError(emailError, "Failed to send notification to old email after email change");
-    }
-
-    await auditLog(payload, {
-      action: AUDIT_ACTIONS.EMAIL_CHANGED,
-      userId: user.id,
-      userEmail: user.email,
-      ipAddress: clientId,
-      details: { oldEmailHash: hashEmail(user.email), newEmailHash: hashEmail(newEmail) },
-    });
-
-    logger.info({ userId: user.id, oldEmail: user.email, newEmail, clientId }, "Email changed, verification required");
+    await updateEmailAndNotify(payload, user, newEmail, clientId);
 
     return NextResponse.json({
       success: true,
