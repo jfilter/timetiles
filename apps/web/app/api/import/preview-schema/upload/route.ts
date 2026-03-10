@@ -66,12 +66,7 @@ export const POST = apiRoute({
     const arrayBuffer = await file.arrayBuffer();
     fs.writeFileSync(previewFilePath, Buffer.from(arrayBuffer));
 
-    logger.info("File saved for preview", {
-      previewId,
-      fileName: file.name,
-      fileSize: file.size,
-      userId: user.id,
-    });
+    logger.info("File saved for preview", { previewId, fileName: file.name, fileSize: file.size, userId: user.id });
 
     // Parse file to get sheet info
     let sheets: SheetInfo[];
@@ -101,9 +96,6 @@ export const POST = apiRoute({
       isUrlSource: false,
     });
 
-    return Response.json({
-      previewId,
-      sheets,
-    });
+    return Response.json({ previewId, sheets });
   },
 });

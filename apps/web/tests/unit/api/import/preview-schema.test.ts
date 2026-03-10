@@ -79,9 +79,7 @@ vi.mock("@timetiles/payload-schema-detection", () => ({
   LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
 }));
 
-vi.mock("@/lib/utils/url-validation", () => ({
-  isPrivateUrl: mocks.mockIsPrivateUrl,
-}));
+vi.mock("@/lib/utils/url-validation", () => ({ isPrivateUrl: mocks.mockIsPrivateUrl }));
 
 // Mock withAuth to bypass Payload authentication entirely
 vi.mock("@/lib/middleware/auth", () => ({
@@ -146,9 +144,7 @@ describe.sequential("POST /api/import/preview-schema/upload", () => {
       fn.mockReset();
     }
 
-    mocks.mockGetPayload.mockResolvedValue({
-      auth: vi.fn().mockResolvedValue({ user: mockUser }),
-    });
+    mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
     mocks.mockAuth.mockResolvedValue({ user: mockUser });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockDetectLanguageFromSamples.mockReturnValue({ code: "eng", confidence: 0.9 });
@@ -157,9 +153,7 @@ describe.sequential("POST /api/import/preview-schema/upload", () => {
 
   describe("Authentication", () => {
     it("should return 401 when not authenticated", async () => {
-      mocks.mockGetPayload.mockResolvedValue({
-        auth: vi.fn().mockResolvedValue({ user: null }),
-      });
+      mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: null }) });
 
       const formData = new FormData();
       formData.append("file", new File(["test"], "test.csv", { type: "text/csv" }));
@@ -338,9 +332,7 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
       fn.mockReset();
     }
 
-    mocks.mockGetPayload.mockResolvedValue({
-      auth: vi.fn().mockResolvedValue({ user: mockUser }),
-    });
+    mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
     mocks.mockAuth.mockResolvedValue({ user: mockUser });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockBuildAuthHeaders.mockReturnValue({});
@@ -350,9 +342,7 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
 
   describe("Authentication", () => {
     it("should return 401 when not authenticated", async () => {
-      mocks.mockGetPayload.mockResolvedValue({
-        auth: vi.fn().mockResolvedValue({ user: null }),
-      });
+      mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: null }) });
 
       const request = createUrlRequest({ sourceUrl: "https://example.com/data.csv" });
 
@@ -491,10 +481,7 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
 
       const request = createUrlRequest({
         sourceUrl: "https://example.com/events.csv",
-        authConfig: {
-          type: "bearer",
-          bearerToken: "secret-token-value",
-        },
+        authConfig: { type: "bearer", bearerToken: "secret-token-value" },
       });
 
       await UrlPOST(request, {} as never);

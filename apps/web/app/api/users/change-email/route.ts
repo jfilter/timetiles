@@ -116,10 +116,7 @@ const updateEmailAndNotify = async (
 
 export const POST = apiRoute({
   auth: "required",
-  body: z.object({
-    newEmail: z.email().transform((s) => s.trim().toLowerCase()),
-    password: z.string().min(1),
-  }),
+  body: z.object({ newEmail: z.email().transform((s) => s.trim().toLowerCase()), password: z.string().min(1) }),
   handler: async ({ payload, user, req, body }) => {
     // Rate limiting
     const clientId = getClientIdentifier(req);

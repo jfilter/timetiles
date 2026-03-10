@@ -25,17 +25,12 @@ const mockSchedule = {
   createdBy: { id: 1, email: TEST_EMAILS.user },
 };
 
-const mocks = vi.hoisted(() => ({
-  mockGetPayload: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn() }));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-  type: {} as any,
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler, type: {} as any }));
 
 // Import AFTER mocks
 const { POST } = await import("@/app/api/scheduled-imports/[id]/trigger/route");
@@ -115,12 +110,7 @@ describe.sequential("POST /api/scheduled-imports/[id]/trigger", () => {
     await POST(createRequest(), { params: Promise.resolve({ id: "1" }) });
 
     expect(mockPayload.findByID).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "scheduled-imports",
-        id: 1,
-        user: mockUser,
-        overrideAccess: false,
-      })
+      expect.objectContaining({ collection: "scheduled-imports", id: 1, user: mockUser, overrideAccess: false })
     );
   });
 
@@ -155,10 +145,7 @@ describe.sequential("POST /api/scheduled-imports/[id]/trigger", () => {
     expect(mockPayload.update).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "scheduled-imports",
-        where: {
-          id: { equals: 1 },
-          lastStatus: { not_equals: "running" },
-        },
+        where: { id: { equals: 1 }, lastStatus: { not_equals: "running" } },
         overrideAccess: true,
       })
     );

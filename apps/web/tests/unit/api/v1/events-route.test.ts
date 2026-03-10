@@ -6,22 +6,15 @@
  */
 import "@/tests/mocks/services/logger";
 
-const mocks = vi.hoisted(() => ({
-  mockGetPayload: vi.fn(),
-  mockPayloadFind: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockPayloadFind: vi.fn() }));
 
 vi.mock("@/lib/middleware/auth", () => ({
   withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler }));
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
 vi.mock("@/lib/services/aggregation-filters", () => ({
   normalizeEndDate: (endDate: string | null): string | null => {
@@ -41,12 +34,7 @@ import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
 const createRequest = (queryString: string, user: unknown = null) => {
   const url = `http://localhost:3000/api/v1/events${queryString}`;
-  return {
-    user,
-    url,
-    headers: new Headers(),
-    nextUrl: new URL(url),
-  } as unknown as AuthenticatedRequest;
+  return { user, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
 };
 
 describe.sequential("GET /api/v1/events", () => {
@@ -78,13 +66,7 @@ describe.sequential("GET /api/v1/events", () => {
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          and: expect.arrayContaining([
-            {
-              eventTimestamp: {
-                less_than_equal: "2024-03-31T23:59:59.999Z",
-              },
-            },
-          ]),
+          and: expect.arrayContaining([{ eventTimestamp: { less_than_equal: "2024-03-31T23:59:59.999Z" } }]),
         }),
       })
     );
@@ -92,9 +74,7 @@ describe.sequential("GET /api/v1/events", () => {
 
   it("uses an OR longitude filter for antimeridian-crossing bounds", async () => {
     const bounds = JSON.stringify({ west: 170, east: -170, south: -10, north: 10 });
-    const response = await GET(createRequest(`?bounds=${encodeURIComponent(bounds)}`), {
-      params: Promise.resolve({}),
-    });
+    const response = await GET(createRequest(`?bounds=${encodeURIComponent(bounds)}`), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
@@ -104,16 +84,8 @@ describe.sequential("GET /api/v1/events", () => {
           and: expect.arrayContaining([
             {
               or: [
-                {
-                  "location.longitude": {
-                    greater_than_equal: 170,
-                  },
-                },
-                {
-                  "location.longitude": {
-                    less_than_equal: -170,
-                  },
-                },
+                { "location.longitude": { greater_than_equal: 170 } },
+                { "location.longitude": { less_than_equal: -170 } },
               ],
             },
           ]),

@@ -44,10 +44,7 @@ const mapJobStages = (docs: Array<{ id: number; stage?: string | null }>) =>
  */
 export const POST = apiRoute({
   auth: "admin",
-  body: z.object({
-    limit: z.number().int().positive().optional(),
-    iterations: z.number().int().positive().optional(),
-  }),
+  body: z.object({ limit: z.number().int().positive().optional(), iterations: z.number().int().positive().optional() }),
   handler: async ({ payload, body }) => {
     if (process.env.NODE_ENV === "production") {
       throw new ForbiddenError("Not available in production");

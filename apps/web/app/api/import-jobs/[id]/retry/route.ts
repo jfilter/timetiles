@@ -37,13 +37,7 @@ export const POST = apiRoute({
 
     // Get the import job with access control
     const importJob = await payload
-      .findByID({
-        collection: "import-jobs",
-        id,
-        depth: 1,
-        user,
-        overrideAccess: false,
-      })
+      .findByID({ collection: "import-jobs", id, depth: 1, user, overrideAccess: false })
       .catch(() => null);
 
     if (!importJob) {
@@ -72,20 +66,12 @@ export const POST = apiRoute({
 
     // Get import file for quota check
     const importFileId = extractRelationId(importJob.importFile)!;
-    const importFile = await payload.findByID({
-      collection: "import-files",
-      id: importFileId,
-      overrideAccess: true,
-    });
+    const importFile = await payload.findByID({ collection: "import-files", id: importFileId, overrideAccess: true });
 
     // Check quota before allowing retry
     if (importFile.user) {
       const userId = extractRelationId(importFile.user)!;
-      const fileUser = await payload.findByID({
-        collection: "users",
-        id: userId,
-        overrideAccess: true,
-      });
+      const fileUser = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
       const quotaService = getQuotaService(payload);
       const quotaCheck = await quotaService.checkQuota(fileUser, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1);
@@ -102,11 +88,7 @@ export const POST = apiRoute({
     const result = await ErrorRecoveryService.recoverFailedJob(payload, importJob.id);
 
     if (!result.success) {
-      logger.warn("Manual retry attempt failed", {
-        importJobId: importJob.id,
-        userId: user.id,
-        reason: result.error,
-      });
+      logger.warn("Manual retry attempt failed", { importJobId: importJob.id, userId: user.id, reason: result.error });
 
       return Response.json({ error: result.error ?? "Failed to retry import job" }, { status: 400 });
     }

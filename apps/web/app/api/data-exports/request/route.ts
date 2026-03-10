@@ -39,9 +39,7 @@ export const POST = apiRoute({
     // Check for existing pending/processing export
     const existingExports = await payload.find({
       collection: DATA_EXPORTS_COLLECTION,
-      where: {
-        and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }],
-      },
+      where: { and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }] },
       limit: 1,
       overrideAccess: true,
     });
@@ -80,9 +78,7 @@ export const POST = apiRoute({
       // Re-check for existing exports in case of race condition
       const raceCheck = await payload.find({
         collection: DATA_EXPORTS_COLLECTION,
-        where: {
-          and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }],
-        },
+        where: { and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }] },
         limit: 1,
         overrideAccess: true,
       });
@@ -94,10 +90,7 @@ export const POST = apiRoute({
 
     // Queue background job -- if queueing fails, mark the record as failed
     try {
-      await payload.jobs.queue({
-        task: "data-export",
-        input: { exportId: exportRecord.id },
-      });
+      await payload.jobs.queue({ task: "data-export", input: { exportId: exportRecord.id } });
     } catch (queueError) {
       await payload.update({
         collection: DATA_EXPORTS_COLLECTION,

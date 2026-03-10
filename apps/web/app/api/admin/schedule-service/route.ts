@@ -26,10 +26,7 @@ export const GET = apiRoute({
     const service = getScheduleService(payload);
     const status = service.getStatus();
 
-    return Response.json({
-      success: true,
-      status,
-    });
+    return Response.json({ success: true, status });
   },
 });
 
@@ -40,10 +37,7 @@ export const GET = apiRoute({
 export const POST = apiRoute({
   auth: "admin",
   rateLimit: { type: "API_GENERAL" },
-  body: z.object({
-    intervalMs: z.number().positive().optional(),
-    enabled: z.boolean().optional(),
-  }),
+  body: z.object({ intervalMs: z.number().positive().optional(), enabled: z.boolean().optional() }),
   handler: ({ payload, body }) => {
     const serviceConfig = {
       intervalMs: body.intervalMs ?? 60000, // Default: 1 minute
@@ -55,11 +49,7 @@ export const POST = apiRoute({
 
     logger.info("Schedule service started", { serviceConfig, status });
 
-    return Response.json({
-      success: true,
-      message: "Schedule service started",
-      status,
-    });
+    return Response.json({ success: true, message: "Schedule service started", status });
   },
 });
 
@@ -75,9 +65,6 @@ export const DELETE = apiRoute({
 
     logger.info("Schedule service stopped");
 
-    return Response.json({
-      success: true,
-      message: "Schedule service stopped",
-    });
+    return Response.json({ success: true, message: "Schedule service stopped" });
   },
 });

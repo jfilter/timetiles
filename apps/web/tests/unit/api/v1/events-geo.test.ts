@@ -16,31 +16,17 @@ vi.mock("@/lib/middleware/auth", () => ({
   withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler }));
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({
-  getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
+vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign(
-    (strings: TemplateStringsArray, ...values: unknown[]) => ({
-      type: "sql",
-      strings: Array.from(strings),
-      values,
-    }),
+    (strings: TemplateStringsArray, ...values: unknown[]) => ({ type: "sql", strings: Array.from(strings), values }),
     {
-      join: vi.fn((parts: unknown[], separator: unknown) => ({
-        type: "join",
-        parts,
-        separator,
-      })),
+      join: vi.fn((parts: unknown[], separator: unknown) => ({ type: "join", parts, separator })),
       raw: vi.fn((value: string) => ({ type: "raw", value })),
     }
   ),
@@ -64,12 +50,7 @@ import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
 const createRequest = (queryString: string, user: unknown = null) => {
   const url = `http://localhost:3000/api/v1/events/geo${queryString}`;
-  return {
-    user,
-    url,
-    headers: new Headers(),
-    nextUrl: new URL(url),
-  } as unknown as AuthenticatedRequest;
+  return { user, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
 };
 
 const collectQueryScalars = (value: unknown): unknown[] => {
@@ -111,8 +92,6 @@ describe.sequential("GET /api/v1/events/geo", () => {
     );
 
     expect(jsonPayload).toBeDefined();
-    expect(JSON.parse(jsonPayload!)).toMatchObject({
-      datasets: [10, 20],
-    });
+    expect(JSON.parse(jsonPayload!)).toMatchObject({ datasets: [10, 20] });
   });
 });

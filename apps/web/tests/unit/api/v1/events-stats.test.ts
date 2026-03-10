@@ -21,17 +21,11 @@ vi.mock("@/lib/middleware/auth", () => ({
   withAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler }));
 
-vi.mock("payload", () => ({
-  getPayload: mocks.mockGetPayload,
-}));
+vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({
-  getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
+vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
 
 vi.mock("@/lib/services/aggregation-filters", () => ({
   buildAggregationWhereClause: mocks.mockBuildAggregationWhereClause,
@@ -58,12 +52,7 @@ import type { AuthenticatedRequest } from "@/lib/middleware/auth";
  */
 const createRequest = (queryString: string, user: unknown = null) => {
   const url = `http://localhost:3000/api/v1/events/stats${queryString}`;
-  return {
-    user,
-    url,
-    headers: new Headers(),
-    nextUrl: new URL(url),
-  } as unknown as AuthenticatedRequest;
+  return { user, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
 };
 
 /**
@@ -121,11 +110,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
       // Returns empty result because no accessible catalogs (bounds just ignored)
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toEqual({
-        items: [],
-        total: 0,
-        groupedBy: "catalog",
-      });
+      expect(data).toEqual({ items: [], total: 0, groupedBy: "catalog" });
     });
   });
 
@@ -139,11 +124,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toEqual({
-        items: [],
-        total: 0,
-        groupedBy: "catalog",
-      });
+      expect(data).toEqual({ items: [], total: 0, groupedBy: "catalog" });
       // Should not execute any SQL query
       expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
     });
@@ -197,9 +178,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
     it("should add 0-count entries for filtered datasets not in results", async () => {
       // First execute: main aggregation query returns only dataset 10
       mocks.mockDrizzleExecute
-        .mockResolvedValueOnce({
-          rows: [{ id: 10, name: "Dataset X", count: 5 }],
-        })
+        .mockResolvedValueOnce({ rows: [{ id: 10, name: "Dataset X", count: 5 }] })
         // Second execute: fetch missing dataset names for 20 and 30
         .mockResolvedValueOnce({
           rows: [

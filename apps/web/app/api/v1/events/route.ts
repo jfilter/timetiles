@@ -18,14 +18,7 @@ import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 import type { Event, User } from "@/payload-types";
 
 const addCatalogFilter = (where: Where, catalogId: number) => {
-  where.and = [
-    ...(Array.isArray(where.and) ? where.and : []),
-    {
-      "dataset.catalog": {
-        equals: catalogId,
-      },
-    },
-  ];
+  where.and = [...(Array.isArray(where.and) ? where.and : []), { "dataset.catalog": { equals: catalogId } }];
 };
 
 const addDatasetFilter = (where: Where, datasetIds: number[]) => {
@@ -35,60 +28,29 @@ const addDatasetFilter = (where: Where, datasetIds: number[]) => {
     return;
   }
 
-  where.and = [
-    ...(Array.isArray(where.and) ? where.and : []),
-    {
-      dataset: {
-        in: datasetIds,
-      },
-    },
-  ];
+  where.and = [...(Array.isArray(where.and) ? where.and : []), { dataset: { in: datasetIds } }];
 };
 
 const addBoundsFilter = (where: Where, bounds: MapBounds) => {
   const longitudeFilter =
     bounds.west <= bounds.east
       ? [
-          {
-            "location.longitude": {
-              greater_than_equal: bounds.west,
-            },
-          },
-          {
-            "location.longitude": {
-              less_than_equal: bounds.east,
-            },
-          },
+          { "location.longitude": { greater_than_equal: bounds.west } },
+          { "location.longitude": { less_than_equal: bounds.east } },
         ]
       : [
           {
             or: [
-              {
-                "location.longitude": {
-                  greater_than_equal: bounds.west,
-                },
-              },
-              {
-                "location.longitude": {
-                  less_than_equal: bounds.east,
-                },
-              },
+              { "location.longitude": { greater_than_equal: bounds.west } },
+              { "location.longitude": { less_than_equal: bounds.east } },
             ],
           },
         ];
 
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
-    {
-      "location.latitude": {
-        greater_than_equal: bounds.south,
-      },
-    },
-    {
-      "location.latitude": {
-        less_than_equal: bounds.north,
-      },
-    },
+    { "location.latitude": { greater_than_equal: bounds.south } },
+    { "location.latitude": { less_than_equal: bounds.north } },
     ...longitudeFilter,
   ];
 };
@@ -98,12 +60,7 @@ const addDateFilter = (where: Where, startDate: string | undefined, endDate: str
   if (startDate != null) dateFilter.greater_than_equal = startDate;
   if (endDate != null) dateFilter.less_than_equal = endDate;
 
-  where.and = [
-    ...(Array.isArray(where.and) ? where.and : []),
-    {
-      eventTimestamp: dateFilter,
-    },
-  ];
+  where.and = [...(Array.isArray(where.and) ? where.and : []), { eventTimestamp: dateFilter }];
 };
 
 const addFieldFilters = (where: Where, fieldFilters: Record<string, string[]>) => {
@@ -111,14 +68,7 @@ const addFieldFilters = (where: Where, fieldFilters: Record<string, string[]>) =
     if (values.length === 0) continue;
 
     // Query the JSON data field using Payload's nested field syntax
-    where.and = [
-      ...(Array.isArray(where.and) ? where.and : []),
-      {
-        [`data.${fieldPath}`]: {
-          in: values,
-        },
-      },
-    ];
+    where.and = [...(Array.isArray(where.and) ? where.and : []), { [`data.${fieldPath}`]: { in: values } }];
   }
 };
 
@@ -142,11 +92,7 @@ const getDatasetInfo = (dataset: Event["dataset"]) => {
 
   const catalogName = typeof dataset.catalog === "object" && dataset.catalog != null ? dataset.catalog.name : undefined;
 
-  return {
-    id: dataset.id,
-    title: dataset.name,
-    catalog: catalogName,
-  };
+  return { id: dataset.id, title: dataset.name, catalog: catalogName };
 };
 
 const enrichEventData = (
@@ -187,12 +133,7 @@ const transformEvent = (event: Event) => {
     id: event.id,
     dataset: getDatasetInfo(event.dataset),
     data: enrichedData,
-    location: event.location
-      ? {
-          longitude: event.location.longitude,
-          latitude: event.location.latitude,
-        }
-      : null,
+    location: event.location ? { longitude: event.location.longitude, latitude: event.location.latitude } : null,
     eventTimestamp: event.eventTimestamp,
     isValid: event.validationStatus === "valid",
   };
@@ -215,16 +156,8 @@ const addLocationExistsFilter = (where: Where) => {
   // Events without coordinates cannot be displayed on the map
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
-    {
-      "location.latitude": {
-        exists: true,
-      },
-    },
-    {
-      "location.longitude": {
-        exists: true,
-      },
-    },
+    { "location.latitude": { exists: true } },
+    { "location.longitude": { exists: true } },
   ];
 };
 

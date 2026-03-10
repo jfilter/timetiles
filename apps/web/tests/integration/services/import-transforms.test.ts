@@ -41,19 +41,14 @@ describe("Import Transforms - Integration", () => {
   beforeEach(async () => {
     // Fresh user per test avoids stale user-usage state from other
     // integration tests sharing the same worker database
-    const { users } = await withUsers(testEnv, {
-      testUser: { role: "admin" },
-    });
+    const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
     testUser = users.testUser;
   });
 
   describe("Schema Detection with Transforms", () => {
     it("should apply active transforms during schema detection", async () => {
       // Create catalog
-      const { catalog } = await withCatalog(testEnv, {
-        name: "Transform Test Catalog",
-        user: testUser,
-      });
+      const { catalog } = await withCatalog(testEnv, { name: "Transform Test Catalog", user: testUser });
 
       // Create dataset with import transforms
       const { dataset } = await withDataset(testEnv, catalog.id, {
@@ -92,11 +87,7 @@ describe("Import Transforms - Integration", () => {
       // Create import job
       const importJob = await payload.create({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
-        data: {
-          importFile: importFile.id,
-          dataset: dataset.id,
-          stage: PROCESSING_STAGE.DETECT_SCHEMA,
-        },
+        data: { importFile: importFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.DETECT_SCHEMA },
       });
 
       // Run schema detection job
@@ -106,10 +97,7 @@ describe("Import Transforms - Integration", () => {
         job: { id: "test-schema-detection-1", input: { importJobId: importJob.id, batchNumber: 0 } },
         req: { payload },
         payload,
-        input: {
-          importJobId: importJob.id,
-          batchNumber: 0,
-        },
+        input: { importJobId: importJob.id, batchNumber: 0 },
       });
 
       // Verify the schema was detected with transformed field names
@@ -129,10 +117,7 @@ describe("Import Transforms - Integration", () => {
     });
 
     it("should skip inactive transforms during schema detection", async () => {
-      const { catalog } = await withCatalog(testEnv, {
-        name: "Inactive Transform Test Catalog",
-        user: testUser,
-      });
+      const { catalog } = await withCatalog(testEnv, { name: "Inactive Transform Test Catalog", user: testUser });
 
       // Create dataset with inactive transform
       const { dataset } = await withDataset(testEnv, catalog.id, {
@@ -161,11 +146,7 @@ Item 2,200`;
 
       const importJob = await payload.create({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
-        data: {
-          importFile: importFile.id,
-          dataset: dataset.id,
-          stage: PROCESSING_STAGE.DETECT_SCHEMA,
-        },
+        data: { importFile: importFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.DETECT_SCHEMA },
       });
 
       const { schemaDetectionJob } = await import("@/lib/jobs/handlers/schema-detection-job");
@@ -174,10 +155,7 @@ Item 2,200`;
         job: { id: "test-schema-detection-2", input: { importJobId: importJob.id, batchNumber: 0 } },
         req: { payload },
         payload,
-        input: {
-          importJobId: importJob.id,
-          batchNumber: 0,
-        },
+        input: { importJobId: importJob.id, batchNumber: 0 },
       });
 
       const updatedJob = (await payload.findByID({
@@ -194,10 +172,7 @@ Item 2,200`;
 
   describe("Transform Detection during Validation", () => {
     it("should detect and suggest transforms for renamed fields", async () => {
-      const { catalog } = await withCatalog(testEnv, {
-        name: "Transform Detection Catalog",
-        user: testUser,
-      });
+      const { catalog } = await withCatalog(testEnv, { name: "Transform Detection Catalog", user: testUser });
 
       // Create dataset without transforms (for first import)
       const { dataset } = await withDataset(testEnv, catalog.id, {
@@ -217,11 +192,7 @@ Item 2,200`;
 
       const importJob1 = await payload.create({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
-        data: {
-          importFile: importFile1.id,
-          dataset: dataset.id,
-          stage: PROCESSING_STAGE.DETECT_SCHEMA,
-        },
+        data: { importFile: importFile1.id, dataset: dataset.id, stage: PROCESSING_STAGE.DETECT_SCHEMA },
       });
 
       // Run first import to establish baseline schema
@@ -261,11 +232,7 @@ Item 2,200`;
 
       const importJob2 = await payload.create({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
-        data: {
-          importFile: importFile2.id,
-          dataset: dataset.id,
-          stage: PROCESSING_STAGE.DETECT_SCHEMA,
-        },
+        data: { importFile: importFile2.id, dataset: dataset.id, stage: PROCESSING_STAGE.DETECT_SCHEMA },
       });
 
       // Run schema detection for second import

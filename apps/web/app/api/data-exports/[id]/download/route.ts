@@ -97,9 +97,7 @@ const streamExportFile = async (
 
 export const GET = apiRoute({
   auth: "required",
-  params: z.object({
-    id: z.string().regex(/^\d+$/).transform(Number),
-  }),
+  params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ payload, user, params }) => {
     const normalizedExportId = params.id;
     const exportId = String(normalizedExportId);
@@ -125,20 +123,14 @@ export const GET = apiRoute({
     // Check status
     if (exportRecord.status === "pending" || exportRecord.status === "processing") {
       return Response.json(
-        {
-          status: exportRecord.status,
-          message: "Export is still processing. Please wait.",
-        },
+        { status: exportRecord.status, message: "Export is still processing. Please wait." },
         { status: 202 }
       );
     }
 
     if (exportRecord.status === "failed") {
       return Response.json(
-        {
-          error: "Export failed",
-          reason: exportRecord.errorLog ?? "Unknown error",
-        },
+        { error: "Export failed", reason: exportRecord.errorLog ?? "Unknown error" },
         { status: 500 }
       );
     }

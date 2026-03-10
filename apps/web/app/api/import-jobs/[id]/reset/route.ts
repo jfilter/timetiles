@@ -31,10 +31,7 @@ const VALID_RESET_STAGES = [
 export const POST = apiRoute({
   auth: "admin",
   params: z.object({ id: z.string() }),
-  body: z.object({
-    targetStage: z.enum(VALID_RESET_STAGES),
-    clearRetries: z.boolean().optional(),
-  }),
+  body: z.object({ targetStage: z.enum(VALID_RESET_STAGES), clearRetries: z.boolean().optional() }),
   handler: async ({ payload, user, req, params, body }) => {
     const { id } = params;
 
@@ -50,12 +47,7 @@ export const POST = apiRoute({
 
     // Get the import job (admins have access to all jobs)
     const importJob = await payload
-      .findByID({
-        collection: "import-jobs",
-        id,
-        user,
-        overrideAccess: false,
-      })
+      .findByID({ collection: "import-jobs", id, user, overrideAccess: false })
       .catch(() => null);
 
     if (!importJob) {

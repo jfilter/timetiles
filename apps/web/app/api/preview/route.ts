@@ -15,10 +15,7 @@ import { logger } from "@/lib/logger";
 
 export const GET = apiRoute({
   auth: "required",
-  query: z.object({
-    slug: z.string(),
-    collection: z.string(),
-  }),
+  query: z.object({ slug: z.string(), collection: z.string() }),
   handler: async ({ user, query }) => {
     const { slug, collection } = query;
 
@@ -38,11 +35,7 @@ export const GET = apiRoute({
       }
     })();
 
-    logger.info("Preview mode enabled", {
-      collection,
-      slug,
-      userId: user.id,
-    });
+    logger.info("Preview mode enabled", { collection, slug, userId: user.id });
 
     redirect(redirectPath);
   },

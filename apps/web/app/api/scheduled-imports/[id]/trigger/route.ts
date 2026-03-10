@@ -17,21 +17,13 @@ import { logError, logger } from "@/lib/logger";
 
 export const POST = apiRoute({
   auth: "required",
-  params: z.object({
-    id: z.string().regex(/^\d+$/).transform(Number),
-  }),
+  params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ payload, user, params }) => {
     const numericId = params.id;
 
     // Fetch schedule with access control enforced by Payload
     const existingSchedule = await payload
-      .findByID({
-        collection: "scheduled-imports",
-        id: numericId,
-        depth: 1,
-        user,
-        overrideAccess: false,
-      })
+      .findByID({ collection: "scheduled-imports", id: numericId, depth: 1, user, overrideAccess: false })
       .catch(() => null);
 
     if (!existingSchedule) {
@@ -44,14 +36,8 @@ export const POST = apiRoute({
     // Use overrideAccess: true because access was already verified above.
     const claimResult = await payload.update({
       collection: "scheduled-imports",
-      where: {
-        id: { equals: numericId },
-        lastStatus: { not_equals: "running" },
-      },
-      data: {
-        lastRun: new Date().toISOString(),
-        lastStatus: "running",
-      },
+      where: { id: { equals: numericId }, lastStatus: { not_equals: "running" } },
+      data: { lastRun: new Date().toISOString(), lastStatus: "running" },
       overrideAccess: true,
     });
 

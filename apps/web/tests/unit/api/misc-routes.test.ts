@@ -25,16 +25,16 @@ vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
-vi.mock("@/lib/health", () => ({
-  runHealthChecks: mocks.mockRunHealthChecks,
-}));
+vi.mock("@/lib/health", () => ({ runHealthChecks: mocks.mockRunHealthChecks }));
 
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: vi.fn().mockReturnValue({
-    checkQuota: mocks.mockCheckQuota,
-    getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
-    getQuotaHeaders: mocks.mockGetQuotaHeaders,
-  }),
+  getQuotaService: vi
+    .fn()
+    .mockReturnValue({
+      checkQuota: mocks.mockCheckQuota,
+      getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
+      getQuotaHeaders: mocks.mockGetQuotaHeaders,
+    }),
 }));
 
 vi.mock("@/lib/constants/quota-constants", () => ({
@@ -48,9 +48,7 @@ vi.mock("@/lib/constants/quota-constants", () => ({
   },
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler }));
 
 vi.mock("@/lib/middleware/auth", () => ({
   withAuth: (handler: any) => async (req: any, ctx: any) => {
@@ -67,9 +65,7 @@ vi.mock("@/lib/middleware/auth", () => ({
 
 vi.mock("@/lib/services/rate-limit-service", () => ({
   getClientIdentifier: vi.fn().mockReturnValue("test-client"),
-  getRateLimitService: vi.fn().mockReturnValue({
-    checkConfiguredRateLimit: mocks.mockCheckRateLimit,
-  }),
+  getRateLimitService: vi.fn().mockReturnValue({ checkConfiguredRateLimit: mocks.mockCheckRateLimit }),
   RATE_LIMITS: {},
 }));
 
@@ -85,10 +81,7 @@ import { getQuotaService } from "@/lib/services/quota-service";
 const mockUser = { id: 1, email: "test@test.com", role: "user" };
 
 const createRequest = (url: string, method = "GET") =>
-  new NextRequest(url, {
-    method,
-    headers: new Headers({ Authorization: "Bearer test" }),
-  });
+  new NextRequest(url, { method, headers: new Headers({ Authorization: "Bearer test" }) });
 
 let mockPayload: any;
 
@@ -97,10 +90,7 @@ beforeEach(() => {
   // Reset implementations that vi.clearAllMocks does not clear
   mocks.mockRunHealthChecks.mockReset();
 
-  mockPayload = {
-    auth: vi.fn().mockResolvedValue({ user: mockUser }),
-    find: vi.fn().mockResolvedValue({ docs: [] }),
-  };
+  mockPayload = { auth: vi.fn().mockResolvedValue({ user: mockUser }), find: vi.fn().mockResolvedValue({ docs: [] }) };
   mocks.mockGetPayload.mockResolvedValue(mockPayload);
   // With isolate: false, another file's vi.mock("payload") may have replaced the
   // module-level getPayload binding. Configure whichever fn is currently bound.

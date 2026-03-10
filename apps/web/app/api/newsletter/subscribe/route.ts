@@ -16,10 +16,7 @@ import { apiRoute, AppError, ValidationError } from "@/lib/api";
 import { logError, logger } from "@/lib/logger";
 
 interface Settings {
-  newsletter?: {
-    serviceUrl?: string;
-    authHeader?: string;
-  };
+  newsletter?: { serviceUrl?: string; authHeader?: string };
 }
 
 export const POST = apiRoute({
@@ -36,9 +33,7 @@ export const POST = apiRoute({
     }
 
     // Get newsletter service configuration from Payload settings
-    const settings = (await payload.findGlobal({
-      slug: "settings",
-    })) as Settings;
+    const settings = (await payload.findGlobal({ slug: "settings" })) as Settings;
 
     const serviceUrl = settings.newsletter?.serviceUrl;
 

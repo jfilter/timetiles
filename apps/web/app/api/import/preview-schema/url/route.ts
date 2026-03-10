@@ -42,10 +42,7 @@ const AuthConfigSchema = z.object({
   customHeaders: z.union([z.string(), z.record(z.string(), z.string())]).optional(),
 });
 
-const UrlPreviewBodySchema = z.object({
-  sourceUrl: z.url(),
-  authConfig: AuthConfigSchema.optional(),
-});
+const UrlPreviewBodySchema = z.object({ sourceUrl: z.url(), authConfig: AuthConfigSchema.optional() });
 
 /**
  * Preview file schema from URL.

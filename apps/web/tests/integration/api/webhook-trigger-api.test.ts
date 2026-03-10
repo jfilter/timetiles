@@ -32,9 +32,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
   // Helper function to call webhook endpoint
   const callWebhook = async (token: string, method: "POST" | "GET" = "POST"): Promise<Response> => {
-    const request = new NextRequest(`http://localhost:3000/api/webhooks/trigger/${token}`, {
-      method,
-    });
+    const request = new NextRequest(`http://localhost:3000/api/webhooks/trigger/${token}`, { method });
 
     if (method === "POST") {
       return POST(request, { params: Promise.resolve({ token }) });
@@ -52,18 +50,10 @@ describe.sequential("Webhook Trigger API Integration", () => {
     rateLimitService = new RateLimitService(payload);
 
     // Create base test data
-    const { users } = await withUsers(testEnv, {
-      webhookTestUser: {
-        role: "admin",
-        trustLevel: "5",
-      },
-    });
+    const { users } = await withUsers(testEnv, { webhookTestUser: { role: "admin", trustLevel: "5" } });
     testUser = users.webhookTestUser;
 
-    const { catalog } = await withCatalog(testEnv, {
-      name: "Webhook API Test Catalog",
-      user: testUser,
-    });
+    const { catalog } = await withCatalog(testEnv, { name: "Webhook API Test Catalog", user: testUser });
     testCatalog = catalog;
   });
 
@@ -84,11 +74,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       testEnv,
       testCatalog.id,
       "https://example.com/test-data.csv",
-      {
-        user: testUser,
-        webhookEnabled: true,
-        frequency: "daily",
-      }
+      { user: testUser, webhookEnabled: true, frequency: "daily" }
     );
     testScheduledImport = scheduledImport;
 
@@ -119,10 +105,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
     it("should update scheduled import status to running", async () => {
       await callWebhook(testScheduledImport.webhookToken!);
 
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       expect(updatedImport.lastStatus).toBe("running");
       expect(updatedImport.lastRun).toBeDefined();
@@ -138,10 +121,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // Wait a moment for the update to complete
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       // Execution history should NOT be recorded at trigger time.
       // The actual success/failure entry is added by the job handler on completion.
@@ -153,14 +133,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          statistics: {
-            totalRuns: 5,
-            successfulRuns: 4,
-            failedRuns: 1,
-            averageDuration: 1000,
-          },
-        },
+        data: { statistics: { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 1000 } },
       });
 
       await callWebhook(testScheduledImport.webhookToken!);
@@ -168,10 +141,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // Wait a moment for the update to complete
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       expect(updatedImport.statistics!.totalRuns).toBe(6);
     });
@@ -180,9 +150,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          importNameTemplate: "Webhook {{date}} - {{url}}",
-        },
+        data: { importNameTemplate: "Webhook {{date}} - {{url}}" },
       });
 
       const response = await callWebhook(testScheduledImport.webhookToken!);
@@ -212,10 +180,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       expect(response.status).toBe(401);
       const data = await response.json();
-      expect(data).toMatchObject({
-        error: "Invalid or disabled webhook",
-        code: "INVALID_WEBHOOK",
-      });
+      expect(data).toMatchObject({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" });
     });
 
     it("should return 401 when webhook is disabled (token cleared)", async () => {
@@ -223,16 +188,11 @@ describe.sequential("Webhook Trigger API Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          webhookEnabled: false,
-        },
+        data: { webhookEnabled: false },
       });
 
       // Re-fetch to get the cleared token state
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       // Token should be null after disabling webhook
       expect(updatedImport.webhookToken).toBeNull();
@@ -242,10 +202,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       expect(response.status).toBe(401);
       const data = await response.json();
-      expect(data).toMatchObject({
-        error: "Invalid or disabled webhook",
-        code: "INVALID_WEBHOOK",
-      });
+      expect(data).toMatchObject({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" });
     });
 
     it("should return 405 for GET requests", async () => {
@@ -261,27 +218,17 @@ describe.sequential("Webhook Trigger API Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          lastStatus: "running",
-          lastRun: new Date().toISOString(),
-        },
+        data: { lastStatus: "running", lastRun: new Date().toISOString() },
       });
 
       // Re-fetch to ensure we have the updated token
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       const response = await callWebhook(updatedImport.webhookToken ?? "");
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toMatchObject({
-        success: true,
-        message: "Import already running, skipped",
-        status: "skipped",
-      });
+      expect(data).toMatchObject({ success: true, message: "Import already running, skipped", status: "skipped" });
 
       // Cannot verify job creation directly as jobs are internal to Payload
       // The skipped status confirms no job was created
@@ -291,10 +238,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       const webhookToken = testScheduledImport.webhookToken;
 
       // Delete the import
-      await payload.delete({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      await payload.delete({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       const response = await callWebhook(webhookToken!);
 
@@ -315,11 +259,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(response2.status).toBe(429);
 
       const data2 = await response2.json();
-      expect(data2).toMatchObject({
-        success: false,
-        error: "Rate limit exceeded",
-        limitType: "burst",
-      });
+      expect(data2).toMatchObject({ success: false, error: "Rate limit exceeded", limitType: "burst" });
       expect(data2.message).toContain("10 seconds");
 
       // Verify Retry-After header
@@ -354,11 +294,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(response6.status).toBe(429);
 
       const data6 = await response6.json();
-      expect(data6).toMatchObject({
-        success: false,
-        error: "Rate limit exceeded",
-        limitType: "hourly",
-      });
+      expect(data6).toMatchObject({ success: false, error: "Rate limit exceeded", limitType: "hourly" });
       expect(data6.message).toContain("5 requests per hour");
     });
 
@@ -394,12 +330,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          authConfig: {
-            type: "bearer",
-            bearerToken: TEST_CREDENTIALS.bearer.token,
-          },
-        },
+        data: { authConfig: { type: "bearer", bearerToken: TEST_CREDENTIALS.bearer.token } },
       });
 
       const response = await callWebhook(testScheduledImport.webhookToken!);
@@ -449,9 +380,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       await payload.update({
         collection: "scheduled-imports",
         id: testScheduledImport.id,
-        data: {
-          executionHistory: initialHistory,
-        },
+        data: { executionHistory: initialHistory },
       });
 
       const response = await callWebhook(testScheduledImport.webhookToken!);
@@ -460,10 +389,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // Wait a moment for the update to complete
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: testScheduledImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
       // Webhook trigger should not add entries to execution history.
       // History is managed by the job handler on completion.
@@ -501,10 +427,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // Execution history is NOT recorded at trigger time - it's managed by the
       // job handler on completion. Verify the import status is set to "running".
       await new Promise((resolve) => setTimeout(resolve, 10));
-      const updatedImport = await payload.findByID({
-        collection: "scheduled-imports",
-        id: invalidImport.id,
-      });
+      const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: invalidImport.id });
 
       expect(updatedImport.lastStatus).toBe("running");
       // Execution history should be empty since no job has completed yet

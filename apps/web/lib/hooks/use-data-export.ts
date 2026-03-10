@@ -90,10 +90,7 @@ const fetchDataExports = async (): Promise<ExportListResponse> => {
  * Request a new data export.
  */
 const requestDataExport = async (): Promise<RequestExportResponse> => {
-  const response = await fetch("/api/data-exports/request", {
-    method: "POST",
-    credentials: "include",
-  });
+  const response = await fetch("/api/data-exports/request", { method: "POST", credentials: "include" });
 
   if (!response.ok) {
     const error: RequestExportError = await response.json();
@@ -138,10 +135,7 @@ export const useLatestExportQuery = () => {
       (exp) => exp.status === "pending" || exp.status === "processing" || exp.status === "ready"
     ) ?? query.data?.exports?.[0];
 
-  return {
-    ...query,
-    latestExport,
-  };
+  return { ...query, latestExport };
 };
 
 /**

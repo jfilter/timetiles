@@ -17,10 +17,7 @@ import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
 export const POST = apiRoute({
   auth: "required",
-  body: z.object({
-    currentPassword: z.string().min(1),
-    newPassword: z.string().min(8),
-  }),
+  body: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }),
   handler: async ({ payload, user, req, body }) => {
     // Rate limiting
     const clientId = getClientIdentifier(req);
@@ -49,13 +46,7 @@ export const POST = apiRoute({
     if (verifyError) return verifyError;
 
     // Update the password
-    await payload.update({
-      collection: "users",
-      id: user.id,
-      data: {
-        password: newPassword,
-      },
-    });
+    await payload.update({ collection: "users", id: user.id, data: { password: newPassword } });
 
     await auditLog(payload, {
       action: AUDIT_ACTIONS.PASSWORD_CHANGED,
@@ -66,9 +57,6 @@ export const POST = apiRoute({
 
     logger.info({ userId: user.id, clientId }, "Password changed successfully");
 
-    return Response.json({
-      success: true,
-      message: "Password changed successfully",
-    });
+    return Response.json({ success: true, message: "Password changed successfully" });
   },
 });

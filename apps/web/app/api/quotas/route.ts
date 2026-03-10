@@ -93,10 +93,7 @@ export const GET = apiRoute({
 
     return new Response(JSON.stringify(response), {
       status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
+      headers: { "Content-Type": "application/json", ...headers },
     });
   },
 });

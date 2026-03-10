@@ -64,25 +64,25 @@ export const POST = apiRoute({
 
 Every handler receives a typed context object:
 
-| Field     | Type                        | Description                                       |
-| --------- | --------------------------- | ------------------------------------------------- |
-| `req`     | `AuthenticatedRequest`      | The original NextRequest with `user` attached      |
-| `user`    | `User` or `User | undefined`| Guaranteed present for `"required"` / `"admin"`   |
-| `payload` | `Payload`                   | Payload CMS instance                               |
-| `body`    | `TBody`                     | Parsed + validated request body (if schema given)  |
-| `query`   | `TQuery`                    | Parsed + validated query params (if schema given)  |
-| `params`  | `TParams`                   | Parsed + validated route params (if schema given)  |
+| Field     | Type                   | Description                                       |
+| --------- | ---------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| `req`     | `AuthenticatedRequest` | The original NextRequest with `user` attached     |
+| `user`    | `User` or `User        | undefined`                                        | Guaranteed present for `"required"` / `"admin"` |
+| `payload` | `Payload`              | Payload CMS instance                              |
+| `body`    | `TBody`                | Parsed + validated request body (if schema given) |
+| `query`   | `TQuery`               | Parsed + validated query params (if schema given) |
+| `params`  | `TParams`              | Parsed + validated route params (if schema given) |
 
 Reference: `lib/api/handler.ts`
 
 ### Auth Modes
 
-| Mode         | Behavior                                                      | On Failure |
-| ------------ | ------------------------------------------------------------- | ---------- |
-| `"required"` | Valid session required. `user` guaranteed in handler.          | 401        |
-| `"admin"`    | Valid session + `role === "admin"` required.                   | 401 / 403  |
-| `"optional"` | Attempts auth but proceeds without it. `user` may be undefined.| —         |
-| `"none"`     | No auth attempted. Public route.                              | —          |
+| Mode         | Behavior                                                        | On Failure |
+| ------------ | --------------------------------------------------------------- | ---------- |
+| `"required"` | Valid session required. `user` guaranteed in handler.           | 401        |
+| `"admin"`    | Valid session + `role === "admin"` required.                    | 401 / 403  |
+| `"optional"` | Attempts auth but proceeds without it. `user` may be undefined. | —          |
+| `"none"`     | No auth attempted. Public route.                                | —          |
 
 Default is `"required"` if omitted.
 
@@ -90,14 +90,14 @@ Default is `"required"` if omitted.
 
 Handlers throw typed errors that the framework catches and converts to JSON responses:
 
-| Error Class       | Status | Code               | Usage                                |
-| ----------------- | ------ | ------------------ | ------------------------------------ |
-| `ValidationError` | 400    | `BAD_REQUEST`      | Invalid input, bad parameters        |
-| `NotFoundError`   | 404    | `NOT_FOUND`        | Resource doesn't exist               |
-| `ForbiddenError`  | 403    | `FORBIDDEN`        | Authorized but not permitted         |
-| `ConflictError`   | 409    | `CONFLICT`         | State conflict (e.g., already running)|
-| `AppError`        | any    | custom             | Base class for other status codes    |
-| `ZodError`        | 422    | `VALIDATION_ERROR` | Schema validation failure (automatic)|
+| Error Class       | Status | Code               | Usage                                  |
+| ----------------- | ------ | ------------------ | -------------------------------------- |
+| `ValidationError` | 400    | `BAD_REQUEST`      | Invalid input, bad parameters          |
+| `NotFoundError`   | 404    | `NOT_FOUND`        | Resource doesn't exist                 |
+| `ForbiddenError`  | 403    | `FORBIDDEN`        | Authorized but not permitted           |
+| `ConflictError`   | 409    | `CONFLICT`         | State conflict (e.g., already running) |
+| `AppError`        | any    | custom             | Base class for other status codes      |
+| `ZodError`        | 422    | `VALIDATION_ERROR` | Schema validation failure (automatic)  |
 
 Unhandled errors return 500 with a generic message (no stack trace or internal details exposed).
 
@@ -120,7 +120,7 @@ These serve map tiles, event queries, and data source listings. They use the `/a
 | `/api/v1/events/bounds`              | Geographic bounding box    | `optional` |
 | `/api/v1/events/stats`               | Aggregate event statistics | `optional` |
 | `/api/v1/data-sources`               | Data source listing        | `optional` |
-| `/api/v1/sources/stats`              | Source statistics           | `optional` |
+| `/api/v1/sources/stats`              | Source statistics          | `optional` |
 | `/api/v1/datasets/[id]/schema/infer` | Schema inference           | `required` |
 
 All public data routes use `auth: "optional"` because public data is readable by anonymous users, but authenticated users see additional private data they own.
@@ -131,21 +131,24 @@ Reference: `app/api/v1/`
 
 These serve the React frontend and admin operations. They have no version prefix because the frontend deploys alongside the server.
 
-| Prefix                     | Purpose                               | Auth       |
-| -------------------------- | ------------------------------------- | ---------- |
-| `/api/users/`              | Email/password change, account deletion| `required` |
-| `/api/data-exports/`       | Request and download data exports     | `required` |
-| `/api/import/`             | Import wizard (preview, configure, progress) | `required` |
-| `/api/import-jobs/`        | Retry and reset import jobs           | `required` / `admin` |
-| `/api/catalogs/`           | Catalog queries (with-datasets)       | `required` |
-| `/api/scheduled-imports/`  | Trigger scheduled imports             | `required` |
-| `/api/admin/`              | Job management, schedule service      | `admin`    |
-| `/api/auth/`               | Registration                          | `none`     |
-| `/api/webhooks/`           | Scheduled import triggers (token auth)| `none`     |
-| `/api/quotas/`             | User quota information                | `required` |
-| `/api/feature-flags/`      | Feature flag state                    | `optional` |
-| `/api/newsletter/`         | Newsletter subscription               | `none`     |
-| `/api/health`              | Health check                          | `none`     |
+| Prefix                    | Purpose                                      | Auth                 |
+| ------------------------- | -------------------------------------------- | -------------------- |
+| `/api/users/`             | Email/password change, account deletion      | `required`           |
+| `/api/account/`           | Deletion summary                             | `required`           |
+| `/api/data-exports/`      | Request and download data exports            | `required`           |
+| `/api/import/`            | Import wizard (preview, configure, progress) | `required`           |
+| `/api/import-jobs/`       | Retry and reset import jobs                  | `required` / `admin` |
+| `/api/catalogs/`          | Catalog queries (with-datasets)              | `required`           |
+| `/api/scheduled-imports/` | Trigger scheduled imports                    | `required`           |
+| `/api/admin/`             | Job management, schedule service             | `admin`              |
+| `/api/geocoding/`         | Test geocoding configuration                 | `admin`              |
+| `/api/auth/`              | Registration                                 | `none`               |
+| `/api/webhooks/`          | Scheduled import triggers (token auth)       | `none`               |
+| `/api/quotas/`            | User quota information                       | `required`           |
+| `/api/feature-flags/`     | Feature flag state                           | `optional`           |
+| `/api/newsletter/`        | Newsletter subscription                      | `none`               |
+| `/api/preview`            | Next.js Draft Mode                           | `required`           |
+| `/api/health`             | Health check                                 | `none`               |
 
 Reference: `app/api/`
 
@@ -161,8 +164,8 @@ All API routes produce errors in a consistent shape:
 
 ```typescript
 interface ErrorResponse {
-  error: string;    // Human-readable message
-  code?: string;    // Programmatic error code (e.g., "BAD_REQUEST", "NOT_FOUND")
+  error: string; // Human-readable message
+  code?: string; // Programmatic error code (e.g., "BAD_REQUEST", "NOT_FOUND")
   details?: unknown; // Optional additional context (e.g., Zod validation issues)
 }
 ```
@@ -173,16 +176,14 @@ Reference: `lib/api/errors.ts`, `lib/utils/api-response.ts`, `lib/middleware/rat
 
 ### Input Validation
 
-Validation uses a hybrid approach: optional Zod schemas for structured input and manual checks for domain-specific logic.
+All routes that accept user input declare Zod schemas in their `apiRoute()` config. The framework validates `body`, `query`, and `params` before the handler runs — handlers receive parsed, typed objects. No manual `req.json()`, `searchParams.get()`, or `parseInt()` in route files.
 
-| Layer                | Approach                                                                                                                                              | Reference                                       |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `apiRoute()` schemas | Optional Zod schemas for `body`, `query`, and `params`. Validated automatically before the handler runs. Failures return 422 with issue details.       | `lib/api/handler.ts`                            |
-| Manual validation    | Domain-specific checks inside handlers. `parseStrictInteger()` for safe number parsing. `parseBoundsParameter()` for geographic bounds.               | `lib/utils/event-params.ts`, `lib/geospatial/`  |
-| Payload collections  | Field-level `validate` functions on collection configs. Payload enforces required fields, types, min/max, and custom validators.                       | `lib/collections/`                              |
-| Hooks                | `beforeChange` hooks enforce business rules (e.g., visibility invariants, privilege escalation prevention).                                            | `lib/collections/*/hooks.ts`                    |
-
-`parseStrictInteger()` rejects strings like `"12abc"` that `parseInt()` would silently truncate. It is used across all public API routes that accept numeric parameters.
+| Layer                | Approach                                                                                                                                         | Reference                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| `apiRoute()` schemas | Zod schemas for `body`, `query`, and `params`. Validated automatically before the handler runs. Failures return 422 with issue details.           | `lib/api/handler.ts`     |
+| Shared schemas       | Reusable schemas for common patterns: event filters, bounds, pagination, histogram params. Used across multiple v1 routes.                       | `lib/schemas/events.ts`, `lib/schemas/common.ts` |
+| Payload collections  | Field-level `validate` functions on collection configs. Payload enforces required fields, types, min/max, and custom validators.                 | `lib/collections/`       |
+| Hooks                | `beforeChange` hooks enforce business rules (e.g., visibility invariants, privilege escalation prevention).                                      | `lib/collections/*/hooks.ts` |
 
 ### Why Versioned Prefix for Public but Not Internal
 

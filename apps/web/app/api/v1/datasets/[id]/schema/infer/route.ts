@@ -36,12 +36,7 @@ export const POST = apiRoute({
 
     // Verify dataset exists and user has access
     const dataset = await payload
-      .findByID({
-        collection: "datasets",
-        id: datasetId,
-        overrideAccess: false,
-        user,
-      })
+      .findByID({ collection: "datasets", id: datasetId, overrideAccess: false, user })
       .catch(() => null);
 
     if (!dataset) {
@@ -61,11 +56,7 @@ export const POST = apiRoute({
       // No body or invalid JSON - use defaults
     }
 
-    logger.info("Schema inference requested", {
-      datasetId,
-      userId: user.id,
-      options,
-    });
+    logger.info("Schema inference requested", { datasetId, userId: user.id, options });
 
     // Perform schema inference
     const result = await SchemaInferenceService.inferSchemaFromEvents(payload, datasetId, options);

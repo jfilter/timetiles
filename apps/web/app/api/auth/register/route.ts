@@ -64,10 +64,7 @@ const generateAccountExistsEmailHTML = (resetUrl: string): string => {
 
 export const POST = apiRoute({
   auth: "none",
-  body: z.object({
-    email: z.email().transform((s) => s.trim().toLowerCase()),
-    password: z.string().min(8),
-  }),
+  body: z.object({ email: z.email().transform((s) => s.trim().toLowerCase()), password: z.string().min(8) }),
   handler: async ({ req, payload, body }) => {
     // Check if registration is enabled
     const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
@@ -121,10 +118,7 @@ export const POST = apiRoute({
       }
 
       // Return same success response as new registration
-      return Response.json({
-        success: true,
-        message: "Please check your email to verify your account.",
-      });
+      return Response.json({ success: true, message: "Please check your email to verify your account." });
     }
 
     // Create new user - Payload will automatically send verification email
@@ -146,10 +140,7 @@ export const POST = apiRoute({
 
       logger.info(`New user registered: ${maskEmail(normalizedEmail)}`);
 
-      return Response.json({
-        success: true,
-        message: "Please check your email to verify your account.",
-      });
+      return Response.json({ success: true, message: "Please check your email to verify your account." });
     } catch (createError) {
       // Handle potential race condition where user was created between our check and create
       // This could happen under high concurrency
@@ -160,10 +151,7 @@ export const POST = apiRoute({
         // Return success to prevent enumeration
         logger.warn(`Race condition during registration for: ${maskEmail(normalizedEmail)}`);
 
-        return Response.json({
-          success: true,
-          message: "Please check your email to verify your account.",
-        });
+        return Response.json({ success: true, message: "Please check your email to verify your account." });
       }
 
       // Re-throw other errors

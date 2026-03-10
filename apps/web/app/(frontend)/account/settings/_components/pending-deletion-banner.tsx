@@ -28,10 +28,7 @@ export const PendingDeletionBanner = ({ deletionScheduledAt, onCancelled }: Pend
 
     void (async () => {
       try {
-        const response = await fetch("/api/users/cancel-deletion", {
-          method: "POST",
-          credentials: "include",
-        });
+        const response = await fetch("/api/users/cancel-deletion", { method: "POST", credentials: "include" });
 
         if (!response.ok) {
           const data = await response.json();

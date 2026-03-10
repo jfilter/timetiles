@@ -32,12 +32,7 @@ import {
  */
 export interface BoundsResponse {
   /** Geographic bounds of matching events, or null if no events match */
-  bounds: {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-  } | null;
+  bounds: { north: number; south: number; east: number; west: number } | null;
   /** Total count of events within bounds */
   count: number;
 }

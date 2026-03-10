@@ -24,11 +24,7 @@ export const POST = apiRoute({
     const deletionService = getAccountDeletionService(payload);
     await deletionService.cancelDeletion(user.id);
 
-    await auditLog(payload, {
-      action: AUDIT_ACTIONS.DELETION_CANCELLED,
-      userId: user.id,
-      userEmail: user.email,
-    });
+    await auditLog(payload, { action: AUDIT_ACTIONS.DELETION_CANCELLED, userId: user.id, userEmail: user.email });
 
     logger.info({ userId: user.id }, "Account deletion cancelled");
 

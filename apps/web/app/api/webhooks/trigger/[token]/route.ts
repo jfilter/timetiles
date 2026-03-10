@@ -65,21 +65,10 @@ const generateImportName = (scheduledImport: ScheduledImport, currentTime: Date)
  * when processing finishes.
  */
 const updateStatisticsOnTrigger = async (payload: Payload, scheduledImport: ScheduledImport): Promise<void> => {
-  const stats = scheduledImport.statistics ?? {
-    totalRuns: 0,
-    successfulRuns: 0,
-    failedRuns: 0,
-    averageDuration: 0,
-  };
+  const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
   stats.totalRuns = (stats.totalRuns ?? 0) + 1;
 
-  await payload.update({
-    collection: "scheduled-imports",
-    id: scheduledImport.id,
-    data: {
-      statistics: stats,
-    },
-  });
+  await payload.update({ collection: "scheduled-imports", id: scheduledImport.id, data: { statistics: stats } });
 };
 
 /** Queue the import job and update statistics for a validated scheduled import. */
@@ -92,10 +81,7 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
   await payload.update({
     collection: "scheduled-imports",
     id: scheduledImport.id,
-    data: {
-      lastStatus: "running",
-      lastRun: currentTime.toISOString(),
-    },
+    data: { lastStatus: "running", lastRun: currentTime.toISOString() },
   });
 
   // Queue URL fetch job - wrapped in try/catch to revert status on failure
@@ -122,9 +108,7 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
     await payload.update({
       collection: "scheduled-imports",
       id: scheduledImport.id,
-      data: {
-        lastStatus: previousStatus,
-      },
+      data: { lastStatus: previousStatus },
     });
     return Response.json({ error: "Failed to queue import job", code: "INTERNAL_ERROR" }, { status: 500 });
   }
@@ -140,12 +124,7 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
   });
 
   return Response.json(
-    {
-      success: true,
-      message: "Import triggered successfully",
-      status: "triggered",
-      jobId: urlFetchJob.id.toString(),
-    },
+    { success: true, message: "Import triggered successfully", status: "triggered", jobId: urlFetchJob.id.toString() },
     { status: 200 }
   );
 };
@@ -167,18 +146,14 @@ export const POST = apiRoute({
     // Find scheduled import by token
     const scheduledImports = await payload.find({
       collection: "scheduled-imports",
-      where: {
-        webhookToken: { equals: token },
-      },
+      where: { webhookToken: { equals: token } },
       limit: 1,
     });
 
     // Security: Return same error message for invalid token and disabled webhook
     // to prevent token enumeration attacks
     if (scheduledImports.docs.length === 0) {
-      logger.warn("Webhook trigger failed - invalid token", {
-        token: token.substring(0, 8) + "...",
-      });
+      logger.warn("Webhook trigger failed - invalid token", { token: token.substring(0, 8) + "..." });
       return Response.json({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" }, { status: 401 });
     }
 
@@ -199,11 +174,7 @@ export const POST = apiRoute({
         name: scheduledImport.name,
       });
       return Response.json(
-        {
-          success: true,
-          message: "Import already running, skipped",
-          status: "skipped",
-        },
+        { success: true, message: "Import already running, skipped", status: "skipped" },
         { status: 200 }
       );
     }

@@ -9,12 +9,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/logger", () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  }),
+  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }));
 
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
@@ -111,17 +106,11 @@ describe.sequential("auditLog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPayload = {
-      create: vi.fn().mockResolvedValue({ id: 1 }),
-    };
+    mockPayload = { create: vi.fn().mockResolvedValue({ id: 1 }) };
   });
 
   it("creates an audit log entry with hashed email", async () => {
-    await auditLog(mockPayload, {
-      action: AUDIT_ACTIONS.EMAIL_CHANGED,
-      userId: 42,
-      userEmail: "user@example.com",
-    });
+    await auditLog(mockPayload, { action: AUDIT_ACTIONS.EMAIL_CHANGED, userId: 42, userEmail: "user@example.com" });
 
     expect(mockPayload.create).toHaveBeenCalledTimes(1);
     expect(mockPayload.create).toHaveBeenCalledWith(
@@ -138,11 +127,7 @@ describe.sequential("auditLog", () => {
   });
 
   it("hashes the email using SHA-256", async () => {
-    await auditLog(mockPayload, {
-      action: AUDIT_ACTIONS.EMAIL_CHANGED,
-      userId: 1,
-      userEmail: "test@example.com",
-    });
+    await auditLog(mockPayload, { action: AUDIT_ACTIONS.EMAIL_CHANGED, userId: 1, userEmail: "test@example.com" });
 
     const callData = mockPayload.create.mock.calls[0][0].data;
     expect(callData.userEmailHash).toBe("973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b");
@@ -174,11 +159,7 @@ describe.sequential("auditLog", () => {
   });
 
   it("omits performedBy when not provided", async () => {
-    await auditLog(mockPayload, {
-      action: AUDIT_ACTIONS.EMAIL_CHANGED,
-      userId: 7,
-      userEmail: "user@example.com",
-    });
+    await auditLog(mockPayload, { action: AUDIT_ACTIONS.EMAIL_CHANGED, userId: 7, userEmail: "user@example.com" });
 
     const callData = mockPayload.create.mock.calls[0][0].data;
     expect(callData.performedBy).toBeUndefined();
@@ -211,33 +192,21 @@ describe.sequential("auditLog", () => {
   });
 
   it("omits details when not provided", async () => {
-    await auditLog(mockPayload, {
-      action: AUDIT_ACTIONS.EMAIL_CHANGED,
-      userId: 3,
-      userEmail: "user@example.com",
-    });
+    await auditLog(mockPayload, { action: AUDIT_ACTIONS.EMAIL_CHANGED, userId: 3, userEmail: "user@example.com" });
 
     const callData = mockPayload.create.mock.calls[0][0].data;
     expect(callData.details).toBeUndefined();
   });
 
   it("includes a timestamp in ISO format", async () => {
-    await auditLog(mockPayload, {
-      action: AUDIT_ACTIONS.DELETION_CANCELLED,
-      userId: 9,
-      userEmail: "user@example.com",
-    });
+    await auditLog(mockPayload, { action: AUDIT_ACTIONS.DELETION_CANCELLED, userId: 9, userEmail: "user@example.com" });
 
     const callData = mockPayload.create.mock.calls[0][0].data;
     expect(callData.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 
   it("uses overrideAccess: true", async () => {
-    await auditLog(mockPayload, {
-      action: AUDIT_ACTIONS.EMAIL_CHANGED,
-      userId: 1,
-      userEmail: "user@example.com",
-    });
+    await auditLog(mockPayload, { action: AUDIT_ACTIONS.EMAIL_CHANGED, userId: 1, userEmail: "user@example.com" });
 
     expect(mockPayload.create).toHaveBeenCalledWith(expect.objectContaining({ overrideAccess: true }));
   });
@@ -247,11 +216,7 @@ describe.sequential("auditLog", () => {
       mockPayload.create.mockRejectedValue(new Error("Database connection failed"));
 
       await expect(
-        auditLog(mockPayload, {
-          action: AUDIT_ACTIONS.PASSWORD_CHANGED,
-          userId: 1,
-          userEmail: "user@example.com",
-        })
+        auditLog(mockPayload, { action: AUDIT_ACTIONS.PASSWORD_CHANGED, userId: 1, userEmail: "user@example.com" })
       ).resolves.toBeUndefined();
     });
 
@@ -276,20 +241,13 @@ describe.sequential("auditFieldChanges", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPayload = {
-      create: vi.fn().mockResolvedValue({ id: 1 }),
-    };
+    mockPayload = { create: vi.fn().mockResolvedValue({ id: 1 }) };
   });
 
   it("detects a single field change and creates an audit entry", async () => {
     await auditFieldChanges(
       mockPayload,
-      {
-        previousDoc: { trustLevel: "1" },
-        doc: { trustLevel: "3" },
-        userId: 42,
-        userEmail: "user@example.com",
-      },
+      { previousDoc: { trustLevel: "1" }, doc: { trustLevel: "3" }, userId: 42, userEmail: "user@example.com" },
       [
         {
           action: AUDIT_ACTIONS.TRUST_LEVEL_CHANGED,
@@ -363,12 +321,7 @@ describe.sequential("auditFieldChanges", () => {
   it("does nothing when previousDoc is undefined", async () => {
     await auditFieldChanges(
       mockPayload,
-      {
-        previousDoc: undefined,
-        doc: { trustLevel: "3" },
-        userId: 42,
-        userEmail: "user@example.com",
-      },
+      { previousDoc: undefined, doc: { trustLevel: "3" }, userId: 42, userEmail: "user@example.com" },
       [{ action: AUDIT_ACTIONS.TRUST_LEVEL_CHANGED, fieldPath: "trustLevel" }]
     );
 
@@ -380,12 +333,7 @@ describe.sequential("auditFieldChanges", () => {
 
     await auditFieldChanges(
       mockPayload,
-      {
-        previousDoc: { role: "user" },
-        doc: { role: "admin" },
-        userId: 42,
-        userEmail: "user@example.com",
-      },
+      { previousDoc: { role: "user" }, doc: { role: "admin" }, userId: 42, userEmail: "user@example.com" },
       [{ action: AUDIT_ACTIONS.ROLE_CHANGED, fieldPath: "role", detailsFn }]
     );
 
@@ -396,19 +344,11 @@ describe.sequential("auditFieldChanges", () => {
   it("uses default details (previousValue/newValue) when no detailsFn", async () => {
     await auditFieldChanges(
       mockPayload,
-      {
-        previousDoc: { role: "user" },
-        doc: { role: "admin" },
-        userId: 42,
-        userEmail: "user@example.com",
-      },
+      { previousDoc: { role: "user" }, doc: { role: "admin" }, userId: 42, userEmail: "user@example.com" },
       [{ action: AUDIT_ACTIONS.ROLE_CHANGED, fieldPath: "role" }]
     );
 
-    expect(mockPayload.create.mock.calls[0][0].data.details).toEqual({
-      previousValue: "user",
-      newValue: "admin",
-    });
+    expect(mockPayload.create.mock.calls[0][0].data.details).toEqual({ previousValue: "user", newValue: "admin" });
   });
 
   it("correctly compares objects using deep equality", async () => {

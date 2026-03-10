@@ -19,9 +19,7 @@ import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
 export const POST = apiRoute({
   auth: "required",
-  body: z.object({
-    password: z.string().min(1),
-  }),
+  body: z.object({ password: z.string().min(1) }),
   handler: async ({ payload, user, req, body }) => {
     // Rate limiting
     const clientId = getClientIdentifier(req);
@@ -74,10 +72,7 @@ export const POST = apiRoute({
     // Check if already pending deletion
     if (user.deletionStatus === "pending_deletion") {
       return Response.json(
-        {
-          error: "Deletion already scheduled",
-          deletionScheduledAt: user.deletionScheduledAt,
-        },
+        { error: "Deletion already scheduled", deletionScheduledAt: user.deletionScheduledAt },
         { status: 400 }
       );
     }
@@ -94,11 +89,7 @@ export const POST = apiRoute({
     });
 
     logger.info(
-      {
-        userId: user.id,
-        deletionScheduledAt: result.deletionScheduledAt,
-        clientId,
-      },
+      { userId: user.id, deletionScheduledAt: result.deletionScheduledAt, clientId },
       "Account deletion scheduled"
     );
 
