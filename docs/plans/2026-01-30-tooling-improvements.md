@@ -10,6 +10,7 @@ Comprehensive improvements to build tooling based on official skill recommendati
 ## Motivation
 
 Analysis using official skills (vitest, turborepo, pnpm) revealed several opportunities to improve:
+
 - Build performance (parallel execution)
 - Code quality enforcement (coverage thresholds)
 - CI reproducibility (frozen lockfiles)
@@ -37,6 +38,7 @@ Analysis using official skills (vitest, turborepo, pnpm) revealed several opport
 **File:** `.npmrc` (created)
 
 Added strict pnpm configuration:
+
 - `auto-install-peers=false` - Prevents phantom dependencies
 - `strict-peer-dependencies=true` - Fails fast on peer conflicts
 - `public-hoist-pattern[]=*eslint*` and `*prettier*` - Hoists tools for plugin compatibility
@@ -59,6 +61,7 @@ Added strict pnpm configuration:
 **File:** `apps/web/vitest.config.ts`
 
 Added coverage thresholds matching current baseline:
+
 ```typescript
 thresholds: {
   lines: 48,
@@ -80,16 +83,19 @@ thresholds: {
 ## Trade-offs Considered
 
 ### Coverage Thresholds
+
 - Set to current baseline (48%) rather than aspirational (80%)
 - Rationale: Prevent regression without breaking existing builds
 - Can be increased incrementally as coverage improves
 
 ### pnpm Catalogs
+
 - NOT implemented (deferred)
 - Rationale: Most invasive change, requires updating all package.json files
 - Can be added later if centralized version management becomes priority
 
 ### Transit Nodes
+
 - Added for lint/typecheck tasks
 - Does NOT affect build task (still uses `^build` for proper dependency ordering)
 - Rationale: Lint/typecheck don't need build artifacts, only source code
@@ -97,6 +103,7 @@ thresholds: {
 ## Migration Notes
 
 No migration required - all changes are backward compatible:
+
 - Existing `turbo build`, `turbo test` commands still work (just not best practice in scripts)
 - pnpm behavior more strict but catches issues rather than hiding them
 - Coverage thresholds match current levels

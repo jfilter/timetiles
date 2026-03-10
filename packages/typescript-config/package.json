@@ -8,10 +8,9 @@
   },
   "scripts": {
     "lint": "mkdir -p .lint-results && eslint . --ext .ts,.tsx --cache --format json --output-file .lint-results/latest.json; eslint . --ext .ts,.tsx --cache",
-    "format": "eslint . --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && prettier --write . --log-level error"
+    "format": "eslint . --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && oxfmt --write ."
   },
   "devDependencies": {
-    "eslint": "catalog:",
-    "prettier": "catalog:"
+    "eslint": "catalog:"
   }
 }

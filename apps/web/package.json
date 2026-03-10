@@ -1,9 +1,9 @@
 {
   "name": "web",
-  "description": "The web application for TimeTiles, providing the main user interface and data exploration features.",
   "version": "0.0.1",
-  "type": "module",
   "private": true,
+  "description": "The web application for TimeTiles, providing the main user interface and data exploration features.",
+  "type": "module",
   "scripts": {
     "dev": "./scripts/job-runner.sh & next dev --turbopack",
     "dev:debug": "LOG_LEVEL=debug next dev --turbopack",
@@ -11,7 +11,7 @@
     "build:compile": "payload generate:types --silent && next build --experimental-build-mode compile --webpack",
     "start": "next start",
     "lint": "mkdir -p .lint-results && eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --format json --output-file .lint-results/latest.json; eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache",
-    "format": "eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && prettier --write . --log-level error",
+    "format": "eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && oxfmt --write .",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "typecheck:fast": "tsgo --noEmit",
     "lint:fast": "oxlint --config ../../.oxlintrc.json .",

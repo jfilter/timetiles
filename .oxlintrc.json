@@ -97,5 +97,14 @@
       }
     }
   ],
-  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/coverage/**", "**/.turbo/**", "*.d.ts", "**/importMap.js", "**/payload-types.ts"]
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "**/.turbo/**",
+    "*.d.ts",
+    "**/importMap.js",
+    "**/payload-types.ts"
+  ]
 }

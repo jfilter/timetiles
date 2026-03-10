@@ -1,9 +1,9 @@
 /**
  * Fetches SonarCloud analysis results and code quality metrics
- * 
+ *
  * This script checks if the latest Git commit has been analyzed by SonarCloud
  * and fetches code quality issues, generating a report for review.
- * 
+ *
  * @module
  * @category Scripts
  */
@@ -103,8 +103,8 @@ async function checkLatestCommitAnalyzed(): Promise<void> {
       throw new Error(`SonarCloud API error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json() as { analyses: SonarCloudAnalysis[] };
-    
+    const data = (await response.json()) as { analyses: SonarCloudAnalysis[] };
+
     if (!data.analyses || data.analyses.length === 0) {
       console.log("⚠️  No analyses found in SonarCloud");
       console.log(`📊 View project at: https://sonarcloud.io/project/overview?id=${projectKey}`);
@@ -121,7 +121,7 @@ async function checkLatestCommitAnalyzed(): Promise<void> {
     // Compare commits
     if (analyzedCommitSha === latestCommitSha) {
       console.log("✅ Latest commit has been analyzed by SonarCloud");
-      
+
       // Fetch issues
       await fetchSonarCloudIssues(token, projectKey);
     } else {
@@ -133,14 +133,13 @@ async function checkLatestCommitAnalyzed(): Promise<void> {
       console.log("   2. Wait for GitHub Actions to complete");
       console.log("   3. Run this script again");
       console.log(`\n📊 View project at: https://sonarcloud.io/project/overview?id=${projectKey}`);
-      
+
       // Try to get commits between
       try {
-        const commitsSince = execSync(
-          `git rev-list ${analyzedCommitSha}..${latestCommitSha} --oneline`,
-          { encoding: "utf8" }
-        ).trim();
-        
+        const commitsSince = execSync(`git rev-list ${analyzedCommitSha}..${latestCommitSha} --oneline`, {
+          encoding: "utf8",
+        }).trim();
+
         if (commitsSince) {
           const commitCount = commitsSince.split("\n").length;
           console.log(`\n📋 ${commitCount} commit(s) not yet analyzed:`);
@@ -164,7 +163,7 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
   try {
     const severities = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"];
     const types = ["BUG", "VULNERABILITY", "CODE_SMELL", "SECURITY_HOTSPOT"];
-    
+
     const headers = {
       Authorization: `Bearer ${token}`,
       "User-Agent": "Node.js SonarCloud Client",
@@ -178,7 +177,7 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
     // Fetch all pages of issues
     while (page <= totalPages) {
       const issuesUrl = `https://sonarcloud.io/api/issues/search?componentKeys=${projectKey}&resolved=false&ps=${pageSize}&p=${page}`;
-      
+
       const response = await fetch(issuesUrl, {
         method: "GET",
         headers: headers,
@@ -188,7 +187,7 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
         throw new Error(`SonarCloud API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json() as {
+      const data = (await response.json()) as {
         total: number;
         p: number;
         ps: number;
@@ -204,29 +203,29 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
     // Sort and categorize issues
     const issuesBySeverity: Record<string, SonarCloudIssue[]> = {};
     const issuesByType: Record<string, SonarCloudIssue[]> = {};
-    
-    severities.forEach(severity => {
-      issuesBySeverity[severity] = allIssues.filter(issue => issue.severity === severity);
+
+    severities.forEach((severity) => {
+      issuesBySeverity[severity] = allIssues.filter((issue) => issue.severity === severity);
     });
-    
-    types.forEach(type => {
-      issuesByType[type] = allIssues.filter(issue => issue.type === type);
+
+    types.forEach((type) => {
+      issuesByType[type] = allIssues.filter((issue) => issue.type === type);
     });
 
     // Output summary
     console.log("\n=== SonarCloud Analysis Summary ===");
     console.log(`Total issues: ${allIssues.length}`);
     console.log("\nBy Severity:");
-    severities.forEach(severity => {
+    severities.forEach((severity) => {
       const count = issuesBySeverity[severity].length;
       if (count > 0) {
         const emoji = getEmojiBySeverity(severity);
         console.log(`  ${emoji} ${severity}: ${count}`);
       }
     });
-    
+
     console.log("\nBy Type:");
-    types.forEach(type => {
+    types.forEach((type) => {
       const count = issuesByType[type].length;
       if (count > 0) {
         const emoji = getEmojiByType(type);
@@ -238,7 +237,7 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
     const criticalIssues = [...issuesBySeverity.BLOCKER, ...issuesBySeverity.CRITICAL];
     if (criticalIssues.length > 0) {
       console.log("\n⚠️  Critical Issues to Address:");
-      criticalIssues.slice(0, 10).forEach(issue => {
+      criticalIssues.slice(0, 10).forEach((issue) => {
         const file = issue.component.replace(`${projectKey}:`, "");
         const line = issue.line ? `:${issue.line}` : "";
         console.log(`  • ${file}${line}`);
@@ -255,20 +254,16 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
       projectKey,
       summary: {
         total: allIssues.length,
-        bySeverity: Object.fromEntries(
-          severities.map(s => [s, issuesBySeverity[s].length])
-        ),
-        byType: Object.fromEntries(
-          types.map(t => [t, issuesByType[t].length])
-        ),
+        bySeverity: Object.fromEntries(severities.map((s) => [s, issuesBySeverity[s].length])),
+        byType: Object.fromEntries(types.map((t) => [t, issuesByType[t].length])),
       },
       issues: allIssues,
     };
-    
+
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
     console.log(`\n📄 Detailed report saved to: ${reportPath}`);
     console.log(`📊 View online: https://sonarcloud.io/project/issues?id=${projectKey}&resolved=false`);
-    
+
     // Exit with error if there are blocker issues
     if (issuesBySeverity.BLOCKER.length > 0) {
       console.error("\n❌ Found BLOCKER issues that must be fixed");
@@ -285,12 +280,18 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
  */
 function getEmojiBySeverity(severity: string): string {
   switch (severity) {
-    case "BLOCKER": return "🔴";
-    case "CRITICAL": return "🟠";
-    case "MAJOR": return "🟡";
-    case "MINOR": return "🔵";
-    case "INFO": return "⚪";
-    default: return "⚫";
+    case "BLOCKER":
+      return "🔴";
+    case "CRITICAL":
+      return "🟠";
+    case "MAJOR":
+      return "🟡";
+    case "MINOR":
+      return "🔵";
+    case "INFO":
+      return "⚪";
+    default:
+      return "⚫";
   }
 }
 
@@ -299,11 +300,16 @@ function getEmojiBySeverity(severity: string): string {
  */
 function getEmojiByType(type: string): string {
   switch (type) {
-    case "BUG": return "🐛";
-    case "VULNERABILITY": return "🔓";
-    case "CODE_SMELL": return "👃";
-    case "SECURITY_HOTSPOT": return "🔥";
-    default: return "📝";
+    case "BUG":
+      return "🐛";
+    case "VULNERABILITY":
+      return "🔓";
+    case "CODE_SMELL":
+      return "👃";
+    case "SECURITY_HOTSPOT":
+      return "🔥";
+    default:
+      return "📝";
   }
 }
 

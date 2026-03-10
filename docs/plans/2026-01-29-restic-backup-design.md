@@ -22,6 +22,7 @@ uploads volume → restic backup → local repo
 ```
 
 **Key decisions:**
+
 - `pg_dump` creates consistent database snapshots (restic backs up the dump, not raw postgres data)
 - Uploads backed up directly from Docker volume
 - Two independent restic repos: local (primary) + S3 (offsite)
@@ -91,31 +92,35 @@ timetiles backup auto --disable          # Remove cron job
 
 For security, offsite S3 can use write-only credentials. The tool gracefully handles permission limitations:
 
-| Command | Write-only behavior |
-|---------|---------------------|
-| `backup --offsite` | Works (write-only needed) |
-| `backup list --offsite` | Skips with message |
-| `backup prune` | Prunes local only, skips offsite |
-| `restore --offsite` | Fails with helpful message |
+| Command                 | Write-only behavior              |
+| ----------------------- | -------------------------------- |
+| `backup --offsite`      | Works (write-only needed)        |
+| `backup list --offsite` | Skips with message               |
+| `backup prune`          | Prunes local only, skips offsite |
+| `restore --offsite`     | Fails with helpful message       |
 
 **Recommendation:** Use S3 lifecycle rules to expire objects after 90 days instead of restic prune for offsite.
 
 ## Error Handling
 
 **Backup failures:**
+
 - pg_dump fails → abort, send alert, exit 1
 - restic backup fails → abort, send alert, exit 1
 - offsite sync fails → warn but don't fail (local succeeded)
 
 **Restore failures:**
+
 - snapshot not found → list available, exit 1
 - restic restore fails → abort, send alert, exit 1
 
 **Repo initialization:**
+
 - Auto-run `restic init` on first backup if repo doesn't exist
 - Idempotent for offsite (ignore "already initialized")
 
 **Alerting:**
+
 - Uses existing `send_alert` function
 - Alerts on: backup failure, restore failure, verify failure
 - No alert on: offsite permission errors (expected with write-only)

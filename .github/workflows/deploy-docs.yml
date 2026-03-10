@@ -19,8 +19,6 @@ on:
       - "pnpm-workspace.yaml"
   workflow_dispatch:
 
-
-
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
@@ -41,7 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # Fetch full history for version detection and changelog
+          fetch-depth: 0 # Fetch full history for version detection and changelog
           lfs: true
 
       - name: Setup Node.js

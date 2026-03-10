@@ -62,21 +62,21 @@ import { AlertCircle, CheckCircle, Info } from "lucide-react";
   <AlertCircle className="h-4 w-4" />
   <AlertTitle>Import failed</AlertTitle>
   <AlertDescription>CSV file is missing required columns.</AlertDescription>
-</Alert>
+</Alert>;
 ```
 
 ## Icon Sizing
 
 Use Tailwind size classes for consistency:
 
-| Size | Class | Pixels | Usage |
-|------|-------|--------|-------|
-| Extra small | `h-3 w-3` | 12px | Inline badges, tight spaces |
-| Small | `h-4 w-4` | 16px | Buttons, form labels, list items |
-| Default | `h-5 w-5` | 20px | Section headers, cards |
-| Medium | `h-6 w-6` | 24px | Page titles, prominent actions |
-| Large | `h-8 w-8` | 32px | Empty states, hero sections |
-| Extra large | `h-12 w-12` | 48px | Large empty states, splash screens |
+| Size        | Class       | Pixels | Usage                              |
+| ----------- | ----------- | ------ | ---------------------------------- |
+| Extra small | `h-3 w-3`   | 12px   | Inline badges, tight spaces        |
+| Small       | `h-4 w-4`   | 16px   | Buttons, form labels, list items   |
+| Default     | `h-5 w-5`   | 20px   | Section headers, cards             |
+| Medium      | `h-6 w-6`   | 24px   | Page titles, prominent actions     |
+| Large       | `h-8 w-8`   | 32px   | Empty states, hero sections        |
+| Extra large | `h-12 w-12` | 48px   | Large empty states, splash screens |
 
 **Most common:** `h-4 w-4` (small) and `h-5 w-5` (default)
 
@@ -137,30 +137,23 @@ Lucide icons default to 2px stroke. Adjust for different contexts:
 ### Navigation
 
 ```tsx
-import {
-  Home,
-  Map,
-  Layers,
-  Settings,
-  HelpCircle,
-  User,
-} from "lucide-react";
+import { Home, Map, Layers, Settings, HelpCircle, User } from "lucide-react";
 ```
 
 ### Actions
 
 ```tsx
 import {
-  Plus,           // Create
-  Edit,           // Edit
-  Trash2,         // Delete
-  Copy,           // Duplicate
-  Download,       // Export
-  Upload,         // Import
-  Save,           // Save
-  X,              // Close/Cancel
-  Check,          // Confirm
-  RefreshCw,      // Refresh
+  Plus, // Create
+  Edit, // Edit
+  Trash2, // Delete
+  Copy, // Duplicate
+  Download, // Export
+  Upload, // Import
+  Save, // Save
+  X, // Close/Cancel
+  Check, // Confirm
+  RefreshCw, // Refresh
 } from "lucide-react";
 ```
 
@@ -168,12 +161,12 @@ import {
 
 ```tsx
 import {
-  FileText,       // File
-  Folder,         // Folder/Catalog
-  Database,       // Dataset
-  Table,          // Table/Grid
-  List,           // List view
-  BarChart3,      // Charts
+  FileText, // File
+  Folder, // Folder/Catalog
+  Database, // Dataset
+  Table, // Table/Grid
+  List, // List view
+  BarChart3, // Charts
 } from "lucide-react";
 ```
 
@@ -181,12 +174,12 @@ import {
 
 ```tsx
 import {
-  MapPin,         // Location marker
-  Map,            // Map view
-  Globe,          // Global/World
-  Compass,        // Direction/Navigation
-  Navigation,     // GPS/Navigation
-  Layers,         // Map layers
+  MapPin, // Location marker
+  Map, // Map view
+  Globe, // Global/World
+  Compass, // Direction/Navigation
+  Navigation, // GPS/Navigation
+  Layers, // Map layers
 } from "lucide-react";
 ```
 
@@ -194,12 +187,12 @@ import {
 
 ```tsx
 import {
-  CheckCircle,    // Success
-  XCircle,        // Error
-  AlertCircle,    // Warning
-  Info,           // Information
-  AlertTriangle,  // Caution
-  Loader2,        // Loading (animated)
+  CheckCircle, // Success
+  XCircle, // Error
+  AlertCircle, // Warning
+  Info, // Information
+  AlertTriangle, // Caution
+  Loader2, // Loading (animated)
 } from "lucide-react";
 ```
 
@@ -207,10 +200,10 @@ import {
 
 ```tsx
 import {
-  Calendar,       // Date picker
-  Clock,          // Time
-  CalendarDays,   // Date range
-  Timer,          // Duration
+  Calendar, // Date picker
+  Clock, // Time
+  CalendarDays, // Date range
+  Timer, // Duration
 } from "lucide-react";
 ```
 
@@ -218,17 +211,17 @@ import {
 
 ```tsx
 import {
-  ChevronDown,    // Dropdown
-  ChevronRight,   // Expand
-  ChevronLeft,    // Back
+  ChevronDown, // Dropdown
+  ChevronRight, // Expand
+  ChevronLeft, // Back
   ChevronsUpDown, // Sort
-  Search,         // Search
-  Filter,         // Filters
+  Search, // Search
+  Filter, // Filters
   SlidersHorizontal, // Settings/Adjust
-  Eye,            // Visibility
-  EyeOff,         // Hidden
+  Eye, // Visibility
+  EyeOff, // Hidden
   MoreHorizontal, // More menu (...)
-  Menu,           // Hamburger menu
+  Menu, // Hamburger menu
 } from "lucide-react";
 ```
 
@@ -328,6 +321,7 @@ export const CustomIcon = ({ className, ...props }) => (
 ```
 
 **Guidelines for custom icons:**
+
 - Use 24x24 viewBox
 - 2px stroke width (default)
 - `stroke="currentColor"` (inherits text color)
@@ -339,13 +333,7 @@ export const CustomIcon = ({ className, ...props }) => (
 For one-off icons:
 
 ```tsx
-<svg
-  className="h-5 w-5"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  strokeWidth="2"
->
+<svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
   {/* SVG path */}
 </svg>
 ```
@@ -366,6 +354,7 @@ When using icons:
 **Browse all icons:** [https://lucide.dev/icons](https://lucide.dev/icons)
 
 **Search by keyword:**
+
 - "map" → MapPin, Map, Globe, Compass
 - "file" → FileText, File, Folder, Files
 - "edit" → Edit, Edit2, Edit3, Pencil
@@ -386,9 +375,7 @@ When using icons:
     </div>
   </CardHeader>
   <CardContent>
-    <p className="text-sm text-muted-foreground">
-      1,234 events across 50 locations
-    </p>
+    <p className="text-sm text-muted-foreground">1,234 events across 50 locations</p>
   </CardContent>
 </Card>
 ```
@@ -399,9 +386,7 @@ When using icons:
 <div className="flex flex-col items-center justify-center py-12">
   <FileText className="h-12 w-12 text-muted-foreground mb-4" />
   <h3 className="text-lg font-semibold">No datasets yet</h3>
-  <p className="text-sm text-muted-foreground mb-4">
-    Import your first dataset to get started
-  </p>
+  <p className="text-sm text-muted-foreground mb-4">Import your first dataset to get started</p>
   <Button>
     <Plus className="mr-2 h-4 w-4" />
     Import Dataset

@@ -16,13 +16,13 @@ TimeTiles communicates with **clarity, precision, and calm authority** — like 
 
 ### Voice Attributes
 
-| Attribute | We Are | We Are Not |
-|-----------|--------|------------|
-| Clarity | Clear, direct | Vague, ambiguous |
-| Tone | Professional, calm | Casual, excitable |
-| Technical level | Precise, accurate | Overly simplified, dumbed down |
-| Personality | Thoughtful, authoritative | Quirky, playful |
-| Formality | Professional but approachable | Stiff, corporate |
+| Attribute       | We Are                        | We Are Not                     |
+| --------------- | ----------------------------- | ------------------------------ |
+| Clarity         | Clear, direct                 | Vague, ambiguous               |
+| Tone            | Professional, calm            | Casual, excitable              |
+| Technical level | Precise, accurate             | Overly simplified, dumbed down |
+| Personality     | Thoughtful, authoritative     | Quirky, playful                |
+| Formality       | Professional but approachable | Stiff, corporate               |
 
 ## Terminology Standards
 
@@ -30,18 +30,18 @@ TimeTiles communicates with **clarity, precision, and calm authority** — like 
 
 Use these standardized terms throughout the application:
 
-| ✅ Use This | ❌ Not This | Context |
-|------------|------------|---------|
-| Dataset | Data set, data-set | Collection of events |
-| Event | Item, entry, record | Individual data point |
-| Catalog | Category, folder | Grouping of datasets |
-| Import | Upload, ingest | Bringing data into TimeTiles |
-| Geocode | Geolocate, geo-tag | Convert address to coordinates |
-| Map view | Map, mapping | The interactive map interface |
-| Timeline | Time slider, temporal filter | Time-based filtering |
-| Filter | Search, refine | Narrowing results |
-| Field | Column, attribute | Data property |
-| Location | Place, address | Geographic reference |
+| ✅ Use This | ❌ Not This                  | Context                        |
+| ----------- | ---------------------------- | ------------------------------ |
+| Dataset     | Data set, data-set           | Collection of events           |
+| Event       | Item, entry, record          | Individual data point          |
+| Catalog     | Category, folder             | Grouping of datasets           |
+| Import      | Upload, ingest               | Bringing data into TimeTiles   |
+| Geocode     | Geolocate, geo-tag           | Convert address to coordinates |
+| Map view    | Map, mapping                 | The interactive map interface  |
+| Timeline    | Time slider, temporal filter | Time-based filtering           |
+| Filter      | Search, refine               | Narrowing results              |
+| Field       | Column, attribute            | Data property                  |
+| Location    | Place, address               | Geographic reference           |
 
 ### Capitalization
 
@@ -54,6 +54,7 @@ Use these standardized terms throughout the application:
 ### Buttons
 
 **Action buttons** - Use verb + noun structure:
+
 - ✅ Import Dataset
 - ✅ Create Catalog
 - ✅ Export Events
@@ -61,12 +62,14 @@ Use these standardized terms throughout the application:
 - ❌ Click Here to Import (redundant)
 
 **Destructive actions** - Be explicit:
+
 - ✅ Delete Dataset
 - ✅ Remove Events
 - ❌ Delete (what?)
 - ❌ Are you sure? (tell them what they're confirming)
 
 **Secondary actions:**
+
 - ✅ Cancel
 - ✅ Go Back
 - ✅ Skip This Step
@@ -76,6 +79,7 @@ Use these standardized terms throughout the application:
 ### Form Labels
 
 **Be direct and specific:**
+
 - ✅ Dataset name
 - ✅ Event title field
 - ✅ Location address
@@ -83,6 +87,7 @@ Use these standardized terms throughout the application:
 - ❌ Please enter the name (unnecessary politeness)
 
 **Help text** - Provide context without being wordy:
+
 - ✅ "Use a descriptive name like 'Climate Events 2024'"
 - ✅ "Address will be geocoded automatically"
 - ❌ "Please make sure to enter a good name that describes your dataset"
@@ -92,18 +97,21 @@ Use these standardized terms throughout the application:
 **Structure:** [What went wrong] + [Why] + [How to fix]
 
 **Examples:**
+
 - ✅ "Import failed: CSV file is missing required 'date' column. Add a date column and try again."
 - ✅ "Geocoding incomplete: 15 addresses could not be located. Review locations in the validation step."
 - ❌ "Error! Something went wrong."
 - ❌ "An error occurred. Please try again."
 
 **Tone:** Informative, not apologetic
+
 - ✅ "File format not supported. Use CSV, Excel, or ODS."
 - ❌ "Oops! We're sorry, but we couldn't process your file."
 
 ### Success Messages
 
 **Be specific about what succeeded:**
+
 - ✅ "Dataset imported: 1,234 events geocoded"
 - ✅ "Catalog created successfully"
 - ❌ "Success!"
@@ -112,6 +120,7 @@ Use these standardized terms throughout the application:
 ### Loading States
 
 **Be specific about what's happening:**
+
 - ✅ "Geocoding 1,234 addresses..."
 - ✅ "Processing import file..."
 - ✅ "Analyzing data structure..."
@@ -123,6 +132,7 @@ Use these standardized terms throughout the application:
 **Structure:** [What's empty] + [Why] + [What to do]
 
 **Examples:**
+
 - ✅ "No datasets yet. Import your first dataset to get started."
 - ✅ "No events match your filters. Adjust filters or clear all to see more results."
 - ❌ "Nothing here"
@@ -154,11 +164,13 @@ Use these standardized terms throughout the application:
 ### Abbreviations
 
 **Acceptable:**
+
 - CSV, Excel, ODS (file formats)
 - API (widely understood)
 - URL (widely understood)
 
 **Avoid:**
+
 - e.g., i.e. (use "for example" or "that is")
 - etc. (be specific or use "and more")
 
@@ -167,6 +179,7 @@ Use these standardized terms throughout the application:
 ### Alt Text for Images
 
 **Be descriptive and functional:**
+
 - ✅ "Map showing 1,234 climate events across North America"
 - ✅ "Timeline histogram displaying event frequency by month"
 - ❌ "Map"
@@ -175,6 +188,7 @@ Use these standardized terms throughout the application:
 ### Link Text
 
 **Be descriptive (not "click here"):**
+
 - ✅ "View import documentation"
 - ✅ "Download sample CSV file"
 - ❌ "Click here for docs"
@@ -183,6 +197,7 @@ Use these standardized terms throughout the application:
 ### ARIA Labels
 
 **Provide context for screen readers:**
+
 - ✅ `aria-label="Close import wizard"`
 - ✅ `aria-label="Filter events by date range"`
 - ❌ `aria-label="Close"`

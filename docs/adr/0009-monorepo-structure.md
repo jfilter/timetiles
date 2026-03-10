@@ -34,16 +34,16 @@ timetiles/
 
 ### Workspace Packages
 
-| Package | Name | Purpose | Consumers |
-|---------|------|---------|-----------|
-| `apps/web` | `web` | Next.js 16 + Payload CMS application, main product | Deployed to production |
-| `apps/docs` | `docs` | Nextra 4 documentation site, deployed to GitHub Pages | Deployed separately |
-| `packages/ui` | `@timetiles/ui` | Shared UI components (Radix UI, shadcn/ui, charts, icons) | `web`, `docs` |
-| `packages/assets` | `@timetiles/assets` | Shared logos and static assets | `web`, `docs` |
-| `packages/payload-schema-detection` | `@timetiles/payload-schema-detection` | Payload CMS plugin for import schema detection | `web` |
-| `packages/eslint-config` | `@timetiles/eslint-config` | ESLint flat configs (base, next-js, react-internal, mdx, vitest) | All packages |
-| `packages/typescript-config` | `@timetiles/typescript-config` | Shared `tsconfig.json` base files | All packages |
-| `packages/prettier-config` | `@timetiles/prettier-config` | Shared Prettier settings | All packages |
+| Package                             | Name                                  | Purpose                                                          | Consumers              |
+| ----------------------------------- | ------------------------------------- | ---------------------------------------------------------------- | ---------------------- |
+| `apps/web`                          | `web`                                 | Next.js 16 + Payload CMS application, main product               | Deployed to production |
+| `apps/docs`                         | `docs`                                | Nextra 4 documentation site, deployed to GitHub Pages            | Deployed separately    |
+| `packages/ui`                       | `@timetiles/ui`                       | Shared UI components (Radix UI, shadcn/ui, charts, icons)        | `web`, `docs`          |
+| `packages/assets`                   | `@timetiles/assets`                   | Shared logos and static assets                                   | `web`, `docs`          |
+| `packages/payload-schema-detection` | `@timetiles/payload-schema-detection` | Payload CMS plugin for import schema detection                   | `web`                  |
+| `packages/eslint-config`            | `@timetiles/eslint-config`            | ESLint flat configs (base, next-js, react-internal, mdx, vitest) | All packages           |
+| `packages/typescript-config`        | `@timetiles/typescript-config`        | Shared `tsconfig.json` base files                                | All packages           |
+| `packages/prettier-config`          | `@timetiles/prettier-config`          | Shared Prettier settings                                         | All packages           |
 
 ### Why pnpm + Turborepo
 
@@ -120,15 +120,15 @@ A root `Makefile` wraps pnpm and Turborepo commands to provide a consistent deve
 
 Key commands and what they run:
 
-| Make Command | Underlying Tool | Scope |
-|--------------|----------------|-------|
-| `make dev` | `turbo run dev` | All apps in parallel |
-| `make check` | `turbo run lint:fast typecheck:fast` | All packages (oxlint + tsgo) |
-| `make check-full` | `turbo run lint typecheck` | All packages (ESLint + tsc) |
-| `make check-ai` | Custom script wrapping Turbo | AI-formatted output, supports `PACKAGE` and `FILES` filters |
-| `make test-ai` | `turbo run test:ai` or direct Vitest | AI-formatted output, supports `FILTER` pattern |
-| `make build` | `turbo run build` | Full production build |
-| `make lint` | `turbo run lint:fast` | oxlint across all packages |
+| Make Command      | Underlying Tool                      | Scope                                                       |
+| ----------------- | ------------------------------------ | ----------------------------------------------------------- |
+| `make dev`        | `turbo run dev`                      | All apps in parallel                                        |
+| `make check`      | `turbo run lint:fast typecheck:fast` | All packages (oxlint + tsgo)                                |
+| `make check-full` | `turbo run lint typecheck`           | All packages (ESLint + tsc)                                 |
+| `make check-ai`   | Custom script wrapping Turbo         | AI-formatted output, supports `PACKAGE` and `FILES` filters |
+| `make test-ai`    | `turbo run test:ai` or direct Vitest | AI-formatted output, supports `FILTER` pattern              |
+| `make build`      | `turbo run build`                    | Full production build                                       |
+| `make lint`       | `turbo run lint:fast`                | oxlint across all packages                                  |
 
 Fast variants (`lint:fast` using oxlint, `typecheck:fast` using tsgo) run during local development. Full variants (`lint` using ESLint, `typecheck` using tsc) run in CI.
 
@@ -162,11 +162,11 @@ ci.yml (push to main, PRs)
 
 Additional standalone workflows:
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `deploy-docs.yml` | Push to main (docs paths), PRs | Build and deploy docs to GitHub Pages |
-| `release-images.yml` | Manual / release | Build and push Docker images to GHCR |
-| `security.yml` | Scheduled / manual | Security scanning |
+| Workflow             | Trigger                        | Purpose                               |
+| -------------------- | ------------------------------ | ------------------------------------- |
+| `deploy-docs.yml`    | Push to main (docs paths), PRs | Build and deploy docs to GitHub Pages |
+| `release-images.yml` | Manual / release               | Build and push Docker images to GHCR  |
+| `security.yml`       | Scheduled / manual             | Security scanning                     |
 
 The build artifact (`.next` directory) is shared between the build job and E2E tests via `actions/upload-artifact`, avoiding a redundant rebuild.
 

@@ -21,7 +21,20 @@
  * @module
  * @category Plugins
  */
-export type { SchemaDetector, DetectionContext, DetectionResult, LanguageResult, FieldMapping, GeoFieldMapping, FieldMappingsResult, PatternResult, DetectorConfig, FieldStatistics, SchemaDetectionPluginOptions, SchemaDetectionPlugin, } from "./types";
+export type {
+  SchemaDetector,
+  DetectionContext,
+  DetectionResult,
+  LanguageResult,
+  FieldMapping,
+  GeoFieldMapping,
+  FieldMappingsResult,
+  PatternResult,
+  DetectorConfig,
+  FieldStatistics,
+  SchemaDetectionPluginOptions,
+  SchemaDetectionPlugin,
+} from "./types";
 export { SchemaDetectionService } from "./service";
 export { defaultDetector } from "./detectors/default-detector";
 export { schemaDetectionPlugin } from "./plugin";

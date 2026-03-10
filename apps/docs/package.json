@@ -1,8 +1,8 @@
 {
   "name": "docs",
-  "description": "The documentation site for the TimeTiles project.",
   "version": "0.0.1",
   "private": true,
+  "description": "The documentation site for the TimeTiles project.",
   "type": "module",
   "scripts": {
     "dev": "pnpm docs:api && next dev --port 3001",
@@ -15,7 +15,7 @@
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "typecheck:fast": "tsgo --noEmit",
     "lint:fast": "oxlint --config ../../.oxlintrc.json .",
-    "format": "eslint app content scripts --cache --fix --quiet && prettier --write . --ignore-path ../../.prettierignore --log-level error"
+    "format": "eslint app content scripts --cache --fix --quiet && oxfmt --write ."
   },
   "dependencies": {
     "@timetiles/assets": "workspace:*",

@@ -13,6 +13,7 @@
 ## Task 1: Create Release Images Workflow
 
 **Files:**
+
 - Create: `.github/workflows/release-images.yml`
 
 **Step 1: Create the workflow file**
@@ -23,7 +24,7 @@ name: Release Images
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 env:
   REGISTRY: ghcr.io
@@ -199,6 +200,7 @@ git commit -m "ci: add release-images workflow for GHCR publishing"
 ## Task 2: Create All-in-One Dockerfile
 
 **Files:**
+
 - Create: `deployment/Dockerfile.allinone`
 - Create: `deployment/allinone/supervisord.conf`
 - Create: `deployment/allinone/nginx.conf`
@@ -492,6 +494,7 @@ git commit -m "feat: add all-in-one Docker image with PostgreSQL, Nginx, supervi
 ## Task 3: Update docker-compose.prod.yml for Registry Images
 
 **Files:**
+
 - Modify: `deployment/docker-compose.prod.yml:50-60`
 - Modify: `deployment/.env.production.example:10-14`
 
@@ -500,11 +503,11 @@ git commit -m "feat: add all-in-one Docker image with PostgreSQL, Nginx, supervi
 Change the web service from `build` to `image`:
 
 ```yaml
-  # Web application
-  web:
-    image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
-    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-web
-    restart: unless-stopped
+# Web application
+web:
+  image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
+  container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-web
+  restart: unless-stopped
 ```
 
 Remove the entire `build:` block (lines ~52-58 in current file).
@@ -523,6 +526,7 @@ TIMETILES_VERSION=latest
 ```
 
 Remove:
+
 ```bash
 IMAGE_NAME=timetiles-web
 IMAGE_TAG=latest
@@ -541,6 +545,7 @@ git commit -m "feat: switch to pre-built GHCR images in docker-compose"
 ## Task 4: Create docker-compose.override.yml.example
 
 **Files:**
+
 - Create: `deployment/docker-compose.override.yml.example`
 
 **Step 1: Create override example**
@@ -580,6 +585,7 @@ git commit -m "docs: add docker-compose.override.yml.example for local builds"
 ## Task 5: Update deploy.sh for Pull-Based Workflow
 
 **Files:**
+
 - Modify: `deployment/deploy.sh:166-173` (build command)
 - Modify: `deployment/deploy.sh:540-548` (update command)
 
@@ -656,6 +662,7 @@ git commit -m "feat: update deploy.sh for pull-based workflow"
 ## Task 6: Simplify Bootstrap Clone Step
 
 **Files:**
+
 - Modify: `deployment/bootstrap/steps/05-clone-repo.sh`
 
 **Step 1: Simplify to sparse checkout of deployment folder**
@@ -753,6 +760,7 @@ git commit -m "refactor: simplify bootstrap clone to sparse checkout deployment 
 ## Task 7: Simplify Bootstrap Deploy Step
 
 **Files:**
+
 - Modify: `deployment/bootstrap/steps/07-deploy.sh`
 
 **Step 1: Change from build to pull**
@@ -823,13 +831,14 @@ git commit -m "refactor: change bootstrap deploy from build to pull"
 ## Task 8: Update Documentation
 
 **Files:**
+
 - Modify: `apps/docs/content/admin-guide/deployment.mdx`
 
 **Step 1: Update Quick Start section**
 
 Replace the Quick Start section:
 
-```markdown
+````markdown
 ## Quick Start
 
 ### Option 1: Docker Compose (Recommended)
@@ -852,6 +861,7 @@ nano deployment/.env.production
 # 4. Initialize SSL (after DNS is configured)
 ./deploy.sh ssl
 ```
+````
 
 ### Option 2: All-in-One Container
 
@@ -871,7 +881,8 @@ docker run -d \
 ```bash
 curl -sSL https://raw.githubusercontent.com/jfilter/timetiles/main/deployment/bootstrap/install.sh | sudo bash
 ```
-```
+
+````
 
 **Step 2: Add Deployment Options section**
 
@@ -888,29 +899,34 @@ Add after Quick Start:
 
 ### Docker Compose Architecture
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Nginx     │────▶│   Next.js   │────▶│  PostgreSQL │
-│  (SSL/TLS)  │     │    App      │     │  + PostGIS  │
-└─────────────┘     └─────────────┘     └─────────────┘
+````
+
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Nginx │────▶│ Next.js │────▶│ PostgreSQL │
+│ (SSL/TLS) │ │ App │ │ + PostGIS │
+└─────────────┘ └─────────────┘ └─────────────┘
+
 ```
 
 ### All-in-One Architecture
 
 ```
+
 ┌─────────────────────────────────────────┐
-│           Single Container              │
-│  ┌───────┐  ┌────────┐  ┌───────────┐  │
-│  │ Nginx │──│Next.js │──│ PostgreSQL│  │
-│  └───────┘  └────────┘  └───────────┘  │
-│         (supervisord manages all)       │
+│ Single Container │
+│ ┌───────┐ ┌────────┐ ┌───────────┐ │
+│ │ Nginx │──│Next.js │──│ PostgreSQL│ │
+│ └───────┘ └────────┘ └───────────┘ │
+│ (supervisord manages all) │
 └─────────────────────────────────────────┘
+
 ```
+
 ```
 
 **Step 3: Update Upgrading section**
 
-```markdown
+````markdown
 ## Updating Production
 
 ### With Pre-built Images (Default)
@@ -922,6 +938,7 @@ Add after Quick Start:
 # Pull new images and restart
 ./deploy.sh update
 ```
+````
 
 ### With Local Builds
 
@@ -932,20 +949,22 @@ git pull
 ./deploy.sh build
 ./deploy.sh up
 ```
-```
+
+````
 
 **Step 4: Commit**
 
 ```bash
 git add apps/docs/content/admin-guide/deployment.mdx
 git commit -m "docs: update deployment guide for registry-based workflow"
-```
+````
 
 ---
 
 ## Task 9: Test Locally
 
 **Files:**
+
 - None (verification only)
 
 **Step 1: Build main image locally**
@@ -1004,6 +1023,7 @@ Expected: Shows "Pulling Docker images from registry..." (then fails because ima
 ## Task 10: Final Commit and Tag
 
 **Files:**
+
 - None (git operations only)
 
 **Step 1: Verify all changes**

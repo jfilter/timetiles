@@ -37,11 +37,13 @@ Common UI patterns and workflows for TimeTiles. Patterns are higher-level than c
 ```
 
 **Validation timing:**
+
 - **On blur:** Validate when user leaves field (most common)
 - **On submit:** Validate all fields when form submitted
 - **Real-time:** Only for async checks (username availability, duplicate names)
 
 **Error message placement:**
+
 - Place inline below the field
 - Use color + icon (not color alone for accessibility)
 - Be specific: "Dataset name is required" not "Required field"
@@ -52,30 +54,15 @@ Common UI patterns and workflows for TimeTiles. Patterns are higher-level than c
 
 ```tsx
 <Wizard currentStep={2} totalSteps={4}>
-  <WizardStep
-    number={1}
-    status="complete"
-    title="Upload File"
-  />
-  <WizardStep
-    number={2}
-    status="current"
-    title="Map Fields"
-  />
-  <WizardStep
-    number={3}
-    status="pending"
-    title="Review"
-  />
-  <WizardStep
-    number={4}
-    status="pending"
-    title="Import"
-  />
+  <WizardStep number={1} status="complete" title="Upload File" />
+  <WizardStep number={2} status="current" title="Map Fields" />
+  <WizardStep number={3} status="pending" title="Review" />
+  <WizardStep number={4} status="pending" title="Import" />
 </Wizard>
 ```
 
 **Best practices:**
+
 - Show progress (step 2 of 4)
 - Allow going back to previous steps
 - Validate each step before proceeding
@@ -85,8 +72,9 @@ Common UI patterns and workflows for TimeTiles. Patterns are higher-level than c
 ### Required vs Optional Fields
 
 **Mark optional fields, not required:**
+
 - ✅ "Description (optional)"
-- ❌ "Dataset name *"
+- ❌ "Dataset name \*"
 
 **Rationale:** Most fields should be required. Marking optional fields is clearer.
 
@@ -112,9 +100,7 @@ Used for errors affecting multiple fields or general issues.
 ```tsx
 <Alert variant="error">
   <AlertTitle>Import failed</AlertTitle>
-  <AlertDescription>
-    CSV file is missing required columns: date, location
-  </AlertDescription>
+  <AlertDescription>CSV file is missing required columns: date, location</AlertDescription>
 </Alert>
 ```
 
@@ -123,9 +109,7 @@ Used for errors affecting multiple fields or general issues.
 Used for async operation failures.
 
 ```tsx
-<Toast variant="error">
-  Geocoding failed: API rate limit exceeded. Try again in 5 minutes.
-</Toast>
+<Toast variant="error">Geocoding failed: API rate limit exceeded. Try again in 5 minutes.</Toast>
 ```
 
 #### Page Errors (System-level)
@@ -145,19 +129,20 @@ Used for 404, 500, network errors.
 
 **Always provide a way forward:**
 
-| Error Type | Recovery Action |
-|------------|-----------------|
+| Error Type       | Recovery Action                |
+| ---------------- | ------------------------------ |
 | Validation error | Show what's wrong + how to fix |
-| Network error | "Retry" button |
-| Permission error | Link to request access |
-| Not found | Link to relevant page |
-| Rate limit | Show when to try again |
+| Network error    | "Retry" button                 |
+| Permission error | Link to request access         |
+| Not found        | Link to relevant page          |
+| Rate limit       | Show when to try again         |
 
 ### Error Message Structure
 
 **Format:** [What went wrong] + [Why] + [How to fix]
 
 **Examples:**
+
 - ✅ "Import failed: File too large (52 MB). Files must be under 50 MB. Split into smaller files."
 - ✅ "Geocoding incomplete: 15 addresses not found. Review and correct addresses in the validation step."
 - ❌ "Error occurred"
@@ -183,13 +168,7 @@ Used for 404, 500, network errors.
   <CardHeader>
     <CardTitle>Events</CardTitle>
   </CardHeader>
-  <CardContent>
-    {isLoading ? (
-      <Skeleton className="h-48 w-full" />
-    ) : (
-      <EventsList events={events} />
-    )}
-  </CardContent>
+  <CardContent>{isLoading ? <Skeleton className="h-48 w-full" /> : <EventsList events={events} />}</CardContent>
 </Card>
 ```
 
@@ -207,9 +186,7 @@ Used for 404, 500, network errors.
 ```tsx
 <div className="flex items-center gap-2">
   <Spinner size="sm" />
-  <span className="text-sm text-muted-foreground">
-    Geocoding 1,234 addresses...
-  </span>
+  <span className="text-sm text-muted-foreground">Geocoding 1,234 addresses...</span>
 </div>
 ```
 
@@ -225,6 +202,7 @@ Used for 404, 500, network errors.
 ```
 
 **Show specific progress when possible:**
+
 - ✅ "Geocoding 234 of 1,234 addresses (19%)"
 - ❌ "Processing..."
 
@@ -288,6 +266,7 @@ Used for 404, 500, network errors.
 ### Empty State Structure
 
 **Always include:**
+
 1. **Icon** - Visual representation (not decorative)
 2. **Title** - Clear statement of what's empty
 3. **Description** - Why it's empty + what to do
@@ -303,19 +282,17 @@ Used for 404, 500, network errors.
 <AlertDialog>
   <AlertDialogTitle>Delete dataset?</AlertDialogTitle>
   <AlertDialogDescription>
-    This will permanently delete "Climate Events 2024" and its 1,234 events.
-    This action cannot be undone.
+    This will permanently delete "Climate Events 2024" and its 1,234 events. This action cannot be undone.
   </AlertDialogDescription>
   <AlertDialogFooter>
     <AlertDialogCancel>Cancel</AlertDialogCancel>
-    <AlertDialogAction variant="destructive">
-      Delete Dataset
-    </AlertDialogAction>
+    <AlertDialogAction variant="destructive">Delete Dataset</AlertDialogAction>
   </AlertDialogFooter>
 </AlertDialog>
 ```
 
 **Best practices:**
+
 - Be specific about what will be deleted
 - Explain consequences
 - Use destructive button variant
@@ -326,20 +303,22 @@ Used for 404, 500, network errors.
 **For less destructive actions:**
 
 ```tsx
-{showConfirm ? (
-  <div className="flex gap-2">
-    <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>
-      Cancel
+{
+  showConfirm ? (
+    <div className="flex gap-2">
+      <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>
+        Cancel
+      </Button>
+      <Button size="sm" variant="destructive" onClick={handleDelete}>
+        Confirm Delete
+      </Button>
+    </div>
+  ) : (
+    <Button size="sm" variant="ghost" onClick={() => setShowConfirm(true)}>
+      Delete
     </Button>
-    <Button size="sm" variant="destructive" onClick={handleDelete}>
-      Confirm Delete
-    </Button>
-  </div>
-) : (
-  <Button size="sm" variant="ghost" onClick={() => setShowConfirm(true)}>
-    Delete
-  </Button>
-)}
+  );
+}
 ```
 
 ### Toast Confirmation
@@ -360,16 +339,12 @@ Used for 404, 500, network errors.
 ```tsx
 <div className="relative">
   <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-  <Input
-    placeholder="Search datasets..."
-    className="pl-9"
-    value={query}
-    onChange={(e) => setQuery(e.target.value)}
-  />
+  <Input placeholder="Search datasets..." className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} />
 </div>
 ```
 
 **Best practices:**
+
 - Show search icon (not just placeholder)
 - Real-time search for local data
 - Debounced search for API calls (300ms)
@@ -399,9 +374,7 @@ Used for 404, 500, network errors.
         <Button variant="outline" onClick={clearFilters}>
           Clear
         </Button>
-        <Button onClick={applyFilters}>
-          Apply Filters
-        </Button>
+        <Button onClick={applyFilters}>Apply Filters</Button>
       </div>
     </div>
   </PopoverContent>
@@ -418,30 +391,18 @@ Used for 404, 500, network errors.
 <Card className="w-full max-w-md">
   <CardHeader>
     <CardTitle>Sign in to TimeTiles</CardTitle>
-    <CardDescription>
-      Enter your credentials to access your datasets
-    </CardDescription>
+    <CardDescription>Enter your credentials to access your datasets</CardDescription>
   </CardHeader>
   <CardContent>
     <form onSubmit={handleSubmit}>
       <div className="space-y-4">
         <FormField>
           <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-          />
+          <Input id="email" type="email" autoComplete="email" required />
         </FormField>
         <FormField>
           <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
+          <Input id="password" type="password" autoComplete="current-password" required />
         </FormField>
         <Button type="submit" className="w-full">
           Sign In
@@ -477,7 +438,11 @@ return <DashboardContent />;
   variant="warning"
   title="Access restricted"
   description="You don't have permission to view this dataset. Contact the owner to request access."
-  action={<Button variant="outline" onClick={goBack}>Go Back</Button>}
+  action={
+    <Button variant="outline" onClick={goBack}>
+      Go Back
+    </Button>
+  }
 />
 ```
 
@@ -491,20 +456,10 @@ return <DashboardContent />;
     Showing {start} to {end} of {total} results
   </p>
   <div className="flex gap-2">
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={!hasPrevious}
-      onClick={goToPrevious}
-    >
+    <Button variant="outline" size="sm" disabled={!hasPrevious} onClick={goToPrevious}>
       Previous
     </Button>
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={!hasNext}
-      onClick={goToNext}
-    >
+    <Button variant="outline" size="sm" disabled={!hasNext} onClick={goToNext}>
       Next
     </Button>
   </div>
@@ -517,15 +472,12 @@ return <DashboardContent />;
 
 ```tsx
 <div>
-  {items.map(item => <ItemCard key={item.id} {...item} />)}
+  {items.map((item) => (
+    <ItemCard key={item.id} {...item} />
+  ))}
 
   {hasMore && (
-    <Button
-      variant="outline"
-      className="w-full"
-      onClick={loadMore}
-      disabled={isLoading}
-    >
+    <Button variant="outline" className="w-full" onClick={loadMore} disabled={isLoading}>
       {isLoading ? "Loading..." : "Load More"}
     </Button>
   )}

@@ -16,12 +16,12 @@ TimeTiles uses **Pino-based structured logging** as its primary observability me
 
 All application logging goes through a centralized module (`lib/logger.ts`) that provides four factory functions:
 
-| Function | Purpose | Context Fields |
-|----------|---------|----------------|
-| `createLogger(name)` | Module-scoped child logger | `module` |
-| `createRequestLogger(requestId, userId?)` | Per-request child logger | `requestId`, `userId`, `type: "request"` |
-| `createJobLogger(jobId, taskType)` | Per-job child logger | `jobId`, `taskType`, `type: "job"` |
-| `logPerformance(operation, duration, metadata?)` | Timed operation logging | `type: "performance"`, `operation`, `duration` |
+| Function                                         | Purpose                    | Context Fields                                 |
+| ------------------------------------------------ | -------------------------- | ---------------------------------------------- |
+| `createLogger(name)`                             | Module-scoped child logger | `module`                                       |
+| `createRequestLogger(requestId, userId?)`        | Per-request child logger   | `requestId`, `userId`, `type: "request"`       |
+| `createJobLogger(jobId, taskType)`               | Per-job child logger       | `jobId`, `taskType`, `type: "job"`             |
+| `logPerformance(operation, duration, metadata?)` | Timed operation logging    | `type: "performance"`, `operation`, `duration` |
 
 A dedicated error helper ensures consistent error serialization:
 
@@ -36,11 +36,11 @@ The logger is used across 67 source files with over 400 call sites.
 
 The log level is determined by environment, with `LOG_LEVEL` env var as an override:
 
-| Environment | Default Level | Rationale |
-|-------------|---------------|-----------|
-| Development | `debug` | Full visibility during local work |
-| Production | `info` | Operational events without noise |
-| Test | `silent` | Clean test output; set `LOG_LEVEL` to override |
+| Environment | Default Level | Rationale                                      |
+| ----------- | ------------- | ---------------------------------------------- |
+| Development | `debug`       | Full visibility during local work              |
+| Production  | `info`        | Operational events without noise               |
+| Test        | `silent`      | Clean test output; set `LOG_LEVEL` to override |
 
 Pino's full level hierarchy is available: `trace`, `debug`, `info`, `warn`, `error`, `fatal`.
 
@@ -59,17 +59,17 @@ The `no-console` ESLint rule is set to `error` in the shared config (`packages/e
 
 The `/api/health` endpoint (`lib/health.ts`) runs 9 checks in parallel and returns a JSON summary:
 
-| Check | What It Verifies |
-|-------|-----------------|
-| Environment variables | `PAYLOAD_SECRET` and `DATABASE_URL` are set |
-| Uploads directory | Writable filesystem access |
-| Geocoding service | At least one enabled provider exists |
-| Email configuration | SMTP host configured (degraded in dev, error in prod) |
-| Payload CMS | Can query the users collection |
-| Migrations | No pending migrations |
-| PostGIS | Extension installed |
-| Database functions | `cluster_events` and `calculate_event_histogram` exist |
-| Database size | Reports `pg_size_pretty` output |
+| Check                 | What It Verifies                                       |
+| --------------------- | ------------------------------------------------------ |
+| Environment variables | `PAYLOAD_SECRET` and `DATABASE_URL` are set            |
+| Uploads directory     | Writable filesystem access                             |
+| Geocoding service     | At least one enabled provider exists                   |
+| Email configuration   | SMTP host configured (degraded in dev, error in prod)  |
+| Payload CMS           | Can query the users collection                         |
+| Migrations            | No pending migrations                                  |
+| PostGIS               | Extension installed                                    |
+| Database functions    | `cluster_events` and `calculate_event_histogram` exist |
+| Database size         | Reports `pg_size_pretty` output                        |
 
 Each check returns one of three statuses: `healthy`, `degraded`, or `error`. The endpoint returns HTTP 503 if any check reports `error`; HTTP 200 otherwise.
 
@@ -96,13 +96,13 @@ Progress is stored in the import job's `progress` JSON field in the database. Th
 
 ### What Is Intentionally Absent
 
-| Capability | Examples | Why It Is Not Used |
-|------------|----------|--------------------|
-| Application Performance Monitoring | Datadog, New Relic | Single-process app with low request volume does not justify the cost or complexity |
-| Distributed tracing | OpenTelemetry, Jaeger | No distributed architecture to trace across (see ADR 0001) |
-| Metrics collection | Prometheus, StatsD | Health check endpoint covers the key signals; no dashboarding infrastructure exists |
-| Error tracking service | Sentry, Bugsnag | Structured error logs with `logError` provide stack traces and context; searchable via log aggregation |
-| Log aggregation | ELK, Loki | Not bundled; JSON log output is compatible with any aggregator an operator chooses to deploy |
+| Capability                         | Examples              | Why It Is Not Used                                                                                     |
+| ---------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Application Performance Monitoring | Datadog, New Relic    | Single-process app with low request volume does not justify the cost or complexity                     |
+| Distributed tracing                | OpenTelemetry, Jaeger | No distributed architecture to trace across (see ADR 0001)                                             |
+| Metrics collection                 | Prometheus, StatsD    | Health check endpoint covers the key signals; no dashboarding infrastructure exists                    |
+| Error tracking service             | Sentry, Bugsnag       | Structured error logs with `logError` provide stack traces and context; searchable via log aggregation |
+| Log aggregation                    | ELK, Loki             | Not bundled; JSON log output is compatible with any aggregator an operator chooses to deploy           |
 
 These are deliberate trade-offs for simplicity at the current scale. The structured JSON output and consistent error logging make it straightforward to add any of these tools later without changing application code.
 

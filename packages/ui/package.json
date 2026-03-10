@@ -1,13 +1,22 @@
 {
   "name": "@timetiles/ui",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./globals.css": "./src/styles/globals.css",
+    "./postcss.config": "./postcss.config.mjs",
+    "./design-system": "./DESIGN_SYSTEM.md",
+    "./charts": "./src/components/charts/index.ts",
+    "./icons": "./src/components/icons/index.ts",
+    "./lib/utils": "./src/lib/utils.ts"
+  },
   "scripts": {
     "build": "tsc --build",
     "build:watch": "tsc --build --watch",
     "lint": "mkdir -p .lint-results && eslint . --cache --format json --output-file .lint-results/latest.json; eslint . --cache",
-    "format": "eslint . --fix --quiet --cache && prettier --write . --log-level error",
+    "format": "eslint . --fix --quiet --cache && oxfmt --write .",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -46,14 +55,5 @@
     "tailwindcss": "^4.1.18",
     "typescript": "catalog:",
     "vitest": "catalog:"
-  },
-  "exports": {
-    ".": "./src/index.ts",
-    "./globals.css": "./src/styles/globals.css",
-    "./postcss.config": "./postcss.config.mjs",
-    "./design-system": "./DESIGN_SYSTEM.md",
-    "./charts": "./src/components/charts/index.ts",
-    "./icons": "./src/components/icons/index.ts",
-    "./lib/utils": "./src/lib/utils.ts"
   }
 }

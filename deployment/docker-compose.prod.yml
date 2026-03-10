@@ -44,7 +44,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 120s  # kartoza/postgis first-run init (extensions, users, restart) can take >90s
+      start_period: 120s # kartoza/postgis first-run init (extensions, users, restart) can take >90s
     networks:
       - timetiles-network
 
@@ -59,15 +59,15 @@ services:
     environment:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
-      
+
       # Payload CMS
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
       NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
-      
+
       # Application
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${CONTAINER_PORT:-3000}
-      
+
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-info}
 
@@ -87,7 +87,13 @@ services:
     networks:
       - timetiles-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

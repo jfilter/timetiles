@@ -14,14 +14,14 @@ TimeTiles is a geospatial event management platform with an interactive map, tem
 
 All server state is managed via TanStack Query (React Query) through centralized hooks in `lib/hooks/`.
 
-| Hook | Purpose | Strategy |
-|------|---------|----------|
-| `useEventsListQuery` | Paginated event listing | Fetch on filter change |
-| `useMapClustersQuery` | PostGIS cluster data for map | Fetch on viewport change |
-| `useHistogramQuery` | Time-based histogram | Fetch on date range change |
-| `useImportJobProgressQuery` | Import job status | Poll every 2s, stop on terminal state |
-| `useDataSourcesQuery` | Datasets and catalogs | Standard query |
-| `useFeatureFlags` | Feature flag state | Cached with TTL |
+| Hook                        | Purpose                      | Strategy                              |
+| --------------------------- | ---------------------------- | ------------------------------------- |
+| `useEventsListQuery`        | Paginated event listing      | Fetch on filter change                |
+| `useMapClustersQuery`       | PostGIS cluster data for map | Fetch on viewport change              |
+| `useHistogramQuery`         | Time-based histogram         | Fetch on date range change            |
+| `useImportJobProgressQuery` | Import job status            | Poll every 2s, stop on terminal state |
+| `useDataSourcesQuery`       | Datasets and catalogs        | Standard query                        |
+| `useFeatureFlags`           | Feature flag state           | Cached with TTL                       |
 
 **Key pattern:** Import job polling uses `refetchInterval` that returns `false` on completion/failure/error, `2000` otherwise.
 
@@ -29,12 +29,12 @@ All server state is managed via TanStack Query (React Query) through centralized
 
 ### Map Rendering: MapLibre GL JS
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Map library | MapLibre GL JS via `react-map-gl` | Open-source, no token required |
-| Clustering | Server-side via PostGIS `ST_ClusterKMeans` | Handles millions of events without browser memory pressure |
-| Coordinate order | [longitude, latitude] everywhere | GeoJSON standard |
-| Styles | Default, light, dark, satellite | Configurable per View |
+| Decision         | Choice                                     | Rationale                                                  |
+| ---------------- | ------------------------------------------ | ---------------------------------------------------------- |
+| Map library      | MapLibre GL JS via `react-map-gl`          | Open-source, no token required                             |
+| Clustering       | Server-side via PostGIS `ST_ClusterKMeans` | Handles millions of events without browser memory pressure |
+| Coordinate order | [longitude, latitude] everywhere           | GeoJSON standard                                           |
+| Styles           | Default, light, dark, satellite            | Configurable per View                                      |
 
 The map component (`components/maps/clustered-map.tsx`) exposes a `ClusteredMapHandle` ref for programmatic control (resize, fitBounds).
 
@@ -42,11 +42,11 @@ The map component (`components/maps/clustered-map.tsx`) exposes a `ClusteredMapH
 
 ### State Management: Three Layers
 
-| Layer | Tool | What It Stores | Persistence |
-|-------|------|----------------|-------------|
-| Server state | React Query | Events, datasets, catalogs, import jobs | In-memory cache with configurable stale time |
-| UI state | Zustand | Filter drawer open, theme, map bounds, selected event | localStorage (drawer + theme only) |
-| Filter state | nuqs (URL params) | Catalog, datasets, date range, field filters | URL search params |
+| Layer        | Tool              | What It Stores                                        | Persistence                                  |
+| ------------ | ----------------- | ----------------------------------------------------- | -------------------------------------------- |
+| Server state | React Query       | Events, datasets, catalogs, import jobs               | In-memory cache with configurable stale time |
+| UI state     | Zustand           | Filter drawer open, theme, map bounds, selected event | localStorage (drawer + theme only)           |
+| Filter state | nuqs (URL params) | Catalog, datasets, date range, field filters          | URL search params                            |
 
 **Why URL-based filters:** Shareable links. A user can copy the URL with active filters and share it. The View system can also set `defaultFilters` that pre-populate on load.
 
@@ -54,10 +54,10 @@ The map component (`components/maps/clustered-map.tsx`) exposes a `ClusteredMapH
 
 ### Component Architecture: Two Tiers
 
-| Tier | Location | Rules |
-|------|----------|-------|
-| Design system | `packages/ui/src/components/` | No business logic, no data fetching, shadcn/ui + Radix primitives, design-system compliant |
-| App components | `apps/web/components/` | Domain-specific, may fetch data, organized by feature (maps/, filters/, auth/, charts/) |
+| Tier           | Location                      | Rules                                                                                      |
+| -------------- | ----------------------------- | ------------------------------------------------------------------------------------------ |
+| Design system  | `packages/ui/src/components/` | No business logic, no data fetching, shadcn/ui + Radix primitives, design-system compliant |
+| App components | `apps/web/components/`        | Domain-specific, may fetch data, organized by feature (maps/, filters/, auth/, charts/)    |
 
 The design system (`packages/ui`) exports 120+ components following the Cartographic Design System: Playfair Display (serif), DM Sans (sans-serif), earth-tone palette.
 

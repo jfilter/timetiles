@@ -76,26 +76,26 @@ After installation:
 
 ## Configuration Files
 
-| File | Purpose |
-|------|---------|
-| `.env.production.example` | Environment template |
-| `docker-compose.prod.yml` | Service orchestration |
-| `nginx/nginx.conf` | Main nginx config |
-| `nginx/sites-enabled/app.conf` | Site config with SSL |
-| `nginx/proxy-headers.conf` | Shared proxy headers |
+| File                           | Purpose               |
+| ------------------------------ | --------------------- |
+| `.env.production.example`      | Environment template  |
+| `docker-compose.prod.yml`      | Service orchestration |
+| `nginx/nginx.conf`             | Main nginx config     |
+| `nginx/sites-enabled/app.conf` | Site config with SSL  |
+| `nginx/proxy-headers.conf`     | Shared proxy headers  |
 
 ## Environment Variables
 
 Key variables in `.env.production`:
 
-| Variable | Description |
-|----------|-------------|
-| `DB_USER` | PostgreSQL username (default: `timetiles_user`) |
-| `DB_PASSWORD` | PostgreSQL password (required) |
-| `DB_NAME` | Database name (default: `timetiles`) |
-| `PAYLOAD_SECRET` | CMS encryption key (auto-generated) |
-| `DOMAIN_NAME` | Your domain (e.g., `app.example.com`) |
-| `LETSENCRYPT_EMAIL` | Email for SSL notifications |
+| Variable            | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `DB_USER`           | PostgreSQL username (default: `timetiles_user`) |
+| `DB_PASSWORD`       | PostgreSQL password (required)                  |
+| `DB_NAME`           | Database name (default: `timetiles`)            |
+| `PAYLOAD_SECRET`    | CMS encryption key (auto-generated)             |
+| `DOMAIN_NAME`       | Your domain (e.g., `app.example.com`)           |
+| `LETSENCRYPT_EMAIL` | Email for SSL notifications                     |
 
 ## Backup System
 
@@ -110,6 +110,7 @@ Uses restic for encrypted, deduplicated backups.
 ```
 
 Configuration in `.env.production`:
+
 - `RESTIC_PASSWORD` - Encryption key (auto-generated)
 - `RESTIC_REPOSITORY` - Local repo path
 - `RESTIC_OFFSITE_REPOSITORY` - S3 URL (optional)

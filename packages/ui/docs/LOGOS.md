@@ -43,12 +43,12 @@ packages/assets/logos/latest/
 
 **4 Themes × 3 Formats = 12 Base Variations**
 
-| Theme | Background | Tiles | Text | Use Case |
-|-------|------------|-------|------|----------|
-| **Light Clean** | Parchment (#f8f5f0) | Navy (#4a5d6e) | Charcoal (#404040) | Default light mode |
-| **Light Grid** | Parchment + grid | Navy + grid | Charcoal | Decorative light mode |
-| **Dark Clean** | Navy (#4a5d6e) | Cream (#e8d5c4) | Parchment (#f8f5f0) | Default dark mode |
-| **Dark Grid** | Navy + grid | Cream + grid | Parchment | Decorative dark mode |
+| Theme           | Background          | Tiles           | Text                | Use Case              |
+| --------------- | ------------------- | --------------- | ------------------- | --------------------- |
+| **Light Clean** | Parchment (#f8f5f0) | Navy (#4a5d6e)  | Charcoal (#404040)  | Default light mode    |
+| **Light Grid**  | Parchment + grid    | Navy + grid     | Charcoal            | Decorative light mode |
+| **Dark Clean**  | Navy (#4a5d6e)      | Cream (#e8d5c4) | Parchment (#f8f5f0) | Default dark mode     |
+| **Dark Grid**   | Navy + grid         | Cream + grid    | Parchment           | Decorative dark mode  |
 
 ## Grid Pattern Details
 
@@ -61,18 +61,18 @@ The grid variations feature a subtle cartographic latitude/longitude grid overla
 
 ## When to Use Each Format
 
-| Format | File | Dimensions | Use Cases |
-|--------|------|------------|-----------|
-| **Square** | `logo_square.svg` | 667×667px | App icons, favicons, social media profile images, mobile home screen |
-| **Compact** | `wordmark_compact.svg` | 667×334px | Twitter/X cards, compact headers, mobile navigation |
-| **Horizontal** | `wordmark_horizontal.svg` | 1084×334px | Desktop headers, email signatures, wide banners, hero sections |
+| Format         | File                      | Dimensions | Use Cases                                                            |
+| -------------- | ------------------------- | ---------- | -------------------------------------------------------------------- |
+| **Square**     | `logo_square.svg`         | 667×667px  | App icons, favicons, social media profile images, mobile home screen |
+| **Compact**    | `wordmark_compact.svg`    | 667×334px  | Twitter/X cards, compact headers, mobile navigation                  |
+| **Horizontal** | `wordmark_horizontal.svg` | 1084×334px | Desktop headers, email signatures, wide banners, hero sections       |
 
 ## When to Use Grid vs Clean
 
-| Variation | Best For |
-|-----------|----------|
-| **Clean** | UI components, small sizes (≤128px), busy backgrounds, primary branding |
-| **Grid** | Hero sections, large displays (≥512px), plain backgrounds, decorative use |
+| Variation | Best For                                                                  |
+| --------- | ------------------------------------------------------------------------- |
+| **Clean** | UI components, small sizes (≤128px), busy backgrounds, primary branding   |
+| **Grid**  | Hero sections, large displays (≥512px), plain backgrounds, decorative use |
 
 **Rule of thumb**: Use clean logos for functional UI, grid logos for visual impact.
 
@@ -159,9 +159,7 @@ export function Hero() {
           height={200}
           className="mx-auto hidden dark:block"
         />
-        <h1 className="font-serif text-5xl mt-8">
-          Visualize Events in Time and Space
-        </h1>
+        <h1 className="font-serif text-5xl mt-8">Visualize Events in Time and Space</h1>
       </div>
     </section>
   );
@@ -174,12 +172,29 @@ export function Hero() {
 
 ```html
 <!-- In app/layout.tsx or public/index.html -->
-<link rel="icon" type="image/x-icon" href="/logos/light/no-grid/png/favicon.ico" media="(prefers-color-scheme: light)" />
+<link
+  rel="icon"
+  type="image/x-icon"
+  href="/logos/light/no-grid/png/favicon.ico"
+  media="(prefers-color-scheme: light)"
+/>
 <link rel="icon" type="image/x-icon" href="/logos/dark/no-grid/png/favicon.ico" media="(prefers-color-scheme: dark)" />
 
 <!-- PNG fallbacks -->
-<link rel="icon" type="image/png" sizes="32x32" href="/logos/light/no-grid/png/logo_square_32.png" media="(prefers-color-scheme: light)" />
-<link rel="icon" type="image/png" sizes="32x32" href="/logos/dark/no-grid/png/logo_square_32.png" media="(prefers-color-scheme: dark)" />
+<link
+  rel="icon"
+  type="image/png"
+  sizes="32x32"
+  href="/logos/light/no-grid/png/logo_square_32.png"
+  media="(prefers-color-scheme: light)"
+/>
+<link
+  rel="icon"
+  type="image/png"
+  sizes="32x32"
+  href="/logos/dark/no-grid/png/logo_square_32.png"
+  media="(prefers-color-scheme: dark)"
+/>
 ```
 
 ## Available PNG Sizes
@@ -194,13 +209,13 @@ All logo formats (square, compact, horizontal) are exported in multiple sizes:
 
 All logo variations use these exact design system colors:
 
-| Element | Light Mode | Dark Mode |
-|---------|------------|-----------|
-| Background | Parchment `#f8f5f0` | Navy `#4a5d6e` |
-| Primary tiles | Navy `#4a5d6e` | Cream `#e8d5c4` |
-| Accent tiles | Blue `#5583b3` | Lightened blue `#7da3c6` |
-| Text | Charcoal `#404040` | Parchment `#f8f5f0` |
-| Grid overlay | Navy 15% opacity | Cream 20% opacity |
+| Element       | Light Mode          | Dark Mode                |
+| ------------- | ------------------- | ------------------------ |
+| Background    | Parchment `#f8f5f0` | Navy `#4a5d6e`           |
+| Primary tiles | Navy `#4a5d6e`      | Cream `#e8d5c4`          |
+| Accent tiles  | Blue `#5583b3`      | Lightened blue `#7da3c6` |
+| Text          | Charcoal `#404040`  | Parchment `#f8f5f0`      |
+| Grid overlay  | Navy 15% opacity    | Cream 20% opacity        |
 
 **Note**: All colors are derived from the OKLCH color space definitions in the [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) Color System section.
 

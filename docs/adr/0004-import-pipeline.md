@@ -55,17 +55,17 @@ The import pipeline is a **stage-based state machine** driven by Payload CMS hoo
 
 ### Stage-to-Job Mapping
 
-| Stage | Job Type | Batch Input | Description |
-|-------|----------|-------------|-------------|
-| `analyze-duplicates` | `analyze-duplicates` | No | Detects duplicate rows against existing events |
-| `detect-schema` | `detect-schema` | `batchNumber: 0` | Infers column types and field mappings |
-| `validate-schema` | `validate-schema` | No | Checks schema against existing dataset schema |
-| `await-approval` | *(none -- paused)* | -- | User reviews breaking schema changes in UI |
-| `create-schema-version` | `create-schema-version` | No | Persists approved schema to dataset-schemas collection |
-| `geocode-batch` | `geocode-batch` | `batchNumber: 0` | Geocodes unique location strings |
-| `create-events` | `create-events` | `batchNumber: 0` | Creates event documents in batches |
-| `completed` | *(none -- terminal)* | -- | Pipeline finished |
-| `failed` | *(none -- terminal)* | -- | Error occurred; eligible for recovery |
+| Stage                   | Job Type                | Batch Input      | Description                                            |
+| ----------------------- | ----------------------- | ---------------- | ------------------------------------------------------ |
+| `analyze-duplicates`    | `analyze-duplicates`    | No               | Detects duplicate rows against existing events         |
+| `detect-schema`         | `detect-schema`         | `batchNumber: 0` | Infers column types and field mappings                 |
+| `validate-schema`       | `validate-schema`       | No               | Checks schema against existing dataset schema          |
+| `await-approval`        | _(none -- paused)_      | --               | User reviews breaking schema changes in UI             |
+| `create-schema-version` | `create-schema-version` | No               | Persists approved schema to dataset-schemas collection |
+| `geocode-batch`         | `geocode-batch`         | `batchNumber: 0` | Geocodes unique location strings                       |
+| `create-events`         | `create-events`         | `batchNumber: 0` | Creates event documents in batches                     |
+| `completed`             | _(none -- terminal)_    | --               | Pipeline finished                                      |
+| `failed`                | _(none -- terminal)_    | --               | Error occurred; eligible for recovery                  |
 
 Source: `lib/constants/import-constants.ts` (`PROCESSING_STAGE`, `JOB_TYPES`, `BATCH_SIZES`)
 
@@ -80,6 +80,7 @@ Three components work together to advance the pipeline:
 3. **StageTransitionService** (`lib/services/stage-transition.ts`) -- Validates transitions against a static map of allowed transitions (`VALID_STAGE_TRANSITIONS`). Uses an in-memory `Set<string>` keyed by `{jobId}-{fromStage}-{toStage}` to prevent duplicate job queueing within the same process. This relies on the single-process architecture (see ADR 0001).
 
 Special cases handled by the hook:
+
 - **Schema approval**: When a user sets `schemaValidation.approved = true` while in `AWAIT_APPROVAL`, the `beforeChange` hook automatically advances the stage to `CREATE_SCHEMA_VERSION`.
 - **Terminal states**: `COMPLETED` jobs cannot be modified (except by admins). `FAILED` jobs can only transition to specific recovery stages.
 
@@ -118,12 +119,12 @@ Source: `lib/jobs/handlers/schedule-manager-job.ts`, `lib/jobs/handlers/url-fetc
 
 The geocoding subsystem is a multi-provider facade with four components:
 
-| Component | File | Responsibility |
-|-----------|------|----------------|
-| `GeocodingService` | `lib/services/geocoding/geocoding-service.ts` | Public API facade; lazy initialization |
-| `ProviderManager` | `lib/services/geocoding/provider-manager.ts` | Loads providers from DB, sorts by priority |
-| `ProviderRateLimiter` | `lib/services/geocoding/provider-rate-limiter.ts` | Per-provider token bucket rate limiting |
-| `CacheManager` | `lib/services/geocoding/cache-manager.ts` | Read/write to `location-cache` collection |
+| Component             | File                                              | Responsibility                             |
+| --------------------- | ------------------------------------------------- | ------------------------------------------ |
+| `GeocodingService`    | `lib/services/geocoding/geocoding-service.ts`     | Public API facade; lazy initialization     |
+| `ProviderManager`     | `lib/services/geocoding/provider-manager.ts`      | Loads providers from DB, sorts by priority |
+| `ProviderRateLimiter` | `lib/services/geocoding/provider-rate-limiter.ts` | Per-provider token bucket rate limiting    |
+| `CacheManager`        | `lib/services/geocoding/cache-manager.ts`         | Read/write to `location-cache` collection  |
 
 Provider configuration:
 
@@ -151,12 +152,12 @@ Caching:
 
 Large imports are processed in configurable batches to manage memory and provide progress feedback:
 
-| Operation | Default Batch Size | Environment Variable |
-|-----------|--------------------|----------------------|
-| Duplicate analysis | 5,000 rows | `BATCH_SIZE_DUPLICATE_ANALYSIS` |
-| Schema detection | 10,000 rows | `BATCH_SIZE_SCHEMA_DETECTION` |
-| Event creation | 1,000 rows | `BATCH_SIZE_EVENT_CREATION` |
-| Database chunk writes | 1,000 rows | `BATCH_SIZE_DATABASE_CHUNK` |
+| Operation             | Default Batch Size | Environment Variable            |
+| --------------------- | ------------------ | ------------------------------- |
+| Duplicate analysis    | 5,000 rows         | `BATCH_SIZE_DUPLICATE_ANALYSIS` |
+| Schema detection      | 10,000 rows        | `BATCH_SIZE_SCHEMA_DETECTION`   |
+| Event creation        | 1,000 rows         | `BATCH_SIZE_EVENT_CREATION`     |
+| Database chunk writes | 1,000 rows         | `BATCH_SIZE_DATABASE_CHUNK`     |
 
 Source: `lib/constants/import-constants.ts` (`BATCH_SIZES`)
 
@@ -168,16 +169,16 @@ Source: `lib/constants/import-constants.ts` (`BATCH_SIZES`)
 
 **Error classification** -- Errors are categorized by analyzing the error message:
 
-| Pattern | Classification | Retryable |
-|---------|---------------|-----------|
-| connection, timeout, econnrefused | `recoverable` | Yes |
-| memory, resource | `recoverable` | Yes |
-| rate limit, 429 | `recoverable` | Yes |
-| enoent, file not found | `permanent` | No |
-| permission, unauthorized | `permanent` | No |
-| quota, limit exceeded | `user-action-required` | No |
-| schema, validation | `user-action-required` | Yes |
-| *(unknown)* | `recoverable` | Yes |
+| Pattern                           | Classification         | Retryable |
+| --------------------------------- | ---------------------- | --------- |
+| connection, timeout, econnrefused | `recoverable`          | Yes       |
+| memory, resource                  | `recoverable`          | Yes       |
+| rate limit, 429                   | `recoverable`          | Yes       |
+| enoent, file not found            | `permanent`            | No        |
+| permission, unauthorized          | `permanent`            | No        |
+| quota, limit exceeded             | `user-action-required` | No        |
+| schema, validation                | `user-action-required` | Yes       |
+| _(unknown)_                       | `recoverable`          | Yes       |
 
 **Automatic retry**:
 
