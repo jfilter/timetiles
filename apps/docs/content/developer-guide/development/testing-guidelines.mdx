@@ -101,54 +101,54 @@ pnpm test --grep "geocoding"
 LOG_LEVEL=debug pnpm test tests/integration/services/seed-config.test.ts
 ```
 
-**AI Output:** Results saved to `apps/web/.test-results.json`, `apps/web/.lint-results.json`, `apps/web/.typecheck-results.json`
+**AI Output:** Results saved to `apps/web/.test-results/`, `apps/web/.lint-results/`, `apps/web/.typecheck-results/` (timestamped JSON files)
 
 ### Analyzing Test Results
 
-When tests fail, use `jq` to extract detailed information from the JSON results:
+When tests fail, use `jq` to extract detailed information from the latest JSON results:
 
 ```bash
 # See specific failed test names
-cat apps/web/.test-results.json | jq '.testResults[] | select(.status=="failed") | .name'
+cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '.testResults[] | select(.status=="failed") | .name'
 
 # See assertion details for failures
-cat apps/web/.test-results.json | jq '.testResults[] | select(.status=="failed") | .assertionResults[] | select(.status=="failed")'
+cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '.testResults[] | select(.status=="failed") | .assertionResults[] | select(.status=="failed")'
 
 # Count total failures
-cat apps/web/.test-results.json | jq '[.testResults[] | select(.status=="failed")] | length'
+cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '[.testResults[] | select(.status=="failed")] | length'
 ```
 
 ### Analyzing Lint Results
 
-Extract lint errors and top violations:
+Extract lint errors and top violations (uses latest result file):
 
 ```bash
 # Files with errors
-cat apps/web/.lint-results.json | jq '.[] | select(.errorCount > 0) | .filePath'
+cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0) | .filePath'
 
 # Specific error messages
-cat apps/web/.lint-results.json | jq '.[] | select(.errorCount > 0) | .messages[] | select(.severity == 2)'
+cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0) | .messages[] | select(.severity == 2)'
 
 # Full error details with location
-cat apps/web/.lint-results.json | jq '[.[] | select(.errorCount > 0) | {file: .filePath, errors: [.messages[] | select(.severity == 2) | {line, column, message, ruleId}]}]'
+cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '[.[] | select(.errorCount > 0) | {file: .filePath, errors: [.messages[] | select(.severity == 2) | {line, column, message, ruleId}]}]'
 ```
 
 ### Analyzing TypeScript Errors
 
-Extract type errors from typecheck results:
+Extract type errors from typecheck results (uses latest result file):
 
 ```bash
 # All type errors
-cat apps/web/.typecheck-results.json | jq '.errors'
+cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.errors'
 
 # Errors by file
-cat apps/web/.typecheck-results.json | jq '.summary.byFile'
+cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.summary.byFile'
 
 # Errors by error code
-cat apps/web/.typecheck-results.json | jq '.summary.byCode'
+cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.summary.byCode'
 
 # Specific error details
-cat apps/web/.typecheck-results.json | jq '.errors[] | {file, line, code, message}'
+cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.errors[] | {file, line, code, message}'
 ```
 
 ## Test Setup Patterns

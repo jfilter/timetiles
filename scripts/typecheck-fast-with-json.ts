@@ -7,6 +7,7 @@
  */
 import { execSync } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 
 interface TypeScriptError {
   file: string;
@@ -17,6 +18,17 @@ interface TypeScriptError {
   severity: "error" | "warning";
 }
 
+const MAX_RESULT_FILES = 50;
+
+// Prepare timestamped output path
+const historyDir = path.join(process.cwd(), ".typecheck-results");
+fs.mkdirSync(historyDir, { recursive: true });
+const timestamp = new Date()
+  .toISOString()
+  .replace(/:/g, "-")
+  .replace(/\.\d+Z$/, "");
+const resultsPath = path.join(historyDir, `${timestamp}.json`);
+
 try {
   const output = execSync("pnpm exec tsgo --noEmit --pretty false 2>&1", {
     encoding: "utf-8",
@@ -24,9 +36,18 @@ try {
 
   // No errors
   fs.writeFileSync(
-    ".typecheck-results.json",
+    resultsPath,
     JSON.stringify({ success: true, errorCount: 0, errors: [], timestamp: new Date().toISOString() }, null, 2)
   );
+
+  // Prune old results (keep last 20)
+  const successFiles = fs
+    .readdirSync(historyDir)
+    .filter((f) => f.endsWith(".json"))
+    .sort();
+  for (const file of successFiles.slice(0, -MAX_RESULT_FILES)) {
+    fs.unlinkSync(path.join(historyDir, file));
+  }
 } catch (error) {
   const errorWithOutput = error as { stdout?: string | Buffer; stderr?: string | Buffer };
   const stdout = errorWithOutput.stdout?.toString() ?? "";
@@ -72,9 +93,18 @@ try {
   const success = errorCount === 0;
 
   fs.writeFileSync(
-    ".typecheck-results.json",
+    resultsPath,
     JSON.stringify({ success, errorCount, errors, timestamp: new Date().toISOString() }, null, 2)
   );
+
+  // Prune old results (keep last 20)
+  const historyFiles = fs
+    .readdirSync(historyDir)
+    .filter((f) => f.endsWith(".json"))
+    .sort();
+  for (const file of historyFiles.slice(0, -MAX_RESULT_FILES)) {
+    fs.unlinkSync(path.join(historyDir, file));
+  }
 
   if (!success) {
     process.exit(1);

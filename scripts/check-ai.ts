@@ -44,6 +44,17 @@ const PACKAGES = [
 
 const scriptsDir = path.dirname(new URL(import.meta.url).pathname);
 
+/** Find the latest JSON file in a results directory, or null if none. */
+function getLatestResultPath(dir: string): string | null {
+  if (!fs.existsSync(dir)) return null;
+  const files = fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .sort();
+  if (files.length === 0) return null;
+  return path.join(dir, files[files.length - 1]!);
+}
+
 // Run checks for each package
 // Note: Running sequentially to avoid overwhelming the system
 // The fast tools (oxlint, tsgo) are already very fast
@@ -87,8 +98,8 @@ for (const pkg of PACKAGES) {
     continue;
   }
 
-  const lintPath = path.join(pkgPath, ".lint-results.json");
-  const typecheckPath = path.join(pkgPath, ".typecheck-results.json");
+  const lintPath = getLatestResultPath(path.join(pkgPath, ".lint-results"));
+  const typecheckPath = getLatestResultPath(path.join(pkgPath, ".typecheck-results"));
 
   let lintErrors = 0;
   let lintWarnings = 0;
@@ -97,7 +108,7 @@ for (const pkg of PACKAGES) {
   let typecheckSuccess = true;
 
   // Read lint results
-  if (pkg.hasLint && fs.existsSync(lintPath)) {
+  if (pkg.hasLint && lintPath) {
     try {
       const lintData = JSON.parse(fs.readFileSync(lintPath, "utf-8")) as LintResult[];
       lintData.forEach((file) => {
@@ -111,7 +122,7 @@ for (const pkg of PACKAGES) {
   }
 
   // Read typecheck results
-  if (pkg.hasTypecheck && fs.existsSync(typecheckPath)) {
+  if (pkg.hasTypecheck && typecheckPath) {
     try {
       const typecheckData = JSON.parse(fs.readFileSync(typecheckPath, "utf-8")) as TypeCheckResult;
       typecheckErrors = typecheckData.errorCount || 0;
@@ -168,8 +179,8 @@ if (totalErrors > 0) {
 
     // Show TypeScript errors
     if (pkg.typecheckErrors > 0) {
-      const typecheckPath = path.join(pkgPath, ".typecheck-results.json");
-      if (fs.existsSync(typecheckPath)) {
+      const typecheckPath = getLatestResultPath(path.join(pkgPath, ".typecheck-results"));
+      if (typecheckPath) {
         try {
           const typecheckData = JSON.parse(fs.readFileSync(typecheckPath, "utf-8")) as {
             errors?: Array<{ file: string; line: number; code: string; message: string }>;
@@ -193,8 +204,8 @@ if (totalErrors > 0) {
 
     // Show lint errors
     if (pkg.lintErrors > 0 && errorCount < maxErrors) {
-      const lintPath = path.join(pkgPath, ".lint-results.json");
-      if (fs.existsSync(lintPath)) {
+      const lintPath = getLatestResultPath(path.join(pkgPath, ".lint-results"));
+      if (lintPath) {
         try {
           const lintData = JSON.parse(fs.readFileSync(lintPath, "utf-8")) as Array<{
             filePath: string;
@@ -241,17 +252,23 @@ if (failedPackages.length > 0) {
     const pkgName = pkg.package.replace(/^(apps|packages)\//, "");
     if (pkg.lintErrors > 0) {
       console.log(`\n# ${pkgName} lint errors:`);
-      console.log(`  cat ${pkg.package}/.lint-results.json | jq '.[] | select(.errorCount > 0)'`);
+      console.log(
+        `  cat ${pkg.package}/.lint-results/$(ls -t ${pkg.package}/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0)'`
+      );
     }
     if (pkg.typecheckErrors > 0) {
       console.log(`\n# ${pkgName} typecheck errors:`);
-      console.log(`  cat ${pkg.package}/.typecheck-results.json | jq '.errors[]'`);
+      console.log(
+        `  cat ${pkg.package}/.typecheck-results/$(ls -t ${pkg.package}/.typecheck-results/ | head -1) | jq '.errors[]'`
+      );
     }
   });
 } else {
   console.log("\n# Inspect any package:");
-  console.log(`  cat apps/web/.lint-results.json | jq '.[] | select(.errorCount > 0)'`);
-  console.log(`  cat apps/web/.typecheck-results.json | jq '.errors[]'`);
+  console.log(
+    `  cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0)'`
+  );
+  console.log(`  cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.errors[]'`);
 }
 
 console.log("\n" + "=".repeat(70));

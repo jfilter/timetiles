@@ -13,7 +13,7 @@
     ".prettierignore"
   ],
   "scripts": {
-    "lint": "eslint . --ext .js --cache --format json --output-file .lint-results.json; eslint . --ext .js --cache",
+    "lint": "mkdir -p .lint-results && eslint . --ext .js --cache --format json --output-file .lint-results/latest.json; eslint . --ext .js --cache",
     "format": "eslint . --ext .js --cache --fix --quiet && prettier --write . --log-level error"
   },
   "devDependencies": {

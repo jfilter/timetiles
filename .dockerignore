@@ -26,7 +26,7 @@ out
 **/__mocks__
 playwright-report
 test-results
-.test-results.json
+.test-results
 vitest.config.ts
 playwright.config.ts
 

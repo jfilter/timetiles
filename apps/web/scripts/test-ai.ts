@@ -37,6 +37,8 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+const MAX_RESULT_FILES = 50;
+
 interface TestResult {
   name: string;
   status: string;
@@ -78,16 +80,26 @@ const processedFilters = filters.flatMap((filter): string[] => {
 
 const filterArg = processedFilters.length > 0 ? processedFilters.join(" ") : "";
 
-// Build vitest command
-// Note: Filter must come AFTER 'vitest run' but BEFORE reporter flags
+// Prepare timestamped output path
+const startTime = Date.now();
+const historyDir = path.join(process.cwd(), ".test-results");
+fs.mkdirSync(historyDir, { recursive: true });
+const timestamp = new Date(startTime)
+  .toISOString()
+  .replace(/:/g, "-")
+  .replace(/\.\d+Z$/, "");
+const resultsFilename = `${timestamp}.json`;
+const resultsPath = path.join(historyDir, resultsFilename);
+
+// Build vitest command with timestamped output
 const vitestCmd = [
   'NODE_OPTIONS="--no-warnings"',
   "DOTENV_CONFIG_SILENT=true",
   "pnpm exec vitest",
   "run",
-  filterArg, // Filter goes here, after 'run' but before flags
+  filterArg,
   "--reporter=json",
-  "--outputFile.json=.test-results.json",
+  `--outputFile.json=.test-results/${resultsFilename}`,
   "--silent",
   "2>/dev/null",
 ]
@@ -95,7 +107,6 @@ const vitestCmd = [
   .join(" ");
 
 // Run vitest and track wall-clock time
-const startTime = Date.now();
 try {
   // eslint-disable-next-line sonarjs/os-command -- vitestCmd is constructed from safe, controlled values only (no user input)
   execSync(vitestCmd, {
@@ -109,9 +120,6 @@ try {
 }
 const endTime = Date.now();
 const wallClockDuration = endTime - startTime;
-
-// Read and display summary
-const resultsPath = path.join(process.cwd(), ".test-results.json");
 
 try {
   const results = JSON.parse(fs.readFileSync(resultsPath, "utf-8")) as TestSummary;
@@ -151,11 +159,20 @@ try {
   }
 
   // JSON location
-  console.log("→ .test-results.json");
+  console.log(`→ .test-results/${resultsFilename}`);
+
+  // Prune old results (keep last 20)
+  const historyFiles = fs
+    .readdirSync(historyDir)
+    .filter((f) => f.endsWith(".json"))
+    .sort();
+  for (const file of historyFiles.slice(0, -MAX_RESULT_FILES)) {
+    fs.unlinkSync(path.join(historyDir, file));
+  }
 
   // Exit with appropriate code
   process.exit(results.success ? 0 : 1);
 } catch {
-  console.error("❌ Could not read .test-results.json");
+  console.error(`❌ Could not read .test-results/${resultsFilename}`);
   process.exit(1);
 }

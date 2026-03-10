@@ -158,10 +158,10 @@ import { ExplorePage } from "../pages/explore.page";
 | `make test-e2e` | Run Playwright E2E tests with automatic database setup |
 | `make test-e2e FILTER="name"` | Run E2E tests matching a test name pattern |
 
-`make test-ai` invokes `scripts/test-ai.ts`, which runs Vitest with `--reporter=json`, writes results to `.test-results.json`, and prints a summary showing pass/fail counts, duration, and failed test names. Inspect failures with:
+`make test-ai` invokes `scripts/test-ai.ts`, which runs Vitest with `--reporter=json`, writes timestamped results to `.test-results/`, and prints a summary showing pass/fail counts, duration, and failed test names. Inspect failures with:
 
 ```bash
-cat apps/web/.test-results.json | jq '.testResults[] | select(.status=="failed") | .name'
+cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '.testResults[] | select(.status=="failed") | .name'
 ```
 
 ## Consequences

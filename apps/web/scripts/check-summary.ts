@@ -63,12 +63,18 @@ interface CheckResults {
 }
 
 const runLintCheck = (): CheckResults["lint"] => {
-  const resultsPath = path.join(process.cwd(), ".lint-results.json");
+  const historyDir = path.join(process.cwd(), ".lint-results");
+  fs.mkdirSync(historyDir, { recursive: true });
+  const ts = new Date()
+    .toISOString()
+    .replace(/:/g, "-")
+    .replace(/\.\d+Z$/, "");
+  const resultsPath = path.join(historyDir, `${ts}.json`);
 
   try {
     // Run ESLint with JSON output
     execSync(
-      "pnpm exec eslint app lib components tests scripts . --ext .ts,.tsx,.js,.jsx --cache --format json --output-file .lint-results.json",
+      `pnpm exec eslint app lib components tests scripts . --ext .ts,.tsx,.js,.jsx --cache --format json --output-file ${resultsPath}`,
       { stdio: "pipe" }
     );
   } catch {
@@ -127,7 +133,13 @@ const runLintCheck = (): CheckResults["lint"] => {
 
 const runTypeCheck = (): CheckResults["typecheck"] => {
   const errors: TypeScriptError[] = [];
-  const resultsPath = path.join(process.cwd(), ".typecheck-results.json");
+  const tcHistoryDir = path.join(process.cwd(), ".typecheck-results");
+  fs.mkdirSync(tcHistoryDir, { recursive: true });
+  const tcTs = new Date()
+    .toISOString()
+    .replace(/:/g, "-")
+    .replace(/\.\d+Z$/, "");
+  const resultsPath = path.join(tcHistoryDir, `${tcTs}.json`);
 
   try {
     // Run tsc with more verbose output
@@ -327,8 +339,8 @@ if (lintResults.fixableCount > 0) {
   console.log(`\n💡 Run 'pnpm format' to auto-fix ${lintResults.fixableCount} issues`);
 }
 console.log("\nResults saved to:");
-console.log("  .lint-results.json");
-console.log("  .typecheck-results.json");
+console.log("  .lint-results/");
+console.log("  .typecheck-results/");
 console.log("=".repeat(50) + "\n");
 
 // Exit with appropriate code

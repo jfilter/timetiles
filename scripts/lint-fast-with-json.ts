@@ -43,7 +43,17 @@ interface ESLintFileResult {
   messages: ESLintMessage[];
 }
 
+const MAX_RESULT_FILES = 50;
 const configPath = path.resolve(__dirname, "../.oxlintrc.json");
+
+// Prepare timestamped output path
+const historyDir = path.join(process.cwd(), ".lint-results");
+fs.mkdirSync(historyDir, { recursive: true });
+const timestamp = new Date()
+  .toISOString()
+  .replace(/:/g, "-")
+  .replace(/\.\d+Z$/, "");
+const resultsPath = path.join(historyDir, `${timestamp}.json`);
 
 try {
   const output = execSync(`pnpm exec oxlint --config ${configPath} --format=json . 2>&1`, {
@@ -83,7 +93,7 @@ try {
     });
   }
 
-  fs.writeFileSync(".lint-results.json", JSON.stringify(eslintResults, null, 2));
+  fs.writeFileSync(resultsPath, JSON.stringify(eslintResults, null, 2));
 
   // Exit with error if there are any errors
   const totalErrors = eslintResults.reduce((sum, r) => sum + r.errorCount, 0);
@@ -126,7 +136,7 @@ try {
       });
     }
 
-    fs.writeFileSync(".lint-results.json", JSON.stringify(eslintResults, null, 2));
+    fs.writeFileSync(resultsPath, JSON.stringify(eslintResults, null, 2));
 
     const totalErrors = eslintResults.reduce((sum, r) => sum + r.errorCount, 0);
     if (totalErrors > 0) {
@@ -134,7 +144,16 @@ try {
     }
   } catch {
     // If we can't parse, write empty results
-    fs.writeFileSync(".lint-results.json", JSON.stringify([], null, 2));
+    fs.writeFileSync(resultsPath, JSON.stringify([], null, 2));
     process.exit(1);
   }
+}
+
+// Prune old results (keep last 20)
+const historyFiles = fs
+  .readdirSync(historyDir)
+  .filter((f) => f.endsWith(".json"))
+  .sort();
+for (const file of historyFiles.slice(0, -MAX_RESULT_FILES)) {
+  fs.unlinkSync(path.join(historyDir, file));
 }

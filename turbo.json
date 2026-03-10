@@ -65,7 +65,7 @@
         ".eslintrc*",
         ".eslintignore"
       ],
-      "outputs": [".lint-results.json"]
+      "outputs": [".lint-results/**"]
     },
     "format": {
       "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"]
@@ -77,7 +77,7 @@
         "tsconfig.json",
         "tsconfig.*.json"
       ],
-      "outputs": [".typecheck-results.json"]
+      "outputs": [".typecheck-results/**"]
     },
     "typecheck:fast": {
       "dependsOn": ["transit"],
@@ -86,7 +86,7 @@
         "tsconfig.json",
         "tsconfig.*.json"
       ],
-      "outputs": [".typecheck-results.json"]
+      "outputs": [".typecheck-results/**"]
     },
     "lint:fast": {
       "dependsOn": ["transit"],
@@ -117,7 +117,7 @@
         "vitest.workspace.ts",
         "payload.config.ts"
       ],
-      "outputs": [".test-results.json", "coverage/**"]
+      "outputs": [".test-results/**", "coverage/**"]
     },
     "test:ai": {
       "dependsOn": ["^build"],
@@ -136,7 +136,7 @@
         "vitest.workspace.ts",
         "payload.config.ts"
       ],
-      "outputs": [".test-results.json"]
+      "outputs": [".test-results/**"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],

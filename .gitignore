@@ -22,12 +22,10 @@ coverage
 # Playwright
 playwright-report/
 test-results/
-# Test outputs
-.test-results.json
-test-results.json
-*.test-results.json
-.lint-results.json
-.typecheck-results.json
+# Check/test outputs
+.test-results/
+.lint-results/
+.typecheck-results/
 
 # Turbo
 .turbo

@@ -87,7 +87,7 @@ When `turbo run build` executes, it:
 2. Builds `apps/web` (depends on `@timetiles/ui`, `@timetiles/payload-schema-detection`, `@timetiles/assets`)
 3. Builds `apps/docs` (depends on `@timetiles/ui`, `@timetiles/assets`, and generates TypeDoc API docs from `apps/web` source)
 
-Turborepo caches outputs (`.next/**`, `.test-results.json`, `coverage/**`) and skips unchanged tasks on subsequent runs.
+Turborepo caches outputs (`.next/**`, `.test-results/**`, `coverage/**`) and skips unchanged tasks on subsequent runs.
 
 ### Shared UI Library
 
