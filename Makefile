@@ -395,7 +395,7 @@ worktree:
 		echo "Usage: make worktree NAME=my-feature [BRANCH=branch-name]"; \
 		echo ""; \
 		echo "Creates a worktree in .worktrees/<NAME> with env files + deps."; \
-		echo "If BRANCH is given, checks out (or creates) that branch."; \
+		echo "Creates branch <NAME> from main (or BRANCH if given)."; \
 		exit 1; \
 	fi
 	@./scripts/worktree.sh create "$(NAME)" "$(BRANCH)"

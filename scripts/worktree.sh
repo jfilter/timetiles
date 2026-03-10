@@ -4,7 +4,7 @@
 # Creates git worktrees with proper environment setup (env files, deps, uploads)
 #
 # Usage:
-#   ./scripts/worktree.sh create <name> [branch]   - Create worktree from branch (default: current HEAD)
+#   ./scripts/worktree.sh create <name> [branch]   - Create worktree (default: new branch <name> from main)
 #   ./scripts/worktree.sh remove <name>             - Remove worktree and its branch
 #   ./scripts/worktree.sh list                      - List all worktrees
 #   ./scripts/worktree.sh setup <path>              - Set up env/deps in an existing worktree
@@ -109,17 +109,17 @@ cmd_create() {
 
     header "Creating worktree '$name'"
 
-    if [ -n "$branch" ]; then
-        # Check if branch exists
-        if git -C "$REPO_ROOT" rev-parse --verify "$branch" >/dev/null 2>&1; then
-            git -C "$REPO_ROOT" worktree add "$wt_dir" "$branch"
-        else
-            # Create new branch from HEAD
-            git -C "$REPO_ROOT" worktree add -b "$branch" "$wt_dir"
-        fi
+    # Default branch name to the worktree name if not specified
+    if [ -z "$branch" ]; then
+        branch="$name"
+    fi
+
+    # Check if branch exists
+    if git -C "$REPO_ROOT" rev-parse --verify "$branch" >/dev/null 2>&1; then
+        git -C "$REPO_ROOT" worktree add "$wt_dir" "$branch"
     else
-        # Detached HEAD from current commit
-        git -C "$REPO_ROOT" worktree add --detach "$wt_dir"
+        # Create new branch from main
+        git -C "$REPO_ROOT" worktree add -b "$branch" "$wt_dir" main
     fi
     info "Worktree created at $wt_dir"
 
@@ -225,7 +225,7 @@ case "${1:-help}" in
         echo "Usage: worktree.sh <command> [args]"
         echo ""
         echo "Commands:"
-        echo "  create <name> [branch]  Create a new worktree (default: detached HEAD)"
+        echo "  create <name> [branch]  Create a new worktree (default: branch <name> from main)"
         echo "  remove <name>           Remove a worktree"
         echo "  setup <path>            Set up env/deps in an existing worktree"
         echo "  list                    List all worktrees and their status"
