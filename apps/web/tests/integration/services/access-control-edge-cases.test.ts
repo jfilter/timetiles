@@ -563,8 +563,8 @@ describe.sequential("Access Control Edge Cases", () => {
       const succeeded = results.filter((r) => !("error" in r));
       const failed = results.filter((r) => "error" in r);
 
-      expect(succeeded.length).toBe(1);
-      expect(failed.length).toBe(1);
+      expect(succeeded).toHaveLength(1);
+      expect(failed).toHaveLength(1);
     });
   });
 

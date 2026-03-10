@@ -210,7 +210,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(locationCache.docs.length).toBe(10);
+      expect(locationCache.docs).toHaveLength(10);
 
       // Verify geocoding provider was called exactly 10 times (once per unique location)
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(10);
@@ -230,7 +230,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(events.docs.length).toBe(15);
+      expect(events.docs).toHaveLength(15);
 
       // All events should have coordinates
       for (const event of events.docs) {
@@ -258,7 +258,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(cacheAfterFirst.docs.length).toBe(10);
+      expect(cacheAfterFirst.docs).toHaveLength(10);
 
       // Clear mock call count
       vi.clearAllMocks();
@@ -277,7 +277,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(cacheAfterSecond.docs.length).toBe(10);
+      expect(cacheAfterSecond.docs).toHaveLength(10);
 
       // Verify hitCount increased for all cached entries
       for (const entry of cacheAfterSecond.docs) {
@@ -291,7 +291,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(allEventsAfterCacheHit.docs.length).toBe(30); // 15 from first + 15 from second
+      expect(allEventsAfterCacheHit.docs).toHaveLength(30); // 15 from first + 15 from second
 
       // All events should have coordinates from either first geocoding or cache
       for (const event of allEventsAfterCacheHit.docs) {
@@ -338,7 +338,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(cacheAfterMixed.docs.length).toBe(15);
+      expect(cacheAfterMixed.docs).toHaveLength(15);
 
       // Verify all events created (15 from first + 10 from second = 25 total)
       const allEventsAfterMixedImport = await payload.find({
@@ -346,7 +346,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(allEventsAfterMixedImport.docs.length).toBe(40);
+      expect(allEventsAfterMixedImport.docs).toHaveLength(40);
 
       // All events should have coordinates
       for (const event of allEventsAfterMixedImport.docs) {
@@ -390,7 +390,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(locationCache.docs.length).toBe(3);
+      expect(locationCache.docs).toHaveLength(3);
 
       // Verify all 10 events were created with coordinates
       // Since we clear database before each test, all events belong to this import
@@ -399,7 +399,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(events.docs.length).toBe(10);
+      expect(events.docs).toHaveLength(10);
 
       // Group events by location to verify coordinates are consistent
       const eventsByLocation: Record<string, any[]> = {};
@@ -410,7 +410,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       }
 
       // Verify all events with same location have same coordinates
-      expect(Object.keys(eventsByLocation).length).toBe(3);
+      expect(Object.keys(eventsByLocation)).toHaveLength(3);
 
       for (const eventsAtLocation of Object.values(eventsByLocation)) {
         const firstEvent = eventsAtLocation[0];
@@ -448,7 +448,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         limit: 100,
       });
 
-      expect(locationCache.docs.length).toBe(2);
+      expect(locationCache.docs).toHaveLength(2);
 
       // Verify normalized addresses are stored
       const normalizedAddresses = locationCache.docs.map((doc: any) => doc.normalizedAddress);
@@ -476,7 +476,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         },
       });
 
-      expect(locationCache.docs.length).toBe(1);
+      expect(locationCache.docs).toHaveLength(1);
       expect(locationCache.docs[0].hitCount).toBe(1);
     });
   });

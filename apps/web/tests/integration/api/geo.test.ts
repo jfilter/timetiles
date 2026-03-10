@@ -448,7 +448,7 @@ describe("/api/v1/events/geo", () => {
       // Ensure we only stringify valid values
       if (typeof clusterIdValue === "string") {
         expect(clusterIdValue).toBeTruthy();
-        expect(clusterIdValue.length).toBe(64); // SHA256 hash length
+        expect(clusterIdValue).toHaveLength(64); // SHA256 hash length
       }
     }
   });
@@ -538,7 +538,7 @@ describe("/api/v1/events/geo", () => {
     )) as { rows: Array<Record<string, unknown>> };
 
     // Results should be identical
-    expect(result1.rows.length).toBe(result2.rows.length);
+    expect(result1.rows).toHaveLength(result2.rows.length);
 
     // Cluster IDs should match exactly
     // eslint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison

@@ -7,7 +7,7 @@
  * @module
  * @category Components
  */
-/* eslint-disable complexity -- Progress polling and status handling requires multiple state transitions */
+/* oxlint-disable complexity -- Progress polling and status handling requires multiple state transitions */
 "use client";
 
 import { Button, Card, CardContent } from "@timetiles/ui";

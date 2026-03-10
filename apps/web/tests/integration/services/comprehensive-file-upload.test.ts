@@ -338,7 +338,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         where: { importFile: { equals: importFile.id } },
       });
 
-      expect(importJobs.docs.length).toBe(1); // ODS file has one sheet
+      expect(importJobs.docs).toHaveLength(1); // ODS file has one sheet
       logger.debug(`✓ Created ${importJobs.docs.length} import job for ODS sheet`);
 
       // Verify jobs completed
@@ -352,7 +352,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         limit: 20,
       });
 
-      expect(events.docs.length).toBe(3);
+      expect(events.docs).toHaveLength(3);
       logger.debug(`✓ Created ${events.docs.length} events from ODS file`);
 
       // Verify specific event data (title is stored in data.title JSON field)
@@ -458,7 +458,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         const job = await waitForImportJobStage(importFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
 
         const finalJobs = await getImportJobs(importFile.id);
-        expect(finalJobs.docs.length).toBe(1);
+        expect(finalJobs.docs).toHaveLength(1);
         expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
         expect(job.schemaValidation?.requiresApproval).toBe(true);
 
@@ -654,7 +654,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           limit: 100,
         });
 
-        expect(events.docs.length).toBe(50);
+        expect(events.docs).toHaveLength(50);
         logger.debug(`✓ Successfully processed ${events.docs.length} events`);
 
         // Verify final status

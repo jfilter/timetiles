@@ -88,7 +88,7 @@ describe("/api/v1/events - location filtering", () => {
     const data = await response.json();
 
     // Should return only the 3 events with coordinates
-    expect(data.events.length).toBe(3);
+    expect(data.events).toHaveLength(3);
     expect(data.pagination.totalDocs).toBe(3);
 
     // All returned events should have locations
@@ -107,6 +107,6 @@ describe("/api/v1/events - location filtering", () => {
     const data = await response.json();
 
     // events.length should match totalDocs (no more "170 of 390" inconsistency)
-    expect(data.events.length).toBe(data.pagination.totalDocs);
+    expect(data.events).toHaveLength(data.pagination.totalDocs);
   });
 });

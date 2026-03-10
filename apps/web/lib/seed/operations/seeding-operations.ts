@@ -399,7 +399,7 @@ export class SeedingOperations {
       });
     } else if (collectionName === "users") {
       // Disable verification email for seeded users (they're already pre-verified)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic seeding requires type flexibility
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic seeding requires type flexibility
       await (payload.create as any)({
         collection: "users",
         data: resolvedItem,

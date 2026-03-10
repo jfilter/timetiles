@@ -178,7 +178,7 @@ export class QuotaService {
    * When called from a hook with `req`, reuses the hook's transaction connection
    * instead of grabbing a new pool connection (which can cause pool exhaustion).
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Payload's internal session/drizzle types aren't publicly exported
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Payload's internal session/drizzle types aren't publicly exported
   private async getDrizzle(req?: Partial<PayloadRequest>): Promise<any> {
     const db = this.payload.db;
     if (req?.transactionID && "sessions" in db) {

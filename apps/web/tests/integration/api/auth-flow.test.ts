@@ -145,7 +145,7 @@ describe.sequential("Authentication Flow", () => {
         limit: 1,
         overrideAccess: true,
       });
-      expect(initialResult.docs.length).toBe(0);
+      expect(initialResult.docs).toHaveLength(0);
 
       // Trigger lazy creation via quota service
       const { getQuotaService } = await import("../../../lib/services/quota-service.js");
@@ -166,7 +166,7 @@ describe.sequential("Authentication Flow", () => {
         limit: 1,
         overrideAccess: true,
       });
-      expect(afterResult.docs.length).toBe(1);
+      expect(afterResult.docs).toHaveLength(1);
     });
 
     it("starts as unverified when email verification is enabled", async () => {
@@ -466,7 +466,7 @@ describe.sequential("Authentication Flow", () => {
       });
 
       // User1 should only see their own profile
-      expect(result.docs.length).toBe(1);
+      expect(result.docs).toHaveLength(1);
       expect(result.docs[0]!.id).toBe(user1.id);
     });
 
@@ -537,7 +537,7 @@ describe.sequential("Authentication Flow", () => {
         user: admin,
       });
 
-      expect(result.docs.length).toBe(1);
+      expect(result.docs).toHaveLength(1);
       expect(result.docs[0]!.email).toBe(regularUser.email);
     });
 

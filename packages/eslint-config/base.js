@@ -391,6 +391,6 @@ export default [
     },
   },
   // Add oxlint bridge at the END to auto-disable ESLint rules that oxlint handles
-  // This enables hybrid linting: oxlint (fast) + ESLint (specialized plugins)
-  ...oxlint.configs["flat/recommended"],
+  // Uses buildFromOxlintConfigFile to only disable rules actually enabled in .oxlintrc.json
+  ...oxlint.buildFromOxlintConfigFile("../../.oxlintrc.json"),
 ];

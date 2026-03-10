@@ -151,7 +151,7 @@ describe("event-params", () => {
         const ff = JSON.stringify(filters);
         const params = new URLSearchParams(`ff=${ff}`);
         const result = extractBaseEventParameters(params);
-        expect(Object.keys(result.fieldFilters).length).toBe(10);
+        expect(Object.keys(result.fieldFilters)).toHaveLength(10);
       });
 
       it("should filter out non-string values from arrays", () => {

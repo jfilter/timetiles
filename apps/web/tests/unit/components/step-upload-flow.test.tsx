@@ -368,7 +368,7 @@ describe.sequential("StepUpload", () => {
       renderWithProviders(<StepUpload />);
 
       const tabs = document.querySelectorAll('[role="tab"]');
-      expect(tabs.length).toBe(0);
+      expect(tabs).toHaveLength(0);
     });
   });
 

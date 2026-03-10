@@ -31,9 +31,9 @@ jobs:
         timeout-minutes: 2
         run: pnpm exec oxfmt --check .
 
-      - name: Lint code (ESLint full)
+      - name: Lint code (oxlint + ESLint)
         timeout-minutes: 5
-        run: pnpm lint:full --filter=!docs
+        run: pnpm lint --filter=!docs
 
       - name: Type check (tsc full)
         timeout-minutes: 5

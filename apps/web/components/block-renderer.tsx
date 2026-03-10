@@ -209,204 +209,209 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
 
   return (
     <>
-      {/* eslint-disable-next-line sonarjs/max-lines-per-function, complexity -- Block renderer requires large switch statement for all block types */}
-      {blocks.map((block, index) => {
-        const key = block.id ?? `${block.blockType}-${index}`;
+      {/* eslint-disable-next-line sonarjs/max-lines-per-function -- Block renderer requires large switch statement for all block types */}
+      {blocks.map(
+        // oxlint-disable-next-line complexity
+        (block, index) => {
+          const key = block.id ?? `${block.blockType}-${index}`;
 
-        switch (block.blockType) {
-          case "hero": {
-            // Map CMS background values to Hero component values
-            const heroBackground = block.background === "gradient" ? "grid" : (block.background ?? "grid");
-            return (
-              <Hero key={key} background={heroBackground}>
-                <HeroHeadline>{block.title}</HeroHeadline>
-                {block.subtitle && <HeroSubheadline>{block.subtitle}</HeroSubheadline>}
-                {block.description && (
-                  <p className="text-muted-foreground mt-4 text-center text-lg">{block.description}</p>
-                )}
-                {block.buttons && block.buttons.length > 0 && (
-                  <HeroActions>
-                    {block.buttons.map((button, btnIndex) => (
-                      <Button key={button.id ?? `btn-${btnIndex}`} asChild variant={button.variant ?? "default"}>
-                        <a href={button.link}>{button.text}</a>
-                      </Button>
+          switch (block.blockType) {
+            case "hero": {
+              // Map CMS background values to Hero component values
+              const heroBackground = block.background === "gradient" ? "grid" : (block.background ?? "grid");
+              return (
+                <Hero key={key} background={heroBackground}>
+                  <HeroHeadline>{block.title}</HeroHeadline>
+                  {block.subtitle && <HeroSubheadline>{block.subtitle}</HeroSubheadline>}
+                  {block.description && (
+                    <p className="text-muted-foreground mt-4 text-center text-lg">{block.description}</p>
+                  )}
+                  {block.buttons && block.buttons.length > 0 && (
+                    <HeroActions>
+                      {block.buttons.map((button, btnIndex) => (
+                        <Button key={button.id ?? `btn-${btnIndex}`} asChild variant={button.variant ?? "default"}>
+                          <a href={button.link}>{button.text}</a>
+                        </Button>
+                      ))}
+                    </HeroActions>
+                  )}
+                </Hero>
+              );
+            }
+
+            case "features": {
+              // Convert string column value to number literal for FeaturesGrid
+              const columnCount = (block.columns ? parseInt(block.columns, 10) : 3) as 1 | 2 | 3 | 4;
+              return (
+                <Features key={key}>
+                  {(block.sectionTitle ?? block.sectionDescription) && (
+                    <FeaturesHeader>
+                      {block.sectionTitle && <FeaturesTitle>{block.sectionTitle}</FeaturesTitle>}
+                      {block.sectionDescription && (
+                        <FeaturesDescription>{block.sectionDescription}</FeaturesDescription>
+                      )}
+                    </FeaturesHeader>
+                  )}
+                  <FeaturesGrid columns={columnCount}>
+                    {block.features.map((feature, featureIndex) => (
+                      <Feature key={feature.id ?? `feature-${featureIndex}`} accent={feature.accent ?? "none"}>
+                        <FeatureIcon>
+                          <IconMapper name={feature.icon} size={64} />
+                        </FeatureIcon>
+                        <FeatureTitle>{feature.title}</FeatureTitle>
+                        <FeatureDescription>{feature.description}</FeatureDescription>
+                      </Feature>
                     ))}
-                  </HeroActions>
-                )}
-              </Hero>
-            );
-          }
+                  </FeaturesGrid>
+                </Features>
+              );
+            }
 
-          case "features": {
-            // Convert string column value to number literal for FeaturesGrid
-            const columnCount = (block.columns ? parseInt(block.columns, 10) : 3) as 1 | 2 | 3 | 4;
-            return (
-              <Features key={key}>
-                {(block.sectionTitle ?? block.sectionDescription) && (
-                  <FeaturesHeader>
-                    {block.sectionTitle && <FeaturesTitle>{block.sectionTitle}</FeaturesTitle>}
-                    {block.sectionDescription && <FeaturesDescription>{block.sectionDescription}</FeaturesDescription>}
-                  </FeaturesHeader>
-                )}
-                <FeaturesGrid columns={columnCount}>
-                  {block.features.map((feature, featureIndex) => (
-                    <Feature key={feature.id ?? `feature-${featureIndex}`} accent={feature.accent ?? "none"}>
-                      <FeatureIcon>
-                        <IconMapper name={feature.icon} size={64} />
-                      </FeatureIcon>
-                      <FeatureTitle>{feature.title}</FeatureTitle>
-                      <FeatureDescription>{feature.description}</FeatureDescription>
-                    </Feature>
-                  ))}
-                </FeaturesGrid>
-              </Features>
-            );
-          }
-
-          case "stats":
-            return (
-              <div key={key} className="bg-muted/30 py-16">
-                <div className="container mx-auto max-w-6xl px-6">
-                  <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-                    {block.stats.map((stat, statIndex) => (
-                      <div key={stat.id ?? `stat-${statIndex}`} className="text-center">
-                        {stat.icon && (
-                          <div className="text-primary mb-4 flex justify-center">
-                            <IconMapper name={stat.icon} size={48} />
-                          </div>
-                        )}
-                        <div className="text-foreground mb-2 font-serif text-4xl font-bold">{stat.value}</div>
-                        <div className="text-muted-foreground text-lg">{stat.label}</div>
-                      </div>
-                    ))}
+            case "stats":
+              return (
+                <div key={key} className="bg-muted/30 py-16">
+                  <div className="container mx-auto max-w-6xl px-6">
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                      {block.stats.map((stat, statIndex) => (
+                        <div key={stat.id ?? `stat-${statIndex}`} className="text-center">
+                          {stat.icon && (
+                            <div className="text-primary mb-4 flex justify-center">
+                              <IconMapper name={stat.icon} size={48} />
+                            </div>
+                          )}
+                          <div className="text-foreground mb-2 font-serif text-4xl font-bold">{stat.value}</div>
+                          <div className="text-muted-foreground text-lg">{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
+              );
 
-          case "detailsGrid":
-            return (
-              <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
-                {block.sectionTitle && (
-                  <h2 className="text-foreground mb-8 font-serif text-3xl font-bold md:text-4xl">
-                    {block.sectionTitle}
-                  </h2>
-                )}
-                <DetailsGrid variant={block.variant ?? "grid-3"}>
-                  {block.items.map((item, itemIndex) => (
-                    <DetailsItem key={item.id ?? `item-${itemIndex}`} index={itemIndex}>
-                      <DetailsIcon>
-                        <IconMapper name={item.icon} size={20} />
-                      </DetailsIcon>
-                      <DetailsLabel>{item.label}</DetailsLabel>
-                      <DetailsValue>
-                        {item.link ? (
-                          <a href={item.link} className="text-accent hover:underline">
-                            {item.value}
-                          </a>
-                        ) : (
-                          item.value
-                        )}
-                      </DetailsValue>
-                    </DetailsItem>
-                  ))}
-                </DetailsGrid>
-              </div>
-            );
-
-          case "timeline":
-            return (
-              <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
-                {block.sectionTitle && (
-                  <h2 className="text-foreground mb-12 font-serif text-3xl font-bold md:text-4xl">
-                    {block.sectionTitle}
-                  </h2>
-                )}
-                <Timeline variant={block.variant ?? "vertical"}>
-                  {block.items.map((item, itemIndex) => (
-                    <TimelineItem key={item.id ?? `timeline-${itemIndex}`} index={itemIndex}>
-                      <TimelineDate>{item.date}</TimelineDate>
-                      <TimelineTitle>{item.title}</TimelineTitle>
-                      <TimelineDescription>{item.description}</TimelineDescription>
-                    </TimelineItem>
-                  ))}
-                </Timeline>
-              </div>
-            );
-
-          case "testimonials":
-            return (
-              <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
-                {block.sectionTitle && (
-                  <h2 className="text-foreground mb-12 font-serif text-3xl font-bold md:text-4xl">
-                    {block.sectionTitle}
-                  </h2>
-                )}
-                <Testimonials variant={block.variant ?? "grid"}>
-                  {block.items.map((item, itemIndex) => (
-                    <TestimonialCard key={item.id ?? `testimonial-${itemIndex}`} index={itemIndex}>
-                      {item.avatar && (
-                        <TestimonialAvatar>
-                          <IconMapper name={item.avatar} size={20} />
-                        </TestimonialAvatar>
-                      )}
-                      <TestimonialQuote>{item.quote}</TestimonialQuote>
-                      <TestimonialAuthor>{item.author}</TestimonialAuthor>
-                      {item.role && <TestimonialMeta>{item.role}</TestimonialMeta>}
-                    </TestimonialCard>
-                  ))}
-                </Testimonials>
-              </div>
-            );
-
-          case "richText":
-            return (
-              <div key={key} className="container mx-auto max-w-4xl px-6 py-12">
-                <RichText content={block.content as Parameters<typeof RichText>[0]["content"]} />
-              </div>
-            );
-
-          case "cta":
-            return (
-              <div key={key} className="bg-primary/5 py-16">
-                <div className="container mx-auto max-w-4xl px-6 text-center">
-                  <h2 className="text-foreground mb-4 font-serif text-3xl font-bold md:text-4xl">{block.headline}</h2>
-                  {block.description && <p className="text-muted-foreground mb-8 text-lg">{block.description}</p>}
-                  <Button asChild size="lg">
-                    <a href={block.buttonLink}>{block.buttonText}</a>
-                  </Button>
+            case "detailsGrid":
+              return (
+                <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+                  {block.sectionTitle && (
+                    <h2 className="text-foreground mb-8 font-serif text-3xl font-bold md:text-4xl">
+                      {block.sectionTitle}
+                    </h2>
+                  )}
+                  <DetailsGrid variant={block.variant ?? "grid-3"}>
+                    {block.items.map((item, itemIndex) => (
+                      <DetailsItem key={item.id ?? `item-${itemIndex}`} index={itemIndex}>
+                        <DetailsIcon>
+                          <IconMapper name={item.icon} size={20} />
+                        </DetailsIcon>
+                        <DetailsLabel>{item.label}</DetailsLabel>
+                        <DetailsValue>
+                          {item.link ? (
+                            <a href={item.link} className="text-accent hover:underline">
+                              {item.value}
+                            </a>
+                          ) : (
+                            item.value
+                          )}
+                        </DetailsValue>
+                      </DetailsItem>
+                    ))}
+                  </DetailsGrid>
                 </div>
-              </div>
-            );
+              );
 
-          case "newsletterForm":
-            return (
-              <div key={key} className="container mx-auto max-w-xl px-6 py-8">
-                <NewsletterForm
+            case "timeline":
+              return (
+                <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+                  {block.sectionTitle && (
+                    <h2 className="text-foreground mb-12 font-serif text-3xl font-bold md:text-4xl">
+                      {block.sectionTitle}
+                    </h2>
+                  )}
+                  <Timeline variant={block.variant ?? "vertical"}>
+                    {block.items.map((item, itemIndex) => (
+                      <TimelineItem key={item.id ?? `timeline-${itemIndex}`} index={itemIndex}>
+                        <TimelineDate>{item.date}</TimelineDate>
+                        <TimelineTitle>{item.title}</TimelineTitle>
+                        <TimelineDescription>{item.description}</TimelineDescription>
+                      </TimelineItem>
+                    ))}
+                  </Timeline>
+                </div>
+              );
+
+            case "testimonials":
+              return (
+                <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+                  {block.sectionTitle && (
+                    <h2 className="text-foreground mb-12 font-serif text-3xl font-bold md:text-4xl">
+                      {block.sectionTitle}
+                    </h2>
+                  )}
+                  <Testimonials variant={block.variant ?? "grid"}>
+                    {block.items.map((item, itemIndex) => (
+                      <TestimonialCard key={item.id ?? `testimonial-${itemIndex}`} index={itemIndex}>
+                        {item.avatar && (
+                          <TestimonialAvatar>
+                            <IconMapper name={item.avatar} size={20} />
+                          </TestimonialAvatar>
+                        )}
+                        <TestimonialQuote>{item.quote}</TestimonialQuote>
+                        <TestimonialAuthor>{item.author}</TestimonialAuthor>
+                        {item.role && <TestimonialMeta>{item.role}</TestimonialMeta>}
+                      </TestimonialCard>
+                    ))}
+                  </Testimonials>
+                </div>
+              );
+
+            case "richText":
+              return (
+                <div key={key} className="container mx-auto max-w-4xl px-6 py-12">
+                  <RichText content={block.content as Parameters<typeof RichText>[0]["content"]} />
+                </div>
+              );
+
+            case "cta":
+              return (
+                <div key={key} className="bg-primary/5 py-16">
+                  <div className="container mx-auto max-w-4xl px-6 text-center">
+                    <h2 className="text-foreground mb-4 font-serif text-3xl font-bold md:text-4xl">{block.headline}</h2>
+                    {block.description && <p className="text-muted-foreground mb-8 text-lg">{block.description}</p>}
+                    <Button asChild size="lg">
+                      <a href={block.buttonLink}>{block.buttonText}</a>
+                    </Button>
+                  </div>
+                </div>
+              );
+
+            case "newsletterForm":
+              return (
+                <div key={key} className="container mx-auto max-w-xl px-6 py-8">
+                  <NewsletterForm
+                    headline={block.headline ?? undefined}
+                    placeholder={block.placeholder ?? undefined}
+                    buttonText={block.buttonText ?? undefined}
+                  />
+                </div>
+              );
+
+            case "newsletterCTA":
+              return (
+                <NewsletterCTA
+                  key={key}
                   headline={block.headline ?? undefined}
+                  description={block.description ?? undefined}
                   placeholder={block.placeholder ?? undefined}
                   buttonText={block.buttonText ?? undefined}
+                  variant={block.variant ?? undefined}
+                  size={block.size ?? undefined}
                 />
-              </div>
-            );
+              );
 
-          case "newsletterCTA":
-            return (
-              <NewsletterCTA
-                key={key}
-                headline={block.headline ?? undefined}
-                description={block.description ?? undefined}
-                placeholder={block.placeholder ?? undefined}
-                buttonText={block.buttonText ?? undefined}
-                variant={block.variant ?? undefined}
-                size={block.size ?? undefined}
-              />
-            );
-
-          default:
-            return null;
+            default:
+              return null;
+          }
         }
-      })}
+      )}
     </>
   );
 };

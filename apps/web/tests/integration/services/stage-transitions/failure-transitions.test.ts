@@ -142,7 +142,7 @@ describe.sequential("Failure Transitions Integration", () => {
           completedAt: { exists: false },
         },
       });
-      expect(queuedJobs.docs.length).toBe(0);
+      expect(queuedJobs.docs).toHaveLength(0);
     });
   });
 

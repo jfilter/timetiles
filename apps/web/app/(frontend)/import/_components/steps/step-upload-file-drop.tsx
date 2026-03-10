@@ -81,7 +81,7 @@ export const FileDropZone = ({
           <UploadIcon className="text-muted-foreground mx-auto h-12 w-12" />
           <p className="mt-4 text-lg font-medium">Drag and drop your file here</p>
           <p className="text-muted-foreground mt-2">or</p>
-          <label className="mt-4 inline-block cursor-pointer">
+          <label className="mt-4 inline-block cursor-pointer" aria-label="Browse files">
             <input type="file" accept={ACCEPTED_TYPES.join(",")} onChange={handleFileSelect} className="sr-only" />
             <Button type="button" variant="outline" asChild>
               <span>Browse files</span>

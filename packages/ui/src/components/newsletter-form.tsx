@@ -1,6 +1,7 @@
 "use client";
 
-/* eslint-disable complexity, sonarjs/max-lines-per-function, react-perf/jsx-no-new-object-as-prop, react-perf/jsx-no-new-function-as-prop, @typescript-eslint/no-misused-promises */
+/* oxlint-disable complexity */
+/* eslint-disable sonarjs/max-lines-per-function, react-perf/jsx-no-new-object-as-prop, react-perf/jsx-no-new-function-as-prop, @typescript-eslint/no-misused-promises */
 
 /**
  * Compact newsletter subscription form with cartographic aesthetics.

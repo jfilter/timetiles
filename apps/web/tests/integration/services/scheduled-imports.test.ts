@@ -346,7 +346,7 @@ describe.sequential("Scheduled Imports Integration", () => {
       });
 
       // There should be exactly 3 schedules
-      expect(schedulesBeforeRun.docs.length).toBe(3);
+      expect(schedulesBeforeRun.docs).toHaveLength(3);
 
       const result = await scheduleManagerJob.handler({
         job: { id: "test-job" },

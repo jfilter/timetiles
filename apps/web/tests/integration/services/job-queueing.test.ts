@@ -99,7 +99,7 @@ describe.sequential("Job Queueing Tests", () => {
         },
       });
 
-      expect(queuedJobs.docs.length).toBe(1);
+      expect(queuedJobs.docs).toHaveLength(1);
       logger.info("Verified single analyze-duplicates job queued", {
         importJobId,
         queuedJobsCount: queuedJobs.docs.length,
@@ -169,7 +169,7 @@ describe.sequential("Job Queueing Tests", () => {
       });
 
       // Should have exactly 3 events, not 6 (which would indicate double-processing)
-      expect(events.docs.length).toBe(3);
+      expect(events.docs).toHaveLength(3);
       logger.info("Verified correct event count (no duplicates)", {
         expectedCount: 3,
         actualCount: events.docs.length,
@@ -213,7 +213,7 @@ describe.sequential("Job Queueing Tests", () => {
         },
       });
 
-      expect(analyzeDuplicatesJobs.docs.length).toBe(1);
+      expect(analyzeDuplicatesJobs.docs).toHaveLength(1);
       logger.info("✓ Verified: analyze-duplicates queued exactly once");
 
       // Run analyze-duplicates
@@ -229,7 +229,7 @@ describe.sequential("Job Queueing Tests", () => {
         },
       });
 
-      expect(detectSchemaJobs.docs.length).toBe(1);
+      expect(detectSchemaJobs.docs).toHaveLength(1);
       logger.info("✓ Verified: detect-schema queued exactly once");
 
       // Run detect-schema
@@ -245,7 +245,7 @@ describe.sequential("Job Queueing Tests", () => {
         },
       });
 
-      expect(validateSchemaJobs.docs.length).toBe(1);
+      expect(validateSchemaJobs.docs).toHaveLength(1);
       logger.info("✓ Verified: validate-schema queued exactly once");
     });
   });

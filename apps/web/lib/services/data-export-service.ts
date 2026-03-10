@@ -173,6 +173,8 @@ export class DataExportService {
 
   /**
    * Fetch events in batches using cursor-based pagination.
+   *
+   * @yields {EventExportData[]} Batch of exported event data
    */
   private async *fetchEventsBatched(datasetIds: number[]): AsyncGenerator<EventExportData[]> {
     if (datasetIds.length === 0) return;

@@ -5,7 +5,9 @@
     "promise",
     "import",
     "unicorn",
-    "jsdoc"
+    "jsdoc",
+    "vitest",
+    "jsx-a11y"
   ],
   "categories": {
     "correctness": "off"
@@ -228,7 +230,34 @@
           "module"
         ]
       }
-    ]
+    ],
+    "jsdoc/check-property-names": "error",
+    "jsdoc/implements-on-classes": "error",
+    "jsdoc/no-defaults": "error",
+    "jsdoc/require-property": "error",
+    "jsdoc/require-property-description": "error",
+    "jsdoc/require-property-name": "error",
+    "jsdoc/require-property-type": "error",
+    "jsdoc/require-yields": "error",
+    "no-caller": "error",
+    "no-eval": "error",
+    "no-iterator": "error",
+    "no-useless-rename": "error",
+    "unicorn/no-await-in-promise-methods": "error",
+    "unicorn/no-empty-file": "error",
+    "unicorn/no-invalid-fetch-options": "error",
+    "unicorn/no-invalid-remove-event-listener": "error",
+    "unicorn/no-new-array": "error",
+    "unicorn/no-single-promise-in-promise-methods": "error",
+    "unicorn/no-thenable": "error",
+    "unicorn/no-unnecessary-await": "error",
+    "unicorn/no-useless-fallback-in-spread": "error",
+    "unicorn/no-useless-length-check": "error",
+    "unicorn/no-useless-spread": "error",
+    "unicorn/prefer-set-size": "error",
+    "promise/no-callback-in-promise": "warn",
+    "import/default": "error",
+    "import/namespace": "error"
   },
   "settings": {
     "react": {
@@ -326,7 +355,8 @@
         "@typescript-eslint/no-meaningless-void-operator": "error",
         "@typescript-eslint/no-mixed-enums": "error",
         "@typescript-eslint/no-unnecessary-template-expression": "error",
-        "@typescript-eslint/no-useless-empty-export": "error"
+        "@typescript-eslint/no-useless-empty-export": "error",
+        "@typescript-eslint/no-unnecessary-parameter-property-assignment": "error"
       }
     },
     {
@@ -370,11 +400,54 @@
         "react/no-children-prop": "error",
         "react-perf/jsx-no-new-object-as-prop": "warn",
         "react-perf/jsx-no-new-array-as-prop": "warn",
-        "react-perf/jsx-no-new-function-as-prop": "warn"
+        "react-perf/jsx-no-new-function-as-prop": "warn",
+        "react/forward-ref-uses-ref": "error",
+        "react/jsx-key": "error",
+        "react/jsx-props-no-spread-multi": "error",
+        "react/no-did-mount-set-state": "error",
+        "react/no-direct-mutation-state": "error",
+        "react/no-string-refs": "error",
+        "react/no-this-in-sfc": "error",
+        "react/no-will-update-set-state": "error",
+        "jsx-a11y/alt-text": "error",
+        "jsx-a11y/anchor-has-content": "error",
+        "jsx-a11y/anchor-is-valid": "error",
+        "jsx-a11y/aria-activedescendant-has-tabindex": "error",
+        "jsx-a11y/aria-props": "error",
+        "jsx-a11y/aria-proptypes": "error",
+        "jsx-a11y/aria-role": "error",
+        "jsx-a11y/aria-unsupported-elements": "error",
+        "jsx-a11y/autocomplete-valid": "error",
+        "jsx-a11y/click-events-have-key-events": "error",
+        "jsx-a11y/heading-has-content": "error",
+        "jsx-a11y/html-has-lang": "error",
+        "jsx-a11y/iframe-has-title": "error",
+        "jsx-a11y/img-redundant-alt": "error",
+        "jsx-a11y/interactive-supports-focus": "error",
+        "jsx-a11y/label-has-associated-control": "error",
+        "jsx-a11y/lang": "error",
+        "jsx-a11y/media-has-caption": "error",
+        "jsx-a11y/mouse-events-have-key-events": "error",
+        "jsx-a11y/no-access-key": "error",
+        "jsx-a11y/no-aria-hidden-on-focusable": "error",
+        "jsx-a11y/no-autofocus": "error",
+        "jsx-a11y/no-distracting-elements": "error",
+        "jsx-a11y/no-interactive-element-to-noninteractive-role": "error",
+        "jsx-a11y/no-noninteractive-element-interactions": "error",
+        "jsx-a11y/no-noninteractive-element-to-interactive-role": "error",
+        "jsx-a11y/no-noninteractive-tabindex": "error",
+        "jsx-a11y/no-redundant-roles": "error",
+        "jsx-a11y/no-static-element-interactions": "error",
+        "jsx-a11y/prefer-tag-over-role": "error",
+        "jsx-a11y/role-has-required-aria-props": "error",
+        "jsx-a11y/role-supports-aria-props": "error",
+        "jsx-a11y/scope": "error",
+        "jsx-a11y/tabindex-no-positive": "error"
       },
       "plugins": [
         "react",
-        "react-perf"
+        "react-perf",
+        "jsx-a11y"
       ]
     },
     {
@@ -537,6 +610,20 @@
         "@typescript-eslint/no-explicit-any": "off",
         "no-restricted-imports": "off",
         "react-perf/jsx-no-new-array-as-prop": "off",
+        "vitest/expect-expect": "error",
+        "vitest/no-conditional-expect": "off",
+        "vitest/no-conditional-in-test": "off",
+        "vitest/no-disabled-tests": "warn",
+        "vitest/no-focused-tests": "error",
+        "vitest/no-identical-title": "error",
+        "vitest/no-import-node-test": "error",
+        "vitest/prefer-each": "error",
+        "vitest/prefer-mock-promise-shorthand": "error",
+        "vitest/prefer-to-be-falsy": "off",
+        "vitest/prefer-to-be-truthy": "off",
+        "vitest/prefer-to-have-length": "warn",
+        "vitest/require-local-test-context-for-concurrent-tests": "error",
+        "vitest/valid-expect": ["error", { "maxArgs": 2 }],
         "unicorn/filename-case": [
           "error",
           {

@@ -416,7 +416,7 @@ describe.sequential("Security Validation Tests", () => {
         user: { id: regularUser.id, role: "user" } as any,
       });
 
-      expect(canRead.docs.length).toBe(1);
+      expect(canRead.docs).toHaveLength(1);
 
       // Regular user should not be able to delete
       // Note: This test expects role-based access control to be implemented

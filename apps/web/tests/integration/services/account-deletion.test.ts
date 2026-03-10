@@ -362,7 +362,7 @@ describe.sequential("Account Deletion Service", () => {
         overrideAccess: true,
       });
 
-      expect(auditLogs.docs.length).toBe(1);
+      expect(auditLogs.docs).toHaveLength(1);
       expect(auditLogs.docs[0].userId).toBe(users.testUser.id);
       expect(auditLogs.docs[0].userEmailHash).toBeDefined();
       expect((auditLogs.docs[0].details as Record<string, unknown>).deletionType).toBe("scheduled");

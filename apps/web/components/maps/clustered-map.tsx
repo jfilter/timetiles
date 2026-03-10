@@ -220,9 +220,9 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
             <MapThemeControl />
           </div>
           <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {/* oxlint-disable-next-line @typescript-eslint/no-explicit-any */}
             <Layer {...(eventPointLayer as any)} />
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {/* oxlint-disable-next-line @typescript-eslint/no-explicit-any */}
             <Layer {...(clusterLayer as any)} />
           </Source>
           {popupInfo && (

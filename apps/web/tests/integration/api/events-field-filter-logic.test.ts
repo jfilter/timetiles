@@ -109,7 +109,7 @@ describe("/api/v1/events - field filter logic", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    expect(data.events.length).toBe(6);
+    expect(data.events).toHaveLength(6);
   });
 
   it("should reduce count when filtering by single category value", async () => {
@@ -123,7 +123,7 @@ describe("/api/v1/events - field filter logic", () => {
     const data = await response.json();
 
     // Should only return Music events (3 of them)
-    expect(data.events.length).toBe(3);
+    expect(data.events).toHaveLength(3);
     expect(data.events.length).toBeLessThan(6); // MUST be less than total
   });
 
@@ -138,7 +138,7 @@ describe("/api/v1/events - field filter logic", () => {
     const data = await response.json();
 
     // Should return Music (3) + Sports (2) = 5 events
-    expect(data.events.length).toBe(5);
+    expect(data.events).toHaveLength(5);
     // Should be more than single filter but less than all
     expect(data.events.length).toBeGreaterThan(3);
     expect(data.events.length).toBeLessThan(6);
@@ -155,7 +155,7 @@ describe("/api/v1/events - field filter logic", () => {
     const data = await response.json();
 
     // Should return only Music AND Active events (2 of them)
-    expect(data.events.length).toBe(2);
+    expect(data.events).toHaveLength(2);
     // MUST be less than either single filter
     expect(data.events.length).toBeLessThan(3); // Less than Music alone
     expect(data.events.length).toBeLessThan(4); // Less than Active alone

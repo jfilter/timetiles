@@ -208,7 +208,8 @@ type WizardAction =
   | { type: "RESTORE"; state: Partial<WizardState> };
 
 // Reducer
-/* eslint-disable complexity, sonarjs/max-lines-per-function -- Complex reducer with many action types */
+/* oxlint-disable complexity -- Complex reducer with many action types */
+/* eslint-disable sonarjs/max-lines-per-function -- Complex reducer with many action types */
 const wizardReducer = (state: WizardState, action: WizardAction): WizardState => {
   const newState = (() => {
     switch (action.type) {

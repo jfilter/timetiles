@@ -214,7 +214,7 @@ describe.sequential("Combined Transformations Integration", () => {
       sort: "eventTimestamp",
     });
 
-    expect(events.docs.length).toBe(3);
+    expect(events.docs).toHaveLength(3);
 
     // Verify first event has all transformations applied
     const firstEvent = events.docs[0];
@@ -328,7 +328,7 @@ Festival,2500,Music festival`;
       sort: "eventTimestamp",
     });
 
-    expect(events.docs.length).toBe(2);
+    expect(events.docs).toHaveLength(2);
 
     const firstEvent = events.docs[0];
     const firstEventData = getEventData(firstEvent);
@@ -467,7 +467,7 @@ Event B,200,Second event`;
       sort: "eventTimestamp",
     });
 
-    expect(events.docs.length).toBe(2);
+    expect(events.docs).toHaveLength(2);
 
     // Verify both transformations applied in sequence
     const firstEventData = getEventData(events.docs[0]);

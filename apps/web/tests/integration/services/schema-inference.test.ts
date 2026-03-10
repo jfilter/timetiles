@@ -275,7 +275,7 @@ describe.sequential("Schema Inference Service", () => {
         where: { dataset: { equals: testDatasetId } },
         overrideAccess: true,
       });
-      expect(schemas.docs.length).toBe(1);
+      expect(schemas.docs).toHaveLength(1);
     });
 
     it("skips regeneration when schema is fresh", async () => {

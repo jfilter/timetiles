@@ -82,7 +82,7 @@ describe.sequential("Dataset Detection Job", () => {
       where: { importFile: { equals: importFile.id } },
     });
 
-    expect(importJobs.docs.length).toBe(1);
+    expect(importJobs.docs).toHaveLength(1);
     const importJob = importJobs.docs[0];
     expect(importJob.stage).toBe("analyze-duplicates");
 
@@ -136,7 +136,7 @@ describe.sequential("Dataset Detection Job", () => {
       depth: 1,
     });
 
-    expect(importJobs.docs.length).toBe(1);
+    expect(importJobs.docs).toHaveLength(1);
     const importJob = importJobs.docs[0];
 
     // Dataset-detection should reuse our pre-created dataset

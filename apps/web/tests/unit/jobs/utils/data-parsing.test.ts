@@ -226,7 +226,7 @@ Event 1,Desc 1,2024-03-15`;
     // with files created by the xlsx library.
 
     it("should handle empty worksheet", () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
+      // oxlint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
       const xlsx = require("xlsx");
       const workbook = xlsx.utils.book_new();
       const worksheet = xlsx.utils.aoa_to_sheet([]);
@@ -239,7 +239,7 @@ Event 1,Desc 1,2024-03-15`;
     });
 
     it("should parse valid Excel file", () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
+      // oxlint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
       const xlsx = require("xlsx");
       const workbook = xlsx.utils.book_new();
       const data = [
@@ -262,7 +262,7 @@ Event 1,Desc 1,2024-03-15`;
     });
 
     it("should handle missing headers", () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
+      // oxlint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
       const xlsx = require("xlsx");
       const workbook = xlsx.utils.book_new();
       const data = [
@@ -299,7 +299,7 @@ Event 1,2024-03-15`;
     });
 
     it("should route to Excel parser", () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
+      // oxlint-disable-next-line @typescript-eslint/no-require-imports -- xlsx requires CommonJS for file writing in tests
       const xlsx = require("xlsx");
       const workbook = xlsx.utils.book_new();
       const data = [

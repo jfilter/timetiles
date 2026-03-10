@@ -117,7 +117,7 @@ Event 3,2024-01-03,Hamburg Germany
       where: { importFile: { equals: importFile.id } },
     });
 
-    expect(importJobs.docs.length).toBe(1);
+    expect(importJobs.docs).toHaveLength(1);
     const importJob = importJobs.docs[0];
 
     expect(importJob.stage).toBe("failed");
@@ -142,7 +142,7 @@ Event 3,2024-01-03,Hamburg Germany
       where: { importJob: { equals: importJob.id } },
     });
 
-    expect(events.docs.length).toBe(0);
+    expect(events.docs).toHaveLength(0);
   });
 
   it.todo("should continue if some geocoding succeeds");

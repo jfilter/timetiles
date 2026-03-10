@@ -146,6 +146,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- Modal backdrop, keyboard dismiss handled by Escape key */}
       <div className="fixed inset-0 bg-black/50" onClick={handleBackdropClick} />
 
       {/* Modal */}

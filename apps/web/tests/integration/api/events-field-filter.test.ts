@@ -119,7 +119,7 @@ describe("/api/v1/events - field filtering", () => {
     const data = await response.json();
 
     // Should return only the 2 Music events
-    expect(data.events.length).toBe(2);
+    expect(data.events).toHaveLength(2);
     for (const event of data.events) {
       expect(event.data.category).toBe("Music");
     }
@@ -136,7 +136,7 @@ describe("/api/v1/events - field filtering", () => {
     const data = await response.json();
 
     // Should return 2 Music + 2 Art = 4 events
-    expect(data.events.length).toBe(4);
+    expect(data.events).toHaveLength(4);
     for (const event of data.events) {
       expect(["Music", "Art"]).toContain(event.data.category);
     }
@@ -152,7 +152,7 @@ describe("/api/v1/events - field filtering", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    expect(data.events.length).toBe(2);
+    expect(data.events).toHaveLength(2);
     for (const event of data.events) {
       expect(event.data.venue.city).toBe("Berlin");
     }
@@ -168,7 +168,7 @@ describe("/api/v1/events - field filtering", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    expect(data.events.length).toBe(2);
+    expect(data.events).toHaveLength(2);
     for (const event of data.events) {
       expect(event.data.venue.address.city).toBe("Berlin");
     }

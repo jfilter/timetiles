@@ -128,7 +128,7 @@ Event 3,2024-01-03,active`;
       overrideAccess: true,
     });
 
-    expect(importJobs.docs.length).toBe(1);
+    expect(importJobs.docs).toHaveLength(1);
     const importJob = importJobs.docs[0]!;
 
     // Verify schemaBuilderState has enum detection results
@@ -176,7 +176,7 @@ Event 6,2024-01-06,B`;
       overrideAccess: true,
     });
 
-    expect(importJobs.docs.length).toBe(1);
+    expect(importJobs.docs).toHaveLength(1);
     const importJob = importJobs.docs[0]!;
 
     // Verify we processed all 6 rows

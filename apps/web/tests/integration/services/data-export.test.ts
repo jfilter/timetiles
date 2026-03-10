@@ -384,7 +384,7 @@ describe.sequential("Data Export Service", () => {
         overrideAccess: true,
       });
 
-      expect(pendingJobs.docs.length).toBe(1);
+      expect(pendingJobs.docs).toHaveLength(1);
       expect(pendingJobs.docs[0].input.exportId).toBe(exportRecord.id);
     });
   });

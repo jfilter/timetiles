@@ -79,17 +79,17 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-muted-foreground text-sm font-medium">Email</label>
+            <span className="text-muted-foreground text-sm font-medium">Email</span>
             <p className="text-sm">{currentUser.email}</p>
           </div>
           {(currentUser.firstName ?? currentUser.lastName) && (
             <div>
-              <label className="text-muted-foreground text-sm font-medium">Name</label>
+              <span className="text-muted-foreground text-sm font-medium">Name</span>
               <p className="text-sm">{[currentUser.firstName, currentUser.lastName].filter(Boolean).join(" ")}</p>
             </div>
           )}
           <div>
-            <label className="text-muted-foreground text-sm font-medium">Role</label>
+            <span className="text-muted-foreground text-sm font-medium">Role</span>
             <p className="text-sm capitalize">{currentUser.role}</p>
           </div>
         </CardContent>

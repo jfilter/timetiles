@@ -98,7 +98,7 @@ describe.sequential("/api/newsletter/subscribe", () => {
     expect(data.message).toContain("subscribed");
 
     // Verify HTTP call was made to external service
-    expect(requestsReceived.length).toBe(1);
+    expect(requestsReceived).toHaveLength(1);
     expect(requestsReceived[0]?.email).toBe("test@example.com");
     expect(requestsReceived[0]?.headers.authorization).toBe("Bearer test-token-12345");
     expect(requestsReceived[0]?.headers["content-type"]).toBe("application/json");
@@ -128,7 +128,7 @@ describe.sequential("/api/newsletter/subscribe", () => {
       expect(data.error).toMatch(/email/i);
 
       // Verify NO HTTP call was made (validation happens first)
-      expect(requestsReceived.length).toBe(0);
+      expect(requestsReceived).toHaveLength(0);
 
       // Reset for next iteration
       requestsReceived = [];
@@ -180,7 +180,7 @@ describe.sequential("/api/newsletter/subscribe", () => {
     expect(results[2]?.data.error).toMatch(/too many requests/i);
 
     // Verify only first request made it to external service
-    expect(requestsReceived.length).toBe(1);
+    expect(requestsReceived).toHaveLength(1);
     expect(requestsReceived[0]?.email).toBe("ratelimit1@example.com");
   });
 });

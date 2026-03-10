@@ -206,7 +206,7 @@ describe.sequential("Multi-Language Import Tests", () => {
       sort: "eventTimestamp",
     });
 
-    expect(events.docs.length).toBe(expectedEventCount);
+    expect(events.docs).toHaveLength(expectedEventCount);
 
     const firstEvent = events.docs[0];
     expect(firstEvent.data).toBeDefined();

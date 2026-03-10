@@ -366,7 +366,8 @@ const parseAuthConfig = (formData: FormData): AuthConfig | null => {
  * - bearerToken (for bearer type)
  * - username, password (for basic type)
  */
-// eslint-disable-next-line complexity, sonarjs/cognitive-complexity, sonarjs/max-lines-per-function
+// oxlint-disable-next-line complexity -- Complex route handler with file/URL parsing
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/max-lines-per-function
 export const POST = withAuth(async (req: AuthenticatedRequest) => {
   const handleError = createErrorHandler("preview file schema", logger);
   try {

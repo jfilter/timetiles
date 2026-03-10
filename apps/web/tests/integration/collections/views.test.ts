@@ -158,7 +158,7 @@ describe.sequential("Views Collection", () => {
         where: { id: { equals: view.id } },
       });
 
-      expect(found.docs.length).toBe(0);
+      expect(found.docs).toHaveLength(0);
     });
   });
 
@@ -182,7 +182,7 @@ describe.sequential("Views Collection", () => {
         overrideAccess: false,
       });
 
-      expect(result.docs.length).toBe(1);
+      expect(result.docs).toHaveLength(1);
     });
 
     it("should hide private views from other users", async () => {
@@ -205,7 +205,7 @@ describe.sequential("Views Collection", () => {
         user: otherUser,
       });
 
-      expect(result.docs.length).toBe(0);
+      expect(result.docs).toHaveLength(0);
     });
 
     it("should allow creator to read their own private views", async () => {
@@ -227,7 +227,7 @@ describe.sequential("Views Collection", () => {
         user: regularUser,
       });
 
-      expect(result.docs.length).toBe(1);
+      expect(result.docs).toHaveLength(1);
     });
 
     it("should allow admin to read all views", async () => {
@@ -249,7 +249,7 @@ describe.sequential("Views Collection", () => {
         user: adminUser,
       });
 
-      expect(result.docs.length).toBe(1);
+      expect(result.docs).toHaveLength(1);
     });
 
     it("should prevent other users from updating views", async () => {

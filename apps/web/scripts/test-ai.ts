@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-/* eslint-disable no-console */
+/* oxlint-disable no-console */
 /**
  * AI-friendly test runner with summary output.
  *

@@ -87,7 +87,7 @@ describe.sequential("Database-backed Seed Operations", () => {
 
       expect(users.docs.length).toBeGreaterThan(0);
       expect(catalogs.docs.length).toBeGreaterThan(0);
-      expect(datasets.docs.length).toBe(0); // Should not be seeded
+      expect(datasets.docs).toHaveLength(0); // Should not be seeded
     });
   });
 

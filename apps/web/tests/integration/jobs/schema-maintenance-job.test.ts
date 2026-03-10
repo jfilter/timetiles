@@ -86,7 +86,7 @@ describe.sequential("Schema Maintenance Job", () => {
       where: { dataset: { equals: testDatasetId } },
       overrideAccess: true,
     });
-    expect(schemas.docs.length).toBe(1);
+    expect(schemas.docs).toHaveLength(1);
   });
 
   it("skips dataset with fresh schema", async () => {
@@ -173,7 +173,7 @@ describe.sequential("Schema Maintenance Job", () => {
       sort: "-versionNumber",
       overrideAccess: true,
     });
-    expect(schemas.docs.length).toBe(2);
+    expect(schemas.docs).toHaveLength(2);
     expect(schemas.docs[0]!.versionNumber).toBe(2);
   });
 
