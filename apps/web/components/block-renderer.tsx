@@ -397,7 +397,10 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
       {blocks.map((block, index) => {
         const key = block.id ?? `${block.blockType}-${index}`;
         const renderer = blockRenderers[block.blockType];
-        return renderer ? renderer(block, key) : null;
+        if (!renderer) {
+          return null;
+        }
+        return renderer(block, key);
       })}
     </>
   );

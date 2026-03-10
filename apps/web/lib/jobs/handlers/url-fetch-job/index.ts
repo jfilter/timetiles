@@ -50,68 +50,57 @@ interface ImportContext {
   advancedConfig: ScheduledImport["advancedOptions"];
 }
 
+type FetchSuccessResult = {
+  importFileId: number | string;
+  filename: string;
+  contentHash: string;
+  isDuplicate: boolean;
+};
+
 /**
- * Handles successful fetch and creates import file.
+ * Checks for duplicate content and returns early if found.
  */
-/* eslint-disable sonarjs/max-lines-per-function -- Complex import file creation logic */
-const handleFetchSuccess = async (
+const handleDuplicateCheck = async (
   payload: Payload,
-  data: Buffer,
-  contentType: string,
-  sourceUrl: string,
-  context: ImportContext
-): Promise<{ importFileId: number | string; filename: string; contentHash: string; isDuplicate: boolean }> => {
-  const { originalName, catalogId, userId, scheduledImportId, scheduledImport, advancedConfig } = context;
-
-  // Calculate hash for duplicate checking
-  const dataHash = calculateDataHash(data);
-
-  // Check for duplicate content
+  context: ImportContext,
+  dataHash: string
+): Promise<FetchSuccessResult | null> => {
   const { isDuplicate, existingFile } = await checkForDuplicateContent(
     payload,
-    catalogId,
+    context.catalogId,
     dataHash,
-    advancedConfig?.skipDuplicateChecking ?? false
+    context.advancedConfig?.skipDuplicateChecking ?? false
   );
 
-  if (isDuplicate && existingFile) {
-    logger.info("Duplicate content detected, skipping import", {
-      existingFileId: existingFile.id,
-      existingFilename: existingFile.filename,
-      dataHash,
-    });
-
-    // Still update scheduled import as successful
-    if (scheduledImport) {
-      await updateScheduledImportSuccess(payload, scheduledImport, existingFile.id, 0);
-    }
-
-    return {
-      importFileId: existingFile.id,
-      filename: existingFile.filename,
-      contentHash: dataHash,
-      isDuplicate: true,
-    };
+  if (!isDuplicate || !existingFile) {
+    return null;
   }
 
-  // Generate filename with extension
-  const { mimeType, fileExtension } = detectFileTypeFromResponse(contentType, data, sourceUrl);
-  const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
-  const filename = `url-import-${timestamp}-${uuidv4()}${fileExtension}`;
+  logger.info("Duplicate content detected, skipping import", {
+    existingFileId: existingFile.id,
+    existingFilename: existingFile.filename,
+    dataHash,
+  });
 
-  // Validate user - required for all imports
-  if (!userId) {
-    throw new Error("User ID is required to create import files");
+  if (context.scheduledImport) {
+    await updateScheduledImportSuccess(payload, context.scheduledImport, existingFile.id, 0);
   }
 
-  // Load the full user object for the create operation
-  const user = await loadUser(payload, userId);
-  if (!user) {
-    throw new Error(`User not found: ${userId}`);
-  }
+  return {
+    importFileId: existingFile.id,
+    filename: existingFile.filename,
+    contentHash: dataHash,
+    isDuplicate: true,
+  };
+};
 
-  // Create import-files record with file upload
-  const importFileData: Record<string, unknown> = {
+/**
+ * Builds the import file data record with all conditional fields.
+ */
+const buildImportFileData = (sourceUrl: string, dataHash: string, context: ImportContext): Record<string, unknown> => {
+  const { originalName, catalogId, userId, scheduledImportId, scheduledImport } = context;
+
+  const data: Record<string, unknown> = {
     originalName,
     catalog: catalogId,
     user: userId,
@@ -124,16 +113,10 @@ const handleFetchSuccess = async (
         fetchedAt: new Date().toISOString(),
       },
       scheduledExecution: scheduledImportId
-        ? {
-            scheduledImportId,
-            executionTime: new Date().toISOString(),
-          }
+        ? { scheduledImportId, executionTime: new Date().toISOString() }
         : undefined,
       datasetMapping: scheduledImport?.multiSheetConfig?.enabled
-        ? {
-            enabled: true,
-            sheets: scheduledImport.multiSheetConfig.sheets,
-          }
+        ? { enabled: true, sheets: scheduledImport.multiSheetConfig.sheets }
         : undefined,
     },
     processingOptions: {
@@ -144,46 +127,68 @@ const handleFetchSuccess = async (
   };
 
   if (scheduledImportId) {
-    importFileData.scheduledImport = scheduledImportId;
+    data.scheduledImport = scheduledImportId;
   }
-
   if (scheduledImport?.dataset) {
-    importFileData.targetDataset = scheduledImport.dataset;
+    data.targetDataset = scheduledImport.dataset;
   }
 
+  return data;
+};
+
+/**
+ * Handles successful fetch and creates import file.
+ */
+const handleFetchSuccess = async (
+  payload: Payload,
+  data: Buffer,
+  contentType: string,
+  sourceUrl: string,
+  context: ImportContext
+): Promise<FetchSuccessResult> => {
+  const dataHash = calculateDataHash(data);
+
+  // Early return for duplicates
+  const duplicateResult = await handleDuplicateCheck(payload, context, dataHash);
+  if (duplicateResult) {
+    return duplicateResult;
+  }
+
+  // Generate filename
+  const { mimeType, fileExtension } = detectFileTypeFromResponse(contentType, data, sourceUrl);
+  const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
+  const filename = `url-import-${timestamp}-${uuidv4()}${fileExtension}`;
+
+  // Validate and load user
+  if (!context.userId) {
+    throw new Error("User ID is required to create import files");
+  }
+  const user = await loadUser(payload, context.userId);
+  if (!user) {
+    throw new Error(`User not found: ${context.userId}`);
+  }
+
+  // Create import-files record
+  const importFileData = buildImportFileData(sourceUrl, dataHash, context);
   const importFile = await payload.create({
     collection: COLLECTION_NAMES.IMPORT_FILES,
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic data building
     data: importFileData as any,
-    file: {
-      data,
-      mimetype: mimeType,
-      name: filename,
-      size: data.length,
-    },
-    // Pass user context for proper access control and audit trail
+    file: { data, mimetype: mimeType, name: filename, size: data.length },
     user,
-    // Skip afterChange hook to prevent double dataset-detection (we queue it below)
     context: { skipImportFileHooks: true },
   });
 
-  // Queue dataset detection job
+  // Queue dataset detection and update status
   const detectionJob = await payload.jobs.queue({
     task: JOB_TYPES.DATASET_DETECTION,
-    input: {
-      importFileId: importFile.id,
-    },
+    input: { importFileId: importFile.id },
   });
 
-  // Update status to 'parsing' since we skipped the afterChange hook above.
-  // The hook normally handles this, but we bypass it to prevent double job queueing.
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_FILES,
     id: importFile.id,
-    data: {
-      status: "parsing",
-      jobId: String(detectionJob.id),
-    },
+    data: { status: "parsing", jobId: String(detectionJob.id) },
     context: { skipImportFileHooks: true },
   });
 
@@ -195,14 +200,8 @@ const handleFetchSuccess = async (
     sourceUrl,
   });
 
-  return {
-    importFileId: importFile.id,
-    filename,
-    contentHash: dataHash,
-    isDuplicate: false,
-  };
+  return { importFileId: importFile.id, filename, contentHash: dataHash, isDuplicate: false };
 };
-/* eslint-enable sonarjs/max-lines-per-function */
 
 const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {
   // Determine timeout from config
