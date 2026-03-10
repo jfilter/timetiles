@@ -23,6 +23,7 @@ Three exported hooks are never imported anywhere:
 ### 1.2 ActiveFilters Component Disabled Everywhere
 
 **Locations:**
+
 - `explore/_components/active-filters.tsx` — component exists, with `showCatalogDatasetFilters = false` hardcoded (line 59)
 - `explore/_components/map-explorer.tsx:31` — commented-out import with TODO
 - `explore/_components/list-explorer.tsx:26` — commented-out import with TODO
@@ -78,6 +79,7 @@ If the query errors, the component silently shows nothing. No error message, no 
 ### 2.4 Chart Components Have No Error States
 
 **Locations:**
+
 - `AggregationBarChart`
 - `EventHistogram`
 - `ClusteredMap`
@@ -111,13 +113,13 @@ The feature isn't implemented. The test serves no purpose.
 
 Each endpoint returns a different shape:
 
-| Endpoint | Shape |
-|----------|-------|
-| `/api/v1/events` | `{ events, pagination }` |
-| `/api/v1/events/bounds` | `{ bounds, count }` |
-| `/api/v1/events/temporal` | `{ histogram, metadata }` |
-| `/api/v1/events/stats` | `{ items, total, groupedBy }` |
-| `/api/v1/events/geo` | GeoJSON `FeatureCollection` |
+| Endpoint                  | Shape                         |
+| ------------------------- | ----------------------------- |
+| `/api/v1/events`          | `{ events, pagination }`      |
+| `/api/v1/events/bounds`   | `{ bounds, count }`           |
+| `/api/v1/events/temporal` | `{ histogram, metadata }`     |
+| `/api/v1/events/stats`    | `{ items, total, groupedBy }` |
+| `/api/v1/events/geo`      | GeoJSON `FeatureCollection`   |
 
 No standard envelope. Clients must implement multiple response parsers.
 
@@ -236,11 +238,13 @@ In serverless environments, this won't work — different instances have differe
 **Severity:** Low
 
 **Events:**
+
 - `locationName` — never populated by any job handler or API
 - `importBatch` — defined but not set by create-events-batch-job
 - `schemaVersionNumber` — defined but never set
 
 **Datasets:**
+
 - `fieldMetadata` — marked readOnly, never populated
 
 **Action:** Audit each field. Remove if truly unused. Document if populated by external processes.
@@ -253,13 +257,13 @@ In serverless environments, this won't work — different instances have differe
 
 **Severity:** Medium
 
-| Component | Pattern |
-|-----------|---------|
-| EventsList | Inline "Loading events..." text |
-| EventsListPaginated | `EventsListSkeleton` with animate-pulse cards |
-| LoginForm / RegisterForm | Button text change + disabled state |
-| ImportUpload | Emoji spinners + custom progress bars |
-| MapExplorer | `isInitialLoad` vs `isUpdating` states |
+| Component                | Pattern                                       |
+| ------------------------ | --------------------------------------------- |
+| EventsList               | Inline "Loading events..." text               |
+| EventsListPaginated      | `EventsListSkeleton` with animate-pulse cards |
+| LoginForm / RegisterForm | Button text change + disabled state           |
+| ImportUpload             | Emoji spinners + custom progress bars         |
+| MapExplorer              | `isInitialLoad` vs `isUpdating` states        |
 
 **Action:** Standardize on skeleton loading for content areas, button state changes for actions. Create shared loading components.
 
@@ -328,6 +332,7 @@ Similar pages use different padding (`p-4`, `p-6`, `px-4 py-8`) and max-widths (
 **Severity:** Medium
 
 Bar chart tests (`catalog-bar-chart.test.tsx`, `dataset-bar-chart.test.tsx`) only check:
+
 ```typescript
 expect(bars.length).toBeGreaterThan(0);
 ```
@@ -370,6 +375,7 @@ Tests verify that input equals output (no sanitization occurs). If sanitization 
 ## Priority Summary
 
 ### Must Fix (High Severity)
+
 1. Forgot-password link to non-existent route
 2. Import-jobs 100-file access control cap
 3. Standardize API response/error format
@@ -377,6 +383,7 @@ Tests verify that input equals output (no sanitization occurs). If sanitization 
 5. Audit access control bypass endpoints
 
 ### Should Fix (Medium Severity)
+
 6. Remove dead code (unused hooks, ActiveFilters)
 7. Add error states to EventsList and chart components
 8. Standardize service error handling (Result pattern)
@@ -389,6 +396,7 @@ Tests verify that input equals output (no sanitization occurs). If sanitization 
 15. Address module-level state in services
 
 ### Nice to Have (Low Severity)
+
 16. Remove skipped test
 17. Remove console.log from tests
 18. Unify field mapping types

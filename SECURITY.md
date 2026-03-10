@@ -7,6 +7,7 @@ If you discover a security vulnerability in TimeTiles, please report it to us pr
 **Email**: [security@timetiles.io](mailto:security@timetiles.io)
 
 Please include:
+
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact

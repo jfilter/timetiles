@@ -27,14 +27,14 @@ Building a component?
 
 ### Decision: Where Does This Component Go?
 
-| Question | YES → packages/ui | NO → apps/web |
-|----------|-------------------|---------------|
-| Is it purely presentational? | ✅ | ❌ |
-| Reusable across apps? | ✅ | ❌ |
-| No business logic? | ✅ | ❌ |
-| Generic name (Button, Card, Input)? | ✅ | ❌ |
-| Domain-specific (Dataset, Event)? | ❌ | ✅ |
-| Uses TimeTiles data/APIs? | ❌ | ✅ |
+| Question                            | YES → packages/ui | NO → apps/web |
+| ----------------------------------- | ----------------- | ------------- |
+| Is it purely presentational?        | ✅                | ❌            |
+| Reusable across apps?               | ✅                | ❌            |
+| No business logic?                  | ✅                | ❌            |
+| Generic name (Button, Card, Input)? | ✅                | ❌            |
+| Domain-specific (Dataset, Event)?   | ❌                | ✅            |
+| Uses TimeTiles data/APIs?           | ❌                | ✅            |
 
 **Rule of thumb:** If the component name mentions TimeTiles concepts (Dataset, Event, Catalog), it stays in apps/web.
 
@@ -49,23 +49,23 @@ What am I styling?
 
 ### Common Mistakes & Fixes
 
-| Mistake | Why It's Wrong | Fix |
-|---------|----------------|-----|
-| `bg-[#f8f5f0]` | Hardcoded colors break theming | Use `bg-cartographic-parchment` or `bg-background` |
-| `bg-cartographic-blue` in Button | Breaks multi-theme support | Use `bg-primary` (semantic token) |
-| DatasetCard in packages/ui | Domain-specific, not reusable | Move to apps/web/components |
-| `font-sans` for hero headline | Wrong hierarchy | Use `font-serif` for display typography |
-| Creating new generic component | May already exist | Check [COMPONENT_STATUS.md](COMPONENT_STATUS.md) first |
+| Mistake                          | Why It's Wrong                 | Fix                                                    |
+| -------------------------------- | ------------------------------ | ------------------------------------------------------ |
+| `bg-[#f8f5f0]`                   | Hardcoded colors break theming | Use `bg-cartographic-parchment` or `bg-background`     |
+| `bg-cartographic-blue` in Button | Breaks multi-theme support     | Use `bg-primary` (semantic token)                      |
+| DatasetCard in packages/ui       | Domain-specific, not reusable  | Move to apps/web/components                            |
+| `font-sans` for hero headline    | Wrong hierarchy                | Use `font-serif` for display typography                |
+| Creating new generic component   | May already exist              | Check [COMPONENT_STATUS.md](COMPONENT_STATUS.md) first |
 
 ### Quick Reference Links
 
-| Topic | Location |
-|-------|----------|
-| Component patterns (shadcn/ui) | Line 291 (below) |
-| Semantic vs cartographic tokens | Line 132 (below) |
-| Making components themable | [THEMING.md](THEMING.md) |
-| Component status & variants | [COMPONENT_STATUS.md](COMPONENT_STATUS.md) |
-| Header component details | [components/HEADER.md](components/HEADER.md) |
+| Topic                           | Location                                     |
+| ------------------------------- | -------------------------------------------- |
+| Component patterns (shadcn/ui)  | Line 291 (below)                             |
+| Semantic vs cartographic tokens | Line 132 (below)                             |
+| Making components themable      | [THEMING.md](THEMING.md)                     |
+| Component status & variants     | [COMPONENT_STATUS.md](COMPONENT_STATUS.md)   |
+| Header component details        | [components/HEADER.md](components/HEADER.md) |
 
 ---
 
@@ -675,6 +675,7 @@ These components are **specifically designed for cartographic-themed landing pag
 **See [COMPONENT_STATUS.md](COMPONENT_STATUS.md) for complete component list, variants, and status.**
 
 **Key components:**
+
 - **Form components** (Input, Button, Select, Label, Textarea) - Use semantic tokens
 - **Layout components** (Card, Hero, Features, Stats, CallToAction, Footer) - See component docs
 - **Header components** - See [components/HEADER.md](components/HEADER.md) for detailed Header documentation
@@ -700,6 +701,7 @@ All components use semantic design tokens for full theme compatibility.
 **See [THEMING.md](THEMING.md) for complete theming documentation.**
 
 **Key concepts:**
+
 - **Three-layer architecture**: Base colors → Semantic tokens → Component usage
 - **Making components themable**: Use semantic tokens (`bg-background`, `text-foreground`, `border-border`)
 - **Available semantic tokens**: Brand colors (brand-primary, brand-accent), Surface colors (surface-primary, surface-secondary), Text colors (text-primary, text-secondary)

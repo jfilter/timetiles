@@ -14,10 +14,10 @@ TimeTiles supports automated data ingestion from remote URLs on a recurring basi
 
 Each scheduled import (`scheduled-imports` collection) uses one of two schedule types:
 
-| Type | Field | Options | Example |
-|------|-------|---------|---------|
-| Frequency | `frequency` | `hourly`, `daily`, `weekly`, `monthly` | Run daily at midnight UTC |
-| Cron | `cronExpression` | Standard 5-field cron | `0 */6 * * *` (every 6 hours) |
+| Type      | Field            | Options                                | Example                       |
+| --------- | ---------------- | -------------------------------------- | ----------------------------- |
+| Frequency | `frequency`      | `hourly`, `daily`, `weekly`, `monthly` | Run daily at midnight UTC     |
+| Cron      | `cronExpression` | Standard 5-field cron                  | `0 */6 * * *` (every 6 hours) |
 
 Source: `lib/collections/scheduled-imports/fields/schedule-fields.ts`
 
@@ -29,9 +29,9 @@ Source: `lib/collections/scheduled-imports/hooks.ts` (`clearScheduleTypeFields`)
 
 Two feature flags control the system:
 
-| Flag | Guards | Effect When Disabled |
-|------|--------|----------------------|
-| `enableScheduledImports` | `create` access control | Users cannot create new scheduled imports |
+| Flag                          | Guards                         | Effect When Disabled                                  |
+| ----------------------------- | ------------------------------ | ----------------------------------------------------- |
+| `enableScheduledImports`      | `create` access control        | Users cannot create new scheduled imports             |
 | `enableScheduledJobExecution` | `schedule-manager-job` handler | Schedule manager returns immediately without scanning |
 
 Source: `lib/collections/scheduled-imports/index.ts` (access.create), `lib/jobs/handlers/schedule-manager-job.ts`
@@ -75,11 +75,11 @@ Source: `lib/jobs/handlers/url-fetch-job/index.ts`, `lib/jobs/handlers/url-fetch
 
 Three mechanisms prevent duplicate executions:
 
-| Mechanism | Location | How It Works |
-|-----------|----------|--------------|
-| `lastStatus === "running"` check | `schedule-manager-job.ts`, webhook route | Skips queueing if import is already running |
-| Status set before queue | Both schedule-manager and webhook | `lastStatus` set to `"running"` before `payload.jobs.queue()` |
-| Stuck import cleanup | `cleanup-stuck-scheduled-imports-job.ts` | Resets imports stuck in `"running"` for >2 hours |
+| Mechanism                        | Location                                 | How It Works                                                  |
+| -------------------------------- | ---------------------------------------- | ------------------------------------------------------------- |
+| `lastStatus === "running"` check | `schedule-manager-job.ts`, webhook route | Skips queueing if import is already running                   |
+| Status set before queue          | Both schedule-manager and webhook        | `lastStatus` set to `"running"` before `payload.jobs.queue()` |
+| Stuck import cleanup             | `cleanup-stuck-scheduled-imports-job.ts` | Resets imports stuck in `"running"` for >2 hours              |
 
 ### Webhook Triggers
 
@@ -103,10 +103,10 @@ Source: `app/api/webhooks/trigger/[token]/route.ts`
 
 **Rate limits**:
 
-| Window | Limit | Purpose |
-|--------|-------|---------|
-| Burst | 1 per 10 seconds | Prevents race conditions from rapid calls |
-| Hourly | 5 per hour | Prevents abuse |
+| Window | Limit            | Purpose                                   |
+| ------ | ---------------- | ----------------------------------------- |
+| Burst  | 1 per 10 seconds | Prevents race conditions from rapid calls |
+| Hourly | 5 per hour       | Prevents abuse                            |
 
 Source: `lib/services/rate-limit-service.ts` (`RATE_LIMITS.WEBHOOK_TRIGGER`)
 
@@ -114,12 +114,12 @@ Source: `lib/services/rate-limit-service.ts` (`RATE_LIMITS.WEBHOOK_TRIGGER`)
 
 Four authentication types are supported, configured in the `authConfig` group field:
 
-| Type | Fields | Header Produced |
-|------|--------|-----------------|
-| `none` | -- | User-Agent only |
-| `api-key` | `apiKey`, `apiKeyHeader` (default `X-API-Key`) | `{apiKeyHeader}: {apiKey}` |
-| `bearer` | `bearerToken` | `Authorization: Bearer {token}` |
-| `basic` | `username`, `password` | `Authorization: Basic {base64}` |
+| Type      | Fields                                         | Header Produced                 |
+| --------- | ---------------------------------------------- | ------------------------------- |
+| `none`    | --                                             | User-Agent only                 |
+| `api-key` | `apiKey`, `apiKeyHeader` (default `X-API-Key`) | `{apiKeyHeader}: {apiKey}`      |
+| `bearer`  | `bearerToken`                                  | `Authorization: Bearer {token}` |
+| `basic`   | `username`, `password`                         | `Authorization: Basic {base64}` |
 
 A `customHeaders` JSON field allows arbitrary additional headers for any auth type.
 
@@ -140,20 +140,20 @@ Source: `lib/collections/scheduled-imports/validation.ts`, `lib/utils/url-valida
 
 Additional URL fetch protections:
 
-| Protection | Implementation | Source |
-|------------|---------------|--------|
-| Content-hash deduplication | SHA-256 hash compared against recent completed imports in same catalog | `url-fetch-job/fetch-utils.ts` (`calculateDataHash`), `url-fetch-job/scheduled-import-utils.ts` (`checkForDuplicateContent`) |
-| Configurable max file size | `advancedOptions.maxFileSizeMB` per schedule; streaming size check during download | `url-fetch-job/fetch-utils.ts` (`readResponseBody`) |
-| Configurable timeout | `advancedOptions.timeoutMinutes` (default 30); `AbortController` signal | `url-fetch-job/index.ts` (`prepareFetchOptions`) |
+| Protection                 | Implementation                                                                     | Source                                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Content-hash deduplication | SHA-256 hash compared against recent completed imports in same catalog             | `url-fetch-job/fetch-utils.ts` (`calculateDataHash`), `url-fetch-job/scheduled-import-utils.ts` (`checkForDuplicateContent`) |
+| Configurable max file size | `advancedOptions.maxFileSizeMB` per schedule; streaming size check during download | `url-fetch-job/fetch-utils.ts` (`readResponseBody`)                                                                          |
+| Configurable timeout       | `advancedOptions.timeoutMinutes` (default 30); `AbortController` signal            | `url-fetch-job/index.ts` (`prepareFetchOptions`)                                                                             |
 
 ### Quota Enforcement
 
 Two quota types govern scheduled imports:
 
-| Quota | Tracked Via | Enforcement Point |
-|-------|-------------|-------------------|
-| `ACTIVE_SCHEDULES` | Increment/decrement in `afterChange` and `afterDelete` hooks | `beforeChange` hook checks quota before enabling |
-| `URL_FETCHES_PER_DAY` | `QuotaService.incrementUsage()` in url-fetch job | Checked before each fetch; resets at midnight UTC |
+| Quota                 | Tracked Via                                                  | Enforcement Point                                 |
+| --------------------- | ------------------------------------------------------------ | ------------------------------------------------- |
+| `ACTIVE_SCHEDULES`    | Increment/decrement in `afterChange` and `afterDelete` hooks | `beforeChange` hook checks quota before enabling  |
+| `URL_FETCHES_PER_DAY` | `QuotaService.incrementUsage()` in url-fetch job             | Checked before each fetch; resets at midnight UTC |
 
 The `afterChange` hook increments usage when a schedule is created (enabled) or re-enabled, and decrements when disabled. The `afterDelete` hook decrements when an enabled schedule is deleted. Quota is charged to the schedule owner (`createdBy`), not the acting user.
 

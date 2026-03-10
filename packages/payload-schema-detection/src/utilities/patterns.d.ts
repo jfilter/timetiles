@@ -16,42 +16,42 @@ import type { FieldStatistics, FieldMappingsResult, GeoFieldMapping } from "../t
  * to ensure higher confidence scores for better matches.
  */
 export declare const FIELD_PATTERNS: {
-    readonly title: {
-        readonly eng: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly deu: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly fra: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly spa: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly ita: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly nld: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly por: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-    };
-    readonly description: {
-        readonly eng: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly deu: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly fra: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly spa: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly ita: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly nld: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly por: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-    };
-    readonly locationName: {
-        readonly eng: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly deu: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly fra: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly spa: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly ita: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly nld: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly por: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-    };
-    readonly timestamp: {
-        readonly eng: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly deu: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly fra: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly spa: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly ita: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly nld: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-        readonly por: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
-    };
+  readonly title: {
+    readonly eng: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly deu: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly fra: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly spa: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly ita: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly nld: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly por: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+  };
+  readonly description: {
+    readonly eng: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly deu: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly fra: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly spa: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly ita: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly nld: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly por: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+  };
+  readonly locationName: {
+    readonly eng: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly deu: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly fra: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly spa: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly ita: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly nld: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly por: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+  };
+  readonly timestamp: {
+    readonly eng: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly deu: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly fra: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly spa: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly ita: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly nld: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+    readonly por: readonly [RegExp, RegExp, RegExp, RegExp, RegExp, RegExp, RegExp];
+  };
 };
 /**
  * Latitude patterns for coordinate detection.
@@ -69,14 +69,14 @@ export declare const COMBINED_COORDINATE_PATTERNS: RegExp[];
  * Valid coordinate bounds.
  */
 export declare const COORDINATE_BOUNDS: {
-    latitude: {
-        min: number;
-        max: number;
-    };
-    longitude: {
-        min: number;
-        max: number;
-    };
+  latitude: {
+    min: number;
+    max: number;
+  };
+  longitude: {
+    min: number;
+    max: number;
+  };
 };
 /**
  * Detect geo field mappings.
@@ -89,5 +89,8 @@ export declare const detectGeoFields: (fieldStats: Record<string, FieldStatistic
  * @param language - ISO 639-3 language code
  * @returns Field mappings result
  */
-export declare const detectFieldMappings: (fieldStats: Record<string, FieldStatistics>, language: string) => FieldMappingsResult;
+export declare const detectFieldMappings: (
+  fieldStats: Record<string, FieldStatistics>,
+  language: string
+) => FieldMappingsResult;
 //# sourceMappingURL=patterns.d.ts.map

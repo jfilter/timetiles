@@ -36,5 +36,7 @@ import type { SchemaDetectionPluginOptions } from "./types";
  * const result = await service.detect('my-detector', context);
  * ```
  */
-export declare const schemaDetectionPlugin: (options?: SchemaDetectionPluginOptions) => (incomingConfig: Config) => Config;
+export declare const schemaDetectionPlugin: (
+  options?: SchemaDetectionPluginOptions
+) => (incomingConfig: Config) => Config;
 //# sourceMappingURL=plugin.d.ts.map

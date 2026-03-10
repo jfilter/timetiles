@@ -16,12 +16,12 @@ TimeTiles uses a **layered security model** with cookie-based authentication, tw
 
 Payload CMS provides built-in cookie-based authentication. JWTs are stored in HTTP-only cookies, never exposed as bearer tokens in responses.
 
-| Feature | Behavior | Reference |
-|---------|----------|-----------|
-| Login | Cookie-based session via Payload auth | `lib/collections/users.ts` `auth` block |
-| Email verification | Required; 24-hour token expiry | `auth.verify` config |
-| Password reset | Email link; 1-hour token expiry (Payload default) | `auth.forgotPassword` config |
-| Self-registration | Open; constrained by `beforeChange` hook (see below) | `access.create` |
+| Feature            | Behavior                                             | Reference                               |
+| ------------------ | ---------------------------------------------------- | --------------------------------------- |
+| Login              | Cookie-based session via Payload auth                | `lib/collections/users.ts` `auth` block |
+| Email verification | Required; 24-hour token expiry                       | `auth.verify` config                    |
+| Password reset     | Email link; 1-hour token expiry (Payload default)    | `auth.forgotPassword` config            |
+| Self-registration  | Open; constrained by `beforeChange` hook (see below) | `access.create`                         |
 
 ## Authorization: Two Orthogonal Axes
 
@@ -29,24 +29,24 @@ Payload CMS provides built-in cookie-based authentication. JWTs are stored in HT
 
 Three roles control access to collections and admin operations:
 
-| Role | Capabilities |
-|------|-------------|
-| **admin** | Full CRUD on all collections, manage users, update settings and geocoding providers, change trust levels |
-| **editor** | Create and manage own content (datasets, imports, events) |
-| **user** | Read own profile, create content within quota limits |
+| Role       | Capabilities                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------- |
+| **admin**  | Full CRUD on all collections, manage users, update settings and geocoding providers, change trust levels |
+| **editor** | Create and manage own content (datasets, imports, events)                                                |
+| **user**   | Read own profile, create content within quota limits                                                     |
 
 ### Trust Levels (how much you can do)
 
 Six numeric trust levels control resource quotas and rate limits. They are independent of roles: a `user` with `POWER_USER` trust gets generous quotas but no admin access.
 
-| Level | Name | File uploads/day | Events/import | Total events | Schedules | API burst/s |
-|-------|------|-----------------|---------------|-------------|-----------|-------------|
-| 0 | Untrusted | 1 | 100 | 100 | 0 | 1 |
-| 1 | Basic | 3 | 1,000 | 5,000 | 1 | 2 |
-| 2 | Regular | 10 | 10,000 | 50,000 | 5 | 5 |
-| 3 | Trusted | 50 | 50,000 | 500,000 | 20 | 10 |
-| 4 | Power User | 200 | 200,000 | 2,000,000 | 100 | 20 |
-| 5 | Unlimited | -1 | -1 | -1 | -1 | 100 |
+| Level | Name       | File uploads/day | Events/import | Total events | Schedules | API burst/s |
+| ----- | ---------- | ---------------- | ------------- | ------------ | --------- | ----------- |
+| 0     | Untrusted  | 1                | 100           | 100          | 0         | 1           |
+| 1     | Basic      | 3                | 1,000         | 5,000        | 1         | 2           |
+| 2     | Regular    | 10               | 10,000        | 50,000       | 5         | 5           |
+| 3     | Trusted    | 50               | 50,000        | 500,000      | 20        | 10          |
+| 4     | Power User | 200              | 200,000       | 2,000,000    | 100       | 20          |
+| 5     | Unlimited  | -1               | -1            | -1           | -1        | 100         |
 
 Full quota definitions: `lib/constants/quota-constants.ts` (`DEFAULT_QUOTAS`).
 
@@ -58,11 +58,11 @@ Trust levels are set by admins only (`trustLevel` field has admin-only update ac
 
 Access functions return one of three shapes:
 
-| Return | Meaning | Example |
-|--------|---------|---------|
-| `true` | Allow for all authenticated users | Admins reading any user |
-| `false` | Deny unconditionally | Unauthenticated delete attempts |
-| `{ field: { equals: value } }` | Filter query to matching records | Users reading only their own profile |
+| Return                         | Meaning                           | Example                              |
+| ------------------------------ | --------------------------------- | ------------------------------------ |
+| `true`                         | Allow for all authenticated users | Admins reading any user              |
+| `false`                        | Deny unconditionally              | Unauthenticated delete attempts      |
+| `{ field: { equals: value } }` | Filter query to matching records  | Users reading only their own profile |
 
 Example from `users.ts`: non-admin users reading their profile get `{ id: { equals: user.id } }`, which filters the query to their own record.
 
@@ -70,14 +70,14 @@ Example from `users.ts`: non-admin users reading their profile get `{ id: { equa
 
 Sensitive fields restrict read or update access independently of collection-level rules:
 
-| Field | Collection/Global | Read | Update |
-|-------|-------------------|------|--------|
-| `config.google.apiKey` | geocoding-providers | admin only | admin only (collection-level) |
-| `config.opencage.apiKey` | geocoding-providers | admin only | admin only (collection-level) |
-| `newsletter.authHeader` | settings | admin only | admin only |
-| `trustLevel` | users | all authenticated | admin only |
-| `quotas` | users | all authenticated | admin only |
-| `customQuotas` | users | admin only (UI-conditional) | admin only |
+| Field                    | Collection/Global   | Read                        | Update                        |
+| ------------------------ | ------------------- | --------------------------- | ----------------------------- |
+| `config.google.apiKey`   | geocoding-providers | admin only                  | admin only (collection-level) |
+| `config.opencage.apiKey` | geocoding-providers | admin only                  | admin only (collection-level) |
+| `newsletter.authHeader`  | settings            | admin only                  | admin only                    |
+| `trustLevel`             | users               | all authenticated           | admin only                    |
+| `quotas`                 | users               | all authenticated           | admin only                    |
+| `customQuotas`           | users               | admin only (UI-conditional) | admin only                    |
 
 References: `lib/globals/settings.ts`, `lib/collections/geocoding-providers.ts`, `lib/collections/users.ts`.
 
@@ -95,14 +95,14 @@ Two services run together on every resource-consuming request. Rate limits fire 
 
 File upload rate limits by trust level:
 
-| Trust Level | Burst | Hourly | Daily |
-|-------------|-------|--------|-------|
-| Untrusted | 1/min | 1/hr | 1/day |
-| Basic | 1/10s | 3/hr | 3/day |
-| Regular | 1/5s | 5/hr | 20/day |
-| Trusted | 2/5s | 20/hr | 50/day |
-| Power User | 5/5s | 100/hr | 200/day |
-| Unlimited | 10/s | 1000/hr | -- |
+| Trust Level | Burst | Hourly  | Daily   |
+| ----------- | ----- | ------- | ------- |
+| Untrusted   | 1/min | 1/hr    | 1/day   |
+| Basic       | 1/10s | 3/hr    | 3/day   |
+| Regular     | 1/5s  | 5/hr    | 20/day  |
+| Trusted     | 2/5s  | 20/hr   | 50/day  |
+| Power User  | 5/5s  | 100/hr  | 200/day |
+| Unlimited   | 10/s  | 1000/hr | --      |
 
 Endpoint-specific configs (not trust-based) also exist for webhooks, password changes, data exports, and other operations. See `RATE_LIMITS` in `lib/services/rate-limit-service.ts`.
 
@@ -124,12 +124,12 @@ Reference: `lib/services/quota-service.ts`, `lib/constants/quota-constants.ts`.
 
 The `beforeChange` hook on the users collection prevents privilege escalation during self-registration:
 
-| Field | Forced Value | Why |
-|-------|-------------|-----|
-| `role` | `"user"` | Prevents registering as admin or editor |
-| `trustLevel` | `BASIC` (1) | Lowest non-zero quota tier |
-| `registrationSource` | `"self"` | Audit trail |
-| `isActive` | `true` | Ensures account works immediately |
+| Field                | Forced Value | Why                                     |
+| -------------------- | ------------ | --------------------------------------- |
+| `role`               | `"user"`     | Prevents registering as admin or editor |
+| `trustLevel`         | `BASIC` (1)  | Lowest non-zero quota tier              |
+| `registrationSource` | `"self"`     | Audit trail                             |
+| `isActive`           | `true`       | Ensures account works immediately       |
 
 This enforcement only applies to REST API requests (`req.payloadAPI === "REST"`). Local API calls (`payload.create()`) used by seeding scripts and tests bypass the restriction so they can create admin users.
 
@@ -139,11 +139,11 @@ Reference: `lib/collections/users.ts`, `hooks.beforeChange`.
 
 Configured in `lib/config/payload-config-factory.ts`:
 
-| Environment | CORS | CSRF |
-|-------------|------|------|
-| Production | Single origin (`serverURL` only) | Enabled (same origin) |
-| Development | Unrestricted (Payload defaults) | Disabled |
-| Test | Unrestricted (Payload defaults) | Disabled |
+| Environment | CORS                             | CSRF                  |
+| ----------- | -------------------------------- | --------------------- |
+| Production  | Single origin (`serverURL` only) | Enabled (same origin) |
+| Development | Unrestricted (Payload defaults)  | Disabled              |
+| Test        | Unrestricted (Payload defaults)  | Disabled              |
 
 Production sets both `cors` and `csrf` to `[serverURL]`, locking the application to a single allowed origin.
 

@@ -72,28 +72,17 @@
     },
     "typecheck": {
       "dependsOn": ["transit"],
-      "inputs": [
-        "**/*.{ts,tsx}",
-        "tsconfig.json",
-        "tsconfig.*.json"
-      ],
+      "inputs": ["**/*.{ts,tsx}", "tsconfig.json", "tsconfig.*.json"],
       "outputs": [".typecheck-results/**"]
     },
     "typecheck:fast": {
       "dependsOn": ["transit"],
-      "inputs": [
-        "**/*.{ts,tsx}",
-        "tsconfig.json",
-        "tsconfig.*.json"
-      ],
+      "inputs": ["**/*.{ts,tsx}", "tsconfig.json", "tsconfig.*.json"],
       "outputs": [".typecheck-results/**"]
     },
     "lint:fast": {
       "dependsOn": ["transit"],
-      "inputs": [
-        "**/*.{ts,tsx,js,jsx}",
-        "../../.oxlintrc.json"
-      ],
+      "inputs": ["**/*.{ts,tsx,js,jsx}", "../../.oxlintrc.json"],
       "outputs": []
     },
     "dev": {

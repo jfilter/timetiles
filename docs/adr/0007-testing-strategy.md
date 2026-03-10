@@ -16,16 +16,16 @@ TimeTiles uses **three test tiers**, each with its own runner configuration, iso
 
 ### Test Tiers
 
-| Property | Unit | Integration | E2E |
-|----------|------|-------------|-----|
-| Runner | Vitest (`unit` project) | Vitest (`integration` project) | Playwright |
-| Database | None | Real PostgreSQL + PostGIS | Real PostgreSQL + PostGIS |
-| Payload CMS | Mocked | Real instance | Full Next.js server |
-| Browser | None (node env) | None (node env) | Chromium (headless) |
-| Timeout | 10s | 30s (hooks: 45s) | 60s local, 120s CI |
-| Isolation | `isolate: false` (shared fork) | `isolate: false` (shared fork) | Separate server + DB |
-| Speed | Fast (~ms per test) | Moderate (~s per test) | Slow (~s per test) |
-| Location | `tests/unit/` | `tests/integration/` | `tests/e2e/` |
+| Property    | Unit                           | Integration                    | E2E                       |
+| ----------- | ------------------------------ | ------------------------------ | ------------------------- |
+| Runner      | Vitest (`unit` project)        | Vitest (`integration` project) | Playwright                |
+| Database    | None                           | Real PostgreSQL + PostGIS      | Real PostgreSQL + PostGIS |
+| Payload CMS | Mocked                         | Real instance                  | Full Next.js server       |
+| Browser     | None (node env)                | None (node env)                | Chromium (headless)       |
+| Timeout     | 10s                            | 30s (hooks: 45s)               | 60s local, 120s CI        |
+| Isolation   | `isolate: false` (shared fork) | `isolate: false` (shared fork) | Separate server + DB      |
+| Speed       | Fast (~ms per test)            | Moderate (~s per test)         | Slow (~s per test)        |
+| Location    | `tests/unit/`                  | `tests/integration/`           | `tests/e2e/`              |
 
 ### Test Runner: Vitest with Forks
 
@@ -88,6 +88,7 @@ This replaces the real Pino logger with silent `vi.fn()` stubs across all tests 
 **`beforeEach` reset to prevent contamination.** Every test file that uses mocks calls `vi.clearAllMocks()` in `beforeEach` to reset call counts and return values. The integration setup goes further with `vi.restoreAllMocks()` in a global `afterEach` to undo `vi.spyOn` patches between files sharing a fork.
 
 Other centralized mocks:
+
 - `tests/mocks/external/next-navigation.ts` -- stubs `next/navigation` for server-side tests
 - `tests/mocks/external/maplibre-gl.ts` -- stubs MapLibre GL for component tests in jsdom
 
@@ -97,14 +98,14 @@ All test passwords, API tokens, and emails are centralized in `tests/constants/t
 
 Available constants:
 
-| Constant | Contents |
-|----------|----------|
-| `TEST_CREDENTIALS.basic.password` | Standard test passwords |
-| `TEST_CREDENTIALS.bearer.token` | Bearer tokens for API tests |
-| `TEST_CREDENTIALS.apiKey.key` | API key values |
-| `TEST_TOKENS.webhook` | Webhook tokens |
-| `TEST_SECRETS.payloadSecret` | Payload CMS secret |
-| `TEST_EMAILS.admin`, `.user` | Test user email addresses |
+| Constant                          | Contents                    |
+| --------------------------------- | --------------------------- |
+| `TEST_CREDENTIALS.basic.password` | Standard test passwords     |
+| `TEST_CREDENTIALS.bearer.token`   | Bearer tokens for API tests |
+| `TEST_CREDENTIALS.apiKey.key`     | API key values              |
+| `TEST_TOKENS.webhook`             | Webhook tokens              |
+| `TEST_SECRETS.payloadSecret`      | Payload CMS secret          |
+| `TEST_EMAILS.admin`, `.user`      | Test user email addresses   |
 
 Usage in tests:
 
@@ -143,6 +144,7 @@ import { ExplorePage } from "../pages/explore.page";
 ```
 
 **Configuration** (`playwright.config.ts`):
+
 - Tests within a file run sequentially (`fullyParallel: false`)
 - 2 workers locally, 4 in CI
 - Retries: 0 locally, 2 in CI
@@ -151,12 +153,12 @@ import { ExplorePage } from "../pages/explore.page";
 
 ### Commands
 
-| Command | What it does |
-|---------|-------------|
-| `make test-ai` | Run all unit + integration tests with concise AI-friendly output |
-| `make test-ai FILTER=pattern` | Run tests matching a file name pattern (24-120x faster) |
-| `make test-e2e` | Run Playwright E2E tests with automatic database setup |
-| `make test-e2e FILTER="name"` | Run E2E tests matching a test name pattern |
+| Command                       | What it does                                                     |
+| ----------------------------- | ---------------------------------------------------------------- |
+| `make test-ai`                | Run all unit + integration tests with concise AI-friendly output |
+| `make test-ai FILTER=pattern` | Run tests matching a file name pattern (24-120x faster)          |
+| `make test-e2e`               | Run Playwright E2E tests with automatic database setup           |
+| `make test-e2e FILTER="name"` | Run E2E tests matching a test name pattern                       |
 
 `make test-ai` invokes `scripts/test-ai.ts`, which runs Vitest with `--reporter=json`, writes timestamped results to `.test-results/`, and prints a summary showing pass/fail counts, duration, and failed test names. Inspect failures with:
 

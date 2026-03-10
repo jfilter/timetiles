@@ -5,6 +5,7 @@
 **Worktree:** `/Users/user/code/jf/timetiles-import-wizard` (branch: `feature/import-wizard`)
 
 ### Phase 1: Authentication Foundation - COMPLETED
+
 - [x] Created git worktree for feature branch
 - [x] Modified `apps/web/lib/collections/users.ts`:
   - [x] Added `auth.verify` configuration with email templates
@@ -30,9 +31,11 @@
   - [x] Added Input, Label, Tabs exports to UI package
 
 ### Next Steps:
+
 1. Start Phase 2: Wizard Framework
 
 ### To Resume:
+
 ```bash
 cd /Users/user/code/jf/timetiles-import-wizard
 make check-ai PACKAGE=web  # Check current errors
@@ -43,6 +46,7 @@ make check-ai PACKAGE=web  # Check current errors
 ## Overview
 
 Redesign the TimeTiles import page as a multi-step wizard similar to Datawrapper/CiviCRM, with:
+
 - Required account authentication to complete imports
 - Linear wizard flow (6 steps)
 - Schema similarity suggestions for dataset selection
@@ -51,14 +55,14 @@ Redesign the TimeTiles import page as a multi-step wizard similar to Datawrapper
 
 ## Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Account requirement | Required | Users must log in or register to complete import |
-| Email verification | Required | Must verify email before completing first import |
-| Wizard pattern | Linear (fixed steps) | Clear progression, prevents skipping configuration |
-| Dataset suggestions | Schema similarity | Analyze uploaded schema, suggest matching datasets |
-| State persistence | LocalStorage | Survives refresh, cleared on completion |
-| Sheet mapping step | Always show | User can always choose target dataset, even for single-sheet files |
+| Decision            | Choice               | Rationale                                                          |
+| ------------------- | -------------------- | ------------------------------------------------------------------ |
+| Account requirement | Required             | Users must log in or register to complete import                   |
+| Email verification  | Required             | Must verify email before completing first import                   |
+| Wizard pattern      | Linear (fixed steps) | Clear progression, prevents skipping configuration                 |
+| Dataset suggestions | Schema similarity    | Analyze uploaded schema, suggest matching datasets                 |
+| State persistence   | LocalStorage         | Survives refresh, cleared on completion                            |
+| Sheet mapping step  | Always show          | User can always choose target dataset, even for single-sheet files |
 
 ---
 
@@ -69,6 +73,7 @@ Redesign the TimeTiles import page as a multi-step wizard similar to Datawrapper
 ```
 
 ### Step 1: Authentication
+
 - Check if user is logged in
 - Show login/register tabs if not
 - After registration, show "verification email sent" message
@@ -76,6 +81,7 @@ Redesign the TimeTiles import page as a multi-step wizard similar to Datawrapper
 - **Note:** Anonymous uploads removed - authentication required before upload
 
 ### Step 2: File Upload
+
 - Drag-and-drop upload zone
 - Display file size limits based on user trust level
 - Parse file client-side to detect sheets
@@ -83,6 +89,7 @@ Redesign the TimeTiles import page as a multi-step wizard similar to Datawrapper
 - Store file in temporary location with previewId
 
 ### Step 3: Dataset Selection
+
 - Show user's existing catalogs (dropdown)
 - Option to create new catalog
 - For each sheet: select existing dataset OR create new
@@ -91,6 +98,7 @@ Redesign the TimeTiles import page as a multi-step wizard similar to Datawrapper
 - Always shown (even for single-sheet files)
 
 ### Step 4: Field Mapping
+
 - Tab per sheet (if multiple)
 - Auto-detected mappings pre-filled (highlighted)
 - **Required fields:**
@@ -109,12 +117,14 @@ Redesign the TimeTiles import page as a multi-step wizard similar to Datawrapper
   - `hybrid` - Try external, fallback to computed
 
 ### Step 5: Review
+
 - Summary cards: file info, target catalog, dataset mappings
 - Field mappings table per dataset
 - Import options: deduplication strategy, geocoding toggle
 - Confirm button
 
 ### Step 6: Processing
+
 - Progress tracking (reuse existing useImportProgressQuery)
 - Per-dataset progress bars
 - Error display
@@ -127,12 +137,14 @@ Redesign the TimeTiles import page as a multi-step wizard similar to Datawrapper
 The wizard leverages the existing import pipeline rather than replacing it. The key difference is that the wizard **pre-configures** settings that the automated workflow would auto-detect.
 
 ### Existing Pipeline Stages (Automated)
+
 ```
 DATASET_DETECTION → ANALYZE_DUPLICATES → DETECT_SCHEMA → VALIDATE_SCHEMA
     → AWAIT_APPROVAL → CREATE_SCHEMA_VERSION → GEOCODE_BATCH → CREATE_EVENTS → COMPLETED
 ```
 
 ### Wizard Flow Integration
+
 ```
 ┌─────────────────────────────────────────────┐
 │           WIZARD UI (New)                   │
@@ -153,25 +165,25 @@ DATASET_DETECTION → ANALYZE_DUPLICATES → DETECT_SCHEMA → VALIDATE_SCHEMA
 
 ### Services to Reuse (No Changes Needed)
 
-| Service | Location | Reuse |
-|---------|----------|-------|
-| `IdGenerationService` | `lib/services/id-generation.ts` | ID strategy already supports all 4 types |
-| `ProgressiveSchemaBuilder` | `lib/services/schema-builder/` | Schema detection for preview |
-| `detectFieldMappings()` | `lib/services/schema-builder/field-mapping-detection.ts` | Auto-detect title/date/location |
-| File parsing | `lib/jobs/handlers/dataset-detection-job.ts` | CSV/Excel parsing functions |
-| `schema-comparison.ts` | `lib/services/schema-builder/` | Schema similarity algorithm base |
+| Service                    | Location                                                 | Reuse                                    |
+| -------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| `IdGenerationService`      | `lib/services/id-generation.ts`                          | ID strategy already supports all 4 types |
+| `ProgressiveSchemaBuilder` | `lib/services/schema-builder/`                           | Schema detection for preview             |
+| `detectFieldMappings()`    | `lib/services/schema-builder/field-mapping-detection.ts` | Auto-detect title/date/location          |
+| File parsing               | `lib/jobs/handlers/dataset-detection-job.ts`             | CSV/Excel parsing functions              |
+| `schema-comparison.ts`     | `lib/services/schema-builder/`                           | Schema similarity algorithm base         |
 
 ### Pipeline Stages to Reuse (After Wizard Completes)
 
-| Stage | What It Does | How Wizard Helps |
-|-------|--------------|------------------|
-| `ANALYZE_DUPLICATES` | Find duplicate records | Uses user-configured `idStrategy` |
-| `DETECT_SCHEMA` | Infer schema from data | Already previewed in wizard |
-| `VALIDATE_SCHEMA` | Compare with existing | Field mappings pre-approved |
-| `AWAIT_APPROVAL` | Wait for user | **Skipped** - user pre-approved in wizard |
-| `CREATE_SCHEMA_VERSION` | Save schema | Uses wizard-configured mappings |
-| `GEOCODE_BATCH` | Geocode addresses | Uses wizard-mapped location field |
-| `CREATE_EVENTS` | Create event records | All config ready |
+| Stage                   | What It Does           | How Wizard Helps                          |
+| ----------------------- | ---------------------- | ----------------------------------------- |
+| `ANALYZE_DUPLICATES`    | Find duplicate records | Uses user-configured `idStrategy`         |
+| `DETECT_SCHEMA`         | Infer schema from data | Already previewed in wizard               |
+| `VALIDATE_SCHEMA`       | Compare with existing  | Field mappings pre-approved               |
+| `AWAIT_APPROVAL`        | Wait for user          | **Skipped** - user pre-approved in wizard |
+| `CREATE_SCHEMA_VERSION` | Save schema            | Uses wizard-configured mappings           |
+| `GEOCODE_BATCH`         | Geocode addresses      | Uses wizard-mapped location field         |
+| `CREATE_EVENTS`         | Create event records   | All config ready                          |
 
 ### Key Insight: Wizard = Pre-Configuration
 
@@ -234,11 +246,11 @@ interface WizardState {
   }>;
 
   // Step 3: Dataset Selection
-  selectedCatalogId: number | 'new';
+  selectedCatalogId: number | "new";
   newCatalogName: string;
   sheetMappings: Array<{
     sheetIndex: number;
-    datasetId: number | 'new';
+    datasetId: number | "new";
     newDatasetName: string;
     similarityScore: number | null;
   }>;
@@ -251,14 +263,14 @@ interface WizardState {
     dateField: string;
     endDateField: string | null;
     idField: string | null;
-    idStrategy: 'external' | 'computed' | 'auto';
+    idStrategy: "external" | "computed" | "auto";
     locationField: string | null;
     latitudeField: string | null;
     longitudeField: string | null;
   }>;
 
   // Step 5: Review
-  deduplicationStrategy: 'skip' | 'update' | 'version';
+  deduplicationStrategy: "skip" | "update" | "version";
   geocodingEnabled: boolean;
 
   // Step 6: Processing
@@ -282,13 +294,16 @@ interface WizardState {
 ## New API Endpoints
 
 ### 1. GET /api/wizard/catalogs
+
 Returns user's catalogs with datasets and quota info.
 
 ### 2. POST /api/wizard/preview-schema
+
 Uploads file, generates schema preview and similarity suggestions.
 
 Request: `multipart/form-data` with file
 Response:
+
 ```typescript
 {
   previewId: string;
@@ -301,9 +316,11 @@ Response:
 ```
 
 ### 3. POST /api/wizard/configure-import
+
 Creates import with user configuration.
 
 Request:
+
 ```typescript
 {
   previewId: string;
@@ -322,9 +339,11 @@ Request:
 ```
 
 ### 4. POST /api/auth/register
+
 Self-service registration with email verification.
 
 ### 5. GET /api/auth/verify-email
+
 Validates verification token, activates account.
 
 ---
@@ -370,50 +389,54 @@ const Users: CollectionConfig = {
     },
   },
   // ...
-}
+};
 ```
 
 **Add field for tracking registration source:**
+
 - `registrationSource` (select: admin, self) - to distinguish self-registered users
 
 **Modify access control for self-registration:**
+
 ```typescript
 create: ({ req: { user } }) => {
   if (user?.role === "admin") return true;
-  if (!user) return true;  // Allow self-registration (unauthenticated)
+  if (!user) return true; // Allow self-registration (unauthenticated)
   return false;
-}
+};
 ```
 
 **Add beforeChange hook for self-registration constraints:**
+
 ```typescript
 beforeChange: [
   ({ data, operation, req }) => {
     // For self-registration (unauthenticated creation)
     if (operation === "create" && !req.user) {
-      data.role = "user";  // Force user role (prevent privilege escalation)
-      data.trustLevel = String(TRUST_LEVELS.BASIC);  // Basic quotas
+      data.role = "user"; // Force user role (prevent privilege escalation)
+      data.trustLevel = String(TRUST_LEVELS.BASIC); // Basic quotas
       data.registrationSource = "self";
     }
     return data;
   },
-]
+];
 ```
 
 ### Payload Auto-Generated Endpoints (No Custom Code Needed)
 
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /api/users` | Create user (self-registration) |
-| `POST /api/users/login` | Login with email/password |
-| `POST /api/users/logout` | Logout |
-| `POST /api/users/verify/{token}` | Verify email (auto-generated when `auth.verify` enabled) |
-| `POST /api/users/forgot-password` | Request password reset |
-| `POST /api/users/reset-password` | Reset password with token |
+| Endpoint                          | Purpose                                                  |
+| --------------------------------- | -------------------------------------------------------- |
+| `POST /api/users`                 | Create user (self-registration)                          |
+| `POST /api/users/login`           | Login with email/password                                |
+| `POST /api/users/logout`          | Logout                                                   |
+| `POST /api/users/verify/{token}`  | Verify email (auto-generated when `auth.verify` enabled) |
+| `POST /api/users/forgot-password` | Request password reset                                   |
+| `POST /api/users/reset-password`  | Reset password with token                                |
 
 ### Verification Page
 
 Create `/apps/web/app/verify-email/page.tsx`:
+
 - Reads `token` from query params
 - Calls `POST /api/users/verify/{token}`
 - Shows success/error message
@@ -423,35 +446,36 @@ Create `/apps/web/app/verify-email/page.tsx`:
 
 ## Critical Files to Modify
 
-| File | Changes |
-|------|---------|
-| `apps/web/app/import/page.tsx` | Replace with wizard entry point |
-| `apps/web/app/import/_components/import-upload.tsx` | Refactor into step-upload.tsx |
-| `apps/web/lib/collections/users.ts` | Add email verification fields, enable self-registration |
-| `apps/web/lib/collections/import-files.ts` | Add wizard config to metadata |
-| `apps/web/lib/hooks/use-events-queries.ts` | Add wizard-related queries |
-| `apps/web/lib/services/schema-builder/schema-comparison.ts` | Extend for similarity scoring |
+| File                                                        | Changes                                                 |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| `apps/web/app/import/page.tsx`                              | Replace with wizard entry point                         |
+| `apps/web/app/import/_components/import-upload.tsx`         | Refactor into step-upload.tsx                           |
+| `apps/web/lib/collections/users.ts`                         | Add email verification fields, enable self-registration |
+| `apps/web/lib/collections/import-files.ts`                  | Add wizard config to metadata                           |
+| `apps/web/lib/hooks/use-events-queries.ts`                  | Add wizard-related queries                              |
+| `apps/web/lib/services/schema-builder/schema-comparison.ts` | Extend for similarity scoring                           |
 
 ## New Files to Create
 
-| File | Purpose |
-|------|---------|
-| `app/import/_components/import-wizard.tsx` | Main wizard container |
-| `app/import/_components/wizard-context.tsx` | State management |
-| `app/import/_components/wizard-progress.tsx` | Step indicator |
-| `app/import/_components/wizard-navigation.tsx` | Navigation buttons |
-| `app/import/_components/steps/*.tsx` | Individual step components |
-| `app/api/wizard/*/route.ts` | New wizard API endpoints |
-| `app/verify-email/page.tsx` | Email verification landing page |
-| `lib/services/schema-similarity.ts` | Similarity algorithm |
-| `lib/services/preview-cache.ts` | Preview storage (in-memory) |
-| `components/auth/*.tsx` | Auth UI components (login/register forms) |
+| File                                           | Purpose                                   |
+| ---------------------------------------------- | ----------------------------------------- |
+| `app/import/_components/import-wizard.tsx`     | Main wizard container                     |
+| `app/import/_components/wizard-context.tsx`    | State management                          |
+| `app/import/_components/wizard-progress.tsx`   | Step indicator                            |
+| `app/import/_components/wizard-navigation.tsx` | Navigation buttons                        |
+| `app/import/_components/steps/*.tsx`           | Individual step components                |
+| `app/api/wizard/*/route.ts`                    | New wizard API endpoints                  |
+| `app/verify-email/page.tsx`                    | Email verification landing page           |
+| `lib/services/schema-similarity.ts`            | Similarity algorithm                      |
+| `lib/services/preview-cache.ts`                | Preview storage (in-memory)               |
+| `components/auth/*.tsx`                        | Auth UI components (login/register forms) |
 
 ---
 
 ## Implementation Phases
 
 ### Phase 1: Authentication Foundation (2-3 days)
+
 1. Enable Payload's built-in `auth.verify` on Users collection
 2. Add `registrationSource` field to Users collection
 3. Modify `create` access control for self-registration
@@ -461,6 +485,7 @@ Create `/apps/web/app/verify-email/page.tsx`:
 7. Create auth UI components (login-form, register-form, auth-modal)
 
 ### Phase 2: Wizard Framework (2-3 days)
+
 1. Create wizard context with useReducer
 2. Create wizard container component
 3. Create progress indicator
@@ -469,6 +494,7 @@ Create `/apps/web/app/verify-email/page.tsx`:
 6. Create basic step components (skeleton)
 
 ### Phase 3: Upload & Preview APIs (3-4 days)
+
 1. Create preview-cache service
 2. Create preview-schema API endpoint
 3. Create catalogs API endpoint
@@ -476,12 +502,14 @@ Create `/apps/web/app/verify-email/page.tsx`:
 5. Create step-upload component (refactor existing)
 
 ### Phase 4: Dataset Selection (2-3 days)
+
 1. Create schema-similarity-card component
 2. Create step-dataset-selection component
 3. Integrate similarity suggestions
 4. Handle new catalog/dataset creation
 
 ### Phase 5: Field Mapping (3-4 days)
+
 1. Create field-mapping-row component
 2. Create data-preview-table component
 3. Create step-field-mapping component
@@ -489,6 +517,7 @@ Create `/apps/web/app/verify-email/page.tsx`:
 5. Add ID strategy configuration
 
 ### Phase 6: Review & Processing (2-3 days)
+
 1. Create step-review component
 2. Create configure-import API endpoint
 3. Create step-processing component
@@ -496,6 +525,7 @@ Create `/apps/web/app/verify-email/page.tsx`:
 5. Handle completion and cleanup
 
 ### Phase 7: Testing & Polish (3-4 days)
+
 1. Unit tests for similarity algorithm
 2. Integration tests for API endpoints
 3. E2E tests for full wizard flow
@@ -511,17 +541,20 @@ Create `/apps/web/app/verify-email/page.tsx`:
 ## Testing Strategy
 
 ### Unit Tests
+
 - Schema similarity algorithm
 - Session transfer service
 - Wizard state reducer
 - Field mapping validation
 
 ### Integration Tests
+
 - Registration → verification → login flow
 - Preview schema → configure import flow
 - Session transfer after login
 
 ### E2E Tests
+
 - Full wizard flow: anonymous → register → verify → import
 - Full wizard flow: existing user → login → import
 - Excel multi-sheet import

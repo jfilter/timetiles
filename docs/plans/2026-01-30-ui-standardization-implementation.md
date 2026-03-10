@@ -13,6 +13,7 @@
 ### Task 1: Create `ContentState` shared component
 
 **Files:**
+
 - Create: `packages/ui/src/components/content-state.tsx`
 - Modify: `packages/ui/src/index.ts`
 
@@ -77,15 +78,7 @@ const DefaultIcon = ({ variant }: { variant: ContentStateProps["variant"] }) => 
   }
 };
 
-export const ContentState = ({
-  variant,
-  height,
-  className,
-  icon,
-  title,
-  subtitle,
-  onRetry,
-}: ContentStateProps) => {
+export const ContentState = ({ variant, height, className, icon, title, subtitle, onRetry }: ContentStateProps) => {
   const containerStyle = useMemo(() => {
     if (height == null) return undefined;
     const h = typeof height === "number" ? `${height}px` : height;
@@ -95,10 +88,7 @@ export const ContentState = ({
   const defaults = defaultMessages[variant];
 
   return (
-    <div
-      className={cn("flex flex-col items-center justify-center gap-3", className)}
-      style={containerStyle}
-    >
+    <div className={cn("flex flex-col items-center justify-center gap-3", className)} style={containerStyle}>
       <div className={cn("text-muted-foreground/50", variant === "error" && "text-destructive/50")}>
         {icon ?? <DefaultIcon variant={variant} />}
       </div>
@@ -146,6 +136,7 @@ git commit -m "feat(ui): add shared ContentState component for empty/error/no-ma
 ### Task 2: Add shadcn Table and Checkbox to packages/ui
 
 **Files:**
+
 - Create: `packages/ui/src/components/table.tsx`
 - Create: `packages/ui/src/components/checkbox.tsx`
 - Modify: `packages/ui/src/index.ts`
@@ -201,6 +192,7 @@ git commit -m "feat(ui): add shadcn Table and Checkbox components"
 ### Task 3: Refactor ChartEmptyState to wrap ContentState
 
 **Files:**
+
 - Modify: `packages/ui/src/components/charts/chart-empty-state.tsx`
 
 The existing `ChartEmptyState` API stays the same. Internally, it delegates to `ContentState` with chart-specific defaults.
@@ -208,6 +200,7 @@ The existing `ChartEmptyState` API stays the same. Internally, it delegates to `
 **Step 1: Refactor chart-empty-state.tsx**
 
 Key changes to `packages/ui/src/components/charts/chart-empty-state.tsx`:
+
 - Import `ContentState` from `../content-state`
 - Keep the custom `EmptyChartIcon` SVG
 - Replace the render body with `<ContentState>` passing chart-specific icon/messages
@@ -240,6 +233,7 @@ git commit -m "refactor(ui): ChartEmptyState now wraps shared ContentState"
 ### Task 4: Add error states to EventsList, charts, and ClusteredMap
 
 **Files:**
+
 - Modify: `apps/web/app/(frontend)/explore/_components/events-list.tsx`
 - Modify: `apps/web/components/charts/event-histogram.tsx`
 - Modify: `apps/web/components/charts/aggregation-bar-chart.tsx`
@@ -249,6 +243,7 @@ git commit -m "refactor(ui): ChartEmptyState now wraps shared ContentState"
 **Step 1: Add error prop to EventsList**
 
 In `events-list.tsx`:
+
 - Add to `EventsListProps`: `error?: Error | null;` and `onRetry?: () => void;`
 - Import `ContentState` from `@timetiles/ui`
 - After the `isInitialLoad` check, add an error check:
@@ -270,6 +265,7 @@ if (error) {
 **Step 2: Pass error from EventsListPaginated to EventsList**
 
 In `events-list-paginated.tsx`:
+
 - Replace the inline error state (lines 74-80) with `ContentState`:
 
 ```tsx
@@ -290,6 +286,7 @@ if (isError) {
 **Step 3: Add error handling to EventHistogram**
 
 In `event-histogram.tsx`:
+
 - Get `isError` and `error` from `useChartQuery`:
 
 ```tsx
@@ -301,6 +298,7 @@ const { data: histogramData, isInitialLoad, isUpdating, isError, error } = useCh
 **Step 4: Add error support to TimeHistogram (packages/ui)**
 
 In `packages/ui/src/components/charts/time-histogram.tsx`:
+
 - Add to `TimeHistogramProps`: `isError?: boolean;`
 - Before the empty data check, add:
 
@@ -315,6 +313,7 @@ if (isError && !isInitialLoad) {
 **Step 5: Add error support to BarChart (packages/ui)**
 
 In `packages/ui/src/components/charts/bar-chart.tsx`:
+
 - Add to `BarChartProps`: `isError?: boolean;` and `onRetry?: () => void;`
 - Before the empty state check (line 148), add:
 
@@ -327,6 +326,7 @@ if (isError && !isInitialLoad) {
 **Step 6: Pass error from AggregationBarChart**
 
 In `aggregation-bar-chart.tsx`:
+
 - Get `isError` from `useChartQuery`:
 
 ```tsx
@@ -342,6 +342,7 @@ const { data, isInitialLoad, isUpdating, isError } = useChartQuery(aggregationQu
 **Step 7: Add error overlay to ClusteredMap**
 
 In `clustered-map.tsx`:
+
 - Add `isError?: boolean;` to `ClusteredMapProps`
 - Import `ContentState` from `@timetiles/ui`
 - Add a `MapErrorOverlay` component similar to `MapLoadingOverlay`:
@@ -349,11 +350,7 @@ In `clustered-map.tsx`:
 ```tsx
 const MapErrorOverlay = () => (
   <div className="bg-background/60 pointer-events-auto absolute inset-0 z-20 flex items-center justify-center backdrop-blur-sm">
-    <ContentState
-      variant="error"
-      title="Unable to load map data"
-      subtitle="There was a problem loading the map"
-    />
+    <ContentState variant="error" title="Unable to load map data" subtitle="There was a problem loading the map" />
   </div>
 );
 ```
@@ -381,6 +378,7 @@ git commit -m "feat: add error states to EventsList, charts, and ClusteredMap"
 ### Task 5: Refactor EventDetailError to use ContentState
 
 **Files:**
+
 - Modify: `apps/web/components/events/event-detail-content.tsx:174-195`
 
 **Step 1: Refactor EventDetailError**
@@ -432,6 +430,7 @@ git commit -m "refactor: EventDetailError uses shared ContentState"
 ### Task 6: Standardize loading patterns
 
 **Files:**
+
 - Modify: `apps/web/app/(frontend)/explore/_components/events-list.tsx:205-210`
 - Modify: `apps/web/app/(frontend)/explore/_components/events-list-paginated.tsx:105-109`
 - Modify: `apps/web/app/(frontend)/import/_components/import-upload.tsx` (emoji spinners)
@@ -439,6 +438,7 @@ git commit -m "refactor: EventDetailError uses shared ContentState"
 **Step 1: EventsList — use EventsListSkeleton**
 
 In `events-list.tsx`:
+
 - Import `EventsListSkeleton` from `./events-list-skeleton`
 - Replace the `isInitialLoad` block (lines 205-210):
 
@@ -451,23 +451,27 @@ if (isInitialLoad) {
 **Step 2: EventsListPaginated — replace CSS spinner with Loader2**
 
 In `events-list-paginated.tsx`:
+
 - Import `Loader2` from `lucide-react`
 - Replace lines 105-109 (the Load More button spinner):
 
 ```tsx
-{isFetchingNextPage ? (
-  <>
-    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-    Loading...
-  </>
-) : (
-  "Load More"
-)}
+{
+  isFetchingNextPage ? (
+    <>
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Loading...
+    </>
+  ) : (
+    "Load More"
+  );
+}
 ```
 
 **Step 3: ImportUpload — replace emoji spinners with Loader2**
 
 In `import-upload.tsx`:
+
 - Import `Loader2` from `lucide-react`
 - In `getStatusIcon` (lines 21-32): replace emoji returns with Lucide icon class names or keep as-is (these are status indicators, not spinners). Actually leave `getStatusIcon` alone — the emojis there are status badges (✅, ❌), not loading spinners.
 - In `UploadButtons` (lines 160-164): Replace `<span className="animate-spin">⏳</span>` with `<Loader2 className="h-4 w-4 animate-spin" />`
@@ -479,6 +483,7 @@ In `import-upload.tsx`:
 **Step 4: ImportUpload — replace hardcoded colors**
 
 In the progress bars (lines 230-235, 260-265):
+
 - Replace `bg-gray-200` → `bg-muted`
 - Replace `bg-green-600` → `bg-primary`
 - Replace `bg-blue-600` → `bg-primary`
@@ -509,6 +514,7 @@ git commit -m "refactor: standardize loading patterns across EventsList, imports
 ### Task 7: Replace raw HTML in import pages
 
 **Files:**
+
 - Modify: `apps/web/app/(frontend)/import/_components/steps/step-field-mapping.tsx`
 - Modify: `apps/web/app/(frontend)/import/_components/steps/step-upload.tsx`
 
@@ -526,7 +532,7 @@ In `step-field-mapping.tsx`, the `FieldSelect` component (lines 156-206) uses a 
     className={cn(
       "h-11",
       required && !value && "border-cartographic-terracotta/50",
-      isAutoDetected && confidenceLevel === "high" && "border-cartographic-forest/40 border-dashed",
+      isAutoDetected && confidenceLevel === "high" && "border-cartographic-forest/40 border-dashed"
     )}
   >
     <SelectValue placeholder="Select column..." />
@@ -563,7 +569,7 @@ import { Checkbox } from "@timetiles/ui";
   checked={geocodingEnabled}
   onCheckedChange={(checked) => handleGeocodingChange(checked === true)}
   className="mt-0.5"
-/>
+/>;
 ```
 
 **Step 4: StepFieldMapping — replace raw table**
@@ -578,19 +584,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
     <TableRow className="border-cartographic-navy/10 bg-cartographic-cream/20">
       {activeMapping.titleField && <TableHead className="text-cartographic-charcoal font-medium">Title</TableHead>}
       {activeMapping.dateField && <TableHead className="text-cartographic-charcoal font-medium">Date</TableHead>}
-      {activeMapping.locationField && <TableHead className="text-cartographic-charcoal font-medium">Location</TableHead>}
+      {activeMapping.locationField && (
+        <TableHead className="text-cartographic-charcoal font-medium">Location</TableHead>
+      )}
     </TableRow>
   </TableHeader>
   <TableBody>
     {activeSheet.sampleData.slice(0, 3).map((row, i) => (
       <TableRow key={i} className="border-cartographic-navy/5 last:border-0">
-        {activeMapping.titleField && <TableCell className="text-cartographic-charcoal">{formatCellValue(row[activeMapping.titleField])}</TableCell>}
-        {activeMapping.dateField && <TableCell className="text-cartographic-navy/70 font-mono">{formatCellValue(row[activeMapping.dateField])}</TableCell>}
-        {activeMapping.locationField && <TableCell className="text-cartographic-navy/70">{formatCellValue(row[activeMapping.locationField])}</TableCell>}
+        {activeMapping.titleField && (
+          <TableCell className="text-cartographic-charcoal">{formatCellValue(row[activeMapping.titleField])}</TableCell>
+        )}
+        {activeMapping.dateField && (
+          <TableCell className="text-cartographic-navy/70 font-mono">
+            {formatCellValue(row[activeMapping.dateField])}
+          </TableCell>
+        )}
+        {activeMapping.locationField && (
+          <TableCell className="text-cartographic-navy/70">
+            {formatCellValue(row[activeMapping.locationField])}
+          </TableCell>
+        )}
       </TableRow>
     ))}
   </TableBody>
-</Table>
+</Table>;
 ```
 
 **Step 5: StepUpload — replace raw button**
@@ -627,6 +645,7 @@ git commit -m "refactor: replace raw HTML elements with shadcn components in imp
 ### Task 8: Replace inline SVGs in RegisterForm
 
 **Files:**
+
 - Modify: `apps/web/components/auth/register-form.tsx:125-137,152-158`
 
 **Step 1: Replace lock SVG with Lucide icon**
@@ -637,7 +656,7 @@ In `register-form.tsx` (lines 125-137): Replace the inline `<svg>` lock icon wit
 import { Lock, Mail } from "lucide-react";
 
 // Line 125-137 replacement:
-<Lock className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+<Lock className="text-muted-foreground mx-auto mb-4 h-12 w-12" />;
 ```
 
 **Step 2: Replace envelope SVG with Lucide icon**
@@ -677,6 +696,7 @@ Expected: All tests pass
 **Step 3: Fix any issues**
 
 If tests fail, investigate and fix. Common issues:
+
 - Snapshot tests may need updating if component output changed
 - Mock setups may need updating if prop interfaces changed
 - Import paths may need adjustment

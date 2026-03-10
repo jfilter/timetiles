@@ -122,22 +122,22 @@ What becomes easier or harder? What are the migration steps? What needs testing?
 
 Embedded key files reference:
 
-| Purpose | Location |
-|---------|----------|
-| Payload config | `payload.config.ts` |
-| Config factory | `lib/config/payload-config-factory.ts` |
-| Collections | `lib/collections/` |
-| Services | `lib/services/` |
-| Job handlers | `lib/jobs/handlers/` |
-| Stage transitions | `lib/services/stage-transition.ts` |
-| Access control | `lib/services/access-control.ts` |
-| Auth middleware | `lib/middleware/auth.ts` |
-| API response helpers | `lib/utils/api-response.ts` |
-| API routes | `app/api/` |
-| React Query hooks | `lib/hooks/` |
-| Shared UI | `packages/ui/` |
-| Migrations | `migrations/` |
-| ADRs | `docs/adr/` |
+| Purpose              | Location                               |
+| -------------------- | -------------------------------------- |
+| Payload config       | `payload.config.ts`                    |
+| Config factory       | `lib/config/payload-config-factory.ts` |
+| Collections          | `lib/collections/`                     |
+| Services             | `lib/services/`                        |
+| Job handlers         | `lib/jobs/handlers/`                   |
+| Stage transitions    | `lib/services/stage-transition.ts`     |
+| Access control       | `lib/services/access-control.ts`       |
+| Auth middleware      | `lib/middleware/auth.ts`               |
+| API response helpers | `lib/utils/api-response.ts`            |
+| API routes           | `app/api/`                             |
+| React Query hooks    | `lib/hooks/`                           |
+| Shared UI            | `packages/ui/`                         |
+| Migrations           | `migrations/`                          |
+| ADRs                 | `docs/adr/`                            |
 
 Embedded conventions: named imports only, logger not console.log, numeric relationship IDs, pass `req` in hooks, context flags for loop prevention, never edit committed migrations.
 

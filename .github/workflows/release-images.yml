@@ -3,14 +3,14 @@ name: Release Docker Images
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   schedule:
     # Daily at 3:00 AM UTC (4:00 AM Berlin time)
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to build (e.g., v1.0.0, or leave empty for edge build)'
+        description: "Tag to build (e.g., v1.0.0, or leave empty for edge build)"
         required: false
         type: string
 
@@ -173,7 +173,7 @@ jobs:
         env:
           TIMETILES_IMAGE: timetiles-test
           TIMETILES_VERSION: ci
-          SKIP_IMAGE_BUILD: 'true'
+          SKIP_IMAGE_BUILD: "true"
         run: |
           cd deployment/tests
           ./run-all.sh

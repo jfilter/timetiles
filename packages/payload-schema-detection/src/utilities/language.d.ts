@@ -29,7 +29,10 @@ export declare const LANGUAGE_NAMES: Record<string, string>;
  * @param headers - Column headers
  * @returns Combined text content for language detection
  */
-export declare const extractTextForLanguageDetection: (sampleData: Record<string, unknown>[], headers: string[]) => string;
+export declare const extractTextForLanguageDetection: (
+  sampleData: Record<string, unknown>[],
+  headers: string[]
+) => string;
 /**
  * Detects the language of text using the franc library.
  *

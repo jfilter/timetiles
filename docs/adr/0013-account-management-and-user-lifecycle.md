@@ -20,12 +20,12 @@ Source: `app/api/auth/register/route.ts`
 
 **Privilege escalation prevention**: The `beforeChange` hook on the `users` collection forces safe defaults for self-registrants:
 
-| Field | Forced Value | Condition |
-|-------|-------------|-----------|
-| `role` | `"user"` | `operation === "create" && !req.user && req.payloadAPI === "REST"` |
-| `trustLevel` | `"1"` (BASIC) | Same |
-| `registrationSource` | `"self"` | Same |
-| `isActive` | `true` | Same |
+| Field                | Forced Value  | Condition                                                          |
+| -------------------- | ------------- | ------------------------------------------------------------------ |
+| `role`               | `"user"`      | `operation === "create" && !req.user && req.payloadAPI === "REST"` |
+| `trustLevel`         | `"1"` (BASIC) | Same                                                               |
+| `registrationSource` | `"self"`      | Same                                                               |
+| `isActive`           | `true`        | Same                                                               |
 
 The `req.payloadAPI === "REST"` check ensures only public HTTP requests are restricted. Local API calls (tests, seeding, system operations) bypass the restriction and can create admin users.
 
@@ -37,11 +37,11 @@ Source: `lib/collections/users.ts` (`auth.verify`)
 
 **Rate limits**: Registration has strict multi-window rate limiting per client IP:
 
-| Window | Limit |
-|--------|-------|
-| Burst | 3 per minute |
-| Hourly | 10 per hour |
-| Daily | 20 per day |
+| Window | Limit        |
+| ------ | ------------ |
+| Burst  | 3 per minute |
+| Hourly | 10 per hour  |
+| Daily  | 20 per day   |
 
 ### Password Management
 
@@ -65,13 +65,13 @@ Source: `app/api/account/change-email/route.ts`
 
 The endpoint enforces:
 
-| Check | Behavior |
-|-------|----------|
-| Password re-verification | `payload.login()` with current credentials |
-| Format validation | Regex check for valid email syntax |
-| Same-email rejection | Returns 400 if new email matches current |
-| Uniqueness check | Queries `users` collection; returns 400 if email is already in use |
-| Rate limiting | `RATE_LIMITS.EMAIL_CHANGE` (3/min, 5/hr, 10/day) per user ID |
+| Check                    | Behavior                                                           |
+| ------------------------ | ------------------------------------------------------------------ |
+| Password re-verification | `payload.login()` with current credentials                         |
+| Format validation        | Regex check for valid email syntax                                 |
+| Same-email rejection     | Returns 400 if new email matches current                           |
+| Uniqueness check         | Queries `users` collection; returns 400 if email is already in use |
+| Rate limiting            | `RATE_LIMITS.EMAIL_CHANGE` (3/min, 5/hr, 10/day) per user ID       |
 
 The email is updated directly via `payload.update()`. The new email is normalized to lowercase and trimmed before storage.
 
@@ -103,14 +103,14 @@ Source: `app/api/account/delete/cancel/route.ts`
 
 The job runs periodically, queries users where `deletionStatus === "pending_deletion"` and `deletionScheduledAt <= now`, and processes each:
 
-| Step | Action |
-|------|--------|
-| Transfer public data | Public catalogs and datasets are reassigned to the system user (see below) |
-| Delete private data | Private datasets and their events are deleted, then private catalogs |
-| Delete user resources | Scheduled imports, import files, views, and data exports are deleted |
-| Anonymize PII | Email replaced with `deleted-{id}-{timestamp}@deleted.timetiles.internal`; first/last name cleared; `isActive` set to false |
-| Invalidate sessions | Direct SQL delete on `users_sessions` for the user ID |
-| Audit log | Immutable record created in `deletion-audit-log` collection |
+| Step                  | Action                                                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Transfer public data  | Public catalogs and datasets are reassigned to the system user (see below)                                                  |
+| Delete private data   | Private datasets and their events are deleted, then private catalogs                                                        |
+| Delete user resources | Scheduled imports, import files, views, and data exports are deleted                                                        |
+| Anonymize PII         | Email replaced with `deleted-{id}-{timestamp}@deleted.timetiles.internal`; first/last name cleared; `isActive` set to false |
+| Invalidate sessions   | Direct SQL delete on `users_sessions` for the user ID                                                                       |
+| Audit log             | Immutable record created in `deletion-audit-log` collection                                                                 |
 
 Source: `lib/jobs/handlers/execute-account-deletion-job.ts`, `lib/services/account-deletion-service.ts` (`executeDeletion`)
 
@@ -122,13 +122,13 @@ Immutable records of all sensitive actions across the platform. No one can creat
 
 Tracked action domains:
 
-| Domain | Actions | Source |
-|--------|---------|--------|
-| `account.*` | `email_changed`, `password_changed`, `deletion_scheduled`, `deletion_cancelled`, `deletion_executed`, `password_verify_failed` | API routes (`app/api/account/`) |
-| `admin.*` | `trust_level_changed`, `role_changed`, `user_activated`, `user_deactivated`, `custom_quotas_changed`, `quota_overridden` | Users collection `afterChange` hook |
-| `data.*` | `catalog_visibility_changed`, `dataset_visibility_changed`, `catalog_ownership_transferred`, `dataset_ownership_transferred` | Collection `afterChange` hooks + deletion service |
-| `system.*` | `feature_flag_changed`, `settings_changed` | Settings global `afterChange` hook |
-| `import.*` | `job_stage_override`, `scheduled_import_admin_modified` | Import collection `afterChange` hooks |
+| Domain      | Actions                                                                                                                        | Source                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| `account.*` | `email_changed`, `password_changed`, `deletion_scheduled`, `deletion_cancelled`, `deletion_executed`, `password_verify_failed` | API routes (`app/api/account/`)                   |
+| `admin.*`   | `trust_level_changed`, `role_changed`, `user_activated`, `user_deactivated`, `custom_quotas_changed`, `quota_overridden`       | Users collection `afterChange` hook               |
+| `data.*`    | `catalog_visibility_changed`, `dataset_visibility_changed`, `catalog_ownership_transferred`, `dataset_ownership_transferred`   | Collection `afterChange` hooks + deletion service |
+| `system.*`  | `feature_flag_changed`, `settings_changed`                                                                                     | Settings global `afterChange` hook                |
+| `import.*`  | `job_stage_override`, `scheduled_import_admin_modified`                                                                        | Import collection `afterChange` hooks             |
 
 The `auditFieldChanges` utility in `audit-log-service.ts` provides a reusable pattern for detecting field-level diffs in Payload `afterChange` hooks and emitting audit entries for each changed field.
 
@@ -162,14 +162,14 @@ Source: `app/api/account/download-data/[exportId]/route.ts`
 
 Six trust levels control resource quotas (see ADR 0002 for the full quota table):
 
-| Level | Name | Default For |
-|-------|------|-------------|
-| 0 | Untrusted | Flagged or suspicious accounts |
-| 1 | Basic | Self-registered users |
-| 2 | Regular | Admin-promoted (collection default) |
-| 3 | Trusted | Admin-promoted |
-| 4 | Power User | Admin-promoted |
-| 5 | Unlimited | Administrators |
+| Level | Name       | Default For                         |
+| ----- | ---------- | ----------------------------------- |
+| 0     | Untrusted  | Flagged or suspicious accounts      |
+| 1     | Basic      | Self-registered users               |
+| 2     | Regular    | Admin-promoted (collection default) |
+| 3     | Trusted    | Admin-promoted                      |
+| 4     | Power User | Admin-promoted                      |
+| 5     | Unlimited  | Administrators                      |
 
 Source: `lib/constants/quota-constants.ts` (`TRUST_LEVELS`, `DEFAULT_QUOTAS`)
 
@@ -185,13 +185,13 @@ Source: `lib/services/system-user-service.ts`
 
 Configuration:
 
-| Property | Value | Reason |
-|----------|-------|--------|
-| `email` | `system@timetiles.internal` | Reserved, not a real email |
-| `isActive` | `false` | Cannot log in |
-| `trustLevel` | `0` (UNTRUSTED) | No resource quotas needed |
-| `role` | `user` | No admin privileges |
-| `password` | Random 32-byte hex | Required by Payload auth but never used |
+| Property     | Value                       | Reason                                  |
+| ------------ | --------------------------- | --------------------------------------- |
+| `email`      | `system@timetiles.internal` | Reserved, not a real email              |
+| `isActive`   | `false`                     | Cannot log in                           |
+| `trustLevel` | `0` (UNTRUSTED)             | No resource quotas needed               |
+| `role`       | `user`                      | No admin privileges                     |
+| `password`   | Random 32-byte hex          | Required by Payload auth but never used |
 
 The `SystemUserService` provides `getOrCreateSystemUser()` (idempotent, with in-memory caching of the user ID) and `isSystemUser()` for checks. The `canDeleteUser()` method in the deletion service explicitly prevents deletion of the system user.
 

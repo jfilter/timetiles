@@ -52,18 +52,18 @@ Users
 
 #### Key Relationships
 
-| Parent | Child | Cardinality | Foreign Key |
-|--------|-------|-------------|-------------|
-| Catalog | Dataset | 1:N | `dataset.catalog` |
-| Dataset | Event | 1:N | `event.dataset` |
-| Dataset | DatasetSchema | 1:N | `datasetSchema.dataset` |
-| ImportFile | ImportJob | 1:N | `importJob.importFile` |
-| ImportJob | Event | 1:N | `event.importJob` |
-| ScheduledImport | ImportFile | 1:N | `importFile.scheduledImport` |
-| User | Catalog | 1:N | `catalog.createdBy` |
-| User | ImportFile | 1:N | `importFile.user` |
-| User | ScheduledImport | 1:N | `scheduledImport.createdBy` |
-| User | View | 1:N | `view.createdBy` |
+| Parent          | Child           | Cardinality | Foreign Key                  |
+| --------------- | --------------- | ----------- | ---------------------------- |
+| Catalog         | Dataset         | 1:N         | `dataset.catalog`            |
+| Dataset         | Event           | 1:N         | `event.dataset`              |
+| Dataset         | DatasetSchema   | 1:N         | `datasetSchema.dataset`      |
+| ImportFile      | ImportJob       | 1:N         | `importJob.importFile`       |
+| ImportJob       | Event           | 1:N         | `event.importJob`            |
+| ScheduledImport | ImportFile      | 1:N         | `importFile.scheduledImport` |
+| User            | Catalog         | 1:N         | `catalog.createdBy`          |
+| User            | ImportFile      | 1:N         | `importFile.user`            |
+| User            | ScheduledImport | 1:N         | `scheduledImport.createdBy`  |
+| User            | View            | 1:N         | `view.createdBy`             |
 
 Reference: `lib/collections/catalogs.ts`, `lib/collections/datasets.ts`, `lib/collections/events.ts`, `lib/collections/import-files.ts`, `lib/collections/import-jobs/index.ts`, `lib/collections/scheduled-imports/index.ts`, `lib/collections/views/index.ts`
 
@@ -99,12 +99,12 @@ Events and datasets store copies of parent fields to enable zero-query access co
 
 #### Denormalized Fields
 
-| Collection | Field | Source | Purpose |
-|------------|-------|--------|---------|
-| Dataset | `catalogCreatorId` | `catalog.createdBy` | Owner access check without catalog join |
-| Dataset | `catalogIsPublic` | `catalog.isPublic` | Public access check without catalog join |
-| Event | `datasetIsPublic` | `dataset.isPublic AND catalog.isPublic` | Combined visibility in one field |
-| Event | `catalogOwnerId` | `catalog.createdBy` | Owner access check without any joins |
+| Collection | Field              | Source                                  | Purpose                                  |
+| ---------- | ------------------ | --------------------------------------- | ---------------------------------------- |
+| Dataset    | `catalogCreatorId` | `catalog.createdBy`                     | Owner access check without catalog join  |
+| Dataset    | `catalogIsPublic`  | `catalog.isPublic`                      | Public access check without catalog join |
+| Event      | `datasetIsPublic`  | `dataset.isPublic AND catalog.isPublic` | Combined visibility in one field         |
+| Event      | `catalogOwnerId`   | `catalog.createdBy`                     | Owner access check without any joins     |
 
 All four fields are indexed.
 
@@ -145,23 +145,23 @@ Schemas are stored in a separate `dataset-schemas` collection, one document per 
 
 #### Schema Document Structure
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `dataset` | relationship | Parent dataset |
-| `versionNumber` | number | Auto-incremented per dataset |
-| `schema` | json | JSON Schema Draft 7 |
-| `fieldMetadata` | json | Field statistics (types, cardinality, nullability) |
-| `eventCountAtCreation` | number | Snapshot of dataset size at schema creation |
-| `schemaSummary.totalFields` | number | Field count |
-| `schemaSummary.newFields` | array | Fields added in this version |
-| `schemaSummary.removedFields` | array | Fields removed in this version |
-| `schemaSummary.typeChanges` | array | Fields whose types changed (old + new) |
-| `schemaSummary.enumChanges` | array | Enum value additions/removals per field |
-| `fieldMappings` | group | Detected mappings for title, description, location, timestamp |
-| `approvalRequired` | checkbox | Whether this version needs manual approval |
-| `autoApproved` | checkbox | Whether it was auto-approved as a safe change |
-| `conflicts` | json | Conflicts requiring manual resolution |
-| `importSources` | array | Import jobs that contributed to this version |
+| Field                         | Type         | Description                                                   |
+| ----------------------------- | ------------ | ------------------------------------------------------------- |
+| `dataset`                     | relationship | Parent dataset                                                |
+| `versionNumber`               | number       | Auto-incremented per dataset                                  |
+| `schema`                      | json         | JSON Schema Draft 7                                           |
+| `fieldMetadata`               | json         | Field statistics (types, cardinality, nullability)            |
+| `eventCountAtCreation`        | number       | Snapshot of dataset size at schema creation                   |
+| `schemaSummary.totalFields`   | number       | Field count                                                   |
+| `schemaSummary.newFields`     | array        | Fields added in this version                                  |
+| `schemaSummary.removedFields` | array        | Fields removed in this version                                |
+| `schemaSummary.typeChanges`   | array        | Fields whose types changed (old + new)                        |
+| `schemaSummary.enumChanges`   | array        | Enum value additions/removals per field                       |
+| `fieldMappings`               | group        | Detected mappings for title, description, location, timestamp |
+| `approvalRequired`            | checkbox     | Whether this version needs manual approval                    |
+| `autoApproved`                | checkbox     | Whether it was auto-approved as a safe change                 |
+| `conflicts`                   | json         | Conflicts requiring manual resolution                         |
+| `importSources`               | array        | Import jobs that contributed to this version                  |
 
 #### Schema Evolution Flow
 
@@ -179,15 +179,15 @@ Safe changes (auto-approvable): new optional fields, new enum values.
 
 The dataset's `schemaConfig` group controls behavior:
 
-| Setting | Default | Effect |
-|---------|---------|--------|
-| `enabled` | false | Enable schema detection and validation |
-| `locked` | false | Require manual approval for ALL changes |
-| `autoGrow` | true | Allow automatic schema growth (new fields, new enums) |
-| `autoApproveNonBreaking` | false | Auto-approve non-breaking changes |
-| `strictValidation` | false | Block entire import on any validation failure |
-| `maxSchemaDepth` | 3 | Maximum nesting depth for schema detection |
-| `enumThreshold` | 50 | Threshold for enum detection |
+| Setting                  | Default | Effect                                                |
+| ------------------------ | ------- | ----------------------------------------------------- |
+| `enabled`                | false   | Enable schema detection and validation                |
+| `locked`                 | false   | Require manual approval for ALL changes               |
+| `autoGrow`               | true    | Allow automatic schema growth (new fields, new enums) |
+| `autoApproveNonBreaking` | false   | Auto-approve non-breaking changes                     |
+| `strictValidation`       | false   | Block entire import on any validation failure         |
+| `maxSchemaDepth`         | 3       | Maximum nesting depth for schema detection            |
+| `enumThreshold`          | 50      | Threshold for enum detection                          |
 
 Reference: `lib/collections/dataset-schemas.ts`, `lib/collections/datasets.ts` (lines 173-260), `lib/collections/import-jobs/fields.ts` (lines 93-273)
 
@@ -197,31 +197,31 @@ Each event has a `uniqueId` field (required, unique, indexed) with the format `d
 
 #### ID Strategies
 
-| Strategy | `idStrategy.type` | How `uniqueId` is computed |
-|----------|-------------------|----------------------------|
-| External | `external` | Uses a field from the source data (configured via `externalIdPath`) |
-| Computed | `computed` | SHA256 hash of selected fields (configured via `computedIdFields`) |
-| Auto | `auto` | Auto-detects duplicates by hashing all content fields |
-| Hybrid | `hybrid` | Tries external ID first, falls back to computed hash |
+| Strategy | `idStrategy.type` | How `uniqueId` is computed                                          |
+| -------- | ----------------- | ------------------------------------------------------------------- |
+| External | `external`        | Uses a field from the source data (configured via `externalIdPath`) |
+| Computed | `computed`        | SHA256 hash of selected fields (configured via `computedIdFields`)  |
+| Auto     | `auto`            | Auto-detects duplicates by hashing all content fields               |
+| Hybrid   | `hybrid`          | Tries external ID first, falls back to computed hash                |
 
 #### Duplicate Handling Strategies
 
 When a duplicate is found (matching `uniqueId` or `contentHash`), the dataset's `idStrategy.duplicateStrategy` controls what happens:
 
-| Strategy | `duplicateStrategy` | Behavior |
-|----------|---------------------|----------|
-| Skip | `skip` | Ignore the duplicate row, keep the existing event |
-| Update | `update` | Overwrite the existing event with new data |
-| Version | `version` | Create a new version of the existing event |
+| Strategy | `duplicateStrategy` | Behavior                                          |
+| -------- | ------------------- | ------------------------------------------------- |
+| Skip     | `skip`              | Ignore the duplicate row, keep the existing event |
+| Update   | `update`            | Overwrite the existing event with new data        |
+| Version  | `version`           | Create a new version of the existing event        |
 
 #### Supporting Fields on Events
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `uniqueId` | text (unique, indexed) | Primary deduplication key |
-| `sourceId` | text (indexed) | Original ID from source system |
-| `contentHash` | text (indexed) | SHA256 of data content for content-based dedup |
-| `importBatch` | number (indexed) | Batch number within an import |
+| Field         | Type                   | Purpose                                        |
+| ------------- | ---------------------- | ---------------------------------------------- |
+| `uniqueId`    | text (unique, indexed) | Primary deduplication key                      |
+| `sourceId`    | text (indexed)         | Original ID from source system                 |
+| `contentHash` | text (indexed)         | SHA256 of data content for content-based dedup |
+| `importBatch` | number (indexed)       | Batch number within an import                  |
 
 The import job tracks deduplication results in its `duplicates` group: internal duplicates (within the import), external duplicates (against existing events), and a summary with counts.
 
@@ -231,28 +231,28 @@ Reference: `lib/collections/datasets.ts` (lines 110-172, 262-291), `lib/collecti
 
 #### Event Location Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `location.latitude` | number | WGS84 latitude |
-| `location.longitude` | number | WGS84 longitude |
-| `coordinateSource.type` | select | How coordinates were obtained |
-| `coordinateSource.confidence` | number (0-1) | Confidence in coordinate accuracy |
-| `coordinateSource.validationStatus` | select | Coordinate validation result |
-| `locationName` | text | Human-readable venue/place name |
-| `geocodingInfo.originalAddress` | text | Original address string from import |
-| `geocodingInfo.geocodingStatus` | select | pending, success, failed |
-| `geocodingInfo.provider` | select | google, nominatim, manual |
-| `geocodingInfo.confidence` | number (0-1) | Geocoding confidence score |
-| `geocodingInfo.normalizedAddress` | text | Address returned by geocoder |
+| Field                               | Type         | Description                         |
+| ----------------------------------- | ------------ | ----------------------------------- |
+| `location.latitude`                 | number       | WGS84 latitude                      |
+| `location.longitude`                | number       | WGS84 longitude                     |
+| `coordinateSource.type`             | select       | How coordinates were obtained       |
+| `coordinateSource.confidence`       | number (0-1) | Confidence in coordinate accuracy   |
+| `coordinateSource.validationStatus` | select       | Coordinate validation result        |
+| `locationName`                      | text         | Human-readable venue/place name     |
+| `geocodingInfo.originalAddress`     | text         | Original address string from import |
+| `geocodingInfo.geocodingStatus`     | select       | pending, success, failed            |
+| `geocodingInfo.provider`            | select       | google, nominatim, manual           |
+| `geocodingInfo.confidence`          | number (0-1) | Geocoding confidence score          |
+| `geocodingInfo.normalizedAddress`   | text         | Address returned by geocoder        |
 
 #### Coordinate Sources
 
-| Source | `coordinateSource.type` | Description |
-|--------|-------------------------|-------------|
-| Import | `import` | Lat/lng columns existed in the source file |
-| Geocoded | `geocoded` | Address was geocoded to coordinates |
-| Manual | `manual` | User entered coordinates manually |
-| None | `none` | No coordinates available |
+| Source   | `coordinateSource.type` | Description                                |
+| -------- | ----------------------- | ------------------------------------------ |
+| Import   | `import`                | Lat/lng columns existed in the source file |
+| Geocoded | `geocoded`              | Address was geocoded to coordinates        |
+| Manual   | `manual`                | User entered coordinates manually          |
+| None     | `none`                  | No coordinates available                   |
 
 When source is `import`, additional metadata tracks which columns contained the coordinates and their format (decimal, DMS, etc.).
 
@@ -260,13 +260,13 @@ When source is `import`, additional metadata tracks which columns contained the 
 
 The `coordinateSource.validationStatus` field flags quality issues:
 
-| Status | Meaning |
-|--------|---------|
-| `valid` | Coordinates are within normal ranges |
-| `out_of_range` | Latitude outside [-90, 90] or longitude outside [-180, 180] |
-| `suspicious_zero` | Both coordinates are exactly 0 (likely missing data) |
-| `swapped` | Latitude and longitude appear to be swapped |
-| `invalid` | Coordinates could not be parsed |
+| Status            | Meaning                                                     |
+| ----------------- | ----------------------------------------------------------- |
+| `valid`           | Coordinates are within normal ranges                        |
+| `out_of_range`    | Latitude outside [-90, 90] or longitude outside [-180, 180] |
+| `suspicious_zero` | Both coordinates are exactly 0 (likely missing data)        |
+| `swapped`         | Latitude and longitude appear to be swapped                 |
+| `invalid`         | Coordinates could not be parsed                             |
 
 #### Database Indexes
 

@@ -220,22 +220,23 @@ docker compose pull
 ```
 
 **Breaking changes:** None
+
 - Environment variables unchanged
 - Volume mounts unchanged
 - Just switching from local build to pre-built image
 
 ## Files to Create/Modify
 
-| File | Action |
-|------|--------|
-| `.github/workflows/release-images.yml` | Create |
-| `deployment/Dockerfile.allinone` | Create |
-| `deployment/allinone/supervisord.conf` | Create |
-| `deployment/allinone/nginx.conf` | Create |
-| `deployment/docker-compose.prod.yml` | Modify |
-| `deployment/docker-compose.override.yml.example` | Create |
-| `deployment/.env.production.example` | Modify |
-| `deployment/bootstrap/steps/05-clone-repo.sh` | Simplify |
-| `deployment/bootstrap/steps/07-deploy.sh` | Simplify |
-| `apps/docs/content/admin-guide/deployment.mdx` | Update |
-| `apps/docs/content/admin-guide/deployment-options.mdx` | Create |
+| File                                                   | Action   |
+| ------------------------------------------------------ | -------- |
+| `.github/workflows/release-images.yml`                 | Create   |
+| `deployment/Dockerfile.allinone`                       | Create   |
+| `deployment/allinone/supervisord.conf`                 | Create   |
+| `deployment/allinone/nginx.conf`                       | Create   |
+| `deployment/docker-compose.prod.yml`                   | Modify   |
+| `deployment/docker-compose.override.yml.example`       | Create   |
+| `deployment/.env.production.example`                   | Modify   |
+| `deployment/bootstrap/steps/05-clone-repo.sh`          | Simplify |
+| `deployment/bootstrap/steps/07-deploy.sh`              | Simplify |
+| `apps/docs/content/admin-guide/deployment.mdx`         | Update   |
+| `apps/docs/content/admin-guide/deployment-options.mdx` | Create   |

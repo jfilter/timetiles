@@ -13,6 +13,7 @@
 ## Task 1: Add restic to Bootstrap System Setup
 
 **Files:**
+
 - Modify: `deployment/bootstrap/steps/01-system-setup.sh:14-29`
 
 **Step 1: Add restic to apt packages**
@@ -42,9 +43,11 @@ Add `restic` to the apt-get install list in step 01:
 **Step 2: Verify installation**
 
 Run in a test environment or check package exists:
+
 ```bash
 apt-cache show restic | head -5
 ```
+
 Expected: Package info with version 0.15+ (Ubuntu 24.04 has restic in repos)
 
 **Step 3: Commit**
@@ -59,6 +62,7 @@ git commit -m "feat(deploy): add restic to bootstrap packages"
 ## Task 2: Add Restic Config Variables
 
 **Files:**
+
 - Modify: `deployment/bootstrap/bootstrap.conf.example`
 - Modify: `deployment/.env.production.example`
 
@@ -138,6 +142,7 @@ git commit -m "feat(deploy): add restic backup configuration variables"
 ## Task 3: Generate RESTIC_PASSWORD in Bootstrap
 
 **Files:**
+
 - Modify: `deployment/bootstrap/steps/06-configure.sh`
 
 **Step 1: Add RESTIC_PASSWORD generation**
@@ -183,6 +188,7 @@ git commit -m "feat(deploy): generate RESTIC_PASSWORD in bootstrap"
 ## Task 4: Replace Backup Command with Restic
 
 **Files:**
+
 - Modify: `deployment/timetiles` (backup section, lines 221-441)
 
 **Step 1: Add restic helper functions**
@@ -533,6 +539,7 @@ git commit -m "feat(deploy): replace backup system with restic"
 ## Task 5: Replace Restore Command with Restic
 
 **Files:**
+
 - Modify: `deployment/timetiles` (restore section)
 
 **Step 1: Replace the restore command**
@@ -674,6 +681,7 @@ git commit -m "feat(deploy): replace restore command with restic"
 ## Task 6: Update Test Script for Restic
 
 **Files:**
+
 - Modify: `deployment/bootstrap/test-multipass.sh`
 
 **Step 1: Update test_backup_restore function**
@@ -743,6 +751,7 @@ git commit -m "test(deploy): update multipass test for restic backups"
 ## Task 7: Update GitHub Workflow Test
 
 **Files:**
+
 - Modify: `.github/workflows/test-deployment.yml`
 
 **Step 1: Update backup test assertions**
@@ -750,34 +759,34 @@ git commit -m "test(deploy): update multipass test for restic backups"
 Find the backup/restore test section and update to test restic:
 
 ```yaml
-      - name: Test backup
-        run: |
-          cd deployment
-          ./timetiles backup db
-          ./timetiles backup uploads
-          ./timetiles backup list
-          ./timetiles backup verify
+- name: Test backup
+  run: |
+    cd deployment
+    ./timetiles backup db
+    ./timetiles backup uploads
+    ./timetiles backup list
+    ./timetiles backup verify
 
-      - name: Verify backup snapshots
-        run: |
-          cd deployment
-          source .env.production
-          SNAPSHOT_COUNT=$(restic -r "$RESTIC_REPOSITORY" snapshots --json | jq length)
-          echo "Snapshot count: $SNAPSHOT_COUNT"
-          [ "$SNAPSHOT_COUNT" -ge 2 ] || exit 1
+- name: Verify backup snapshots
+  run: |
+    cd deployment
+    source .env.production
+    SNAPSHOT_COUNT=$(restic -r "$RESTIC_REPOSITORY" snapshots --json | jq length)
+    echo "Snapshot count: $SNAPSHOT_COUNT"
+    [ "$SNAPSHOT_COUNT" -ge 2 ] || exit 1
 ```
 
 **Step 2: Update restore test**
 
 ```yaml
-      - name: Test restore
-        run: |
-          cd deployment
-          # Get latest snapshot ID
-          source .env.production
-          SNAPSHOT=$(restic -r "$RESTIC_REPOSITORY" snapshots --json --latest 1 | jq -r '.[0].short_id')
-          echo "Restoring snapshot: $SNAPSHOT"
-          echo "y" | ./timetiles restore "$SNAPSHOT"
+- name: Test restore
+  run: |
+    cd deployment
+    # Get latest snapshot ID
+    source .env.production
+    SNAPSHOT=$(restic -r "$RESTIC_REPOSITORY" snapshots --json --latest 1 | jq -r '.[0].short_id')
+    echo "Restoring snapshot: $SNAPSHOT"
+    echo "y" | ./timetiles restore "$SNAPSHOT"
 ```
 
 **Step 3: Commit**
@@ -792,6 +801,7 @@ git commit -m "test(deploy): update CI workflow for restic backups"
 ## Task 8: Update Documentation
 
 **Files:**
+
 - Modify: `apps/docs/content/admin-guide/maintenance.mdx`
 - Modify: `deployment/README.md`
 
@@ -799,7 +809,7 @@ git commit -m "test(deploy): update CI workflow for restic backups"
 
 Replace the backup procedures section with:
 
-```markdown
+````markdown
 ### Backup Procedures
 
 TimeTiles uses [restic](https://restic.net/) for encrypted, deduplicated backups with optional offsite storage.
@@ -834,6 +844,7 @@ timetiles backup auto
 # Setup daily backups with offsite sync
 timetiles backup auto --offsite
 ```
+````
 
 #### Restore from Backup
 
@@ -864,10 +875,12 @@ AWS_SECRET_ACCESS_KEY=your-secret
 For write-only credentials (recommended for security), use S3 lifecycle rules to expire old backups instead of `timetiles backup prune`.
 
 The backup system automatically:
+
 - Encrypts all backups with RESTIC_PASSWORD
 - Deduplicates data to save space
 - Applies retention policy: 7 daily, 4 weekly, 12 monthly
-```
+
+````
 
 **Step 2: Update deployment/README.md**
 
@@ -884,20 +897,22 @@ Uses restic for encrypted, deduplicated backups.
 ./timetiles backup list         # Show snapshots
 ./timetiles backup prune        # Apply retention policy
 ./timetiles restore latest      # Restore most recent
-```
+````
 
 Configuration in `.env.production`:
+
 - `RESTIC_PASSWORD` - Encryption key (auto-generated)
 - `RESTIC_REPOSITORY` - Local repo path
 - `RESTIC_OFFSITE_REPOSITORY` - S3 URL (optional)
-```
+
+````
 
 **Step 3: Commit**
 
 ```bash
 git add apps/docs/content/admin-guide/maintenance.mdx deployment/README.md
 git commit -m "docs: update backup documentation for restic"
-```
+````
 
 ---
 
@@ -936,16 +951,16 @@ git push origin main
 
 ## Summary
 
-| Task | Description |
-|------|-------------|
-| 1 | Add restic to bootstrap packages |
-| 2 | Add config variables |
-| 3 | Generate RESTIC_PASSWORD |
-| 4 | Replace backup command |
-| 5 | Replace restore command |
-| 6 | Update multipass test |
-| 7 | Update CI workflow |
-| 8 | Update documentation |
-| 9 | Final integration test |
+| Task | Description                      |
+| ---- | -------------------------------- |
+| 1    | Add restic to bootstrap packages |
+| 2    | Add config variables             |
+| 3    | Generate RESTIC_PASSWORD         |
+| 4    | Replace backup command           |
+| 5    | Replace restore command          |
+| 6    | Update multipass test            |
+| 7    | Update CI workflow               |
+| 8    | Update documentation             |
+| 9    | Final integration test           |
 
 Total: 9 tasks, ~45-60 minutes estimated implementation time.

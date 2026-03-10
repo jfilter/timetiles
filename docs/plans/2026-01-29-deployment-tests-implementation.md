@@ -13,6 +13,7 @@
 ## Task 1: Create Test Directory Structure
 
 **Files:**
+
 - Create: `deployment/tests/unit/.gitkeep`
 - Create: `deployment/tests/integration/.gitkeep`
 - Create: `deployment/tests/helpers/.gitkeep`
@@ -46,6 +47,7 @@ git commit -m "chore: create deployment test directory structure"
 ## Task 2: Create Common Test Helper
 
 **Files:**
+
 - Create: `deployment/tests/helpers/common.bash`
 
 **Step 1: Create helper file**
@@ -166,6 +168,7 @@ git commit -m "feat(tests): add common test helper with assertions"
 ## Task 3: Create Docker Test Helper
 
 **Files:**
+
 - Create: `deployment/tests/helpers/docker.bash`
 
 **Step 1: Create helper file**
@@ -299,6 +302,7 @@ git commit -m "feat(tests): add docker test helper with compose utilities"
 ## Task 4: Create Unit Tests for common.sh Print Functions
 
 **Files:**
+
 - Create: `deployment/tests/unit/common-lib.bats`
 
 **Step 1: Create test file**
@@ -449,6 +453,7 @@ git commit -m "feat(tests): add unit tests for common.sh print and utility funct
 ## Task 5: Add Unit Tests for common.sh Verification Functions
 
 **Files:**
+
 - Modify: `deployment/tests/unit/common-lib.bats`
 
 **Step 1: Add verification function tests**
@@ -520,6 +525,7 @@ git commit -m "feat(tests): add unit tests for common.sh verification functions"
 ## Task 6: Create Unit Tests for state.sh
 
 **Files:**
+
 - Create: `deployment/tests/unit/state-lib.bats`
 
 **Step 1: Create test file**
@@ -787,6 +793,7 @@ git commit -m "feat(tests): add comprehensive unit tests for state.sh"
 ## Task 7: Create Unit Tests for CLI Parsing
 
 **Files:**
+
 - Create: `deployment/tests/unit/cli-parsing.bats`
 
 **Step 1: Create test file**
@@ -923,6 +930,7 @@ git commit -m "feat(tests): add unit tests for timetiles CLI parsing"
 ## Task 8: Create Setup Test Environment Script
 
 **Files:**
+
 - Create: `deployment/tests/helpers/setup-test-env.sh`
 
 **Step 1: Create setup script**
@@ -1055,6 +1063,7 @@ git commit -m "feat(tests): add setup-test-env.sh for integration test setup"
 ## Task 9: Create Teardown Test Environment Script
 
 **Files:**
+
 - Create: `deployment/tests/helpers/teardown-test-env.sh`
 
 **Step 1: Create teardown script**
@@ -1111,6 +1120,7 @@ git commit -m "feat(tests): add teardown-test-env.sh for cleanup"
 ## Task 10: Create Integration Tests for Docker Lifecycle
 
 **Files:**
+
 - Create: `deployment/tests/integration/docker-lifecycle.bats`
 
 **Step 1: Create test file**
@@ -1203,6 +1213,7 @@ git commit -m "feat(tests): add integration tests for docker container lifecycle
 ## Task 11: Create Integration Tests for Backup/Restore
 
 **Files:**
+
 - Create: `deployment/tests/integration/backup-restore.bats`
 
 **Step 1: Create test file**
@@ -1394,6 +1405,7 @@ git commit -m "feat(tests): add integration tests for backup and restore"
 ## Task 12: Create Integration Tests for Nginx Routing
 
 **Files:**
+
 - Create: `deployment/tests/integration/nginx-routing.bats`
 
 **Step 1: Create test file**
@@ -1505,6 +1517,7 @@ git commit -m "feat(tests): add integration tests for nginx routing and security
 ## Task 13: Create Unit Test Runner
 
 **Files:**
+
 - Create: `deployment/tests/run-unit.sh`
 
 **Step 1: Create runner script**
@@ -1572,6 +1585,7 @@ git commit -m "feat(tests): add unit test runner script"
 ## Task 14: Create Integration Test Runner
 
 **Files:**
+
 - Create: `deployment/tests/run-integration.sh`
 
 **Step 1: Create runner script**
@@ -1646,6 +1660,7 @@ git commit -m "feat(tests): add integration test runner script"
 ## Task 15: Create Combined Test Runner
 
 **Files:**
+
 - Create: `deployment/tests/run-all.sh`
 
 **Step 1: Create runner script**
@@ -1722,6 +1737,7 @@ git commit -m "feat(tests): add combined test runner script"
 ## Task 16: Rework test-multipass.sh as VM Test Runner
 
 **Files:**
+
 - Modify: `deployment/bootstrap/test-multipass.sh`
 
 **Step 1: Replace test-multipass.sh content**
@@ -1908,6 +1924,7 @@ git commit -m "refactor(tests): rework test-multipass.sh to use BATS test suite"
 ## Task 17: Update GHA Workflow
 
 **Files:**
+
 - Modify: `.github/workflows/test-deployment.yml`
 
 **Step 1: Read current workflow**
@@ -1919,6 +1936,7 @@ cat .github/workflows/test-deployment.yml
 **Step 2: Replace with simplified workflow that uses test scripts**
 
 The new workflow should:
+
 1. Keep setup steps (checkout, Docker buildx)
 2. Delegate all testing to `deployment/tests/run-all.sh`
 3. Keep failure log collection
@@ -1931,9 +1949,9 @@ on:
   workflow_dispatch:
     inputs:
       debug:
-        description: 'Enable debug logging'
+        description: "Enable debug logging"
         required: false
-        default: 'false'
+        default: "false"
 
 jobs:
   test-production-deployment:
@@ -1992,6 +2010,7 @@ git commit -m "refactor(ci): simplify GHA workflow to use BATS test suite"
 ## Task 18: Update Makefile
 
 **Files:**
+
 - Modify: `Makefile`
 
 **Step 1: Add deployment test targets**
@@ -2034,6 +2053,7 @@ git commit -m "feat: add deployment test targets to Makefile"
 ## Task 19: Remove .gitkeep Files and Final Cleanup
 
 **Files:**
+
 - Delete: `deployment/tests/unit/.gitkeep`
 - Delete: `deployment/tests/integration/.gitkeep`
 - Delete: `deployment/tests/helpers/.gitkeep`

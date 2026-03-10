@@ -27,14 +27,14 @@ Building a component?
 
 ### Decision: Where Does This Component Go?
 
-| Question | YES → packages/ui | NO → apps/web |
-|----------|-------------------|---------------|
-| Is it purely presentational? | ✅ | ❌ |
-| Reusable across apps? | ✅ | ❌ |
-| No business logic? | ✅ | ❌ |
-| Generic name (Button, Card, Input)? | ✅ | ❌ |
-| Domain-specific (Dataset, Event)? | ❌ | ✅ |
-| Uses TimeTiles data/APIs? | ❌ | ✅ |
+| Question                            | YES → packages/ui | NO → apps/web |
+| ----------------------------------- | ----------------- | ------------- |
+| Is it purely presentational?        | ✅                | ❌            |
+| Reusable across apps?               | ✅                | ❌            |
+| No business logic?                  | ✅                | ❌            |
+| Generic name (Button, Card, Input)? | ✅                | ❌            |
+| Domain-specific (Dataset, Event)?   | ❌                | ✅            |
+| Uses TimeTiles data/APIs?           | ❌                | ✅            |
 
 **Rule of thumb:** If the component name mentions TimeTiles concepts (Dataset, Event, Catalog), it stays in apps/web.
 
@@ -49,28 +49,28 @@ What am I styling?
 
 ### Common Mistakes & Fixes
 
-| Mistake | Why It's Wrong | Fix |
-|---------|----------------|-----|
-| `bg-[#f8f5f0]` | Hardcoded colors break theming | Use `bg-cartographic-parchment` or `bg-background` |
-| `bg-cartographic-blue` in Button | Breaks multi-theme support | Use `bg-primary` (semantic token) |
-| DatasetCard in packages/ui | Domain-specific, not reusable | Move to apps/web/components |
-| `font-sans` for hero headline | Wrong hierarchy | Use `font-serif` for display typography |
-| Creating new generic component | May already exist | Check [COMPONENT_STATUS.md](COMPONENT_STATUS.md) first |
+| Mistake                          | Why It's Wrong                 | Fix                                                    |
+| -------------------------------- | ------------------------------ | ------------------------------------------------------ |
+| `bg-[#f8f5f0]`                   | Hardcoded colors break theming | Use `bg-cartographic-parchment` or `bg-background`     |
+| `bg-cartographic-blue` in Button | Breaks multi-theme support     | Use `bg-primary` (semantic token)                      |
+| DatasetCard in packages/ui       | Domain-specific, not reusable  | Move to apps/web/components                            |
+| `font-sans` for hero headline    | Wrong hierarchy                | Use `font-serif` for display typography                |
+| Creating new generic component   | May already exist              | Check [COMPONENT_STATUS.md](COMPONENT_STATUS.md) first |
 
 ### Quick Reference Links
 
-| Topic | Location |
-|-------|----------|
-| Component patterns (shadcn/ui) | Line 306 (below) |
-| Color usage guidelines | Line 130 (below) |
-| Logo system & brand assets | [LOGOS.md](LOGOS.md) |
-| Content & voice guidelines | [CONTENT_VOICE.md](CONTENT_VOICE.md) |
-| Design patterns (forms, errors, loading) | [PATTERNS.md](PATTERNS.md) |
-| Icon system | [ICONS.md](ICONS.md) |
-| Making components themable | [THEMING.md](THEMING.md) |
-| Component status & variants | [COMPONENT_STATUS.md](COMPONENT_STATUS.md) |
-| Header component details | [components/HEADER.md](components/HEADER.md) |
-| Version history | [CHANGELOG.md](CHANGELOG.md) |
+| Topic                                    | Location                                     |
+| ---------------------------------------- | -------------------------------------------- |
+| Component patterns (shadcn/ui)           | Line 306 (below)                             |
+| Color usage guidelines                   | Line 130 (below)                             |
+| Logo system & brand assets               | [LOGOS.md](LOGOS.md)                         |
+| Content & voice guidelines               | [CONTENT_VOICE.md](CONTENT_VOICE.md)         |
+| Design patterns (forms, errors, loading) | [PATTERNS.md](PATTERNS.md)                   |
+| Icon system                              | [ICONS.md](ICONS.md)                         |
+| Making components themable               | [THEMING.md](THEMING.md)                     |
+| Component status & variants              | [COMPONENT_STATUS.md](COMPONENT_STATUS.md)   |
+| Header component details                 | [components/HEADER.md](components/HEADER.md) |
+| Version history                          | [CHANGELOG.md](CHANGELOG.md)                 |
 
 ---
 

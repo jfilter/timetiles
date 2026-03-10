@@ -14,13 +14,13 @@ TimeTiles geocodes event locations during file imports so events can be displaye
 
 The geocoding system uses a four-component facade pattern:
 
-| Component | File | Responsibility |
-|-----------|------|----------------|
-| `GeocodingService` | `lib/services/geocoding/geocoding-service.ts` | Public API facade; lazy initialization; loads settings from the `settings` global |
-| `ProviderManager` | `lib/services/geocoding/provider-manager.ts` | Loads provider configs from DB, creates `node-geocoder` instances, sorts by priority |
-| `GeocodingOperations` | `lib/services/geocoding/geocoding-operations.ts` | Orchestrates cache lookup, provider fallback, batch processing, confidence scoring |
-| `CacheManager` | `lib/services/geocoding/cache-manager.ts` | Reads/writes the `location-cache` collection; normalizes addresses; enforces TTL |
-| `ProviderRateLimiter` | `lib/services/geocoding/provider-rate-limiter.ts` | In-memory token bucket per provider; singleton instance |
+| Component             | File                                              | Responsibility                                                                       |
+| --------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `GeocodingService`    | `lib/services/geocoding/geocoding-service.ts`     | Public API facade; lazy initialization; loads settings from the `settings` global    |
+| `ProviderManager`     | `lib/services/geocoding/provider-manager.ts`      | Loads provider configs from DB, creates `node-geocoder` instances, sorts by priority |
+| `GeocodingOperations` | `lib/services/geocoding/geocoding-operations.ts`  | Orchestrates cache lookup, provider fallback, batch processing, confidence scoring   |
+| `CacheManager`        | `lib/services/geocoding/cache-manager.ts`         | Reads/writes the `location-cache` collection; normalizes addresses; enforces TTL     |
+| `ProviderRateLimiter` | `lib/services/geocoding/provider-rate-limiter.ts` | In-memory token bucket per provider; singleton instance                              |
 
 A simplified entry point (`lib/services/geocoding.ts`) exposes `initializeGeocoding(payload)` and `geocodeAddress(address)` for use by the import pipeline.
 
@@ -28,11 +28,11 @@ A simplified entry point (`lib/services/geocoding.ts`) exposes `initializeGeocod
 
 Providers are configured through the Payload admin panel (`geocoding-providers` collection, defined in `lib/collections/geocoding-providers.ts`). Three types are supported:
 
-| Provider | `node-geocoder` mapping | Default Priority | Default Rate Limit | API Key Required |
-|----------|-------------------------|------------------|--------------------|------------------|
-| Nominatim (OSM) | `openstreetmap` | 10 | 1 req/s | No |
-| OpenCage | `opencage` | 5 | 10 req/s | Yes |
-| Google Maps | `google` | 1 | 50 req/s | Yes |
+| Provider        | `node-geocoder` mapping | Default Priority | Default Rate Limit | API Key Required |
+| --------------- | ----------------------- | ---------------- | ------------------ | ---------------- |
+| Nominatim (OSM) | `openstreetmap`         | 10               | 1 req/s            | No               |
+| OpenCage        | `opencage`              | 5                | 10 req/s           | Yes              |
+| Google Maps     | `google`                | 1                | 50 req/s           | Yes              |
 
 Each provider document stores: `name`, `type`, `enabled`, `priority`, `rateLimit`, provider-specific config (API keys, region bias, bounds), `tags` for filtering, and read-only usage `statistics`.
 
@@ -42,14 +42,14 @@ When no providers are configured in the database, `ProviderManager.buildDefaultP
 
 Settings are loaded from the `settings` global (`lib/globals/settings.ts`, `geocoding` group) with these defaults:
 
-| Setting | Default | Effect |
-|---------|---------|--------|
-| `enabled` | `true` | Master switch for geocoding |
-| `fallbackEnabled` | `true` | On failure, cascade to next provider by priority |
-| `providerSelection.strategy` | `"priority"` | Select providers by numeric priority (lower = higher) |
-| `providerSelection.requiredTags` | `[]` | Filter providers by tags (only when strategy is `"tag-based"`) |
-| `caching.enabled` | `true` | Use the `location-cache` collection |
-| `caching.ttlDays` | `30` | Days before a cached result expires |
+| Setting                          | Default      | Effect                                                         |
+| -------------------------------- | ------------ | -------------------------------------------------------------- |
+| `enabled`                        | `true`       | Master switch for geocoding                                    |
+| `fallbackEnabled`                | `true`       | On failure, cascade to next provider by priority               |
+| `providerSelection.strategy`     | `"priority"` | Select providers by numeric priority (lower = higher)          |
+| `providerSelection.requiredTags` | `[]`         | Filter providers by tags (only when strategy is `"tag-based"`) |
+| `caching.enabled`                | `true`       | Use the `location-cache` collection                            |
+| `caching.ttlDays`                | `30`         | Days before a cached result expires                            |
 
 The geocoding flow for a single address (`GeocodingOperations.geocode()`):
 
@@ -94,11 +94,11 @@ The `geocode-batch` job handler (`lib/jobs/handlers/geocode-batch-job.ts`) conne
 
 `GeocodingOperations.calculateConfidence()` assigns a 0.0--1.0 confidence score per provider:
 
-| Provider | Logic |
-|----------|-------|
-| Google | Maps `extra.confidence` string: `exact_match` = 0.95, `high` = 0.85, `medium` = 0.7, default = 0.6 |
-| OpenCage | Uses `extra.confidence` number directly (default 0.7) |
-| Nominatim | Base 0.6; +0.2 if street number and name present; +0.1 if city and state present |
+| Provider  | Logic                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------- |
+| Google    | Maps `extra.confidence` string: `exact_match` = 0.95, `high` = 0.85, `medium` = 0.7, default = 0.6 |
+| OpenCage  | Uses `extra.confidence` number directly (default 0.7)                                              |
+| Nominatim | Base 0.6; +0.2 if street number and name present; +0.1 if city and state present                   |
 
 Results with confidence below 0.5 are rejected by `isResultAcceptable()`.
 

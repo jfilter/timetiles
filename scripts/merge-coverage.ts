@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 /**
  * Script to merge coverage reports from all packages in the monorepo.
- * 
+ *
  * This script collects coverage data from individual packages and creates
  * a unified coverage report at the root level.
- * 
+ *
  * @module
  */
 import { execSync } from "child_process";
@@ -54,12 +54,9 @@ try {
   });
 
   // Generate text-summary for single number
-  const summaryOutput = execSync(
-    `npx nyc report --temp-dir ${NYC_OUTPUT_DIR} --reporter=text-summary`,
-    {
-      encoding: "utf8",
-    }
-  );
+  const summaryOutput = execSync(`npx nyc report --temp-dir ${NYC_OUTPUT_DIR} --reporter=text-summary`, {
+    encoding: "utf8",
+  });
 
   // Generate full reports
   execSync(
@@ -84,7 +81,7 @@ try {
   if (existsSync(jsonSummaryPath)) {
     const summary = JSON.parse(readFileSync(jsonSummaryPath, "utf8"));
     const total = summary.total;
-    
+
     console.log("\n📈 Coverage Breakdown:");
     console.log(`   Lines:      ${total.lines.pct}%`);
     console.log(`   Statements: ${total.statements.pct}%`);

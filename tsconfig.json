@@ -1,4 +1,3 @@
 {
   "extends": "@timetiles/typescript-config/base.json"
 }
-

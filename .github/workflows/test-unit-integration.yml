@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           lfs: true
-          fetch-depth: 0  # Fetch all history for SonarCloud
+          fetch-depth: 0 # Fetch all history for SonarCloud
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
