@@ -34,11 +34,11 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
-    "glob": "^13.0.0",
-    "nodemon": "^3.1.11",
+    "glob": "^13.0.6",
+    "nodemon": "^3.1.14",
     "tsx": "catalog:",
-    "typedoc": "^0.28.16",
-    "typedoc-plugin-markdown": "^4.9.0",
+    "typedoc": "^0.28.17",
+    "typedoc-plugin-markdown": "^4.10.0",
     "typescript": "catalog:"
   }
 }
