@@ -8,6 +8,7 @@ import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequ
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { logger } from "@/lib/logger";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { StageTransitionService } from "@/lib/services/stage-transition";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -190,6 +191,29 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     // Skip stage transition processing when called from recovery service
     if (req.context?.skipStageTransition) {
       return doc;
+    }
+
+    // Audit admin stage overrides
+    if (operation === "update" && previousDoc && req.user?.role === "admin") {
+      const fromStage = previousDoc.stage;
+      const toStage = doc.stage;
+
+      if (
+        (fromStage === PROCESSING_STAGE.COMPLETED && toStage !== PROCESSING_STAGE.COMPLETED) ||
+        (fromStage === PROCESSING_STAGE.FAILED && toStage !== PROCESSING_STAGE.FAILED)
+      ) {
+        await auditLog(req.payload, {
+          action: AUDIT_ACTIONS.IMPORT_JOB_STAGE_OVERRIDE,
+          userId: req.user.id,
+          userEmail: req.user.email,
+          details: {
+            importJobId: doc.id,
+            fromStage,
+            toStage,
+            overrideType: fromStage === PROCESSING_STAGE.COMPLETED ? "completed_state_reset" : "failed_recovery",
+          },
+        });
+      }
     }
 
     // Track import job creation for quota

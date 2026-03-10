@@ -10,11 +10,11 @@
  */
 
 // Import all collections
+import AuditLog from "@/lib/collections/audit-log";
 import Catalogs from "@/lib/collections/catalogs";
 import DataExports from "@/lib/collections/data-exports";
 import DatasetSchemas from "@/lib/collections/dataset-schemas";
 import Datasets from "@/lib/collections/datasets";
-import DeletionAuditLog from "@/lib/collections/deletion-audit-log";
 import Events from "@/lib/collections/events";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
 import ImportFiles from "@/lib/collections/import-files";
@@ -34,6 +34,7 @@ import { Settings } from "@/lib/globals/settings";
 // Import jobs
 import {
   analyzeDuplicatesJob,
+  auditLogIpCleanupJob,
   cacheCleanupJob,
   cleanupApprovalLocksJob,
   cleanupStuckScheduledImportsJob,
@@ -60,7 +61,7 @@ export const COLLECTIONS = {
   "data-exports": DataExports,
   datasets: Datasets,
   "dataset-schemas": DatasetSchemas,
-  "deletion-audit-log": DeletionAuditLog,
+  "audit-log": AuditLog,
   "import-files": ImportFiles,
   "import-jobs": ImportJobs,
   "scheduled-imports": ScheduledImports,
@@ -96,7 +97,7 @@ export const ALL_COLLECTIONS = [
   UserUsage,
   GeocodingProviders,
   LocationCache,
-  DeletionAuditLog,
+  AuditLog,
   DataExports,
   // Configuration
   Views,
@@ -124,6 +125,7 @@ export const ALL_JOBS = [
   schemaMaintenanceJob,
   dataExportJob,
   dataExportCleanupJob,
+  auditLogIpCleanupJob,
 ];
 
 // Common upload configuration

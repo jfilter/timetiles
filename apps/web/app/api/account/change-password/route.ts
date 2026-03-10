@@ -13,6 +13,7 @@ import { getPayload } from "payload";
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
 import { verifyPassword } from "@/lib/utils/auth-helpers";
@@ -64,6 +65,13 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     try {
       await verifyPassword(payload, user, currentPassword);
     } catch {
+      await auditLog(payload, {
+        action: AUDIT_ACTIONS.PASSWORD_VERIFY_FAILED,
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress: clientId,
+        details: { context: "password_change" },
+      });
       return unauthorized("Current password is incorrect");
     }
 
@@ -74,6 +82,13 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       data: {
         password: newPassword,
       },
+    });
+
+    await auditLog(payload, {
+      action: AUDIT_ACTIONS.PASSWORD_CHANGED,
+      userId: user.id,
+      userEmail: user.email,
+      ipAddress: clientId,
     });
 
     logger.info({ userId: user.id, clientId }, "Password changed successfully");

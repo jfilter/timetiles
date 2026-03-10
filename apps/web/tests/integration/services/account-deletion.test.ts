@@ -32,7 +32,7 @@ describe.sequential("Account Deletion Service", () => {
     const env = await createIntegrationTestEnvironment();
     payload = env.payload;
     cleanup = env.cleanup;
-    truncate = () => env.seedManager.truncate(["users", "catalogs", "datasets", "deletion-audit-log"]);
+    truncate = () => env.seedManager.truncate(["users", "catalogs", "datasets", "audit-log"]);
   });
 
   afterAll(async () => {
@@ -165,7 +165,7 @@ describe.sequential("Account Deletion Service", () => {
   });
 
   describe("scheduleDeletion", () => {
-    it("should schedule deletion with 7-day grace period", async () => {
+    it("should schedule deletion with grace period", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
@@ -355,15 +355,17 @@ describe.sequential("Account Deletion Service", () => {
       await deletionService.executeDeletion(users.testUser.id);
 
       const auditLogs = await payload.find({
-        collection: "deletion-audit-log",
-        where: { deletedUserId: { equals: users.testUser.id } },
+        collection: "audit-log",
+        where: {
+          and: [{ userId: { equals: users.testUser.id } }, { action: { equals: "account.deletion_executed" } }],
+        },
         overrideAccess: true,
       });
 
       expect(auditLogs.docs.length).toBe(1);
-      expect(auditLogs.docs[0].deletedUserId).toBe(users.testUser.id);
-      expect(auditLogs.docs[0].deletedUserEmailHash).toBeDefined();
-      expect(auditLogs.docs[0].deletionType).toBe("scheduled");
+      expect(auditLogs.docs[0].userId).toBe(users.testUser.id);
+      expect(auditLogs.docs[0].userEmailHash).toBeDefined();
+      expect((auditLogs.docs[0].details as Record<string, unknown>).deletionType).toBe("scheduled");
     });
   });
 

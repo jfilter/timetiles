@@ -22,6 +22,7 @@
 import type { CollectionConfig, Payload, PayloadRequest } from "payload";
 
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
@@ -252,6 +253,32 @@ const ScheduledImports: CollectionConfig = {
               // Schedule was disabled - decrement usage
               await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
             }
+          }
+        }
+
+        // Audit admin modifications to other users' scheduled imports
+        if (operation === "update" && req.user && ownerId && req.user.id !== ownerId && req.user.role === "admin") {
+          try {
+            const owner = await req.payload.findByID({
+              collection: "users",
+              id: ownerId,
+              overrideAccess: true,
+              depth: 0,
+            });
+            await auditLog(req.payload, {
+              action: AUDIT_ACTIONS.SCHEDULED_IMPORT_ADMIN_MODIFIED,
+              userId: ownerId,
+              userEmail: owner.email,
+              performedBy: req.user.id,
+              details: {
+                scheduledImportId: doc.id,
+                scheduledImportName: doc.name,
+                enabledChanged: previousDoc?.enabled !== doc.enabled,
+                newEnabled: doc.enabled,
+              },
+            });
+          } catch {
+            /* audit is best-effort */
           }
         }
 

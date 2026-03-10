@@ -38,6 +38,9 @@ export { processPendingRetriesJob } from "./handlers/process-pending-retries-job
 export { dataExportCleanupJob } from "./handlers/data-export-cleanup-job";
 export { dataExportJob } from "./handlers/data-export-job";
 
+// Audit log job handlers
+export { auditLogIpCleanupJob } from "./handlers/audit-log-ip-cleanup-job";
+
 // Re-export utility types
 export type {
   AnalyzeDuplicatesJobInput,

@@ -116,11 +116,23 @@ Source: `lib/jobs/handlers/execute-account-deletion-job.ts`, `lib/services/accou
 
 A completion email with transfer/deletion summary is sent to the original email address before anonymization.
 
-**Deletion audit log** (`deletion-audit-log` collection):
+**Audit log** (`audit-log` collection):
 
-Immutable records that no one can update or delete via the API (all access returns `false`; records are created only via `overrideAccess: true` in the service). Fields include a SHA-256 hash of the deleted email (not the raw email), hashed IP address, deletion type (`self`, `admin`, `scheduled`), and JSON summaries of transferred/deleted data.
+Immutable records of all sensitive actions across the platform. No one can create, update, or delete via the API (all access returns `false`; records are created only via `overrideAccess: true` through the `AuditLogService`). Common fields include `action` type, `userId`, SHA-256 hashed email, raw IP address (cleared after 30 days by background job), permanent IP hash, timestamp, and a `details` JSON field for action-specific data.
 
-Source: `lib/collections/deletion-audit-log.ts`
+Tracked action domains:
+
+| Domain | Actions | Source |
+|--------|---------|--------|
+| `account.*` | `email_changed`, `password_changed`, `deletion_scheduled`, `deletion_cancelled`, `deletion_executed`, `password_verify_failed` | API routes (`app/api/account/`) |
+| `admin.*` | `trust_level_changed`, `role_changed`, `user_activated`, `user_deactivated`, `custom_quotas_changed`, `quota_overridden` | Users collection `afterChange` hook |
+| `data.*` | `catalog_visibility_changed`, `dataset_visibility_changed`, `catalog_ownership_transferred`, `dataset_ownership_transferred` | Collection `afterChange` hooks + deletion service |
+| `system.*` | `feature_flag_changed`, `settings_changed` | Settings global `afterChange` hook |
+| `import.*` | `job_stage_override`, `scheduled_import_admin_modified` | Import collection `afterChange` hooks |
+
+The `auditFieldChanges` utility in `audit-log-service.ts` provides a reusable pattern for detecting field-level diffs in Payload `afterChange` hooks and emitting audit entries for each changed field.
+
+Source: `lib/collections/audit-log.ts`, `lib/services/audit-log-service.ts`
 
 ### Data Export
 
@@ -186,9 +198,9 @@ The `SystemUserService` provides `getOrCreateSystemUser()` (idempotent, with in-
 ## Consequences
 
 - **Anti-enumeration adds email overhead**: Every registration attempt for an existing email sends a notification email. High-volume enumeration attempts would generate many emails, but the strict rate limits (3/min, 20/day per IP) bound this cost.
-- **Grace period delays deletion**: The 7-day grace period means account deletion is not immediate. Users who need instant deletion must contact an admin, who can trigger deletion directly via the service.
+- **Grace period delays deletion**: The 30-day grace period means account deletion is not immediate. Users who need instant deletion must contact an admin, who can trigger deletion directly via the service.
 - **Public data survives deletion**: Transferring public catalogs and datasets to the system user means deleting an account does not remove publicly shared data. This is intentional for data availability but means users cannot fully retract public contributions.
 - **No automated trust promotion**: All trust level changes require admin action. A future automated promotion system (based on account age, data quality, etc.) could reduce admin burden.
 - **Email change has no re-verification step**: The current implementation updates the email directly without requiring the user to verify the new address. A future improvement could send a verification email to the new address before committing the change.
 - **Data exports are stored on disk**: Export ZIP files are written to a local directory (`DATA_EXPORT_DIR` or `.exports`), not object storage. This works for the single-process architecture (ADR 0001) but would need adaptation for distributed deployments.
-- **Audit log is append-only by design**: The `deletion-audit-log` collection denies all create/update/delete via access control, with records written only through `overrideAccess: true` in the service layer. This provides a tamper-resistant audit trail but means corrections require direct database access.
+- **Audit log is append-only by design**: The `audit-log` collection denies all create/update/delete via access control, with records written only through `overrideAccess: true` in the `AuditLogService`. This provides a tamper-resistant audit trail for all sensitive account operations (email changes, password changes, deletions, failed auth attempts). Raw IP addresses are retained for 30 days for forensic use, then cleared by a daily background job while preserving the permanent hash. Corrections require direct database access.

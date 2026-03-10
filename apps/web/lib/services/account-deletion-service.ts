@@ -5,7 +5,6 @@
  * @category Services
  */
 import { sql } from "@payloadcms/db-postgres";
-import { createHash } from "crypto";
 import type { Payload } from "payload";
 
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
@@ -24,6 +23,7 @@ import type {
   ExecuteDeletionResult,
   ScheduleDeletionResult,
 } from "./account-deletion-types";
+import { AUDIT_ACTIONS, auditLog } from "./audit-log-service";
 import { getSystemUserService, SYSTEM_USER_EMAIL } from "./system-user-service";
 
 export type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult };
@@ -31,13 +31,10 @@ export type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleD
 const logger = createLogger("account-deletion-service");
 
 /** Grace period in days before account is permanently deleted. */
-export const DELETION_GRACE_PERIOD_DAYS = 7;
+export const DELETION_GRACE_PERIOD_DAYS = 30;
 
 /** Error message for user not found. */
 const USER_NOT_FOUND = "User not found";
-
-const hashEmail = (email: string): string => createHash("sha256").update(email.toLowerCase()).digest("hex");
-const hashIpAddress = (ip: string): string => createHash("sha256").update(ip).digest("hex");
 
 /**
  * Service for managing account deletion.
@@ -319,7 +316,7 @@ export class AccountDeletionService {
 
     try {
       // Transfer public data to system user
-      await this.transferPublicData(userId, systemUser.id, result);
+      await this.transferPublicData(userId, systemUser.id, user.email, result);
 
       // Delete private data
       await this.deletePrivateData(userId, result);
@@ -352,7 +349,12 @@ export class AccountDeletionService {
   /**
    * Transfer public catalogs and datasets to system user.
    */
-  private async transferPublicData(userId: number, systemUserId: number, result: ExecuteDeletionResult): Promise<void> {
+  private async transferPublicData(
+    userId: number,
+    systemUserId: number,
+    userEmail: string,
+    result: ExecuteDeletionResult
+  ): Promise<void> {
     const isPublicFilter = [{ isPublic: { equals: true } }];
 
     // Transfer public catalogs
@@ -366,6 +368,12 @@ export class AccountDeletionService {
         id: catalog.id,
         data: { createdBy: systemUserId },
         overrideAccess: true,
+      });
+      await auditLog(this.payload, {
+        action: AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED,
+        userId,
+        userEmail,
+        details: { catalogId: catalog.id, reason: "account_deletion", newOwnerId: systemUserId },
       });
       result.dataTransferred.catalogs++;
     }
@@ -381,6 +389,12 @@ export class AccountDeletionService {
         id: dataset.id,
         data: { createdBy: systemUserId },
         overrideAccess: true,
+      });
+      await auditLog(this.payload, {
+        action: AUDIT_ACTIONS.DATASET_OWNERSHIP_TRANSFERRED,
+        userId,
+        userEmail,
+        details: { datasetId: dataset.id, reason: "account_deletion", newOwnerId: systemUserId },
       });
       result.dataTransferred.datasets++;
     }
@@ -539,20 +553,18 @@ export class AccountDeletionService {
     await this.invalidateAllSessions(userId);
 
     // Create audit log entry
-    await this.payload.create({
-      collection: "deletion-audit-log",
-      data: {
-        deletedUserId: userId,
-        deletedUserEmailHash: hashEmail(user.email),
-        deletedAt: new Date().toISOString(),
-        deletionRequestedAt: user.deletionRequestedAt ?? undefined,
-        deletedBy: deletedBy ?? undefined,
+    await auditLog(this.payload, {
+      action: AUDIT_ACTIONS.DELETION_EXECUTED,
+      userId,
+      userEmail: user.email,
+      performedBy: deletedBy,
+      ipAddress,
+      details: {
         deletionType,
+        deletionRequestedAt: user.deletionRequestedAt ?? undefined,
         dataTransferred: result.dataTransferred,
         dataDeleted: result.dataDeleted,
-        ipAddressHash: ipAddress ? hashIpAddress(ipAddress) : undefined,
       },
-      overrideAccess: true,
     });
   }
 

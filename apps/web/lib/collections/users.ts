@@ -20,6 +20,7 @@ import {
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
 } from "@/lib/constants/quota-constants";
+import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { createCommonConfig } from "./shared-fields";
@@ -436,7 +437,76 @@ const Users: CollectionConfig = {
     // Note: User-usage records are created lazily via QuotaService.getOrCreateUsageRecord()
     // on first quota check. This avoids FK constraint issues that occur when trying to
     // create them in afterChange hooks (the user transaction hasn't committed yet).
-    afterChange: [],
+    afterChange: [
+      async ({ doc, previousDoc, operation, req }) => {
+        if (operation !== "update" || !previousDoc) return doc;
+
+        const targetUserId = doc.id;
+        const performedBy = req.user?.id !== targetUserId ? req.user?.id : undefined;
+
+        // Audit trust level, role, and custom quota changes
+        await auditFieldChanges(
+          req.payload,
+          {
+            previousDoc: previousDoc as Record<string, unknown>,
+            doc: doc as unknown as Record<string, unknown>,
+            userId: targetUserId,
+            userEmail: doc.email,
+            performedBy,
+          },
+          [
+            {
+              action: AUDIT_ACTIONS.TRUST_LEVEL_CHANGED,
+              fieldPath: "trustLevel",
+              detailsFn: (oldVal, newVal) => ({
+                previousTrustLevel: oldVal,
+                newTrustLevel: newVal,
+              }),
+            },
+            {
+              action: AUDIT_ACTIONS.ROLE_CHANGED,
+              fieldPath: "role",
+              detailsFn: (oldVal, newVal) => ({
+                previousRole: oldVal,
+                newRole: newVal,
+              }),
+            },
+            {
+              action: AUDIT_ACTIONS.CUSTOM_QUOTAS_CHANGED,
+              fieldPath: "customQuotas",
+            },
+          ]
+        );
+
+        // Audit isActive as separate activate/deactivate actions
+        if (previousDoc.isActive !== doc.isActive) {
+          const action = doc.isActive ? AUDIT_ACTIONS.USER_ACTIVATED : AUDIT_ACTIONS.USER_DEACTIVATED;
+          await auditLog(req.payload, {
+            action,
+            userId: targetUserId,
+            userEmail: doc.email,
+            performedBy,
+            details: { previousValue: previousDoc.isActive, newValue: doc.isActive },
+          });
+        }
+
+        // Audit manual quota overrides (quotas changed WITHOUT trust level change)
+        if (
+          previousDoc.trustLevel === doc.trustLevel &&
+          JSON.stringify(previousDoc.quotas) !== JSON.stringify(doc.quotas)
+        ) {
+          await auditLog(req.payload, {
+            action: AUDIT_ACTIONS.QUOTA_OVERRIDDEN,
+            userId: targetUserId,
+            userEmail: doc.email,
+            performedBy,
+            details: { previousQuotas: previousDoc.quotas, newQuotas: doc.quotas },
+          });
+        }
+
+        return doc;
+      },
+    ],
   },
 };
 

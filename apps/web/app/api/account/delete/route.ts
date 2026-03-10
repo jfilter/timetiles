@@ -2,7 +2,7 @@
  * API endpoint for scheduling account deletion.
  *
  * This endpoint allows users to schedule their account for deletion.
- * A 7-day grace period is applied during which the user can cancel.
+ * A grace period is applied during which the user can cancel.
  * Requires password re-verification for security.
  *
  * @module
@@ -14,6 +14,7 @@ import { getPayload } from "payload";
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
 import { verifyPassword } from "@/lib/utils/auth-helpers";
@@ -68,6 +69,13 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     try {
       await verifyPassword(payload, user, password);
     } catch {
+      await auditLog(payload, {
+        action: AUDIT_ACTIONS.PASSWORD_VERIFY_FAILED,
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress: clientId,
+        details: { context: "account_deletion" },
+      });
       return unauthorized("Invalid password");
     }
 
@@ -92,6 +100,14 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
 
     // Schedule deletion
     const result = await deletionService.scheduleDeletion(user.id);
+
+    await auditLog(payload, {
+      action: AUDIT_ACTIONS.DELETION_SCHEDULED,
+      userId: user.id,
+      userEmail: user.email,
+      ipAddress: clientId,
+      details: { deletionScheduledAt: result.deletionScheduledAt },
+    });
 
     logger.info(
       {

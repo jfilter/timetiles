@@ -12,6 +12,7 @@ import { getPayload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
 import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import config from "@/payload.config";
 
 export const POST = async (request: Request): Promise<Response> => {
@@ -35,6 +36,12 @@ export const POST = async (request: Request): Promise<Response> => {
     // Cancel deletion
     const deletionService = getAccountDeletionService(payload);
     await deletionService.cancelDeletion(user.id);
+
+    await auditLog(payload, {
+      action: AUDIT_ACTIONS.DELETION_CANCELLED,
+      userId: user.id,
+      userEmail: user.email,
+    });
 
     logger.info({ userId: user.id }, "Account deletion cancelled");
 

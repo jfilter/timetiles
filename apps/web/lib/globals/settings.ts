@@ -9,6 +9,8 @@
  */
 import type { GlobalConfig } from "payload";
 
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+
 export const Settings: GlobalConfig = {
   slug: "settings",
   admin: {
@@ -17,6 +19,53 @@ export const Settings: GlobalConfig = {
   access: {
     read: () => true,
     update: ({ req: { user } }) => user?.role === "admin",
+  },
+  hooks: {
+    afterChange: [
+      async ({ doc, previousDoc, req }) => {
+        if (!req.user || !previousDoc) return doc;
+
+        // Detect feature flag changes
+        const prevFlags = (previousDoc.featureFlags ?? {}) as Record<string, unknown>;
+        const newFlags = (doc.featureFlags ?? {}) as Record<string, unknown>;
+        const changedFlags: Record<string, { from: unknown; to: unknown }> = {};
+
+        for (const key of new Set([...Object.keys(prevFlags), ...Object.keys(newFlags)])) {
+          if (prevFlags[key] !== newFlags[key]) {
+            changedFlags[key] = { from: prevFlags[key], to: newFlags[key] };
+          }
+        }
+
+        if (Object.keys(changedFlags).length > 0) {
+          await auditLog(req.payload, {
+            action: AUDIT_ACTIONS.FEATURE_FLAG_CHANGED,
+            userId: req.user.id,
+            userEmail: req.user.email,
+            details: { changedFlags },
+          });
+        }
+
+        // Detect geocoding or newsletter config changes
+        const prevGeo = JSON.stringify(previousDoc.geocoding ?? {});
+        const newGeo = JSON.stringify(doc.geocoding ?? {});
+        const prevNewsletter = JSON.stringify(previousDoc.newsletter ?? {});
+        const newNewsletter = JSON.stringify(doc.newsletter ?? {});
+
+        if (prevGeo !== newGeo || prevNewsletter !== newNewsletter) {
+          await auditLog(req.payload, {
+            action: AUDIT_ACTIONS.SETTINGS_CHANGED,
+            userId: req.user.id,
+            userEmail: req.user.email,
+            details: {
+              geocodingChanged: prevGeo !== newGeo,
+              newsletterChanged: prevNewsletter !== newNewsletter,
+            },
+          });
+        }
+
+        return doc;
+      },
+    ],
   },
   fields: [
     {
