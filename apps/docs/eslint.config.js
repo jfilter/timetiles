@@ -1,3 +1,11 @@
+/**
+ * ESLint configuration for the docs application.
+ *
+ * Minimal config — oxlint handles 436 rules via .oxlintrc.json.
+ * ESLint only checks the 6 rules oxlint cannot implement, plus MDX linting.
+ *
+ * @module
+ */
 import mdxConfig, { defaultIgnores } from "@timetiles/eslint-config/mdx";
 
 /** @type {import("eslint").Linter.Config[]} */
@@ -20,10 +28,7 @@ export default [
   {
     files: ["**/*.mdx"],
     rules: {
-      "@typescript-eslint/no-unused-vars": "off", // MDX imports are used in JSX
-      "no-unused-vars": "off", // MDX imports are used in JSX
-      "unused-imports/no-unused-imports": "off", // MDX imports are used in JSX components
-      "sonarjs/max-lines": ["error", { maximum: 1000 }], // Documentation files can be longer
+      "jsdoc/require-file-overview": "off", // MDX files don't need JSDoc
     },
   },
   // Override for _meta.js files - simple config files don't need JSDoc
@@ -33,63 +38,14 @@ export default [
       "jsdoc/require-file-overview": "off",
     },
   },
-  // Scripts configuration - Node.js environment with relaxed rules (TypeScript only)
+  // Scripts — disable jsdoc requirement for non-module scripts
   {
     files: ["scripts/**/*.ts"],
     languageOptions: {
-      globals: {
-        process: "readonly",
-        console: "readonly",
-        __dirname: "readonly",
-        __filename: "readonly",
-        Buffer: "readonly",
-        global: "readonly",
-        setTimeout: "readonly",
-        clearTimeout: "readonly",
-        setInterval: "readonly",
-        clearInterval: "readonly",
-        setImmediate: "readonly",
-        clearImmediate: "readonly",
-        fetch: "readonly",
-        AbortController: "readonly",
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
-    },
-    rules: {
-      "no-console": "off", // Scripts can use console for output
-      "no-undef": "off", // Node.js globals are available
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-        },
-      ],
-      "sonarjs/slow-regex": "off", // Scripts may need complex regex patterns
-      "regexp/no-super-linear-backtracking": "off", // Allow complex regex for scripts
-      "sonarjs/cognitive-complexity": "off", // Scripts can be complex
-      "sonarjs/no-ignored-exceptions": "off", // Scripts can have catch-all error handling
-      "sonarjs/anchor-precedence": "off", // Allow regex patterns as needed
-      "sonarjs/updated-loop-counter": "off", // Allow loop counter updates
-      "prefer-const": "off", // Scripts may need let
-      "@typescript-eslint/prefer-regexp-exec": "off", // Allow match method
-      "sonarjs/prefer-regexp-exec": "off", // Allow match method
-      "promise/prefer-await-to-then": "off", // Allow then/catch
-      "no-useless-escape": "off", // Scripts may need escapes
-      "regexp/no-useless-escape": "off", // Scripts may need escapes
-    },
-  },
-  // Disallow JavaScript files in scripts directory
-  {
-    files: ["scripts/**/*.js"],
-    rules: {
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector: "Program",
-          message:
-            "JavaScript files are not allowed in the scripts directory. Please use TypeScript (.ts) files instead.",
-        },
-      ],
     },
   },
 ];

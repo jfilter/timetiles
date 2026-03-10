@@ -15,7 +15,7 @@
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "typecheck:fast": "tsgo --noEmit",
     "lint:fast": "oxlint --config ../../.oxlintrc.json .",
-    "format": "eslint app content scripts --cache --fix --quiet && oxfmt --write ."
+    "format": "oxlint --config ../../.oxlintrc.json --fix . && oxfmt --write ."
   },
   "dependencies": {
     "@timetiles/assets": "workspace:*",
