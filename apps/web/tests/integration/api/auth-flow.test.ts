@@ -12,9 +12,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
-
-import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
+import { TRUST_LEVELS } from "../../../lib/constants/quota-constants.js";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment.js";
 
 describe.sequential("Authentication Flow", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -51,7 +50,7 @@ describe.sequential("Authentication Flow", () => {
           // Try to set admin role (should be forced to user)
           role: "admin",
           // Try to set high trust level (should be forced to BASIC)
-          trustLevel: String(TRUST_LEVELS.TRUSTED),
+          trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
         disableVerificationEmail: true,
         req: {
@@ -66,7 +65,7 @@ describe.sequential("Authentication Flow", () => {
       // Security: Should be forced to 'user' role
       expect(user.role).toBe("user");
       // Security: Should be forced to BASIC trust level
-      expect(user.trustLevel).toBe(String(TRUST_LEVELS.BASIC));
+      expect(user.trustLevel).toBe(`${TRUST_LEVELS.BASIC}`);
       // Should be marked as self-registered
       expect(user.registrationSource).toBe("self");
       // Should be active
@@ -87,7 +86,7 @@ describe.sequential("Authentication Flow", () => {
           firstName: "Test",
           lastName: "User",
           role: "admin",
-          trustLevel: String(TRUST_LEVELS.TRUSTED),
+          trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
         disableVerificationEmail: true,
       });
@@ -96,7 +95,7 @@ describe.sequential("Authentication Flow", () => {
       expect(user.email).toBe(testEmail);
       // Local API preserves the requested role and trust level
       expect(user.role).toBe("admin");
-      expect(user.trustLevel).toBe(String(TRUST_LEVELS.TRUSTED));
+      expect(user.trustLevel).toBe(`${TRUST_LEVELS.TRUSTED}`);
     });
 
     it("initializes quotas based on trust level", async () => {
@@ -109,6 +108,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: testEmail,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -129,6 +129,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: testEmail,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -147,7 +148,7 @@ describe.sequential("Authentication Flow", () => {
       expect(initialResult.docs.length).toBe(0);
 
       // Trigger lazy creation via quota service
-      const { getQuotaService } = await import("@/lib/services/quota-service");
+      const { getQuotaService } = await import("../../../lib/services/quota-service.js");
       const quotaService = getQuotaService(payload);
       const usageRecord = await quotaService.getOrCreateUsageRecord(user.id);
 
@@ -178,6 +179,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: testEmail,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -201,6 +203,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: testEmail,
           password: testPassword,
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -229,6 +232,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: testEmail,
           password: testPassword,
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -273,6 +277,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: testEmail,
           password: "CorrectPassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -316,6 +321,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: testEmail,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -372,6 +378,7 @@ describe.sequential("Authentication Flow", () => {
           email: `admin-${timestamp}@test.com`,
           password: "AdminPassword123!",
           role: "admin",
+          trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
         overrideAccess: true, // Bypass access control for test setup
         disableVerificationEmail: true,
@@ -384,7 +391,7 @@ describe.sequential("Authentication Flow", () => {
           email: `newuser-${timestamp}@test.com`,
           password: "UserPassword123!",
           role: "editor",
-          trustLevel: String(TRUST_LEVELS.TRUSTED),
+          trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
         user: adminUser,
         disableVerificationEmail: true,
@@ -392,7 +399,7 @@ describe.sequential("Authentication Flow", () => {
 
       // Admin-created user should retain the specified role
       expect(newUser.role).toBe("editor");
-      expect(newUser.trustLevel).toBe(String(TRUST_LEVELS.TRUSTED));
+      expect(newUser.trustLevel).toBe(`${TRUST_LEVELS.TRUSTED}`);
       // Admin-created users should be marked as admin-created
       expect(newUser.registrationSource).toBe("admin");
     });
@@ -410,6 +417,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: testEmail,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -434,6 +442,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: `user1-${timestamp}@test.com`,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -443,6 +452,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: `user2-${timestamp}@test.com`,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -457,7 +467,7 @@ describe.sequential("Authentication Flow", () => {
 
       // User1 should only see their own profile
       expect(result.docs.length).toBe(1);
-      expect(result.docs[0].id).toBe(user1.id);
+      expect(result.docs[0]!.id).toBe(user1.id);
     });
 
     it("prevents non-admin from updating their role with access control", async () => {
@@ -469,6 +479,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: `rolechange-${timestamp}@test.com`,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -499,6 +510,7 @@ describe.sequential("Authentication Flow", () => {
           email: `admin-${timestamp}@test.com`,
           password: "AdminPassword123!",
           role: "admin",
+          trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
         overrideAccess: true,
         disableVerificationEmail: true,
@@ -510,6 +522,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: `regular-${timestamp}@test.com`,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });
@@ -524,7 +537,7 @@ describe.sequential("Authentication Flow", () => {
       });
 
       expect(result.docs.length).toBe(1);
-      expect(result.docs[0].email).toBe(regularUser.email);
+      expect(result.docs[0]!.email).toBe(regularUser.email);
     });
 
     it("blocks unauthenticated access with access control enforced", async () => {
@@ -537,6 +550,7 @@ describe.sequential("Authentication Flow", () => {
         data: {
           email: `noauth-${timestamp}@test.com`,
           password: "SecurePassword123!",
+          trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
       });

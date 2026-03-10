@@ -187,7 +187,7 @@ describe.sequential("Combined Transformations Integration", () => {
     const importJob = await waitForSchemaDetection(importFile.id);
 
     // Approve schema
-    await simulateSchemaApproval(importJob.id);
+    await simulateSchemaApproval(String(importJob!.id));
 
     // Complete the rest of the pipeline
     const completed = await runJobsUntilComplete(importFile.id);
@@ -196,7 +196,7 @@ describe.sequential("Combined Transformations Integration", () => {
     // Reload import job to see detected field mappings
     const completedJob = await payload.findByID({
       collection: "import-jobs",
-      id: importJob.id,
+      id: importJob!.id,
     });
 
     // Verify field mappings were detected (after import transform applied)
@@ -313,7 +313,7 @@ Festival,2500,Music festival`;
     const importJob = await waitForSchemaDetection(importFile.id);
 
     // Approve schema
-    await simulateSchemaApproval(importJob.id);
+    await simulateSchemaApproval(String(importJob!.id));
 
     // Complete the rest of the pipeline
     const completed = await runJobsUntilComplete(importFile.id);
@@ -384,10 +384,10 @@ Workshop,Learning session,2024-02-20`;
     const importJob = await waitForSchemaDetection(importFile.id);
 
     // Field mapping should detect the TRANSFORMED field name "titel"
-    expect(importJob.detectedFieldMappings).toBeDefined();
-    expect(importJob.detectedFieldMappings.titlePath).toBe("titel");
-    expect(importJob.detectedFieldMappings.descriptionPath).toBe("description");
-    expect(importJob.detectedFieldMappings.timestampPath).toBe("date");
+    expect(importJob!.detectedFieldMappings).toBeDefined();
+    expect(importJob!.detectedFieldMappings!.titlePath).toBe("titel");
+    expect(importJob!.detectedFieldMappings!.descriptionPath).toBe("description");
+    expect(importJob!.detectedFieldMappings!.timestampPath).toBe("date");
   });
 
   // Test 4: Import transform + type transform interaction
@@ -450,7 +450,7 @@ Event B,200,Second event`;
     const importJob = await waitForSchemaDetection(importFile.id);
 
     // Approve schema
-    await simulateSchemaApproval(importJob.id);
+    await simulateSchemaApproval(String(importJob!.id));
 
     // Complete the rest of the pipeline
     const completed = await runJobsUntilComplete(importFile.id);

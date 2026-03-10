@@ -9,8 +9,8 @@
 import { sql } from "@payloadcms/db-postgres";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { TEST_CREDENTIALS } from "../../constants/test-credentials";
-import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
+import { TEST_CREDENTIALS } from "../../constants/test-credentials.js";
+import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment.js";
 
 describe("Session Authentication", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -101,7 +101,7 @@ describe("Session Authentication", () => {
 
       // Decode JWT to see session ID
       const tokenParts = loginResult.token!.split(".");
-      const payloadPart = JSON.parse(Buffer.from(tokenParts[1], "base64").toString("utf8"));
+      const payloadPart = JSON.parse(Buffer.from(tokenParts[1]!, "base64").toString("utf8"));
       console.log("JWT payload:", JSON.stringify(payloadPart, null, 2));
 
       // Validate using payload.auth() with Bearer token

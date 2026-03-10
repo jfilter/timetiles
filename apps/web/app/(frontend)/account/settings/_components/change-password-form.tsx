@@ -57,7 +57,6 @@ export const ChangePasswordForm = () => {
           throw new Error(`New password must be at least ${MIN_PASSWORD_LENGTH} characters`);
         }
 
-        // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
         if (newPassword !== confirmPassword) {
           throw new Error("New passwords do not match");
         }

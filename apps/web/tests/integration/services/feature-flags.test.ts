@@ -494,6 +494,7 @@ describe.sequential("Feature Flag Service", () => {
 
         // Attempt to create scheduled import - should fail access control
         await expect(
+          // @ts-expect-error -- `user` is a valid runtime option for access control testing
           payload.create({
             collection: "scheduled-imports",
             data: {
@@ -536,6 +537,7 @@ describe.sequential("Feature Flag Service", () => {
         clearFeatureFlagCache();
 
         // Should succeed
+        // @ts-expect-error -- `user` is a valid runtime option for access control testing
         const schedule = await payload.create({
           collection: "scheduled-imports",
           data: {

@@ -293,16 +293,16 @@ describe.sequential("Database-backed Seed Operations", () => {
       expect(mainMenu).toBeDefined();
       expect(mainMenu.navItems).toBeDefined();
       expect(Array.isArray(mainMenu.navItems)).toBe(true);
-      expect(mainMenu.navItems.length).toBeGreaterThan(0);
+      expect(mainMenu.navItems!.length).toBeGreaterThan(0);
 
-      mainMenu.navItems.forEach((item: any) => {
+      mainMenu.navItems!.forEach((item: any) => {
         expect(item).toHaveProperty("label");
         expect(item).toHaveProperty("url");
         expect(typeof item.label).toBe("string");
         expect(typeof item.url).toBe("string");
       });
 
-      const labels = mainMenu.navItems.map((item: any) => item.label);
+      const labels = mainMenu.navItems!.map((item: any) => item.label);
       expect(labels).toContain("Home");
       expect(labels).toContain("Explore");
     });

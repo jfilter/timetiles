@@ -488,7 +488,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
 
         // Approve the schema (this now properly triggers the approval workflow)
-        await simulateSchemaApproval(job.id, true);
+        await simulateSchemaApproval(String(job.id), true);
         logger.debug("✓ Schema approval update sent");
 
         const resumedJob = await runJobsUntilImportJobStage(
@@ -591,7 +591,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
         // Get job and reject the schema
         const job = await waitForImportJobStage(importFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
-        await simulateSchemaApproval(job.id, false); // Reject
+        await simulateSchemaApproval(String(job.id), false); // Reject
         logger.debug("✓ Schema rejected manually");
 
         // Continue processing (should fail)

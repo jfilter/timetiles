@@ -9,7 +9,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
+import { TRUST_LEVELS } from "../../../lib/constants/quota-constants.js";
+import { createIntegrationTestEnvironment } from "../../setup/integration/environment.js";
 
 describe.sequential("Password Reset Flow", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -38,6 +39,7 @@ describe.sequential("Password Reset Flow", () => {
       data: {
         email: testEmail,
         password: "SecurePassword123!",
+        trustLevel: `${TRUST_LEVELS.BASIC}`,
       },
       disableVerificationEmail: true,
     });

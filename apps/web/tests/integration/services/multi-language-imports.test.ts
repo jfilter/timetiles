@@ -149,7 +149,7 @@ describe.sequential("Multi-Language Import Tests", () => {
       payload,
       importFile.id,
       (importJob) =>
-        importJob.stage === "validate-schema" || importJob.stage === "processing" || importJob.stage === "completed",
+        importJob.stage === "validate-schema" || importJob.stage === "create-events" || importJob.stage === "completed",
       {
         maxIterations: 20,
         onPending: ({ iteration, importJob }) => {

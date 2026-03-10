@@ -75,7 +75,6 @@ if (!process.env.NODE_ENV) {
 process.env.PAYLOAD_SECRET = "test-secret-key";
 process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 // Allow private/localhost URLs in integration tests (SSRF validation bypass for test servers)
-// eslint-disable-next-line turbo/no-undeclared-env-vars -- Integration test env var for SSRF bypass
 process.env.ALLOW_PRIVATE_URLS = "true";
 
 // Payload logging is now properly controlled via logger and loggingLevels configuration

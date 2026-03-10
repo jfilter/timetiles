@@ -165,7 +165,7 @@ describe.sequential("Schema Inference Service", () => {
       // Delete one event
       await payload.delete({
         collection: "events",
-        id: eventIds[0],
+        id: eventIds[0]!,
         overrideAccess: true,
       });
 

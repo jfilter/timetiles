@@ -27,10 +27,10 @@ describe.sequential("Schema Approval Workflow", () => {
   let adminUser: any;
   let editorUser: any;
   let viewerUser: any;
-  let testCatalogId: string;
-  let testDatasetId: string;
-  let testImportFileId: string;
-  let testImportJobId: string;
+  let testCatalogId: number;
+  let testDatasetId: number;
+  let testImportFileId: number;
+  let testImportJobId: number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
@@ -154,7 +154,11 @@ describe.sequential("Schema Approval Workflow", () => {
       });
 
       expect(approvedSchema._status).toBe("published");
-      expect(approvedSchema.approvedBy.id).toBe(adminUser.id);
+      expect(
+        typeof approvedSchema.approvedBy === "object" && approvedSchema.approvedBy !== null
+          ? approvedSchema.approvedBy.id
+          : approvedSchema.approvedBy
+      ).toBe(adminUser.id);
       expect(approvedSchema.approvalNotes).toBe("Looks good, approved");
     });
 
@@ -186,7 +190,11 @@ describe.sequential("Schema Approval Workflow", () => {
       });
 
       expect(approvedSchema._status).toBe("published");
-      expect(approvedSchema.approvedBy.id).toBe(editorUser.id);
+      expect(
+        typeof approvedSchema.approvedBy === "object" && approvedSchema.approvedBy !== null
+          ? approvedSchema.approvedBy.id
+          : approvedSchema.approvedBy
+      ).toBe(editorUser.id);
     });
 
     it("prevents unauthorized users from approving schema", async () => {
@@ -317,7 +325,7 @@ describe.sequential("Schema Approval Workflow", () => {
     });
 
     it("auto-approves enum value additions", async () => {
-      // Update dataset current schema to include enum
+      // Update dataset schema config to allow auto-growth
       await payload.update({
         collection: "datasets",
         id: testDatasetId,
@@ -325,13 +333,6 @@ describe.sequential("Schema Approval Workflow", () => {
           schemaConfig: {
             locked: false,
             autoGrow: true,
-          },
-          currentSchema: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              status: { type: "string", enum: ["active", "pending"] },
-            },
           },
         },
       });
@@ -434,8 +435,8 @@ describe.sequential("Schema Approval Workflow", () => {
 
       // Verify versions were created correctly
       expect(versions).toHaveLength(3);
-      expect(versions[2].versionNumber).toBe(4);
-      expect(versions[2]._status).toBe("published");
+      expect(versions[2]!.versionNumber).toBe(4);
+      expect(versions[2]!._status).toBe("published");
 
       // Query schema history
       const schemaHistory = await payload.find({
@@ -447,8 +448,8 @@ describe.sequential("Schema Approval Workflow", () => {
       });
 
       expect(schemaHistory.docs.length).toBeGreaterThanOrEqual(3);
-      expect(schemaHistory.docs[0].versionNumber).toBe(4);
-      expect(schemaHistory.docs[0]._status).toBe("published");
+      expect(schemaHistory.docs[0]!.versionNumber).toBe(4);
+      expect(schemaHistory.docs[0]!._status).toBe("published");
     });
 
     it("updates dataset current schema when approved", async () => {
@@ -534,7 +535,9 @@ describe.sequential("Schema Approval Workflow", () => {
 
       // Verify the schema was created successfully
       expect(schema._status).toBe("published");
-      expect(schema.approvedBy.id).toBe(adminUser.id);
+      expect(
+        typeof schema.approvedBy === "object" && schema.approvedBy !== null ? schema.approvedBy.id : schema.approvedBy
+      ).toBe(adminUser.id);
 
       // In a real system, the approval would trigger the import job to continue
       // The job would move from "await-approval" to the next stage
@@ -631,8 +634,9 @@ describe.sequential("Schema Approval Workflow", () => {
         },
       });
 
-      expect(conflictSchema.conflicts).toHaveLength(2);
-      expect(conflictSchema.conflicts[0].severity).toBe("error");
+      const conflicts = conflictSchema.conflicts as Array<{ severity: string }>;
+      expect(conflicts).toHaveLength(2);
+      expect(conflicts[0]!.severity).toBe("error");
       expect(conflictSchema.approvalRequired).toBe(true);
     });
   });
@@ -645,7 +649,6 @@ describe.sequential("Schema Approval Workflow", () => {
         data: {
           name: "Other Catalog",
           slug: `other-catalog-${Date.now()}`,
-          editors: [], // No editors
         },
       });
 
@@ -662,8 +665,9 @@ describe.sequential("Schema Approval Workflow", () => {
       // Create schema for other dataset
 
       // Editor should not have access to approve this schema
+      // Catalog has no editors field — editor has no ownership of otherCatalog
       expect(editorUser.role).toBe("editor");
-      expect(otherCatalog.editors ?? []).not.toContain(editorUser.id);
+      expect(otherCatalog.createdBy).not.toBe(editorUser.id);
     });
   });
 });

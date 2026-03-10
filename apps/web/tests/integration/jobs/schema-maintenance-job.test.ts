@@ -173,7 +173,7 @@ describe.sequential("Schema Maintenance Job", () => {
       overrideAccess: true,
     });
     expect(schemas.docs.length).toBe(2);
-    expect(schemas.docs[0].versionNumber).toBe(2);
+    expect(schemas.docs[0]!.versionNumber).toBe(2);
   });
 
   it("skips dataset with no events", async () => {

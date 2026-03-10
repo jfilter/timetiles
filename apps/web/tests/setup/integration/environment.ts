@@ -19,6 +19,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 
+import type { Payload } from "payload";
 import { getPayload } from "payload";
 
 import type { CollectionName } from "@/lib/config/payload-config-factory";
@@ -26,6 +27,7 @@ import { createTestConfig } from "@/lib/config/payload-config-factory";
 import { COLLECTIONS } from "@/lib/config/payload-shared-config";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
+import type { ImportJob } from "@/payload-types";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { createTestDatabase } from "./database";
@@ -33,8 +35,16 @@ import { TestServer } from "./http-server";
 
 const logger = createLogger("test-env");
 
+/**
+ * Create a user without sending a verification email.
+ * Payload's `disableVerificationEmail` option is valid at runtime but not in the strict create type overloads.
+ */
+const createUserWithoutVerification = (payload: Payload, data: Record<string, unknown>): Promise<any> =>
+  // @ts-expect-error -- disableVerificationEmail is a valid runtime option for auth collections
+  payload.create({ collection: "users", data, disableVerificationEmail: true });
+
 interface SharedWorkerEnvironment {
-  payload: any;
+  payload: Payload;
   seedManager: SeedManager;
   connection: any;
   dbName: string;
@@ -60,7 +70,7 @@ export interface TestEnvironmentOptions {
 
 export interface TestEnvironment {
   /** Payload instance for this test environment */
-  payload: any;
+  payload: Payload;
   /** SeedManager instance configured for this environment */
   seedManager: SeedManager;
   /** Database connection info */
@@ -104,13 +114,13 @@ export interface RunImportJobStageOptions {
   /** Job queue batch limit */
   queueLimit?: number;
   /** Optional callback for incomplete iterations */
-  onPending?: (context: { iteration: number; importJob: any | null }) => Promise<void> | void;
+  onPending?: (context: { iteration: number; importJob: ImportJob | null }) => Promise<void> | void;
 }
 
 export interface RunImportJobStageResult {
   matched: boolean;
   iterations: number;
-  importJob: any | null;
+  importJob: ImportJob | null;
 }
 
 export const IMPORT_PIPELINE_COLLECTIONS_TO_RESET = [
@@ -131,7 +141,7 @@ const wait = async (delayMs: number): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 };
 
-const createSeedManager = async (payload: any): Promise<SeedManager> => {
+const createSeedManager = async (payload: Payload): Promise<SeedManager> => {
   const seedManager = new SeedManager();
 
   seedManager.initialize = async () => {
@@ -166,14 +176,10 @@ const getOrCreateDefaultImportUser = async (testEnv: TestEnvironment): Promise<a
     }
   }
 
-  const user = await testEnv.payload.create({
-    collection: "users",
-    data: {
-      email: `import-test-default-${workerId}-${randomUUID()}@test.local`,
-      password: TEST_CREDENTIALS.basic.strongPassword,
-      role: "user",
-    },
-    disableVerificationEmail: true,
+  const user = await createUserWithoutVerification(testEnv.payload, {
+    email: `import-test-default-${workerId}-${randomUUID()}@test.local`,
+    password: TEST_CREDENTIALS.basic.strongPassword,
+    role: "user",
   });
 
   defaultImportUserCache.set(cacheKey, {
@@ -243,16 +249,21 @@ export class TestEnvironmentBuilder {
     };
 
     sharedWorkerEnvironmentDbUrl = dbUrl;
-    const environmentPromise = loadEnvironment().catch((error) => {
-      if (sharedWorkerEnvironmentPromise === environmentPromise) {
-        sharedWorkerEnvironmentPromise = null;
-        sharedWorkerEnvironmentDbUrl = null;
+    let thisPromise: Promise<SharedWorkerEnvironment> | null = null;
+    thisPromise = (async () => {
+      try {
+        return await loadEnvironment();
+      } catch (error) {
+        if (sharedWorkerEnvironmentPromise === thisPromise) {
+          sharedWorkerEnvironmentPromise = null;
+          sharedWorkerEnvironmentDbUrl = null;
+        }
+        throw error;
       }
-      throw error;
-    });
-    sharedWorkerEnvironmentPromise = environmentPromise;
+    })();
+    sharedWorkerEnvironmentPromise = thisPromise;
 
-    return { environment: await environmentPromise, created: true };
+    return { environment: await thisPromise, created: true };
   }
 
   private static async resetSharedWorkerDatabase(environment: SharedWorkerEnvironment): Promise<void> {
@@ -484,7 +495,7 @@ export const createIntegrationTestEnvironment = async (
 };
 
 export const runJobsUntilImportSettled = async (
-  payload: any,
+  payload: Payload,
   importFileId: string | number,
   options: RunImportJobsOptions = {}
 ): Promise<RunImportJobsResult> => {
@@ -524,14 +535,14 @@ export const runJobsUntilImportSettled = async (
 };
 
 export const runJobsUntilImportJobStage = async (
-  payload: any,
+  payload: Payload,
   importFileId: string | number,
-  isDone: (importJob: any) => boolean,
+  isDone: (importJob: ImportJob) => boolean,
   options: RunImportJobStageOptions = {}
 ): Promise<RunImportJobStageResult> => {
   const { maxIterations = 50, delayMs = 0, queueLimit = 100, onPending } = options;
 
-  let importJob: any | null = null;
+  let importJob: ImportJob | null = null;
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     await payload.jobs.run({ allQueues: true, limit: queueLimit });
@@ -566,7 +577,7 @@ export const runJobsUntilImportJobStage = async (
 };
 
 export const runJobsUntilImportJobExists = async (
-  payload: any,
+  payload: Payload,
   importFileId: string | number,
   options: RunImportJobStageOptions = {}
 ): Promise<RunImportJobStageResult> => runJobsUntilImportJobStage(payload, importFileId, () => true, options);
@@ -654,15 +665,14 @@ export const withDataset = async (
     data: {
       name: options?.name ?? `Test Dataset ${timestamp}`,
       slug: options?.slug ?? `test-dataset-${timestamp}`,
-      catalog: catalogId,
+      catalog: catalogId as number,
       language: options?.language ?? "eng",
       schemaConfig: options?.schemaConfig ?? {
         locked: false,
         autoGrow: true,
       },
-      currentSchema: options?.currentSchema,
       isPublic: options?.isPublic ?? false,
-      idStrategy: options?.idStrategy,
+      idStrategy: options?.idStrategy as any,
       description: options?.description,
       importTransforms: options?.importTransforms,
     },
@@ -740,14 +750,10 @@ export const withUsers = async (
   // Handle simple array of roles
   if (Array.isArray(rolesOrConfigs)) {
     for (const role of rolesOrConfigs) {
-      const user = await testEnv.payload.create({
-        collection: "users",
-        data: {
-          email: `${role}-${timestamp}@test.com`,
-          password: TEST_CREDENTIALS.basic.strongPassword,
-          role: role,
-        },
-        disableVerificationEmail: true,
+      const user = await createUserWithoutVerification(testEnv.payload, {
+        email: `${role}-${timestamp}@test.com`,
+        password: TEST_CREDENTIALS.basic.strongPassword,
+        role: role,
       });
       users[role] = user;
     }
@@ -768,11 +774,7 @@ export const withUsers = async (
       if (config.isActive !== undefined) userData.isActive = config.isActive;
       if (config._verified !== undefined) userData._verified = config._verified;
 
-      const user = await testEnv.payload.create({
-        collection: "users",
-        data: userData,
-        disableVerificationEmail: true,
-      });
+      const user = await createUserWithoutVerification(testEnv.payload, userData);
       users[key] = user;
     }
   }
@@ -930,6 +932,7 @@ export const withSchemaVersion = async (
   // Add approval fields
   addApprovalFields(data, status, options ?? {});
 
+  // @ts-expect-error -- data is dynamically constructed from test options
   const schema = await testEnv.payload.create({
     collection: "dataset-schemas",
     data,
@@ -969,7 +972,7 @@ export const withTestServer = async (
  * Internal helper - not exported.
  */
 const createImportFileWithUpload = async (
-  payload: any,
+  payload: Payload,
   data: any,
   fileContent: string | Buffer,
   fileName: string,
@@ -980,9 +983,9 @@ const createImportFileWithUpload = async (
   const fileBuffer =
     typeof fileContent === "string" ? new Uint8Array(Buffer.from(fileContent, "utf8")) : new Uint8Array(fileContent);
 
-  // Create file object with Uint8Array data
+  // Create file object with Buffer data (Payload expects Buffer for file uploads)
   const file = {
-    data: fileBuffer,
+    data: Buffer.from(fileBuffer),
     mimetype: mimeType,
     name: fileName,
     size: fileBuffer.length,
@@ -991,7 +994,7 @@ const createImportFileWithUpload = async (
   // Use Payload's Local API with file parameter
   // If user is provided, pass it to make req.user available in hooks
   // Otherwise use overrideAccess to bypass authentication requirements
-  return await payload.create({
+  return payload.create({
     collection: "import-files",
     data,
     file,
