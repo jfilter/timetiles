@@ -1,14 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript",
-    "promise",
-    "import",
-    "unicorn",
-    "jsdoc",
-    "vitest",
-    "jsx-a11y"
-  ],
+  "plugins": ["typescript", "promise", "import", "unicorn", "jsdoc", "vitest", "jsx-a11y"],
   "categories": {
     "correctness": "off"
   },
@@ -126,18 +118,9 @@
     "@typescript-eslint/triple-slash-reference": "error",
     "no-console": "error",
     "prefer-const": "error",
-    "max-params": [
-      "error",
-      7
-    ],
-    "complexity": [
-      "error",
-      20
-    ],
-    "max-nested-callbacks": [
-      "error",
-      5
-    ],
+    "max-params": ["error", 7],
+    "complexity": ["error", 20],
+    "max-nested-callbacks": ["error", 5],
     "@typescript-eslint/consistent-type-imports": "error",
     "promise/always-return": "error",
     "promise/catch-or-return": "error",
@@ -181,34 +164,19 @@
       {
         "patterns": [
           {
-            "group": [
-              "../**/apps/*"
-            ],
+            "group": ["../**/apps/*"],
             "message": "Don't import across app boundaries"
           },
           {
-            "group": [
-              "*/index",
-              "*/index.js",
-              "*/index.ts",
-              "*/index.tsx"
-            ],
+            "group": ["*/index", "*/index.js", "*/index.ts", "*/index.tsx"],
             "message": "Avoid barrel imports"
           },
           {
-            "group": [
-              "./index",
-              "./index.js",
-              "./index.ts",
-              "./index.tsx"
-            ],
+            "group": ["./index", "./index.js", "./index.ts", "./index.tsx"],
             "message": "Avoid local index imports"
           },
           {
-            "group": [
-              "../../../../*",
-              "../../../../../*"
-            ],
+            "group": ["../../../../*", "../../../../../*"],
             "message": "Use @/ path alias instead of deep relative imports (more than 3 levels)"
           }
         ]
@@ -217,18 +185,13 @@
     "jsdoc/check-tag-names": [
       "error",
       {
-        "definedTags": [
-          "module",
-          "category"
-        ]
+        "definedTags": ["module", "category"]
       }
     ],
     "jsdoc/empty-tags": [
       "error",
       {
-        "tags": [
-          "module"
-        ]
+        "tags": ["module"]
       }
     ],
     "jsdoc/check-property-names": "error",
@@ -266,12 +229,7 @@
   },
   "overrides": [
     {
-      "files": [
-        "**/*.ts",
-        "**/*.tsx",
-        "**/*.mts",
-        "**/*.cts"
-      ],
+      "files": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       "rules": {
         "constructor-super": "off",
         "no-class-assign": "off",
@@ -293,10 +251,7 @@
       }
     },
     {
-      "files": [
-        "**/*.ts",
-        "**/*.tsx"
-      ],
+      "files": ["**/*.ts", "**/*.tsx"],
       "rules": {
         "constructor-super": "off",
         "no-class-assign": "off",
@@ -360,19 +315,13 @@
       }
     },
     {
-      "files": [
-        "**/*.ts",
-        "**/*.tsx"
-      ],
+      "files": ["**/*.ts", "**/*.tsx"],
       "rules": {
         "react-hooks/rules-of-hooks": "error",
         "react-hooks/exhaustive-deps": "error",
         "react/react-in-jsx-scope": "off",
         "react/display-name": "warn",
-        "react/jsx-boolean-value": [
-          "error",
-          "never"
-        ],
+        "react/jsx-boolean-value": ["error", "never"],
         "react/jsx-curly-brace-presence": [
           "error",
           {
@@ -380,10 +329,7 @@
             "children": "never"
           }
         ],
-        "react/jsx-fragments": [
-          "error",
-          "syntax"
-        ],
+        "react/jsx-fragments": ["error", "syntax"],
         "react/jsx-pascal-case": "error",
         "react/self-closing-comp": "error",
         "react/void-dom-elements-no-children": "error",
@@ -444,11 +390,7 @@
         "jsx-a11y/scope": "error",
         "jsx-a11y/tabindex-no-positive": "error"
       },
-      "plugins": [
-        "react",
-        "react-perf",
-        "jsx-a11y"
-      ]
+      "plugins": ["react", "react-perf", "jsx-a11y"]
     },
     {
       "files": [
@@ -466,16 +408,10 @@
         "react/display-name": "off",
         "react-hooks/exhaustive-deps": "off"
       },
-      "plugins": [
-        "react-perf",
-        "react"
-      ]
+      "plugins": ["react-perf", "react"]
     },
     {
-      "files": [
-        "**/*.ts",
-        "**/*.tsx"
-      ],
+      "files": ["**/*.ts", "**/*.tsx"],
       "rules": {
         "@next/next/google-font-display": "warn",
         "@next/next/google-font-preconnect": "warn",
@@ -510,15 +446,10 @@
           }
         ]
       },
-      "plugins": [
-        "nextjs"
-      ]
+      "plugins": ["nextjs"]
     },
     {
-      "files": [
-        "migrations/**/*.ts",
-        "**/migrations/**/*.ts"
-      ],
+      "files": ["migrations/**/*.ts", "**/migrations/**/*.ts"],
       "rules": {
         "unicorn/filename-case": "off",
         "@typescript-eslint/require-await": "off",
@@ -536,11 +467,7 @@
       }
     },
     {
-      "files": [
-        "**/payload-types.ts",
-        "**/payload-generated-schema.ts",
-        "**/*-generated.ts"
-      ],
+      "files": ["**/payload-types.ts", "**/payload-generated-schema.ts", "**/*-generated.ts"],
       "rules": {
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-unsafe-assignment": "off",
@@ -551,12 +478,7 @@
       }
     },
     {
-      "files": [
-        "**/*.config.{ts,js,mjs}",
-        "**/playwright.config.ts",
-        "**/vitest.config.ts",
-        "**/eslint.config.js"
-      ],
+      "files": ["**/*.config.{ts,js,mjs}", "**/playwright.config.ts", "**/vitest.config.ts", "**/eslint.config.js"],
       "rules": {
         "@typescript-eslint/strict-boolean-expressions": "off",
         "@typescript-eslint/prefer-nullish-coalescing": "off",
@@ -568,20 +490,11 @@
       }
     },
     {
-      "files": [
-        "**/seed/**/*.ts",
-        "**/seed/**/*.js",
-        "**/seeds/**/*.ts"
-      ],
+      "files": ["**/seed/**/*.ts", "**/seed/**/*.js", "**/seeds/**/*.ts"],
       "rules": {}
     },
     {
-      "files": [
-        "scripts/**/*.ts",
-        "scripts/**/*.js",
-        "**/scripts/**/*.ts",
-        "**/scripts/**/*.js"
-      ],
+      "files": ["scripts/**/*.ts", "scripts/**/*.js", "**/scripts/**/*.ts", "**/scripts/**/*.js"],
       "rules": {
         "no-console": "off",
         "no-unused-vars": "off",
@@ -593,20 +506,11 @@
       }
     },
     {
-      "files": [
-        "**/tests/**/*.{ts,tsx}",
-        "**/*.test.{ts,tsx}"
-      ],
+      "files": ["**/tests/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
       "rules": {
         "no-console": "off",
-        "complexity": [
-          "error",
-          25
-        ],
-        "max-nested-callbacks": [
-          "error",
-          6
-        ],
+        "complexity": ["error", 25],
+        "max-nested-callbacks": ["error", 6],
         "@typescript-eslint/no-explicit-any": "off",
         "no-restricted-imports": "off",
         "react-perf/jsx-no-new-array-as-prop": "off",
@@ -648,22 +552,16 @@
           }
         ]
       },
-      "plugins": [
-        "react-perf"
-      ]
+      "plugins": ["react-perf"]
     },
     {
-      "files": [
-        "**/*.spec.{ts,tsx,js,jsx}"
-      ],
+      "files": ["**/*.spec.{ts,tsx,js,jsx}"],
       "rules": {
         "unicorn/filename-case": [
           "error",
           {
             "case": "kebabCase",
-            "ignore": [
-              "$^"
-            ]
+            "ignore": ["$^"]
           }
         ]
       }
@@ -678,15 +576,11 @@
       "rules": {}
     },
     {
-      "files": [
-        "**/*.jsx"
-      ],
+      "files": ["**/*.jsx"],
       "rules": {}
     },
     {
-      "files": [
-        "**/app/(frontend)/explore/_components/map-explorer.tsx"
-      ],
+      "files": ["**/app/(frontend)/explore/_components/map-explorer.tsx"],
       "rules": {}
     }
   ]
