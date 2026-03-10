@@ -9,7 +9,7 @@
  * @module
  * @category API
  */
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
@@ -159,7 +159,18 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     const existingUser = await payload.find({ collection: "users", where: { email: { equals: newEmail } }, limit: 1 });
 
     if (existingUser.docs.length > 0) {
-      return badRequest("Email is already in use");
+      // Anti-enumeration: return identical response to prevent email discovery
+      // Add random delay to mitigate timing side-channel (real path does DB + email ops)
+      await new Promise((resolve) => setTimeout(resolve, randomInt(200, 800)));
+      logger.info(
+        { userId: user.id, attemptedEmailHash: hashEmail(newEmail) },
+        "Email change blocked - email already in use"
+      );
+      return NextResponse.json({
+        success: true,
+        message: "Email changed successfully. Please check your new email address for a verification link.",
+        verificationRequired: true,
+      });
     }
 
     await updateEmailAndNotify(payload, user, newEmail, clientId);
@@ -167,7 +178,6 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     return NextResponse.json({
       success: true,
       message: "Email changed successfully. Please check your new email address for a verification link.",
-      newEmail,
       verificationRequired: true,
     });
   } catch (error) {

@@ -537,7 +537,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       if (!state.previewId || state.currentStep === 6 || state.importFileId !== null) return;
 
       try {
-        const response = await fetch(`/api/wizard/validate-preview?previewId=${state.previewId}`);
+        const response = await fetch(`/api/import/validate-preview?previewId=${state.previewId}`);
         const data = await response.json();
 
         if (!data.valid) {

@@ -63,7 +63,7 @@ vi.mock("@/lib/constants/quota-constants", () => ({ QUOTA_TYPES: { ACTIVE_SCHEDU
 // 4. Vitest imports and source code AFTER mocks
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { POST } from "@/app/api/wizard/configure-import/route";
+import { POST } from "@/app/api/import/configure/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 
@@ -138,7 +138,7 @@ const setupPreviewMetadata = (meta: Record<string, unknown> | null) => {
 
 // --- Tests ---
 
-describe.sequential("POST /api/wizard/configure-import", () => {
+describe.sequential("POST /api/import/configure", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

@@ -132,7 +132,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         const formData = new FormData();
         formData.append("file", selectedFile);
 
-        const response = await fetch("/api/wizard/preview-schema", {
+        const response = await fetch("/api/import/preview-schema", {
           method: "POST",
           body: formData,
           credentials: "include",
@@ -173,7 +173,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       // Build auth config payload - only include fields relevant to auth type
       const authPayload = authConfig.type === "none" ? undefined : authConfig;
 
-      const response = await fetch("/api/wizard/preview-schema", {
+      const response = await fetch("/api/import/preview-schema", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceUrl: urlInput.trim(), authConfig: authPayload }),

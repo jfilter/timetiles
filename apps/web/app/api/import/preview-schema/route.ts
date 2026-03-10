@@ -1,7 +1,7 @@
 /**
  * API endpoint for previewing file schema.
  *
- * POST /api/wizard/preview-schema - Upload file or fetch from URL and get schema preview
+ * POST /api/import/preview-schema - Upload file or fetch from URL and get schema preview
  *
  * Returns detected sheets with headers and sample data for wizard preview.
  * Supports both file upload and URL fetching with optional authentication.

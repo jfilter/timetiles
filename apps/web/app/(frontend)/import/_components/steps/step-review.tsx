@@ -145,7 +145,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         };
       }
 
-      const response = await fetch("/api/wizard/configure-import", {
+      const response = await fetch("/api/import/configure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

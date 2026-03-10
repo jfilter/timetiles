@@ -1,10 +1,10 @@
 /**
  * Integration tests for wizard API endpoints.
  *
- * Tests the wizard API endpoints:
- * - GET /api/wizard/catalogs - List user's catalogs
- * - POST /api/wizard/preview-schema - Preview file schema
- * - POST /api/wizard/configure-import - Configure and start import
+ * Tests the import wizard API endpoints:
+ * - GET /api/catalogs/with-datasets - List user's catalogs
+ * - POST /api/import/preview-schema - Preview file schema
+ * - POST /api/import/configure - Configure and start import
  *
  * @module
  * @category Integration Tests
@@ -22,7 +22,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Wizard API Endpoints", () => {
+describe.sequential("Import Wizard API Endpoints", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testUser: any;
@@ -50,7 +50,7 @@ describe.sequential("Wizard API Endpoints", () => {
     await testEnv.seedManager.truncate(["catalogs", "datasets"]);
   });
 
-  describe("GET /api/wizard/catalogs", () => {
+  describe("GET /api/catalogs/with-datasets", () => {
     it("returns catalogs with createdBy filter", async () => {
       // Create a test catalog directly without user dependency
       const catalog = await payload.create({

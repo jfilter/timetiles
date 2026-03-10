@@ -1,5 +1,5 @@
 /**
- * Unit tests for miscellaneous API routes: health, wizard/catalogs, quotas.
+ * Unit tests for miscellaneous API routes: health, quotas.
  *
  * Tests route handler logic with mocked dependencies.
  *
@@ -74,7 +74,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET as healthGET } from "@/app/api/health/route";
 import { GET as quotasGET } from "@/app/api/quotas/route";
-import { GET as catalogsGET } from "@/app/api/wizard/catalogs/route";
 import { getQuotaService } from "@/lib/services/quota-service";
 
 const mockUser = { id: 1, email: "test@test.com", role: "user" };
@@ -149,81 +148,6 @@ describe("Health Route", () => {
 
     expect(response.status).toBe(500);
     expect(body.error).toBe("Health check failed");
-  });
-});
-
-describe.sequential("Wizard Catalogs Route", () => {
-  it("returns 401 when not authenticated", async () => {
-    mockPayload.auth.mockResolvedValue({ user: null });
-
-    const request = createRequest("http://localhost/api/wizard/catalogs");
-    const response = await (catalogsGET as any)(request, {});
-    const body = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(body.error).toBe("Authentication required");
-  });
-
-  it("returns catalogs with grouped datasets", async () => {
-    mockPayload.find
-      .mockResolvedValueOnce({
-        docs: [
-          { id: 1, name: "Catalog A" },
-          { id: 2, name: "Catalog B" },
-        ],
-      })
-      .mockResolvedValueOnce({
-        docs: [
-          { id: 10, name: "Dataset 1", catalog: { id: 1 } },
-          { id: 11, name: "Dataset 2", catalog: { id: 1 } },
-          { id: 12, name: "Dataset 3", catalog: { id: 2 } },
-        ],
-      });
-
-    const request = createRequest("http://localhost/api/wizard/catalogs");
-    const response = await (catalogsGET as any)(request, {});
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body.catalogs).toHaveLength(2);
-    expect(body.catalogs[0]).toEqual({
-      id: 1,
-      name: "Catalog A",
-      datasets: [
-        { id: 10, name: "Dataset 1" },
-        { id: 11, name: "Dataset 2" },
-      ],
-    });
-    expect(body.catalogs[1]).toEqual({ id: 2, name: "Catalog B", datasets: [{ id: 12, name: "Dataset 3" }] });
-  });
-
-  it("returns empty catalogs array when user has none", async () => {
-    mockPayload.find.mockResolvedValueOnce({ docs: [] }).mockResolvedValueOnce({ docs: [] });
-
-    const request = createRequest("http://localhost/api/wizard/catalogs");
-    const response = await (catalogsGET as any)(request, {});
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body.catalogs).toEqual([]);
-  });
-
-  it("handles dataset without catalog ID", async () => {
-    mockPayload.find.mockResolvedValueOnce({ docs: [{ id: 1, name: "Catalog A" }] }).mockResolvedValueOnce({
-      docs: [
-        { id: 10, name: "Dataset 1", catalog: { id: 1 } },
-        { id: 11, name: "Orphan Dataset", catalog: null },
-        { id: 12, name: "String Catalog", catalog: "some-string" },
-      ],
-    });
-
-    const request = createRequest("http://localhost/api/wizard/catalogs");
-    const response = await (catalogsGET as any)(request, {});
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body.catalogs).toHaveLength(1);
-    expect(body.catalogs[0].datasets).toEqual([{ id: 10, name: "Dataset 1" }]);
   });
 });
 

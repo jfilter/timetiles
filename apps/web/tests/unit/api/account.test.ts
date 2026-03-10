@@ -218,7 +218,7 @@ describe.sequential("POST /api/account/change-email", () => {
     expect(data.error).toBe("Password is incorrect");
   });
 
-  it("should return 400 when email is already in use", async () => {
+  it("should return identical success response when email is already in use (anti-enumeration)", async () => {
     mockPayload.find.mockResolvedValue({ docs: [{ id: 2, email: "new@example.com" }] });
 
     const request = createJsonRequest("http://localhost/api/account/change-email", {
@@ -228,9 +228,13 @@ describe.sequential("POST /api/account/change-email", () => {
 
     const response = await changeEmail(request, undefined as any);
 
-    expect(response.status).toBe(400);
+    // Anti-enumeration: returns 200 success even when email is taken
+    expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.error).toBe("Email is already in use");
+    expect(data.success).toBe(true);
+    expect(data.verificationRequired).toBe(true);
+    // Should NOT actually update the user's email
+    expect(mockPayload.update).not.toHaveBeenCalled();
   });
 
   it("should successfully change email and require verification", async () => {
@@ -244,8 +248,9 @@ describe.sequential("POST /api/account/change-email", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.success).toBe(true);
-    expect(data.newEmail).toBe("new@example.com");
     expect(data.verificationRequired).toBe(true);
+    // newEmail is intentionally omitted from response to prevent information leakage
+    expect(data.newEmail).toBeUndefined();
     expect(mockPayload.update).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "users",

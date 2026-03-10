@@ -28,7 +28,7 @@ import { logError, logger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { ImportJob } from "@/payload-types";
+import type { ImportJob, User } from "@/payload-types";
 
 // Constants
 const IMPORT_JOBS_COLLECTION = "import-jobs";
@@ -743,7 +743,8 @@ export class ErrorRecoveryService {
    * Access control should be applied by the calling API endpoint.
    */
   static async getRecoveryRecommendations(
-    payload: Payload
+    payload: Payload,
+    user?: User
   ): Promise<
     Array<{
       jobId: string | number;
@@ -757,6 +758,7 @@ export class ErrorRecoveryService {
       collection: COLLECTION_NAMES.IMPORT_JOBS,
       where: { stage: { equals: PROCESSING_STAGE.FAILED } },
       pagination: false,
+      ...(user ? { overrideAccess: false, user } : { overrideAccess: true }),
     });
 
     return failedJobs.docs.map((job) => {

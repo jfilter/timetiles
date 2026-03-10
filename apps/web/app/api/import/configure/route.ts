@@ -1,7 +1,7 @@
 /**
  * API endpoint for configuring and starting an import.
  *
- * POST /api/wizard/configure-import - Configure import and start processing
+ * POST /api/import/configure - Configure import and start processing
  *
  * Takes the wizard configuration and starts the import process.
  *

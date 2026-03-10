@@ -97,7 +97,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
 
     const loadPreviewData = async () => {
       try {
-        const response = await fetch(`/api/wizard/preview-schema?previewId=${previewId}`);
+        const response = await fetch(`/api/import/preview-schema?previewId=${previewId}`);
         if (!response.ok) throw new Error("Failed to load preview data");
 
         const data = await response.json();

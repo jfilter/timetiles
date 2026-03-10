@@ -432,10 +432,9 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await expect(page.locator('[data-testid="field-mapping-2"]').getByText("Sports Events")).toBeVisible();
 
     // Listen for API response
-    const responsePromise = page.waitForResponse(
-      (response) => response.url().includes("/api/wizard/configure-import"),
-      { timeout: 10000 }
-    );
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+      timeout: 10000,
+    });
 
     // Click Start Import to begin processing (Step 6)
     const startImportButton = page.getByRole("button", { name: /start import/i });
@@ -631,10 +630,9 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     await expect(page.locator('[data-testid="field-mapping-2"]').getByText("Sports Events")).toBeVisible();
 
     // Listen for API response
-    const responsePromise = page.waitForResponse(
-      (response) => response.url().includes("/api/wizard/configure-import"),
-      { timeout: 10000 }
-    );
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+      timeout: 10000,
+    });
 
     // Click Start Import to begin processing (Step 6)
     const startImportButton = page.getByRole("button", { name: /start import/i });
@@ -933,10 +931,9 @@ test.describe("Import Wizard - Full Flow", () => {
     await expect(catalogSection).toBeVisible({ timeout: 10000 });
 
     // Listen for API response
-    const responsePromise = page.waitForResponse(
-      (response) => response.url().includes("/api/wizard/configure-import"),
-      { timeout: 10000 }
-    );
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+      timeout: 10000,
+    });
 
     // Click Start Import to begin processing (Step 6)
     const startImportButton = page.getByRole("button", { name: /start import/i });

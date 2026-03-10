@@ -121,7 +121,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   useEffect(() => {
     const fetchCatalogs = async () => {
       try {
-        const response = await fetch("/api/wizard/catalogs", { credentials: "include" });
+        const response = await fetch("/api/catalogs/with-datasets", { credentials: "include" });
 
         if (!response.ok) {
           throw new Error("Failed to fetch catalogs");

@@ -243,7 +243,7 @@ Event,2024-01-01`;
     });
   });
 
-  describe("GET /api/import-jobs/failed/recommendations", () => {
+  describe("GET /api/import/jobs/failed/recommendations", () => {
     it("should provide recovery recommendations for failed jobs", async () => {
       const csvContent1 = `title,date
 Event 1,2024-01-01`;

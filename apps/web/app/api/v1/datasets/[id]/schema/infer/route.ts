@@ -38,9 +38,9 @@ export const POST = withAuth(
         return forbidden("Only editors and admins can trigger schema inference");
       }
 
-      // Verify dataset exists
+      // Verify dataset exists and user has access
       const dataset = await payload
-        .findByID({ collection: "datasets", id: datasetId, overrideAccess: true })
+        .findByID({ collection: "datasets", id: datasetId, overrideAccess: false, user: request.user })
         .catch(() => null);
 
       if (!dataset) {

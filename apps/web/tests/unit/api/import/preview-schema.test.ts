@@ -98,7 +98,7 @@ vi.mock("@/lib/middleware/auth", () => ({
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { POST } from "@/app/api/wizard/preview-schema/route";
+import { POST } from "@/app/api/import/preview-schema/route";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../../constants/test-credentials";
 
@@ -108,7 +108,7 @@ const mockUser = { id: 1, email: TEST_EMAILS.user, role: "user" };
 
 const createMockRequest = (formData: FormData) => {
   // Cast to NextRequest for type compatibility; withAuth mock accepts plain Request
-  return new Request("http://localhost/api/wizard/preview-schema", {
+  return new Request("http://localhost/api/import/preview-schema", {
     method: "POST",
     body: formData,
     headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
@@ -124,7 +124,7 @@ const createFileFormData = (filename: string, content: string, mimeType: string)
 
 // --- Tests ---
 
-describe.sequential("POST /api/wizard/preview-schema", () => {
+describe.sequential("POST /api/import/preview-schema", () => {
   beforeEach(() => {
     // Reset call history on all mocks without clearing implementations
     for (const fn of Object.values(mocks)) {

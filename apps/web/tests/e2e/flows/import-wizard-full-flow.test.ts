@@ -122,10 +122,9 @@ test.describe("Import Wizard - Full Flow", () => {
       await expect(page.getByText(catalogName)).toBeVisible();
 
       // Listen for API response
-      const responsePromise = page.waitForResponse(
-        (response) => response.url().includes("/api/wizard/configure-import"),
-        { timeout: 10000 }
-      );
+      const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+        timeout: 10000,
+      });
 
       // Click Start Import to begin processing (Step 6)
       const startImportButton = page.getByRole("button", { name: /start import/i });
@@ -253,10 +252,9 @@ test.describe("Import Wizard - Full Flow", () => {
       await expect(page.getByText(catalogName)).toBeVisible();
 
       // Listen for API response
-      const responsePromise = page.waitForResponse(
-        (response) => response.url().includes("/api/wizard/configure-import"),
-        { timeout: 10000 }
-      );
+      const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+        timeout: 10000,
+      });
 
       // Click Start Import
       const startImportButton = page.getByRole("button", { name: /start import/i });

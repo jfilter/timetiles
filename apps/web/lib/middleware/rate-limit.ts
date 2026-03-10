@@ -19,7 +19,7 @@ import type { AuthenticatedRequest } from "./auth";
 
 export type RateLimitType = "API_GENERAL" | "FILE_UPLOAD";
 
-interface RateLimitOptions {
+export interface RateLimitOptions {
   /**
    * Type of rate limit to apply (trust-level based).
    * Use this for general API endpoints that should have different

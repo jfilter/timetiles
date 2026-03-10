@@ -23,6 +23,7 @@ import type { CollectionConfig } from "payload";
 
 import { createCommonConfig } from "../shared-fields";
 import { importJobsAccess } from "./access-control";
+import { importJobEndpoints } from "./endpoints";
 import { importJobFields } from "./fields";
 import { afterChangeHooks, beforeChangeHooks } from "./hooks";
 
@@ -36,6 +37,7 @@ const ImportJobs: CollectionConfig = {
     description: "Unified import processing pipeline",
   },
   access: importJobsAccess,
+  endpoints: importJobEndpoints,
   fields: importJobFields,
   hooks: { beforeChange: beforeChangeHooks, afterChange: afterChangeHooks },
 };

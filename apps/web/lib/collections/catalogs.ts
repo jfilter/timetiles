@@ -12,9 +12,10 @@
  * @category Collections
  * @module
  */
-import type { CollectionConfig, PayloadRequest } from "payload";
+import type { CollectionConfig, Endpoint, PayloadRequest } from "payload";
 
 import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -168,6 +169,67 @@ const validateSlugUniqueness = async (
   }
 };
 
+const catalogLogger = createLogger("catalogs-endpoints");
+
+/**
+ * GET /api/catalogs/with-datasets
+ *
+ * Returns the authenticated user's catalogs with their datasets grouped by catalog.
+ * Used by the import wizard dataset selection step.
+ */
+const withDatasetsEndpoint: Omit<Endpoint, "root"> = {
+  path: "/with-datasets",
+  method: "get",
+  handler: async (req) => {
+    if (!req.user) {
+      return Response.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    const [catalogsResult, datasetsResult] = await Promise.all([
+      req.payload.find({
+        collection: "catalogs",
+        where: { createdBy: { equals: req.user.id } },
+        limit: 100,
+        pagination: false,
+        sort: "-createdAt",
+        select: { id: true, name: true },
+      }),
+      req.payload.find({
+        collection: "datasets",
+        where: { "catalog.createdBy": { equals: req.user.id } },
+        limit: 1000,
+        pagination: false,
+        depth: 1,
+        select: { id: true, name: true, catalog: true },
+      }),
+    ]);
+
+    // Group datasets by catalog ID
+    const datasetsByCatalog = new Map<number, Array<{ id: number; name: string }>>();
+    for (const ds of datasetsResult.docs) {
+      const catalogId = typeof ds.catalog === "object" && ds.catalog != null ? ds.catalog.id : null;
+      if (catalogId != null) {
+        const existing = datasetsByCatalog.get(catalogId) ?? [];
+        existing.push({ id: ds.id, name: ds.name });
+        datasetsByCatalog.set(catalogId, existing);
+      }
+    }
+
+    const catalogs = catalogsResult.docs.map((catalog) => ({
+      id: catalog.id,
+      name: catalog.name,
+      datasets: datasetsByCatalog.get(catalog.id) ?? [],
+    }));
+
+    catalogLogger.info("Catalogs fetched with datasets", {
+      userId: req.user.id,
+      catalogCount: catalogs.length,
+    });
+
+    return Response.json({ catalogs });
+  },
+};
+
 const Catalogs: CollectionConfig = {
   slug: "catalogs",
   ...createCommonConfig(),
@@ -201,6 +263,7 @@ const Catalogs: CollectionConfig = {
     // Only admins and editors can read version history
     readVersions: isEditorOrAdmin,
   },
+  endpoints: [withDatasetsEndpoint],
   fields: [
     ...basicMetadataFields,
     createSlugField("catalogs"),
