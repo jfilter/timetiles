@@ -8,23 +8,19 @@
 
 ### API
 
-- [app/api/account/change-email/route](app/api/account/change-email/route.md)
-- [app/api/account/change-password/route](app/api/account/change-password/route.md)
-- [app/api/account/delete/cancel/route](app/api/account/delete/cancel/route.md)
-- [app/api/account/delete/route](app/api/account/delete/route.md)
 - [app/api/account/deletion-summary/route](app/api/account/deletion-summary/route.md)
-- [app/api/account/download-data/\[exportId\]/route](app/api/account/download-data/[exportId]/route.md)
-- [app/api/account/download-data/route](app/api/account/download-data/route.md)
 - [app/api/auth/register/route](app/api/auth/register/route.md)
+- [app/api/data-exports/\[id\]/download/route](app/api/data-exports/[id]/download/route.md)
+- [app/api/data-exports/request/route](app/api/data-exports/request/route.md)
 - [app/api/feature-flags/route](app/api/feature-flags/route.md)
 - [app/api/geocoding/test/route](app/api/geocoding/test/route.md)
-- [app/api/import-jobs/\[id\]/reset/route](app/api/import-jobs/[id]/reset/route.md)
-- [app/api/import-jobs/\[id\]/retry/route](app/api/import-jobs/[id]/retry/route.md)
-- [app/api/import-jobs/failed/recommendations/route](app/api/import-jobs/failed/recommendations/route.md)
 - [app/api/import/\[importId\]/progress/route](app/api/import/[importId]/progress/route.md)
+- [app/api/import/jobs/failed/recommendations/route](app/api/import/jobs/failed/recommendations/route.md)
 - [app/api/newsletter/subscribe/route](app/api/newsletter/subscribe/route.md)
-- [app/api/scheduled-imports/\[id\]/route](app/api/scheduled-imports/[id]/route.md)
-- [app/api/scheduled-imports/\[id\]/trigger/route](app/api/scheduled-imports/[id]/trigger/route.md)
+- [app/api/users/cancel-deletion/route](app/api/users/cancel-deletion/route.md)
+- [app/api/users/change-email/route](app/api/users/change-email/route.md)
+- [app/api/users/change-password/route](app/api/users/change-password/route.md)
+- [app/api/users/schedule-deletion/route](app/api/users/schedule-deletion/route.md)
 - [app/api/v1/datasets/\[id\]/schema/infer/route](app/api/v1/datasets/[id]/schema/infer/route.md)
 - [app/api/v1/events/bounds/route](app/api/v1/events/bounds/route.md)
 - [app/api/v1/events/geo/stats/route](app/api/v1/events/geo/stats/route.md)
@@ -35,19 +31,25 @@
 ### API Routes
 
 - [app/api/admin/jobs/run/route](app/api/admin/jobs/run/route.md)
+- [app/api/catalogs/with-datasets/route](app/api/catalogs/with-datasets/route.md)
 - [app/api/health/route](app/api/health/route.md)
-- [app/api/wizard/catalogs/route](app/api/wizard/catalogs/route.md)
-- [app/api/wizard/configure-import/route](app/api/wizard/configure-import/route.md)
-- [app/api/wizard/preview-schema/route](app/api/wizard/preview-schema/route.md)
-- [app/api/wizard/validate-preview/route](app/api/wizard/validate-preview/route.md)
+- [app/api/import-jobs/\[id\]/reset/route](app/api/import-jobs/[id]/reset/route.md)
+- [app/api/import-jobs/\[id\]/retry/route](app/api/import-jobs/[id]/retry/route.md)
+- [app/api/import/configure/helpers](app/api/import/configure/helpers.md)
+- [app/api/import/configure/route](app/api/import/configure/route.md)
+- [app/api/import/preview-schema/helpers](app/api/import/preview-schema/helpers.md)
+- [app/api/import/preview-schema/upload/route](app/api/import/preview-schema/upload/route.md)
+- [app/api/import/preview-schema/url/route](app/api/import/preview-schema/url/route.md)
+- [app/api/import/validate-preview/route](app/api/import/validate-preview/route.md)
+- [app/api/scheduled-imports/\[id\]/trigger/route](app/api/scheduled-imports/[id]/trigger/route.md)
 
 ### Collections
 
+- [lib/collections/audit-log](lib/collections/audit-log.md)
 - [lib/collections/catalogs](lib/collections/catalogs.md)
 - [lib/collections/data-exports](lib/collections/data-exports.md)
 - [lib/collections/datasets/access](lib/collections/datasets/access.md)
 - [lib/collections/datasets/hooks](lib/collections/datasets/hooks.md)
-- [lib/collections/deletion-audit-log](lib/collections/deletion-audit-log.md)
 - [lib/collections/events/hooks](lib/collections/events/hooks.md)
 - [lib/collections/scheduled-imports/fields/auth-fields](lib/collections/scheduled-imports/fields/auth-fields.md)
 - [lib/collections/scheduled-imports/fields/basic-fields](lib/collections/scheduled-imports/fields/basic-fields.md)
@@ -71,6 +73,7 @@
 
 - [lib/constants/map](lib/constants/map.md)
 - [lib/constants/stage-time-weights](lib/constants/stage-time-weights.md)
+- [lib/constants/validation](lib/constants/validation.md)
 
 ### Globals
 
@@ -79,14 +82,18 @@
 
 ### Hooks
 
+- [lib/hooks/query-presets](lib/hooks/query-presets.md)
+- [lib/hooks/use-admin-feature-flag](lib/hooks/use-admin-feature-flag.md)
 - [lib/hooks/use-chart-filters](lib/hooks/use-chart-filters.md)
 - [lib/hooks/use-chart-query](lib/hooks/use-chart-query.md)
 - [lib/hooks/use-data-export](lib/hooks/use-data-export.md)
 - [lib/hooks/use-dataset-queries](lib/hooks/use-dataset-queries.md)
 - [lib/hooks/use-feature-flags](lib/hooks/use-feature-flags.md)
+- [lib/hooks/use-form-submission](lib/hooks/use-form-submission.md)
 
 ### Jobs
 
+- [lib/jobs/handlers/audit-log-ip-cleanup-job](lib/jobs/handlers/audit-log-ip-cleanup-job.md)
 - [lib/jobs/handlers/cache-cleanup-job](lib/jobs/handlers/cache-cleanup-job.md)
 - [lib/jobs/handlers/cleanup-stuck-scheduled-imports-job](lib/jobs/handlers/cleanup-stuck-scheduled-imports-job.md)
 - [lib/jobs/handlers/create-events-batch-job](lib/jobs/handlers/create-events-batch-job.md)
@@ -110,6 +117,7 @@
 ### Jobs/Utils
 
 - [lib/jobs/utils/resource-loading](lib/jobs/utils/resource-loading.md)
+- [lib/jobs/utils/upload-path](lib/jobs/utils/upload-path.md)
 
 ### Other
 
@@ -186,6 +194,7 @@
 - [lib/services/account-deletion-service](lib/services/account-deletion-service.md)
 - [lib/services/account-deletion-types](lib/services/account-deletion-types.md)
 - [lib/services/aggregation-filters](lib/services/aggregation-filters.md)
+- [lib/services/audit-log-service](lib/services/audit-log-service.md)
 - [lib/services/data-export-emails](lib/services/data-export-emails.md)
 - [lib/services/data-export-service](lib/services/data-export-service.md)
 - [lib/services/data-export-types](lib/services/data-export-types.md)
@@ -239,6 +248,14 @@
 ### Utils
 
 - [lib/utils/api-response](lib/utils/api-response.md)
+- [lib/utils/auth-helpers](lib/utils/auth-helpers.md)
+- [lib/utils/catalog-ownership](lib/utils/catalog-ownership.md)
 - [lib/utils/coordinates](lib/utils/coordinates.md)
+- [lib/utils/encryption](lib/utils/encryption.md)
 - [lib/utils/event-filters](lib/utils/event-filters.md)
 - [lib/utils/event-params](lib/utils/event-params.md)
+- [lib/utils/event-sql-filters](lib/utils/event-sql-filters.md)
+- [lib/utils/hash](lib/utils/hash.md)
+- [lib/utils/relation-id](lib/utils/relation-id.md)
+- [lib/utils/url-validation](lib/utils/url-validation.md)
+- [lib/utils/user-data](lib/utils/user-data.md)
