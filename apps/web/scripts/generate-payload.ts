@@ -108,7 +108,7 @@ const generate = () => {
 
     // Format both generated files
     logger.info("✨ Formatting generated files...");
-    execSync("oxfmt --write payload-types.ts payload-generated-schema.ts", {
+    execSync("pnpm exec oxfmt --write payload-types.ts payload-generated-schema.ts", {
       stdio: "pipe",
       cwd: process.cwd(),
     });
