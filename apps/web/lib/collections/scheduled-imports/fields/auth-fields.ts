@@ -1,11 +1,44 @@
 /**
  * Authentication field definitions for scheduled imports.
  *
+ * Sensitive credential fields (apiKey, bearerToken, password) are encrypted
+ * at rest using AES-256-GCM via Payload field hooks. Encryption is transparent
+ * to all consumers — values are decrypted on read and encrypted on write.
+ *
  * @module
  * @category Collections
  */
 
-import type { Field } from "payload";
+import type { Field, FieldHook } from "payload";
+
+import { decryptField, encryptField, isEncrypted } from "@/lib/utils/encryption";
+
+const getSecret = (): string => {
+  const secret = process.env.PAYLOAD_SECRET;
+  if (!secret) {
+    throw new Error("PAYLOAD_SECRET is required for credential encryption");
+  }
+  return secret;
+};
+
+/** Encrypt a field value before writing to the database. */
+const encryptBeforeChange: FieldHook = ({ value }) => {
+  if (!value || typeof value !== "string") return value;
+  if (isEncrypted(value)) return value;
+  return encryptField(value, getSecret());
+};
+
+/** Decrypt a field value after reading from the database. */
+const decryptAfterRead: FieldHook = ({ value }) => {
+  if (!value || typeof value !== "string") return value;
+  if (!isEncrypted(value)) return value;
+  return decryptField(value, getSecret());
+};
+
+const credentialHooks = {
+  beforeChange: [encryptBeforeChange],
+  afterRead: [decryptAfterRead],
+};
 
 export const authFields: Field[] = [
   {
@@ -33,6 +66,7 @@ export const authFields: Field[] = [
           condition: (_, siblingData) => siblingData?.type === "api-key",
           description: "API key to include in request header",
         },
+        hooks: credentialHooks,
       },
       {
         name: "apiKeyHeader",
@@ -50,6 +84,7 @@ export const authFields: Field[] = [
           condition: (_, siblingData) => siblingData?.type === "bearer",
           description: "Bearer token for Authorization header",
         },
+        hooks: credentialHooks,
       },
       {
         name: "username",
@@ -66,6 +101,7 @@ export const authFields: Field[] = [
           condition: (_, siblingData) => siblingData?.type === "basic",
           description: "Password for basic authentication",
         },
+        hooks: credentialHooks,
       },
       {
         name: "customHeaders",

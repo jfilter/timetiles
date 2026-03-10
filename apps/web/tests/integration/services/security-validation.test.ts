@@ -182,7 +182,7 @@ describe.sequential("Security Validation Tests", () => {
   });
 
   describe("Authentication Credential Security", () => {
-    it("should not expose authentication credentials in logs", async () => {
+    it("should encrypt credentials at rest and decrypt on read", async () => {
       const { scheduledImport } = await withScheduledImport(
         testEnv,
         testCatalogId,
@@ -198,14 +198,26 @@ describe.sequential("Security Validation Tests", () => {
         }
       );
 
-      // Fetch the created record
+      // Fetch via Payload API — afterRead hooks should decrypt
       const fetched = await payload.findByID({
         collection: "scheduled-imports",
         id: scheduledImport.id,
       });
-
-      // Credentials should be stored (but should be encrypted in production)
       expect(fetched.authConfig.bearerToken).toBe(TEST_CREDENTIALS.bearer.superSecretToken);
+
+      // Verify the raw database value is NOT plaintext (encrypted at rest)
+      const db = payload.db;
+      const tableName = "scheduled_imports";
+      const rawResult = await db.execute({
+        raw: `SELECT auth_config_bearer_token FROM ${tableName} WHERE id = ${scheduledImport.id}`,
+      });
+      const rawRows = rawResult.rows ?? rawResult;
+      if (Array.isArray(rawRows) && rawRows.length > 0) {
+        const rawToken = rawRows[0].auth_config_bearer_token;
+        if (rawToken) {
+          expect(rawToken).not.toBe(TEST_CREDENTIALS.bearer.superSecretToken);
+        }
+      }
     });
 
     it("should handle invalid authentication types", async () => {
