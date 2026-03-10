@@ -23,7 +23,8 @@ loadEnv({ path: path.resolve(__dirname, "../../../.env.local") });
 process.env.PAYLOAD_SECRET ??= "test-secret-key";
 process.env.NEXT_PUBLIC_PAYLOAD_URL ??= "http://localhost:3000";
 
-const POLL_INTERVAL_MS = 2000; // Run jobs every 2 seconds
+const IDLE_POLL_MS = 1000; // Sleep when no jobs found
+const BUSY_POLL_MS = 50; // Minimal delay between runs when processing
 const MAX_JOBS_PER_RUN = 50;
 
 let isRunning = true;
@@ -55,14 +56,15 @@ const main = async () => {
 
   while (isRunning) {
     try {
-      await payload.jobs.run({ limit: MAX_JOBS_PER_RUN });
+      const result = await payload.jobs.run({ limit: MAX_JOBS_PER_RUN });
+      // If jobs were processed, loop immediately to pick up chained jobs
+      const hadWork = result?.jobStatus && Object.keys(result.jobStatus).length > 0;
+      await new Promise((resolve) => setTimeout(resolve, hadWork ? BUSY_POLL_MS : IDLE_POLL_MS));
     } catch (error) {
       // Log but don't crash - jobs may fail for valid reasons
       console.error("[job-worker] Error running jobs:", error);
+      await new Promise((resolve) => setTimeout(resolve, IDLE_POLL_MS));
     }
-
-    // Wait before next poll
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
 
   console.log("[job-worker] Shutting down...");
