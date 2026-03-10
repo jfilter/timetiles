@@ -49,7 +49,7 @@ const Events: CollectionConfig = {
   access: {
     // Events: public data visible to all, private data visible to catalog owner
     // Uses denormalized fields for zero-query access control
-    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+    // oxlint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     read: (({ req: { user } }): boolean | Where => {
       if (user?.role === "admin" || user?.role === "editor") return true;
 
@@ -76,7 +76,7 @@ const Events: CollectionConfig = {
     },
 
     // Admins/editors can update all events, catalog owners can update their own
-    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+    // oxlint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     update: (({ req: { user } }): boolean | Where => {
       if (!user) return false;
       if (user.role === "admin" || user.role === "editor") return true;

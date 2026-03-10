@@ -6,7 +6,8 @@
  *
  * @module
  */
-/* eslint-disable */
+
+// oxlint-disable-next-line @typescript-eslint/ban-ts-comment -- Demo page with experimental card variants
 // @ts-nocheck
 "use client";
 

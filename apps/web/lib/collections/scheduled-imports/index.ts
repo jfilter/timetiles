@@ -185,7 +185,7 @@ const ScheduledImports: CollectionConfig = {
   },
   access: {
     // Users can only read their own scheduled imports, editors and admins can read all
-    // eslint-disable-next-line sonarjs/function-return-type
+    // oxlint-disable-next-line sonarjs/function-return-type
     read: ({ req: { user } }): boolean | { createdBy: { equals: string | number } } => {
       if (!user) return false;
       if (user.role === "admin" || user.role === "editor") return true;
@@ -202,7 +202,7 @@ const ScheduledImports: CollectionConfig = {
 
       // Check feature flag - even admins can't create if disabled
       const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-      // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
+      // oxlint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
       return await isFeatureEnabled(payload, "enableScheduledImports");
     },
 

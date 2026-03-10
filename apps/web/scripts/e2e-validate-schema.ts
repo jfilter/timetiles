@@ -67,7 +67,7 @@ const runDatabaseQuery = (dbName: string, sql: string, description?: string): st
   }
 
   try {
-    // eslint-disable-next-line sonarjs/os-command -- Safe database query execution
+    // oxlint-disable-next-line sonarjs/os-command -- Safe database query execution
     const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
     if (description) {
       logger.debug(`✓ ${description}: ${result.trim()}`);
@@ -114,7 +114,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     const postgisLines = postgisResult
       .split("\n")
       .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
+    // oxlint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
     const postgisCount = parseInt(postgisLines[0]?.trim() || "0");
     const hasPostGIS = postgisCount > 0;
 
@@ -127,7 +127,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     const schemaLines = schemaResult
       .split("\n")
       .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
+    // oxlint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
     const schemaCount = parseInt(schemaLines[0]?.trim() || "0");
     const hasPayloadSchema = schemaCount > 0;
 
@@ -142,7 +142,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
       const tableLines = tableResult
         .split("\n")
         .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
+      // oxlint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
       tableCount = parseInt(tableLines[0]?.trim() || "0");
     }
 
@@ -176,7 +176,7 @@ const getExpectedMigrations = (): string[] => {
 
     // Extract migration names from the imports/exports
     // Look for patterns like: export { default as Migration_20250729_195546 }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- match() returns null, not undefined
+    // oxlint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- match() returns null, not undefined
     const migrationMatches = content.match(/Migration_(\d{8}_\d{6})/g) || [];
 
     return migrationMatches.map((match) => match.replace("Migration_", ""));
@@ -319,13 +319,13 @@ export const resetTestDatabase = async (force: boolean = false): Promise<void> =
     const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
     if (isCI) {
-      // eslint-disable-next-line sonarjs/os-command -- Safe database drop command in CI
+      // oxlint-disable-next-line sonarjs/os-command -- Safe database drop command in CI
       execSync(
         `PGPASSWORD=${getDbPassword()} psql -h ${getDbHost()} -U ${getDbUser()} -d postgres -c "DROP DATABASE IF EXISTS ${getDbName()}"`
       );
       logger.info("✓ Dropped existing test database");
     } else {
-      // eslint-disable-next-line sonarjs/os-command -- Safe database drop command via Makefile
+      // oxlint-disable-next-line sonarjs/os-command -- Safe database drop command via Makefile
       execSync(`cd ../.. && make db-query DB_NAME=postgres SQL="DROP DATABASE IF EXISTS ${getDbName()}"`);
       logger.info("✓ Dropped existing test database");
     }

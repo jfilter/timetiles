@@ -62,7 +62,7 @@ const buildLongitudeBoundsClause = (bounds: SimpleBounds): ReturnType<typeof sql
  * const whereClause = buildAggregationWhereClause(filters, [1, 2, 3]);
  * ```
  */
-/* eslint-disable sonarjs/cognitive-complexity -- Multi-filter clause building is inherently branchy */
+/* oxlint-disable sonarjs/cognitive-complexity -- Multi-filter clause building is inherently branchy */
 export const buildAggregationWhereClause = (
   filters: AggregationFilters,
   accessibleCatalogIds: number[]
@@ -145,7 +145,7 @@ export const buildAggregationWhereClause = (
   // Combine all clauses with AND
   return sql.join(clauses, sql` AND `);
 };
-/* eslint-enable sonarjs/cognitive-complexity */
+/* oxlint-enable sonarjs/cognitive-complexity */
 
 /**
  * Normalize end date to include full day (23:59:59.999).

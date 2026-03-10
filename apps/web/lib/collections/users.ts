@@ -113,7 +113,7 @@ const Users: CollectionConfig = {
   },
   access: {
     // Users can read their own profile, admins can read all
-    // eslint-disable-next-line sonarjs/function-return-type
+    // oxlint-disable-next-line sonarjs/function-return-type
     read: ({ req: { user } }): boolean | { id: { equals: string | number } } => {
       if (!user) return false;
       if (user.role === "admin") return true;
@@ -127,7 +127,7 @@ const Users: CollectionConfig = {
 
     // Users can update their own profile, admins can update anyone
     // Role changes are prevented via field-level access control on the role field
-    // eslint-disable-next-line sonarjs/function-return-type
+    // oxlint-disable-next-line sonarjs/function-return-type
     update: ({ req: { user } }): boolean | { id: { equals: string | number } } => {
       if (!user) return false;
       if (user.role === "admin") return true;

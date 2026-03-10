@@ -69,7 +69,7 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
         {/* Sample values */}
         {data.sampleValues.length > 0 && (
           <div className="mt-1.5 space-y-0.5">
-            {/* eslint-disable @eslint-react/no-array-index-key -- sample values may not be unique, index needed for stable keys */}
+            {/* oxlint-disable @eslint-react/no-array-index-key -- sample values may not be unique, index needed for stable keys */}
             {data.sampleValues.slice(0, 2).map((value, index) => {
               const displayValue = toDisplayString(value);
               return (
@@ -82,7 +82,7 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
                 </div>
               );
             })}
-            {/* eslint-enable @eslint-react/no-array-index-key */}
+            {/* oxlint-enable @eslint-react/no-array-index-key */}
           </div>
         )}
       </div>

@@ -135,7 +135,7 @@ export const hasActiveFilters = (filters: FilterState): boolean => {
 };
 
 // Helper function to remove a specific filter
-/* eslint-disable sonarjs/cognitive-complexity -- Switch-case with nested conditions for each filter type */
+/* oxlint-disable sonarjs/cognitive-complexity -- Switch-case with nested conditions for each filter type */
 export const removeFilter = (filters: FilterState, filterType: keyof FilterState, value?: string): FilterState => {
   const newFilters = { ...filters, fieldFilters: { ...filters.fieldFilters } };
 
@@ -183,7 +183,7 @@ export const removeFilter = (filters: FilterState, filterType: keyof FilterState
 
   return newFilters;
 };
-/* eslint-enable sonarjs/cognitive-complexity */
+/* oxlint-enable sonarjs/cognitive-complexity */
 
 // Helper function to clear all filters
 export const clearAllFilters = (): FilterState => ({

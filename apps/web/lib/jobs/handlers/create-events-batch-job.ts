@@ -38,7 +38,7 @@ import { getImportFilePath } from "../utils/upload-path";
  * Build ImportTransform array from dataset configuration.
  * Handles all transform types: rename, date-parse, string-op, concatenate, split, type-cast
  */
-// eslint-disable-next-line complexity, sonarjs/cognitive-complexity
+// oxlint-disable-next-line complexity, sonarjs/cognitive-complexity
 const buildTransformsFromDataset = (dataset: Dataset): ImportTransform[] => {
   const transforms: ImportTransform[] = [];
 

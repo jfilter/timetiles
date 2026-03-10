@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/cors */
+/* oxlint-disable sonarjs/cors */
 // @vitest-environment node
 /**
  * Integration tests for webhook import service functionality

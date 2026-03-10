@@ -30,14 +30,14 @@ export const getWorktreeId = (): string => {
 
   try {
     // Get git worktree root (works for both main repo and worktrees)
-    // eslint-disable-next-line sonarjs/no-os-command-from-path -- Safe: hardcoded git command in test utility, no user input
+    // oxlint-disable-next-line sonarjs/no-os-command-from-path -- Safe: hardcoded git command in test utility, no user input
     const worktreeRoot = execSync("git rev-parse --show-toplevel", {
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
 
     // Create short hash of the path
-    // eslint-disable-next-line sonarjs/hashing -- Safe: MD5 used only for non-cryptographic identifier generation in tests
+    // oxlint-disable-next-line sonarjs/hashing -- Safe: MD5 used only for non-cryptographic identifier generation in tests
     const hash = createHash("md5").update(worktreeRoot).digest("hex");
     return hash.slice(0, 5); // e.g., "a1b2c"
   } catch {

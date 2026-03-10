@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/publicly-writable-directories */
+/* oxlint-disable sonarjs/publicly-writable-directories */
 // @vitest-environment node
 /**
  *

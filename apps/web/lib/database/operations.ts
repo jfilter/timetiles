@@ -127,7 +127,7 @@ const executeQueryViaShell = (databaseName: string, sql: string, isCI: boolean, 
   }
 
   try {
-    // eslint-disable-next-line sonarjs/os-command -- Safe database query execution
+    // oxlint-disable-next-line sonarjs/os-command -- Safe database query execution
     const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
     return result.trim();
   } catch (error) {

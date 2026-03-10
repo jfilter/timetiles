@@ -8,7 +8,7 @@
  * @category E2E Fixtures
  */
 
-/* eslint-disable react-hooks/rules-of-hooks -- Playwright fixture `use()` is not a React hook */
+/* oxlint-disable react-hooks/rules-of-hooks -- Playwright fixture `use()` is not a React hook */
 
 import { expect, test as base } from "@playwright/test";
 
@@ -23,7 +23,7 @@ import { getWorktreeBasePort } from "../utils/worktree-id";
 export const test = base.extend<{ baseURL: string }>({
   // Set baseURL from environment or compute from worktree
   baseURL: async (_deps, use) => {
-    // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test-only env var
+    // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test-only env var
     const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${getWorktreeBasePort()}`;
     await use(baseURL);
   },

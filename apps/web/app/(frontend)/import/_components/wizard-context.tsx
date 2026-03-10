@@ -208,7 +208,7 @@ type WizardAction =
   | { type: "RESTORE"; state: Partial<WizardState> };
 
 // Reducer
-/* eslint-disable sonarjs/max-lines-per-function, complexity -- Complex reducer with many action types */
+/* oxlint-disable complexity, sonarjs/max-lines-per-function -- Complex reducer with many action types */
 const wizardReducer = (state: WizardState, action: WizardAction): WizardState => {
   const newState = (() => {
     switch (action.type) {
@@ -389,7 +389,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
   // Update lastSavedAt for persistence
   return { ...newState, lastSavedAt: new Date().toISOString() };
 };
-/* eslint-enable sonarjs/max-lines-per-function, complexity */
+/* oxlint-enable sonarjs/max-lines-per-function, complexity */
 
 // Context
 interface WizardContextValue {

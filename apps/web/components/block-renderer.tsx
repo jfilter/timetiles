@@ -209,7 +209,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
 
   return (
     <>
-      {/* eslint-disable-next-line sonarjs/max-lines-per-function, complexity -- Block renderer requires large switch statement for all block types */}
+      {/* oxlint-disable-next-line sonarjs/max-lines-per-function, complexity -- Block renderer requires large switch statement for all block types */}
       {blocks.map((block, index) => {
         const key = block.id ?? `${block.blockType}-${index}`;
 

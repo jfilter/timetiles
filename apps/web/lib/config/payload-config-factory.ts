@@ -119,7 +119,7 @@ const getEtherealCredentials = async (): Promise<EtherealCredentials> => {
     // Non-fatal, just won't persist
   }
 
-  // eslint-disable-next-line no-console -- Intentional dev output before logger init
+  // oxlint-disable-next-line no-console -- Intentional dev output before logger init
   console.log(`E-mail: NEW ethereal.email (${credentials.user} / ${credentials.pass}) - https://ethereal.email/login`);
 
   // eslint-disable-next-line require-atomic-updates -- Single-threaded init, no race condition
@@ -167,7 +167,7 @@ const configureProduction = (config: Config, serverURL: string) => {
  * Creates a Payload configuration with the specified options.
  * Simplified factory following Payload's own buildConfigWithDefaults pattern.
  */
-// eslint-disable-next-line complexity -- Payload config requires many conditional options
+// oxlint-disable-next-line complexity -- Payload config requires many conditional options
 export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}) => {
   const {
     environment = process.env.NODE_ENV ?? "development",
@@ -222,7 +222,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     graphQL: {
       disable: disableGraphQL,
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
     sharp: sharp as any,
   };
 
@@ -231,7 +231,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     config.email = nodemailerAdapter({
       defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.app",
       defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
+      // oxlint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
       transport: nodemailer.createTransport({ jsonTransport: true }),
       skipVerify: true,
     });

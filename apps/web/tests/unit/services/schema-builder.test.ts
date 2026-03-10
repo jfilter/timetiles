@@ -660,7 +660,7 @@ describe("ProgressiveSchemaBuilder", () => {
         .fill(null)
         .map((_, i) => ({
           status:
-            // eslint-disable-next-line sonarjs/no-nested-conditional
+            // oxlint-disable-next-line sonarjs/no-nested-conditional
             i % 3 === 0 ? "active" : i % 3 === 1 ? "pending" : "done",
         }));
       builder.processBatch(records);

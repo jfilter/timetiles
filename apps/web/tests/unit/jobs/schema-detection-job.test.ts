@@ -87,7 +87,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     };
 
     // Setup ProgressiveSchemaBuilder mock
-    // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
+    // oxlint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
     mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
       return mockSchemaBuilderInstance;
     });

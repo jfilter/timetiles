@@ -427,7 +427,7 @@ const runCustomTransform = (value: unknown, customCode: string): unknown => {
     // SAFETY: This is intentional - custom transforms are user-defined code that dataset
     // administrators configure. The transform code runs in a limited context with only
     // the value and helper functions available (no access to globals, DOM, or Node APIs).
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval, sonarjs/code-eval
+    // oxlint-disable-next-line @typescript-eslint/no-implied-eval, sonarjs/code-eval
     const fn = new Function("value", "context", customCode) as (value: unknown, context: unknown) => unknown;
 
     const context = {

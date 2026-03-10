@@ -690,7 +690,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
                 </TableHeader>
                 <TableBody>
                   {activeSheet.sampleData.slice(0, 3).map((row, i) => (
-                    // eslint-disable-next-line @eslint-react/no-array-index-key -- sample data rows have no unique ID
+                    // oxlint-disable-next-line @eslint-react/no-array-index-key -- sample data rows have no unique ID
                     <TableRow key={`preview-row-${i}`} className="border-cartographic-navy/5 last:border-0">
                       {activeMapping.titleField && (
                         <TableCell className="text-cartographic-charcoal">

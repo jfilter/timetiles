@@ -80,7 +80,7 @@ const detectStringFormats = (value: string, stats: FieldStatistics): void => {
     stats.formats.date = (stats.formats.date ?? 0) + 1;
   }
   // Numeric string detection
-  // eslint-disable-next-line security/detect-unsafe-regex -- Simple numeric pattern, false positive
+  // oxlint-disable-next-line security/detect-unsafe-regex -- Simple numeric pattern, false positive
   if (/^-?\d+(\.\d+)?$/.test(value)) {
     stats.formats.numeric = (stats.formats.numeric ?? 0) + 1;
   }
@@ -169,7 +169,7 @@ export const getValueType = (value: unknown): string => {
  */
 const isDateString = (value: string): boolean => {
   // ISO date pattern
-  // eslint-disable-next-line security/detect-unsafe-regex -- Simple date pattern, false positive
+  // oxlint-disable-next-line security/detect-unsafe-regex -- Simple date pattern, false positive
   if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/.test(value)) {
     if (hasInvalidIsoDatePart(value)) return false;
     const date = new Date(value);

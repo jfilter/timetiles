@@ -16,7 +16,7 @@ import { isAuthenticated, isEditorOrAdmin } from "../shared-fields";
 /**
  * Read access: Public views are readable by all, private views by owner/admin.
  */
-// eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+// oxlint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
 export const read: Access = ({ req: { user } }): boolean | Where => {
   // Admin and editor can read all
   if (user?.role === "admin" || user?.role === "editor") return true;
@@ -41,7 +41,7 @@ export const create: Access = isAuthenticated;
 /**
  * Update access: Admins/editors can update all views, creators can update their own.
  */
-// eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+// oxlint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
 export const update: Access = ({ req: { user } }): boolean | Where => {
   if (!user) return false;
   if (user.role === "admin" || user.role === "editor") return true;

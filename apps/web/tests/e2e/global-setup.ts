@@ -144,7 +144,7 @@ export default async function globalSetup(): Promise<void> {
   const fs = await import("fs");
   if (!fs.existsSync(buildIdPath)) {
     console.log(`🔨 Building application (compile mode)...`);
-    // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
+    // oxlint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
     execSync(`cd "${webDir}" && pnpm build:compile`, {
       env: serverEnv,
       stdio: "inherit",
@@ -163,7 +163,7 @@ export default async function globalSetup(): Promise<void> {
 
   console.log(`🚀 Starting ${useStandalone ? "standalone" : "production"} server on port ${serverPort}...`);
 
-  // eslint-disable-next-line sonarjs/no-os-command-from-path -- Running pnpm in controlled test setup environment
+  // oxlint-disable-next-line sonarjs/no-os-command-from-path -- Running pnpm in controlled test setup environment
   serverProcess = spawn("sh", ["-c", serverCommand], {
     env: serverEnv,
     stdio: ["ignore", "pipe", "pipe"],
@@ -195,7 +195,7 @@ export default async function globalSetup(): Promise<void> {
   const workerPath = path.join(__dirname, "utils", "job-worker.ts");
   console.log(`⚙️ Starting job worker...`);
 
-  // eslint-disable-next-line sonarjs/no-os-command-from-path -- Running tsx in controlled test setup environment
+  // oxlint-disable-next-line sonarjs/no-os-command-from-path -- Running tsx in controlled test setup environment
   workerProcess = spawn("npx", ["tsx", workerPath], {
     env: serverEnv,
     stdio: ["ignore", "pipe", "pipe"],
@@ -244,11 +244,11 @@ export default async function globalSetup(): Promise<void> {
   console.log(`✅ Job worker started`);
 
   // Store server info for teardown and workers
-  /* eslint-disable turbo/no-undeclared-env-vars -- E2E test environment variables set dynamically */
+  /* oxlint-disable turbo/no-undeclared-env-vars -- E2E test environment variables set dynamically */
   process.env.E2E_SERVER_PORT = String(serverPort);
   process.env.E2E_SERVER_PID = String(serverProcess?.pid ?? "");
   process.env.E2E_WORKER_PID = String(workerProcess?.pid ?? "");
   process.env.E2E_DATABASE_NAME = databaseName;
   process.env.E2E_BASE_URL = baseURL;
-  /* eslint-enable turbo/no-undeclared-env-vars */
+  /* oxlint-enable turbo/no-undeclared-env-vars */
 }

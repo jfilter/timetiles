@@ -7,7 +7,7 @@
  *
  * @module
  */
-/* eslint-disable @typescript-eslint/require-await -- act(async () => ...) is the standard React 19 pattern for flushing state updates */
+/* oxlint-disable @typescript-eslint/require-await -- act(async () => ...) is the standard React 19 pattern for flushing state updates */
 import { StepUpload } from "@/app/(frontend)/import/_components/steps/step-upload";
 import type { WizardState } from "@/app/(frontend)/import/_components/wizard-context";
 
