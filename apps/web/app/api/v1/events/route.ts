@@ -11,63 +11,99 @@
 import type { Payload, Where } from "payload";
 
 import { apiRoute } from "@/lib/api";
-import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
+import type { MapBounds } from "@/lib/geospatial";
+import type { EventListQuery } from "@/lib/schemas/events";
+import { EventListQuerySchema } from "@/lib/schemas/events";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
-import { extractListParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 import type { Event, User } from "@/payload-types";
 
-const addCatalogFilter = (where: Where, catalog: string) => {
-  const catalogId = parseStrictInteger(catalog);
-  if (catalogId == null) {
-    where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { equals: -1 } }];
-    return;
-  }
-
-  where.and = [...(Array.isArray(where.and) ? where.and : []), { "dataset.catalog": { equals: catalogId } }];
+const addCatalogFilter = (where: Where, catalogId: number) => {
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      "dataset.catalog": {
+        equals: catalogId,
+      },
+    },
+  ];
 };
 
-const addDatasetFilter = (where: Where, datasets: string[]) => {
-  const datasetIds = normalizeStrictIntegerList(datasets);
-
+const addDatasetFilter = (where: Where, datasetIds: number[]) => {
   if (datasetIds.length === 0) {
-    // All provided IDs were invalid — return no results instead of all events
+    // All provided IDs were invalid -- return no results instead of all events
     where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { equals: -1 } }];
     return;
   }
 
-  where.and = [...(Array.isArray(where.and) ? where.and : []), { dataset: { in: datasetIds } }];
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      dataset: {
+        in: datasetIds,
+      },
+    },
+  ];
 };
 
 const addBoundsFilter = (where: Where, bounds: MapBounds) => {
   const longitudeFilter =
     bounds.west <= bounds.east
       ? [
-          { "location.longitude": { greater_than_equal: bounds.west } },
-          { "location.longitude": { less_than_equal: bounds.east } },
+          {
+            "location.longitude": {
+              greater_than_equal: bounds.west,
+            },
+          },
+          {
+            "location.longitude": {
+              less_than_equal: bounds.east,
+            },
+          },
         ]
       : [
           {
             or: [
-              { "location.longitude": { greater_than_equal: bounds.west } },
-              { "location.longitude": { less_than_equal: bounds.east } },
+              {
+                "location.longitude": {
+                  greater_than_equal: bounds.west,
+                },
+              },
+              {
+                "location.longitude": {
+                  less_than_equal: bounds.east,
+                },
+              },
             ],
           },
         ];
 
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
-    { "location.latitude": { greater_than_equal: bounds.south } },
-    { "location.latitude": { less_than_equal: bounds.north } },
+    {
+      "location.latitude": {
+        greater_than_equal: bounds.south,
+      },
+    },
+    {
+      "location.latitude": {
+        less_than_equal: bounds.north,
+      },
+    },
     ...longitudeFilter,
   ];
 };
 
-const addDateFilter = (where: Where, startDate: string | null, endDate: string | null) => {
+const addDateFilter = (where: Where, startDate: string | undefined, endDate: string | null) => {
   const dateFilter: Record<string, string> = {};
   if (startDate != null) dateFilter.greater_than_equal = startDate;
   if (endDate != null) dateFilter.less_than_equal = endDate;
 
-  where.and = [...(Array.isArray(where.and) ? where.and : []), { eventTimestamp: dateFilter }];
+  where.and = [
+    ...(Array.isArray(where.and) ? where.and : []),
+    {
+      eventTimestamp: dateFilter,
+    },
+  ];
 };
 
 const addFieldFilters = (where: Where, fieldFilters: Record<string, string[]>) => {
@@ -75,7 +111,14 @@ const addFieldFilters = (where: Where, fieldFilters: Record<string, string[]>) =
     if (values.length === 0) continue;
 
     // Query the JSON data field using Payload's nested field syntax
-    where.and = [...(Array.isArray(where.and) ? where.and : []), { [`data.${fieldPath}`]: { in: values } }];
+    where.and = [
+      ...(Array.isArray(where.and) ? where.and : []),
+      {
+        [`data.${fieldPath}`]: {
+          in: values,
+        },
+      },
+    ];
   }
 };
 
@@ -99,7 +142,11 @@ const getDatasetInfo = (dataset: Event["dataset"]) => {
 
   const catalogName = typeof dataset.catalog === "object" && dataset.catalog != null ? dataset.catalog.name : undefined;
 
-  return { id: dataset.id, title: dataset.name, catalog: catalogName };
+  return {
+    id: dataset.id,
+    title: dataset.name,
+    catalog: catalogName,
+  };
 };
 
 const enrichEventData = (
@@ -140,7 +187,12 @@ const transformEvent = (event: Event) => {
     id: event.id,
     dataset: getDatasetInfo(event.dataset),
     data: enrichedData,
-    location: event.location ? { longitude: event.location.longitude, latitude: event.location.latitude } : null,
+    location: event.location
+      ? {
+          longitude: event.location.longitude,
+          latitude: event.location.latitude,
+        }
+      : null,
     eventTimestamp: event.eventTimestamp,
     isValid: event.validationStatus === "valid",
   };
@@ -148,17 +200,10 @@ const transformEvent = (event: Event) => {
 
 export const GET = apiRoute({
   auth: "optional",
-  handler: async ({ req, user, payload }) => {
-    const parameters = extractListParameters(req.nextUrl.searchParams);
-
-    // Validate bounds parameter
-    const boundsResult = parseBoundsParameter(parameters.boundsParam);
-    if (boundsResult.error) {
-      return boundsResult.error;
-    }
-
-    const where = buildWhereClause(parameters, boundsResult.bounds);
-    const result = await executeEventsQuery(payload, where, parameters, user);
+  query: EventListQuerySchema,
+  handler: async ({ query, user, payload }) => {
+    const where = buildWhereClause(query);
+    const result = await executeEventsQuery(payload, where, query, user);
     const response = buildListResponse(result);
 
     return Response.json(response);
@@ -170,36 +215,44 @@ const addLocationExistsFilter = (where: Where) => {
   // Events without coordinates cannot be displayed on the map
   where.and = [
     ...(Array.isArray(where.and) ? where.and : []),
-    { "location.latitude": { exists: true } },
-    { "location.longitude": { exists: true } },
+    {
+      "location.latitude": {
+        exists: true,
+      },
+    },
+    {
+      "location.longitude": {
+        exists: true,
+      },
+    },
   ];
 };
 
-const buildWhereClause = (parameters: ReturnType<typeof extractListParameters>, bounds: MapBounds | null): Where => {
+const buildWhereClause = (query: EventListQuery): Where => {
   const where: Where = {};
 
-  addFiltersToWhere(where, parameters);
+  addFiltersToWhere(where, query);
   addLocationExistsFilter(where);
-  addBoundsToWhere(where, bounds);
-  addDateFiltersToWhere(where, parameters.startDate, parameters.endDate);
+  addBoundsToWhere(where, query.bounds ?? null);
+  addDateFiltersToWhere(where, query.startDate, query.endDate);
 
   return where;
 };
 
-const addFiltersToWhere = (where: Where, parameters: ReturnType<typeof extractListParameters>) => {
-  const { catalog, datasets, fieldFilters } = parameters;
-  if (catalog != null || (datasets.length > 0 && datasets[0] !== "")) {
-    if (catalog != null && (datasets.length === 0 || datasets[0] === "")) {
+const addFiltersToWhere = (where: Where, query: EventListQuery) => {
+  const { catalog, datasets, ff } = query;
+  if (catalog != null || (datasets != null && datasets.length > 0)) {
+    if (catalog != null && (datasets == null || datasets.length === 0)) {
       addCatalogFilter(where, catalog);
     }
-    if (datasets.length > 0 && datasets[0] !== "") {
+    if (datasets != null && datasets.length > 0) {
       addDatasetFilter(where, datasets);
     }
   }
 
   // Add field filters if any
-  if (fieldFilters && Object.keys(fieldFilters).length > 0) {
-    addFieldFilters(where, fieldFilters);
+  if (ff && Object.keys(ff).length > 0) {
+    addFieldFilters(where, ff);
   }
 };
 
@@ -209,26 +262,21 @@ const addBoundsToWhere = (where: Where, bounds: MapBounds | null) => {
   }
 };
 
-const addDateFiltersToWhere = (where: Where, startDate: string | null, endDate: string | null) => {
-  const normalizedEndDate = normalizeEndDate(endDate);
+const addDateFiltersToWhere = (where: Where, startDate: string | undefined, endDate: string | undefined) => {
+  const normalizedEndDate = normalizeEndDate(endDate ?? null);
 
   if (startDate != null || normalizedEndDate != null) {
     addDateFilter(where, startDate, normalizedEndDate);
   }
 };
 
-const executeEventsQuery = async (
-  payload: Payload,
-  where: Where,
-  parameters: ReturnType<typeof extractListParameters>,
-  user?: User | null
-) =>
+const executeEventsQuery = async (payload: Payload, where: Where, query: EventListQuery, user?: User | null) =>
   payload.find({
     collection: "events",
     where,
-    page: parameters.page,
-    limit: parameters.limit,
-    sort: parameters.sort,
+    page: query.page,
+    limit: query.limit,
+    sort: query.sort,
     depth: 1,
     user,
     overrideAccess: false,

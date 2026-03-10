@@ -17,14 +17,11 @@ import { logError, logger } from "@/lib/logger";
 
 export const POST = apiRoute({
   auth: "required",
-  params: z.object({ id: z.string() }),
+  params: z.object({
+    id: z.string().regex(/^\d+$/).transform(Number),
+  }),
   handler: async ({ payload, user, params }) => {
-    const { id } = params;
-
-    const numericId = Number(id);
-    if (!Number.isInteger(numericId) || String(numericId) !== id) {
-      return Response.json({ error: "Invalid ID" }, { status: 400 });
-    }
+    const numericId = params.id;
 
     // Fetch schedule with access control enforced by Payload
     const existingSchedule = await payload
@@ -78,7 +75,7 @@ export const POST = apiRoute({
       return Response.json({ success: true, message: "Import triggered" });
     } catch (error) {
       logError(error, "Error triggering scheduled import");
-      logger.error({ error, scheduleId: id, userId: user.id }, "Error triggering scheduled import");
+      logger.error({ error, scheduleId: numericId, userId: user.id }, "Error triggering scheduled import");
       return Response.json({ error: "Internal server error" }, { status: 500 });
     }
   },

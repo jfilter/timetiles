@@ -8,23 +8,19 @@
  */
 import { draftMode } from "next/headers";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
-import { apiRoute, ValidationError } from "@/lib/api";
+import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 export const GET = apiRoute({
   auth: "required",
-  handler: async ({ req, user }) => {
-    const { searchParams } = req.nextUrl;
-
-    // Get parameters from the preview URL
-    const slug = searchParams.get("slug");
-    const collection = searchParams.get("collection");
-
-    // Validate required parameters
-    if (slug == null || collection == null) {
-      throw new ValidationError("Missing required parameters");
-    }
+  query: z.object({
+    slug: z.string(),
+    collection: z.string(),
+  }),
+  handler: async ({ user, query }) => {
+    const { slug, collection } = query;
 
     // Enable draft mode
     const draft = await draftMode();

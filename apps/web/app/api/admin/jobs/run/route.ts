@@ -11,16 +11,12 @@
  */
 
 import type { Payload } from "payload";
+import { z } from "zod";
 
 import { apiRoute, ForbiddenError } from "@/lib/api";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("api-admin-jobs-run");
-
-interface RunJobsRequest {
-  limit?: number;
-  iterations?: number;
-}
 
 /** Fetch job stats for logging */
 const fetchJobStats = async (payload: Payload) => {
@@ -48,12 +44,15 @@ const mapJobStages = (docs: Array<{ id: number; stage?: string | null }>) =>
  */
 export const POST = apiRoute({
   auth: "admin",
-  handler: async ({ req, payload }) => {
+  body: z.object({
+    limit: z.number().int().positive().optional(),
+    iterations: z.number().int().positive().optional(),
+  }),
+  handler: async ({ payload, body }) => {
     if (process.env.NODE_ENV === "production") {
       throw new ForbiddenError("Not available in production");
     }
 
-    const body = (await req.json().catch(() => ({}))) as RunJobsRequest;
     const limit = body.limit ?? 100;
     const iterations = body.iterations ?? 10;
 

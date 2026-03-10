@@ -24,7 +24,11 @@ describe("event schemas", () => {
     });
 
     it("should accept catalog and dates", () => {
-      const result = EventFiltersSchema.safeParse({ catalog: "1", startDate: "2024-01-01", endDate: "2024-12-31" });
+      const result = EventFiltersSchema.safeParse({
+        catalog: "1",
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+      });
       expect(result.success).toBe(true);
     });
   });
@@ -101,16 +105,33 @@ describe("event schemas", () => {
 
   describe("MapClustersQuerySchema", () => {
     it("should accept required bounds and zoom", () => {
-      const result = MapClustersQuerySchema.safeParse({ bounds: '{"north":52}', zoom: 10 });
+      const result = MapClustersQuerySchema.safeParse({
+        bounds: '{"north":52,"south":50,"east":14,"west":12}',
+        zoom: 10,
+      });
       expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.bounds).toEqual({ north: 52, south: 50, east: 14, west: 12 });
+      }
     });
 
     it("should default zoom to 10", () => {
-      const result = MapClustersQuerySchema.safeParse({ bounds: '{"north":52}' });
+      const result = MapClustersQuerySchema.safeParse({
+        bounds: '{"north":52,"south":50,"east":14,"west":12}',
+      });
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.zoom).toBe(10);
       }
+    });
+
+    it("should reject invalid bounds JSON", () => {
+      const result = MapClustersQuerySchema.safeParse({
+        bounds: '{"north":52}',
+        zoom: 10,
+      });
+      // Invalid bounds (missing south/east/west) fails at BoundsSchema level
+      expect(result.success).toBe(false);
     });
   });
 

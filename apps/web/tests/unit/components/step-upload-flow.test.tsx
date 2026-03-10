@@ -122,7 +122,7 @@ describe.sequential("StepUpload", () => {
 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith(
-          "/api/import/preview-schema",
+          "/api/import/preview-schema/upload",
           expect.objectContaining({ method: "POST" })
         );
       });
@@ -146,7 +146,7 @@ describe.sequential("StepUpload", () => {
 
       await waitFor(() => {
         const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-        expect(url).toBe("/api/import/preview-schema");
+        expect(url).toBe("/api/import/preview-schema/upload");
         expect(options.method).toBe("POST");
         expect(options.body).toBeInstanceOf(FormData);
         expect((options.body as FormData).get("file")).toBeInstanceOf(File);
@@ -196,7 +196,7 @@ describe.sequential("StepUpload", () => {
 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith(
-          "/api/import/preview-schema",
+          "/api/import/preview-schema/upload",
           expect.objectContaining({ method: "POST" })
         );
       });

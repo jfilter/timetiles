@@ -7,8 +7,9 @@
  * @module
  * @category API
  */
+import { z } from "zod";
+
 import { apiRoute } from "@/lib/api";
-import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
@@ -16,7 +17,11 @@ import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
 export const POST = apiRoute({
   auth: "required",
-  handler: async ({ payload, user, req }) => {
+  body: z.object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8),
+  }),
+  handler: async ({ payload, user, req, body }) => {
     // Rate limiting
     const clientId = getClientIdentifier(req);
     const rateLimitService = getRateLimitService(payload);
@@ -30,31 +35,7 @@ export const POST = apiRoute({
       return Response.json({ error: "Too many password change attempts. Please try again later." }, { status: 429 });
     }
 
-    // Parse request body
-    let currentPassword: string;
-    let newPassword: string;
-    try {
-      const body = await req.json();
-      currentPassword = body.currentPassword;
-      newPassword = body.newPassword;
-    } catch {
-      return Response.json({ error: "Invalid request body", code: "BAD_REQUEST" }, { status: 400 });
-    }
-
-    if (!currentPassword || !newPassword) {
-      return Response.json(
-        { error: "Current password and new password are required", code: "BAD_REQUEST" },
-        { status: 400 }
-      );
-    }
-
-    // Validate new password
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      return Response.json(
-        { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`, code: "BAD_REQUEST" },
-        { status: 400 }
-      );
-    }
+    const { currentPassword, newPassword } = body;
 
     // Verify current password
     const verifyError = await verifyPasswordWithAudit(

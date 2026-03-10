@@ -11,8 +11,6 @@ import "@/tests/mocks/services/logger";
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockGetAllAccessibleCatalogIds: vi.fn(),
-  mockParseBoundsParameter: vi.fn(),
-  mockExtractBaseEventParameters: vi.fn(),
   mockBuildAggregationWhereClause: vi.fn(),
   mockNormalizeEndDate: vi.fn(),
   mockDrizzleExecute: vi.fn(),
@@ -33,22 +31,6 @@ vi.mock("payload", () => ({
 
 vi.mock("@/lib/services/access-control", () => ({
   getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
-
-vi.mock("@/lib/geospatial", () => ({
-  parseBoundsParameter: mocks.mockParseBoundsParameter,
-}));
-
-vi.mock("@/lib/utils/event-params", () => ({
-  extractBaseEventParameters: mocks.mockExtractBaseEventParameters,
-  normalizeStrictIntegerList: (values: Array<string | number>) =>
-    values
-      .map((value) => {
-        if (typeof value === "number") return Number.isInteger(value) ? value : null;
-        if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-        return parseInt(value.trim(), 10);
-      })
-      .filter((value): value is number => value != null),
 }));
 
 vi.mock("@/lib/services/aggregation-filters", () => ({
@@ -75,9 +57,12 @@ import type { AuthenticatedRequest } from "@/lib/middleware/auth";
  * Helper to create a mock request with the given query string.
  */
 const createRequest = (queryString: string, user: unknown = null) => {
+  const url = `http://localhost:3000/api/v1/events/stats${queryString}`;
   return {
     user,
-    nextUrl: new URL(`http://localhost:3000/api/v1/events/stats${queryString}`),
+    url,
+    headers: new Headers(),
+    nextUrl: new URL(url),
   } as unknown as AuthenticatedRequest;
 };
 
@@ -90,16 +75,7 @@ const setupDefaults = () => {
     db: { drizzle: { execute: mocks.mockDrizzleExecute } },
   });
 
-  mocks.mockExtractBaseEventParameters.mockReturnValue({
-    catalog: null,
-    datasets: [],
-    startDate: null,
-    endDate: null,
-    fieldFilters: {},
-  });
-
   mocks.mockNormalizeEndDate.mockReturnValue(null);
-  mocks.mockParseBoundsParameter.mockReturnValue({ bounds: null });
   mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
   mocks.mockBuildAggregationWhereClause.mockReturnValue("1=1");
   mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
@@ -112,40 +88,44 @@ describe.sequential("GET /api/v1/events/stats", () => {
   });
 
   describe.sequential("Parameter Validation", () => {
-    it("should return 400 when groupBy parameter is missing", async () => {
+    it("should return 422 when groupBy parameter is missing", async () => {
       const req = createRequest("");
 
       const response = await GET(req, { params: Promise.resolve({}) });
 
-      expect(response.status).toBe(400);
+      // Zod validation returns 422 for missing required fields
+      expect(response.status).toBe(422);
       const data = await response.json();
-      expect(data.error).toBe("Missing required parameter: groupBy");
+      expect(data.error).toBe("Validation failed");
     });
 
-    it("should return 400 when groupBy value is invalid", async () => {
+    it("should return 422 when groupBy value is invalid", async () => {
       const req = createRequest("?groupBy=invalid");
 
       const response = await GET(req, { params: Promise.resolve({}) });
 
-      expect(response.status).toBe(400);
+      // Zod validation returns 422 for invalid enum values
+      expect(response.status).toBe(422);
       const data = await response.json();
-      expect(data.error).toContain("Invalid groupBy value: invalid");
+      expect(data.error).toBe("Validation failed");
     });
 
-    it("should return error when bounds parameter is invalid", async () => {
-      const mockErrorResponse = {
-        status: 400,
-        json: () => Promise.resolve({ error: "Invalid bounds" }),
-      };
-      mocks.mockParseBoundsParameter.mockReturnValue({ error: mockErrorResponse });
+    it("should silently ignore invalid bounds parameter", async () => {
+      // With Zod preprocess, invalid bounds silently become undefined
+      mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([]);
 
       const req = createRequest("?groupBy=catalog&bounds=invalid");
 
       const response = await GET(req, { params: Promise.resolve({}) });
 
-      expect(response.status).toBe(400);
+      // Returns empty result because no accessible catalogs (bounds just ignored)
+      expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.error).toBe("Invalid bounds");
+      expect(data).toEqual({
+        items: [],
+        total: 0,
+        groupedBy: "catalog",
+      });
     });
   });
 
@@ -182,10 +162,6 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       const response = await GET(req, { params: Promise.resolve({}) });
 
-      if (response.status !== 200) {
-        const body = await response.clone().json();
-        console.error("DEBUG events-stats catalog 500 body:", JSON.stringify(body));
-      }
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.groupedBy).toBe("catalog");
@@ -219,15 +195,6 @@ describe.sequential("GET /api/v1/events/stats", () => {
     });
 
     it("should add 0-count entries for filtered datasets not in results", async () => {
-      // Simulate filtering by datasets 10, 20, 30 but only 10 has events
-      mocks.mockExtractBaseEventParameters.mockReturnValue({
-        catalog: null,
-        datasets: ["10", "20", "30"],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      });
-
       // First execute: main aggregation query returns only dataset 10
       mocks.mockDrizzleExecute
         .mockResolvedValueOnce({

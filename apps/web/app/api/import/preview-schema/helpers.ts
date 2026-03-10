@@ -1,37 +1,27 @@
 /**
- * API endpoint for previewing file schema.
+ * Shared helpers for preview-schema endpoints (upload and URL).
  *
- * POST /api/import/preview-schema - Upload file or fetch from URL and get schema preview
- *
- * Returns detected sheets with headers and sample data for wizard preview.
- * Supports both file upload and URL fetching with optional authentication.
+ * Contains file parsing, field detection, URL validation, and metadata
+ * persistence logic used by both the upload and URL preview routes.
  *
  * @module
  * @category API Routes
  */
-
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { FIELD_PATTERNS, LATITUDE_PATTERNS, LONGITUDE_PATTERNS } from "@timetiles/payload-schema-detection";
 import Papa from "papaparse";
-import { v4 as uuidv4 } from "uuid";
 import { read, utils } from "xlsx";
 
-import { apiRoute, ValidationError } from "@/lib/api";
-import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
-import { detectFileTypeFromResponse, fetchUrlData } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
-import { createLogger } from "@/lib/logger";
 import {
   detectLanguageFromSamples,
   type LanguageDetectionResult,
 } from "@/lib/services/schema-builder/language-detection";
 import { isPrivateUrl } from "@/lib/utils/url-validation";
 
-const logger = createLogger("api-wizard-preview-schema");
-
-const ALLOWED_MIME_TYPES = [
+export const ALLOWED_MIME_TYPES = [
   "text/csv",
   "text/plain",
   "application/vnd.ms-excel",
@@ -39,8 +29,10 @@ const ALLOWED_MIME_TYPES = [
   "application/vnd.oasis.opendocument.spreadsheet",
 ];
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-const SAMPLE_ROW_COUNT = 5;
+export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+export const SAMPLE_ROW_COUNT = 5;
+export const FILE_EXTENSION_REGEX = /\.(csv|xls|xlsx|ods)$/i;
+export const SUPPORTED_EXTENSIONS = [".csv", ".xls", ".xlsx", ".ods"];
 
 /** Confidence level for field mapping suggestion */
 type ConfidenceLevel = "high" | "medium" | "low" | "none";
@@ -65,7 +57,7 @@ interface SuggestedMappings {
   };
 }
 
-interface SheetInfo {
+export interface SheetInfo {
   index: number;
   name: string;
   rowCount: number;
@@ -75,7 +67,7 @@ interface SheetInfo {
 }
 
 /** Auth configuration for URL fetching (matches ScheduledImport authConfig structure) */
-interface AuthConfig {
+export interface AuthConfig {
   type: "none" | "api-key" | "bearer" | "basic";
   apiKey?: string;
   apiKeyHeader?: string;
@@ -178,7 +170,10 @@ const detectCoordinateField = (headers: string[], patterns: RegExp[]): FieldMapp
 /**
  * Detect suggested field mappings for a sheet
  */
-const detectSuggestedMappings = (headers: string[], sampleData: Record<string, unknown>[]): SuggestedMappings => {
+export const detectSuggestedMappings = (
+  headers: string[],
+  sampleData: Record<string, unknown>[]
+): SuggestedMappings => {
   // Detect language from headers and sample data
   const language = detectLanguageFromSamples(sampleData, headers);
   const langCode = language.code;
@@ -196,7 +191,7 @@ const detectSuggestedMappings = (headers: string[], sampleData: Record<string, u
   };
 };
 
-const getPreviewDir = (): string => {
+export const getPreviewDir = (): string => {
   const previewDir = path.join(os.tmpdir(), "timetiles-wizard-preview");
   if (!fs.existsSync(previewDir)) {
     fs.mkdirSync(previewDir, { recursive: true });
@@ -204,7 +199,7 @@ const getPreviewDir = (): string => {
   return previewDir;
 };
 
-const parseCSVPreview = (filePath: string): SheetInfo[] => {
+export const parseCSVPreview = (filePath: string): SheetInfo[] => {
   const fileContent = fs.readFileSync(filePath, "utf-8");
 
   const result = Papa.parse(fileContent, {
@@ -239,7 +234,7 @@ const parseCSVPreview = (filePath: string): SheetInfo[] => {
   ];
 };
 
-const parseExcelPreview = (filePath: string): SheetInfo[] => {
+export const parseExcelPreview = (filePath: string): SheetInfo[] => {
   const fileBuffer = fs.readFileSync(filePath);
   const workbook = read(fileBuffer, { type: "buffer" });
 
@@ -309,7 +304,7 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
  * Validates and parses a URL string.
  * Rejects non-HTTP(S) protocols and private/internal URLs (SSRF protection).
  */
-const validateUrl = (urlString: string): { url: URL } | { error: string } => {
+export const validateUrl = (urlString: string): { url: URL } | { error: string } => {
   try {
     const url = new URL(urlString);
     if (!["http:", "https:"].includes(url.protocol)) {
@@ -325,209 +320,43 @@ const validateUrl = (urlString: string): { url: URL } | { error: string } => {
 };
 
 /**
- * Parses auth config from form data.
+ * Parse file sheets based on file extension.
  */
-const parseAuthConfig = (formData: FormData): AuthConfig | null => {
-  const authType = formData.get("authType") as string | null;
-  if (!authType || authType === "none") {
-    return null;
+export const parseFileSheets = (filePath: string, fileExtension: string): SheetInfo[] => {
+  if (fileExtension === ".csv") {
+    return parseCSVPreview(filePath);
   }
-
-  const authConfig: AuthConfig = { type: authType as AuthConfig["type"] };
-
-  switch (authType) {
-    case "api-key":
-      authConfig.apiKey = (formData.get("apiKey") as string) || undefined;
-      authConfig.apiKeyHeader = (formData.get("apiKeyHeader") as string) || "X-API-Key";
-      break;
-    case "bearer":
-      authConfig.bearerToken = (formData.get("bearerToken") as string) || undefined;
-      break;
-    case "basic":
-      authConfig.username = (formData.get("username") as string) || undefined;
-      authConfig.password = (formData.get("password") as string) || undefined;
-      break;
-  }
-
-  return authConfig;
+  // xlsx library handles .xls, .xlsx, and .ods files
+  return parseExcelPreview(filePath);
 };
 
 /**
- * Preview file schema endpoint.
- *
- * Accepts either a file upload OR a source URL and returns detected sheets with headers and sample data.
- * The file is stored temporarily with a previewId for later use.
- *
- * For URL sources, optional authentication can be provided via form data:
- * - authType: "none" | "api-key" | "bearer" | "basic"
- * - apiKey, apiKeyHeader (for api-key type)
- * - bearerToken (for bearer type)
- * - username, password (for basic type)
+ * Save preview metadata to disk.
+ * Intentionally omits authConfig to avoid persisting secrets to disk.
  */
-// eslint-disable-next-line complexity, sonarjs/cognitive-complexity, sonarjs/max-lines-per-function
-export const POST = apiRoute({
-  auth: "required",
-  handler: async ({ req, user }) => {
-    // Parse multipart form data
-    const formData = await req.formData();
-    const file = formData.get("file");
-    const sourceUrl = formData.get("sourceUrl") as string | null;
-
-    // Must have either file or sourceUrl
-    if ((!file || !(file instanceof File)) && !sourceUrl) {
-      throw new ValidationError("Either a file or sourceUrl is required");
-    }
-
-    const previewId = uuidv4();
-    const previewDir = getPreviewDir();
-    const fileExtensionRegex = /\.(csv|xls|xlsx|ods)$/i;
-
-    let previewFilePath: string;
-    let originalName: string;
-    let mimeType: string;
-    let fileSize: number;
-    let fileExtension: string;
-
-    if (sourceUrl) {
-      // URL-based fetch
-      const urlResult = validateUrl(sourceUrl);
-      if ("error" in urlResult) {
-        throw new ValidationError(urlResult.error);
-      }
-      const parsedUrl = urlResult.url;
-
-      // Parse auth config from form data
-      const authConfig = parseAuthConfig(formData);
-      // Cast to the ScheduledImport authConfig type expected by buildAuthHeaders
-      const authHeaders = buildAuthHeaders(authConfig as Parameters<typeof buildAuthHeaders>[0]);
-
-      logger.info("Fetching data from URL", {
-        url: sourceUrl,
-        hasAuth: authConfig?.type !== "none" && authConfig !== null,
-        userId: user.id,
-      });
-
-      try {
-        const fetchResult = await fetchUrlData(sourceUrl, {
-          headers: authHeaders,
-          timeout: 60000, // 60 second timeout for preview
-          maxSize: MAX_FILE_SIZE,
-        });
-
-        // Detect file type from response
-        const detectedType = detectFileTypeFromResponse(fetchResult.contentType, fetchResult.data, sourceUrl);
-        fileExtension = detectedType.fileExtension;
-        mimeType = detectedType.mimeType;
-
-        // Validate detected file type
-        if (![".csv", ".xls", ".xlsx", ".ods"].includes(fileExtension)) {
-          throw new ValidationError(
-            `Unsupported file type detected: ${mimeType}. The URL must return CSV, Excel, or ODS data.`
-          );
-        }
-
-        // Save fetched data to temp file
-        previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
-        fs.writeFileSync(previewFilePath, fetchResult.data);
-
-        originalName = path.basename(parsedUrl.pathname) || `url-import${fileExtension}`;
-        fileSize = fetchResult.data.length;
-
-        logger.info("URL data fetched and saved for preview", {
-          previewId,
-          sourceUrl,
-          detectedType: mimeType,
-          fileSize,
-          userId: user.id,
-        });
-      } catch (fetchError) {
-        // Re-throw ValidationError instances (from our own validation above)
-        if (fetchError instanceof ValidationError) {
-          throw fetchError;
-        }
-        const errorMessage = fetchError instanceof Error ? fetchError.message : "Unknown error";
-        logger.error("Failed to fetch URL", { sourceUrl, error: fetchError });
-        throw new ValidationError(`Failed to fetch URL: ${errorMessage}`);
-      }
-    } else if (file instanceof File) {
-      // File upload (existing logic)
-      if (file.size > MAX_FILE_SIZE) {
-        throw new ValidationError(`File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
-      }
-
-      if (!ALLOWED_MIME_TYPES.includes(file.type) && !fileExtensionRegex.test(file.name)) {
-        throw new ValidationError("Unsupported file type. Please upload a CSV, Excel, or ODS file.");
-      }
-
-      fileExtension = path.extname(file.name).toLowerCase();
-
-      if (!fileExtensionRegex.test(file.name)) {
-        throw new ValidationError("Unsupported file extension. Please upload a CSV, Excel, or ODS file.");
-      }
-
-      previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
-
-      const arrayBuffer = await file.arrayBuffer();
-      fs.writeFileSync(previewFilePath, Buffer.from(arrayBuffer));
-
-      originalName = file.name;
-      mimeType = file.type;
-      fileSize = file.size;
-
-      logger.info("File saved for preview", {
-        previewId,
-        fileName: file.name,
-        fileSize: file.size,
-        userId: user.id,
-      });
-    } else {
-      throw new ValidationError("Invalid request");
-    }
-
-    // Parse file to get sheet info
-    let sheets: SheetInfo[];
-    try {
-      if (fileExtension === ".csv") {
-        sheets = parseCSVPreview(previewFilePath);
-      } else {
-        // xlsx library handles .xls, .xlsx, and .ods files
-        sheets = parseExcelPreview(previewFilePath);
-      }
-    } catch (parseError) {
-      // Clean up temp file on parse error
-      fs.unlinkSync(previewFilePath);
-      logger.error("Failed to parse file", { error: parseError });
-      throw new ValidationError("Failed to parse file. Please check the file format.");
-    }
-
-    // Store preview metadata (intentionally omit authConfig to avoid persisting secrets to disk)
-    const previewMetaPath = path.join(previewDir, `${previewId}.meta.json`);
-    fs.writeFileSync(
-      previewMetaPath,
-      JSON.stringify({
-        previewId,
-        userId: user.id,
-        originalName,
-        filePath: previewFilePath,
-        mimeType,
-        fileSize,
-        sourceUrl: sourceUrl ?? undefined, // Store source URL if provided
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour expiry
-      })
-    );
-
-    logger.info("Preview schema generated", {
-      previewId,
-      sheetsCount: sheets.length,
-      totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
-      isUrlSource: !!sourceUrl,
-    });
-
-    return Response.json({
-      previewId,
-      sheets,
-      sourceUrl: sourceUrl ?? undefined, // Return source URL so UI knows this was a URL-based preview
-    });
-  },
-});
+export const savePreviewMetadata = (opts: {
+  previewId: string;
+  userId: number;
+  originalName: string;
+  filePath: string;
+  mimeType: string;
+  fileSize: number;
+  sourceUrl?: string;
+}): void => {
+  const previewDir = getPreviewDir();
+  const previewMetaPath = path.join(previewDir, `${opts.previewId}.meta.json`);
+  fs.writeFileSync(
+    previewMetaPath,
+    JSON.stringify({
+      previewId: opts.previewId,
+      userId: opts.userId,
+      originalName: opts.originalName,
+      filePath: opts.filePath,
+      mimeType: opts.mimeType,
+      fileSize: opts.fileSize,
+      sourceUrl: opts.sourceUrl,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour expiry
+    })
+  );
+};

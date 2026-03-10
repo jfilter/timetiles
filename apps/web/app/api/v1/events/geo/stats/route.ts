@@ -19,9 +19,11 @@ import type { Payload } from "payload";
 import { apiRoute } from "@/lib/api";
 import { DEFAULT_CLUSTER_STATS } from "@/lib/constants/map";
 import { logger } from "@/lib/logger";
+import type { ClusterStatsQuery } from "@/lib/schemas/events";
+import { ClusterStatsQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
-import { extractClusterStatsParameters } from "@/lib/utils/event-params";
+import type { BaseEventParameters } from "@/lib/utils/event-params";
 import {
   buildCatalogSqlCondition,
   buildDatasetSqlCondition,
@@ -29,10 +31,22 @@ import {
   buildFieldFilterSqlConditions,
 } from "@/lib/utils/event-sql-filters";
 
+/**
+ * Convert Zod-parsed query parameters to BaseEventParameters for buildEventFilters.
+ */
+const toBaseEventParameters = (query: ClusterStatsQuery): BaseEventParameters => ({
+  catalog: query.catalog != null ? String(query.catalog) : null,
+  datasets: query.datasets != null ? query.datasets.map(String) : [],
+  startDate: query.startDate ?? null,
+  endDate: query.endDate ?? null,
+  fieldFilters: query.ff,
+});
+
 export const GET = apiRoute({
   auth: "optional",
-  handler: async ({ req, user, payload }) => {
-    const parameters = extractClusterStatsParameters(req.nextUrl.searchParams);
+  query: ClusterStatsQuerySchema,
+  handler: async ({ query, user, payload }) => {
+    const parameters = toBaseEventParameters(query);
 
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);

@@ -71,13 +71,13 @@ vi.mock("@/lib/services/account-deletion-service", () => ({
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { GET as getDeletionSummary } from "@/app/api/account/deletion-summary/route";
+import { GET as downloadExportGET } from "@/app/api/data-exports/[id]/download/route";
+import { POST as cancelDeletionPOST } from "@/app/api/users/cancel-deletion/route";
 // Import apiRoute-based handlers
 import { POST as changeEmailPOST } from "@/app/api/users/change-email/route";
 import { POST as changePasswordPOST } from "@/app/api/users/change-password/route";
 import { POST as scheduleDeletionPOST } from "@/app/api/users/schedule-deletion/route";
-import { POST as cancelDeletionPOST } from "@/app/api/users/cancel-deletion/route";
-import { GET as downloadExportGET } from "@/app/api/data-exports/[id]/download/route";
-import { GET as getDeletionSummary } from "@/app/api/account/deletion-summary/route";
 
 const {
   mockPayload,
@@ -162,7 +162,7 @@ describe.sequential("POST /api/users/change-email", () => {
     expect(data.error).toBe("Authentication required");
   });
 
-  it("should return 400 when missing email or password", async () => {
+  it("should return 422 when missing email or password", async () => {
     const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: "",
       password: "",
@@ -170,12 +170,12 @@ describe.sequential("POST /api/users/change-email", () => {
 
     const response = await changeEmailPOST(req, defaultParams as any);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
     const data = await response.json();
-    expect(data.error).toBe("New email and password are required");
+    expect(data.error).toBe("Validation failed");
   });
 
-  it("should return 400 for invalid email format", async () => {
+  it("should return 422 for invalid email format", async () => {
     const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: "not-an-email",
       password: TEST_CREDENTIALS.basic.password,
@@ -183,9 +183,9 @@ describe.sequential("POST /api/users/change-email", () => {
 
     const response = await changeEmailPOST(req, defaultParams as any);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
     const data = await response.json();
-    expect(data.error).toBe("Invalid email format");
+    expect(data.error).toBe("Validation failed");
   });
 
   it("should return 400 when email is same as current", async () => {
@@ -285,7 +285,7 @@ describe.sequential("POST /api/users/change-email", () => {
 });
 
 describe.sequential("POST /api/users/change-password", () => {
-  it("should return 400 when missing passwords", async () => {
+  it("should return 422 when missing passwords", async () => {
     const req = createJsonRequest("http://localhost/api/users/change-password", {
       currentPassword: "",
       newPassword: "",
@@ -293,12 +293,12 @@ describe.sequential("POST /api/users/change-password", () => {
 
     const response = await changePasswordPOST(req, defaultParams as any);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
     const data = await response.json();
-    expect(data.error).toBe("Current password and new password are required");
+    expect(data.error).toBe("Validation failed");
   });
 
-  it("should return 400 when new password is too short", async () => {
+  it("should return 422 when new password is too short", async () => {
     const req = createJsonRequest("http://localhost/api/users/change-password", {
       currentPassword: TEST_CREDENTIALS.basic.password,
       newPassword: "short",
@@ -306,9 +306,9 @@ describe.sequential("POST /api/users/change-password", () => {
 
     const response = await changePasswordPOST(req, defaultParams as any);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
     const data = await response.json();
-    expect(data.error).toContain("at least 8 characters");
+    expect(data.error).toBe("Validation failed");
   });
 
   it("should return 401 when current password is wrong", async () => {
@@ -347,16 +347,16 @@ describe.sequential("POST /api/users/change-password", () => {
 });
 
 describe.sequential("POST /api/users/schedule-deletion", () => {
-  it("should return 400 when missing password", async () => {
+  it("should return 422 when missing password", async () => {
     const req = createJsonRequest("http://localhost/api/users/schedule-deletion", {
       password: "",
     });
 
     const response = await scheduleDeletionPOST(req, defaultParams as any);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
     const data = await response.json();
-    expect(data.error).toBe("Password is required");
+    expect(data.error).toBe("Validation failed");
   });
 
   it("should return 401 when password is wrong", async () => {
@@ -483,16 +483,16 @@ describe.sequential("GET /api/account/deletion-summary", () => {
 });
 
 describe.sequential("GET /api/data-exports/:id/download", () => {
-  it("should return 400 for non-decimal export ids", async () => {
+  it("should return 422 for non-decimal export ids", async () => {
     const req = createGetRequest("http://localhost/api/data-exports/1e2/download");
 
     const response = await downloadExportGET(req, {
       params: Promise.resolve({ id: "1e2" }),
     } as any);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
     const data = await response.json();
-    expect(data.error).toBe("Invalid export ID");
+    expect(data.error).toBe("Validation failed");
     expect(mockPayload.findByID).not.toHaveBeenCalled();
   });
 });

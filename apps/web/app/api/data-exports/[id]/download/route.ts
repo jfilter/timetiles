@@ -9,14 +9,12 @@
  */
 import { createReadStream } from "fs";
 import { stat } from "fs/promises";
-import { Readable } from "stream";
-
 import type { Payload } from "payload";
+import { Readable } from "stream";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { parseStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
@@ -99,14 +97,12 @@ const streamExportFile = async (
 
 export const GET = apiRoute({
   auth: "required",
-  params: z.object({ id: z.string() }),
+  params: z.object({
+    id: z.string().regex(/^\d+$/).transform(Number),
+  }),
   handler: async ({ payload, user, params }) => {
-    const exportId = params.id;
-
-    const normalizedExportId = parseStrictInteger(exportId);
-    if (normalizedExportId == null) {
-      return Response.json({ error: "Invalid export ID" }, { status: 400 });
-    }
+    const normalizedExportId = params.id;
+    const exportId = String(normalizedExportId);
 
     // Fetch export record
     const exportRecord = await payload.findByID({
@@ -151,6 +147,6 @@ export const GET = apiRoute({
       return Response.json({ error: "Export has expired. Please request a new export." }, { status: 410 });
     }
 
-    return await streamExportFile(payload, exportId, normalizedExportId, exportRecord, user.id);
+    return streamExportFile(payload, exportId, normalizedExportId, exportRecord, user.id);
   },
 });

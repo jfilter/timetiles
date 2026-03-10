@@ -12,9 +12,10 @@
  * @module
  * @category API
  */
-import { apiRoute, AppError, ValidationError } from "@/lib/api";
+import { z } from "zod";
+
+import { apiRoute, AppError } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
-import { EMAIL_REGEX, MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import { maskEmail } from "@/lib/utils/masking";
@@ -63,7 +64,11 @@ const generateAccountExistsEmailHTML = (resetUrl: string): string => {
 
 export const POST = apiRoute({
   auth: "none",
-  handler: async ({ req, payload }) => {
+  body: z.object({
+    email: z.email().transform((s) => s.trim().toLowerCase()),
+    password: z.string().min(8),
+  }),
+  handler: async ({ req, payload, body }) => {
     // Check if registration is enabled
     const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
     if (!(await isFeatureEnabled(payload, "enableRegistration"))) {
@@ -84,31 +89,7 @@ export const POST = apiRoute({
       );
     }
 
-    // Parse request body
-    const body = (await req.json()) as { email: string; password: string };
-    const { email, password } = body;
-
-    // Validate required fields
-    if (!email || typeof email !== "string") {
-      throw new ValidationError("Email is required");
-    }
-
-    if (!password || typeof password !== "string") {
-      throw new ValidationError("Password is required");
-    }
-
-    // Basic email validation
-    if (!EMAIL_REGEX.test(email)) {
-      throw new ValidationError("Invalid email address");
-    }
-
-    // Password validation
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-    }
-
-    // Normalize email
-    const normalizedEmail = email.toLowerCase().trim();
+    const { email: normalizedEmail, password } = body;
 
     // Check if user already exists
     const existingUser = await payload.find({

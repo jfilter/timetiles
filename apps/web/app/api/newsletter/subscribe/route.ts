@@ -25,7 +25,7 @@ interface Settings {
 export const POST = apiRoute({
   auth: "none",
   rateLimit: { configName: "NEWSLETTER_SUBSCRIBE" },
-  body: z.object({ email: z.string().email() }),
+  body: z.object({ email: z.email() }),
   handler: async ({ body, payload }) => {
     const { email } = body;
 

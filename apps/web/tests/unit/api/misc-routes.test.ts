@@ -74,12 +74,11 @@ vi.mock("@/lib/services/rate-limit-service", () => ({
 }));
 
 // 4. Vitest imports and source code AFTER mocks
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
 import { getPayload } from "payload";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET as healthGET } from "@/app/api/health/route";
-import { NextRequest } from "next/server";
-
 import { GET as quotasGET } from "@/app/api/quotas/route";
 import { getQuotaService } from "@/lib/services/quota-service";
 
@@ -106,7 +105,7 @@ beforeEach(() => {
   // With isolate: false, another file's vi.mock("payload") may have replaced the
   // module-level getPayload binding. Configure whichever fn is currently bound.
   vi.mocked(getPayload).mockReset();
-  vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
+  vi.mocked(getPayload).mockResolvedValue(mockPayload);
 
   // Re-apply mocks that clearAllMocks wiped
   vi.mocked(getQuotaService).mockReturnValue({

@@ -1,9 +1,9 @@
 // @vitest-environment node
 /**
- * Unit tests for the preview-schema API route.
+ * Unit tests for the preview-schema API routes (upload and URL).
  *
- * Tests the POST handler through the withAuth middleware with mocked
- * external dependencies (Payload, filesystem, parsers).
+ * Tests the POST handlers with mocked external dependencies
+ * (Payload, filesystem, parsers).
  *
  * @module
  * @category Tests
@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => {
     mockWriteFileSync: vi.fn(),
     mockReadFileSync: vi.fn(),
     mockUnlinkSync: vi.fn(),
+    mockIsPrivateUrl: vi.fn(),
   };
 });
 
@@ -78,6 +79,10 @@ vi.mock("@timetiles/payload-schema-detection", () => ({
   LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
 }));
 
+vi.mock("@/lib/utils/url-validation", () => ({
+  isPrivateUrl: mocks.mockIsPrivateUrl,
+}));
+
 // Mock withAuth to bypass Payload authentication entirely
 vi.mock("@/lib/middleware/auth", () => ({
   withAuth: (handler: (...args: unknown[]) => unknown) => {
@@ -98,7 +103,8 @@ vi.mock("@/lib/middleware/auth", () => ({
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { POST } from "@/app/api/import/preview-schema/route";
+import { POST as UploadPOST } from "@/app/api/import/preview-schema/upload/route";
+import { POST as UrlPOST } from "@/app/api/import/preview-schema/url/route";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../../constants/test-credentials";
 
@@ -106,12 +112,22 @@ import { TEST_CREDENTIALS, TEST_EMAILS } from "../../../constants/test-credentia
 
 const mockUser = { id: 1, email: TEST_EMAILS.user, role: "user" };
 
-const createMockRequest = (formData: FormData) => {
-  // Cast to NextRequest for type compatibility; withAuth mock accepts plain Request
-  return new Request("http://localhost/api/import/preview-schema", {
+const createUploadRequest = (formData: FormData) => {
+  return new Request("http://localhost/api/import/preview-schema/upload", {
     method: "POST",
     body: formData,
     headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
+  }) as unknown as NextRequest;
+};
+
+const createUrlRequest = (body: Record<string, unknown>) => {
+  return new Request("http://localhost/api/import/preview-schema/url", {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: new Headers({
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}`,
+    }),
   }) as unknown as NextRequest;
 };
 
@@ -124,22 +140,19 @@ const createFileFormData = (filename: string, content: string, mimeType: string)
 
 // --- Tests ---
 
-describe.sequential("POST /api/import/preview-schema", () => {
+describe.sequential("POST /api/import/preview-schema/upload", () => {
   beforeEach(() => {
-    // Reset call history on all mocks without clearing implementations
     for (const fn of Object.values(mocks)) {
       fn.mockReset();
     }
 
-    // Default: authenticated user via apiRoute's payload.auth()
     mocks.mockGetPayload.mockResolvedValue({
       auth: vi.fn().mockResolvedValue({ user: mockUser }),
     });
-    // Keep legacy mock for the withAuth-based auth test
     mocks.mockAuth.mockResolvedValue({ user: mockUser });
     mocks.mockExistsSync.mockReturnValue(true);
-    mocks.mockBuildAuthHeaders.mockReturnValue({});
     mocks.mockDetectLanguageFromSamples.mockReturnValue({ code: "eng", confidence: 0.9 });
+    mocks.mockIsPrivateUrl.mockReturnValue(false);
   });
 
   describe("Authentication", () => {
@@ -150,9 +163,9 @@ describe.sequential("POST /api/import/preview-schema", () => {
 
       const formData = new FormData();
       formData.append("file", new File(["test"], "test.csv", { type: "text/csv" }));
-      const request = createMockRequest(formData);
+      const request = createUploadRequest(formData);
 
-      const response = await POST(request, {} as never);
+      const response = await UploadPOST(request, {} as never);
       const body = await response.json();
 
       expect(response.status).toBe(401);
@@ -161,22 +174,22 @@ describe.sequential("POST /api/import/preview-schema", () => {
   });
 
   describe("Validation", () => {
-    it("should return 400 when no file or sourceUrl provided", async () => {
+    it("should return 400 when no file provided", async () => {
       const formData = new FormData();
-      const request = createMockRequest(formData);
+      const request = createUploadRequest(formData);
 
-      const response = await POST(request, {} as never);
+      const response = await UploadPOST(request, {} as never);
       const body = await response.json();
 
       expect(response.status).toBe(400);
-      expect(body.error).toBe("Either a file or sourceUrl is required");
+      expect(body.error).toBe("A file is required");
     });
 
     it("should return 400 for unsupported file type", async () => {
       const formData = createFileFormData("test.txt", "content", "text/html");
-      const request = createMockRequest(formData);
+      const request = createUploadRequest(formData);
 
-      const response = await POST(request, {} as never);
+      const response = await UploadPOST(request, {} as never);
       const body = await response.json();
 
       expect(response.status).toBe(400);
@@ -184,16 +197,15 @@ describe.sequential("POST /api/import/preview-schema", () => {
     });
 
     it("should return 400 when file parsing fails", async () => {
-      // Mock readFileSync to return content and Papa.parse to throw
       mocks.mockReadFileSync.mockReturnValue("bad content");
       mocks.mockPapaParse.mockImplementation(() => {
         throw new Error("Parse error");
       });
 
       const formData = createFileFormData("test.csv", "bad content", "text/csv");
-      const request = createMockRequest(formData);
+      const request = createUploadRequest(formData);
 
-      const response = await POST(request, {} as never);
+      const response = await UploadPOST(request, {} as never);
       const body = await response.json();
 
       expect(response.status).toBe(400);
@@ -213,7 +225,6 @@ describe.sequential("POST /api/import/preview-schema", () => {
         location: "San Francisco",
       };
 
-      // Mock Papa.parse: first call for preview (with preview option), second for full count
       mocks.mockPapaParse
         .mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] })
         .mockReturnValueOnce({ data: [csvRow, csvRow, csvRow], meta: { fields: csvHeaders }, errors: [] });
@@ -223,9 +234,9 @@ describe.sequential("POST /api/import/preview-schema", () => {
       );
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
-      const request = createMockRequest(formData);
+      const request = createUploadRequest(formData);
 
-      const response = await POST(request, {} as never);
+      const response = await UploadPOST(request, {} as never);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -261,9 +272,9 @@ describe.sequential("POST /api/import/preview-schema", () => {
       mocks.mockReadFileSync.mockReturnValue("title,date\nEvent 1,2024-01-01");
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
-      const request = createMockRequest(formData);
+      const request = createUploadRequest(formData);
 
-      await POST(request, {} as never);
+      await UploadPOST(request, {} as never);
 
       // Find the metadata write call (the one writing .meta.json content)
       const writeFileSyncCalls = mocks.mockWriteFileSync.mock.calls;
@@ -289,8 +300,8 @@ describe.sequential("POST /api/import/preview-schema", () => {
         "excel-content",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      const request = createMockRequest(formData);
-      const response = await POST(request, {} as never);
+      const request = createUploadRequest(formData);
+      const response = await UploadPOST(request, {} as never);
       const body = await response.json();
       expect(response.status).toBe(200);
       expect(body.sheets).toHaveLength(1);
@@ -310,8 +321,8 @@ describe.sequential("POST /api/import/preview-schema", () => {
         "excel-content",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      const request = createMockRequest(formData);
-      const response = await POST(request, {} as never);
+      const request = createUploadRequest(formData);
+      const response = await UploadPOST(request, {} as never);
       const body = await response.json();
       expect(response.status).toBe(200);
       const sheet = body.sheets[0];
@@ -319,33 +330,65 @@ describe.sequential("POST /api/import/preview-schema", () => {
       expect(sheet.sampleData[0]).toEqual({ ID: 1, Name: "Alice", Value: 100 });
     });
   });
+});
 
-  describe("URL Source", () => {
-    it("should return 400 for invalid URL", async () => {
-      const formData = new FormData();
-      formData.append("sourceUrl", "not-a-valid-url");
-      const request = createMockRequest(formData);
+describe.sequential("POST /api/import/preview-schema/url", () => {
+  beforeEach(() => {
+    for (const fn of Object.values(mocks)) {
+      fn.mockReset();
+    }
 
-      const response = await POST(request, {} as never);
+    mocks.mockGetPayload.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({ user: mockUser }),
+    });
+    mocks.mockAuth.mockResolvedValue({ user: mockUser });
+    mocks.mockExistsSync.mockReturnValue(true);
+    mocks.mockBuildAuthHeaders.mockReturnValue({});
+    mocks.mockDetectLanguageFromSamples.mockReturnValue({ code: "eng", confidence: 0.9 });
+    mocks.mockIsPrivateUrl.mockReturnValue(false);
+  });
+
+  describe("Authentication", () => {
+    it("should return 401 when not authenticated", async () => {
+      mocks.mockGetPayload.mockResolvedValue({
+        auth: vi.fn().mockResolvedValue({ user: null }),
+      });
+
+      const request = createUrlRequest({ sourceUrl: "https://example.com/data.csv" });
+
+      const response = await UrlPOST(request, {} as never);
       const body = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(body.error).toContain("Invalid URL");
+      expect(response.status).toBe(401);
+      expect(body.error).toBe("Authentication required");
+    });
+  });
+
+  describe("Validation", () => {
+    it("should return 422 for invalid URL format", async () => {
+      const request = createUrlRequest({ sourceUrl: "not-a-valid-url" });
+
+      const response = await UrlPOST(request, {} as never);
+      const body = await response.json();
+
+      expect(response.status).toBe(422);
+      expect(body.code).toBe("VALIDATION_ERROR");
     });
 
     it("should return 400 for non-HTTP URL protocol", async () => {
-      const formData = new FormData();
-      formData.append("sourceUrl", "ftp://example.com/data.csv");
-      const request = createMockRequest(formData);
+      const request = createUrlRequest({ sourceUrl: "ftp://example.com/data.csv" });
 
-      const response = await POST(request, {} as never);
+      const response = await UrlPOST(request, {} as never);
       const body = await response.json();
 
+      // ftp:// passes Zod's z.string().url() but fails our validateUrl SSRF check
       expect(response.status).toBe(400);
       expect(body.error).toContain("Invalid URL");
     });
 
     it("should return 400 for private/internal URLs (Bug 19 - SSRF)", async () => {
+      mocks.mockIsPrivateUrl.mockReturnValue(true);
+
       const privateUrls = [
         "http://localhost/data.csv",
         "http://127.0.0.1/data.csv",
@@ -355,11 +398,9 @@ describe.sequential("POST /api/import/preview-schema", () => {
       ];
 
       for (const privateUrl of privateUrls) {
-        const formData = new FormData();
-        formData.append("sourceUrl", privateUrl);
-        const request = createMockRequest(formData);
+        const request = createUrlRequest({ sourceUrl: privateUrl });
 
-        const response = await POST(request, {} as never);
+        const response = await UrlPOST(request, {} as never);
         const body = await response.json();
 
         expect(response.status).toBe(400);
@@ -371,11 +412,9 @@ describe.sequential("POST /api/import/preview-schema", () => {
       mocks.mockFetchUrlData.mockResolvedValue({ data: Buffer.from("some data"), contentType: "application/json" });
       mocks.mockDetectFileTypeFromResponse.mockReturnValue({ fileExtension: ".json", mimeType: "application/json" });
 
-      const formData = new FormData();
-      formData.append("sourceUrl", "https://example.com/data.json");
-      const request = createMockRequest(formData);
+      const request = createUrlRequest({ sourceUrl: "https://example.com/data.json" });
 
-      const response = await POST(request, {} as never);
+      const response = await UrlPOST(request, {} as never);
       const body = await response.json();
 
       expect(response.status).toBe(400);
@@ -385,18 +424,18 @@ describe.sequential("POST /api/import/preview-schema", () => {
     it("should return 400 when URL fetch fails", async () => {
       mocks.mockFetchUrlData.mockRejectedValue(new Error("Connection refused"));
 
-      const formData = new FormData();
-      formData.append("sourceUrl", "https://example.com/data.csv");
-      const request = createMockRequest(formData);
+      const request = createUrlRequest({ sourceUrl: "https://example.com/data.csv" });
 
-      const response = await POST(request, {} as never);
+      const response = await UrlPOST(request, {} as never);
       const body = await response.json();
 
       expect(response.status).toBe(400);
       expect(body.error).toContain("Failed to fetch URL");
       expect(body.error).toContain("Connection refused");
     });
+  });
 
+  describe("URL Source", () => {
     it("should successfully preview CSV data from a URL", async () => {
       const csvContent = "title,date\nEvent 1,2024-01-01";
       const fetchedData = Buffer.from(csvContent);
@@ -417,11 +456,9 @@ describe.sequential("POST /api/import/preview-schema", () => {
           errors: [],
         });
 
-      const formData = new FormData();
-      formData.append("sourceUrl", "https://example.com/events.csv");
-      const request = createMockRequest(formData);
+      const request = createUrlRequest({ sourceUrl: "https://example.com/events.csv" });
 
-      const response = await POST(request, {} as never);
+      const response = await UrlPOST(request, {} as never);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -452,13 +489,15 @@ describe.sequential("POST /api/import/preview-schema", () => {
           errors: [],
         });
 
-      const formData = new FormData();
-      formData.append("sourceUrl", "https://example.com/events.csv");
-      formData.append("authType", "bearer");
-      formData.append("bearerToken", "secret-token-value");
-      const request = createMockRequest(formData);
+      const request = createUrlRequest({
+        sourceUrl: "https://example.com/events.csv",
+        authConfig: {
+          type: "bearer",
+          bearerToken: "secret-token-value",
+        },
+      });
 
-      await POST(request, {} as never);
+      await UrlPOST(request, {} as never);
 
       // Find the metadata write call
       const writeFileSyncCalls = mocks.mockWriteFileSync.mock.calls;

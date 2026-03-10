@@ -30,7 +30,7 @@ export const BoundsSchema = z
  */
 export const PaginationSchema = z
   .object({
-    page: z.coerce.number().int().min(1).default(1),
+    page: z.coerce.number().int().min(1).max(1000).default(1),
     limit: z.coerce.number().int().min(1).max(1000).default(100),
   })
   .openapi("Pagination");
@@ -64,17 +64,73 @@ export const DatasetsParamSchema = z
 
 /**
  * Catalog ID parameter (coerced from string to number).
+ * Empty strings are treated as undefined (no catalog filter).
  */
-export const CatalogParamSchema = z.coerce.number().int().optional();
+export const CatalogParamSchema = z.preprocess(
+  (val) => (val === "" || val == null ? undefined : val),
+  z.coerce.number().int().optional()
+);
 
 /**
  * Date string parameter (ISO 8601 date format).
+ * Empty strings are treated as undefined (no date filter).
  */
-export const DateParamSchema = z.iso.date().optional();
+export const DateParamSchema = z.preprocess(
+  (val) => (typeof val === "string" && val.trim() === "" ? undefined : val),
+  z.iso.date().optional()
+);
 
 /**
- * Bounds as JSON string parameter (parsed separately for validation).
+ * Field filters parameter (JSON-encoded record of field paths to value arrays).
+ *
+ * Parses `?ff={"category":["A","B"]}` into `Record<string, string[]>`.
+ * Invalid JSON silently defaults to an empty object.
  */
-export const BoundsParamSchema = z.string().optional();
+export const FieldFiltersParamSchema = z.preprocess(
+  (val) => {
+    if (typeof val !== "string") return {};
+    try {
+      return JSON.parse(val) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  },
+  z.record(z.string(), z.array(z.string())).default({})
+);
+
+/**
+ * Bounds as JSON string parameter, parsed and validated into a MapBounds object.
+ *
+ * Accepts a JSON string like `{"north":37.8,"south":37.7,"east":-122.4,"west":-122.5}`.
+ * Invalid or malformed bounds silently become `undefined`.
+ */
+export const BoundsParamSchema = z.preprocess((val) => {
+  if (typeof val !== "string" || !val) return undefined;
+  try {
+    const parsed = JSON.parse(val) as Record<string, unknown>;
+    if (
+      typeof parsed === "object" &&
+      parsed != null &&
+      typeof parsed.north === "number" &&
+      typeof parsed.south === "number" &&
+      typeof parsed.east === "number" &&
+      typeof parsed.west === "number" &&
+      parsed.north > parsed.south &&
+      parsed.north <= 90 &&
+      parsed.south >= -90 &&
+      parsed.east <= 180 &&
+      parsed.west >= -180 &&
+      Number.isFinite(parsed.north) &&
+      Number.isFinite(parsed.south) &&
+      Number.isFinite(parsed.east) &&
+      Number.isFinite(parsed.west)
+    ) {
+      return parsed;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}, BoundsSchema.optional());
 
 export { z };

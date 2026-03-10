@@ -9,8 +9,6 @@ import "@/tests/mocks/services/logger";
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockGetAllAccessibleCatalogIds: vi.fn(),
-  mockExtractMapClusterParameters: vi.fn(),
-  mockIsValidBounds: vi.fn(),
   mockDrizzleExecute: vi.fn(),
 }));
 
@@ -28,27 +26,6 @@ vi.mock("payload", () => ({
 
 vi.mock("@/lib/services/access-control", () => ({
   getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
-
-vi.mock("@/lib/utils/event-params", () => ({
-  extractMapClusterParameters: mocks.mockExtractMapClusterParameters,
-  parseStrictInteger: (value: string | number | null | undefined) => {
-    if (typeof value === "number") return Number.isInteger(value) ? value : null;
-    if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-    return parseInt(value.trim(), 10);
-  },
-  normalizeStrictIntegerList: (values: Array<string | number>) =>
-    values
-      .map((value) => {
-        if (typeof value === "number") return Number.isInteger(value) ? value : null;
-        if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-        return parseInt(value.trim(), 10);
-      })
-      .filter((value): value is number => value != null),
-}));
-
-vi.mock("@/lib/geospatial", () => ({
-  isValidBounds: mocks.mockIsValidBounds,
 }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
@@ -85,11 +62,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/v1/events/geo/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
-const createRequest = (queryString: string, user: unknown = null) =>
-  ({
+const createRequest = (queryString: string, user: unknown = null) => {
+  const url = `http://localhost:3000/api/v1/events/geo${queryString}`;
+  return {
     user,
-    nextUrl: new URL(`http://localhost:3000/api/v1/events/geo${queryString}`),
-  }) as unknown as AuthenticatedRequest;
+    url,
+    headers: new Headers(),
+    nextUrl: new URL(url),
+  } as unknown as AuthenticatedRequest;
+};
 
 const collectQueryScalars = (value: unknown): unknown[] => {
   if (Array.isArray(value)) {
@@ -112,31 +93,15 @@ describe.sequential("GET /api/v1/events/geo", () => {
       db: { drizzle: { execute: mocks.mockDrizzleExecute } },
     });
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
-    mocks.mockExtractMapClusterParameters.mockReturnValue({
-      catalog: null,
-      datasets: ["10", "20"],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-      boundsParam: JSON.stringify({
-        north: 90,
-        south: -90,
-        east: 180,
-        west: -180,
-      }),
-      zoom: 2,
-    });
-    mocks.mockIsValidBounds.mockReturnValue(true);
     mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
   });
 
   it("passes multiple dataset filters through to cluster_events", async () => {
-    const response = await GET(createRequest("?bounds=%7B%7D&zoom=2"), { params: Promise.resolve({}) });
+    const bounds = JSON.stringify({ north: 90, south: -90, east: 180, west: -180 });
+    const response = await GET(createRequest(`?bounds=${encodeURIComponent(bounds)}&zoom=2&datasets=10,20`), {
+      params: Promise.resolve({}),
+    });
 
-    if (response.status !== 200) {
-      const body = await response.clone().json();
-      console.error("DEBUG events-geo 500 body:", JSON.stringify(body));
-    }
     expect(response.status).toBe(200);
     expect(mocks.mockDrizzleExecute).toHaveBeenCalledOnce();
 

@@ -162,56 +162,56 @@ describe.sequential("POST /api/import/configure", () => {
   });
 
   describe("Validation Errors", () => {
-    it("should return 400 when previewId is missing", async () => {
+    it("should return 422 when previewId is not a valid UUID", async () => {
       const req = createRequest({ ...baseBody, previewId: "" });
 
       const response = await POST(req, {} as never);
       const body = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(body.error).toBe("Preview ID is required");
+      expect(response.status).toBe(422);
+      expect(body.code).toBe("VALIDATION_ERROR");
     });
 
-    it("should return 400 when catalogId is missing", async () => {
-      const req = createRequest({ ...baseBody, catalogId: 0 });
+    it("should return 422 when catalogId has invalid type", async () => {
+      const req = createRequest({ ...baseBody, catalogId: "invalid" });
 
       const response = await POST(req, {} as never);
       const body = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(body.error).toBe("Catalog selection is required");
+      expect(response.status).toBe(422);
+      expect(body.code).toBe("VALIDATION_ERROR");
     });
 
-    it("should return 400 when sheetMappings is missing", async () => {
+    it("should return 422 when sheetMappings is empty", async () => {
       const req = createRequest({ ...baseBody, sheetMappings: [] });
 
       const response = await POST(req, {} as never);
       const body = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(body.error).toBe("Sheet mappings are required");
+      expect(response.status).toBe(422);
+      expect(body.code).toBe("VALIDATION_ERROR");
     });
 
-    it("should return 400 when fieldMappings is missing", async () => {
+    it("should return 422 when fieldMappings is empty", async () => {
       const req = createRequest({ ...baseBody, fieldMappings: [] });
 
       const response = await POST(req, {} as never);
       const body = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(body.error).toBe("Field mappings are required");
+      expect(response.status).toBe(422);
+      expect(body.code).toBe("VALIDATION_ERROR");
     });
   });
 
   describe("Preview Validation", () => {
-    it("should return 400 for invalid UUID previewId", async () => {
+    it("should return 422 for invalid UUID previewId", async () => {
       const req = createRequest({ ...baseBody, previewId: "not-a-uuid" });
 
       const response = await POST(req, {} as never);
       const body = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(body.error).toContain("Preview not found or expired");
+      expect(response.status).toBe(422);
+      expect(body.code).toBe("VALIDATION_ERROR");
     });
 
     it("should return 400 for non-existent preview", async () => {

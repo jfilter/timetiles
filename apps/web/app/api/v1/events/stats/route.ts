@@ -11,16 +11,15 @@
 import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
-import { apiRoute, ValidationError } from "@/lib/api";
-import { parseBoundsParameter } from "@/lib/geospatial";
+import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { AggregateQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import {
   type AggregationFilters,
   buildAggregationWhereClause,
   normalizeEndDate,
 } from "@/lib/services/aggregation-filters";
-import { extractBaseEventParameters, normalizeStrictIntegerList } from "@/lib/utils/event-params";
 
 /**
  * Aggregated item in response.
@@ -58,34 +57,14 @@ type GroupByField = "catalog" | "dataset";
  */
 export const GET = apiRoute({
   auth: "optional",
-  handler: async ({ req, user, payload }) => {
-    const { searchParams } = req.nextUrl;
+  query: AggregateQuerySchema,
+  handler: async ({ query, user, payload }) => {
+    const { groupBy } = query;
 
-    // Parse groupBy parameter (required)
-    const groupBy = searchParams.get("groupBy") as GroupByField | null;
-    if (!groupBy) {
-      throw new ValidationError("Missing required parameter: groupBy");
-    }
-
-    // Validate groupBy value
-    if (!["catalog", "dataset"].includes(groupBy)) {
-      throw new ValidationError(`Invalid groupBy value: ${groupBy}. Must be one of: catalog, dataset`);
-    }
-
-    // Parse filter parameters using shared utility
-    const baseParams = extractBaseEventParameters(searchParams);
-    const catalog = baseParams.catalog;
-    const datasets = baseParams.datasets;
-    const startDate = baseParams.startDate;
-    const endDate = normalizeEndDate(baseParams.endDate);
-
-    // Parse geographic bounds
-    const boundsParam = searchParams.get("bounds");
-    const boundsResult = parseBoundsParameter(boundsParam);
-    if (boundsResult.error) {
-      return boundsResult.error;
-    }
-    const bounds = boundsResult.bounds;
+    const catalog = query.catalog != null ? String(query.catalog) : null;
+    const datasets = query.datasets != null ? query.datasets.map(String) : [];
+    const startDate = query.startDate ?? null;
+    const endDate = normalizeEndDate(query.endDate ?? null);
 
     // Get accessible catalog IDs for access control
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user ?? null);
@@ -108,8 +87,8 @@ export const GET = apiRoute({
       datasets,
       startDate,
       endDate,
-      bounds,
-      fieldFilters: Object.keys(baseParams.fieldFilters).length > 0 ? baseParams.fieldFilters : null,
+      bounds: query.bounds ?? null,
+      fieldFilters: Object.keys(query.ff).length > 0 ? query.ff : null,
     };
 
     // Execute aggregation query
@@ -195,7 +174,8 @@ const executeAggregationQuery = async (
   // If datasets are explicitly filtered, ensure all selected datasets appear in results
   // (even with 0 count if they have no events in viewport)
   if (groupBy === "dataset" && filters.datasets && filters.datasets.length > 0) {
-    const selectedDatasetIds = normalizeStrictIntegerList(filters.datasets);
+    // datasets are already string[] from the conversion above
+    const selectedDatasetIds = filters.datasets.map(Number).filter((id) => !Number.isNaN(id));
 
     // Fetch dataset names for any missing datasets
     const missingDatasetIds = selectedDatasetIds.filter((id) => !resultMap.has(id));

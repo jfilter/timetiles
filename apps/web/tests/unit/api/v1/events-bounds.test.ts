@@ -9,7 +9,6 @@ import "@/tests/mocks/services/logger";
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockGetAllAccessibleCatalogIds: vi.fn(),
-  mockExtractBaseEventParameters: vi.fn(),
   mockDrizzleExecute: vi.fn(),
 }));
 
@@ -27,23 +26,6 @@ vi.mock("payload", () => ({
 
 vi.mock("@/lib/services/access-control", () => ({
   getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
-
-vi.mock("@/lib/utils/event-params", () => ({
-  extractBaseEventParameters: mocks.mockExtractBaseEventParameters,
-  parseStrictInteger: (value: string | number | null | undefined) => {
-    if (typeof value === "number") return Number.isInteger(value) ? value : null;
-    if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-    return parseInt(value.trim(), 10);
-  },
-  normalizeStrictIntegerList: (values: Array<string | number>) =>
-    values
-      .map((value) => {
-        if (typeof value === "number") return Number.isInteger(value) ? value : null;
-        if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-        return parseInt(value.trim(), 10);
-      })
-      .filter((value): value is number => value != null),
 }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
@@ -80,11 +62,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/v1/events/bounds/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
-const createRequest = (queryString: string, user: unknown = null) =>
-  ({
+const createRequest = (queryString: string, user: unknown = null) => {
+  const url = `http://localhost:3000/api/v1/events/bounds${queryString}`;
+  return {
     user,
-    nextUrl: new URL(`http://localhost:3000/api/v1/events/bounds${queryString}`),
-  }) as unknown as AuthenticatedRequest;
+    url,
+    headers: new Headers(),
+    nextUrl: new URL(url),
+  } as unknown as AuthenticatedRequest;
+};
 
 const collectQueryScalars = (value: unknown): unknown[] => {
   if (Array.isArray(value)) {
@@ -107,13 +93,6 @@ describe.sequential("GET /api/v1/events/bounds", () => {
       db: { drizzle: { execute: mocks.mockDrizzleExecute } },
     });
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([]);
-    mocks.mockExtractBaseEventParameters.mockReturnValue({
-      catalog: "",
-      datasets: [],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-    });
   });
 
   it("returns an empty result when catalog is blank and no catalogs are accessible", async () => {
@@ -127,42 +106,25 @@ describe.sequential("GET /api/v1/events/bounds", () => {
     expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
   });
 
-  it("returns an empty result when the catalog id is only partially numeric", async () => {
+  it("returns a validation error when the catalog id is non-numeric", async () => {
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1]);
-    mocks.mockExtractBaseEventParameters.mockReturnValue({
-      catalog: "1abc",
-      datasets: [],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-    });
 
+    // "1abc" cannot be coerced to an integer by Zod
     const response = await GET(createRequest("?catalog=1abc"), { params: Promise.resolve({}) });
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      bounds: null,
-      count: 0,
-    });
-    expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
+    expect(response.status).toBe(422);
+    const data = await response.json();
+    expect(data.error).toBe("Validation failed");
   });
 
   it("applies field filters to the bounds query", async () => {
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([42]);
-    mocks.mockExtractBaseEventParameters.mockReturnValue({
-      catalog: null,
-      datasets: [],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {
-        "venue.address.city": ["Berlin"],
-      },
-    });
+    const ff = encodeURIComponent(JSON.stringify({ "venue.address.city": ["Berlin"] }));
     mocks.mockDrizzleExecute.mockResolvedValue({
       rows: [{ west: "13.1", south: "52.4", east: "13.6", north: "52.7", count: 3 }],
     });
 
-    const response = await GET(createRequest(""), { params: Promise.resolve({}) });
+    const response = await GET(createRequest(`?ff=${ff}`), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     expect(mocks.mockDrizzleExecute).toHaveBeenCalledOnce();
@@ -176,18 +138,11 @@ describe.sequential("GET /api/v1/events/bounds", () => {
 
   it("normalizes a plain end date to the end of the day", async () => {
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([42]);
-    mocks.mockExtractBaseEventParameters.mockReturnValue({
-      catalog: null,
-      datasets: [],
-      startDate: null,
-      endDate: "2024-03-31",
-      fieldFilters: {},
-    });
     mocks.mockDrizzleExecute.mockResolvedValue({
       rows: [{ west: "13.1", south: "52.4", east: "13.6", north: "52.7", count: 3 }],
     });
 
-    const response = await GET(createRequest(""), { params: Promise.resolve({}) });
+    const response = await GET(createRequest("?endDate=2024-03-31"), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     expect(mocks.mockDrizzleExecute).toHaveBeenCalledOnce();

@@ -17,21 +17,36 @@
 import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
-import { apiRoute } from "@/lib/api";
-import { isValidBounds, type MapBounds } from "@/lib/geospatial";
+import { apiRoute, ValidationError } from "@/lib/api";
+import type { MapBounds } from "@/lib/geospatial";
+import type { MapClustersQuery } from "@/lib/schemas/events";
+import { MapClustersQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
-import { extractMapClusterParameters } from "@/lib/utils/event-params";
+import type { BaseEventParameters } from "@/lib/utils/event-params";
+
+/**
+ * Convert Zod-parsed query parameters to BaseEventParameters for buildEventFilters.
+ */
+const toBaseEventParameters = (query: MapClustersQuery): BaseEventParameters => ({
+  catalog: query.catalog != null ? String(query.catalog) : null,
+  datasets: query.datasets != null ? query.datasets.map(String) : [],
+  startDate: query.startDate ?? null,
+  endDate: query.endDate ?? null,
+  fieldFilters: query.ff,
+});
 
 export const GET = apiRoute({
   auth: "optional",
-  handler: async ({ req, user, payload }) => {
-    const parameters = extractMapClusterParameters(req.nextUrl.searchParams);
-
-    const boundsResult = parseBounds(parameters.boundsParam);
-    if ("error" in boundsResult) {
-      return boundsResult.error;
+  query: MapClustersQuerySchema,
+  handler: async ({ query, user, payload }) => {
+    // Bounds is required for map clustering
+    if (query.bounds == null) {
+      throw new ValidationError("Missing required parameter: bounds");
     }
+
+    const bounds: MapBounds = query.bounds;
+    const parameters = toBaseEventParameters(query);
 
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
@@ -58,7 +73,7 @@ export const GET = apiRoute({
       });
     }
 
-    const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
+    const result = await executeClusteringQuery(payload, bounds, query.zoom, filters);
     const clusters = transformResultToClusters(result.rows);
 
     return Response.json({
@@ -67,31 +82,6 @@ export const GET = apiRoute({
     });
   },
 });
-
-const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { error: Response } => {
-  if (boundsParam == null) {
-    return {
-      error: Response.json({ error: "Missing bounds parameter" }, { status: 400 }),
-    };
-  }
-
-  try {
-    const parsedBounds = JSON.parse(boundsParam) as unknown;
-    if (!isValidBounds(parsedBounds)) {
-      throw new Error("Invalid bounds format");
-    }
-    return { bounds: parsedBounds };
-  } catch {
-    return {
-      error: Response.json(
-        {
-          error: "Invalid bounds format. Expected: {north, south, east, west}",
-        },
-        { status: 400 }
-      ),
-    };
-  }
-};
 
 const executeClusteringQuery = async (payload: Payload, bounds: MapBounds, zoom: number, filters: EventFilters) => {
   const { catalogId, catalogIds, datasets, startDate, endDate, fieldFilters } = filters;

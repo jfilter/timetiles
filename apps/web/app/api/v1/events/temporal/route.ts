@@ -21,32 +21,45 @@ import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
 import type { MapBounds } from "@/lib/geospatial";
-import { parseBoundsParameter } from "@/lib/geospatial";
+import type { HistogramQuery } from "@/lib/schemas/events";
+import { HistogramQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { buildEventFilters } from "@/lib/utils/event-filters";
-import { extractHistogramParameters, type HistogramParameters } from "@/lib/utils/event-params";
+import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
+import type { BaseEventParameters } from "@/lib/utils/event-params";
+
+/**
+ * Convert Zod-parsed query parameters to BaseEventParameters for buildEventFilters.
+ */
+const toBaseEventParameters = (query: HistogramQuery): BaseEventParameters => ({
+  catalog: query.catalog != null ? String(query.catalog) : null,
+  datasets: query.datasets != null ? query.datasets.map(String) : [],
+  startDate: query.startDate ?? null,
+  endDate: query.endDate ?? null,
+  fieldFilters: query.ff,
+});
 
 export const GET = apiRoute({
   auth: "optional",
-  handler: async ({ req, user, payload }) => {
-    const parameters = extractHistogramParameters(req.nextUrl.searchParams);
-    const boundsResult = parseBoundsParameter(parameters.boundsParam);
-    if (boundsResult.error) {
-      return boundsResult.error;
-    }
-    const bounds = boundsResult.bounds;
+  query: HistogramQuerySchema,
+  handler: async ({ query, user, payload }) => {
+    const bounds: MapBounds | null = query.bounds ?? null;
+    const parameters = toBaseEventParameters(query);
 
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
-    const filters = buildEventFilters({ parameters, accessibleCatalogIds, bounds });
+    const filters = buildEventFilters({
+      parameters,
+      accessibleCatalogIds,
+      bounds,
+    });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyAccess === true || filters.denyResults === true) {
       return Response.json(buildEmptyHistogramResponse());
     }
 
-    const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
+    const histogramResult = await executeHistogramQuery(payload, query, filters, bounds, accessibleCatalogIds);
     const response = buildHistogramResponse(histogramResult.rows);
 
     return Response.json(response);
@@ -55,21 +68,33 @@ export const GET = apiRoute({
 
 const executeHistogramQuery = async (
   payload: Payload,
-  parameters: HistogramParameters,
+  query: HistogramQuery,
+  _filters: EventFilters,
   bounds: MapBounds | null,
   accessibleCatalogIds: number[]
 ) => {
-  const filters = buildEventFilters({ parameters, accessibleCatalogIds, bounds });
+  // Rebuild filters for the SQL function (needs fresh conversion)
+  const parameters = toBaseEventParameters(query);
+  const filters = buildEventFilters({
+    parameters,
+    accessibleCatalogIds,
+    bounds,
+  });
 
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM calculate_event_histogram(
       ${JSON.stringify(filters)}::jsonb,
-      ${parameters.targetBuckets}::integer,
-      ${parameters.minBuckets}::integer,
-      ${parameters.maxBuckets}::integer
+      ${query.targetBuckets}::integer,
+      ${query.minBuckets}::integer,
+      ${query.maxBuckets}::integer
     )
   `)) as {
-    rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>;
+    rows: Array<{
+      bucket_start: string;
+      bucket_end: string;
+      bucket_size_seconds: number;
+      event_count: number;
+    }>;
   };
 };
 
@@ -87,7 +112,12 @@ const buildEmptyHistogramResponse = () => ({
 });
 
 const buildHistogramResponse = (
-  rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>
+  rows: Array<{
+    bucket_start: string;
+    bucket_end: string;
+    bucket_size_seconds: number;
+    event_count: number;
+  }>
 ) => {
   const total = rows.reduce((sum: number, row) => sum + parseInt(String(row.event_count), 10), 0);
 
@@ -101,7 +131,10 @@ const buildHistogramResponse = (
     histogram,
     metadata: {
       total,
-      dateRange: { min: rows[0]?.bucket_start ?? null, max: rows[rows.length - 1]?.bucket_end ?? null },
+      dateRange: {
+        min: rows[0]?.bucket_start ?? null,
+        max: rows[rows.length - 1]?.bucket_end ?? null,
+      },
       bucketSizeSeconds: rows[0]?.bucket_size_seconds ?? null,
       bucketCount: rows.length,
       counts: { datasets: 0, catalogs: 0 },

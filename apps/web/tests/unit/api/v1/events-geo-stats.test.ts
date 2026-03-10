@@ -9,7 +9,6 @@ import "@/tests/mocks/services/logger";
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockGetAllAccessibleCatalogIds: vi.fn(),
-  mockExtractClusterStatsParameters: vi.fn(),
   mockDrizzleExecute: vi.fn(),
 }));
 
@@ -27,23 +26,6 @@ vi.mock("payload", () => ({
 
 vi.mock("@/lib/services/access-control", () => ({
   getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
-}));
-
-vi.mock("@/lib/utils/event-params", () => ({
-  extractClusterStatsParameters: mocks.mockExtractClusterStatsParameters,
-  parseStrictInteger: (value: string | number | null | undefined) => {
-    if (typeof value === "number") return Number.isInteger(value) ? value : null;
-    if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-    return parseInt(value.trim(), 10);
-  },
-  normalizeStrictIntegerList: (values: Array<string | number>) =>
-    values
-      .map((value) => {
-        if (typeof value === "number") return Number.isInteger(value) ? value : null;
-        if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-        return parseInt(value.trim(), 10);
-      })
-      .filter((value): value is number => value != null),
 }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
@@ -78,14 +60,17 @@ vi.mock("@/payload.config", () => ({ default: {} }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET } from "@/app/api/v1/events/geo/stats/route";
-import { DEFAULT_CLUSTER_STATS } from "@/lib/constants/map";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
-const createRequest = (queryString: string, user: unknown = null) =>
-  ({
+const createRequest = (queryString: string, user: unknown = null) => {
+  const url = `http://localhost:3000/api/v1/events/geo/stats${queryString}`;
+  return {
     user,
-    nextUrl: new URL(`http://localhost:3000/api/v1/events/geo/stats${queryString}`),
-  }) as unknown as AuthenticatedRequest;
+    url,
+    headers: new Headers(),
+    nextUrl: new URL(url),
+  } as unknown as AuthenticatedRequest;
+};
 
 describe.sequential("GET /api/v1/events/geo/stats", () => {
   beforeEach(() => {
@@ -96,31 +81,18 @@ describe.sequential("GET /api/v1/events/geo/stats", () => {
       db: { drizzle: { execute: mocks.mockDrizzleExecute } },
     });
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
-    mocks.mockExtractClusterStatsParameters.mockReturnValue({
-      catalog: null,
-      datasets: [],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-    });
     mocks.mockDrizzleExecute.mockResolvedValue({
       rows: [{ p20: 2, p40: 5, p60: 10, p80: 20, p100: 50, total_clusters: 1 }],
     });
   });
 
   it("returns default stats when all dataset ids are invalid", async () => {
-    mocks.mockExtractClusterStatsParameters.mockReturnValue({
-      catalog: null,
-      datasets: ["abc"],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-    });
-
+    // "abc" cannot be coerced to an integer -- Zod returns a 422 validation error
     const response = await GET(createRequest("?datasets=abc"), { params: Promise.resolve({}) });
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(DEFAULT_CLUSTER_STATS);
+    expect(response.status).toBe(422);
+    const data = await response.json();
+    expect(data.error).toBe("Validation failed");
     expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
   });
 });

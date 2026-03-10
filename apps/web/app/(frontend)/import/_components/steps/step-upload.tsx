@@ -50,7 +50,9 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
   // Configure navigation for this step
   useEffect(() => {
-    setNavigationConfig({ onNext: () => nextStep() });
+    setNavigationConfig({
+      onNext: () => nextStep(),
+    });
     return () => setNavigationConfig({});
   }, [setNavigationConfig, nextStep]);
 
@@ -122,45 +124,63 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     setIsDragging(false);
   }, []);
 
-  const processFile = useCallback(
-    async (selectedFile: File) => {
-      setIsUploading(true);
-      setError(null);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
 
-      try {
-        // Create form data for preview API
-        const formData = new FormData();
-        formData.append("file", selectedFile);
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) {
+      void processFile(droppedFile);
+    }
+  };
 
-        const response = await fetch("/api/import/preview-schema", {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        });
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      void processFile(selectedFile);
+    }
+  };
 
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error ?? "Failed to process file");
-        }
+  const processFile = async (selectedFile: File) => {
+    setIsUploading(true);
+    setError(null);
 
+    try {
+      // Create form data for preview API
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await fetch("/api/import/preview-schema/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
         const data = await response.json();
-
-        setFile(
-          { name: selectedFile.name, size: selectedFile.size, mimeType: selectedFile.type },
-          data.sheets,
-          data.previewId
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to process file");
-      } finally {
-        setIsUploading(false);
+        throw new Error(data.error ?? "Failed to process file");
       }
-    },
-    [setFile]
-  );
+
+      const data = await response.json();
+
+      setFile(
+        {
+          name: selectedFile.name,
+          size: selectedFile.size,
+          mimeType: selectedFile.type,
+        },
+        data.sheets,
+        data.previewId
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process file");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Process URL to fetch and preview schema
-  const processUrl = useCallback(async () => {
+  const processUrl = async () => {
     if (!urlInput.trim()) {
       setError("Please enter a URL");
       return;
@@ -173,10 +193,13 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       // Build auth config payload - only include fields relevant to auth type
       const authPayload = authConfig.type === "none" ? undefined : authConfig;
 
-      const response = await fetch("/api/import/preview-schema", {
+      const response = await fetch("/api/import/preview-schema/url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl: urlInput.trim(), authConfig: authPayload }),
+        body: JSON.stringify({
+          sourceUrl: urlInput.trim(),
+          authConfig: authPayload,
+        }),
         credentials: "include",
       });
 
@@ -206,35 +229,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     } finally {
       setIsLoadingUrl(false);
     }
-  }, [urlInput, authConfig, setSourceUrl, setFile]);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-
-      const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile) {
-        void processFile(droppedFile);
-      }
-    },
-    [processFile]
-  );
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFile = e.target.files?.[0];
-      if (selectedFile) {
-        void processFile(selectedFile);
-      }
-    },
-    [processFile]
-  );
-
-  // Handler for fetch button
-  const handleFetchClick = useCallback(() => {
-    void processUrl();
-  }, [processUrl]);
+  };
 
   const handleRemoveFile = useCallback(() => {
     clearFile();
@@ -270,7 +265,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
           <UploadIcon className="text-muted-foreground mx-auto h-12 w-12" />
           <p className="mt-4 text-lg font-medium">Drag and drop your file here</p>
           <p className="text-muted-foreground mt-2">or</p>
-          <label className="mt-4 inline-block cursor-pointer" aria-label="Browse files">
+          <label className="mt-4 inline-block cursor-pointer">
             <input type="file" accept={ACCEPTED_TYPES.join(",")} onChange={handleFileSelect} className="sr-only" />
             <Button type="button" variant="outline" asChild>
               <span>Browse files</span>
@@ -281,6 +276,11 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       )}
     </div>
   );
+
+  // Handler for fetch button
+  const handleFetchClick = () => {
+    void processUrl();
+  };
 
   // Render auth fields based on type
   const renderAuthFields = () => {

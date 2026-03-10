@@ -9,9 +9,11 @@
  */
 import {
   BoundsParamSchema,
+  BoundsSchema,
   CatalogParamSchema,
   DatasetsParamSchema,
   DateParamSchema,
+  FieldFiltersParamSchema,
   PaginationSchema,
   z,
 } from "./common";
@@ -25,6 +27,7 @@ export const EventFiltersSchema = z.object({
   startDate: DateParamSchema,
   endDate: DateParamSchema,
   bounds: BoundsParamSchema,
+  ff: FieldFiltersParamSchema,
 });
 
 export type EventFilters = z.infer<typeof EventFiltersSchema>;
@@ -115,9 +118,9 @@ export type AggregateResponse = z.infer<typeof AggregateResponseSchema>;
  * Query parameters for GET /api/events/histogram
  */
 export const HistogramQuerySchema = EventFiltersSchema.extend({
-  targetBuckets: z.coerce.number().int().default(30),
-  minBuckets: z.coerce.number().int().default(20),
-  maxBuckets: z.coerce.number().int().default(50),
+  targetBuckets: z.coerce.number().int().min(1).max(500).default(30),
+  minBuckets: z.coerce.number().int().min(1).max(500).default(20),
+  maxBuckets: z.coerce.number().int().min(1).max(500).default(50),
 }).openapi("HistogramQuery");
 
 export type HistogramQuery = z.infer<typeof HistogramQuerySchema>;
@@ -161,8 +164,35 @@ export type HistogramResponse = z.infer<typeof HistogramResponseSchema>;
  * Query parameters for GET /api/events/map-clusters
  */
 export const MapClustersQuerySchema = EventFiltersSchema.extend({
-  bounds: z.string().describe("Required JSON bounding box"),
-  zoom: z.coerce.number().int().default(10),
+  bounds: z.preprocess((val) => {
+    if (typeof val !== "string" || !val) return undefined;
+    try {
+      const parsed = JSON.parse(val) as Record<string, unknown>;
+      if (
+        typeof parsed === "object" &&
+        parsed != null &&
+        typeof parsed.north === "number" &&
+        typeof parsed.south === "number" &&
+        typeof parsed.east === "number" &&
+        typeof parsed.west === "number" &&
+        parsed.north > parsed.south &&
+        parsed.north <= 90 &&
+        parsed.south >= -90 &&
+        parsed.east <= 180 &&
+        parsed.west >= -180 &&
+        Number.isFinite(parsed.north) &&
+        Number.isFinite(parsed.south) &&
+        Number.isFinite(parsed.east) &&
+        Number.isFinite(parsed.west)
+      ) {
+        return parsed;
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }, BoundsSchema.describe("Required geographic bounding box")),
+  zoom: z.coerce.number().int().min(0).max(28).default(10),
 }).openapi("MapClustersQuery");
 
 export type MapClustersQuery = z.infer<typeof MapClustersQuerySchema>;

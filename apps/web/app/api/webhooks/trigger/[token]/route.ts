@@ -208,7 +208,7 @@ export const POST = apiRoute({
       );
     }
 
-    return await queueImportAndRespond(payload, scheduledImport);
+    return queueImportAndRespond(payload, scheduledImport);
   },
 });
 

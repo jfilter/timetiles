@@ -11,9 +11,9 @@
 import { randomBytes, randomInt } from "node:crypto";
 
 import type { Payload } from "payload";
+import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
-import { EMAIL_REGEX } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
@@ -116,7 +116,11 @@ const updateEmailAndNotify = async (
 
 export const POST = apiRoute({
   auth: "required",
-  handler: async ({ payload, user, req }) => {
+  body: z.object({
+    newEmail: z.email().transform((s) => s.trim().toLowerCase()),
+    password: z.string().min(1),
+  }),
+  handler: async ({ payload, user, req, body }) => {
     // Rate limiting
     const clientId = getClientIdentifier(req);
     const rateLimitService = getRateLimitService(payload);
@@ -130,25 +134,7 @@ export const POST = apiRoute({
       return Response.json({ error: "Too many email change attempts. Please try again later." }, { status: 429 });
     }
 
-    // Parse request body
-    let newEmail: string;
-    let password: string;
-    try {
-      const body = await req.json();
-      newEmail = body.newEmail?.trim().toLowerCase();
-      password = body.password;
-    } catch {
-      return Response.json({ error: "Invalid request body", code: "BAD_REQUEST" }, { status: 400 });
-    }
-
-    if (!newEmail || !password) {
-      return Response.json({ error: "New email and password are required", code: "BAD_REQUEST" }, { status: 400 });
-    }
-
-    // Validate email format
-    if (!EMAIL_REGEX.test(newEmail)) {
-      return Response.json({ error: "Invalid email format", code: "BAD_REQUEST" }, { status: 400 });
-    }
+    const { newEmail, password } = body;
 
     // Check if email is same as current
     if (newEmail === user.email.toLowerCase()) {

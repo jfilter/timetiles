@@ -7,6 +7,8 @@
  * @module
  */
 
+import { z } from "zod";
+
 import { apiRoute } from "@/lib/api";
 import { createRequestLogger } from "@/lib/logger";
 import { getScheduleService, startScheduleService, stopScheduleService } from "@/lib/services/schedule-service";
@@ -20,7 +22,7 @@ const logger = createRequestLogger("schedule-service-api");
 export const GET = apiRoute({
   auth: "admin",
   rateLimit: { type: "API_GENERAL" },
-  handler: async ({ payload }) => {
+  handler: ({ payload }) => {
     const service = getScheduleService(payload);
     const status = service.getStatus();
 
@@ -38,10 +40,13 @@ export const GET = apiRoute({
 export const POST = apiRoute({
   auth: "admin",
   rateLimit: { type: "API_GENERAL" },
-  handler: async ({ req, payload }) => {
-    const body = (await req.json().catch(() => ({}) as Record<string, unknown>)) as Record<string, unknown>;
+  body: z.object({
+    intervalMs: z.number().positive().optional(),
+    enabled: z.boolean().optional(),
+  }),
+  handler: ({ payload, body }) => {
     const serviceConfig = {
-      intervalMs: typeof body.intervalMs === "number" && body.intervalMs > 0 ? body.intervalMs : 60000, // Default: 1 minute
+      intervalMs: body.intervalMs ?? 60000, // Default: 1 minute
       enabled: body.enabled !== false, // Default: true
     };
 
@@ -65,7 +70,7 @@ export const POST = apiRoute({
 export const DELETE = apiRoute({
   auth: "admin",
   rateLimit: { type: "API_GENERAL" },
-  handler: async () => {
+  handler: () => {
     stopScheduleService();
 
     logger.info("Schedule service stopped");

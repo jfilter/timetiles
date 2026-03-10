@@ -12,7 +12,7 @@
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
-import { PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/import-constants";
+import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
@@ -31,7 +31,11 @@ const VALID_RESET_STAGES = [
 export const POST = apiRoute({
   auth: "admin",
   params: z.object({ id: z.string() }),
-  handler: async ({ payload, user, req, params }) => {
+  body: z.object({
+    targetStage: z.enum(VALID_RESET_STAGES),
+    clearRetries: z.boolean().optional(),
+  }),
+  handler: async ({ payload, user, req, params, body }) => {
     const { id } = params;
 
     // Rate limiting
@@ -42,17 +46,7 @@ export const POST = apiRoute({
       return Response.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    // Parse request body
-    const body = (await req.json()) as { targetStage: ProcessingStage; clearRetries?: boolean };
     const { targetStage, clearRetries = true } = body;
-
-    // Validate target stage
-    if (!VALID_RESET_STAGES.includes(targetStage as (typeof VALID_RESET_STAGES)[number])) {
-      return Response.json(
-        { error: `Invalid target stage '${targetStage}'. Must be one of: ${VALID_RESET_STAGES.join(", ")}` },
-        { status: 400 }
-      );
-    }
 
     // Get the import job (admins have access to all jobs)
     const importJob = await payload

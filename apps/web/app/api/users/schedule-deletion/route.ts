@@ -8,6 +8,8 @@
  * @module
  * @category API
  */
+import { z } from "zod";
+
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
@@ -17,7 +19,10 @@ import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
 export const POST = apiRoute({
   auth: "required",
-  handler: async ({ payload, user, req }) => {
+  body: z.object({
+    password: z.string().min(1),
+  }),
+  handler: async ({ payload, user, req, body }) => {
     // Rate limiting
     const clientId = getClientIdentifier(req);
     const rateLimitService = getRateLimitService(payload);
@@ -32,18 +37,7 @@ export const POST = apiRoute({
       return Response.json({ error: "Too many deletion attempts. Please try again later." }, { status: 429 });
     }
 
-    // Parse request body
-    let password: string;
-    try {
-      const body = await req.json();
-      password = body.password;
-    } catch {
-      return Response.json({ error: "Invalid request body", code: "BAD_REQUEST" }, { status: 400 });
-    }
-
-    if (!password) {
-      return Response.json({ error: "Password is required", code: "BAD_REQUEST" }, { status: 400 });
-    }
+    const { password } = body;
 
     // Check password attempt rate limit
     const passwordCheck = rateLimitService.checkConfiguredRateLimit(

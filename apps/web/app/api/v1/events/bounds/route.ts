@@ -17,9 +17,9 @@ import { sql } from "@payloadcms/db-postgres";
 
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { EventFiltersSchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
-import { extractBaseEventParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 import {
   buildCatalogSqlCondition,
   buildDatasetSqlCondition,
@@ -59,10 +59,10 @@ export interface BoundsResponse {
  */
 export const GET = apiRoute({
   auth: "optional",
-  handler: async ({ req, user, payload }) => {
-    const parameters = extractBaseEventParameters(req.nextUrl.searchParams);
-    const endDate = normalizeEndDate(parameters.endDate);
-    const hasCatalogFilter = parameters.catalog != null && parameters.catalog !== "";
+  query: EventFiltersSchema,
+  handler: async ({ query, user, payload }) => {
+    const endDate = normalizeEndDate(query.endDate ?? null);
+    const hasCatalogFilter = query.catalog != null;
 
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
@@ -80,9 +80,8 @@ export const GET = apiRoute({
 
     // Apply catalog access control
     if (hasCatalogFilter) {
-      const catalogId = parseStrictInteger(parameters.catalog);
-      if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
-        conditions.push(buildCatalogSqlCondition(catalogId));
+      if (accessibleCatalogIds.includes(query.catalog!)) {
+        conditions.push(buildCatalogSqlCondition(query.catalog));
       } else {
         return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
       }
@@ -91,15 +90,14 @@ export const GET = apiRoute({
     }
 
     // Apply dataset filter
-    if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") {
-      const datasetIds = normalizeStrictIntegerList(parameters.datasets);
-      const datasetCondition = buildDatasetSqlCondition(datasetIds);
+    if (query.datasets != null && query.datasets.length > 0) {
+      const datasetCondition = buildDatasetSqlCondition(query.datasets);
       conditions.push(datasetCondition ?? sql`FALSE`);
     }
 
     // Apply date and field filters
-    conditions.push(...buildDateSqlConditions(parameters.startDate, endDate));
-    conditions.push(...buildFieldFilterSqlConditions(parameters.fieldFilters));
+    conditions.push(...buildDateSqlConditions(query.startDate ?? null, endDate));
+    conditions.push(...buildFieldFilterSqlConditions(query.ff));
 
     // Combine conditions using reduce with initial value
     const whereClause = conditions.reduce((acc, cond) => sql`${acc} AND ${cond}`, sql`TRUE`);

@@ -67,28 +67,28 @@ describe.sequential("POST /api/scheduled-imports/[id]/trigger", () => {
     expect(response.status).toBe(401);
   });
 
-  it("should return 400 for non-numeric ID", async () => {
+  it("should return 422 for non-numeric ID", async () => {
     const mockPayload = createMockPayload();
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
     vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
 
     const response = await POST(createRequest(), { params: Promise.resolve({ id: "abc" }) });
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
 
     const data = await response.json();
-    expect(data.error).toBe("Invalid ID");
+    expect(data.error).toBe("Validation failed");
   });
 
-  it("should return 400 for partially numeric ID", async () => {
+  it("should return 422 for partially numeric ID", async () => {
     const mockPayload = createMockPayload();
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
     vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
 
     const response = await POST(createRequest(), { params: Promise.resolve({ id: "1abc" }) });
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
 
     const data = await response.json();
-    expect(data.error).toBe("Invalid ID");
+    expect(data.error).toBe("Validation failed");
     expect(mockPayload.findByID).not.toHaveBeenCalled();
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });

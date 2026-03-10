@@ -30,6 +30,7 @@ import type {
 import {
   buildDatasetMapping,
   cleanupPreview,
+  ConfigureImportBodySchema,
   loadPreviewMetadata,
   processDataset,
   translateSchemaMode,
@@ -261,20 +262,20 @@ const rethrowQuotaError = (error: unknown): never => {
  */
 export const POST = apiRoute({
   auth: "required",
-  handler: async ({ req, user, payload }) => {
+  body: ConfigureImportBodySchema,
+  handler: async ({ body, req, user, payload }) => {
     try {
-      const body = (await req.json()) as ConfigureImportRequest;
       logger.debug("Configure import request received", {
         previewId: body.previewId,
         catalogId: body.catalogId,
-        sheetMappingsCount: body.sheetMappings?.length,
+        sheetMappingsCount: body.sheetMappings.length,
         geocodingEnabled: body.geocodingEnabled,
       });
 
       const previewMeta = loadPreviewMetadata(body.previewId);
 
-      // Validate request
-      const validationError = validateRequest(body, previewMeta, user);
+      // Validate business-logic constraints (preview exists, not expired, user owns it)
+      const validationError = validateRequest(previewMeta, user);
       if (validationError) {
         return validationError;
       }

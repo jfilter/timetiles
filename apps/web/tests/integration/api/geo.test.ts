@@ -336,9 +336,9 @@ describe("/api/v1/events/geo", () => {
 
     const response = await GET(request, { params: Promise.resolve({}) });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
     const data = await response.json();
-    expect(data).toHaveProperty("error", "Missing bounds parameter");
+    expect(data.error).toBe("Validation failed");
   });
 
   it("should handle invalid bounds format", async () => {
@@ -346,9 +346,11 @@ describe("/api/v1/events/geo", () => {
 
     const response = await GET(request, { params: Promise.resolve({}) });
 
-    expect(response.status).toBe(400);
+    // Invalid bounds are silently coerced to undefined by the Zod schema,
+    // then Zod rejects because bounds is required for map clustering
+    expect(response.status).toBe(422);
     const data = await response.json();
-    expect(data.error).toContain("Invalid bounds format");
+    expect(data.error).toBe("Validation failed");
   });
 
   it("should use tile-based clustering for stable cluster positions", async () => {

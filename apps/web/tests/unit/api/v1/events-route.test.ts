@@ -8,8 +8,6 @@ import "@/tests/mocks/services/logger";
 
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
-  mockParseBoundsParameter: vi.fn(),
-  mockExtractListParameters: vi.fn(),
   mockPayloadFind: vi.fn(),
 }));
 
@@ -23,27 +21,6 @@ vi.mock("@/lib/middleware/rate-limit", () => ({
 
 vi.mock("payload", () => ({
   getPayload: mocks.mockGetPayload,
-}));
-
-vi.mock("@/lib/geospatial", () => ({
-  parseBoundsParameter: mocks.mockParseBoundsParameter,
-}));
-
-vi.mock("@/lib/utils/event-params", () => ({
-  extractListParameters: mocks.mockExtractListParameters,
-  parseStrictInteger: (value: string | number | null | undefined) => {
-    if (typeof value === "number") return Number.isInteger(value) ? value : null;
-    if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-    return parseInt(value.trim(), 10);
-  },
-  normalizeStrictIntegerList: (values: Array<string | number>) =>
-    values
-      .map((value) => {
-        if (typeof value === "number") return Number.isInteger(value) ? value : null;
-        if (typeof value !== "string" || !/^-?\d+$/.test(value.trim())) return null;
-        return parseInt(value.trim(), 10);
-      })
-      .filter((value): value is number => value != null),
 }));
 
 vi.mock("@/lib/services/aggregation-filters", () => ({
@@ -62,11 +39,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/v1/events/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
-const createRequest = (queryString: string, user: unknown = null) =>
-  ({
+const createRequest = (queryString: string, user: unknown = null) => {
+  const url = `http://localhost:3000/api/v1/events${queryString}`;
+  return {
     user,
-    nextUrl: new URL(`http://localhost:3000/api/v1/events${queryString}`),
-  }) as unknown as AuthenticatedRequest;
+    url,
+    headers: new Headers(),
+    nextUrl: new URL(url),
+  } as unknown as AuthenticatedRequest;
+};
 
 describe.sequential("GET /api/v1/events", () => {
   beforeEach(() => {
@@ -75,18 +56,6 @@ describe.sequential("GET /api/v1/events", () => {
     mocks.mockGetPayload.mockResolvedValue({
       auth: vi.fn().mockResolvedValue({ user: null }),
       find: mocks.mockPayloadFind,
-    });
-    mocks.mockParseBoundsParameter.mockReturnValue({ bounds: null });
-    mocks.mockExtractListParameters.mockReturnValue({
-      catalog: null,
-      datasets: [],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-      boundsParam: null,
-      page: 1,
-      limit: 100,
-      sort: "-eventTimestamp",
     });
     mocks.mockPayloadFind.mockResolvedValue({
       docs: [],
@@ -102,24 +71,8 @@ describe.sequential("GET /api/v1/events", () => {
   });
 
   it("normalizes a plain end date to the end of the day", async () => {
-    mocks.mockExtractListParameters.mockReturnValue({
-      catalog: null,
-      datasets: [],
-      startDate: null,
-      endDate: "2024-03-31",
-      fieldFilters: {},
-      boundsParam: null,
-      page: 1,
-      limit: 100,
-      sort: "-eventTimestamp",
-    });
+    const response = await GET(createRequest("?endDate=2024-03-31"), { params: Promise.resolve({}) });
 
-    const response = await GET(createRequest(""), { params: Promise.resolve({}) });
-
-    if (response.status !== 200) {
-      const body = await response.clone().json();
-      console.error("DEBUG events-route 500 body:", JSON.stringify(body));
-    }
     expect(response.status).toBe(200);
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
@@ -138,27 +91,10 @@ describe.sequential("GET /api/v1/events", () => {
   });
 
   it("uses an OR longitude filter for antimeridian-crossing bounds", async () => {
-    mocks.mockExtractListParameters.mockReturnValue({
-      catalog: null,
-      datasets: [],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-      boundsParam: '{"west":170,"east":-170,"south":-10,"north":10}',
-      page: 1,
-      limit: 100,
-      sort: "-eventTimestamp",
+    const bounds = JSON.stringify({ west: 170, east: -170, south: -10, north: 10 });
+    const response = await GET(createRequest(`?bounds=${encodeURIComponent(bounds)}`), {
+      params: Promise.resolve({}),
     });
-    mocks.mockParseBoundsParameter.mockReturnValue({
-      bounds: {
-        west: 170,
-        east: -170,
-        south: -10,
-        north: 10,
-      },
-    });
-
-    const response = await GET(createRequest(""), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
@@ -186,67 +122,21 @@ describe.sequential("GET /api/v1/events", () => {
     );
   });
 
-  it("returns no results when the catalog filter is invalid", async () => {
-    mocks.mockExtractListParameters.mockReturnValue({
-      catalog: "abc",
-      datasets: [],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-      boundsParam: null,
-      page: 1,
-      limit: 100,
-      sort: "-eventTimestamp",
-    });
-
+  it("returns a validation error when the catalog filter is non-numeric", async () => {
+    // With Zod validation, "abc" cannot be coerced to a number so it's a validation error
     const response = await GET(createRequest("?catalog=abc"), { params: Promise.resolve({}) });
 
-    expect(response.status).toBe(200);
-    expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
-    expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          and: expect.arrayContaining([
-            {
-              id: {
-                equals: -1,
-              },
-            },
-          ]),
-        }),
-      })
-    );
+    expect(response.status).toBe(422);
+    const data = await response.json();
+    expect(data.error).toBe("Validation failed");
   });
 
-  it("returns no results when dataset ids are only partially numeric", async () => {
-    mocks.mockExtractListParameters.mockReturnValue({
-      catalog: null,
-      datasets: ["10oops"],
-      startDate: null,
-      endDate: null,
-      fieldFilters: {},
-      boundsParam: null,
-      page: 1,
-      limit: 100,
-      sort: "-eventTimestamp",
-    });
-
+  it("returns a validation error when dataset ids are non-numeric", async () => {
+    // With Zod validation, "10oops" cannot be coerced to an integer
     const response = await GET(createRequest("?datasets=10oops"), { params: Promise.resolve({}) });
 
-    expect(response.status).toBe(200);
-    expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
-    expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          and: expect.arrayContaining([
-            {
-              id: {
-                equals: -1,
-              },
-            },
-          ]),
-        }),
-      })
-    );
+    expect(response.status).toBe(422);
+    const data = await response.json();
+    expect(data.error).toBe("Validation failed");
   });
 });

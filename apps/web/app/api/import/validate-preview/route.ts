@@ -21,7 +21,7 @@ const getPreviewDir = (): string => {
 };
 
 export const GET = apiRoute({
-  auth: "none",
+  auth: "required",
   query: z.object({ previewId: z.uuid() }),
   handler: ({ query }) => {
     const previewDir = getPreviewDir();
