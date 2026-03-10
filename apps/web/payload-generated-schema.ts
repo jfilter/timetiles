@@ -3583,6 +3583,7 @@ export const views = db_schema.table(
   },
   (columns) => [
     uniqueIndex("views_slug_idx").on(columns.slug),
+    uniqueIndex("views_branding_branding_domain_idx").on(columns.branding_domain),
     index("views_branding_branding_logo_idx").on(columns.branding_logo),
     index("views_branding_branding_favicon_idx").on(columns.branding_favicon),
     index("views_created_by_idx").on(columns.createdBy),
@@ -3708,6 +3709,7 @@ export const _views_v = db_schema.table(
   (columns) => [
     index("_views_v_parent_idx").on(columns.parent),
     index("_views_v_version_version_slug_idx").on(columns.version_slug),
+    index("_views_v_version_branding_version_branding_domain_idx").on(columns.version_branding_domain),
     index("_views_v_version_branding_version_branding_logo_idx").on(columns.version_branding_logo),
     index("_views_v_version_branding_version_branding_favicon_idx").on(columns.version_branding_favicon),
     index("_views_v_version_version_created_by_idx").on(columns.version_createdBy),
