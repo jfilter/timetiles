@@ -35,11 +35,19 @@ export const defaultIgnores = {
     "**/coverage/**",
     "**/.turbo/**",
     "**/payload-types.ts",
+    "**/payload-generated-schema.ts",
     "**/.eslintcache",
     "**/*.d.ts", // TypeScript declaration files (auto-generated, should not be linted)
     "**/*.d.ts.map", // Source maps for declaration files
     "**/.worktrees/**", // Git worktrees
     "**/.claude/**", // Claude Code agent data
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "**/uploads/**",
+    "**/*.min.js",
+    "**/*.bundle.js",
+    "**/app/(payload)/**",
+    "**/importMap.js",
   ],
 };
 
