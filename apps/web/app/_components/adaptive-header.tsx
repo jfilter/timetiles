@@ -36,6 +36,10 @@ import { formatCenterCoordinates, formatEventCount } from "@/lib/utils/coordinat
 import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
 import { ViewToggle } from "../(frontend)/explore/_components/view-toggle";
+
+/** Stable empty arrays to avoid creating new references on each render. */
+const EMPTY_CATALOGS: Catalog[] = [];
+const EMPTY_DATASETS: Dataset[] = [];
 import { HeaderAuth } from "./header-auth";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -323,8 +327,8 @@ const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigatio
  */
 export const AdaptiveHeader = ({
   mainMenu,
-  catalogs = [],
-  datasets = [],
+  catalogs = EMPTY_CATALOGS,
+  datasets = EMPTY_DATASETS,
   user = null,
 }: Readonly<AdaptiveHeaderProps>) => {
   const pathname = usePathname();

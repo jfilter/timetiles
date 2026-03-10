@@ -6,6 +6,8 @@ import "nextra-theme-docs/style.css";
 
 import faviconPng from "@timetiles/assets/logos/latest/light/no-grid/png/logo_square_256.png";
 import logoHorizontal from "@timetiles/assets/logos/latest/light/no-grid/wordmark_horizontal.svg";
+import Image from "next/image";
+import Link from "next/link";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import { Footer, Layout, Navbar } from "nextra-theme-docs";
@@ -19,18 +21,18 @@ const navbar = (
   <Navbar
     logo={
       <div style={{ display: "flex", alignItems: "center" }}>
-        <img src={logoHorizontal.src ?? logoHorizontal} alt="TimeTiles" style={{ height: "32px", width: "auto" }} />
+        <Image src={logoHorizontal} alt="TimeTiles" height={32} width={120} />
       </div>
     }
     projectLink="https://github.com/jfilter/timetiles"
   >
     <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", marginLeft: "auto" }}>
-      <a href="/overview" style={{ textDecoration: "none", color: "inherit", fontWeight: 500 }}>
+      <Link href="/overview" style={{ textDecoration: "none", color: "inherit", fontWeight: 500 }}>
         Docs
-      </a>
-      <a href="/reference/api" style={{ textDecoration: "none", color: "inherit", fontWeight: 500 }}>
+      </Link>
+      <Link href="/reference/api" style={{ textDecoration: "none", color: "inherit", fontWeight: 500 }}>
         API Reference
-      </a>
+      </Link>
       <a
         href="https://github.com/jfilter/timetiles"
         target="_blank"
@@ -62,6 +64,16 @@ const footer = (
   </Footer>
 );
 
+const sidebarConfig = {
+  defaultMenuCollapseLevel: 2,
+  toggleButton: true,
+  defaultOpen: true,
+};
+
+const tocConfig = {
+  backToTop: true,
+};
+
 const banner = (
   <Banner storageKey="development-disclaimer" dismissible>
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
@@ -88,14 +100,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           banner={banner}
           docsRepositoryBase="https://github.com/jfilter/timetiles/tree/main/apps/docs"
           editLink="Edit this page on GitHub"
-          sidebar={{
-            defaultMenuCollapseLevel: 2,
-            toggleButton: true,
-            defaultOpen: true,
-          }}
-          toc={{
-            backToTop: true,
-          }}
+          sidebar={sidebarConfig}
+          toc={tocConfig}
         >
           {children}
         </Layout>

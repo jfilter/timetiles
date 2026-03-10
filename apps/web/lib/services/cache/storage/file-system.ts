@@ -61,7 +61,8 @@ export class FileSystemCacheStorage implements CacheStorage {
     // Setup periodic cleanup
     if (options.cleanupIntervalMs) {
       this.cleanupInterval = setInterval(() => {
-        void this.cleanup().catch((err) => {
+        // eslint-disable-next-line promise/prefer-await-to-then -- Fire-and-forget in setInterval callback; cannot use await here
+        void this.cleanup().catch((err: unknown) => {
           logger.error("Cache cleanup error", { error: err });
         });
       }, options.cleanupIntervalMs);

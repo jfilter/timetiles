@@ -26,6 +26,9 @@ interface Catalog {
   datasets: Array<{ id: number; name: string }>;
 }
 
+/** Stable empty array to avoid creating a new reference on each render. */
+const EMPTY_DATASETS: Array<{ id: number; name: string }> = [];
+
 interface DatasetSelectProps {
   sheetIndex: number;
   value: number | "new";
@@ -309,7 +312,8 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
               <div className="space-y-4">
                 {sheets.map((sheet) => {
                   const mapping = sheetMappings.find((m) => m.sheetIndex === sheet.index);
-                  const datasets = selectedCatalogId === "new" ? [] : (selectedCatalog?.datasets ?? []);
+                  const datasets =
+                    selectedCatalogId === "new" ? EMPTY_DATASETS : (selectedCatalog?.datasets ?? EMPTY_DATASETS);
 
                   return (
                     <div

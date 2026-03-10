@@ -1,5 +1,5 @@
-import type { ComponentType, ReactNode } from "react";
 import { useMDXComponents as getDocsMDXComponents } from "nextra-theme-docs";
+import type { ComponentType, ReactNode } from "react";
 
 type MDXComponents = Record<string, ComponentType<{ children?: ReactNode }>>;
 

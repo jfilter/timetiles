@@ -124,63 +124,49 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const processFile = useCallback(
+    async (selectedFile: File) => {
+      setIsUploading(true);
+      setError(null);
 
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      void processFile(droppedFile);
-    }
-  };
+      try {
+        // Create form data for preview API
+        const formData = new FormData();
+        formData.append("file", selectedFile);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      void processFile(selectedFile);
-    }
-  };
+        const response = await fetch("/api/wizard/preview-schema", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
 
-  const processFile = async (selectedFile: File) => {
-    setIsUploading(true);
-    setError(null);
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error ?? "Failed to process file");
+        }
 
-    try {
-      // Create form data for preview API
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      const response = await fetch("/api/wizard/preview-schema", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error ?? "Failed to process file");
+
+        setFile(
+          {
+            name: selectedFile.name,
+            size: selectedFile.size,
+            mimeType: selectedFile.type,
+          },
+          data.sheets,
+          data.previewId
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to process file");
+      } finally {
+        setIsUploading(false);
       }
-
-      const data = await response.json();
-
-      setFile(
-        {
-          name: selectedFile.name,
-          size: selectedFile.size,
-          mimeType: selectedFile.type,
-        },
-        data.sheets,
-        data.previewId
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process file");
-    } finally {
-      setIsUploading(false);
-    }
-  };
+    },
+    [setFile]
+  );
 
   // Process URL to fetch and preview schema
-  const processUrl = async () => {
+  const processUrl = useCallback(async () => {
     if (!urlInput.trim()) {
       setError("Please enter a URL");
       return;
@@ -229,7 +215,35 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     } finally {
       setIsLoadingUrl(false);
     }
-  };
+  }, [urlInput, authConfig, setSourceUrl, setFile]);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+
+      const droppedFile = e.dataTransfer.files[0];
+      if (droppedFile) {
+        void processFile(droppedFile);
+      }
+    },
+    [processFile]
+  );
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = e.target.files?.[0];
+      if (selectedFile) {
+        void processFile(selectedFile);
+      }
+    },
+    [processFile]
+  );
+
+  // Handler for fetch button
+  const handleFetchClick = useCallback(() => {
+    void processUrl();
+  }, [processUrl]);
 
   const handleRemoveFile = useCallback(() => {
     clearFile();
@@ -276,11 +290,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       )}
     </div>
   );
-
-  // Handler for fetch button
-  const handleFetchClick = () => {
-    void processUrl();
-  };
 
   // Render auth fields based on type
   const renderAuthFields = () => {

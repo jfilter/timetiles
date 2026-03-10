@@ -424,7 +424,9 @@ const generateMapStyle = async (): Promise<void> => {
 };
 
 // Run the script
-generateMapStyle().catch((error) => {
+try {
+  await generateMapStyle();
+} catch (error) {
   console.error("Failed to generate map style:", error);
   process.exit(1);
-});
+}

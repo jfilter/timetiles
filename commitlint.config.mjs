@@ -13,12 +13,40 @@ function getChangedFiles() {
     }
 
     // For last commit (when validating existing commits)
-    const lastCommit = execSync("git diff HEAD~1 --name-only", { encoding: "utf8" }).trim().split("\n").filter(Boolean);
-
-    return lastCommit;
-  } catch (error) {
+    return execSync("git diff HEAD~1 --name-only", { encoding: "utf8" }).trim().split("\n").filter(Boolean);
+  } catch (_error) {
+    void _error; // Intentionally ignored — git commands may fail when no commits exist
     return [];
   }
+}
+
+/**
+ * Check whether a single pattern from the scope map matches a file path.
+ * Returns true if the pattern matches, false otherwise.
+ */
+function patternMatchesFile(pattern, file) {
+  if (pattern.endsWith("/")) {
+    return file.startsWith(pattern);
+  }
+  if (pattern.startsWith("*.")) {
+    return file.endsWith(pattern.slice(1));
+  }
+  return file.includes(pattern);
+}
+
+/**
+ * Infer a scope from a file path based on its top-level monorepo directory
+ * when no explicit scope-map entry matched.
+ */
+function inferScopeFromPath(file) {
+  const parts = file.split("/");
+  if (parts[0] === "apps" && parts[1]) {
+    return parts[1]; // e.g., 'web' or 'docs'
+  }
+  if (parts[0] === "packages" && parts[1]) {
+    return parts[1].includes("config") ? "config" : parts[1];
+  }
+  return null;
 }
 
 /**
@@ -76,48 +104,17 @@ function getExpectedScopes(files) {
   };
 
   const detectedScopes = new Set();
+  const entries = Object.entries(scopeMap);
 
   for (const file of files) {
-    let scopeFound = false;
+    const matched = entries.find(([pattern]) => patternMatchesFile(pattern, file));
 
-    // Check exact matches and prefixes
-    for (const [pattern, scope] of Object.entries(scopeMap)) {
-      if (pattern.endsWith("/")) {
-        // Directory prefix match
-        if (file.startsWith(pattern)) {
-          detectedScopes.add(scope);
-          scopeFound = true;
-          break;
-        }
-      } else if (pattern.startsWith("*.")) {
-        // Extension match
-        const ext = pattern.slice(1);
-        if (file.endsWith(ext)) {
-          detectedScopes.add(scope);
-          scopeFound = true;
-          break;
-        }
-      } else {
-        // Exact file or partial match
-        if (file.includes(pattern)) {
-          detectedScopes.add(scope);
-          scopeFound = true;
-          break;
-        }
-      }
-    }
-
-    // If no specific scope found, try to infer from top-level directory
-    if (!scopeFound) {
-      const parts = file.split("/");
-      if (parts[0] === "apps" && parts[1]) {
-        detectedScopes.add(parts[1]); // e.g., 'web' or 'docs'
-      } else if (parts[0] === "packages" && parts[1]) {
-        if (parts[1].includes("config")) {
-          detectedScopes.add("config");
-        } else {
-          detectedScopes.add(parts[1]); // e.g., 'ui' or 'assets'
-        }
+    if (matched) {
+      detectedScopes.add(matched[1]);
+    } else {
+      const inferred = inferScopeFromPath(file);
+      if (inferred) {
+        detectedScopes.add(inferred);
       }
     }
   }
@@ -194,41 +191,37 @@ export default {
           }
 
           // If scope is provided, check if it matches expected scopes
-          if (scope && expectedScopes.length > 0) {
-            if (!expectedScopes.includes(scope)) {
-              // Allow the scope if it's in our enum, but provide a suggestion
-              const validScopes = [
-                "web",
-                "docs",
-                "ui",
-                "assets",
-                "config",
-                "import",
-                "geocoding",
-                "events",
-                "schema",
-                "deploy",
-                "db",
-                "api",
-                "jobs",
-                "deps",
-                "seed",
-                "ci",
-                "build",
-                "test",
-                "e2e",
-                "infra",
-              ];
+          if (scope && expectedScopes.length > 0 && !expectedScopes.includes(scope)) {
+            // Allow the scope if it's in our enum, but provide a suggestion
+            const validScopes = [
+              "web",
+              "docs",
+              "ui",
+              "assets",
+              "config",
+              "import",
+              "geocoding",
+              "events",
+              "schema",
+              "deploy",
+              "db",
+              "api",
+              "jobs",
+              "deps",
+              "seed",
+              "ci",
+              "build",
+              "test",
+              "e2e",
+              "infra",
+            ];
 
-              if (validScopes.includes(scope)) {
-                // It's a valid scope but might not match the files
-                if (expectedScopes.length === 1) {
-                  return [
-                    1, // Warning level
-                    `Scope "${scope}" might not match your changes. Consider using "${expectedScopes[0]}" based on the files modified`,
-                  ];
-                }
-              }
+            if (validScopes.includes(scope) && expectedScopes.length === 1) {
+              // It's a valid scope but might not match the files
+              return [
+                1, // Warning level
+                `Scope "${scope}" might not match your changes. Consider using "${expectedScopes[0]}" based on the files modified`,
+              ];
             }
           }
 

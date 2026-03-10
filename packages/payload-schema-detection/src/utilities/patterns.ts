@@ -343,7 +343,7 @@ const getPatterns = (fieldType: FieldType, language: string): readonly RegExp[] 
 /**
  * Calculate confidence score for a pattern match.
  */
-const calculatePatternConfidence = (fieldName: string, patterns: RegExp[]): number => {
+const _calculatePatternConfidence = (fieldName: string, patterns: RegExp[]): number => {
   const patternIndex = patterns.findIndex((p) => p.test(fieldName));
   if (patternIndex === -1) return 0;
   // Earlier patterns are more specific, higher score

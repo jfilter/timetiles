@@ -37,7 +37,7 @@ describe.sequential("useImportUploadMutation", () => {
     globalThis.fetch = fetchMock;
     fetchMock.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ id: "import-123" }),
+      json: () => Promise.resolve({ id: "import-123" }), // eslint-disable-line promise/prefer-await-to-then -- Mock response object
     } as Response);
   });
 

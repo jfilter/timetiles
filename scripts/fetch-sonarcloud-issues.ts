@@ -33,7 +33,7 @@ interface SonarCloudIssue {
     startOffset: number;
     endOffset: number;
   };
-  flows: any[];
+  flows: unknown[];
   status: string;
   message: string;
   effort?: string;
@@ -145,9 +145,10 @@ async function checkLatestCommitAnalyzed(): Promise<void> {
           console.log(`\n📋 ${commitCount} commit(s) not yet analyzed:`);
           console.log(commitsSince);
         }
-      } catch (error) {
-        // Commit might not exist locally
-        console.log("\n(Could not determine commits since last analysis)");
+      } catch (gitError: unknown) {
+        // Commit might not exist locally (e.g., shallow clone)
+        const reason = gitError instanceof Error ? gitError.message : String(gitError);
+        console.log(`\n(Could not determine commits since last analysis: ${reason})`);
       }
     }
   } catch (error) {
@@ -315,7 +316,9 @@ function getEmojiByType(type: string): string {
 
 // Run the script
 loadEnvFile();
-checkLatestCommitAnalyzed().catch((error) => {
+try {
+  await checkLatestCommitAnalyzed();
+} catch (error) {
   console.error("Fatal error:", error);
   process.exit(1);
-});
+}

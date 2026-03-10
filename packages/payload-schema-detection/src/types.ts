@@ -137,7 +137,7 @@ export interface GeoFieldMapping {
   /** For combined coordinate field (e.g., "lat,lng" or GeoJSON) */
   combined?: {
     path: string;
-    format: "lat,lng" | "lng,lat" | "geojson" | "wkt" | string;
+    format: "lat,lng" | "lng,lat" | "geojson" | "wkt" | (string & {});
   };
   /** Address/location field for geocoding (when coordinates not available) */
   locationField?: FieldMapping;

@@ -406,7 +406,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   const handleDeduplicationChange = useCallback(
     (value: string) => {
-      setImportOptions({ deduplicationStrategy: value as typeof deduplicationStrategy });
+      setImportOptions({ deduplicationStrategy: value as "skip" | "update" | "version" });
     },
     [setImportOptions]
   );

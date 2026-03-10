@@ -236,7 +236,7 @@ const StringOpEditor = memo(
   ({ from, operation, pattern, replacement, sourceColumns, onChange }: Readonly<StringOpEditorProps>) => {
     const handleFromChange = useCallback((value: string) => onChange({ from: value }), [onChange]);
     const handleOperationChange = useCallback(
-      (value: string) => onChange({ operation: value as typeof operation }),
+      (value: string) => onChange({ operation: value as StringOpEditorProps["operation"] }),
       [onChange]
     );
     const handlePatternChange = useCallback(

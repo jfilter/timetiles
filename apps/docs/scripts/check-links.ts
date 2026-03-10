@@ -21,7 +21,7 @@ const linkPatterns = [
   // Markdown links: [text](url)
   /\[([^\]]+)\]\(([^)]+)\)/g,
   // MDX imports
-  /import(?:\s+(?:\S.*)\s+|\s{2,})from\s+['"]([^'"]+)['"]/g,
+  /import\s+\S[^\n]*?from\s+['"]([^'"]+)['"]/g,
   // Next.js Link component href
   /href=["']([^"']+)["']/g,
   // Direct URL references in text
@@ -68,7 +68,7 @@ const extractLinks = (content: string): string[] => {
   const links = new Set<string>();
 
   // Remove code blocks (both fenced and inline) to avoid checking example code
-  let contentWithoutCode = content
+  const contentWithoutCode = content
     // Remove fenced code blocks (```...```)
     .replace(/```[\s\S]*?```/g, "")
     // Remove inline code (`...`)
@@ -165,71 +165,81 @@ const checkExternalLink = async (url: string): Promise<{ valid: boolean; error?:
   }
 };
 
-const main = async (): Promise<void> => {
-  console.log("Checking links in documentation...\n");
+const findLineNumber = (lines: string[], link: string): number => {
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i]?.includes(link)) {
+      return i + 1;
+    }
+  }
+  return 1;
+};
 
-  const files = await findAllMdxFiles();
+const classifyLink = (
+  linkInfo: LinkInfo,
+  link: string,
+  file: string,
+  brokenLinks: LinkInfo[],
+  externalLinks: LinkInfo[]
+): void => {
+  const internalCheck = resolveInternalLink(link, file);
+
+  if (internalCheck !== null) {
+    linkInfo.valid = internalCheck.valid;
+    if (!internalCheck.valid) {
+      brokenLinks.push(linkInfo);
+    }
+  } else if (link.startsWith("http://") || link.startsWith("https://")) {
+    externalLinks.push(linkInfo);
+  }
+};
+
+const extractLinksFromFiles = (
+  files: string[]
+): { allLinks: LinkInfo[]; brokenLinks: LinkInfo[]; externalLinks: LinkInfo[] } => {
   const allLinks: LinkInfo[] = [];
   const brokenLinks: LinkInfo[] = [];
   const externalLinks: LinkInfo[] = [];
 
-  // Extract all links from files
   for (const file of files) {
     const content = fs.readFileSync(file, "utf-8");
     const links = extractLinks(content);
     const lines = content.split("\n");
 
     for (const link of links) {
-      // Find line number
-      let lineNumber = 1;
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i]?.includes(link)) {
-          lineNumber = i + 1;
-          break;
-        }
-      }
-
       const linkInfo: LinkInfo = {
         url: link,
         file: path.relative(docsDir, file),
-        line: lineNumber,
+        line: findLineNumber(lines, link),
       };
 
-      // Check if internal or external
-      const internalCheck = resolveInternalLink(link, file);
-
-      if (internalCheck !== null) {
-        // Internal link
-        linkInfo.valid = internalCheck.valid;
-        if (!internalCheck.valid) {
-          brokenLinks.push(linkInfo);
-        }
-      } else if (link.startsWith("http://") || link.startsWith("https://")) {
-        // External link - check later
-        externalLinks.push(linkInfo);
-      }
-
+      classifyLink(linkInfo, link, file, brokenLinks, externalLinks);
       allLinks.push(linkInfo);
     }
   }
 
-  // Check external links (with rate limiting)
-  if (externalLinks.length > 0 && !process.env.SKIP_EXTERNAL) {
-    console.log(`Checking ${externalLinks.length} external links...`);
+  return { allLinks, brokenLinks, externalLinks };
+};
 
-    for (const linkInfo of externalLinks) {
-      const result = await checkExternalLink(linkInfo.url);
-      linkInfo.valid = result.valid;
-      if (!result.valid) {
-        linkInfo.error = result.error;
-        brokenLinks.push(linkInfo);
-      }
-      // Rate limit
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
+const validateExternalLinks = async (externalLinks: LinkInfo[], brokenLinks: LinkInfo[]): Promise<void> => {
+  if (externalLinks.length === 0 || process.env.SKIP_EXTERNAL) {
+    return;
   }
 
-  // Report results
+  console.log(`Checking ${externalLinks.length} external links...`);
+
+  for (const linkInfo of externalLinks) {
+    const result = await checkExternalLink(linkInfo.url);
+    linkInfo.valid = result.valid;
+    if (!result.valid) {
+      linkInfo.error = result.error;
+      brokenLinks.push(linkInfo);
+    }
+    // Rate limit
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+};
+
+const reportResults = (allLinks: LinkInfo[], brokenLinks: LinkInfo[]): void => {
   console.log("\n" + "=".repeat(60));
   console.log("Link Check Results");
   console.log("=".repeat(60));
@@ -255,12 +265,25 @@ const main = async (): Promise<void> => {
   console.log("\nTip: Set SKIP_EXTERNAL=1 to skip external link checking");
 };
 
+const main = async (): Promise<void> => {
+  console.log("Checking links in documentation...\n");
+
+  const files = await findAllMdxFiles();
+  const { allLinks, brokenLinks, externalLinks } = extractLinksFromFiles(files);
+
+  await validateExternalLinks(externalLinks, brokenLinks);
+
+  reportResults(allLinks, brokenLinks);
+};
+
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
+  try {
+    await main();
+  } catch (error) {
     console.error("Error:", error);
     process.exit(1);
-  });
+  }
 }
 
 export { checkExternalLink, extractLinks, findAllMdxFiles, resolveInternalLink };

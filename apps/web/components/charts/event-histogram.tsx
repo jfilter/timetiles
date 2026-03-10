@@ -18,9 +18,13 @@ import { TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 import { useFilters } from "@/lib/filters";
 import { useChartFilters } from "@/lib/hooks/use-chart-filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
+import type { HistogramData } from "@/lib/hooks/use-events-queries";
 import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
 
 import type { BaseChartProps } from "./types";
+
+/** Stable empty array to avoid creating a new reference when histogramData is null. */
+const EMPTY_HISTOGRAM: HistogramData[] = [];
 
 /**
  * Event histogram component with data fetching.
@@ -36,7 +40,7 @@ export const EventHistogram = ({ height = 200, className, bounds }: Readonly<Bas
   const histogramQuery = useHistogramQuery(filters, bounds ?? null);
   const { data: histogramData, isInitialLoad, isUpdating, isError } = useChartQuery(histogramQuery);
 
-  const histogram = histogramData?.histogram ?? [];
+  const histogram = histogramData?.histogram ?? EMPTY_HISTOGRAM;
   const bucketSizeSeconds = histogramData?.metadata?.bucketSizeSeconds ?? null;
 
   return (

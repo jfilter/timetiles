@@ -27,7 +27,10 @@ try {
 const errorCount = errors.filter((e) => e.severity === "error").length;
 const success = errorCount === 0;
 
-fs.writeFileSync(resultsPath, JSON.stringify({ success, errorCount, errors, timestamp: new Date().toISOString() }, null, 2));
+fs.writeFileSync(
+  resultsPath,
+  JSON.stringify({ success, errorCount, errors, timestamp: new Date().toISOString() }, null, 2)
+);
 pruneOldResults(historyDir);
 
 if (!success) {

@@ -69,7 +69,9 @@ const main = async () => {
   process.exit(0);
 };
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   console.error("[job-worker] Fatal error:", error);
   process.exit(1);
-});
+}

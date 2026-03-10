@@ -8,7 +8,7 @@
  * @module
  */
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readdirSync, copyFileSync, readFileSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
 
 const ROOT_DIR = process.cwd();
@@ -28,7 +28,7 @@ console.log("🔍 Searching for coverage files...");
 
 // Find all coverage files in the monorepo
 const packages = ["apps/web", "packages/ui"];
-let coverageFiles: string[] = [];
+const coverageFiles: string[] = [];
 
 for (const pkg of packages) {
   const coverageFile = join(ROOT_DIR, pkg, "coverage", "coverage-final.json");

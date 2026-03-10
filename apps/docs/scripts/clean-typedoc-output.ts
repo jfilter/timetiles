@@ -163,7 +163,7 @@ const cleanupFileContent = (filePath: string): void => {
   }
 
   // Fix broken TypeDoc member references
-  const memberPattern = /\[([^\]]+)\]\(([^)]+)#[^)]*%5B[^)]*%5D[^)]*\)/g;
+  const memberPattern = /\[([^\]]+)\]\(([^)#]+)#[^)]*%5B[^)]*%5D[^)]*\)/g;
   if (memberPattern.test(content)) {
     content = content.replace(memberPattern, (match, text, baseUrl) => {
       console.log(`  Fixing member reference in ${path.basename(filePath)}`);
@@ -255,9 +255,78 @@ const cleanupAllFiles = (dir: string): void => {
 };
 
 /**
+ * Test whether a line is a continuation of a function signature.
+ * Returns false for lines that start a new block or are blank.
+ */
+const isSignatureContinuation = (line: string | undefined): line is string => {
+  if (!line) return false;
+  return !/(?:^[▸#*-])|(?:\s*$)/.test(line);
+};
+
+/**
+ * Collect continuation lines of a multi-line function signature starting at
+ * index {@link startIndex} (the line after the `▸` prefix line).
+ * Returns the number of continuation lines consumed.
+ */
+const collectSignatureContinuation = (
+  lines: string[],
+  startIndex: number,
+  currentSignature: string
+): { merged: string; linesConsumed: number } => {
+  let merged = currentSignature;
+  let j = startIndex;
+  while (j < lines.length && isSignatureContinuation(lines[j])) {
+    merged += " " + (lines[j]?.trim() || "");
+    j++;
+  }
+  return { merged, linesConsumed: j - startIndex };
+};
+
+/**
+ * Process the lines of a single file, merging multi-line function signatures
+ * into single lines. Returns null if no changes were made.
+ */
+const mergeMultiLineSignatures = (content: string, fileName: string): string | null => {
+  const lines = content.split("\n");
+  const fixedLines: string[] = [];
+  let inCodeBlock = false;
+  let modified = false;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Track code blocks to avoid modifying code
+    if (line?.startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+    }
+
+    if (!inCodeBlock && line && /^▸\s+/.exec(line)) {
+      // Start of a function signature — check if it continues
+      const { merged, linesConsumed } = collectSignatureContinuation(lines, i + 1, line);
+
+      if (linesConsumed > 0) {
+        console.log(`  Fixing multi-line signature in ${fileName}`);
+        fixedLines.push(merged);
+        i += 1 + linesConsumed; // skip the starting line + continuations
+        modified = true;
+        continue;
+      }
+
+      fixedLines.push(line);
+    } else if (line != null) {
+      fixedLines.push(line);
+    }
+
+    i++;
+  }
+
+  return modified ? fixedLines.join("\n") : null;
+};
+
+/**
  * Fix function signatures that span multiple lines
  */
-// eslint-disable-next-line complexity
 const fixFunctionSignatures = (dir: string): void => {
   if (!fs.existsSync(dir)) return;
 
@@ -269,54 +338,15 @@ const fixFunctionSignatures = (dir: string): void => {
 
     if (stat.isDirectory()) {
       fixFunctionSignatures(fullPath);
-    } else if (item.endsWith(".mdx") || item.endsWith(".md")) {
-      const content = fs.readFileSync(fullPath, "utf-8");
-      let modified = false;
+      continue;
+    }
 
-      // Fix function signatures split across lines
-      const lines = content.split("\n");
-      const fixedLines: string[] = [];
-      let inCodeBlock = false;
-      let currentSignature = "";
+    if (!item.endsWith(".mdx") && !item.endsWith(".md")) continue;
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-
-        // Track code blocks to avoid modifying code
-        if (line?.startsWith("```")) {
-          inCodeBlock = !inCodeBlock;
-        }
-
-        if (!inCodeBlock && line && /^▸\s+/.exec(line)) {
-          // Start of a function signature
-          currentSignature = line;
-
-          // Check if signature continues on next lines
-          let j = i + 1;
-          while (j < lines.length && lines[j] && !/^[▸#*-]|\s*$/.test(lines[j] ?? "")) {
-            currentSignature += " " + (lines[j]?.trim() || "");
-            j++;
-          }
-
-          if (j > i + 1) {
-            // Multi-line signature found
-            console.log(`  Fixing multi-line signature in ${path.basename(fullPath)}`);
-            fixedLines.push(currentSignature);
-            i = j - 1; // Skip the lines we've already processed
-            modified = true;
-          } else {
-            fixedLines.push(line);
-          }
-        } else {
-          if (line != null) {
-            fixedLines.push(line);
-          }
-        }
-      }
-
-      if (modified) {
-        fs.writeFileSync(fullPath, fixedLines.join("\n"));
-      }
+    const content = fs.readFileSync(fullPath, "utf-8");
+    const result = mergeMultiLineSignatures(content, path.basename(fullPath));
+    if (result != null) {
+      fs.writeFileSync(fullPath, result);
     }
   }
 };

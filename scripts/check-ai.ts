@@ -51,7 +51,7 @@ function getLatestResultPath(dir: string): string | null {
     .filter((f) => f.endsWith(".json"))
     .sort((a, b) => a.localeCompare(b));
   if (files.length === 0) return null;
-  return path.join(dir, files[files.length - 1]!);
+  return path.join(dir, files[files.length - 1]);
 }
 
 // Run checks for each package
@@ -224,7 +224,7 @@ if (totalErrors > 0) {
               const relPath = path.relative(process.cwd(), file.filePath);
               console.log(`  ${relPath}:${error.line}:${error.column}`);
               console.log(
-                `    ${error.ruleId || "lint"}: ${error.message.substring(0, 80)}${error.message.length > 80 ? "..." : ""}`
+                `    ${error.ruleId ?? "lint"}: ${error.message.substring(0, 80)}${error.message.length > 80 ? "..." : ""}`
               );
               errorCount++;
             }

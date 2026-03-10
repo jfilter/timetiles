@@ -40,7 +40,7 @@ const createRequest = (user: unknown) =>
   }) as unknown as AuthenticatedRequest;
 
 const createContext = (id: string) => ({
-  params: Promise.resolve({ id }),
+  params: Promise.resolve({ id }), // eslint-disable-line promise/prefer-await-to-then -- Next.js async route params
 });
 
 describe.sequential("POST /api/v1/datasets/[id]/schema/infer", () => {

@@ -18,6 +18,7 @@ import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
 import { useMapPosition } from "@/lib/filters";
 import { useEventsListQuery, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import { useUIStore } from "@/lib/store";
+import type { Event } from "@/payload-types";
 
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
@@ -33,6 +34,9 @@ import {
 } from "./map-explorer-helpers";
 import { MobileFilterSheet } from "./mobile-filter-sheet";
 import { useExplorerState } from "./use-explorer-state";
+
+/** Stable empty array to avoid creating a new reference when eventsData is null. */
+const EMPTY_EVENTS: Event[] = [];
 
 export const MapExplorer = () => {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -78,14 +82,15 @@ export const MapExplorer = () => {
   } = useExplorerState({ onMapPositionChange: handleMapPositionChange });
 
   // Close filter drawer on mobile on first mount for better UX
+  const hasClosedOnMobile = useRef(false);
   useEffect(() => {
+    if (hasClosedOnMobile.current) return;
+    hasClosedOnMobile.current = true;
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
     if (isMobile && isFilterDrawerOpen) {
       setFilterDrawerOpen(false);
     }
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isFilterDrawerOpen, setFilterDrawerOpen]);
 
   // Convert URL map position to initial view state for ClusteredMap
   const initialViewState = useMemo(
@@ -100,7 +105,7 @@ export const MapExplorer = () => {
   const { data: totalEventsData } = useEventsTotalQuery(filters);
 
   // Extract data from queries
-  const events = eventsData?.events ?? [];
+  const events = eventsData?.events ?? EMPTY_EVENTS;
   const isLoading = eventsLoading || clustersLoading;
 
   // Track loading states

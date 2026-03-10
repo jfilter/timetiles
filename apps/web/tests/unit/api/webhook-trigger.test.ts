@@ -58,7 +58,7 @@ const createRequest = () => {
 };
 
 const createContext = (token: string) => ({
-  params: Promise.resolve({ token }),
+  params: Promise.resolve({ token }), // eslint-disable-line promise/prefer-await-to-then -- Next.js async route params
 });
 
 describe.sequential("POST /api/webhooks/trigger/[token]", () => {
