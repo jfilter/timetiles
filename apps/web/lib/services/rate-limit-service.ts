@@ -572,7 +572,7 @@ export const RATE_LIMITS = {
   PROGRESS_CHECK: {
     windows: [
       { limit: 10, windowMs: 1000, name: "burst" }, // 10 per second
-      { limit: 100, windowMs: 60 * 60 * 1000, name: "hourly" }, // 100 per hour
+      { limit: 3600, windowMs: 60 * 60 * 1000, name: "hourly" }, // 1 per second sustained
     ],
   },
   IMPORT_RETRY: {
