@@ -114,13 +114,13 @@ export const internalError = (
  * and returns a standardized 500 response. Use this to eliminate duplicate
  * error handling logic across API routes.
  *
- * @param context - Context string describing what action failed (e.g., "fetching map clusters")
+ * @param context - Verb phrase describing the failed action (e.g., "fetch map clusters")
  * @param logger - Logger instance with error method
  * @returns Error handler function
  *
  * @example
  * ```typescript
- * const handleError = createErrorHandler("fetching events", logger);
+ * const handleError = createErrorHandler("fetch events", logger);
  * // In catch block:
  * return handleError(error);
  * ```
@@ -135,7 +135,7 @@ export const createErrorHandler =
     });
     return NextResponse.json(
       {
-        error: `Failed to ${context.replace(/^(fetching|calculating|processing)\s+/, "")}`,
+        error: `Failed to ${context}`,
         details: (error as Error).message,
       },
       { status: 500 }

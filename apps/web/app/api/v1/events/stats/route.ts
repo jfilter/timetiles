@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { parseBoundsParameter } from "@/lib/geospatial";
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import {
@@ -21,9 +21,11 @@ import {
   buildAggregationWhereClause,
   normalizeEndDate,
 } from "@/lib/services/aggregation-filters";
-import { internalError } from "@/lib/utils/api-response";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import { extractBaseEventParameters, normalizeStrictIntegerList } from "@/lib/utils/event-params";
 import config from "@/payload.config";
+
+const handleError = createErrorHandler("aggregate events", logger);
 
 /**
  * Aggregated item in response.
@@ -123,8 +125,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
 
     return NextResponse.json(result);
   } catch (error) {
-    logError(error, "Failed to aggregate events");
-    return internalError("Failed to aggregate events");
+    return handleError(error);
   }
 });
 

@@ -10,13 +10,13 @@
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
+import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
+import { verifyPassword } from "@/lib/utils/auth-helpers";
 import config from "@/payload.config";
-
-const MIN_PASSWORD_LENGTH = 8;
 
 export const POST = withAuth(async (request: AuthenticatedRequest) => {
   try {
@@ -60,17 +60,10 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       return badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
     }
 
-    // Verify current password via login attempt
+    // Verify current password
     try {
-      await payload.login({
-        collection: "users",
-        data: {
-          email: user.email,
-          password: currentPassword,
-        },
-      });
+      await verifyPassword(payload, user, currentPassword);
     } catch {
-      logger.warn({ userId: user.id }, "Failed password verification for password change");
       return unauthorized("Current password is incorrect");
     }
 

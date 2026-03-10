@@ -9,7 +9,7 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { createCommonConfig, createSlugField } from "./shared-fields";
+import { createCommonConfig, createSlugField, isEditorOrAdmin } from "./shared-fields";
 
 const iconOptions = [
   { label: "Email", value: "email" },
@@ -46,10 +46,10 @@ export const Pages: CollectionConfig = {
   },
   access: {
     read: () => true,
-    create: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
-    update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
-    delete: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
-    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    create: isEditorOrAdmin,
+    update: isEditorOrAdmin,
+    delete: isEditorOrAdmin,
+    readVersions: isEditorOrAdmin,
   },
   fields: [
     {

@@ -11,6 +11,8 @@
  */
 import type { Access, Where } from "payload";
 
+import { isAuthenticated, isEditorOrAdmin } from "../shared-fields";
+
 /**
  * Read access: Public views are readable by all, private views by owner/admin.
  */
@@ -34,7 +36,7 @@ export const read: Access = ({ req: { user } }): boolean | Where => {
  * Create access: Any authenticated user can create views.
  * Admin and editor roles can always create.
  */
-export const create: Access = ({ req: { user } }) => !!user;
+export const create: Access = isAuthenticated;
 
 /**
  * Update access: Admins/editors can update all views, creators can update their own.
@@ -57,4 +59,4 @@ export const deleteAccess: Access = update;
 /**
  * ReadVersions access: Only admins and editors can read version history.
  */
-export const readVersions: Access = ({ req: { user } }) => user?.role === "admin" || user?.role === "editor";
+export const readVersions: Access = isEditorOrAdmin;

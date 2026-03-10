@@ -12,11 +12,13 @@ import { sql } from "@payloadcms/db-postgres";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { internalError } from "@/lib/utils/api-response";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import config from "@/payload.config";
+
+const handleError = createErrorHandler("fetch data source stats", logger);
 
 /**
  * Response format for data source stats endpoint.
@@ -111,7 +113,6 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
 
     return NextResponse.json(response);
   } catch (error) {
-    logError(error, "Failed to fetch data source stats");
-    return internalError("Failed to fetch data source stats");
+    return handleError(error);
   }
 });

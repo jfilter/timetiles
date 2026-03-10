@@ -10,6 +10,8 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { isAdmin } from "./shared-fields";
+
 const DataExports: CollectionConfig = {
   slug: "data-exports",
   admin: {
@@ -31,11 +33,11 @@ const DataExports: CollectionConfig = {
       return { user: { equals: user.id } };
     },
     // Created only via API/job, not directly by users
-    create: ({ req: { user } }) => Boolean(user?.role === "admin"),
+    create: isAdmin,
     // Updated only by system/job
-    update: ({ req: { user } }) => Boolean(user?.role === "admin"),
+    update: isAdmin,
     // Only admins can delete
-    delete: ({ req: { user } }) => Boolean(user?.role === "admin"),
+    delete: isAdmin,
   },
   fields: [
     {

@@ -24,7 +24,7 @@ import type { Access, CollectionConfig, Where } from "payload";
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 
 import { eventsBeforeChangeHook } from "./events/hooks";
-import { createCommonConfig } from "./shared-fields";
+import { createCommonConfig, isEditorOrAdmin } from "./shared-fields";
 
 const Events: CollectionConfig = {
   slug: "events",
@@ -86,10 +86,10 @@ const Events: CollectionConfig = {
     }) as Access,
 
     // Only admins/editors can delete events
-    delete: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    delete: isEditorOrAdmin,
 
     // Only admins and editors can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    readVersions: isEditorOrAdmin,
   },
   fields: [
     {

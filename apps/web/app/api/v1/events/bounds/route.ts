@@ -23,6 +23,12 @@ import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 import { createErrorHandler } from "@/lib/utils/api-response";
 import { extractBaseEventParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
+import {
+  buildCatalogSqlCondition,
+  buildDatasetSqlCondition,
+  buildDateSqlConditions,
+  buildFieldFilterSqlConditions,
+} from "@/lib/utils/event-sql-filters";
 import config from "@/payload.config";
 
 /**
@@ -40,50 +46,7 @@ export interface BoundsResponse {
   count: number;
 }
 
-const handleError = createErrorHandler("fetching event bounds", logger);
-
-const buildCatalogConditions = (
-  hasCatalogFilter: boolean,
-  catalog: string | null,
-  accessibleCatalogIds: number[]
-): { deny: boolean; conditions: Array<ReturnType<typeof sql>> } => {
-  if (hasCatalogFilter) {
-    const catalogId = parseStrictInteger(catalog);
-    if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
-      return { deny: false, conditions: [sql`d.catalog_id = ${catalogId}`] };
-    }
-    return { deny: true, conditions: [] };
-  }
-
-  if (accessibleCatalogIds.length === 0) {
-    return { deny: false, conditions: [sql`FALSE`] };
-  }
-
-  const catalogIdList = sql.join(
-    accessibleCatalogIds.map((id) => sql`${id}`),
-    sql`, `
-  );
-  return { deny: false, conditions: [sql`d.catalog_id IN (${catalogIdList})`] };
-};
-
-const buildFieldFilterConditions = (fieldFilters: Record<string, string[]>): Array<ReturnType<typeof sql>> => {
-  const conditions: Array<ReturnType<typeof sql>> = [];
-
-  for (const [fieldKey, values] of Object.entries(fieldFilters)) {
-    if (!Array.isArray(values) || values.length === 0) {
-      continue;
-    }
-
-    conditions.push(
-      sql`(e.data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
-        values.map((value) => sql`${value}`),
-        sql`, `
-      )})`
-    );
-  }
-
-  return conditions;
-};
+const handleError = createErrorHandler("fetch event bounds", logger);
 
 /**
  * GET /api/v1/events/bounds
@@ -125,40 +88,27 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
     ];
 
     // Apply catalog access control
-    const catalogResult = buildCatalogConditions(hasCatalogFilter, parameters.catalog, accessibleCatalogIds);
-    if (catalogResult.deny) {
-      return NextResponse.json<BoundsResponse>({
-        bounds: null,
-        count: 0,
-      });
+    if (hasCatalogFilter) {
+      const catalogId = parseStrictInteger(parameters.catalog);
+      if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
+        conditions.push(buildCatalogSqlCondition(catalogId));
+      } else {
+        return NextResponse.json<BoundsResponse>({ bounds: null, count: 0 });
+      }
+    } else {
+      conditions.push(buildCatalogSqlCondition(undefined, accessibleCatalogIds));
     }
-    conditions.push(...catalogResult.conditions);
 
     // Apply dataset filter
     if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") {
       const datasetIds = normalizeStrictIntegerList(parameters.datasets);
-      if (datasetIds.length > 0) {
-        const datasetIdList = sql.join(
-          datasetIds.map((id) => sql`${id}`),
-          sql`, `
-        );
-        conditions.push(sql`e.dataset_id IN (${datasetIdList})`);
-      } else {
-        // All provided IDs were invalid — return no results instead of all events
-        conditions.push(sql`FALSE`);
-      }
+      const datasetCondition = buildDatasetSqlCondition(datasetIds);
+      conditions.push(datasetCondition ?? sql`FALSE`);
     }
 
-    // Apply date filters
-    if (parameters.startDate != null) {
-      conditions.push(sql`e.event_timestamp >= ${parameters.startDate}::timestamptz`);
-    }
-    if (endDate != null) {
-      conditions.push(sql`e.event_timestamp <= ${endDate}::timestamptz`);
-    }
-
-    // Apply field filters
-    conditions.push(...buildFieldFilterConditions(parameters.fieldFilters));
+    // Apply date and field filters
+    conditions.push(...buildDateSqlConditions(parameters.startDate, endDate));
+    conditions.push(...buildFieldFilterSqlConditions(parameters.fieldFilters));
 
     // Combine conditions using reduce with initial value
     const whereClause = conditions.reduce((acc, cond) => sql`${acc} AND ${cond}`, sql`TRUE`);

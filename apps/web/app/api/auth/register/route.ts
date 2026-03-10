@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { EMAIL_REGEX, MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import { badRequest, forbidden, internalError } from "@/lib/utils/api-response";
@@ -107,14 +108,13 @@ export const POST = async (request: Request): Promise<Response> => {
     }
 
     // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!EMAIL_REGEX.test(email)) {
       return badRequest("Invalid email address");
     }
 
     // Password validation
-    if (password.length < 8) {
-      return badRequest("Password must be at least 8 characters");
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
     }
 
     // Normalize email

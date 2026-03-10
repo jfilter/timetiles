@@ -16,6 +16,7 @@ import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
+import { verifyPassword } from "@/lib/utils/auth-helpers";
 import config from "@/payload.config";
 
 export const POST = withAuth(async (request: AuthenticatedRequest) => {
@@ -63,17 +64,10 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       );
     }
 
-    // Verify password via login attempt
+    // Verify password
     try {
-      await payload.login({
-        collection: "users",
-        data: {
-          email: user.email,
-          password,
-        },
-      });
+      await verifyPassword(payload, user, password);
     } catch {
-      logger.warn({ userId: user.id }, "Failed deletion password verification");
       return unauthorized("Invalid password");
     }
 

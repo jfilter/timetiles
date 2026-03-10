@@ -10,13 +10,13 @@
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
+import { EMAIL_REGEX } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
+import { verifyPassword } from "@/lib/utils/auth-helpers";
 import config from "@/payload.config";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 
 export const POST = withAuth(async (request: AuthenticatedRequest) => {
   try {
@@ -62,17 +62,10 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       return badRequest("New email must be different from current email");
     }
 
-    // Verify password via login attempt
+    // Verify password
     try {
-      await payload.login({
-        collection: "users",
-        data: {
-          email: user.email,
-          password,
-        },
-      });
+      await verifyPassword(payload, user, password);
     } catch {
-      logger.warn({ userId: user.id, clientId }, "Failed password verification for email change");
       return unauthorized("Password is incorrect");
     }
 

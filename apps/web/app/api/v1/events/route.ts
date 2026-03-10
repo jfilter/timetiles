@@ -13,13 +13,15 @@ import type { Where } from "payload";
 import { getPayload } from "payload";
 
 import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
-import { logError } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
-import { internalError } from "@/lib/utils/api-response";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import { extractListParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 import type { Event, User } from "@/payload-types";
+
+const handleError = createErrorHandler("fetch events list", logger);
 
 const addCatalogFilter = (where: Where, catalog: string) => {
   const catalogId = parseStrictInteger(catalog);
@@ -228,8 +230,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
 
     return NextResponse.json(response);
   } catch (error) {
-    logError(error, "Failed to fetch events list", { user: request.user?.id });
-    return internalError("Failed to fetch events");
+    return handleError(error);
   }
 });
 

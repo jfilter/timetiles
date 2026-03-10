@@ -13,15 +13,7 @@ import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from "payl
 import { clearViewCache } from "@/lib/services/view-resolver";
 import type { View } from "@/payload-types";
 
-/**
- * Sets the createdBy field to the current user on creation.
- */
-export const setCreatedBy: CollectionBeforeChangeHook<View> = ({ data, req, operation }) => {
-  if (operation === "create" && req.user) {
-    data.createdBy = req.user.id;
-  }
-  return data;
-};
+export { setCreatedByHook as setCreatedBy } from "../shared-fields";
 
 /**
  * Enforces that only one view can be the default.

@@ -10,9 +10,13 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { extractRelationId } from "@/lib/utils/relation-id";
-
-import { createCommonConfig } from "./shared-fields";
+import {
+  createCommonConfig,
+  createOwnershipAccess,
+  isAuthenticated,
+  isEditorOrAdmin,
+  setCreatedByHook,
+} from "./shared-fields";
 
 const Media: CollectionConfig = {
   slug: "media",
@@ -56,34 +60,14 @@ const Media: CollectionConfig = {
     },
 
     // Only authenticated users can upload media
-    create: ({ req: { user } }) => Boolean(user),
+    create: isAuthenticated,
 
-    // Only owner, editors, or admins can update
-    update: ({ req: { user }, data }) => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
-
-      if (user && data?.createdBy) {
-        const createdById = extractRelationId(data.createdBy);
-        return user.id === createdById;
-      }
-
-      return false;
-    },
-
-    // Only owner, editors, or admins can delete
-    delete: ({ req: { user }, data }) => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
-
-      if (user && data?.createdBy) {
-        const createdById = extractRelationId(data.createdBy);
-        return user.id === createdById;
-      }
-
-      return false;
-    },
+    // Only owner, editors, or admins can update/delete
+    update: createOwnershipAccess("media"),
+    delete: createOwnershipAccess("media"),
 
     // Only admins and editors can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    readVersions: isEditorOrAdmin,
   },
   fields: [
     {
@@ -105,15 +89,7 @@ const Media: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeChange: [
-      ({ data, req, operation }) => {
-        // Auto-set createdBy on creation
-        if (operation === "create" && req.user) {
-          data.createdBy = req.user.id;
-        }
-        return data;
-      },
-    ],
+    beforeChange: [setCreatedByHook],
   },
 };
 

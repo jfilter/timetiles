@@ -12,15 +12,60 @@
  * @module
  */
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
-import type { Access, Field } from "payload";
+import type { Access, CollectionBeforeChangeHook, Field } from "payload";
 
 import type { Config } from "@/payload-types";
 
+import { extractRelationId } from "../utils/relation-id";
 import { createSlugHook } from "../utils/slug";
 
 // Access control helpers for role-based permissions
 export const isAdmin: Access = ({ req: { user } }) => user?.role === "admin";
 export const isEditorOrAdmin: Access = ({ req: { user } }) => user?.role === "editor" || user?.role === "admin";
+export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
+
+/**
+ * Factory for ownership-based access control.
+ * Returns true for editors/admins, or checks document ownership via the specified field.
+ */
+export const createOwnershipAccess = <T extends keyof Config["collections"]>(
+  collection: T,
+  ownerField = "createdBy"
+): Access => {
+  return async ({ req: { user, payload }, id }) => {
+    if (user?.role === "admin" || user?.role === "editor") return true;
+    if (!user || !id) return false;
+
+    try {
+      const existing = await payload.findByID({
+        collection,
+        id,
+        overrideAccess: true,
+      });
+
+      const ownerValue = (existing as unknown as Record<string, unknown>)?.[ownerField];
+      if (ownerValue) {
+        const ownerId = extractRelationId(ownerValue);
+        return user.id === ownerId;
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
+  };
+};
+
+/**
+ * Hook that sets the createdBy field to the current user on document creation.
+ * Use in beforeChange hooks for collections with a createdBy relationship field.
+ */
+export const setCreatedByHook: CollectionBeforeChangeHook = ({ data, req, operation }) => {
+  if (operation === "create" && req.user) {
+    data.createdBy = req.user.id;
+  }
+  return data;
+};
 
 // Basic metadata fields common to many entities
 export const basicMetadataFields: Field[] = [

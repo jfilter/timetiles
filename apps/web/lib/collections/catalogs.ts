@@ -18,7 +18,15 @@ import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/
 import { getQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
-import { basicMetadataFields, createCommonConfig, createSlugField } from "./shared-fields";
+import {
+  basicMetadataFields,
+  createCommonConfig,
+  createOwnershipAccess,
+  createSlugField,
+  isAuthenticated,
+  isEditorOrAdmin,
+  setCreatedByHook,
+} from "./shared-fields";
 
 /** Validates that private catalogs are allowed if isPublic is false. */
 const validatePrivateVisibility = async (data: Record<string, unknown>, req: PayloadRequest): Promise<void> => {
@@ -165,60 +173,16 @@ const Catalogs: CollectionConfig = {
     },
 
     // Only authenticated users can create catalogs
-    create: ({ req: { user } }) => Boolean(user),
+    create: isAuthenticated,
 
     // Only creator, editors, or admins can update
-    update: async ({ req: { user, payload }, id }) => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
-
-      if (!user || !id) return false;
-
-      try {
-        // Always fetch the existing document to check ownership
-        const existingDoc = await payload.findByID({
-          collection: "catalogs",
-          id,
-          overrideAccess: true,
-        });
-
-        if (existingDoc?.createdBy) {
-          const createdById = extractRelationId(existingDoc.createdBy);
-          return user.id === createdById;
-        }
-
-        return false;
-      } catch {
-        return false;
-      }
-    },
+    update: createOwnershipAccess("catalogs"),
 
     // Only creator, editors, or admins can delete
-    delete: async ({ req: { user, payload }, id }) => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
-
-      if (!user || !id) return false;
-
-      try {
-        // Always fetch the existing document to check ownership
-        const existingDoc = await payload.findByID({
-          collection: "catalogs",
-          id,
-          overrideAccess: true,
-        });
-
-        if (existingDoc?.createdBy) {
-          const createdById = extractRelationId(existingDoc.createdBy);
-          return user.id === createdById;
-        }
-
-        return false;
-      } catch {
-        return false;
-      }
-    },
+    delete: createOwnershipAccess("catalogs"),
 
     // Only admins and editors can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    readVersions: isEditorOrAdmin,
   },
   fields: [
     ...basicMetadataFields,
@@ -247,16 +211,11 @@ const Catalogs: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
+      setCreatedByHook,
       async ({ data, req, operation }) => {
         // Validate private visibility is allowed
         if (operation === "create" || operation === "update") {
           await validatePrivateVisibility(data, req);
-        }
-
-        // Set createdBy on creation (same pattern as media.ts)
-        if (operation === "create" && req.user) {
-          // eslint-disable-next-line require-atomic-updates -- Sequential hook, no race condition
-          data.createdBy = req.user.id;
         }
 
         // Handle quota check and increment for new catalogs

@@ -15,6 +15,8 @@
  */
 import type { Access, Where } from "payload";
 
+import { isEditorOrAdmin } from "../shared-fields";
+
 /**
  * Read access: Datasets visible if both dataset AND catalog are public, OR if user owns the catalog.
  * Zero queries - just returns a WHERE clause on indexed fields.
@@ -73,9 +75,9 @@ export const update: Access = ({ req: { user } }): boolean | Where => {
 /**
  * Delete access: Only admins/editors can delete datasets.
  */
-export const deleteAccess: Access = ({ req: { user } }) => user?.role === "admin" || user?.role === "editor";
+export const deleteAccess: Access = isEditorOrAdmin;
 
 /**
  * ReadVersions access: Only admins and editors can read version history.
  */
-export const readVersions: Access = ({ req: { user } }) => user?.role === "admin" || user?.role === "editor";
+export const readVersions: Access = isEditorOrAdmin;

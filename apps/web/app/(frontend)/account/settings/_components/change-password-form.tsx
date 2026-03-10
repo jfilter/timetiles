@@ -12,9 +12,8 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { Check, Key, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
-
-const MIN_PASSWORD_LENGTH = 8;
 
 export const ChangePasswordForm = () => {
   const [currentPassword, setCurrentPassword] = useState("");

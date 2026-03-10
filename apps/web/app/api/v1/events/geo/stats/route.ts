@@ -24,37 +24,15 @@ import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { createErrorHandler } from "@/lib/utils/api-response";
 import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
 import { extractClusterStatsParameters } from "@/lib/utils/event-params";
+import {
+  buildCatalogSqlCondition,
+  buildDatasetSqlCondition,
+  buildDateSqlConditions,
+  buildFieldFilterSqlConditions,
+} from "@/lib/utils/event-sql-filters";
 import config from "@/payload.config";
 
-const handleError = createErrorHandler("calculating cluster stats", logger);
-
-const buildCatalogFilterSql = (catalogId?: number, catalogIds?: number[]) => {
-  if (catalogId != null) {
-    return sql`AND d.catalog_id = ${catalogId}`;
-  }
-  if (catalogIds != null && catalogIds.length > 0) {
-    return sql`AND d.catalog_id IN (${sql.join(
-      catalogIds.map((id) => sql`${id}`),
-      sql`, `
-    )})`;
-  }
-  return sql``;
-};
-
-const buildFieldFiltersSql = (fieldFilters?: Record<string, string[]>) => {
-  if (fieldFilters != null && Object.keys(fieldFilters).length > 0) {
-    const fieldConditions = Object.entries(fieldFilters).map(([fieldKey, values]) => {
-      if (!Array.isArray(values) || values.length === 0) return sql`TRUE`;
-      return sql`(e.data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
-        values.map((v) => sql`${v}`),
-        sql`, `
-      )})`;
-    });
-    const joinedConditions = sql.join(fieldConditions, sql` AND `);
-    return sql`AND (${joinedConditions})`;
-  }
-  return sql``;
-};
+const handleError = createErrorHandler("calculate cluster stats", logger);
 
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {
@@ -88,8 +66,16 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
 const calculateGlobalStats = async (payload: Awaited<ReturnType<typeof getPayload>>, filters: EventFilters) => {
   const { catalogId, catalogIds, datasets, startDate, endDate, fieldFilters } = filters;
 
-  const catalogFilter = buildCatalogFilterSql(catalogId, catalogIds);
-  const fieldFiltersSql = buildFieldFiltersSql(fieldFilters);
+  // Build filter conditions using shared utilities
+  const filterConditions = [
+    buildCatalogSqlCondition(catalogId, catalogIds),
+    ...(datasets != null && datasets.length > 0 ? [buildDatasetSqlCondition(datasets)] : []),
+    ...buildDateSqlConditions(startDate, endDate),
+    ...buildFieldFilterSqlConditions(fieldFilters),
+  ].filter(Boolean);
+
+  const extraConditions =
+    filterConditions.length > 0 ? filterConditions.reduce((acc, cond) => sql`${acc} AND ${cond}`, sql``) : sql``;
 
   // Query to get event counts grouped by location (simulating clustering at high zoom)
   const result = (await payload.db.drizzle.execute(sql`
@@ -103,18 +89,7 @@ const calculateGlobalStats = async (payload: Awaited<ReturnType<typeof getPayloa
       WHERE
         e.location_longitude IS NOT NULL
         AND e.location_latitude IS NOT NULL
-        ${catalogFilter}
-        ${
-          datasets != null && datasets.length > 0
-            ? sql`AND e.dataset_id IN (${sql.join(
-                datasets.map((d) => sql`${d}`),
-                sql`, `
-              )})`
-            : sql``
-        }
-        ${startDate != null ? sql`AND e.event_timestamp >= ${startDate}::timestamp` : sql``}
-        ${endDate != null ? sql`AND e.event_timestamp <= ${endDate}::timestamp` : sql``}
-        ${fieldFiltersSql}
+        ${extraConditions}
     ),
     location_clusters AS (
       SELECT

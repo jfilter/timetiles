@@ -1,8 +1,9 @@
 /**
  * Integration Test Environment Builder.
  *
- * Provides full database isolation with PostgreSQL, Payload CMS initialization,
- * migrations, temp directories, and comprehensive test data helpers.
+ * Provides per-worker PostgreSQL databases with Payload CMS initialization
+ * and comprehensive test data helpers. Uses `isolate: false` — multiple test
+ * files share the same fork process, Payload singleton, and database.
  *
  * DO NOT use this for unit tests. Unit tests should:
  * - Mock payload objects directly (vi.fn())
@@ -444,13 +445,13 @@ export class TestEnvironmentBuilder {
 }
 
 /**
- * Create a full integration test environment with database isolation.
+ * Create a full integration test environment.
  *
  * This is the standard way to set up integration tests. It provides:
- * - Isolated PostgreSQL database (one per worker)
- * - Full Payload CMS with all collections
+ * - Per-worker PostgreSQL database (shared across test files in the same fork)
+ * - Cached Payload CMS singleton with all collections
  * - Optional temp directory for file operations
- * - Automatic cleanup after tests
+ * - Automatic cleanup after tests (does NOT close Payload connection)
  *
  * DO NOT use this for unit tests. Unit tests should:
  * - Mock payload objects: `const mockPayload = { findByID: vi.fn(), ... }`

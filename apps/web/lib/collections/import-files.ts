@@ -29,7 +29,7 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import { createRequestLogger } from "../logger";
 import { getQuotaService } from "../services/quota-service";
 import { getClientIdentifier, getRateLimitService } from "../services/rate-limit-service";
-import { createCommonConfig } from "./shared-fields";
+import { createCommonConfig, createOwnershipAccess, isAuthenticated, isEditorOrAdmin } from "./shared-fields";
 
 const logger = createRequestLogger("import-files");
 
@@ -97,39 +97,16 @@ const ImportFiles: CollectionConfig = {
     },
 
     // Only authenticated users can upload files
-    create: ({ req: { user } }) => !!user,
+    create: isAuthenticated,
 
     // Only file owner, editors, or admins can update
-    update: async ({ req, id }) => {
-      const { user, payload } = req;
-      if (user?.role === "admin" || user?.role === "editor") return true;
-
-      if (!user || !id) return false;
-
-      try {
-        // Fetch the existing import file with override to check ownership
-        const existingFile = await payload.findByID({
-          collection: "import-files",
-          id,
-          overrideAccess: true,
-        });
-
-        if (existingFile?.user) {
-          const userId = extractRelationId(existingFile.user);
-          return user.id === userId;
-        }
-
-        return false;
-      } catch {
-        return false;
-      }
-    },
+    update: createOwnershipAccess("import-files", "user"),
 
     // Only admins and editors can delete
-    delete: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    delete: isEditorOrAdmin,
 
     // Only admins and editors can read version history
-    readVersions: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor",
+    readVersions: isEditorOrAdmin,
   },
   fields: [
     // Payload automatically adds filename, mimeType, filesize fields when upload is enabled

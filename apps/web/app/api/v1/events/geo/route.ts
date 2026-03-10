@@ -27,7 +27,7 @@ import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters"
 import { extractMapClusterParameters } from "@/lib/utils/event-params";
 import config from "@/payload.config";
 
-const handleError = createErrorHandler("fetching map clusters", logger);
+const handleError = createErrorHandler("fetch map clusters", logger);
 
 export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
   try {

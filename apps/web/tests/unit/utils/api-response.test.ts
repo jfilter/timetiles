@@ -69,14 +69,14 @@ describe("api-response", () => {
   describe("createErrorHandler", () => {
     it("should log error and return 500 response", async () => {
       const mockLogger = { error: vi.fn() };
-      const handler = createErrorHandler("fetching events", mockLogger);
+      const handler = createErrorHandler("fetch events", mockLogger);
       const error = new Error("DB connection failed");
 
       const res = handler(error);
       const body = await res.json();
 
       expect(res.status).toBe(500);
-      expect(body.error).toBe("Failed to events");
+      expect(body.error).toBe("Failed to fetch events");
       expect(body.details).toBe("DB connection failed");
       expect(mockLogger.error).toHaveBeenCalled();
     });

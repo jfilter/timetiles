@@ -19,6 +19,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { Lock, Mail } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 
@@ -62,8 +63,8 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
           throw new Error("Passwords do not match");
         }
 
-        if (password.length < 8) {
-          throw new Error("Password must be at least 8 characters");
+        if (password.length < MIN_PASSWORD_LENGTH) {
+          throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
         }
 
         // Use secure registration endpoint that prevents user enumeration

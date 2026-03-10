@@ -26,7 +26,7 @@ import { getQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 
-import { createCommonConfig } from "../shared-fields";
+import { createCommonConfig, createOwnershipAccess } from "../shared-fields";
 import { authFields } from "./fields/auth-fields";
 import { basicFields } from "./fields/basic-fields";
 import { executionFields } from "./fields/execution-fields";
@@ -205,74 +205,13 @@ const ScheduledImports: CollectionConfig = {
     },
 
     // Users can only update their own scheduled imports, editors and admins can update all
-    update: async ({ req: { user, payload }, id }) => {
-      if (!user) return false;
-      if (user.role === "admin" || user.role === "editor") return true;
-
-      if (!id) return false;
-
-      try {
-        // Check ownership of existing document
-        const existing = await payload.findByID({
-          collection: "scheduled-imports",
-          id,
-          overrideAccess: true,
-        });
-
-        if (!existing.createdBy) return false;
-        const createdById = extractRelationId(existing.createdBy);
-
-        return createdById === user.id;
-      } catch {
-        return false;
-      }
-    },
+    update: createOwnershipAccess("scheduled-imports"),
 
     // Users can delete their own, editors and admins can delete any
-    delete: async ({ req: { user, payload }, id }) => {
-      if (!user) return false;
-      if (user.role === "admin" || user.role === "editor") return true;
-
-      if (!id) return false;
-
-      try {
-        const existing = await payload.findByID({
-          collection: "scheduled-imports",
-          id,
-          overrideAccess: true,
-        });
-
-        if (!existing.createdBy) return false;
-        const createdById = extractRelationId(existing.createdBy);
-
-        return createdById === user.id;
-      } catch {
-        return false;
-      }
-    },
+    delete: createOwnershipAccess("scheduled-imports"),
 
     // Only owners, editors, or admins can read version history
-    readVersions: async ({ req: { user, payload }, id }) => {
-      if (!user) return false;
-      if (user.role === "admin" || user.role === "editor") return true;
-
-      if (!id) return false;
-
-      try {
-        const existing = await payload.findByID({
-          collection: "scheduled-imports",
-          id,
-          overrideAccess: true,
-        });
-
-        if (!existing.createdBy) return false;
-        const createdById = extractRelationId(existing.createdBy);
-
-        return createdById === user.id;
-      } catch {
-        return false;
-      }
-    },
+    readVersions: createOwnershipAccess("scheduled-imports"),
   },
   fields: [
     ...basicFields,

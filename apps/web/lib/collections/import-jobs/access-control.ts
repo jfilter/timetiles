@@ -7,6 +7,8 @@ import type { Access } from "payload";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
 
+import { isEditorOrAdmin } from "../shared-fields";
+
 export const importJobsAccess = {
   // Import jobs can be read by the import file owner, editors, or admins
   read: (async ({ req }) => {
@@ -82,8 +84,8 @@ export const importJobsAccess = {
   }) as Access,
 
   // Only admins and editors can delete
-  delete: (({ req: { user } }) => user?.role === "admin" || user?.role === "editor") as Access,
+  delete: isEditorOrAdmin,
 
   // Only admins and editors can read version history
-  readVersions: (({ req: { user } }) => user?.role === "admin" || user?.role === "editor") as Access,
+  readVersions: isEditorOrAdmin,
 };

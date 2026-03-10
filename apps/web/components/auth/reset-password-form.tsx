@@ -13,6 +13,7 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback, useState } from "react";
 
+import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 
 export interface ResetPasswordFormProps {
@@ -49,8 +50,8 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
           throw new Error("Passwords do not match");
         }
 
-        if (password.length < 8) {
-          throw new Error("Password must be at least 8 characters");
+        if (password.length < MIN_PASSWORD_LENGTH) {
+          throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
         }
 
         const response = await fetch("/api/users/reset-password", {
