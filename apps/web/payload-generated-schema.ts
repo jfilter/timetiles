@@ -1215,6 +1215,8 @@ export const dataset_schemas = db_schema.table(
     dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
+    datasetIsPublic: boolean("dataset_is_public").default(false),
+    catalogOwnerId: numeric("catalog_owner_id", { mode: "number" }),
     versionNumber: numeric("version_number", { mode: "number" }),
     displayName: varchar("display_name"),
     schema: jsonb("schema"),
@@ -1239,6 +1241,8 @@ export const dataset_schemas = db_schema.table(
   },
   (columns) => [
     index("dataset_schemas_dataset_idx").on(columns.dataset),
+    index("dataset_schemas_dataset_is_public_idx").on(columns.datasetIsPublic),
+    index("dataset_schemas_catalog_owner_id_idx").on(columns.catalogOwnerId),
     index("dataset_schemas_approved_by_idx").on(columns.approvedBy),
     index("dataset_schemas_updated_at_idx").on(columns.updatedAt),
     index("dataset_schemas_created_at_idx").on(columns.createdAt),
@@ -1366,6 +1370,8 @@ export const _dataset_schemas_v = db_schema.table(
     version_dataset: integer("version_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
+    version_datasetIsPublic: boolean("version_dataset_is_public").default(false),
+    version_catalogOwnerId: numeric("version_catalog_owner_id", { mode: "number" }),
     version_versionNumber: numeric("version_version_number", { mode: "number" }),
     version_displayName: varchar("version_display_name"),
     version_schema: jsonb("version_schema"),
@@ -1395,6 +1401,8 @@ export const _dataset_schemas_v = db_schema.table(
   (columns) => [
     index("_dataset_schemas_v_parent_idx").on(columns.parent),
     index("_dataset_schemas_v_version_version_dataset_idx").on(columns.version_dataset),
+    index("_dataset_schemas_v_version_version_dataset_is_public_idx").on(columns.version_datasetIsPublic),
+    index("_dataset_schemas_v_version_version_catalog_owner_id_idx").on(columns.version_catalogOwnerId),
     index("_dataset_schemas_v_version_version_approved_by_idx").on(columns.version_approvedBy),
     index("_dataset_schemas_v_version_version_updated_at_idx").on(columns.version_updatedAt),
     index("_dataset_schemas_v_version_version_created_at_idx").on(columns.version_createdAt),
