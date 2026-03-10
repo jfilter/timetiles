@@ -541,9 +541,9 @@ describe("/api/v1/events/geo", () => {
     expect(result1.rows.length).toBe(result2.rows.length);
 
     // Cluster IDs should match exactly
-    // oxlint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison
+    // eslint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison
     const ids1 = result1.rows.map((r) => r.cluster_id).sort();
-    // oxlint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison
+    // eslint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison
     const ids2 = result2.rows.map((r) => r.cluster_id).sort();
 
     expect(ids1).toEqual(ids2);

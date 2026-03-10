@@ -146,7 +146,7 @@ export class RateLimitService {
 
   constructor(payload: Payload) {
     this.payload = payload;
-    // oxlint-disable-next-line sonarjs/pseudo-random -- Safe for debug instance IDs
+    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for debug instance IDs
     this.instanceId = Math.random().toString(36).substring(7);
 
     // Clean up expired entries every 5 minutes (skip in test environment)

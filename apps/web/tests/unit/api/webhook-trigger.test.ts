@@ -58,7 +58,7 @@ const createRequest = () => {
 };
 
 const createContext = (token: string) => ({
-  // oxlint-disable-next-line promise/prefer-await-to-then -- Next.js async route params
+  // oxlint-disable-next-line promise/prefer-await-to-then
   params: Promise.resolve({ token }),
 });
 

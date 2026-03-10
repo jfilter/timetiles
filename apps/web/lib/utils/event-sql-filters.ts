@@ -37,7 +37,7 @@ const MAX_FIELD_PATH_DEPTH = 5;
 
 /** Pattern for valid field key segments (alphanumeric, underscores, hyphens) */
 // Input bounded to 64 chars (line 48), so this pattern is safe from ReDoS
-// oxlint-disable-next-line security/detect-unsafe-regex
+// eslint-disable-next-line security/detect-unsafe-regex
 const VALID_FIELD_KEY_PATTERN = /^[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*$/;
 
 export const buildFieldFilterSqlConditions = (fieldFilters?: Record<string, string[]>): SqlFragment[] => {

@@ -21,11 +21,11 @@ import { getWorktreeDatabasePrefix } from "./utils/worktree-id";
  * Playwright global teardown function.
  */
 export default async function globalTeardown(): Promise<void> {
-  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
+  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const serverPid = process.env.E2E_SERVER_PID;
-  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
+  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const workerPid = process.env.E2E_WORKER_PID;
-  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
+  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const databaseName = process.env.E2E_DATABASE_NAME ?? getWorktreeDatabasePrefix();
 
   // Kill worker process first (it has DB connections)

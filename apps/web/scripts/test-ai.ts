@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-/* oxlint-disable no-console */
+/* eslint-disable no-console */
 /**
  * AI-friendly test runner with summary output.
  *
@@ -108,7 +108,7 @@ const vitestCmd = [
 
 // Run vitest and track wall-clock time
 try {
-  // oxlint-disable-next-line sonarjs/os-command -- vitestCmd is constructed from safe, controlled values only (no user input)
+  // eslint-disable-next-line sonarjs/os-command -- vitestCmd is constructed from safe, controlled values only (no user input)
   execSync(vitestCmd, {
     stdio: "pipe",
     cwd: process.cwd(),

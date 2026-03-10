@@ -30,7 +30,7 @@ import { QUERY_PRESETS } from "./query-presets";
 
 // Helper function to determine polling interval
 // Returns false to stop polling or number for interval - React Query expects this pattern
-// oxlint-disable-next-line sonarjs/function-return-type
+// eslint-disable-next-line sonarjs/function-return-type
 const getPollingInterval = (query: { state: { data?: { status?: string }; status: string } }): number | false => {
   // Stop polling if the query itself is in error state (network failures, server errors)
   if (query.state.status === "error") {

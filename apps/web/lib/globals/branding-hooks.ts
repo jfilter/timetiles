@@ -118,7 +118,7 @@ const fetchMediaBuffer = async (
  * - icon-192.png / icon-192-dark.png (192x192)
  * - icon-512.png / icon-512-dark.png (512x512)
  */
-// oxlint-disable-next-line sonarjs/no-invariant-returns -- Payload hook pattern requires returning doc
+// eslint-disable-next-line sonarjs/no-invariant-returns -- Payload hook pattern requires returning doc
 export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previousDoc, req }) => {
   const currentLightId = getMediaId(doc.faviconSourceLight);
   const previousLightId = getMediaId(previousDoc?.faviconSourceLight);

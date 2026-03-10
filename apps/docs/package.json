@@ -10,12 +10,11 @@
     "docs:api": "cd ../web && pnpm exec typedoc && tsx ../docs/scripts/clean-typedoc-output.ts && tsx ../docs/scripts/generate-api-meta.ts",
     "docs:api:watch": "nodemon --watch ../web/lib --ext ts --exec \"pnpm docs:api\"",
     "start": "next start --port 3001",
-    "lint": "mkdir -p .lint-results && eslint app content scripts --cache --format json --output-file .lint-results/latest.json; eslint app content scripts --cache && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
+    "lint": "oxlint --config ../../.oxlintrc.json . && mkdir -p .lint-results && eslint app content scripts --cache --format json --output-file .lint-results/latest.json; eslint app content scripts --cache && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
     "lint:all": "eslint app content scripts --cache && tsx scripts/check-links.ts",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "typecheck:fast": "tsgo --noEmit",
-    "lint:fast": "oxlint --config ../../.oxlintrc.json .",
-    "format": "oxlint --config ../../.oxlintrc.json --fix . && oxfmt --write ."
+        "format": "eslint app content scripts --cache --fix --quiet && oxfmt --write ."
   },
   "dependencies": {
     "@timetiles/assets": "workspace:*",

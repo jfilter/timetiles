@@ -111,11 +111,11 @@ const isNonTextValue = (value: string): boolean => {
   if (/^https?:\/\//i.test(value)) return true;
 
   // ISO dates - pattern is bounded, safe from backtracking
-  // oxlint-disable-next-line security/detect-unsafe-regex
+  // eslint-disable-next-line security/detect-unsafe-regex
   if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?/.test(value)) return true;
 
   // Numeric values (possibly with decimal point or negative sign) - bounded
-  // oxlint-disable-next-line security/detect-unsafe-regex
+  // eslint-disable-next-line security/detect-unsafe-regex
   if (/^-?\d+(\.\d+)?$/.test(value)) return true;
 
   // Coordinate-like values (e.g., "52.5200, 13.4050")

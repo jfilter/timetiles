@@ -63,7 +63,8 @@
         "scripts/**/*.ts",
         "eslint.config.js",
         ".eslintrc*",
-        ".eslintignore"
+        ".eslintignore",
+        "../../.oxlintrc.json"
       ],
       "outputs": [".lint-results/**"]
     },
@@ -79,11 +80,6 @@
       "dependsOn": ["transit"],
       "inputs": ["**/*.{ts,tsx}", "tsconfig.json", "tsconfig.*.json"],
       "outputs": [".typecheck-results/**"]
-    },
-    "lint:fast": {
-      "dependsOn": ["transit"],
-      "inputs": ["**/*.{ts,tsx,js,jsx}", "../../.oxlintrc.json"],
-      "outputs": []
     },
     "dev": {
       "cache": false,

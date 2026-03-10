@@ -53,7 +53,7 @@ interface ImportContext {
 /**
  * Handles successful fetch and creates import file.
  */
-/* oxlint-disable complexity, sonarjs/max-lines-per-function -- Complex import file creation logic */
+/* eslint-disable complexity, sonarjs/max-lines-per-function -- Complex import file creation logic */
 const handleFetchSuccess = async (
   payload: Payload,
   data: Buffer,
@@ -153,7 +153,7 @@ const handleFetchSuccess = async (
 
   const importFile = await payload.create({
     collection: COLLECTION_NAMES.IMPORT_FILES,
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic data building
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic data building
     data: importFileData as any,
     file: {
       data,
@@ -202,7 +202,7 @@ const handleFetchSuccess = async (
     isDuplicate: false,
   };
 };
-/* oxlint-enable sonarjs/max-lines-per-function */
+/* eslint-enable sonarjs/max-lines-per-function */
 
 const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {
   // Determine timeout from config

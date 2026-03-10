@@ -8,7 +8,7 @@
  * @module
  * @category Components
  */
-/* oxlint-disable complexity -- Event detail rendering has many conditional display sections */
+/* eslint-disable complexity -- Event detail rendering has many conditional display sections */
 "use client";
 
 import { Button, Card, CardContent, ContentState } from "@timetiles/ui";

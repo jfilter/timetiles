@@ -8,7 +8,7 @@
  * @module
  * @category Components
  */
-/* oxlint-disable sonarjs/max-lines-per-function -- Map setup requires many sequential configuration steps */
+/* eslint-disable sonarjs/max-lines-per-function -- Map setup requires many sequential configuration steps */
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -220,9 +220,9 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
             <MapThemeControl />
           </div>
           <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">
-            {/* oxlint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <Layer {...(eventPointLayer as any)} />
-            {/* oxlint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <Layer {...(clusterLayer as any)} />
           </Source>
           {popupInfo && (

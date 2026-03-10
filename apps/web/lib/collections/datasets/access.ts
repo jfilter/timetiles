@@ -24,7 +24,7 @@ import { isEditorOrAdmin } from "../shared-fields";
  * Note: A "public" dataset in a private catalog should NOT be visible to non-owners.
  * The catalog visibility is the top-level gate.
  */
-// oxlint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+// eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
 export const read: Access = ({ req: { user } }): boolean | Where => {
   // Admin and editor can read all
   if (user?.role === "admin" || user?.role === "editor") return true;
@@ -63,7 +63,7 @@ export const create: Access = async ({ req: { user, payload } }) => {
  * Update access: Admins/editors can update all datasets, catalog owners can update their own.
  * Uses WHERE clause on indexed catalogCreatorId field for zero queries.
  */
-// oxlint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+// eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
 export const update: Access = ({ req: { user } }): boolean | Where => {
   if (!user) return false;
   if (user.role === "admin" || user.role === "editor") return true;

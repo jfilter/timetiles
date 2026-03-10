@@ -30,11 +30,11 @@ export class ExplorePage {
     this.page = page;
     this.map = page.getByRole("region", { name: "Map" }).first();
     // @deprecated - Legacy selector, UI was redesigned. Catalogs are now buttons.
-    this.catalogSelect = page.locator("#catalog-select"); // oxlint-disable-line sonarjs/deprecation
+    this.catalogSelect = page.locator("#catalog-select"); // eslint-disable-line sonarjs/deprecation
     // New catalog UI: buttons under "Data Sources" / "Catalogs" section
     this.dataSourcesSection = page.getByRole("button", { name: /Data Sources/i });
     // Catalog buttons contain "X datasets" and "Y events" text in divs
-    // oxlint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
     this.catalogButtons = page.locator("button").filter({ hasText: /\d+ datasets?/ });
     this.datasetCheckboxes = page.locator('input[type="checkbox"]');
     // New date picker UI uses buttons instead of input fields
@@ -156,7 +156,7 @@ export class ExplorePage {
     // Check if filter drawer is already open by looking for a catalog button
     // (Catalog buttons show "X datasets" in their text content)
     const buttonLocator = this.page.locator("button");
-    // oxlint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
     const catalogButton = buttonLocator.filter({ hasText: /\d+ datasets?/ }).first();
     const isAlreadyOpen = await catalogButton.isVisible({ timeout: 2000 }).catch(() => false);
 
@@ -182,7 +182,7 @@ export class ExplorePage {
 
     // Wait for catalogs to load from API (buttons with "X datasets" text)
     const buttonLoc = this.page.locator("button");
-    // oxlint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
     const anyCatalogButton = buttonLoc.filter({ hasText: /\d+ datasets?/ }).first();
     await anyCatalogButton.waitFor({ state: "visible", timeout: 5000 });
 

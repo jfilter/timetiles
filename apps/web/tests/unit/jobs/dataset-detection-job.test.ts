@@ -1,4 +1,4 @@
-/* oxlint-disable sonarjs/publicly-writable-directories */
+/* eslint-disable sonarjs/publicly-writable-directories */
 /**
  * Unit tests for the dataset detection job handler.
  *
@@ -201,7 +201,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Mock dataset creation to return unique IDs for each dataset
       let datasetCounter = 1;
       let jobCounter = 1;
-      // oxlint-disable promise/prefer-await-to-then -- Conditional mock return values
+      // eslint-disable promise/prefer-await-to-then -- Conditional mock return values
       mockPayload.create.mockImplementation((params: any) => {
         if (params.collection === "datasets") {
           return Promise.resolve({ id: `dataset-${datasetCounter++}` });
@@ -210,7 +210,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         }
         return Promise.resolve({ id: "test-id" });
       });
-      // oxlint-enable promise/prefer-await-to-then
+      // eslint-enable promise/prefer-await-to-then
 
       await datasetDetectionJob.handler(mockContext);
 
@@ -370,13 +370,13 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
       mockPayload.find.mockResolvedValue({ docs: [] });
-      // oxlint-disable promise/prefer-await-to-then -- Conditional mock
+      // eslint-disable promise/prefer-await-to-then -- Conditional mock
       mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
         Promise.resolve({
           id: collection === "datasets" ? "dataset-1" : "import-job-1",
         })
       );
-      // oxlint-enable promise/prefer-await-to-then
+      // eslint-enable promise/prefer-await-to-then
 
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid import file ID");
 
@@ -415,13 +415,13 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      // oxlint-disable promise/prefer-await-to-then -- Conditional mock
+      // eslint-disable promise/prefer-await-to-then -- Conditional mock
       mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
         Promise.resolve({
           id: collection === "datasets" ? "dataset-1" : "import-job-1",
         })
       );
-      // oxlint-enable promise/prefer-await-to-then
+      // eslint-enable promise/prefer-await-to-then
 
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid catalog ID");
 

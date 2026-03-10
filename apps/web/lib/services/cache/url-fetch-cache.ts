@@ -50,7 +50,7 @@ export class UrlFetchCache {
   private readonly respectCacheControl: boolean;
 
   constructor() {
-    // oxlint-disable-next-line sonarjs/publicly-writable-directories
+    // eslint-disable-next-line sonarjs/publicly-writable-directories
     const cacheDir = process.env.URL_FETCH_CACHE_DIR ?? "/tmp/url-fetch-cache";
     const maxSize = getEnvInteger(process.env.URL_FETCH_CACHE_MAX_SIZE, 104857600);
     this.defaultTTL = getEnvInteger(process.env.URL_FETCH_CACHE_TTL, 3600);

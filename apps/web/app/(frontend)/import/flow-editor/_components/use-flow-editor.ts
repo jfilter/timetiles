@@ -79,7 +79,7 @@ const createInitialEdges = (mappingPairs: MappingPair[], sheetIndex: number): Fl
   return edges;
 };
 
-// oxlint-disable-next-line sonarjs/max-lines-per-function -- Complex hook managing flow editor state; splitting would reduce cohesion
+// eslint-disable-next-line sonarjs/max-lines-per-function -- Complex hook managing flow editor state; splitting would reduce cohesion
 export const useFlowEditor = (previewId: string | null, sheetIndex: number): UseFlowEditorResult => {
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([]);
@@ -119,7 +119,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
 
           // Update node connection states
           setNodes((nds) =>
-            // oxlint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
+            // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
             nds.map((node) => {
               if (node.type === "source-column") {
                 const isConnected = initialEdges.some((e) => e.source === node.id);
@@ -195,7 +195,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id === edge.source) {
-              // oxlint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
+              // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
               const stillConnected = edges.some((e) => e.source === edge.source && e.id !== edge.id);
               return {
                 ...node,

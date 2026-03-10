@@ -43,7 +43,7 @@ export const tryParseDecimal = (str: string): number | null => {
 
   // Quick validation: must match numeric pattern
   // Allows: 123, -123, 123.456, -123.456, .5, -.5, 1.5e2, 1.5e-2
-  // oxlint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
+  // eslint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
   const numericRegex = /^-?(?:\d+(?:\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
   if (!numericRegex.test(trimmed)) {
     return null;

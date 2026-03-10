@@ -83,7 +83,7 @@ describe.sequential("/api/newsletter/subscribe", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // oxlint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+        // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
         "x-forwarded-for": "192.168.1.1", // Unique IP for this test
       },
       body: JSON.stringify({ email: "test@example.com" }),
@@ -150,7 +150,7 @@ describe.sequential("/api/newsletter/subscribe", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // oxlint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+          // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
           "x-forwarded-for": "192.168.1.100", // Same IP for all requests
         },
         body: JSON.stringify({ email }),

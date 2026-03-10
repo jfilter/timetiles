@@ -26,7 +26,7 @@ const DatasetSchemas: CollectionConfig = {
   },
   access: {
     // Schema access uses denormalized fields for zero-query access control
-    // oxlint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     read: (({ req: { user } }): boolean | Where => {
       if (user?.role === "admin" || user?.role === "editor") return true;
 

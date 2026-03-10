@@ -81,7 +81,7 @@ export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOpt
 
   // Remove any existing _test suffix to avoid duplication
   // Matches: _test, _test_1, etc.
-  // oxlint-disable-next-line security/detect-unsafe-regex -- Simple bounded regex for database name cleanup
+  // eslint-disable-next-line security/detect-unsafe-regex -- Simple bounded regex for database name cleanup
   baseName = baseName.replace(/_test(_\d+)?$/, "");
 
   // Add _test suffix

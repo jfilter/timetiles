@@ -40,7 +40,7 @@ const createRequest = (user: unknown) =>
   }) as unknown as AuthenticatedRequest;
 
 const createContext = (id: string) => ({
-  // oxlint-disable-next-line promise/prefer-await-to-then -- Next.js async route params
+  // oxlint-disable-next-line promise/prefer-await-to-then
   params: Promise.resolve({ id }),
 });
 

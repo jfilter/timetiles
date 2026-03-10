@@ -1,4 +1,4 @@
-/* oxlint-disable sonarjs/no-hardcoded-ip -- Test file uses IP addresses as test data */
+/* eslint-disable sonarjs/no-hardcoded-ip -- Test file uses IP addresses as test data */
 // @vitest-environment node
 /**
  * Unit tests for the audit log service.

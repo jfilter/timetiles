@@ -227,7 +227,7 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
 
   // Check schedule configuration
   const hasValidSchedule = Boolean(
-    // oxlint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) ||
     (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression)
   );
@@ -350,13 +350,13 @@ const processScheduledImport = async (
       sourceUrl: scheduledImport.sourceUrl,
       authConfig: scheduledImport.authConfig,
       catalogId:
-        // oxlint-disable-next-line sonarjs/different-types-comparison -- Checking for object type is correct
+        // eslint-disable-next-line sonarjs/different-types-comparison -- Checking for object type is correct
         typeof scheduledImport.catalog === "object" && scheduledImport.catalog !== null
           ? scheduledImport.catalog.id
           : (scheduledImport.catalog ?? undefined),
       originalName: importName,
       userId:
-        // oxlint-disable-next-line sonarjs/different-types-comparison -- Checking for object type is correct
+        // eslint-disable-next-line sonarjs/different-types-comparison -- Checking for object type is correct
         typeof scheduledImport.createdBy === "object" && scheduledImport.createdBy !== null
           ? scheduledImport.createdBy.id
           : scheduledImport.createdBy,

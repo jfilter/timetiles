@@ -179,7 +179,7 @@ const Catalogs: CollectionConfig = {
   access: {
     // Public catalogs can be read by anyone, private ones only by creator or admins
     // @ts-expect-error - Payload access control allows returning true | Where query object
-    // oxlint-disable-next-line sonarjs/function-return-type
+    // eslint-disable-next-line sonarjs/function-return-type
     read: ({ req: { user } }) => {
       // Admins and editors can read all
       if (user?.role === "admin" || user?.role === "editor") return true;

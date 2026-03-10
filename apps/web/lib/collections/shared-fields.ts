@@ -30,7 +30,7 @@ export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
  */
 export const createOwnershipAccess = (_collection: string, ownerField = "createdBy"): Access => {
   // Payload Access functions legitimately return boolean | Where
-  // oxlint-disable-next-line sonarjs/function-return-type
+  // eslint-disable-next-line sonarjs/function-return-type
   return ({ req: { user } }): boolean | Where => {
     if (user?.role === "admin" || user?.role === "editor") return true;
     if (!user) return false;

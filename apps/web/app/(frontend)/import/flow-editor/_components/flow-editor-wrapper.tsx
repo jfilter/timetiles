@@ -13,7 +13,7 @@ import dynamic from "next/dynamic";
 
 // Dynamic import for heavy @xyflow/react library (~300KB)
 // This reduces initial bundle size for pages that don't use the flow editor
-// oxlint-disable-next-line promise/prefer-await-to-then -- next/dynamic requires .then() to select named exports
+// eslint-disable-next-line promise/prefer-await-to-then -- next/dynamic requires .then() to select named exports
 const FlowEditorClient = dynamic(() => import("./flow-editor-client").then((mod) => mod.FlowEditorClient), {
   ssr: false,
   loading: () => (

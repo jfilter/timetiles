@@ -88,7 +88,7 @@ const requestDataExport = async (): Promise<RequestExportResponse> => {
 };
 
 // Returns polling interval or false to stop - React Query expects this pattern
-// oxlint-disable-next-line sonarjs/function-return-type
+// eslint-disable-next-line sonarjs/function-return-type
 const getExportPollingInterval = (query: { state: { data?: ExportListResponse } }): number | false => {
   const data = query.state.data;
   const hasPending = data?.exports?.some((exp) => exp.status === "pending" || exp.status === "processing");

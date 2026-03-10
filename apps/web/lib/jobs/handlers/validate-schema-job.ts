@@ -305,7 +305,7 @@ const extractSchemaChanges = (comparison: SchemaComparison, detectedSchema: Reco
 
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
-  // oxlint-disable-next-line complexity, sonarjs/max-lines-per-function
+  // eslint-disable-next-line complexity, sonarjs/max-lines-per-function
   handler: async (context: JobHandlerContext) => {
     const payload = (context.req?.payload ?? context.payload) as Payload;
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];

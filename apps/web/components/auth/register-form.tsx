@@ -58,7 +58,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
       if (!email || !password || !confirmPassword) return;
 
       submit(async () => {
-        // oxlint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
+        // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
         if (password !== confirmPassword) {
           throw new Error("Passwords do not match");
         }

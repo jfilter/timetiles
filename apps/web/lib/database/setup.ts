@@ -164,7 +164,7 @@ export const runMigrations = (connectionString: string): void => {
   try {
     logger.info("Running Payload migrations...");
 
-    // oxlint-disable-next-line sonarjs/os-command -- Safe migration execution
+    // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
     execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate`, {
       stdio: "inherit",
       env: {
