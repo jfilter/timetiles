@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
     findByID: vi.fn(),
     update: vi.fn(),
     create: vi.fn(),
+    sendEmail: vi.fn().mockResolvedValue(undefined),
   };
 
   return {
@@ -238,7 +239,7 @@ describe.sequential("POST /api/account/change-email", () => {
     expect(data.error).toBe("Email is already in use");
   });
 
-  it("should successfully change email", async () => {
+  it("should successfully change email and require verification", async () => {
     const request = createJsonRequest("http://localhost/api/account/change-email", {
       newEmail: "new@example.com",
       password: TEST_CREDENTIALS.basic.password,
@@ -250,11 +251,24 @@ describe.sequential("POST /api/account/change-email", () => {
     const data = await response.json();
     expect(data.success).toBe(true);
     expect(data.newEmail).toBe("new@example.com");
-    expect(mockPayload.update).toHaveBeenCalledWith({
-      collection: "users",
-      id: mockUser.id,
-      data: { email: "new@example.com" },
-    });
+    expect(data.verificationRequired).toBe(true);
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "users",
+        id: mockUser.id,
+        overrideAccess: true,
+        data: expect.objectContaining({
+          email: "new@example.com",
+          _verified: false,
+        }),
+      })
+    );
+    expect(mockPayload.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "new@example.com",
+        subject: expect.stringContaining("Verify"),
+      })
+    );
   });
 
   it("should return 429 when rate limited", async () => {

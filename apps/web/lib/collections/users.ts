@@ -124,17 +124,12 @@ const Users: CollectionConfig = {
     // Admins can always create, unauthenticated can self-register, authenticated non-admins cannot
     create: ({ req: { user } }) => user?.role === "admin" || !user,
 
-    // Users can update their own profile (except role), admins can update anyone
+    // Users can update their own profile, admins can update anyone
+    // Role changes are prevented via field-level access control on the role field
     // eslint-disable-next-line sonarjs/function-return-type
-    update: ({ req: { user }, data }): boolean | { id: { equals: string | number } } => {
+    update: ({ req: { user } }): boolean | { id: { equals: string | number } } => {
       if (!user) return false;
       if (user.role === "admin") return true;
-
-      // Prevent non-admins from changing roles
-      if (data?.role && data.role !== user.role) {
-        return false;
-      }
-
       return { id: { equals: user.id } };
     },
 
@@ -177,6 +172,9 @@ const Users: CollectionConfig = {
         },
       ],
       defaultValue: "user",
+      access: {
+        update: ({ req: { user } }) => user?.role === "admin",
+      },
       admin: {
         position: "sidebar",
       },

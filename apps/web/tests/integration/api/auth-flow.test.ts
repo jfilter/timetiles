@@ -484,19 +484,20 @@ describe.sequential("Authentication Flow", () => {
         disableVerificationEmail: true,
       });
 
-      // User trying to change their own role should be blocked
-      // Must use overrideAccess: false to test access control with local API
-      await expect(
-        payload.update({
-          collection: "users",
-          id: user.id,
-          data: {
-            role: "admin",
-          },
-          user: user,
-          overrideAccess: false,
-        })
-      ).rejects.toThrow();
+      // Field-level access control silently strips the role field for non-admins.
+      // The update succeeds but the role remains unchanged.
+      const result = await payload.update({
+        collection: "users",
+        id: user.id,
+        data: {
+          role: "admin",
+        },
+        user: user,
+        overrideAccess: false,
+      });
+
+      // Role should remain "user" — field-level access strips the change
+      expect(result.role).toBe("user");
     });
 
     it("allows admin to read all profiles", async () => {

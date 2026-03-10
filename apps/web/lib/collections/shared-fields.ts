@@ -12,11 +12,10 @@
  * @module
  */
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
-import type { Access, CollectionBeforeChangeHook, Field } from "payload";
+import type { Access, CollectionBeforeChangeHook, Field, Where } from "payload";
 
 import type { Config } from "@/payload-types";
 
-import { extractRelationId } from "../utils/relation-id";
 import { createSlugHook } from "../utils/slug";
 
 // Access control helpers for role-based permissions
@@ -26,33 +25,16 @@ export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
 
 /**
  * Factory for ownership-based access control.
- * Returns true for editors/admins, or checks document ownership via the specified field.
+ * Returns true for editors/admins, or a WHERE clause filtering by ownership field.
+ * Uses zero-query approach (WHERE clause) instead of per-document DB lookup.
  */
-export const createOwnershipAccess = <T extends keyof Config["collections"]>(
-  collection: T,
-  ownerField = "createdBy"
-): Access => {
-  return async ({ req: { user, payload }, id }) => {
+export const createOwnershipAccess = (_collection: string, ownerField = "createdBy"): Access => {
+  // Payload Access functions legitimately return boolean | Where
+  // eslint-disable-next-line sonarjs/function-return-type
+  return ({ req: { user } }): boolean | Where => {
     if (user?.role === "admin" || user?.role === "editor") return true;
-    if (!user || !id) return false;
-
-    try {
-      const existing = await payload.findByID({
-        collection,
-        id,
-        overrideAccess: true,
-      });
-
-      const ownerValue = (existing as unknown as Record<string, unknown>)?.[ownerField];
-      if (ownerValue) {
-        const ownerId = extractRelationId(ownerValue);
-        return user.id === ownerId;
-      }
-
-      return false;
-    } catch {
-      return false;
-    }
+    if (!user) return false;
+    return { [ownerField]: { equals: user.id } } as Where;
   };
 };
 
@@ -63,6 +45,11 @@ export const createOwnershipAccess = <T extends keyof Config["collections"]>(
 export const setCreatedByHook: CollectionBeforeChangeHook = ({ data, req, operation }) => {
   if (operation === "create" && req.user) {
     data.createdBy = req.user.id;
+  }
+  // Defense in depth: prevent user-initiated updates from changing createdBy
+  // System operations (e.g., account deletion ownership transfer) need to update createdBy
+  if (operation === "update" && req.user) {
+    delete data.createdBy;
   }
   return data;
 };

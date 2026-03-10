@@ -71,7 +71,7 @@ export interface Config {
     'data-exports': DataExport;
     datasets: Dataset;
     'dataset-schemas': DatasetSchema;
-    'deletion-audit-log': DeletionAuditLog;
+    'audit-log': AuditLog;
     'import-files': ImportFile;
     'import-jobs': ImportJob;
     'scheduled-imports': ScheduledImport;
@@ -96,7 +96,7 @@ export interface Config {
     'data-exports': DataExportsSelect<false> | DataExportsSelect<true>;
     datasets: DatasetsSelect<false> | DatasetsSelect<true>;
     'dataset-schemas': DatasetSchemasSelect<false> | DatasetSchemasSelect<true>;
-    'deletion-audit-log': DeletionAuditLogSelect<false> | DeletionAuditLogSelect<true>;
+    'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     'import-files': ImportFilesSelect<false> | ImportFilesSelect<true>;
     'import-jobs': ImportJobsSelect<false> | ImportJobsSelect<true>;
     'scheduled-imports': ScheduledImportsSelect<false> | ScheduledImportsSelect<true>;
@@ -156,6 +156,7 @@ export interface Config {
       'schema-maintenance': TaskSchemaMaintenance;
       'data-export': TaskDataExport;
       'data-export-cleanup': TaskDataExportCleanup;
+      'audit-log-ip-cleanup': TaskAuditLogIpCleanup;
       inline: {
         input: unknown;
         output: unknown;
@@ -1577,69 +1578,53 @@ export interface ScheduledImport {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * Immutable audit trail of account deletions
+ * Immutable audit trail of sensitive account actions
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "deletion-audit-log".
+ * via the `definition` "audit-log".
  */
-export interface DeletionAuditLog {
+export interface AuditLog {
   id: number;
   /**
-   * The ID of the deleted user
+   * The type of action (e.g. account.email_changed, account.deletion_executed)
    */
-  deletedUserId: number;
+  action: string;
   /**
-   * SHA256 hash of the deleted user's email (for privacy)
+   * The ID of the user this action pertains to
    */
-  deletedUserEmailHash: string;
+  userId: number;
   /**
-   * When the account was permanently deleted
+   * SHA-256 hash of the user's email at the time of the action
    */
-  deletedAt: string;
+  userEmailHash: string;
   /**
-   * When the user requested deletion
+   * Admin who initiated the action (null for self-initiated actions)
    */
-  deletionRequestedAt?: string | null;
+  performedBy?: (number | null) | User;
   /**
-   * User who initiated the deletion (null for self-deletion after grace period)
+   * When the action occurred
    */
-  deletedBy?: (number | null) | User;
+  timestamp: string;
   /**
-   * How the deletion was initiated
+   * Raw client IP address (cleared after 30 days by background job)
    */
-  deletionType: 'self' | 'admin' | 'scheduled';
+  ipAddress?: string | null;
   /**
-   * Optional reason for deletion (admin-initiated only)
-   */
-  reason?: string | null;
-  /**
-   * Summary of public data transferred to system user
-   */
-  dataTransferred?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Summary of private data permanently deleted
-   */
-  dataDeleted?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Hashed IP address of the requester (for security)
+   * SHA-256 hash of the client IP address (permanent, for long-term correlation)
    */
   ipAddressHash?: string | null;
+  /**
+   * Action-specific structured data
+   */
+  details?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2649,7 +2634,8 @@ export interface PayloadJob {
           | 'cache-cleanup'
           | 'schema-maintenance'
           | 'data-export'
-          | 'data-export-cleanup';
+          | 'data-export-cleanup'
+          | 'audit-log-ip-cleanup';
         taskID: string;
         input?:
           | {
@@ -2702,6 +2688,7 @@ export interface PayloadJob {
         | 'schema-maintenance'
         | 'data-export'
         | 'data-export-cleanup'
+        | 'audit-log-ip-cleanup'
       )
     | null;
   queue?: string | null;
@@ -2743,8 +2730,8 @@ export interface PayloadLockedDocument {
         value: number | DatasetSchema;
       } | null)
     | ({
-        relationTo: 'deletion-audit-log';
-        value: number | DeletionAuditLog;
+        relationTo: 'audit-log';
+        value: number | AuditLog;
       } | null)
     | ({
         relationTo: 'import-files';
@@ -3046,19 +3033,17 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "deletion-audit-log_select".
+ * via the `definition` "audit-log_select".
  */
-export interface DeletionAuditLogSelect<T extends boolean = true> {
-  deletedUserId?: T;
-  deletedUserEmailHash?: T;
-  deletedAt?: T;
-  deletionRequestedAt?: T;
-  deletedBy?: T;
-  deletionType?: T;
-  reason?: T;
-  dataTransferred?: T;
-  dataDeleted?: T;
+export interface AuditLogSelect<T extends boolean = true> {
+  action?: T;
+  userId?: T;
+  userEmailHash?: T;
+  performedBy?: T;
+  timestamp?: T;
+  ipAddress?: T;
   ipAddressHash?: T;
+  details?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -4349,6 +4334,14 @@ export interface TaskDataExport {
  * via the `definition` "TaskData-export-cleanup".
  */
 export interface TaskDataExportCleanup {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskAudit-log-ip-cleanup".
+ */
+export interface TaskAuditLogIpCleanup {
   input?: unknown;
   output?: unknown;
 }

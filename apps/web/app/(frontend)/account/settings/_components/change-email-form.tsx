@@ -89,7 +89,7 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
           {status === "success" && (
             <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
               <Check className="h-4 w-4" />
-              Email changed successfully
+              Email changed. Please check your new email for a verification link.
             </div>
           )}
 

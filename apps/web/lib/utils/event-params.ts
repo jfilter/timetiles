@@ -71,11 +71,17 @@ const FIELD_SEGMENT_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const INTEGER_PATTERN = /^-?\d+$/;
 const MAX_FIELD_KEY_LENGTH = 64;
 const MAX_FIELD_FILTERS = 10;
+const MAX_FIELD_PATH_DEPTH = 5;
 
-const isValidFieldPath = (fieldPath: string): boolean =>
-  fieldPath.length > 0 &&
-  fieldPath.length <= MAX_FIELD_KEY_LENGTH &&
-  fieldPath.split(".").every((segment) => segment.length > 0 && FIELD_SEGMENT_PATTERN.test(segment));
+const isValidFieldPath = (fieldPath: string): boolean => {
+  const segments = fieldPath.split(".");
+  return (
+    fieldPath.length > 0 &&
+    fieldPath.length <= MAX_FIELD_KEY_LENGTH &&
+    segments.length <= MAX_FIELD_PATH_DEPTH &&
+    segments.every((segment) => segment.length > 0 && FIELD_SEGMENT_PATTERN.test(segment))
+  );
+};
 
 export const parseStrictInteger = (value: string | number | null | undefined): number | null => {
   if (typeof value === "number") {
