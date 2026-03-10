@@ -167,6 +167,7 @@ describe.sequential("POST /api/wizard/configure-import", () => {
 
     // Default: create returns objects with incrementing IDs
     let createId = 100;
+    // oxlint-disable-next-line promise/prefer-await-to-then -- Mock factory
     mocks.mockPayload.create.mockImplementation(() => Promise.resolve({ id: createId++ }));
     mocks.mockPayload.update.mockResolvedValue({ id: 1 });
 
