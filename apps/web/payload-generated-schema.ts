@@ -21,6 +21,7 @@ import {
   numeric,
   text,
 } from "@payloadcms/db-postgres/drizzle/pg-core";
+import { type AnyPgColumn } from "@payloadcms/db-postgres/drizzle/pg-core";
 import { sql, relations } from "@payloadcms/db-postgres/drizzle";
 export const db_schema = pgSchema("payload");
 export const enum_catalogs_status = db_schema.enum("enum_catalogs_status", ["draft", "published"]);
@@ -731,7 +732,7 @@ export const catalogs = db_schema.table(
     name: varchar("name"),
     description: jsonb("description"),
     slug: varchar("slug"),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     isPublic: boolean("is_public").default(false),
@@ -760,7 +761,7 @@ export const _catalogs_v = db_schema.table(
     version_name: varchar("version_name"),
     version_description: jsonb("version_description"),
     version_slug: varchar("version_slug"),
-    version_createdBy: integer("version_created_by_id").references(() => users.id, {
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     version_isPublic: boolean("version_is_public").default(false),
@@ -794,7 +795,7 @@ export const data_exports = db_schema.table(
     id: serial("id").primaryKey(),
     user: integer("user_id")
       .notNull()
-      .references(() => users.id, {
+      .references((): AnyPgColumn => users.id, {
         onDelete: "set null",
       }),
     status: enum_data_exports_status("status").notNull().default("pending"),
@@ -861,7 +862,7 @@ export const datasets_import_transforms = db_schema.table(
     customFunction: varchar("custom_function"),
     active: boolean("active").default(true),
     addedAt: timestamp("added_at", { mode: "string", withTimezone: true, precision: 3 }),
-    addedBy: integer("added_by_id").references(() => users.id, {
+    addedBy: integer("added_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     confidence: numeric("confidence", { mode: "number" }),
@@ -893,7 +894,7 @@ export const datasets = db_schema.table(
     catalogIsPublic: boolean("catalog_is_public").default(false),
     language: varchar("language"),
     isPublic: boolean("is_public").default(false),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     metadata: jsonb("metadata"),
@@ -928,7 +929,7 @@ export const datasets = db_schema.table(
     fieldMappingOverrides_latitudePath: varchar("field_mapping_overrides_latitude_path"),
     fieldMappingOverrides_longitudePath: varchar("field_mapping_overrides_longitude_path"),
     fieldMappingOverrides_locationPath: varchar("field_mapping_overrides_location_path"),
-    schemaDetector: integer("schema_detector_id").references(() => schema_detectors.id, {
+    schemaDetector: integer("schema_detector_id").references((): AnyPgColumn => schema_detectors.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -996,7 +997,7 @@ export const _datasets_v_version_import_transforms = db_schema.table(
     customFunction: varchar("custom_function"),
     active: boolean("active").default(true),
     addedAt: timestamp("added_at", { mode: "string", withTimezone: true, precision: 3 }),
-    addedBy: integer("added_by_id").references(() => users.id, {
+    addedBy: integer("added_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     confidence: numeric("confidence", { mode: "number" }),
@@ -1031,7 +1032,7 @@ export const _datasets_v = db_schema.table(
     version_catalogIsPublic: boolean("version_catalog_is_public").default(false),
     version_language: varchar("version_language"),
     version_isPublic: boolean("version_is_public").default(false),
-    version_createdBy: integer("version_created_by_id").references(() => users.id, {
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     version_metadata: jsonb("version_metadata"),
@@ -1073,7 +1074,7 @@ export const _datasets_v = db_schema.table(
     version_fieldMappingOverrides_latitudePath: varchar("version_field_mapping_overrides_latitude_path"),
     version_fieldMappingOverrides_longitudePath: varchar("version_field_mapping_overrides_longitude_path"),
     version_fieldMappingOverrides_locationPath: varchar("version_field_mapping_overrides_location_path"),
-    version_schemaDetector: integer("version_schema_detector_id").references(() => schema_detectors.id, {
+    version_schemaDetector: integer("version_schema_detector_id").references((): AnyPgColumn => schema_detectors.id, {
       onDelete: "set null",
     }),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -1190,7 +1191,7 @@ export const dataset_schemas_import_sources = db_schema.table(
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
-    import: integer("import_id").references(() => import_jobs.id, {
+    import: integer("import_id").references((): AnyPgColumn => import_jobs.id, {
       onDelete: "set null",
     }),
     recordCount: numeric("record_count", { mode: "number" }),
@@ -1224,7 +1225,7 @@ export const dataset_schemas = db_schema.table(
     eventCountAtCreation: numeric("event_count_at_creation", { mode: "number" }),
     schemaSummary_totalFields: numeric("schema_summary_total_fields", { mode: "number" }),
     approvalRequired: boolean("approval_required"),
-    approvedBy: integer("approved_by_id").references(() => users.id, {
+    approvedBy: integer("approved_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     approvalNotes: varchar("approval_notes"),
@@ -1341,7 +1342,7 @@ export const _dataset_schemas_v_version_import_sources = db_schema.table(
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: serial("id").primaryKey(),
-    import: integer("import_id").references(() => import_jobs.id, {
+    import: integer("import_id").references((): AnyPgColumn => import_jobs.id, {
       onDelete: "set null",
     }),
     recordCount: numeric("record_count", { mode: "number" }),
@@ -1379,7 +1380,7 @@ export const _dataset_schemas_v = db_schema.table(
     version_eventCountAtCreation: numeric("version_event_count_at_creation", { mode: "number" }),
     version_schemaSummary_totalFields: numeric("version_schema_summary_total_fields", { mode: "number" }),
     version_approvalRequired: boolean("version_approval_required"),
-    version_approvedBy: integer("version_approved_by_id").references(() => users.id, {
+    version_approvedBy: integer("version_approved_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     version_approvalNotes: varchar("version_approval_notes"),
@@ -1422,7 +1423,7 @@ export const audit_log = db_schema.table(
     action: varchar("action").notNull(),
     userId: numeric("user_id", { mode: "number" }).notNull(),
     userEmailHash: varchar("user_email_hash").notNull(),
-    performedBy: integer("performed_by_id").references(() => users.id, {
+    performedBy: integer("performed_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     timestamp: timestamp("timestamp", { mode: "string", withTimezone: true, precision: 3 }).notNull(),
@@ -1452,7 +1453,7 @@ export const import_files = db_schema.table(
     }),
     user: integer("user_id")
       .notNull()
-      .references(() => users.id, {
+      .references((): AnyPgColumn => users.id, {
         onDelete: "set null",
       }),
     status: enum_import_files_status("status").default("pending"),
@@ -1469,7 +1470,7 @@ export const import_files = db_schema.table(
     targetDataset: integer("target_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
-    scheduledImport: integer("scheduled_import_id").references(() => scheduled_imports.id, {
+    scheduledImport: integer("scheduled_import_id").references((): AnyPgColumn => scheduled_imports.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
@@ -1537,7 +1538,7 @@ export const _import_files_v = db_schema.table(
     }),
     version_user: integer("version_user_id")
       .notNull()
-      .references(() => users.id, {
+      .references((): AnyPgColumn => users.id, {
         onDelete: "set null",
       }),
     version_status: enum__import_files_v_version_status("version_status").default("pending"),
@@ -1554,7 +1555,7 @@ export const _import_files_v = db_schema.table(
     version_targetDataset: integer("version_target_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
-    version_scheduledImport: integer("version_scheduled_import_id").references(() => scheduled_imports.id, {
+    version_scheduledImport: integer("version_scheduled_import_id").references((): AnyPgColumn => scheduled_imports.id, {
       onDelete: "set null",
     }),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -1673,7 +1674,7 @@ export const import_jobs = db_schema.table(
     schemaValidation_requiresApproval: boolean("schema_validation_requires_approval"),
     schemaValidation_approvalReason: varchar("schema_validation_approval_reason"),
     schemaValidation_approved: boolean("schema_validation_approved"),
-    schemaValidation_approvedBy: integer("schema_validation_approved_by_id").references(() => users.id, {
+    schemaValidation_approvedBy: integer("schema_validation_approved_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     schemaValidation_approvedAt: timestamp("schema_validation_approved_at", {
@@ -1884,7 +1885,7 @@ export const scheduled_imports = db_schema.table(
   {
     id: serial("id").primaryKey(),
     name: varchar("name"),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     description: varchar("description"),
@@ -2010,7 +2011,7 @@ export const _scheduled_imports_v = db_schema.table(
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
-    version_createdBy: integer("version_created_by_id").references(() => users.id, {
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     version_description: varchar("version_description"),
