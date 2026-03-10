@@ -19,8 +19,8 @@ import { logError, logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
-import { verifyPassword } from "@/lib/utils/auth-helpers";
+import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
+import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 import { hashEmail } from "@/lib/utils/hash";
 import config from "@/payload.config";
 
@@ -107,6 +107,7 @@ const updateEmailAndNotify = async (
 };
 
 export const POST = withAuth(async (request: AuthenticatedRequest) => {
+  const handleError = createErrorHandler("change email", logger);
   try {
     const payload = await getPayload({ config });
     const user = request.user!;
@@ -151,18 +152,8 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     }
 
     // Verify password
-    try {
-      await verifyPassword(payload, user, password);
-    } catch {
-      await auditLog(payload, {
-        action: AUDIT_ACTIONS.PASSWORD_VERIFY_FAILED,
-        userId: user.id,
-        userEmail: user.email,
-        ipAddress: clientId,
-        details: { context: "email_change" },
-      });
-      return unauthorized("Password is incorrect");
-    }
+    const verifyError = await verifyPasswordWithAudit(payload, user, password, clientId, "email_change");
+    if (verifyError) return verifyError;
 
     // Check if new email is already in use
     const existingUser = await payload.find({
@@ -186,7 +177,6 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       verificationRequired: true,
     });
   } catch (error) {
-    logError(error, "Failed to change email");
-    return internalError("Failed to change email");
+    return handleError(error);
   }
 });

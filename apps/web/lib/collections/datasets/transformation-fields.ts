@@ -11,6 +11,8 @@
  */
 import type { Field } from "payload";
 
+import { editorOrAdminCondition } from "../shared-fields";
+
 /** Transform type constants to avoid string duplication */
 const TRANSFORM_TYPES = {
   RENAME: "rename",
@@ -27,7 +29,7 @@ export const transformationFields: Field[] = [
     name: "importTransforms",
     type: "array",
     admin: {
-      condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+      condition: editorOrAdminCondition,
       description: "Transform rules applied to incoming data before validation (e.g., field renames)",
     },
     fields: [

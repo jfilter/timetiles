@@ -19,7 +19,7 @@ import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { EMAIL_REGEX, MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
-import { badRequest, forbidden, internalError } from "@/lib/utils/api-response";
+import { badRequest, createErrorHandler, forbidden } from "@/lib/utils/api-response";
 import { maskEmail } from "@/lib/utils/masking";
 import config from "@/payload.config";
 
@@ -71,6 +71,7 @@ const generateAccountExistsEmailHTML = (resetUrl: string): string => {
 };
 
 export const POST = async (request: Request): Promise<Response> => {
+  const handleError = createErrorHandler("register user", logger);
   try {
     const payload = await getPayload({ config });
 
@@ -199,7 +200,6 @@ export const POST = async (request: Request): Promise<Response> => {
       throw createError;
     }
   } catch (error) {
-    logError(error, "Registration error");
-    return internalError("Registration failed. Please try again.");
+    return handleError(error);
   }
 };

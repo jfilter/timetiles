@@ -19,18 +19,19 @@ import { getPayload } from "payload";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { getQuotaService } from "@/lib/services/quota-service";
-import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
+import { badRequest, createErrorHandler, forbidden, notFound } from "@/lib/utils/api-response";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import config from "@/payload.config";
 
 export const POST = withRateLimit(
   withAuth(
     async (request: AuthenticatedRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
+      const handleError = createErrorHandler("retry import job", logger);
       try {
         const payload = await getPayload({ config });
         const { id } = await context.params;
@@ -121,10 +122,7 @@ export const POST = withRateLimit(
           retryScheduled: result.retryScheduled,
         });
       } catch (error) {
-        const { id } = await context.params;
-        logError(error, "Failed to retry import job", { importJobId: id, userId: request.user?.id });
-
-        return internalError("Failed to retry import job");
+        return handleError(error);
       }
     }
   ),

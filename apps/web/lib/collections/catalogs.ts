@@ -22,6 +22,8 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import {
   basicMetadataFields,
   createCommonConfig,
+  createCreatedByField,
+  createIsPublicField,
   createOwnershipAccess,
   createSlugField,
   isAuthenticated,
@@ -210,27 +212,8 @@ const Catalogs: CollectionConfig = {
   fields: [
     ...basicMetadataFields,
     createSlugField("catalogs"),
-    {
-      name: "createdBy",
-      type: "relationship",
-      relationTo: "users",
-      admin: {
-        position: "sidebar",
-        readOnly: true,
-        description: "User who created this catalog",
-      },
-    },
-    {
-      name: "isPublic",
-      type: "checkbox",
-      defaultValue: false,
-      admin: {
-        position: "sidebar",
-        components: {
-          afterInput: ["/components/admin/private-visibility-notice"],
-        },
-      },
-    },
+    createCreatedByField("User who created this catalog"),
+    createIsPublicField({ showPrivateNotice: true }),
   ],
   hooks: {
     beforeChange: [

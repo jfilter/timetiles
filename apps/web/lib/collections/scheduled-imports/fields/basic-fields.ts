@@ -7,6 +7,7 @@
 
 import type { Field } from "payload";
 
+import { createCreatedByField } from "../../shared-fields";
 import { validateUrl } from "../validation";
 
 export const basicFields: Field[] = [
@@ -18,17 +19,7 @@ export const basicFields: Field[] = [
       description: "Descriptive name for this scheduled import",
     },
   },
-  {
-    name: "createdBy",
-    type: "relationship",
-    relationTo: "users",
-    required: true,
-    admin: {
-      position: "sidebar",
-      readOnly: true,
-      description: "User who created this scheduled import",
-    },
-  },
+  createCreatedByField("User who created this scheduled import", { required: true }),
   {
     name: "description",
     type: "textarea",

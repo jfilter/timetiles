@@ -11,6 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { FeatureFlags } from "@/lib/services/feature-flag-service";
 
+import { QUERY_PRESETS } from "./query-presets";
+
 const FEATURE_FLAGS_QUERY_KEY = ["feature-flags"] as const;
 
 /**
@@ -39,8 +41,7 @@ export const useFeatureFlags = () =>
   useQuery({
     queryKey: FEATURE_FLAGS_QUERY_KEY,
     queryFn: fetchFeatureFlags,
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    ...QUERY_PRESETS.standard,
   });
 
 /**

@@ -12,7 +12,8 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 import { Readable } from "stream";
 
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import config from "@/payload.config";
@@ -95,6 +96,7 @@ export const GET = async (
   request: Request,
   { params }: { params: Promise<{ exportId: string }> }
 ): Promise<Response> => {
+  const handleError = createErrorHandler("download export", logger);
   try {
     const { exportId } = await params;
     const normalizedExportId = parseStrictInteger(exportId);
@@ -157,7 +159,6 @@ export const GET = async (
 
     return await streamExportFile(payload, exportId, normalizedExportId, exportRecord, user.id);
   } catch (error) {
-    logError(error, "Failed to download export");
-    return NextResponse.json({ error: "Failed to download export" }, { status: 500 });
+    return handleError(error);
   }
 };

@@ -12,7 +12,7 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { createCommonConfig, createSlugField } from "../shared-fields";
+import { createCommonConfig, createCreatedByField, createIsPublicField, createSlugField } from "../shared-fields";
 import * as access from "./access";
 import { enforceSingleDefault, invalidateViewCache, setCreatedBy } from "./hooks";
 
@@ -367,25 +367,8 @@ const Views: CollectionConfig = {
     },
 
     // ============ ACCESS & METADATA ============
-    {
-      name: "isPublic",
-      type: "checkbox",
-      defaultValue: true,
-      admin: {
-        position: "sidebar",
-        description: "Allow public access to this view",
-      },
-    },
-    {
-      name: "createdBy",
-      type: "relationship",
-      relationTo: "users",
-      admin: {
-        position: "sidebar",
-        readOnly: true,
-        description: "User who created this view",
-      },
-    },
+    createIsPublicField({ defaultValue: true, description: "Allow public access to this view" }),
+    createCreatedByField("User who created this view"),
   ],
 };
 

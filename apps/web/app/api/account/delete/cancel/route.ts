@@ -10,12 +10,14 @@
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 export const POST = async (request: Request): Promise<Response> => {
+  const handleError = createErrorHandler("cancel account deletion", logger);
   try {
     const payload = await getPayload({ config });
 
@@ -50,7 +52,6 @@ export const POST = async (request: Request): Promise<Response> => {
       message: "Account deletion has been cancelled. Your account is now active.",
     });
   } catch (error) {
-    logError(error, "Failed to cancel account deletion");
-    return NextResponse.json({ error: "Failed to cancel deletion" }, { status: 500 });
+    return handleError(error);
   }
 };

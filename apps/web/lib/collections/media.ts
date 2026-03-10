@@ -12,6 +12,7 @@ import type { CollectionConfig } from "payload";
 
 import {
   createCommonConfig,
+  createCreatedByField,
   createOwnershipAccess,
   isAuthenticated,
   isEditorOrAdmin,
@@ -70,16 +71,7 @@ const Media: CollectionConfig = {
     readVersions: isEditorOrAdmin,
   },
   fields: [
-    {
-      name: "createdBy",
-      type: "relationship",
-      relationTo: "users",
-      admin: {
-        position: "sidebar",
-        readOnly: true,
-        description: "User who uploaded this media",
-      },
-    },
+    createCreatedByField("User who uploaded this media"),
     {
       name: "alt",
       type: "text",

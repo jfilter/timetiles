@@ -26,6 +26,7 @@ import type { FilterState } from "../filters";
 import { createLogger } from "../logger";
 import type { BoundsType, SimpleBounds } from "../utils/event-params";
 import { buildBaseEventParams, buildEventParams, parseStrictInteger } from "../utils/event-params";
+import { QUERY_PRESETS } from "./query-presets";
 
 // Helper function to determine polling interval
 // Returns false to stop polling or number for interval - React Query expects this pattern
@@ -348,8 +349,7 @@ export const useEventsListQuery = (
     queryKey: eventsQueryKeys.list(filters, bounds, limit),
     queryFn: ({ signal }) => fetchEvents(filters, bounds, limit, signal),
     enabled: enabled && bounds != null, // Only run when bounds are available
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
@@ -360,8 +360,7 @@ export const useEventsTotalQuery = (filters: FilterState, enabled: boolean = tru
     queryKey: eventsQueryKeys.list(filters, null, 1), // bounds=null, limit=1 (we only need the total)
     queryFn: ({ signal }) => fetchEvents(filters, null, 1, signal),
     enabled,
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
   });
 
@@ -370,8 +369,7 @@ export const useMapClustersQuery = (filters: FilterState, bounds: BoundsType, zo
     queryKey: eventsQueryKeys.cluster(filters, bounds, zoom),
     queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal),
     enabled: enabled && bounds != null, // Only run when bounds are available
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
@@ -381,8 +379,7 @@ export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enab
     queryKey: eventsQueryKeys.histogram(filters, bounds),
     queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal),
     enabled: enabled && bounds != null, // Only run when bounds are available
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
@@ -392,8 +389,7 @@ export const useClusterStatsQuery = (filters: FilterState, enabled: boolean = tr
     queryKey: eventsQueryKeys.clusterStat(filters),
     queryFn: ({ signal }) => fetchClusterStats(filters, signal),
     enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes - stats change less frequently
-    gcTime: 30 * 60 * 1000, // 30 minutes
+    ...QUERY_PRESETS.stable,
     refetchOnWindowFocus: false,
   });
 
@@ -412,8 +408,7 @@ export const useBoundsQuery = (filters: FilterState, enabled: boolean = true) =>
     queryKey: eventsQueryKeys.boundsFiltered(filters),
     queryFn: ({ signal }) => fetchBounds(filters, signal),
     enabled,
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
   });
 
@@ -424,8 +419,8 @@ export const useImportProgressQuery = (importId: string | null) =>
     enabled: importId != null,
     refetchInterval: (query) => getPollingInterval(query),
     retry: 3,
-    staleTime: 0, // Always fresh for progress updates
-    gcTime: 30 * 1000, // Clean up quickly after completion
+    staleTime: 0,
+    gcTime: 30 * 1000,
   });
 
 // Mutation hooks
@@ -503,8 +498,7 @@ export const useEventsAggregationQuery = (
     queryKey: eventsQueryKeys.aggregation(filters, bounds, groupBy),
     queryFn: ({ signal }) => fetchAggregation(filters, bounds, groupBy, signal),
     enabled: enabled && bounds != null,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
@@ -555,8 +549,7 @@ export const useEventsInfiniteQuery = (
     initialPageParam: 1,
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
     enabled: enabled && bounds != null,
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
   });
 
@@ -616,8 +609,7 @@ export const useEventDetailQuery = (eventId: number | null) =>
     queryKey: eventsQueryKeys.detail(eventId!),
     queryFn: ({ signal }) => fetchEventById(eventId!, signal),
     enabled: eventId != null,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 30 * 60 * 1000, // 30 minutes
+    ...QUERY_PRESETS.stable,
     retry: (failureCount, error) => {
       // Don't retry if event not found
       if (error instanceof Error && error.message.includes("not found")) {

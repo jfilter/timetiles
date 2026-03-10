@@ -14,7 +14,7 @@ import { createLogger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { getQuotaService } from "@/lib/services/quota-service";
-import { internalError } from "@/lib/utils/api-response";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const logger = createLogger("api-quotas");
@@ -30,6 +30,7 @@ const logger = createLogger("api-quotas");
  */
 export const GET = withRateLimit(
   withAuth(async (req: AuthenticatedRequest) => {
+    const handleError = createErrorHandler("fetch quota status", logger);
     try {
       const payload = await getPayload({ config });
       const user = req.user!;
@@ -107,8 +108,7 @@ export const GET = withRateLimit(
         headers,
       });
     } catch (error) {
-      logger.error("Failed to get quota status", { error });
-      return internalError("Failed to retrieve quota information");
+      return handleError(error);
     }
   }),
   { type: "API_GENERAL" }

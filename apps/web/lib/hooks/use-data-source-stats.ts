@@ -11,6 +11,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { QUERY_PRESETS } from "./query-presets";
+
 /**
  * Response format for data source stats endpoint.
  */
@@ -58,10 +60,7 @@ export const useDataSourceStatsQuery = () =>
   useQuery({
     queryKey: dataSourceStatsQueryKey,
     queryFn: fetchDataSourceStats,
-    // Cache for 5 minutes since total counts change infrequently
-    staleTime: 5 * 60 * 1000,
-    // Keep cached data for 30 minutes
-    gcTime: 30 * 60 * 1000,
+    ...QUERY_PRESETS.stable,
     // Refetch on window focus to catch new imports
     refetchOnWindowFocus: true,
   });

@@ -10,6 +10,8 @@
  */
 import { NextResponse } from "next/server";
 
+import { extractRelationId } from "./relation-id";
+
 /**
  * Standard error response format for all API routes.
  */
@@ -106,6 +108,21 @@ export const internalError = (
   code?: string,
   details?: unknown
 ): NextResponse<ErrorResponse> => apiError(message, 500, code ?? "INTERNAL_ERROR", details);
+
+/**
+ * Check if a user owns (or has elevated access to) a resource.
+ * Returns null if access is allowed, or a 403 Forbidden response.
+ */
+export const checkOwnership = (
+  user: { id: number; role?: string },
+  resource: { createdBy: unknown },
+  options?: { allowEditor?: boolean }
+): NextResponse<ErrorResponse> | null => {
+  if (user.role === "admin") return null;
+  if ((options?.allowEditor ?? true) && user.role === "editor") return null;
+  if (extractRelationId(resource.createdBy) === user.id) return null;
+  return forbidden();
+};
 
 /**
  * Create an error handler function for API routes.

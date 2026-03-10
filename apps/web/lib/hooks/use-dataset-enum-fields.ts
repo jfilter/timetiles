@@ -13,6 +13,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 
+import { QUERY_PRESETS } from "./query-presets";
+
 /**
  * Represents an enum field ready for display in the filter UI.
  */
@@ -117,7 +119,6 @@ export const useDatasetEnumFieldsQuery = (datasetId: string | null, maxFields = 
     queryKey: datasetEnumFieldsKeys.byDataset(datasetId),
     queryFn: () => fetchDatasetFieldMetadata(datasetId!),
     enabled: datasetId != null,
-    staleTime: 5 * 60 * 1000, // 5 minutes - field metadata rarely changes
-    gcTime: 30 * 60 * 1000, // 30 minutes
+    ...QUERY_PRESETS.stable,
     select: (data) => selectTopEnumFields(data, maxFields),
   });

@@ -11,16 +11,17 @@
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
-import { verifyPassword } from "@/lib/utils/auth-helpers";
+import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
+import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 import config from "@/payload.config";
 
 export const POST = withAuth(async (request: AuthenticatedRequest) => {
+  const handleError = createErrorHandler("schedule account deletion", logger);
   try {
     const payload = await getPayload({ config });
     const user = request.user!;
@@ -66,18 +67,15 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     }
 
     // Verify password
-    try {
-      await verifyPassword(payload, user, password);
-    } catch {
-      await auditLog(payload, {
-        action: AUDIT_ACTIONS.PASSWORD_VERIFY_FAILED,
-        userId: user.id,
-        userEmail: user.email,
-        ipAddress: clientId,
-        details: { context: "account_deletion" },
-      });
-      return unauthorized("Invalid password");
-    }
+    const verifyError = await verifyPasswordWithAudit(
+      payload,
+      user,
+      password,
+      clientId,
+      "account_deletion",
+      "Invalid password"
+    );
+    if (verifyError) return verifyError;
 
     // Check if user can be deleted
     const deletionService = getAccountDeletionService(payload);
@@ -125,7 +123,6 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       summary: result.summary,
     });
   } catch (error) {
-    logError(error, "Failed to schedule account deletion");
-    return internalError("Failed to schedule deletion");
+    return handleError(error);
   }
 });

@@ -10,13 +10,14 @@
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
-import { internalError } from "@/lib/utils/api-response";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 export const GET = withAuth(async (request: AuthenticatedRequest) => {
+  const handleError = createErrorHandler("get deletion summary", logger);
   try {
     const payload = await getPayload({ config });
     const user = request.user!;
@@ -38,7 +39,6 @@ export const GET = withAuth(async (request: AuthenticatedRequest) => {
       deletionScheduledAt: user.deletionScheduledAt,
     });
   } catch (error) {
-    logError(error, "Failed to get deletion summary");
-    return internalError("Failed to get deletion summary");
+    return handleError(error);
   }
 });

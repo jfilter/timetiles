@@ -9,6 +9,8 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { createTimestamp, pruneOldResults } from "./shared/typecheck-utils";
+
 interface OxlintDiagnostic {
   message: string;
   code: string;
@@ -43,30 +45,11 @@ interface ESLintFileResult {
   messages: ESLintMessage[];
 }
 
-const MAX_RESULT_FILES = 50;
-const configPath = path.resolve(__dirname, "../.oxlintrc.json");
-
-// Prepare timestamped output path
-const historyDir = path.join(process.cwd(), ".lint-results");
-fs.mkdirSync(historyDir, { recursive: true });
-const timestamp = new Date()
-  .toISOString()
-  .replace(/:/g, "-")
-  .replace(/\.\d+Z$/, "");
-const resultsPath = path.join(historyDir, `${timestamp}.json`);
-
-try {
-  const output = execSync(`pnpm exec oxlint --config ${configPath} --format=json . 2>&1`, {
-    encoding: "utf-8",
-  });
-
-  // Parse oxlint JSON output
-  const oxlintResult: OxlintOutput = JSON.parse(output);
-
-  // Group diagnostics by file
+/** Transform oxlint diagnostics into ESLint-compatible results grouped by file. */
+const transformOxlintToEslint = (diagnostics: OxlintDiagnostic[]): ESLintFileResult[] => {
   const fileMap = new Map<string, ESLintMessage[]>();
 
-  for (const diag of oxlintResult.diagnostics) {
+  for (const diag of diagnostics) {
     const filePath = path.resolve(diag.filename);
     if (!fileMap.has(filePath)) {
       fileMap.set(filePath, []);
@@ -82,20 +65,34 @@ try {
     });
   }
 
-  // Convert to ESLint format
-  const eslintResults: ESLintFileResult[] = [];
+  const results: ESLintFileResult[] = [];
   for (const [filePath, messages] of fileMap) {
-    eslintResults.push({
+    results.push({
       filePath,
       errorCount: messages.filter((m) => m.severity === 2).length,
       warningCount: messages.filter((m) => m.severity === 1).length,
       messages,
     });
   }
+  return results;
+};
+
+const configPath = path.resolve(__dirname, "../.oxlintrc.json");
+
+const historyDir = path.join(process.cwd(), ".lint-results");
+fs.mkdirSync(historyDir, { recursive: true });
+const resultsPath = path.join(historyDir, `${createTimestamp()}.json`);
+
+try {
+  const output = execSync(`pnpm exec oxlint --config ${configPath} --format=json . 2>&1`, {
+    encoding: "utf-8",
+  });
+
+  const oxlintResult: OxlintOutput = JSON.parse(output);
+  const eslintResults = transformOxlintToEslint(oxlintResult.diagnostics);
 
   fs.writeFileSync(resultsPath, JSON.stringify(eslintResults, null, 2));
 
-  // Exit with error if there are any errors
   const totalErrors = eslintResults.reduce((sum, r) => sum + r.errorCount, 0);
   if (totalErrors > 0) {
     process.exit(1);
@@ -105,36 +102,8 @@ try {
   const stdout = errorWithOutput.stdout?.toString() ?? "";
 
   try {
-    // Try to parse JSON even on error exit
     const oxlintResult: OxlintOutput = JSON.parse(stdout);
-
-    const fileMap = new Map<string, ESLintMessage[]>();
-
-    for (const diag of oxlintResult.diagnostics) {
-      const filePath = path.resolve(diag.filename);
-      if (!fileMap.has(filePath)) {
-        fileMap.set(filePath, []);
-      }
-
-      const label = diag.labels[0];
-      fileMap.get(filePath)!.push({
-        ruleId: diag.code,
-        severity: diag.severity === "error" ? 2 : 1,
-        message: diag.message,
-        line: label?.span.line ?? 1,
-        column: label?.span.column ?? 1,
-      });
-    }
-
-    const eslintResults: ESLintFileResult[] = [];
-    for (const [filePath, messages] of fileMap) {
-      eslintResults.push({
-        filePath,
-        errorCount: messages.filter((m) => m.severity === 2).length,
-        warningCount: messages.filter((m) => m.severity === 1).length,
-        messages,
-      });
-    }
+    const eslintResults = transformOxlintToEslint(oxlintResult.diagnostics);
 
     fs.writeFileSync(resultsPath, JSON.stringify(eslintResults, null, 2));
 
@@ -143,17 +112,9 @@ try {
       process.exit(1);
     }
   } catch {
-    // If we can't parse, write empty results
     fs.writeFileSync(resultsPath, JSON.stringify([], null, 2));
     process.exit(1);
   }
 }
 
-// Prune old results (keep last 20)
-const historyFiles = fs
-  .readdirSync(historyDir)
-  .filter((f) => f.endsWith(".json"))
-  .sort((a, b) => a.localeCompare(b));
-for (const file of historyFiles.slice(0, -MAX_RESULT_FILES)) {
-  fs.unlinkSync(path.join(historyDir, file));
-}
+pruneOldResults(historyDir);

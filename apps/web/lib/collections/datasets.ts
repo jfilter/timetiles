@@ -17,7 +17,15 @@ import type { CollectionConfig } from "payload";
 import * as access from "./datasets/access";
 import { syncIsPublicToEvents, validatePublicCatalogDataset } from "./datasets/hooks";
 import { transformationFields } from "./datasets/transformation-fields";
-import { basicMetadataFields, createCommonConfig, createSlugField, metadataField } from "./shared-fields";
+import {
+  basicMetadataFields,
+  createCommonConfig,
+  createCreatedByField,
+  createIsPublicField,
+  createSlugField,
+  editorOrAdminCondition,
+  metadataField,
+} from "./shared-fields";
 
 const Datasets: CollectionConfig = {
   slug: "datasets",
@@ -83,35 +91,15 @@ const Datasets: CollectionConfig = {
         description: "ISO-639-3 code: 3 lowercase letters (e.g., eng, deu, fra)",
       },
     },
-    {
-      name: "isPublic",
-      type: "checkbox",
-      defaultValue: false,
-      admin: {
-        position: "sidebar",
-        components: {
-          afterInput: ["/components/admin/private-visibility-notice"],
-        },
-      },
-    },
-    {
-      name: "createdBy",
-      type: "relationship",
-      relationTo: "users",
-      hasMany: false,
-      admin: {
-        position: "sidebar",
-        readOnly: true,
-        description: "User who created this dataset",
-      },
-    },
+    createIsPublicField({ showPrivateNotice: true }),
+    createCreatedByField("User who created this dataset"),
     metadataField,
     // ID Strategy Configuration
     {
       name: "idStrategy",
       type: "group",
       admin: {
-        condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+        condition: editorOrAdminCondition,
       },
       fields: [
         {
@@ -175,7 +163,7 @@ const Datasets: CollectionConfig = {
       name: "schemaConfig",
       type: "group",
       admin: {
-        condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+        condition: editorOrAdminCondition,
       },
       fields: [
         {
@@ -263,7 +251,7 @@ const Datasets: CollectionConfig = {
       name: "deduplicationConfig",
       type: "group",
       admin: {
-        condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+        condition: editorOrAdminCondition,
       },
       fields: [
         {
@@ -304,7 +292,7 @@ const Datasets: CollectionConfig = {
       name: "enumDetection",
       type: "group",
       admin: {
-        condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+        condition: editorOrAdminCondition,
       },
       fields: [
         {
@@ -333,7 +321,7 @@ const Datasets: CollectionConfig = {
       name: "geoFieldDetection",
       type: "group",
       admin: {
-        condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+        condition: editorOrAdminCondition,
       },
       fields: [
         {
@@ -366,7 +354,7 @@ const Datasets: CollectionConfig = {
       type: "group",
       label: "Field Mapping Overrides",
       admin: {
-        condition: ({ req }) => req?.user?.role === "editor" || req?.user?.role === "admin",
+        condition: editorOrAdminCondition,
         description:
           "Override language-aware auto-detection of field mappings. Leave empty to use automatic detection based on dataset language.",
       },

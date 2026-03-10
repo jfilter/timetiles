@@ -28,7 +28,7 @@ import {
   detectLanguageFromSamples,
   type LanguageDetectionResult,
 } from "@/lib/services/schema-builder/language-detection";
-import { badRequest, internalError } from "@/lib/utils/api-response";
+import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
 import { isPrivateUrl } from "@/lib/utils/url-validation";
 
 const logger = createLogger("api-wizard-preview-schema");
@@ -368,6 +368,7 @@ const parseAuthConfig = (formData: FormData): AuthConfig | null => {
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity, sonarjs/max-lines-per-function
 export const POST = withAuth(async (req: AuthenticatedRequest) => {
+  const handleError = createErrorHandler("preview file schema", logger);
   try {
     const user = req.user!;
 
@@ -529,7 +530,6 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
       sourceUrl: sourceUrl ?? undefined, // Return source URL so UI knows this was a URL-based preview
     });
   } catch (error) {
-    logger.error("Failed to preview schema", { error });
-    return internalError("Failed to preview file schema");
+    return handleError(error);
   }
 });

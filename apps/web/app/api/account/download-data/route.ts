@@ -10,11 +10,11 @@
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getDataExportService } from "@/lib/services/data-export-service";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import { internalError } from "@/lib/utils/api-response";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
@@ -24,6 +24,7 @@ const DATA_EXPORTS_COLLECTION = "data-exports" as const;
  * Request a new data export.
  */
 export const POST = withAuth(async (request: AuthenticatedRequest) => {
+  const handleError = createErrorHandler("initiate data export", logger);
   try {
     const payload = await getPayload({ config });
     const user = request.user!;
@@ -133,8 +134,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       { status: 202 }
     );
   } catch (error) {
-    logError(error, "Failed to initiate data export");
-    return internalError("Failed to start export");
+    return handleError(error);
   }
 });
 
@@ -143,6 +143,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
  * List user's export history.
  */
 export const GET = withAuth(async (request: AuthenticatedRequest) => {
+  const handleError = createErrorHandler("list data exports", logger);
   try {
     const payload = await getPayload({ config });
     const user = request.user!;
@@ -174,7 +175,6 @@ export const GET = withAuth(async (request: AuthenticatedRequest) => {
       total: exports.totalDocs,
     });
   } catch (error) {
-    logError(error, "Failed to list data exports");
-    return internalError("Failed to list exports");
+    return handleError(error);
   }
 });

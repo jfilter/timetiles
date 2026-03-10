@@ -84,6 +84,45 @@ export const createSlugField = <T extends keyof Config["collections"]>(collectio
   },
 });
 
+// Field factories for common field definitions
+
+/** Create a createdBy relationship field pointing to users. */
+export const createCreatedByField = (description: string, options?: { required?: boolean }): Field => ({
+  name: "createdBy",
+  type: "relationship",
+  relationTo: "users",
+  ...(options?.required && { required: true }),
+  admin: {
+    position: "sidebar",
+    readOnly: true,
+    description,
+  },
+});
+
+/** Create an isPublic checkbox field with optional private visibility notice. */
+export const createIsPublicField = (options?: {
+  defaultValue?: boolean;
+  description?: string;
+  showPrivateNotice?: boolean;
+}): Field => ({
+  name: "isPublic",
+  type: "checkbox",
+  defaultValue: options?.defaultValue ?? false,
+  admin: {
+    position: "sidebar",
+    ...(options?.description && { description: options.description }),
+    ...((options?.showPrivateNotice ?? false) && {
+      components: {
+        afterInput: ["/components/admin/private-visibility-notice"],
+      },
+    }),
+  },
+});
+
+/** Admin condition: only show field to editors and admins. */
+export const editorOrAdminCondition = ({ req }: { req?: { user?: { role?: string } | null } }): boolean =>
+  req?.user?.role === "editor" || req?.user?.role === "admin";
+
 // Generic metadata JSON field
 export const metadataField: Field = {
   name: "metadata",

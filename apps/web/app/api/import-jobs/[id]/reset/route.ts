@@ -16,11 +16,11 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/import-constants";
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
-import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
+import { badRequest, createErrorHandler, forbidden, notFound } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 /**
@@ -45,6 +45,7 @@ const VALID_RESET_STAGES = [
 export const POST = withRateLimit(
   withAuth(
     async (request: AuthenticatedRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
+      const handleError = createErrorHandler("reset import job", logger);
       try {
         const payload = await getPayload({ config });
         const { id } = await context.params;
@@ -109,10 +110,7 @@ export const POST = withRateLimit(
           retriesCleared: clearRetries,
         });
       } catch (error) {
-        const { id } = await context.params;
-        logError(error, "Failed to reset import job", { importJobId: id, userId: request.user?.id });
-
-        return internalError("Failed to reset import job");
+        return handleError(error);
       }
     }
   ),

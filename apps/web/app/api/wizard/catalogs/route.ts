@@ -15,7 +15,7 @@ import { getPayload } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
-import { internalError } from "@/lib/utils/api-response";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 const logger = createLogger("api-wizard-catalogs");
@@ -33,6 +33,7 @@ interface CatalogWithDatasets {
  * their associated datasets for use in the import wizard.
  */
 export const GET = withAuth(async (req: AuthenticatedRequest) => {
+  const handleError = createErrorHandler("fetch wizard catalogs", logger);
   try {
     const payload = await getPayload({ config });
     const user = req.user!;
@@ -82,7 +83,6 @@ export const GET = withAuth(async (req: AuthenticatedRequest) => {
 
     return NextResponse.json({ catalogs });
   } catch (error) {
-    logger.error("Failed to fetch catalogs", { error });
-    return internalError("Failed to fetch catalogs");
+    return handleError(error);
   }
 });

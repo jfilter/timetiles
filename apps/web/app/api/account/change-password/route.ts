@@ -11,15 +11,16 @@ import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import { badRequest, internalError, unauthorized } from "@/lib/utils/api-response";
-import { verifyPassword } from "@/lib/utils/auth-helpers";
+import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
+import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 import config from "@/payload.config";
 
 export const POST = withAuth(async (request: AuthenticatedRequest) => {
+  const handleError = createErrorHandler("change password", logger);
   try {
     const payload = await getPayload({ config });
     const user = request.user!;
@@ -62,18 +63,15 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     }
 
     // Verify current password
-    try {
-      await verifyPassword(payload, user, currentPassword);
-    } catch {
-      await auditLog(payload, {
-        action: AUDIT_ACTIONS.PASSWORD_VERIFY_FAILED,
-        userId: user.id,
-        userEmail: user.email,
-        ipAddress: clientId,
-        details: { context: "password_change" },
-      });
-      return unauthorized("Current password is incorrect");
-    }
+    const verifyError = await verifyPasswordWithAudit(
+      payload,
+      user,
+      currentPassword,
+      clientId,
+      "password_change",
+      "Current password is incorrect"
+    );
+    if (verifyError) return verifyError;
 
     // Update the password
     await payload.update({
@@ -98,7 +96,6 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       message: "Password changed successfully",
     });
   } catch (error) {
-    logError(error, "Failed to change password");
-    return internalError("Failed to change password");
+    return handleError(error);
   }
 });

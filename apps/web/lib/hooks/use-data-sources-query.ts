@@ -12,6 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { DataSourcesResponse } from "@/app/api/v1/data-sources/route";
 
+import { QUERY_PRESETS } from "./query-presets";
+
 // Re-export types for consumers
 export type { DataSourceCatalog, DataSourceDataset, DataSourcesResponse } from "@/app/api/v1/data-sources/route";
 
@@ -39,6 +41,5 @@ export const useDataSourcesQuery = () =>
   useQuery({
     queryKey: dataSourcesKeys.all,
     queryFn: fetchDataSources,
-    staleTime: 5 * 60 * 1000, // 5 minutes - names rarely change
-    gcTime: 30 * 60 * 1000, // 30 minutes
+    ...QUERY_PRESETS.stable,
   });

@@ -15,15 +15,16 @@
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import { logError } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { withRateLimit } from "@/lib/middleware/rate-limit";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
-import { internalError } from "@/lib/utils/api-response";
+import { createErrorHandler } from "@/lib/utils/api-response";
 import config from "@/payload.config";
 
 export const GET = withRateLimit(
   withAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
+    const handleError = createErrorHandler("fetch retry recommendations", logger);
     try {
       const payload = await getPayload({ config });
 
@@ -83,9 +84,7 @@ export const GET = withRateLimit(
         grouped,
       });
     } catch (error) {
-      logError(error, "Failed to get retry recommendations", { userId: request.user?.id });
-
-      return internalError("Failed to get retry recommendations");
+      return handleError(error);
     }
   }),
   { configName: "RETRY_RECOMMENDATIONS" }
