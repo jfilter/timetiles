@@ -16,12 +16,12 @@ TimeTiles uses a **layered security model** with cookie-based authentication, tw
 
 Payload CMS provides built-in cookie-based authentication. JWTs are stored in HTTP-only cookies, never exposed as bearer tokens in responses.
 
-| Feature            | Behavior                                             | Reference                               |
-| ------------------ | ---------------------------------------------------- | --------------------------------------- |
-| Login              | Cookie-based session via Payload auth                | `lib/collections/users.ts` `auth` block |
-| Email verification | Required; 24-hour token expiry                       | `auth.verify` config                    |
-| Password reset     | Email link; 1-hour token expiry (Payload default)    | `auth.forgotPassword` config            |
-| Self-registration  | Open; constrained by `beforeChange` hook (see below) | `access.create`                         |
+| Feature            | Behavior                                                | Reference                               |
+| ------------------ | ------------------------------------------------------- | --------------------------------------- |
+| Login              | Cookie-based session via Payload auth                   | `lib/collections/users.ts` `auth` block |
+| Email verification | Required; tokens do not expire (Payload v3 limitation)  | `auth.verify` config                    |
+| Password reset     | Email link; 1-hour token expiry (Payload default)       | `auth.forgotPassword` config            |
+| Self-registration  | Open; constrained by `beforeChange` hook (see below)    | `access.create`                         |
 
 ## Authorization: Two Orthogonal Axes
 
@@ -70,14 +70,14 @@ Example from `users.ts`: non-admin users reading their profile get `{ id: { equa
 
 Sensitive fields restrict read or update access independently of collection-level rules:
 
-| Field                    | Collection/Global   | Read                        | Update                        |
-| ------------------------ | ------------------- | --------------------------- | ----------------------------- |
-| `config.google.apiKey`   | geocoding-providers | admin only                  | admin only (collection-level) |
-| `config.opencage.apiKey` | geocoding-providers | admin only                  | admin only (collection-level) |
-| `newsletter.authHeader`  | settings            | admin only                  | admin only                    |
-| `trustLevel`             | users               | all authenticated           | admin only                    |
-| `quotas`                 | users               | all authenticated           | admin only                    |
-| `customQuotas`           | users               | admin only (UI-conditional) | admin only                    |
+| Field                    | Collection/Global   | Read              | Update                        |
+| ------------------------ | ------------------- | ----------------- | ----------------------------- |
+| `config.google.apiKey`   | geocoding-providers | admin only        | admin only (collection-level) |
+| `config.opencage.apiKey` | geocoding-providers | admin only        | admin only (collection-level) |
+| `newsletter.authHeader`  | settings            | admin only        | admin only                    |
+| `trustLevel`             | users               | all authenticated | admin only                    |
+| `quotas`                 | users               | all authenticated | admin only                    |
+| `customQuotas`           | users               | admin only        | admin only                    |
 
 References: `lib/globals/settings.ts`, `lib/collections/geocoding-providers.ts`, `lib/collections/users.ts`.
 

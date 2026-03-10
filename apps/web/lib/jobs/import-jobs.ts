@@ -41,6 +41,9 @@ export { dataExportJob } from "./handlers/data-export-job";
 // Audit log job handlers
 export { auditLogIpCleanupJob } from "./handlers/audit-log-ip-cleanup-job";
 
+// Account management job handlers
+export { executeAccountDeletionJob } from "./handlers/execute-account-deletion-job";
+
 // Re-export utility types
 export type {
   AnalyzeDuplicatesJobInput,

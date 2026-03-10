@@ -42,6 +42,9 @@ const Users: CollectionConfig = {
   auth: {
     // Enable email verification using Payload's built-in feature
     // This auto-adds _verified and _verificationToken fields
+    // Payload v3 does not expire verification tokens natively (no beforeOperation
+    // hook for verifyEmail). Tokens remain valid until used. To add expiry, a custom
+    // API route wrapping /api/users/verify/:token would be needed.
     verify: {
       generateEmailHTML: (args) => {
         const token = args?.token ?? "";
@@ -63,7 +66,6 @@ const Users: CollectionConfig = {
               </p>
               <p>Or copy and paste this link into your browser:</p>
               <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-              <p>This link will expire in 24 hours.</p>
               <p>If you didn't create an account, you can safely ignore this email.</p>
             </body>
           </html>
@@ -253,7 +255,10 @@ const Users: CollectionConfig = {
         description: "Custom quota overrides (JSON format) - overrides trust level defaults",
         condition: ({ data }) => data?.role === "admin",
       },
-      access: { update: ({ req: { user } }) => user?.role === "admin" },
+      access: {
+        read: ({ req: { user } }) => user?.role === "admin",
+        update: ({ req: { user } }) => user?.role === "admin",
+      },
     },
     // Account Deletion Fields
     {
