@@ -153,7 +153,7 @@ try {
 const historyFiles = fs
   .readdirSync(historyDir)
   .filter((f) => f.endsWith(".json"))
-  .sort();
+  .sort((a, b) => a.localeCompare(b));
 for (const file of historyFiles.slice(0, -MAX_RESULT_FILES)) {
   fs.unlinkSync(path.join(historyDir, file));
 }

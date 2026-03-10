@@ -50,7 +50,7 @@ function getLatestResultPath(dir: string): string | null {
   const files = fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".json"))
-    .sort();
+    .sort((a, b) => a.localeCompare(b));
   if (files.length === 0) return null;
   return path.join(dir, files[files.length - 1]!);
 }
