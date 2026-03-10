@@ -178,12 +178,12 @@ Reference: `lib/api/errors.ts`, `lib/utils/api-response.ts`, `lib/middleware/rat
 
 All routes that accept user input declare Zod schemas in their `apiRoute()` config. The framework validates `body`, `query`, and `params` before the handler runs — handlers receive parsed, typed objects. No manual `req.json()`, `searchParams.get()`, or `parseInt()` in route files.
 
-| Layer                | Approach                                                                                                                                         | Reference                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
-| `apiRoute()` schemas | Zod schemas for `body`, `query`, and `params`. Validated automatically before the handler runs. Failures return 422 with issue details.           | `lib/api/handler.ts`     |
-| Shared schemas       | Reusable schemas for common patterns: event filters, bounds, pagination, histogram params. Used across multiple v1 routes.                       | `lib/schemas/events.ts`, `lib/schemas/common.ts` |
-| Payload collections  | Field-level `validate` functions on collection configs. Payload enforces required fields, types, min/max, and custom validators.                 | `lib/collections/`       |
-| Hooks                | `beforeChange` hooks enforce business rules (e.g., visibility invariants, privilege escalation prevention).                                      | `lib/collections/*/hooks.ts` |
+| Layer                | Approach                                                                                                                                | Reference                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `apiRoute()` schemas | Zod schemas for `body`, `query`, and `params`. Validated automatically before the handler runs. Failures return 422 with issue details. | `lib/api/handler.ts`                             |
+| Shared schemas       | Reusable schemas for common patterns: event filters, bounds, pagination, histogram params. Used across multiple v1 routes.              | `lib/schemas/events.ts`, `lib/schemas/common.ts` |
+| Payload collections  | Field-level `validate` functions on collection configs. Payload enforces required fields, types, min/max, and custom validators.        | `lib/collections/`                               |
+| Hooks                | `beforeChange` hooks enforce business rules (e.g., visibility invariants, privilege escalation prevention).                             | `lib/collections/*/hooks.ts`                     |
 
 ### Why Versioned Prefix for Public but Not Internal
 
