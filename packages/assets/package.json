@@ -7,7 +7,7 @@
     "./logos/*": "./logos/*"
   },
   "scripts": {
-    "format": "prettier --write . --log-level error"
+    "format": "oxfmt --write ."
   },
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "^11.12.0"

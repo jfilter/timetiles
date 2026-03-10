@@ -2,7 +2,7 @@
  * This file contains the base ESLint configuration for the entire monorepo.
  *
  * It sets up a comprehensive set of rules and plugins to enforce a consistent and high-quality
- * code style. This includes configurations for TypeScript, Prettier, import sorting, security,
+ * code style. This includes configurations for TypeScript, import sorting, security,
  * promises, and more. It also defines architectural boundaries between different parts of the
  * monorepo to prevent incorrect dependencies.
  *
@@ -13,13 +13,11 @@
  * @module
  */
 import js from "@eslint/js";
-import eslintConfigPrettier from "eslint-config-prettier";
 import boundariesPlugin from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
 import jsdocPlugin from "eslint-plugin-jsdoc";
 import oxlint from "eslint-plugin-oxlint";
 import preferArrowFunctions from "eslint-plugin-prefer-arrow-functions";
-import prettierPlugin from "eslint-plugin-prettier";
 import promisePlugin from "eslint-plugin-promise";
 import regexpPlugin from "eslint-plugin-regexp";
 import securityPlugin from "eslint-plugin-security";
@@ -61,7 +59,6 @@ export const defaultIgnores = {
  * */
 export default [
   js.configs.recommended,
-  eslintConfigPrettier,
   sonarPlugin.configs.recommended,
   ...tseslint.configs.recommended,
   // Apply type-aware rules only to TypeScript files
@@ -144,7 +141,6 @@ export default [
   {
     plugins: {
       turbo: turboPlugin,
-      prettier: prettierPlugin,
       import: importPlugin,
       "simple-import-sort": simpleImportSort,
       "unused-imports": unusedImports,
@@ -170,9 +166,6 @@ export default [
       ],
     },
     rules: {
-      // Prettier (affects all code formatting)
-      "prettier/prettier": "error",
-
       // ESLint Core
       "no-async-promise-executor": "error",
       "no-case-declarations": "error",

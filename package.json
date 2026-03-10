@@ -1,8 +1,8 @@
 {
   "name": "timetiles",
-  "description": "A data explorer for spatio-temporal data with custom metadata.",
   "version": "0.0.1",
   "private": true,
+  "description": "A data explorer for spatio-temporal data with custom metadata.",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -31,18 +31,17 @@
     "glob": "^13.0.0",
     "husky": "^9.1.7",
     "nyc": "^17.1.0",
+    "oxfmt": "^0.37.0",
     "oxlint": "^1.42.0",
     "oxlint-tsgolint": "^0.11.3",
-    "prettier": "catalog:",
-    "prettier-plugin-tailwindcss": "^0.7.2",
     "tsx": "catalog:",
     "turbo": "^2.8.0",
     "typescript": "catalog:"
   },
-  "packageManager": "pnpm@10.12.4",
   "engines": {
     "node": ">=24"
   },
+  "packageManager": "pnpm@10.12.4",
   "pnpm": {
     "overrides": {
       "pino": "9.7.0",

@@ -447,7 +447,7 @@ help:
 		'  check-full  - Run lint-full + typecheck-full (for CI)' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
 		'                Usage: make check-ai [PACKAGE=web|docs|ui] [FILES="..."]' \
-		'  format      - Format code with Prettier' '' \
+		'  format      - Format code with oxfmt' '' \
 		'🧪 Testing:' \
 		'  test        - Run tests (standard output)' \
 		'  test-ai     - Run tests with AI-friendly output (web app only)' \

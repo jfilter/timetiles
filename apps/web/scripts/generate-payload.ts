@@ -106,15 +106,15 @@ const generate = () => {
     execSync("payload generate:db-schema", { stdio: "pipe" });
     logger.info("✓ Database schema generated");
 
-    // Format both files with Prettier to ensure consistent formatting
-    logger.info("✨ Formatting generated files with Prettier...");
-    execSync("prettier --write payload-types.ts payload-generated-schema.ts", {
+    // Format both generated files
+    logger.info("✨ Formatting generated files...");
+    execSync("oxfmt --write payload-types.ts payload-generated-schema.ts", {
       stdio: "pipe",
       cwd: process.cwd(),
     });
     logger.info("✓ Files formatted");
 
-    // Fix circular foreign key references AFTER Prettier (Prettier merges duplicate imports)
+    // Fix circular foreign key references AFTER formatting (formatter merges duplicate imports)
     fixCircularReferences("payload-generated-schema.ts");
 
     logger.info("✅ Successfully generated and formatted all Payload files!");

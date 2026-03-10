@@ -73,7 +73,6 @@ export default [
       "@typescript-eslint/no-unused-vars": "off", // Migration args often unused
       "jsdoc/require-file-overview": "off", // Migrations don't need JSDoc
       "simple-import-sort/imports": "off", // Don't sort imports in migrations
-      "prettier/prettier": "off", // Migrations are auto-generated, formatting not critical
     },
   },
   // Generated files - disable most rules
