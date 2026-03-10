@@ -22,7 +22,8 @@ import { getWorktreeBasePort } from "../utils/worktree-id";
  */
 export const test = base.extend<{ baseURL: string }>({
   // Set baseURL from environment or compute from worktree
-  baseURL: async (_deps, use) => {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures require destructured first arg
+  baseURL: async ({}, use) => {
     // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test-only env var
     const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${getWorktreeBasePort()}`;
     await use(baseURL);
