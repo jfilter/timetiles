@@ -106,18 +106,10 @@ const generate = () => {
     execSync("payload generate:db-schema", { stdio: "pipe" });
     logger.info("✓ Database schema generated");
 
-    // Format both generated files
-    logger.info("✨ Formatting generated files...");
-    execSync("pnpm exec oxfmt --write payload-types.ts payload-generated-schema.ts", {
-      stdio: "pipe",
-      cwd: process.cwd(),
-    });
-    logger.info("✓ Files formatted");
-
-    // Fix circular foreign key references AFTER formatting (formatter merges duplicate imports)
+    // Fix circular foreign key references in generated schema
     fixCircularReferences("payload-generated-schema.ts");
 
-    logger.info("✅ Successfully generated and formatted all Payload files!");
+    logger.info("✅ Successfully generated all Payload files!");
     logger.info("Files updated: payload-types.ts, payload-generated-schema.ts");
   } catch (error) {
     logError(error, "Failed to generate Payload files");

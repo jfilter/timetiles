@@ -4,7 +4,7 @@
  * Test-specific utilities for generating random geospatial test data,
  * validating data distributions, and creating test scenarios.
  *
- * Re-exports production geospatial utilities from @/lib/geospatial for convenience.
+ * Re-exports production geospatial utilities from `lib/geospatial` for convenience.
  *
  * @module
  * @category Test Utilities

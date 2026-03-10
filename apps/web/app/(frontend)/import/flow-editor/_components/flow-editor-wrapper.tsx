@@ -1,7 +1,7 @@
 /**
  * Client-side wrapper for the flow editor with dynamic import.
  *
- * This wrapper handles the dynamic import of the heavy @xyflow/react library
+ * This wrapper handles the dynamic import of the heavy xyflow/react library
  * with SSR disabled, which must be done in a client component.
  *
  * @module

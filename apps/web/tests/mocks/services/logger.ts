@@ -58,7 +58,7 @@ export const mockLogger: any = {
 };
 
 /**
- * Apply this mock to replace @/lib/logger in your tests.
+ * Apply this mock to replace `lib/logger` in your tests.
  *
  * Usage in test files:
  * ```typescript

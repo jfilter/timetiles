@@ -3,7 +3,7 @@
  *
  * Contains functions for detecting ID fields, enumerations, and other
  * data patterns in schema analysis. Geo field detection is handled by
- * the @timetiles/payload-schema-detection plugin.
+ * the timetiles/payload-schema-detection plugin.
  *
  * @module
  * @category Services/SchemaBuilder

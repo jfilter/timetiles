@@ -121,6 +121,7 @@ export const MobileTabs = ({ activeTab, onTabChange, mapContent, chartContent, l
 
       {/* Tab bar - sticky at bottom for thumb reach */}
       <div className="bg-background/95 sticky bottom-0 z-10 border-t backdrop-blur-sm">
+        {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- has role="tablist" */}
         <div className="flex" role="tablist" aria-label="View options" onKeyDown={handleKeyDown}>
           {TAB_CONFIG.map(({ id, label, icon }) => (
             <TabButton

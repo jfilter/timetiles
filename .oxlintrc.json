@@ -689,8 +689,5 @@
       ],
       "rules": {}
     }
-  ],
-  "options": {
-    "typeAware": true
-  }
+  ]
 }

@@ -1,3 +1,4 @@
+/* oxlint-disable nextjs/no-html-link-for-pages -- CMS content links may be external */
 /**
  * Rich text renderer for Payload CMS content.
  *
