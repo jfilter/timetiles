@@ -27,6 +27,8 @@ export const SYSTEM_USER_EMAIL = "system@timetiles.internal";
 /**
  * Generate a cryptographically secure random string for the system user password.
  * This password will never be used but is required by Payload auth.
+ * Lazily evaluated to avoid calling crypto.getRandomValues at module load time
+ * (which fails in jsdom test environments).
  */
 const generateSecurePassword = (): string => {
   const array = new Uint8Array(32);
@@ -35,9 +37,10 @@ const generateSecurePassword = (): string => {
 };
 
 /**
- * System user configuration for creating the account.
+ * Build the system user configuration for creating the account.
+ * Uses a function to lazily generate the password (avoids module-load crypto issues).
  */
-const SYSTEM_USER_CONFIG = {
+const getSystemUserConfig = () => ({
   email: SYSTEM_USER_EMAIL,
   firstName: "Deleted",
   lastName: "User",
@@ -47,7 +50,7 @@ const SYSTEM_USER_CONFIG = {
   registrationSource: "admin" as const,
   // Password is required by Payload auth but will never be used
   password: generateSecurePassword(),
-};
+});
 
 /**
  * Service for managing the system user account.
@@ -104,7 +107,7 @@ export class SystemUserService {
     logger.info("Creating system user");
     const user = await this.payload.create({
       collection: "users",
-      data: SYSTEM_USER_CONFIG,
+      data: getSystemUserConfig(),
       overrideAccess: true,
     });
 

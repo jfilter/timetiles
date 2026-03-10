@@ -206,17 +206,22 @@ describe.sequential("Security Validation Tests", () => {
       expect(fetched.authConfig.bearerToken).toBe(TEST_CREDENTIALS.bearer.superSecretToken);
 
       // Verify the raw database value is NOT plaintext (encrypted at rest)
-      const db = payload.db;
-      const tableName = "scheduled_imports";
-      const rawResult = await db.execute({
-        raw: `SELECT auth_config_bearer_token FROM ${tableName} WHERE id = ${scheduledImport.id}`,
-      });
-      const rawRows = rawResult.rows ?? rawResult;
-      if (Array.isArray(rawRows) && rawRows.length > 0) {
-        const rawToken = rawRows[0].auth_config_bearer_token;
-        if (rawToken) {
-          expect(rawToken).not.toBe(TEST_CREDENTIALS.bearer.superSecretToken);
+      const { createDatabaseClient } = await import("@/lib/database/client");
+      const client = createDatabaseClient({ connectionString: process.env.DATABASE_URL! });
+      try {
+        await client.connect();
+        const rawResult = await client.query(
+          `SELECT auth_config_bearer_token FROM payload."scheduled_imports" WHERE id = $1`,
+          [scheduledImport.id]
+        );
+        if (rawResult.rows.length > 0) {
+          const rawToken = rawResult.rows[0].auth_config_bearer_token;
+          if (rawToken) {
+            expect(rawToken).not.toBe(TEST_CREDENTIALS.bearer.superSecretToken);
+          }
         }
+      } finally {
+        await client.end();
       }
     });
 
