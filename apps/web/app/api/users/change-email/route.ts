@@ -1,28 +1,28 @@
 /**
- * API endpoint for changing user email.
+ * API endpoint for changing a user's email address.
  *
- * Requires password verification before allowing the email to be changed.
- * Checks that the new email is not already in use.
- * After changing, sets the account as unverified and sends a verification
- * email to the new address, matching the registration flow's security model.
+ * Validates the new email, verifies the current password, checks for duplicates
+ * with anti-enumeration protection, sends verification and notification emails,
+ * and logs the change to the audit log.
  *
  * @module
  * @category API
  */
 import { randomBytes, randomInt } from "node:crypto";
 
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import type { Payload } from "payload";
 
+import { apiRoute } from "@/lib/api";
 import { EMAIL_REGEX } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
 import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 import { hashEmail } from "@/lib/utils/hash";
-import config from "@/payload.config";
+
+// ---------------------------------------------------------------------------
+// Email templates
+// ---------------------------------------------------------------------------
 
 const buildOldEmailNotificationHtml = (firstName: string) => `
   <!DOCTYPE html>
@@ -55,9 +55,13 @@ const buildVerificationEmailHtml = (verifyUrl: string, firstName: string) => `
   </html>
 `;
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 /** Update email, send verification to new address, notify old address, and audit. */
 const updateEmailAndNotify = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
+  payload: Payload,
   user: { id: number; email: string; firstName?: string | null },
   newEmail: string,
   clientId: string
@@ -106,49 +110,52 @@ const updateEmailAndNotify = async (
   logger.info({ userId: user.id, oldEmail: user.email, newEmail, clientId }, "Email changed, verification required");
 };
 
-export const POST = withAuth(async (request: AuthenticatedRequest) => {
-  const handleError = createErrorHandler("change email", logger);
-  try {
-    const payload = await getPayload({ config });
-    const user = request.user!;
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
 
+export const POST = apiRoute({
+  auth: "required",
+  handler: async ({ payload, user, req }) => {
     // Rate limiting
-    const clientId = getClientIdentifier(request);
+    const clientId = getClientIdentifier(req);
     const rateLimitService = getRateLimitService(payload);
 
-    // Check email change rate limit
     const emailChangeCheck = rateLimitService.checkConfiguredRateLimit(
       `email-change:${user.id}`,
       RATE_LIMITS.EMAIL_CHANGE
     );
 
     if (!emailChangeCheck.allowed) {
-      return NextResponse.json({ error: "Too many email change attempts. Please try again later." }, { status: 429 });
+      return Response.json({ error: "Too many email change attempts. Please try again later." }, { status: 429 });
     }
 
     // Parse request body
     let newEmail: string;
     let password: string;
     try {
-      const body = await request.json();
+      const body = await req.json();
       newEmail = body.newEmail?.trim().toLowerCase();
       password = body.password;
     } catch {
-      return badRequest("Invalid request body");
+      return Response.json({ error: "Invalid request body", code: "BAD_REQUEST" }, { status: 400 });
     }
 
     if (!newEmail || !password) {
-      return badRequest("New email and password are required");
+      return Response.json({ error: "New email and password are required", code: "BAD_REQUEST" }, { status: 400 });
     }
 
     // Validate email format
     if (!EMAIL_REGEX.test(newEmail)) {
-      return badRequest("Invalid email format");
+      return Response.json({ error: "Invalid email format", code: "BAD_REQUEST" }, { status: 400 });
     }
 
     // Check if email is same as current
     if (newEmail === user.email.toLowerCase()) {
-      return badRequest("New email must be different from current email");
+      return Response.json(
+        { error: "New email must be different from current email", code: "BAD_REQUEST" },
+        { status: 400 }
+      );
     }
 
     // Verify password
@@ -166,7 +173,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
         { userId: user.id, attemptedEmailHash: hashEmail(newEmail) },
         "Email change blocked - email already in use"
       );
-      return NextResponse.json({
+      return Response.json({
         success: true,
         message: "Email changed successfully. Please check your new email address for a verification link.",
         verificationRequired: true,
@@ -175,12 +182,10 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
 
     await updateEmailAndNotify(payload, user, newEmail, clientId);
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
       message: "Email changed successfully. Please check your new email address for a verification link.",
       verificationRequired: true,
     });
-  } catch (error) {
-    return handleError(error);
-  }
+  },
 });

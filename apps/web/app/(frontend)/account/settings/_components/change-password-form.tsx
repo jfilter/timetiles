@@ -59,7 +59,7 @@ export const ChangePasswordForm = () => {
         if (newPassword !== confirmPassword) {
           throw new Error("New passwords do not match");
         }
-        const response = await fetch("/api/account/change-password", {
+        const response = await fetch("/api/users/change-password", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

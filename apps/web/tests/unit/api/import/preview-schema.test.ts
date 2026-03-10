@@ -131,7 +131,11 @@ describe.sequential("POST /api/import/preview-schema", () => {
       fn.mockReset();
     }
 
-    // Default: authenticated user
+    // Default: authenticated user via apiRoute's payload.auth()
+    mocks.mockGetPayload.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({ user: mockUser }),
+    });
+    // Keep legacy mock for the withAuth-based auth test
     mocks.mockAuth.mockResolvedValue({ user: mockUser });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockBuildAuthHeaders.mockReturnValue({});
@@ -140,7 +144,9 @@ describe.sequential("POST /api/import/preview-schema", () => {
 
   describe("Authentication", () => {
     it("should return 401 when not authenticated", async () => {
-      mocks.mockAuth.mockResolvedValue({ user: null });
+      mocks.mockGetPayload.mockResolvedValue({
+        auth: vi.fn().mockResolvedValue({ user: null }),
+      });
 
       const formData = new FormData();
       formData.append("file", new File(["test"], "test.csv", { type: "text/csv" }));

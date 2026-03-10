@@ -9,14 +9,7 @@
  *
  * @module
  */
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
-
-import { logError } from "@/lib/logger";
-import type { AuthenticatedRequest } from "@/lib/middleware/auth";
-import { withOptionalAuth } from "@/lib/middleware/auth";
-import { internalError } from "@/lib/utils/api-response";
-import config from "@/payload.config";
+import { apiRoute } from "@/lib/api";
 
 export interface DataSourceCatalog {
   id: number;
@@ -34,17 +27,16 @@ export interface DataSourcesResponse {
   datasets: DataSourceDataset[];
 }
 
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
-  try {
-    const payload = await getPayload({ config });
-
+export const GET = apiRoute({
+  auth: "optional",
+  handler: async ({ user, payload }) => {
     const [catalogsResult, datasetsResult] = await Promise.all([
       payload.find({
         collection: "catalogs",
         limit: 500,
         pagination: false,
         select: { id: true, name: true },
-        user: request.user,
+        user,
         overrideAccess: false,
       }),
       payload.find({
@@ -53,7 +45,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
         pagination: false,
         depth: 1, // Need depth to get catalog relationship
         select: { id: true, name: true, catalog: true },
-        user: request.user,
+        user,
         overrideAccess: false,
       }),
     ]);
@@ -67,9 +59,6 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
       catalogId: typeof d.catalog === "object" && d.catalog != null ? d.catalog.id : null,
     }));
 
-    return NextResponse.json({ catalogs, datasets });
-  } catch (error) {
-    logError(error, "Failed to fetch data sources");
-    return internalError("Failed to fetch data sources");
-  }
+    return Response.json({ catalogs, datasets });
+  },
 });

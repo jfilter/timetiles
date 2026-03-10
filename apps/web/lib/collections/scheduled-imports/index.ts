@@ -28,7 +28,6 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 
 import { createCommonConfig, createOwnershipAccess } from "../shared-fields";
-import { triggerEndpoint } from "./endpoints";
 import { authFields } from "./fields/auth-fields";
 import { basicFields } from "./fields/basic-fields";
 import { executionFields } from "./fields/execution-fields";
@@ -211,7 +210,6 @@ const ScheduledImports: CollectionConfig = {
     // Only owners, editors, or admins can read version history
     readVersions: createOwnershipAccess("scheduled-imports"),
   },
-  endpoints: [triggerEndpoint],
   fields: [
     ...basicFields,
     ...authFields,

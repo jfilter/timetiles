@@ -12,21 +12,12 @@
  * @module
  * @category API
  */
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
-
+import { apiRoute, AppError, ValidationError } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { EMAIL_REGEX, MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { logError, logger } from "@/lib/logger";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
-import { badRequest, createErrorHandler, forbidden } from "@/lib/utils/api-response";
 import { maskEmail } from "@/lib/utils/masking";
-import config from "@/payload.config";
-
-interface RegisterRequest {
-  email: string;
-  password: string;
-}
 
 // Rate limit config for registration (strict to prevent enumeration attacks)
 const REGISTRATION_RATE_LIMIT = {
@@ -70,52 +61,50 @@ const generateAccountExistsEmailHTML = (resetUrl: string): string => {
   `;
 };
 
-export const POST = async (request: Request): Promise<Response> => {
-  const handleError = createErrorHandler("register", logger);
-  try {
-    const payload = await getPayload({ config });
-
+export const POST = apiRoute({
+  auth: "none",
+  handler: async ({ req, payload }) => {
     // Check if registration is enabled
     const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
     if (!(await isFeatureEnabled(payload, "enableRegistration"))) {
-      return forbidden("Registration is currently disabled.");
+      throw new AppError(403, "Registration is currently disabled.", "FORBIDDEN");
     }
 
     // Apply rate limiting
-    const clientId = getClientIdentifier(request);
+    const clientId = getClientIdentifier(req);
     const rateLimitService = getRateLimitService(payload);
     const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(clientId, REGISTRATION_RATE_LIMIT);
 
     if (!rateLimitCheck.allowed) {
       const retryAfter = rateLimitCheck.resetTime ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000) : 60;
 
-      return NextResponse.json(
-        { error: "Too many registration attempts. Please try again later.", retryAfter },
-        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      return new Response(
+        JSON.stringify({ error: "Too many registration attempts. Please try again later.", retryAfter }),
+        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(retryAfter) } }
       );
     }
 
     // Parse request body
-    const body = (await request.json()) as RegisterRequest;
+    const body = (await req.json()) as { email: string; password: string };
     const { email, password } = body;
 
     // Validate required fields
     if (!email || typeof email !== "string") {
-      return badRequest("Email is required");
+      throw new ValidationError("Email is required");
     }
 
     if (!password || typeof password !== "string") {
-      return badRequest("Password is required");
+      throw new ValidationError("Password is required");
     }
 
     // Basic email validation
     if (!EMAIL_REGEX.test(email)) {
-      return badRequest("Invalid email address");
+      throw new ValidationError("Invalid email address");
     }
 
     // Password validation
     if (password.length < MIN_PASSWORD_LENGTH) {
-      return badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
     }
 
     // Normalize email
@@ -151,7 +140,10 @@ export const POST = async (request: Request): Promise<Response> => {
       }
 
       // Return same success response as new registration
-      return NextResponse.json({ success: true, message: "Please check your email to verify your account." });
+      return Response.json({
+        success: true,
+        message: "Please check your email to verify your account.",
+      });
     }
 
     // Create new user - Payload will automatically send verification email
@@ -173,7 +165,10 @@ export const POST = async (request: Request): Promise<Response> => {
 
       logger.info(`New user registered: ${maskEmail(normalizedEmail)}`);
 
-      return NextResponse.json({ success: true, message: "Please check your email to verify your account." });
+      return Response.json({
+        success: true,
+        message: "Please check your email to verify your account.",
+      });
     } catch (createError) {
       // Handle potential race condition where user was created between our check and create
       // This could happen under high concurrency
@@ -184,13 +179,14 @@ export const POST = async (request: Request): Promise<Response> => {
         // Return success to prevent enumeration
         logger.warn(`Race condition during registration for: ${maskEmail(normalizedEmail)}`);
 
-        return NextResponse.json({ success: true, message: "Please check your email to verify your account." });
+        return Response.json({
+          success: true,
+          message: "Please check your email to verify your account.",
+        });
       }
 
       // Re-throw other errors
       throw createError;
     }
-  } catch (error) {
-    return handleError(error);
-  }
-};
+  },
+});

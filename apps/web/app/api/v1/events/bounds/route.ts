@@ -14,14 +14,11 @@
  * @category API
  */
 import { sql } from "@payloadcms/db-postgres";
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
 
+import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
-import { createErrorHandler } from "@/lib/utils/api-response";
 import { extractBaseEventParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 import {
   buildCatalogSqlCondition,
@@ -29,19 +26,21 @@ import {
   buildDateSqlConditions,
   buildFieldFilterSqlConditions,
 } from "@/lib/utils/event-sql-filters";
-import config from "@/payload.config";
 
 /**
  * Response format for the bounds endpoint.
  */
 export interface BoundsResponse {
   /** Geographic bounds of matching events, or null if no events match */
-  bounds: { north: number; south: number; east: number; west: number } | null;
+  bounds: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  } | null;
   /** Total count of events within bounds */
   count: number;
 }
-
-const handleError = createErrorHandler("fetch event bounds", logger);
 
 /**
  * GET /api/v1/events/bounds
@@ -58,19 +57,19 @@ const handleError = createErrorHandler("fetch event bounds", logger);
  * - bounds: { north, south, east, west } or null if no events
  * - count: number of events
  */
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
-  try {
-    const payload = await getPayload({ config });
-    const parameters = extractBaseEventParameters(request.nextUrl.searchParams);
+export const GET = apiRoute({
+  auth: "optional",
+  handler: async ({ req, user, payload }) => {
+    const parameters = extractBaseEventParameters(req.nextUrl.searchParams);
     const endDate = normalizeEndDate(parameters.endDate);
     const hasCatalogFilter = parameters.catalog != null && parameters.catalog !== "";
 
     // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && !hasCatalogFilter) {
-      return NextResponse.json<BoundsResponse>({ bounds: null, count: 0 });
+      return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
     }
 
     // Build SQL conditions
@@ -85,7 +84,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
       if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
         conditions.push(buildCatalogSqlCondition(catalogId));
       } else {
-        return NextResponse.json<BoundsResponse>({ bounds: null, count: 0 });
+        return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
       }
     } else {
       conditions.push(buildCatalogSqlCondition(undefined, accessibleCatalogIds));
@@ -130,7 +129,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
 
     // Check if we have any results with valid bounds
     if (!row || row.count === 0 || row.west == null || row.south == null || row.east == null || row.north == null) {
-      return NextResponse.json<BoundsResponse>({ bounds: null, count: 0 });
+      return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
     }
 
     logger.debug("Computed event bounds", {
@@ -138,7 +137,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
       bounds: { west: row.west, south: row.south, east: row.east, north: row.north },
     });
 
-    return NextResponse.json<BoundsResponse>({
+    return Response.json({
       bounds: {
         north: parseFloat(row.north),
         south: parseFloat(row.south),
@@ -146,8 +145,6 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
         west: parseFloat(row.west),
       },
       count: row.count,
-    });
-  } catch (error) {
-    return handleError(error);
-  }
+    } satisfies BoundsResponse);
+  },
 });

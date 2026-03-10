@@ -116,7 +116,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
     void (async () => {
       try {
-        const response = await fetch("/api/account/delete", {
+        const response = await fetch("/api/users/schedule-deletion", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

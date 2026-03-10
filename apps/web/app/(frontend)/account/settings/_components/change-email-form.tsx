@@ -52,7 +52,7 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
           throw new Error("New email must be different from current email");
         }
 
-        const response = await fetch("/api/account/change-email", {
+        const response = await fetch("/api/users/change-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

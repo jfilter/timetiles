@@ -1,28 +1,33 @@
 /**
- * API endpoint for downloading a specific data export.
+ * API endpoint for downloading a completed data export.
  *
- * GET: Download the export ZIP file
+ * Validates the export ID, verifies ownership, checks export status
+ * and expiry, and streams the export ZIP file to the client.
  *
  * @module
  * @category API
  */
 import { createReadStream } from "fs";
 import { stat } from "fs/promises";
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
 import { Readable } from "stream";
 
+import type { Payload } from "payload";
+import { z } from "zod";
+
+import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { createErrorHandler } from "@/lib/utils/api-response";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import config from "@/payload.config";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 /** Stream the export file to the client after all validation passes. */
 const streamExportFile = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
+  payload: Payload,
   exportId: string,
   normalizedExportId: number,
   exportRecord: { filePath?: string | null; expiresAt?: string | null },
@@ -36,13 +41,13 @@ const streamExportFile = async (
       data: { status: "expired" },
       overrideAccess: true,
     });
-    return NextResponse.json({ error: "Export has expired. Please request a new export." }, { status: 410 });
+    return Response.json({ error: "Export has expired. Please request a new export." }, { status: 410 });
   }
 
   // Verify file exists
   const filePath = exportRecord.filePath;
   if (!filePath) {
-    return NextResponse.json({ error: "Export file not found" }, { status: 404 });
+    return Response.json({ error: "Export file not found" }, { status: 404 });
   }
 
   let fileStats;
@@ -55,10 +60,10 @@ const streamExportFile = async (
       data: { status: "failed", errorLog: "Export file missing from disk" },
       overrideAccess: true,
     });
-    return NextResponse.json({ error: "Export file not found on disk" }, { status: 404 });
+    return Response.json({ error: "Export file not found on disk" }, { status: 404 });
   }
 
-  // Increment download count — re-read to minimize race window
+  // Increment download count -- re-read to minimize race window
   const freshExport = await payload.findByID({
     collection: DATA_EXPORTS_COLLECTION,
     id: normalizedExportId,
@@ -88,30 +93,19 @@ const streamExportFile = async (
   });
 };
 
-/**
- * GET /api/account/download-data/[exportId]
- * Download a specific export.
- */
-export const GET = async (
-  request: Request,
-  { params }: { params: Promise<{ exportId: string }> }
-): Promise<Response> => {
-  const handleError = createErrorHandler("download export", logger);
-  try {
-    const { exportId } = await params;
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
+
+export const GET = apiRoute({
+  auth: "required",
+  params: z.object({ id: z.string() }),
+  handler: async ({ payload, user, params }) => {
+    const exportId = params.id;
+
     const normalizedExportId = parseStrictInteger(exportId);
-
     if (normalizedExportId == null) {
-      return NextResponse.json({ error: "Invalid export ID" }, { status: 400 });
-    }
-
-    const payload = await getPayload({ config });
-
-    // Authenticate user
-    const { user } = await payload.auth({ headers: request.headers });
-
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      return Response.json({ error: "Invalid export ID" }, { status: 400 });
     }
 
     // Fetch export record
@@ -122,37 +116,41 @@ export const GET = async (
     });
 
     if (!exportRecord) {
-      return NextResponse.json({ error: "Export not found" }, { status: 404 });
+      return Response.json({ error: "Export not found" }, { status: 404 });
     }
 
     // Verify ownership
     const ownerId = extractRelationId(exportRecord.user);
 
     if (user.id !== ownerId && user.role !== "admin") {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      return Response.json({ error: "Access denied" }, { status: 403 });
     }
 
     // Check status
     if (exportRecord.status === "pending" || exportRecord.status === "processing") {
-      return NextResponse.json(
-        { status: exportRecord.status, message: "Export is still processing. Please wait." },
+      return Response.json(
+        {
+          status: exportRecord.status,
+          message: "Export is still processing. Please wait.",
+        },
         { status: 202 }
       );
     }
 
     if (exportRecord.status === "failed") {
-      return NextResponse.json(
-        { error: "Export failed", reason: exportRecord.errorLog ?? "Unknown error" },
+      return Response.json(
+        {
+          error: "Export failed",
+          reason: exportRecord.errorLog ?? "Unknown error",
+        },
         { status: 500 }
       );
     }
 
     if (exportRecord.status === "expired") {
-      return NextResponse.json({ error: "Export has expired. Please request a new export." }, { status: 410 });
+      return Response.json({ error: "Export has expired. Please request a new export." }, { status: 410 });
     }
 
     return await streamExportFile(payload, exportId, normalizedExportId, exportRecord, user.id);
-  } catch (error) {
-    return handleError(error);
-  }
-};
+  },
+});

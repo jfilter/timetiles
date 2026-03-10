@@ -133,7 +133,7 @@ export const dataExportJob = {
       if (!process.env.NEXT_PUBLIC_PAYLOAD_URL) {
         logger.warn("NEXT_PUBLIC_PAYLOAD_URL not set, using fallback for export download URL");
       }
-      const downloadUrl = `${baseUrl}/api/account/download-data/${exportId}`;
+      const downloadUrl = `${baseUrl}/api/data-exports/${exportId}/download`;
 
       // Calculate file size in MB for email
       const fileSizeMB = result.fileSize / (1024 * 1024);

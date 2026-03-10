@@ -1,33 +1,25 @@
 /**
  * API endpoint for scheduling account deletion.
  *
- * This endpoint allows users to schedule their account for deletion.
- * A grace period is applied during which the user can cancel.
- * Requires password re-verification for security.
+ * Verifies the user's password, checks eligibility for deletion,
+ * schedules the account for deletion after a grace period, and
+ * logs the action to the audit log.
  *
  * @module
  * @category API
  */
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
-
+import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
 import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
-import config from "@/payload.config";
 
-export const POST = withAuth(async (request: AuthenticatedRequest) => {
-  const handleError = createErrorHandler("schedule account deletion", logger);
-  try {
-    const payload = await getPayload({ config });
-    const user = request.user!;
-
+export const POST = apiRoute({
+  auth: "required",
+  handler: async ({ payload, user, req }) => {
     // Rate limiting
-    const clientId = getClientIdentifier(request);
+    const clientId = getClientIdentifier(req);
     const rateLimitService = getRateLimitService(payload);
 
     // Check deletion rate limit
@@ -37,20 +29,20 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     );
 
     if (!deletionCheck.allowed) {
-      return NextResponse.json({ error: "Too many deletion attempts. Please try again later." }, { status: 429 });
+      return Response.json({ error: "Too many deletion attempts. Please try again later." }, { status: 429 });
     }
 
     // Parse request body
     let password: string;
     try {
-      const body = await request.json();
+      const body = await req.json();
       password = body.password;
     } catch {
-      return badRequest("Invalid request body");
+      return Response.json({ error: "Invalid request body", code: "BAD_REQUEST" }, { status: 400 });
     }
 
     if (!password) {
-      return badRequest("Password is required");
+      return Response.json({ error: "Password is required", code: "BAD_REQUEST" }, { status: 400 });
     }
 
     // Check password attempt rate limit
@@ -60,10 +52,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     );
 
     if (!passwordCheck.allowed) {
-      return NextResponse.json(
-        { error: "Too many failed password attempts. Please try again later." },
-        { status: 429 }
-      );
+      return Response.json({ error: "Too many failed password attempts. Please try again later." }, { status: 429 });
     }
 
     // Verify password
@@ -82,13 +71,19 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     const canDelete = await deletionService.canDeleteUser(user.id);
 
     if (!canDelete.allowed) {
-      return badRequest(canDelete.reason ?? "Account cannot be deleted");
+      return Response.json(
+        { error: canDelete.reason ?? "Account cannot be deleted", code: "BAD_REQUEST" },
+        { status: 400 }
+      );
     }
 
     // Check if already pending deletion
     if (user.deletionStatus === "pending_deletion") {
-      return NextResponse.json(
-        { error: "Deletion already scheduled", deletionScheduledAt: user.deletionScheduledAt },
+      return Response.json(
+        {
+          error: "Deletion already scheduled",
+          deletionScheduledAt: user.deletionScheduledAt,
+        },
         { status: 400 }
       );
     }
@@ -105,17 +100,19 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     });
 
     logger.info(
-      { userId: user.id, deletionScheduledAt: result.deletionScheduledAt, clientId },
+      {
+        userId: user.id,
+        deletionScheduledAt: result.deletionScheduledAt,
+        clientId,
+      },
       "Account deletion scheduled"
     );
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
       message: `Your account will be deleted in ${DELETION_GRACE_PERIOD_DAYS} days. You can cancel anytime before then.`,
       deletionScheduledAt: result.deletionScheduledAt,
       summary: result.summary,
     });
-  } catch (error) {
-    return handleError(error);
-  }
+  },
 });

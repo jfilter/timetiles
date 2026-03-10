@@ -23,11 +23,21 @@ vi.mock("@/lib/middleware/auth", () => ({
   withAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("@/lib/middleware/rate-limit", () => ({
+  withRateLimit: (handler: any) => handler,
+}));
 
-vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+}));
 
-vi.mock("@/lib/geospatial", () => ({ parseBoundsParameter: mocks.mockParseBoundsParameter }));
+vi.mock("@/lib/services/access-control", () => ({
+  getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
+}));
+
+vi.mock("@/lib/geospatial", () => ({
+  parseBoundsParameter: mocks.mockParseBoundsParameter,
+}));
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractBaseEventParameters: mocks.mockExtractBaseEventParameters,
@@ -53,6 +63,7 @@ vi.mock("@payloadcms/db-postgres", () => ({
   }),
 }));
 
+vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -74,7 +85,10 @@ const createRequest = (queryString: string, user: unknown = null) => {
  * Sets up default mock implementations for a standard successful request.
  */
 const setupDefaults = () => {
-  mocks.mockGetPayload.mockResolvedValue({ db: { drizzle: { execute: mocks.mockDrizzleExecute } } });
+  mocks.mockGetPayload.mockResolvedValue({
+    auth: vi.fn().mockResolvedValue({ user: null }),
+    db: { drizzle: { execute: mocks.mockDrizzleExecute } },
+  });
 
   mocks.mockExtractBaseEventParameters.mockReturnValue({
     catalog: null,
@@ -101,7 +115,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
     it("should return 400 when groupBy parameter is missing", async () => {
       const req = createRequest("");
 
-      const response = await GET(req, undefined);
+      const response = await GET(req, { params: Promise.resolve({}) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -111,7 +125,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
     it("should return 400 when groupBy value is invalid", async () => {
       const req = createRequest("?groupBy=invalid");
 
-      const response = await GET(req, undefined);
+      const response = await GET(req, { params: Promise.resolve({}) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -121,14 +135,13 @@ describe.sequential("GET /api/v1/events/stats", () => {
     it("should return error when bounds parameter is invalid", async () => {
       const mockErrorResponse = {
         status: 400,
-        // oxlint-disable-next-line promise/prefer-await-to-then
         json: () => Promise.resolve({ error: "Invalid bounds" }),
       };
       mocks.mockParseBoundsParameter.mockReturnValue({ error: mockErrorResponse });
 
       const req = createRequest("?groupBy=catalog&bounds=invalid");
 
-      const response = await GET(req, undefined);
+      const response = await GET(req, { params: Promise.resolve({}) });
 
       expect(response.status).toBe(400);
       const data = await response.json();
@@ -142,11 +155,15 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       const req = createRequest("?groupBy=catalog");
 
-      const response = await GET(req, undefined);
+      const response = await GET(req, { params: Promise.resolve({}) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toEqual({ items: [], total: 0, groupedBy: "catalog" });
+      expect(data).toEqual({
+        items: [],
+        total: 0,
+        groupedBy: "catalog",
+      });
       // Should not execute any SQL query
       expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
     });
@@ -163,8 +180,12 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       const req = createRequest("?groupBy=catalog");
 
-      const response = await GET(req, undefined);
+      const response = await GET(req, { params: Promise.resolve({}) });
 
+      if (response.status !== 200) {
+        const body = await response.clone().json();
+        console.error("DEBUG events-stats catalog 500 body:", JSON.stringify(body));
+      }
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.groupedBy).toBe("catalog");
@@ -186,7 +207,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       const req = createRequest("?groupBy=dataset");
 
-      const response = await GET(req, undefined);
+      const response = await GET(req, { params: Promise.resolve({}) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -209,7 +230,9 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       // First execute: main aggregation query returns only dataset 10
       mocks.mockDrizzleExecute
-        .mockResolvedValueOnce({ rows: [{ id: 10, name: "Dataset X", count: 5 }] })
+        .mockResolvedValueOnce({
+          rows: [{ id: 10, name: "Dataset X", count: 5 }],
+        })
         // Second execute: fetch missing dataset names for 20 and 30
         .mockResolvedValueOnce({
           rows: [
@@ -220,7 +243,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       const req = createRequest("?groupBy=dataset&datasets=10,20,30");
 
-      const response = await GET(req, undefined);
+      const response = await GET(req, { params: Promise.resolve({}) });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -243,11 +266,12 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
       const req = createRequest("?groupBy=catalog");
 
-      const response = await GET(req, undefined);
+      const response = await GET(req, { params: Promise.resolve({}) });
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBe("Failed to aggregate events");
+      // Error is caught by the apiRoute framework's outer handler
+      expect(data.error).toBe("Internal server error");
     });
   });
 });

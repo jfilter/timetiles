@@ -11,16 +11,11 @@
  * @module
  * @category API
  */
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import { z } from "zod";
 
+import { apiRoute, NotFoundError } from "@/lib/api";
 import { STAGE_DISPLAY_NAMES, STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
-import { logError } from "@/lib/logger";
-import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
-import { withRateLimit } from "@/lib/middleware/rate-limit";
 import type { StageProgress } from "@/lib/types/progress-tracking";
-import { internalError, notFound } from "@/lib/utils/api-response";
-import config from "@/payload.config";
 import type { ImportJob } from "@/payload-types";
 
 /**
@@ -34,9 +29,19 @@ interface FormattedStage {
   weight: number;
   startedAt: string | null;
   completedAt: string | null;
-  batches: { current: number; total: number };
-  currentBatch: { rowsProcessed: number; rowsTotal: number; percentage: number };
-  performance: { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null };
+  batches: {
+    current: number;
+    total: number;
+  };
+  currentBatch: {
+    rowsProcessed: number;
+    rowsTotal: number;
+    percentage: number;
+  };
+  performance: {
+    rowsPerSecond: number | null;
+    estimatedSecondsRemaining: number | null;
+  };
 }
 
 /**
@@ -51,7 +56,10 @@ interface FormattedJobProgress {
   estimatedCompletionTime: string | null;
   stages: FormattedStage[];
   errors: number;
-  duplicates: { internal: number; external: number };
+  duplicates: {
+    internal: number;
+    external: number;
+  };
   schemaValidation?: ImportJob["schemaValidation"];
   results?: ImportJob["results"];
 }
@@ -99,7 +107,10 @@ const formatStage = (stageName: string, stageData: StageProgress): FormattedStag
     weight: STAGE_TIME_WEIGHTS[stageName as keyof typeof STAGE_TIME_WEIGHTS] || 0,
     startedAt: stageData.startedAt ? new Date(stageData.startedAt).toISOString() : null,
     completedAt: stageData.completedAt ? new Date(stageData.completedAt).toISOString() : null,
-    batches: { current: stageData.batchesProcessed, total: stageData.batchesTotal },
+    batches: {
+      current: stageData.batchesProcessed,
+      total: stageData.batchesTotal,
+    },
     currentBatch: {
       rowsProcessed: stageData.currentBatchRows,
       rowsTotal: stageData.currentBatchTotal,
@@ -144,90 +155,82 @@ const formatJobProgress = (job: ImportJob): FormattedJobProgress => {
   };
 };
 
-export const GET = withRateLimit(
-  withAuth(
-    async (
-      request: AuthenticatedRequest,
-      context: { params: Promise<{ importId: string }> }
-    ): Promise<NextResponse> => {
-      try {
-        const payload = await getPayload({ config });
+export const GET = apiRoute({
+  auth: "required",
+  rateLimit: { configName: "PROGRESS_CHECK" },
+  params: z.object({ importId: z.string() }),
+  handler: async ({ user, payload, params }) => {
+    const { importId } = params;
 
-        const { importId } = await context.params;
+    // Get the import file with access control enforced
+    const importFile = await payload
+      .findByID({
+        collection: "import-files",
+        id: importId,
+        depth: 1, // Include catalog details
+        user,
+        overrideAccess: false,
+      })
+      .catch(() => null);
 
-        // Get the import file with access control enforced
-        const importFile = await payload
-          .findByID({
-            collection: "import-files",
-            id: importId,
-            depth: 1, // Include catalog details
-            user: request.user,
-            overrideAccess: false,
-          })
-          .catch(() => null);
-
-        if (!importFile) {
-          return notFound("Import not found or access denied");
-        }
-
-        // Get all related import jobs with dataset details
-        const importJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importId } },
-          pagination: false,
-          depth: 1, // Include dataset details
-          user: request.user,
-          overrideAccess: false,
-        });
-
-        const jobs = importJobs.docs;
-
-        // Calculate overall progress as average of all job progress percentages
-        const overallProgress =
-          jobs.length > 0
-            ? jobs.reduce((sum, job) => {
-                const jobProgress = (job.progress?.overallPercentage as number | undefined) ?? 0;
-                return sum + jobProgress;
-              }, 0) / jobs.length
-            : 0;
-
-        // Get earliest estimated completion time
-        const estimatedCompletionTime = jobs
-          .map((job) => job.progress?.estimatedCompletionTime as Date | undefined)
-          .filter((time): time is Date => time != null)
-          .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
-
-        // Extract catalog ID from relationship (can be object or number)
-        const catalogId =
-          typeof importFile.catalog === "object" && importFile.catalog !== null
-            ? importFile.catalog.id
-            : importFile.catalog;
-
-        // Build comprehensive response
-        const response = {
-          type: "import-file",
-          id: importFile.id,
-          status: importFile.status,
-          originalName: importFile.originalName,
-          catalogId: catalogId ?? null,
-          datasetsCount: importFile.datasetsCount,
-          datasetsProcessed: importFile.datasetsProcessed,
-          overallProgress: Math.round(overallProgress),
-          estimatedCompletionTime: estimatedCompletionTime ? new Date(estimatedCompletionTime).toISOString() : null,
-          jobs: jobs.map(formatJobProgress),
-          errorLog: importFile.errorLog,
-          completedAt: importFile.completedAt,
-          createdAt: importFile.createdAt,
-        };
-
-        return NextResponse.json(response);
-      } catch (error) {
-        const { importId } = await context.params;
-        logError(error, "Failed to get import progress", { importId });
-
-        return internalError("Failed to get import progress");
-      }
+    if (!importFile) {
+      throw new NotFoundError("Import not found or access denied");
     }
-  ),
-  { configName: "PROGRESS_CHECK" }
-);
+
+    // Get all related import jobs with dataset details
+    const importJobs = await payload.find({
+      collection: "import-jobs",
+      where: {
+        importFile: {
+          equals: importId,
+        },
+      },
+      pagination: false,
+      depth: 1, // Include dataset details
+      user,
+      overrideAccess: false,
+    });
+
+    const jobs = importJobs.docs;
+
+    // Calculate overall progress as average of all job progress percentages
+    const overallProgress =
+      jobs.length > 0
+        ? jobs.reduce((sum, job) => {
+            const jobProgress = (job.progress?.overallPercentage as number | undefined) ?? 0;
+            return sum + jobProgress;
+          }, 0) / jobs.length
+        : 0;
+
+    // Get earliest estimated completion time
+    const estimatedCompletionTime = jobs
+      .map((job) => job.progress?.estimatedCompletionTime as Date | undefined)
+      .filter((time): time is Date => time != null)
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
+
+    // Extract catalog ID from relationship (can be object or number)
+    const catalogId =
+      typeof importFile.catalog === "object" && importFile.catalog !== null
+        ? importFile.catalog.id
+        : importFile.catalog;
+
+    // Build comprehensive response
+    const response = {
+      type: "import-file",
+      id: importFile.id,
+      status: importFile.status,
+      originalName: importFile.originalName,
+      catalogId: catalogId ?? null,
+      datasetsCount: importFile.datasetsCount,
+      datasetsProcessed: importFile.datasetsProcessed,
+      overallProgress: Math.round(overallProgress),
+      estimatedCompletionTime: estimatedCompletionTime ? new Date(estimatedCompletionTime).toISOString() : null,
+      jobs: jobs.map(formatJobProgress),
+      errorLog: importFile.errorLog,
+      completedAt: importFile.completedAt,
+      createdAt: importFile.createdAt,
+    };
+
+    return Response.json(response);
+  },
+});

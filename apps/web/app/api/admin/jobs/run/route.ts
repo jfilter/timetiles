@@ -10,12 +10,10 @@
  * @category API Routes
  */
 
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import type { Payload } from "payload";
 
+import { apiRoute, ForbiddenError } from "@/lib/api";
 import { createLogger } from "@/lib/logger";
-import { withAdminAuth } from "@/lib/middleware/auth";
-import config from "@/payload.config";
 
 const logger = createLogger("api-admin-jobs-run");
 
@@ -25,7 +23,7 @@ interface RunJobsRequest {
 }
 
 /** Fetch job stats for logging */
-const fetchJobStats = async (payload: Awaited<ReturnType<typeof getPayload>>) => {
+const fetchJobStats = async (payload: Payload) => {
   const [payloadJobs, importJobs, importFiles] = await Promise.all([
     payload.find({ collection: "payload-jobs", limit: 1000 }),
     payload.find({ collection: "import-jobs", limit: 1000, select: { stage: true } }),
@@ -48,13 +46,13 @@ const mapJobStages = (docs: Array<{ id: number; stage?: string | null }>) =>
  * This endpoint is primarily for E2E testing where we need to
  * process jobs synchronously rather than via cron.
  */
-export const POST = withAdminAuth(async (req) => {
-  try {
+export const POST = apiRoute({
+  auth: "admin",
+  handler: async ({ req, payload }) => {
     if (process.env.NODE_ENV === "production") {
-      return NextResponse.json({ error: "Not available in production" }, { status: 403 });
+      throw new ForbiddenError("Not available in production");
     }
 
-    const payload = await getPayload({ config });
     const body = (await req.json().catch(() => ({}))) as RunJobsRequest;
     const limit = body.limit ?? 100;
     const iterations = body.iterations ?? 10;
@@ -85,7 +83,7 @@ export const POST = withAdminAuth(async (req) => {
       importJobStages: mapJobStages(final.importJobs.docs),
     });
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
       iterationsRun,
       debug: {
@@ -102,9 +100,5 @@ export const POST = withAdminAuth(async (req) => {
         },
       },
     });
-  } catch (error) {
-    logger.error("Failed to run jobs", { error });
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: "Failed to run jobs", details: errorMessage }, { status: 500 });
-  }
+  },
 });

@@ -652,8 +652,8 @@ describe.sequential("POST /api/import/configure", () => {
       const body = await response.json();
 
       expect(response.status).toBe(500);
-      expect(body.error).toBe("Failed to start import");
-      expect(body.details).toBe("Database connection failed");
+      // Error is caught by the apiRoute framework's outer handler
+      expect(body.error).toBe("Internal server error");
       expect(body.code).toBe("INTERNAL_ERROR");
     });
   });

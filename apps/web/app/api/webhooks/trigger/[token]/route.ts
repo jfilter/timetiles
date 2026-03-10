@@ -8,17 +8,14 @@
  * @category API
  */
 
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import type { Payload } from "payload";
-import { getPayload } from "payload";
+import { z } from "zod";
 
+import { apiRoute } from "@/lib/api";
 import { JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import config from "@/payload.config";
 import type { ScheduledImport } from "@/payload-types";
 
 interface RateLimitResponse {
@@ -29,28 +26,27 @@ interface RateLimitResponse {
   retryAfter: string;
 }
 
-const createRateLimitResponse = (rateLimitCheck: {
-  failedWindow?: string;
-  resetTime?: number;
-}): NextResponse<RateLimitResponse> => {
+const createRateLimitResponse = (rateLimitCheck: { failedWindow?: string; resetTime?: number }): Response => {
   const message =
     rateLimitCheck.failedWindow === "burst"
       ? "Too many requests. Please wait 10 seconds between webhook calls."
       : "Hourly rate limit exceeded. Maximum 5 requests per hour.";
 
-  return NextResponse.json(
-    {
-      success: false,
-      error: "Rate limit exceeded",
-      message,
-      limitType: rateLimitCheck.failedWindow,
-      retryAfter: new Date(rateLimitCheck.resetTime ?? Date.now()).toISOString(),
+  const body: RateLimitResponse = {
+    success: false,
+    error: "Rate limit exceeded",
+    message,
+    limitType: rateLimitCheck.failedWindow,
+    retryAfter: new Date(rateLimitCheck.resetTime ?? Date.now()).toISOString(),
+  };
+
+  return new Response(JSON.stringify(body), {
+    status: 429,
+    headers: {
+      "Content-Type": "application/json",
+      "Retry-After": Math.ceil(((rateLimitCheck.resetTime ?? Date.now()) - Date.now()) / 1000).toString(),
     },
-    {
-      status: 429,
-      headers: { "Retry-After": Math.ceil(((rateLimitCheck.resetTime ?? Date.now()) - Date.now()) / 1000).toString() },
-    }
-  );
+  });
 };
 
 const generateImportName = (scheduledImport: ScheduledImport, currentTime: Date): string => {
@@ -69,14 +65,25 @@ const generateImportName = (scheduledImport: ScheduledImport, currentTime: Date)
  * when processing finishes.
  */
 const updateStatisticsOnTrigger = async (payload: Payload, scheduledImport: ScheduledImport): Promise<void> => {
-  const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
+  const stats = scheduledImport.statistics ?? {
+    totalRuns: 0,
+    successfulRuns: 0,
+    failedRuns: 0,
+    averageDuration: 0,
+  };
   stats.totalRuns = (stats.totalRuns ?? 0) + 1;
 
-  await payload.update({ collection: "scheduled-imports", id: scheduledImport.id, data: { statistics: stats } });
+  await payload.update({
+    collection: "scheduled-imports",
+    id: scheduledImport.id,
+    data: {
+      statistics: stats,
+    },
+  });
 };
 
 /** Queue the import job and update statistics for a validated scheduled import. */
-const queueImportAndRespond = async (payload: Payload, scheduledImport: ScheduledImport): Promise<NextResponse> => {
+const queueImportAndRespond = async (payload: Payload, scheduledImport: ScheduledImport): Promise<Response> => {
   const currentTime = new Date();
   const importName = generateImportName(scheduledImport, currentTime);
 
@@ -85,7 +92,10 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
   await payload.update({
     collection: "scheduled-imports",
     id: scheduledImport.id,
-    data: { lastStatus: "running", lastRun: currentTime.toISOString() },
+    data: {
+      lastStatus: "running",
+      lastRun: currentTime.toISOString(),
+    },
   });
 
   // Queue URL fetch job - wrapped in try/catch to revert status on failure
@@ -112,9 +122,11 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
     await payload.update({
       collection: "scheduled-imports",
       id: scheduledImport.id,
-      data: { lastStatus: previousStatus },
+      data: {
+        lastStatus: previousStatus,
+      },
     });
-    return internalError("Failed to queue import job") as NextResponse;
+    return Response.json({ error: "Failed to queue import job", code: "INTERNAL_ERROR" }, { status: 500 });
   }
 
   // Update statistics (execution history is recorded by the job handler on completion)
@@ -127,17 +139,22 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
     triggeredBy: "webhook",
   });
 
-  return NextResponse.json(
-    { success: true, message: "Import triggered successfully", status: "triggered", jobId: urlFetchJob.id.toString() },
+  return Response.json(
+    {
+      success: true,
+      message: "Import triggered successfully",
+      status: "triggered",
+      jobId: urlFetchJob.id.toString(),
+    },
     { status: 200 }
   );
 };
 
-export const POST = async (_request: NextRequest, { params }: { params: Promise<{ token: string }> }) => {
-  const { token } = await params;
-
-  try {
-    const payload = await getPayload({ config });
+export const POST = apiRoute({
+  auth: "none",
+  params: z.object({ token: z.string() }),
+  handler: async ({ params, payload }) => {
+    const { token } = params;
     const rateLimitService = getRateLimitService(payload);
 
     // Check dual-window rate limits
@@ -150,15 +167,19 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
     // Find scheduled import by token
     const scheduledImports = await payload.find({
       collection: "scheduled-imports",
-      where: { webhookToken: { equals: token } },
+      where: {
+        webhookToken: { equals: token },
+      },
       limit: 1,
     });
 
     // Security: Return same error message for invalid token and disabled webhook
     // to prevent token enumeration attacks
     if (scheduledImports.docs.length === 0) {
-      logger.warn("Webhook trigger failed - invalid token", { token: token.substring(0, 8) + "..." });
-      return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
+      logger.warn("Webhook trigger failed - invalid token", {
+        token: token.substring(0, 8) + "...",
+      });
+      return Response.json({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" }, { status: 401 });
     }
 
     const scheduledImport = scheduledImports.docs[0] as ScheduledImport;
@@ -168,7 +189,7 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
         scheduledImportId: scheduledImport.id,
         name: scheduledImport.name,
       });
-      return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
+      return Response.json({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" }, { status: 401 });
     }
 
     // CRITICAL: Check if already running (prevents concurrent executions)
@@ -177,17 +198,22 @@ export const POST = async (_request: NextRequest, { params }: { params: Promise<
         scheduledImportId: scheduledImport.id,
         name: scheduledImport.name,
       });
-      return NextResponse.json(
-        { success: true, message: "Import already running, skipped", status: "skipped" },
+      return Response.json(
+        {
+          success: true,
+          message: "Import already running, skipped",
+          status: "skipped",
+        },
         { status: 200 }
       );
     }
 
     return await queueImportAndRespond(payload, scheduledImport);
-  } catch (error) {
-    logError(error, "Webhook trigger failed", { token: token.substring(0, 8) + "..." });
-    return internalError("Internal server error");
-  }
-};
+  },
+});
 
-export const GET = () => methodNotAllowed("Method not allowed. Use POST to trigger imports.");
+export const GET = () =>
+  Response.json(
+    { error: "Method not allowed. Use POST to trigger imports.", code: "METHOD_NOT_ALLOWED" },
+    { status: 405 }
+  );

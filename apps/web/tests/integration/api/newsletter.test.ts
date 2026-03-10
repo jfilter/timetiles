@@ -117,10 +117,10 @@ describe.sequential("/api/newsletter/subscribe", () => {
       const response = await POST(request, {} as any);
       const data = await response.json();
 
-      // Verify validation error
-      expect(response.status).toBe(400);
-      expect(data.error).toBeDefined();
-      expect(data.error).toMatch(/email/i);
+      // Verify validation error (zod schema validation returns 422)
+      expect(response.status).toBe(422);
+      expect(data.error).toBe("Validation failed");
+      expect(data.code).toBe("VALIDATION_ERROR");
 
       // Verify NO HTTP call was made (validation happens first)
       expect(requestsReceived).toHaveLength(0);

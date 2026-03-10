@@ -9,16 +9,10 @@
  * @category API
  */
 import { sql } from "@payloadcms/db-postgres";
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
 
+import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { createErrorHandler } from "@/lib/utils/api-response";
-import config from "@/payload.config";
-
-const handleError = createErrorHandler("fetch data source stats", logger);
 
 /**
  * Response format for data source stats endpoint.
@@ -36,17 +30,22 @@ interface DataSourceStatsResponse {
  * This data is used to display total event counts in the filter UI,
  * helping users understand the size of each data source before selecting it.
  */
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
-  try {
-    const payload = await getPayload({ config });
-
+export const GET = apiRoute({
+  auth: "optional",
+  handler: async ({ user, payload }) => {
     // Get accessible catalog IDs for access control
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user ?? null);
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user ?? null);
 
     // If no accessible catalogs, return empty result
     if (accessibleCatalogIds.length === 0) {
-      logger.info("No accessible catalogs for user", { user: request.user?.email ?? "anonymous" });
-      return NextResponse.json({ catalogCounts: {}, datasetCounts: {}, totalEvents: 0 });
+      logger.info("No accessible catalogs for user", {
+        user: user?.email ?? "anonymous",
+      });
+      return Response.json({
+        catalogCounts: {},
+        datasetCounts: {},
+        totalEvents: 0,
+      });
     }
 
     // Build access control condition
@@ -62,7 +61,9 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
       JOIN payload.datasets d ON e.dataset_id = d.id
       WHERE ${accessCondition}
       GROUP BY d.catalog_id
-    `)) as { rows: Array<{ id: number; count: number }> };
+    `)) as {
+      rows: Array<{ id: number; count: number }>;
+    };
 
     // Query event counts by dataset
     const datasetResult = (await payload.db.drizzle.execute(sql`
@@ -73,7 +74,9 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
       JOIN payload.datasets d ON e.dataset_id = d.id
       WHERE ${accessCondition}
       GROUP BY e.dataset_id
-    `)) as { rows: Array<{ id: number; count: number }> };
+    `)) as {
+      rows: Array<{ id: number; count: number }>;
+    };
 
     // Transform results to Record<string, number>
     const catalogCounts: Record<string, number> = {};
@@ -95,10 +98,12 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
       totalEvents,
     });
 
-    const response: DataSourceStatsResponse = { catalogCounts, datasetCounts, totalEvents };
+    const response: DataSourceStatsResponse = {
+      catalogCounts,
+      datasetCounts,
+      totalEvents,
+    };
 
-    return NextResponse.json(response);
-  } catch (error) {
-    return handleError(error);
-  }
+    return Response.json(response);
+  },
 });

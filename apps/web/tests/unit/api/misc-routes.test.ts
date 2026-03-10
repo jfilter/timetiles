@@ -25,16 +25,16 @@ vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
-vi.mock("@/lib/health", () => ({ runHealthChecks: mocks.mockRunHealthChecks }));
+vi.mock("@/lib/health", () => ({
+  runHealthChecks: mocks.mockRunHealthChecks,
+}));
 
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: vi
-    .fn()
-    .mockReturnValue({
-      checkQuota: mocks.mockCheckQuota,
-      getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
-      getQuotaHeaders: mocks.mockGetQuotaHeaders,
-    }),
+  getQuotaService: vi.fn().mockReturnValue({
+    checkQuota: mocks.mockCheckQuota,
+    getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
+    getQuotaHeaders: mocks.mockGetQuotaHeaders,
+  }),
 }));
 
 vi.mock("@/lib/constants/quota-constants", () => ({
@@ -48,7 +48,9 @@ vi.mock("@/lib/constants/quota-constants", () => ({
   },
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler }));
+vi.mock("@/lib/middleware/rate-limit", () => ({
+  withRateLimit: (handler: any) => handler,
+}));
 
 vi.mock("@/lib/middleware/auth", () => ({
   withAuth: (handler: any) => async (req: any, ctx: any) => {
@@ -65,28 +67,46 @@ vi.mock("@/lib/middleware/auth", () => ({
 
 vi.mock("@/lib/services/rate-limit-service", () => ({
   getClientIdentifier: vi.fn().mockReturnValue("test-client"),
-  getRateLimitService: vi.fn().mockReturnValue({ checkConfiguredRateLimit: mocks.mockCheckRateLimit }),
+  getRateLimitService: vi.fn().mockReturnValue({
+    checkConfiguredRateLimit: mocks.mockCheckRateLimit,
+  }),
   RATE_LIMITS: {},
 }));
 
 // 4. Vitest imports and source code AFTER mocks
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getPayload } from "payload";
 
 import { GET as healthGET } from "@/app/api/health/route";
+import { NextRequest } from "next/server";
+
 import { GET as quotasGET } from "@/app/api/quotas/route";
 import { getQuotaService } from "@/lib/services/quota-service";
 
 const mockUser = { id: 1, email: "test@test.com", role: "user" };
 
 const createRequest = (url: string, method = "GET") =>
-  new Request(url, { method, headers: new Headers({ Authorization: "Bearer test" }) });
+  new NextRequest(url, {
+    method,
+    headers: new Headers({ Authorization: "Bearer test" }),
+  });
 
 let mockPayload: any;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockPayload = { auth: vi.fn().mockResolvedValue({ user: mockUser }), find: vi.fn().mockResolvedValue({ docs: [] }) };
+  // Reset implementations that vi.clearAllMocks does not clear
+  mocks.mockRunHealthChecks.mockReset();
+
+  mockPayload = {
+    auth: vi.fn().mockResolvedValue({ user: mockUser }),
+    find: vi.fn().mockResolvedValue({ docs: [] }),
+  };
   mocks.mockGetPayload.mockResolvedValue(mockPayload);
+  // With isolate: false, another file's vi.mock("payload") may have replaced the
+  // module-level getPayload binding. Configure whichever fn is currently bound.
+  vi.mocked(getPayload).mockReset();
+  vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
 
   // Re-apply mocks that clearAllMocks wiped
   vi.mocked(getQuotaService).mockReturnValue({
@@ -96,7 +116,7 @@ beforeEach(() => {
   } as any);
 });
 
-describe("Health Route", () => {
+describe.sequential("Health Route", () => {
   it("returns 200 with healthy results", async () => {
     const healthyResults = {
       env: { status: "healthy", message: "All good" },
@@ -105,7 +125,7 @@ describe("Health Route", () => {
     };
     mocks.mockRunHealthChecks.mockResolvedValue(healthyResults);
 
-    const response = await healthGET();
+    const response = await healthGET(new NextRequest("http://localhost/api/health"), { params: Promise.resolve({}) });
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -121,7 +141,7 @@ describe("Health Route", () => {
     };
     mocks.mockRunHealthChecks.mockResolvedValue(errorResults);
 
-    const response = await healthGET();
+    const response = await healthGET(new NextRequest("http://localhost/api/health"), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(503);
   });
@@ -135,7 +155,7 @@ describe("Health Route", () => {
     };
     mocks.mockRunHealthChecks.mockResolvedValue(degradedResults);
 
-    const response = await healthGET();
+    const response = await healthGET(new NextRequest("http://localhost/api/health"), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
   });
@@ -143,7 +163,7 @@ describe("Health Route", () => {
   it("returns 500 when health checks throw", async () => {
     mocks.mockRunHealthChecks.mockRejectedValue(new Error("Unexpected failure"));
 
-    const response = await healthGET();
+    const response = await healthGET(new NextRequest("http://localhost/api/health"), { params: Promise.resolve({}) });
     const body = await response.json();
 
     expect(response.status).toBe(500);
@@ -156,7 +176,7 @@ describe.sequential("Quotas Route", () => {
     mockPayload.auth.mockResolvedValue({ user: null });
 
     const request = createRequest("http://localhost/api/quotas");
-    const response = await (quotasGET as any)(request, {});
+    const response = await (quotasGET as any)(request, { params: Promise.resolve({}) });
     const body = await response.json();
 
     expect(response.status).toBe(401);
@@ -170,7 +190,7 @@ describe.sequential("Quotas Route", () => {
     mocks.mockGetQuotaHeaders.mockResolvedValue(new Headers());
 
     const request = createRequest("http://localhost/api/quotas");
-    const response = await (quotasGET as any)(request, {});
+    const response = await (quotasGET as any)(request, { params: Promise.resolve({}) });
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -192,7 +212,7 @@ describe.sequential("Quotas Route", () => {
     mocks.mockGetQuotaHeaders.mockResolvedValue(new Headers());
 
     const request = createRequest("http://localhost/api/quotas");
-    const response = await (quotasGET as any)(request, {});
+    const response = await (quotasGET as any)(request, { params: Promise.resolve({}) });
     const body = await response.json();
 
     expect(response.status).toBe(200);

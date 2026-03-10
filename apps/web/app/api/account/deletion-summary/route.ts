@@ -7,21 +7,13 @@
  * @module
  * @category API
  */
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
-
+import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
-import { createErrorHandler } from "@/lib/utils/api-response";
-import config from "@/payload.config";
 
-export const GET = withAuth(async (request: AuthenticatedRequest) => {
-  const handleError = createErrorHandler("get deletion summary", logger);
-  try {
-    const payload = await getPayload({ config });
-    const user = request.user!;
-
+export const GET = apiRoute({
+  auth: "required",
+  handler: async ({ user, payload }) => {
     logger.debug({ userId: user.id }, "Fetching deletion summary");
 
     const deletionService = getAccountDeletionService(payload);
@@ -30,7 +22,7 @@ export const GET = withAuth(async (request: AuthenticatedRequest) => {
     // Also check if user can be deleted
     const canDelete = await deletionService.canDeleteUser(user.id);
 
-    return NextResponse.json({
+    return Response.json({
       summary,
       canDelete: canDelete.allowed,
       reason: canDelete.reason,
@@ -38,7 +30,5 @@ export const GET = withAuth(async (request: AuthenticatedRequest) => {
       deletionStatus: user.deletionStatus,
       deletionScheduledAt: user.deletionScheduledAt,
     });
-  } catch (error) {
-    return handleError(error);
-  }
+  },
 });

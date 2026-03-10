@@ -1,8 +1,8 @@
 /**
- * Unit tests for the account API routes.
+ * Unit tests for the account API endpoints.
  *
- * Tests change-email, change-password, delete, delete/cancel,
- * and deletion-summary endpoints.
+ * Tests change-email, change-password, schedule-deletion, cancel-deletion,
+ * deletion-summary, and download-data endpoints.
  *
  * @module
  * @category Tests
@@ -39,13 +39,17 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+}));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
 vi.mock("@/lib/services/rate-limit-service", () => ({
   getClientIdentifier: vi.fn().mockReturnValue("test-client"),
-  getRateLimitService: vi.fn().mockReturnValue({ checkConfiguredRateLimit: mocks.mockCheckRateLimit }),
+  getRateLimitService: vi.fn().mockReturnValue({
+    checkConfiguredRateLimit: mocks.mockCheckRateLimit,
+  }),
   RATE_LIMITS: {
     EMAIL_CHANGE: { windows: [] },
     PASSWORD_CHANGE: { windows: [] },
@@ -54,40 +58,26 @@ vi.mock("@/lib/services/rate-limit-service", () => ({
   },
 }));
 
-vi.mock("@/lib/middleware/auth", () => ({
-  withAuth: (handler: any) => async (req: any, ctx: any) => {
-    const payload = await mocks.mockGetPayload();
-    const { user } = await payload.auth({ headers: req.headers });
-    if (!user) {
-      const { NextResponse } = await import("next/server");
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-    Object.assign(req, { user });
-    return handler(req, ctx);
-  },
-}));
-
 vi.mock("@/lib/services/account-deletion-service", () => ({
-  getAccountDeletionService: vi
-    .fn()
-    .mockReturnValue({
-      canDeleteUser: mocks.mockCanDeleteUser,
-      scheduleDeletion: mocks.mockScheduleDeletion,
-      cancelDeletion: mocks.mockCancelDeletion,
-      getDeletionSummary: mocks.mockGetDeletionSummary,
-    }),
+  getAccountDeletionService: vi.fn().mockReturnValue({
+    canDeleteUser: mocks.mockCanDeleteUser,
+    scheduleDeletion: mocks.mockScheduleDeletion,
+    cancelDeletion: mocks.mockCancelDeletion,
+    getDeletionSummary: mocks.mockGetDeletionSummary,
+  }),
   DELETION_GRACE_PERIOD_DAYS: 7,
 }));
 
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { POST as changeEmail } from "@/app/api/account/change-email/route";
-import { POST as changePassword } from "@/app/api/account/change-password/route";
-import { POST as cancelDeletion } from "@/app/api/account/delete/cancel/route";
-import { POST as deleteAccount } from "@/app/api/account/delete/route";
+// Import apiRoute-based handlers
+import { POST as changeEmailPOST } from "@/app/api/users/change-email/route";
+import { POST as changePasswordPOST } from "@/app/api/users/change-password/route";
+import { POST as scheduleDeletionPOST } from "@/app/api/users/schedule-deletion/route";
+import { POST as cancelDeletionPOST } from "@/app/api/users/cancel-deletion/route";
+import { GET as downloadExportGET } from "@/app/api/data-exports/[id]/download/route";
 import { GET as getDeletionSummary } from "@/app/api/account/deletion-summary/route";
-import { GET as downloadExport } from "@/app/api/account/download-data/[exportId]/route";
 
 const {
   mockPayload,
@@ -106,6 +96,14 @@ const mockUser = {
   deletionScheduledAt: null as string | null,
 };
 
+/** Default params context for routes without dynamic segments. */
+const defaultParams = { params: Promise.resolve({}) };
+
+/**
+ * Create a NextRequest-like object for apiRoute handler tests.
+ * apiRoute handlers receive (NextRequest, { params }) and resolve auth
+ * internally via payload.auth({ headers }).
+ */
 const createJsonRequest = (url: string, body: unknown, method = "POST") => {
   return new Request(url, {
     method,
@@ -120,14 +118,11 @@ const createJsonRequest = (url: string, body: unknown, method = "POST") => {
 const createGetRequest = (url: string) => {
   return new Request(url, {
     method: "GET",
-    headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
+    headers: new Headers({
+      Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}`,
+    }),
   }) as unknown as NextRequest;
 };
-
-const createExportContext = (exportId: string) => ({
-  // oxlint-disable-next-line promise/prefer-await-to-then
-  params: Promise.resolve({ exportId }),
-});
 
 beforeEach(() => {
   mockPayload.auth.mockReset().mockResolvedValue({ user: mockUser });
@@ -139,28 +134,28 @@ beforeEach(() => {
 
   mockCheckRateLimit.mockReset().mockReturnValue({ allowed: true });
   mockCanDeleteUser.mockReset().mockResolvedValue({ allowed: true });
-  mockScheduleDeletion
-    .mockReset()
-    .mockResolvedValue({
-      deletionScheduledAt: new Date().toISOString(),
-      summary: { catalogs: 0, datasets: 0, events: 0 },
-    });
+  mockScheduleDeletion.mockReset().mockResolvedValue({
+    deletionScheduledAt: new Date().toISOString(),
+    summary: { catalogs: 0, datasets: 0, events: 0 },
+  });
   mockCancelDeletion.mockReset().mockResolvedValue(undefined);
-  mockGetDeletionSummary
-    .mockReset()
-    .mockResolvedValue({ catalogs: { total: 0, public: 0, private: 0 }, datasets: { total: 0 }, events: { total: 0 } });
+  mockGetDeletionSummary.mockReset().mockResolvedValue({
+    catalogs: { total: 0, public: 0, private: 0 },
+    datasets: { total: 0 },
+    events: { total: 0 },
+  });
 });
 
-describe.sequential("POST /api/account/change-email", () => {
+describe.sequential("POST /api/users/change-email", () => {
   it("should return 401 when not authenticated", async () => {
-    mockPayload.auth.mockResolvedValue({ user: null });
+    mockPayload.auth.mockResolvedValueOnce({ user: null });
 
-    const request = createJsonRequest("http://localhost/api/account/change-email", {
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: "new@example.com",
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmail(request, undefined as any);
+    const response = await changeEmailPOST(req, defaultParams as any);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -168,9 +163,12 @@ describe.sequential("POST /api/account/change-email", () => {
   });
 
   it("should return 400 when missing email or password", async () => {
-    const request = createJsonRequest("http://localhost/api/account/change-email", { newEmail: "", password: "" });
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
+      newEmail: "",
+      password: "",
+    });
 
-    const response = await changeEmail(request, undefined as any);
+    const response = await changeEmailPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -178,12 +176,12 @@ describe.sequential("POST /api/account/change-email", () => {
   });
 
   it("should return 400 for invalid email format", async () => {
-    const request = createJsonRequest("http://localhost/api/account/change-email", {
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: "not-an-email",
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmail(request, undefined as any);
+    const response = await changeEmailPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -191,12 +189,12 @@ describe.sequential("POST /api/account/change-email", () => {
   });
 
   it("should return 400 when email is same as current", async () => {
-    const request = createJsonRequest("http://localhost/api/account/change-email", {
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: TEST_EMAILS.user,
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmail(request, undefined as any);
+    const response = await changeEmailPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -206,12 +204,12 @@ describe.sequential("POST /api/account/change-email", () => {
   it("should return 401 when password verification fails", async () => {
     mockPayload.login.mockRejectedValue(new Error("Invalid credentials"));
 
-    const request = createJsonRequest("http://localhost/api/account/change-email", {
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: "new@example.com",
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmail(request, undefined as any);
+    const response = await changeEmailPOST(req, defaultParams as any);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -221,12 +219,12 @@ describe.sequential("POST /api/account/change-email", () => {
   it("should return identical success response when email is already in use (anti-enumeration)", async () => {
     mockPayload.find.mockResolvedValue({ docs: [{ id: 2, email: "new@example.com" }] });
 
-    const request = createJsonRequest("http://localhost/api/account/change-email", {
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: "new@example.com",
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmail(request, undefined as any);
+    const response = await changeEmailPOST(req, defaultParams as any);
 
     // Anti-enumeration: returns 200 success even when email is taken
     expect(response.status).toBe(200);
@@ -238,12 +236,12 @@ describe.sequential("POST /api/account/change-email", () => {
   });
 
   it("should successfully change email and require verification", async () => {
-    const request = createJsonRequest("http://localhost/api/account/change-email", {
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: "new@example.com",
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmail(request, undefined as any);
+    const response = await changeEmailPOST(req, defaultParams as any);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -256,23 +254,29 @@ describe.sequential("POST /api/account/change-email", () => {
         collection: "users",
         id: mockUser.id,
         overrideAccess: true,
-        data: expect.objectContaining({ email: "new@example.com", _verified: false }),
+        data: expect.objectContaining({
+          email: "new@example.com",
+          _verified: false,
+        }),
       })
     );
     expect(mockPayload.sendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "new@example.com", subject: expect.stringContaining("Verify") })
+      expect.objectContaining({
+        to: "new@example.com",
+        subject: expect.stringContaining("Verify"),
+      })
     );
   });
 
   it("should return 429 when rate limited", async () => {
     mockCheckRateLimit.mockReturnValue({ allowed: false });
 
-    const request = createJsonRequest("http://localhost/api/account/change-email", {
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
       newEmail: "new@example.com",
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmail(request, undefined as any);
+    const response = await changeEmailPOST(req, defaultParams as any);
 
     expect(response.status).toBe(429);
     const data = await response.json();
@@ -280,14 +284,14 @@ describe.sequential("POST /api/account/change-email", () => {
   });
 });
 
-describe.sequential("POST /api/account/change-password", () => {
+describe.sequential("POST /api/users/change-password", () => {
   it("should return 400 when missing passwords", async () => {
-    const request = createJsonRequest("http://localhost/api/account/change-password", {
+    const req = createJsonRequest("http://localhost/api/users/change-password", {
       currentPassword: "",
       newPassword: "",
     });
 
-    const response = await changePassword(request, undefined as any);
+    const response = await changePasswordPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -295,12 +299,12 @@ describe.sequential("POST /api/account/change-password", () => {
   });
 
   it("should return 400 when new password is too short", async () => {
-    const request = createJsonRequest("http://localhost/api/account/change-password", {
+    const req = createJsonRequest("http://localhost/api/users/change-password", {
       currentPassword: TEST_CREDENTIALS.basic.password,
       newPassword: "short",
     });
 
-    const response = await changePassword(request, undefined as any);
+    const response = await changePasswordPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -310,12 +314,12 @@ describe.sequential("POST /api/account/change-password", () => {
   it("should return 401 when current password is wrong", async () => {
     mockPayload.login.mockRejectedValue(new Error("Invalid credentials"));
 
-    const request = createJsonRequest("http://localhost/api/account/change-password", {
+    const req = createJsonRequest("http://localhost/api/users/change-password", {
       currentPassword: TEST_CREDENTIALS.basic.password,
       newPassword: TEST_CREDENTIALS.basic.strongPassword,
     });
 
-    const response = await changePassword(request, undefined as any);
+    const response = await changePasswordPOST(req, defaultParams as any);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -323,12 +327,12 @@ describe.sequential("POST /api/account/change-password", () => {
   });
 
   it("should successfully change password", async () => {
-    const request = createJsonRequest("http://localhost/api/account/change-password", {
+    const req = createJsonRequest("http://localhost/api/users/change-password", {
       currentPassword: TEST_CREDENTIALS.basic.password,
       newPassword: TEST_CREDENTIALS.basic.strongPassword,
     });
 
-    const response = await changePassword(request, undefined as any);
+    const response = await changePasswordPOST(req, defaultParams as any);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -342,11 +346,13 @@ describe.sequential("POST /api/account/change-password", () => {
   });
 });
 
-describe.sequential("POST /api/account/delete", () => {
+describe.sequential("POST /api/users/schedule-deletion", () => {
   it("should return 400 when missing password", async () => {
-    const request = createJsonRequest("http://localhost/api/account/delete", { password: "" });
+    const req = createJsonRequest("http://localhost/api/users/schedule-deletion", {
+      password: "",
+    });
 
-    const response = await deleteAccount(request, undefined as any);
+    const response = await scheduleDeletionPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -356,11 +362,11 @@ describe.sequential("POST /api/account/delete", () => {
   it("should return 401 when password is wrong", async () => {
     mockPayload.login.mockRejectedValue(new Error("Invalid credentials"));
 
-    const request = createJsonRequest("http://localhost/api/account/delete", {
+    const req = createJsonRequest("http://localhost/api/users/schedule-deletion", {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await deleteAccount(request, undefined as any);
+    const response = await scheduleDeletionPOST(req, defaultParams as any);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -373,13 +379,13 @@ describe.sequential("POST /api/account/delete", () => {
       deletionStatus: "pending_deletion",
       deletionScheduledAt: new Date().toISOString(),
     };
-    mockPayload.auth.mockResolvedValue({ user: pendingUser });
+    mockPayload.auth.mockResolvedValueOnce({ user: pendingUser });
 
-    const request = createJsonRequest("http://localhost/api/account/delete", {
+    const req = createJsonRequest("http://localhost/api/users/schedule-deletion", {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await deleteAccount(request, undefined as any);
+    const response = await scheduleDeletionPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -393,11 +399,11 @@ describe.sequential("POST /api/account/delete", () => {
       summary: { catalogs: 1, datasets: 2, events: 10 },
     });
 
-    const request = createJsonRequest("http://localhost/api/account/delete", {
+    const req = createJsonRequest("http://localhost/api/users/schedule-deletion", {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await deleteAccount(request, undefined as any);
+    const response = await scheduleDeletionPOST(req, defaultParams as any);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -408,13 +414,13 @@ describe.sequential("POST /api/account/delete", () => {
   });
 });
 
-describe.sequential("POST /api/account/delete/cancel", () => {
+describe.sequential("POST /api/users/cancel-deletion", () => {
   it("should return 401 when not authenticated", async () => {
-    mockPayload.auth.mockResolvedValue({ user: null });
+    mockPayload.auth.mockResolvedValueOnce({ user: null });
 
-    const request = createJsonRequest("http://localhost/api/account/delete/cancel", {});
+    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {});
 
-    const response = await cancelDeletion(request);
+    const response = await cancelDeletionPOST(req, defaultParams as any);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -422,9 +428,9 @@ describe.sequential("POST /api/account/delete/cancel", () => {
   });
 
   it("should return 400 when no pending deletion", async () => {
-    const request = createJsonRequest("http://localhost/api/account/delete/cancel", {});
+    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {});
 
-    const response = await cancelDeletion(request);
+    const response = await cancelDeletionPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -437,11 +443,11 @@ describe.sequential("POST /api/account/delete/cancel", () => {
       deletionStatus: "pending_deletion",
       deletionScheduledAt: new Date().toISOString(),
     };
-    mockPayload.auth.mockResolvedValue({ user: pendingUser });
+    mockPayload.auth.mockResolvedValueOnce({ user: pendingUser });
 
-    const request = createJsonRequest("http://localhost/api/account/delete/cancel", {});
+    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {});
 
-    const response = await cancelDeletion(request);
+    const response = await cancelDeletionPOST(req, defaultParams as any);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -463,7 +469,7 @@ describe.sequential("GET /api/account/deletion-summary", () => {
 
     const request = createGetRequest("http://localhost/api/account/deletion-summary");
 
-    const response = await getDeletionSummary(request, undefined as any);
+    const response = await getDeletionSummary(request, { params: Promise.resolve({}) } as any);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -476,11 +482,13 @@ describe.sequential("GET /api/account/deletion-summary", () => {
   });
 });
 
-describe.sequential("GET /api/account/download-data/[exportId]", () => {
+describe.sequential("GET /api/data-exports/:id/download", () => {
   it("should return 400 for non-decimal export ids", async () => {
-    const request = createGetRequest("http://localhost/api/account/download-data/1e2");
+    const req = createGetRequest("http://localhost/api/data-exports/1e2/download");
 
-    const response = await downloadExport(request, createExportContext("1e2"));
+    const response = await downloadExportGET(req, {
+      params: Promise.resolve({ id: "1e2" }),
+    } as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();

@@ -57,21 +57,43 @@ export const dataExportKeys = {
  * Fetch the user's data exports.
  */
 const fetchDataExports = async (): Promise<ExportListResponse> => {
-  const response = await fetch("/api/account/download-data", { method: "GET", credentials: "include" });
+  const response = await fetch("/api/data-exports?sort=-requestedAt&limit=10", {
+    method: "GET",
+    credentials: "include",
+  });
 
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error ?? "Failed to fetch exports");
   }
 
-  return response.json();
+  const payload = await response.json();
+
+  // Transform Payload REST response to match expected format
+  return {
+    exports: payload.docs.map((exp: Record<string, unknown>) => ({
+      id: exp.id,
+      status: exp.status,
+      requestedAt: exp.requestedAt,
+      completedAt: exp.completedAt,
+      expiresAt: exp.expiresAt,
+      fileSize: exp.fileSize,
+      downloadCount: exp.downloadCount,
+      summary: exp.summary,
+      errorLog: exp.status === "failed" ? exp.errorLog : undefined,
+    })),
+    total: payload.totalDocs,
+  };
 };
 
 /**
  * Request a new data export.
  */
 const requestDataExport = async (): Promise<RequestExportResponse> => {
-  const response = await fetch("/api/account/download-data", { method: "POST", credentials: "include" });
+  const response = await fetch("/api/data-exports/request", {
+    method: "POST",
+    credentials: "include",
+  });
 
   if (!response.ok) {
     const error: RequestExportError = await response.json();
@@ -116,7 +138,10 @@ export const useLatestExportQuery = () => {
       (exp) => exp.status === "pending" || exp.status === "processing" || exp.status === "ready"
     ) ?? query.data?.exports?.[0];
 
-  return { ...query, latestExport };
+  return {
+    ...query,
+    latestExport,
+  };
 };
 
 /**
@@ -138,7 +163,7 @@ export const useRequestDataExportMutation = () => {
  * Get download URL for an export.
  */
 export const getExportDownloadUrl = (exportId: number): string => {
-  return `/api/account/download-data/${exportId}`;
+  return `/api/data-exports/${exportId}/download`;
 };
 
 /**

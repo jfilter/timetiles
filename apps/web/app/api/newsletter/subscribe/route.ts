@@ -10,113 +10,102 @@
  * @module
  * @category API
  */
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import { z } from "zod";
 
+import { apiRoute, AppError, ValidationError } from "@/lib/api";
 import { logError, logger } from "@/lib/logger";
-import { withRateLimit } from "@/lib/middleware/rate-limit";
-import config from "@/payload.config";
-
-interface SubscribeRequest {
-  email: string;
-  [key: string]: unknown; // Allow additional fields
-}
 
 interface Settings {
-  newsletter?: { serviceUrl?: string; authHeader?: string };
+  newsletter?: {
+    serviceUrl?: string;
+    authHeader?: string;
+  };
 }
 
-export const POST = withRateLimit(
-  async (request: Request) => {
-    try {
-      const body = (await request.json()) as SubscribeRequest;
-      const { email } = body;
+export const POST = apiRoute({
+  auth: "none",
+  rateLimit: { configName: "NEWSLETTER_SUBSCRIBE" },
+  body: z.object({ email: z.string().email() }),
+  handler: async ({ body, payload }) => {
+    const { email } = body;
 
-      // Validate email
-      if (!email || typeof email !== "string") {
-        return NextResponse.json({ error: "Email address is required" }, { status: 400 });
-      }
-
-      // Basic email validation
-      const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
-      }
-
-      // Get newsletter service configuration from Payload settings
-      const payload = await getPayload({ config });
-      const settings = (await payload.findGlobal({ slug: "settings" })) as Settings;
-
-      const serviceUrl = settings.newsletter?.serviceUrl;
-
-      if (!serviceUrl) {
-        logError(
-          new Error("Newsletter service not configured"),
-          "Newsletter service URL not configured in Settings. Configure it at /dashboard/globals/settings"
-        );
-        return NextResponse.json({ error: "Newsletter service not configured" }, { status: 500 });
-      }
-
-      // Forward the subscription request to the configured service
-      // The service should handle authentication, list management, etc.
-      const serviceResponse = await fetch(serviceUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // Forward authorization if provided
-          ...(settings.newsletter?.authHeader ? { Authorization: settings.newsletter.authHeader } : {}),
-        },
-        body: JSON.stringify(body),
-      });
-
-      // Parse response body safely — some services return non-JSON (204, HTML errors)
-      let responseData: { message?: string; error?: string } = {};
-      try {
-        responseData = (await serviceResponse.json()) as { message?: string; error?: string };
-      } catch {
-        // Non-JSON response — continue with empty responseData
-      }
-
-      if (!serviceResponse.ok) {
-        // Handle duplicate email (already subscribed) — only 409 Conflict is unambiguous
-        if (serviceResponse.status === 409) {
-          logger.info(`Email already subscribed: ${email}`);
-          return NextResponse.json(
-            {
-              success: true,
-              message:
-                responseData.message ??
-                "You may already be subscribed. Check your email for the confirmation link if you haven't confirmed yet.",
-            },
-            { status: 200 }
-          );
-        }
-
-        logError(
-          new Error(`Newsletter service error: ${serviceResponse.status}`),
-          `Failed to subscribe email: ${email}`,
-          { status: serviceResponse.status, response: responseData }
-        );
-        return NextResponse.json(
-          { error: responseData.error ?? "Failed to subscribe. Please try again later." },
-          { status: 500 }
-        );
-      }
-
-      logger.info(`Successfully subscribed email: ${email}`);
-
-      return NextResponse.json(
-        {
-          success: true,
-          message:
-            responseData.message ?? "Successfully subscribed! Please check your email to confirm your subscription.",
-        },
-        { status: 200 }
-      );
-    } catch (error) {
-      logError(error, "Newsletter subscription error");
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    // Additional email format validation (belt and suspenders with zod)
+    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new ValidationError("Invalid email address");
     }
+
+    // Get newsletter service configuration from Payload settings
+    const settings = (await payload.findGlobal({
+      slug: "settings",
+    })) as Settings;
+
+    const serviceUrl = settings.newsletter?.serviceUrl;
+
+    if (!serviceUrl) {
+      logError(
+        new Error("Newsletter service not configured"),
+        "Newsletter service URL not configured in Settings. Configure it at /dashboard/globals/settings"
+      );
+      throw new AppError(500, "Newsletter service not configured", "NEWSLETTER_NOT_CONFIGURED");
+    }
+
+    // Forward the subscription request to the configured service
+    // The service should handle authentication, list management, etc.
+    const serviceResponse = await fetch(serviceUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Forward authorization if provided
+        ...(settings.newsletter?.authHeader ? { Authorization: settings.newsletter.authHeader } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+    // Parse response body safely — some services return non-JSON (204, HTML errors)
+    let responseData: { message?: string; error?: string } = {};
+    try {
+      responseData = (await serviceResponse.json()) as { message?: string; error?: string };
+    } catch {
+      // Non-JSON response — continue with empty responseData
+    }
+
+    if (!serviceResponse.ok) {
+      // Handle duplicate email (already subscribed) — only 409 Conflict is unambiguous
+      if (serviceResponse.status === 409) {
+        logger.info(`Email already subscribed: ${email}`);
+        return Response.json(
+          {
+            success: true,
+            message:
+              responseData.message ??
+              "You may already be subscribed. Check your email for the confirmation link if you haven't confirmed yet.",
+          },
+          { status: 200 }
+        );
+      }
+
+      logError(
+        new Error(`Newsletter service error: ${serviceResponse.status}`),
+        `Failed to subscribe email: ${email}`,
+        { status: serviceResponse.status, response: responseData }
+      );
+      throw new AppError(
+        500,
+        responseData.error ?? "Failed to subscribe. Please try again later.",
+        "NEWSLETTER_SERVICE_ERROR"
+      );
+    }
+
+    logger.info(`Successfully subscribed email: ${email}`);
+
+    return Response.json(
+      {
+        success: true,
+        message:
+          responseData.message ?? "Successfully subscribed! Please check your email to confirm your subscription.",
+      },
+      { status: 200 }
+    );
   },
-  { configName: "NEWSLETTER_SUBSCRIBE" }
-);
+});

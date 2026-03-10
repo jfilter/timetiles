@@ -15,25 +15,18 @@
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import type { Payload } from "payload";
 
+import { apiRoute } from "@/lib/api";
 import { isValidBounds, type MapBounds } from "@/lib/geospatial";
-import { logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
 import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
 import { extractMapClusterParameters } from "@/lib/utils/event-params";
-import config from "@/payload.config";
 
-const handleError = createErrorHandler("fetch map clusters", logger);
-
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
-  try {
-    const payload = await getPayload({ config });
-
-    const parameters = extractMapClusterParameters(request.nextUrl.searchParams);
+export const GET = apiRoute({
+  auth: "optional",
+  handler: async ({ req, user, payload }) => {
+    const parameters = extractMapClusterParameters(req.nextUrl.searchParams);
 
     const boundsResult = parseBounds(parameters.boundsParam);
     if ("error" in boundsResult) {
@@ -41,32 +34,45 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest) => {
     }
 
     // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
-      return NextResponse.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
+      return Response.json({
+        type: "FeatureCollection",
+        features: [],
+        clusters: [],
+        totalCount: 0,
+      });
     }
 
     const filters = buildEventFilters({ parameters, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyAccess === true || filters.denyResults === true) {
-      return NextResponse.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
+      return Response.json({
+        type: "FeatureCollection",
+        features: [],
+        clusters: [],
+        totalCount: 0,
+      });
     }
 
     const result = await executeClusteringQuery(payload, boundsResult.bounds, parameters.zoom, filters);
     const clusters = transformResultToClusters(result.rows);
 
-    return NextResponse.json({ type: "FeatureCollection", features: clusters });
-  } catch (error) {
-    return handleError(error);
-  }
+    return Response.json({
+      type: "FeatureCollection",
+      features: clusters,
+    });
+  },
 });
 
-const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { error: NextResponse } => {
+const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { error: Response } => {
   if (boundsParam == null) {
-    return { error: badRequest("Missing bounds parameter") };
+    return {
+      error: Response.json({ error: "Missing bounds parameter" }, { status: 400 }),
+    };
   }
 
   try {
@@ -77,20 +83,17 @@ const parseBounds = (boundsParam: string | null): { bounds: MapBounds } | { erro
     return { bounds: parsedBounds };
   } catch {
     return {
-      error: NextResponse.json(
-        { error: "Invalid bounds format. Expected: {north, south, east, west}" },
+      error: Response.json(
+        {
+          error: "Invalid bounds format. Expected: {north, south, east, west}",
+        },
         { status: 400 }
       ),
     };
   }
 };
 
-const executeClusteringQuery = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  bounds: MapBounds,
-  zoom: number,
-  filters: EventFilters
-) => {
+const executeClusteringQuery = async (payload: Payload, bounds: MapBounds, zoom: number, filters: EventFilters) => {
   const { catalogId, catalogIds, datasets, startDate, endDate, fieldFilters } = filters;
 
   return (await payload.db.drizzle.execute(sql`

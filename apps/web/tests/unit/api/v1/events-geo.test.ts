@@ -18,9 +18,17 @@ vi.mock("@/lib/middleware/auth", () => ({
   withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("@/lib/middleware/rate-limit", () => ({
+  withRateLimit: (handler: any) => handler,
+}));
 
-vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+}));
+
+vi.mock("@/lib/services/access-control", () => ({
+  getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds,
+}));
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractMapClusterParameters: mocks.mockExtractMapClusterParameters,
@@ -39,18 +47,37 @@ vi.mock("@/lib/utils/event-params", () => ({
       .filter((value): value is number => value != null),
 }));
 
-vi.mock("@/lib/geospatial", () => ({ isValidBounds: mocks.mockIsValidBounds }));
+vi.mock("@/lib/geospatial", () => ({
+  isValidBounds: mocks.mockIsValidBounds,
+}));
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign(
-    (strings: TemplateStringsArray, ...values: unknown[]) => ({ type: "sql", strings: Array.from(strings), values }),
+    (strings: TemplateStringsArray, ...values: unknown[]) => ({
+      type: "sql",
+      strings: Array.from(strings),
+      values,
+    }),
     {
-      join: vi.fn((parts: unknown[], separator: unknown) => ({ type: "join", parts, separator })),
+      join: vi.fn((parts: unknown[], separator: unknown) => ({
+        type: "join",
+        parts,
+        separator,
+      })),
       raw: vi.fn((value: string) => ({ type: "raw", value })),
     }
   ),
 }));
 
+vi.mock("@/lib/services/aggregation-filters", () => ({
+  normalizeEndDate: (endDate: string | null): string | null => {
+    if (!endDate) return null;
+    if (endDate.includes("T")) return endDate;
+    return `${endDate}T23:59:59.999Z`;
+  },
+}));
+
+vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -80,7 +107,10 @@ describe.sequential("GET /api/v1/events/geo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.mockGetPayload.mockResolvedValue({ db: { drizzle: { execute: mocks.mockDrizzleExecute } } });
+    mocks.mockGetPayload.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({ user: null }),
+      db: { drizzle: { execute: mocks.mockDrizzleExecute } },
+    });
     mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
     mocks.mockExtractMapClusterParameters.mockReturnValue({
       catalog: null,
@@ -88,7 +118,12 @@ describe.sequential("GET /api/v1/events/geo", () => {
       startDate: null,
       endDate: null,
       fieldFilters: {},
-      boundsParam: JSON.stringify({ north: 90, south: -90, east: 180, west: -180 }),
+      boundsParam: JSON.stringify({
+        north: 90,
+        south: -90,
+        east: 180,
+        west: -180,
+      }),
       zoom: 2,
     });
     mocks.mockIsValidBounds.mockReturnValue(true);
@@ -96,8 +131,12 @@ describe.sequential("GET /api/v1/events/geo", () => {
   });
 
   it("passes multiple dataset filters through to cluster_events", async () => {
-    const response = await GET(createRequest("?bounds=%7B%7D&zoom=2"), undefined);
+    const response = await GET(createRequest("?bounds=%7B%7D&zoom=2"), { params: Promise.resolve({}) });
 
+    if (response.status !== 200) {
+      const body = await response.clone().json();
+      console.error("DEBUG events-geo 500 body:", JSON.stringify(body));
+    }
     expect(response.status).toBe(200);
     expect(mocks.mockDrizzleExecute).toHaveBeenCalledOnce();
 
@@ -107,6 +146,8 @@ describe.sequential("GET /api/v1/events/geo", () => {
     );
 
     expect(jsonPayload).toBeDefined();
-    expect(JSON.parse(jsonPayload!)).toMatchObject({ datasets: [10, 20] });
+    expect(JSON.parse(jsonPayload!)).toMatchObject({
+      datasets: [10, 20],
+    });
   });
 });

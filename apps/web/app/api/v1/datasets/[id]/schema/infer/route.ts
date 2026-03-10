@@ -12,85 +12,84 @@
  * @module
  * @category API
  */
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import { z } from "zod";
 
-import { logError, logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
+import { apiRoute, ForbiddenError, NotFoundError, ValidationError } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
-import { badRequest, forbidden, internalError, notFound } from "@/lib/utils/api-response";
 import { parseStrictInteger } from "@/lib/utils/event-params";
-import config from "@/payload.config";
 
-export const POST = withAuth(
-  async (request: AuthenticatedRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
-    try {
-      const payload = await getPayload({ config });
-      const { id } = await context.params;
-      const datasetId = parseStrictInteger(id);
+export const POST = apiRoute({
+  auth: "required",
+  params: z.object({ id: z.string() }),
+  handler: async ({ req, user, payload, params }) => {
+    const datasetId = parseStrictInteger(params.id);
 
-      if (datasetId == null) {
-        return badRequest("Invalid dataset ID");
-      }
-
-      // Check user permissions - only editors and admins can infer schema
-      if (!request.user || (request.user.role !== "editor" && request.user.role !== "admin")) {
-        return forbidden("Only editors and admins can trigger schema inference");
-      }
-
-      // Verify dataset exists and user has access
-      const dataset = await payload
-        .findByID({ collection: "datasets", id: datasetId, overrideAccess: false, user: request.user })
-        .catch(() => null);
-
-      if (!dataset) {
-        return notFound("Dataset not found");
-      }
-
-      // Parse options from request body (optional)
-      let options: { sampleSize?: number; batchSize?: number; forceRegenerate?: boolean } = {};
-      try {
-        const body = await request.json().catch(() => ({}));
-        options = {
-          sampleSize: typeof body.sampleSize === "number" ? body.sampleSize : undefined,
-          batchSize: typeof body.batchSize === "number" ? body.batchSize : undefined,
-          forceRegenerate: typeof body.forceRegenerate === "boolean" ? body.forceRegenerate : undefined,
-        };
-      } catch {
-        // No body or invalid JSON - use defaults
-      }
-
-      logger.info("Schema inference requested", { datasetId, userId: request.user.id, options });
-
-      // Perform schema inference
-      const result = await SchemaInferenceService.inferSchemaFromEvents(payload, datasetId, options);
-
-      logger.info("Schema inference completed", {
-        datasetId,
-        userId: request.user.id,
-        generated: result.generated,
-        eventsSampled: result.eventsSampled,
-      });
-
-      return NextResponse.json({
-        success: true,
-        generated: result.generated,
-        message: result.message,
-        eventsSampled: result.eventsSampled,
-        schema: result.schema
-          ? {
-              id: result.schema.id,
-              versionNumber: result.schema.versionNumber,
-              createdAt: result.schema.createdAt,
-              eventCountAtCreation: result.schema.eventCountAtCreation,
-            }
-          : null,
-      });
-    } catch (error) {
-      const { id } = await context.params;
-      logError(error, "Failed to infer schema for dataset", { datasetId: id, userId: request.user?.id });
-
-      return internalError("Failed to infer schema for dataset");
+    if (datasetId == null) {
+      throw new ValidationError("Invalid dataset ID");
     }
-  }
-);
+
+    // Check user permissions - only editors and admins can infer schema
+    if (user.role !== "editor" && user.role !== "admin") {
+      throw new ForbiddenError("Only editors and admins can trigger schema inference");
+    }
+
+    // Verify dataset exists and user has access
+    const dataset = await payload
+      .findByID({
+        collection: "datasets",
+        id: datasetId,
+        overrideAccess: false,
+        user,
+      })
+      .catch(() => null);
+
+    if (!dataset) {
+      throw new NotFoundError("Dataset not found");
+    }
+
+    // Parse options from request body (optional)
+    let options: { sampleSize?: number; batchSize?: number; forceRegenerate?: boolean } = {};
+    try {
+      const body = await req.json().catch(() => ({}));
+      options = {
+        sampleSize: typeof body.sampleSize === "number" ? body.sampleSize : undefined,
+        batchSize: typeof body.batchSize === "number" ? body.batchSize : undefined,
+        forceRegenerate: typeof body.forceRegenerate === "boolean" ? body.forceRegenerate : undefined,
+      };
+    } catch {
+      // No body or invalid JSON - use defaults
+    }
+
+    logger.info("Schema inference requested", {
+      datasetId,
+      userId: user.id,
+      options,
+    });
+
+    // Perform schema inference
+    const result = await SchemaInferenceService.inferSchemaFromEvents(payload, datasetId, options);
+
+    logger.info("Schema inference completed", {
+      datasetId,
+      userId: user.id,
+      generated: result.generated,
+      eventsSampled: result.eventsSampled,
+    });
+
+    return Response.json({
+      success: true,
+      generated: result.generated,
+      message: result.message,
+      eventsSampled: result.eventsSampled,
+      schema: result.schema
+        ? {
+            id: result.schema.id,
+            versionNumber: result.schema.versionNumber,
+            createdAt: result.schema.createdAt,
+            eventCountAtCreation: result.schema.eventCountAtCreation,
+          }
+        : null,
+    });
+  },
+});

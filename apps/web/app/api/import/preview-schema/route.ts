@@ -15,20 +15,18 @@ import os from "node:os";
 import path from "node:path";
 
 import { FIELD_PATTERNS, LATITUDE_PATTERNS, LONGITUDE_PATTERNS } from "@timetiles/payload-schema-detection";
-import { NextResponse } from "next/server";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
 import { read, utils } from "xlsx";
 
+import { apiRoute, ValidationError } from "@/lib/api";
 import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
 import { detectFileTypeFromResponse, fetchUrlData } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { createLogger } from "@/lib/logger";
-import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import {
   detectLanguageFromSamples,
   type LanguageDetectionResult,
 } from "@/lib/services/schema-builder/language-detection";
-import { badRequest, createErrorHandler } from "@/lib/utils/api-response";
 import { isPrivateUrl } from "@/lib/utils/url-validation";
 
 const logger = createLogger("api-wizard-preview-schema");
@@ -129,7 +127,11 @@ const detectFieldFromHeaders = (headers: string[], fieldType: string, language: 
     const match = headers.find((h) => pattern.test(h));
     if (match) {
       const confidence = 0.9 - i * 0.1;
-      return { path: match, confidence: Math.max(0.5, confidence), confidenceLevel: getConfidenceLevel(confidence) };
+      return {
+        path: match,
+        confidence: Math.max(0.5, confidence),
+        confidenceLevel: getConfidenceLevel(confidence),
+      };
     }
   }
 
@@ -141,7 +143,11 @@ const detectFieldFromHeaders = (headers: string[], fieldType: string, language: 
       const match = headers.find((h) => pattern.test(h));
       if (match) {
         const confidence = 0.7 - i * 0.1;
-        return { path: match, confidence: Math.max(0.3, confidence), confidenceLevel: getConfidenceLevel(confidence) };
+        return {
+          path: match,
+          confidence: Math.max(0.3, confidence),
+          confidenceLevel: getConfidenceLevel(confidence),
+        };
       }
     }
   }
@@ -159,7 +165,11 @@ const detectCoordinateField = (headers: string[], patterns: RegExp[]): FieldMapp
     const match = headers.find((h) => pattern.test(h));
     if (match) {
       const confidence = 0.9 - i * 0.05;
-      return { path: match, confidence: Math.max(0.5, confidence), confidenceLevel: getConfidenceLevel(confidence) };
+      return {
+        path: match,
+        confidence: Math.max(0.5, confidence),
+        confidenceLevel: getConfidenceLevel(confidence),
+      };
     }
   }
   return { path: null, confidence: 0, confidenceLevel: "none" };
@@ -206,7 +216,10 @@ const parseCSVPreview = (filePath: string): SheetInfo[] => {
   });
 
   // Get full row count (need to parse separately)
-  const fullResult = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
+  const fullResult = Papa.parse(fileContent, {
+    header: true,
+    skipEmptyLines: true,
+  });
 
   const headers = result.meta.fields ?? [];
   const sampleData = (result.data as Record<string, unknown>[]).slice(0, SAMPLE_ROW_COUNT);
@@ -214,7 +227,16 @@ const parseCSVPreview = (filePath: string): SheetInfo[] => {
   // Detect suggested field mappings
   const suggestedMappings = detectSuggestedMappings(headers, sampleData);
 
-  return [{ index: 0, name: "Sheet1", rowCount: fullResult.data.length, headers, sampleData, suggestedMappings }];
+  return [
+    {
+      index: 0,
+      name: "Sheet1",
+      rowCount: fullResult.data.length,
+      headers,
+      sampleData,
+      suggestedMappings,
+    },
+  ];
 };
 
 const parseExcelPreview = (filePath: string): SheetInfo[] => {
@@ -227,7 +249,10 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
     const worksheet = workbook.Sheets[sheetName];
     if (!worksheet) return;
 
-    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, { header: 1, defval: null });
+    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, {
+      header: 1,
+      defval: null,
+    });
 
     if (jsonData.length === 0) {
       sheets.push({
@@ -267,7 +292,14 @@ const parseExcelPreview = (filePath: string): SheetInfo[] => {
     // Detect suggested field mappings
     const suggestedMappings = detectSuggestedMappings(headers, sampleData);
 
-    sheets.push({ index, name: sheetName, rowCount, headers, sampleData, suggestedMappings });
+    sheets.push({
+      index,
+      name: sheetName,
+      rowCount,
+      headers,
+      sampleData,
+      suggestedMappings,
+    });
   });
 
   return sheets;
@@ -332,13 +364,10 @@ const parseAuthConfig = (formData: FormData): AuthConfig | null => {
  * - bearerToken (for bearer type)
  * - username, password (for basic type)
  */
-// oxlint-disable-next-line complexity -- Complex route handler with file/URL parsing
-// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/max-lines-per-function
-export const POST = withAuth(async (req: AuthenticatedRequest) => {
-  const handleError = createErrorHandler("preview file schema", logger);
-  try {
-    const user = req.user!;
-
+// eslint-disable-next-line complexity, sonarjs/cognitive-complexity, sonarjs/max-lines-per-function
+export const POST = apiRoute({
+  auth: "required",
+  handler: async ({ req, user }) => {
     // Parse multipart form data
     const formData = await req.formData();
     const file = formData.get("file");
@@ -346,7 +375,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
 
     // Must have either file or sourceUrl
     if ((!file || !(file instanceof File)) && !sourceUrl) {
-      return badRequest("Either a file or sourceUrl is required");
+      throw new ValidationError("Either a file or sourceUrl is required");
     }
 
     const previewId = uuidv4();
@@ -363,7 +392,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
       // URL-based fetch
       const urlResult = validateUrl(sourceUrl);
       if ("error" in urlResult) {
-        return badRequest(urlResult.error);
+        throw new ValidationError(urlResult.error);
       }
       const parsedUrl = urlResult.url;
 
@@ -392,7 +421,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
 
         // Validate detected file type
         if (![".csv", ".xls", ".xlsx", ".ods"].includes(fileExtension)) {
-          return badRequest(
+          throw new ValidationError(
             `Unsupported file type detected: ${mimeType}. The URL must return CSV, Excel, or ODS data.`
           );
         }
@@ -412,24 +441,28 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
           userId: user.id,
         });
       } catch (fetchError) {
+        // Re-throw ValidationError instances (from our own validation above)
+        if (fetchError instanceof ValidationError) {
+          throw fetchError;
+        }
         const errorMessage = fetchError instanceof Error ? fetchError.message : "Unknown error";
         logger.error("Failed to fetch URL", { sourceUrl, error: fetchError });
-        return badRequest(`Failed to fetch URL: ${errorMessage}`);
+        throw new ValidationError(`Failed to fetch URL: ${errorMessage}`);
       }
     } else if (file instanceof File) {
       // File upload (existing logic)
       if (file.size > MAX_FILE_SIZE) {
-        return badRequest(`File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+        throw new ValidationError(`File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
       }
 
       if (!ALLOWED_MIME_TYPES.includes(file.type) && !fileExtensionRegex.test(file.name)) {
-        return badRequest("Unsupported file type. Please upload a CSV, Excel, or ODS file.");
+        throw new ValidationError("Unsupported file type. Please upload a CSV, Excel, or ODS file.");
       }
 
       fileExtension = path.extname(file.name).toLowerCase();
 
       if (!fileExtensionRegex.test(file.name)) {
-        return badRequest("Unsupported file extension. Please upload a CSV, Excel, or ODS file.");
+        throw new ValidationError("Unsupported file extension. Please upload a CSV, Excel, or ODS file.");
       }
 
       previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
@@ -441,9 +474,14 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
       mimeType = file.type;
       fileSize = file.size;
 
-      logger.info("File saved for preview", { previewId, fileName: file.name, fileSize: file.size, userId: user.id });
+      logger.info("File saved for preview", {
+        previewId,
+        fileName: file.name,
+        fileSize: file.size,
+        userId: user.id,
+      });
     } else {
-      return badRequest("Invalid request");
+      throw new ValidationError("Invalid request");
     }
 
     // Parse file to get sheet info
@@ -459,7 +497,7 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
       // Clean up temp file on parse error
       fs.unlinkSync(previewFilePath);
       logger.error("Failed to parse file", { error: parseError });
-      return badRequest("Failed to parse file. Please check the file format.");
+      throw new ValidationError("Failed to parse file. Please check the file format.");
     }
 
     // Store preview metadata (intentionally omit authConfig to avoid persisting secrets to disk)
@@ -486,12 +524,10 @@ export const POST = withAuth(async (req: AuthenticatedRequest) => {
       isUrlSource: !!sourceUrl,
     });
 
-    return NextResponse.json({
+    return Response.json({
       previewId,
       sheets,
       sourceUrl: sourceUrl ?? undefined, // Return source URL so UI knows this was a URL-based preview
     });
-  } catch (error) {
-    return handleError(error);
-  }
+  },
 });

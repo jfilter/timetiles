@@ -9,11 +9,9 @@
  * @category API Routes
  * @module
  */
-import { NextResponse } from "next/server";
-
+import { apiRoute } from "@/lib/api";
 import { runHealthChecks } from "@/lib/health";
 import { createLogger } from "@/lib/logger";
-import { internalError } from "@/lib/utils/api-response";
 
 const logger = createLogger("health-api");
 
@@ -54,24 +52,33 @@ const createErrorResponse = (error: unknown) => ({
  * environment variables, database connectivity, migrations status, and service
  * availability. Returns JSON response with detailed status of each check.
  *
- * @returns Promise resolving to NextResponse with health check results or error details.
+ * @returns Promise resolving to Response with health check results or error details.
  */
-export const GET = async () => {
-  logger.info("Health check endpoint called");
+export const GET = apiRoute({
+  auth: "none",
+  handler: async () => {
+    logger.info("Health check endpoint called");
 
-  try {
-    const results = await runHealthChecks();
-    logger.debug("Health check results:", results);
+    try {
+      const results = await runHealthChecks();
+      logger.debug("Health check results:", results);
 
-    const overallStatus = determineHealthStatus(results);
-    return NextResponse.json(results, { status: overallStatus });
-  } catch (error) {
-    logger.error("Health check failed with exception", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+      const overallStatus = determineHealthStatus(results);
+      return new Response(JSON.stringify(results), {
+        status: overallStatus,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      logger.error("Health check failed with exception", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
 
-    const errorResponse = createErrorResponse(error);
-    return internalError("Health check failed", "HEALTH_CHECK_FAILED", errorResponse);
-  }
-};
+      const errorResponse = createErrorResponse(error);
+      return new Response(
+        JSON.stringify({ error: "Health check failed", code: "HEALTH_CHECK_FAILED", details: errorResponse }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  },
+});

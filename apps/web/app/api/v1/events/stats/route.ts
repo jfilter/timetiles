@@ -9,23 +9,18 @@
  * @category API
  */
 import { sql } from "@payloadcms/db-postgres";
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import type { Payload } from "payload";
 
+import { apiRoute, ValidationError } from "@/lib/api";
 import { parseBoundsParameter } from "@/lib/geospatial";
 import { logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import {
   type AggregationFilters,
   buildAggregationWhereClause,
   normalizeEndDate,
 } from "@/lib/services/aggregation-filters";
-import { createErrorHandler } from "@/lib/utils/api-response";
 import { extractBaseEventParameters, normalizeStrictIntegerList } from "@/lib/utils/event-params";
-import config from "@/payload.config";
-
-const handleError = createErrorHandler("aggregate events", logger);
 
 /**
  * Aggregated item in response.
@@ -61,23 +56,20 @@ type GroupByField = "catalog" | "dataset";
  * - endDate (optional): Filter events <= this date (inclusive)
  * - bounds (optional): Geographic bounding box (JSON string)
  */
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
-  try {
-    const payload = await getPayload({ config });
-    const { searchParams } = request.nextUrl;
+export const GET = apiRoute({
+  auth: "optional",
+  handler: async ({ req, user, payload }) => {
+    const { searchParams } = req.nextUrl;
 
     // Parse groupBy parameter (required)
     const groupBy = searchParams.get("groupBy") as GroupByField | null;
     if (!groupBy) {
-      return NextResponse.json({ error: "Missing required parameter: groupBy" }, { status: 400 });
+      throw new ValidationError("Missing required parameter: groupBy");
     }
 
     // Validate groupBy value
     if (!["catalog", "dataset"].includes(groupBy)) {
-      return NextResponse.json(
-        { error: `Invalid groupBy value: ${groupBy}. Must be one of: catalog, dataset` },
-        { status: 400 }
-      );
+      throw new ValidationError(`Invalid groupBy value: ${groupBy}. Must be one of: catalog, dataset`);
     }
 
     // Parse filter parameters using shared utility
@@ -96,12 +88,18 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
     const bounds = boundsResult.bounds;
 
     // Get accessible catalog IDs for access control
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user ?? null);
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user ?? null);
 
     // If no accessible catalogs, return empty result
     if (accessibleCatalogIds.length === 0 && !catalog) {
-      logger.info("No accessible catalogs for user", { user: request.user?.email ?? "anonymous" });
-      return NextResponse.json({ items: [], total: 0, groupedBy: groupBy });
+      logger.info("No accessible catalogs for user", {
+        user: user?.email ?? "anonymous",
+      });
+      return Response.json({
+        items: [],
+        total: 0,
+        groupedBy: groupBy,
+      });
     }
 
     // Build filters object
@@ -117,10 +115,8 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
     // Execute aggregation query
     const result = await executeAggregationQuery(payload, groupBy, filters, accessibleCatalogIds);
 
-    return NextResponse.json(result);
-  } catch (error) {
-    return handleError(error);
-  }
+    return Response.json(result);
+  },
 });
 
 /**
@@ -133,7 +129,7 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
  * appear in results (with 0 count if no events match in viewport).
  */
 const executeAggregationQuery = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
+  payload: Payload,
   groupBy: GroupByField,
   filters: AggregationFilters,
   accessibleCatalogIds: number[]
@@ -178,7 +174,13 @@ const executeAggregationQuery = async (
     WHERE ${whereClause}
     GROUP BY ${groupByClause}
     ORDER BY count DESC
-  `)) as { rows: Array<{ id: number; name: string | null; count: number }> };
+  `)) as {
+    rows: Array<{
+      id: number;
+      name: string | null;
+      count: number;
+    }>;
+  };
 
   // Transform results into a map for easy lookup
   const resultMap = new Map<number, AggregationItem>();
@@ -209,11 +211,17 @@ const executeAggregationQuery = async (
           accessibleCatalogIds.map((id) => sql`${id}`),
           sql`, `
         )})
-      `)) as { rows: Array<{ id: number; name: string | null }> };
+      `)) as {
+        rows: Array<{ id: number; name: string | null }>;
+      };
 
       // Add missing datasets with 0 count
       for (const row of missingDatasetsResult.rows) {
-        resultMap.set(row.id, { id: row.id, name: row.name ?? `Dataset ${row.id}`, count: 0 });
+        resultMap.set(row.id, {
+          id: row.id,
+          name: row.name ?? `Dataset ${row.id}`,
+          count: 0,
+        });
       }
     }
   }
@@ -224,7 +232,15 @@ const executeAggregationQuery = async (
   // Calculate total events
   const total = items.reduce((sum, item) => sum + item.count, 0);
 
-  logger.info("Aggregation query executed", { groupBy, itemCount: items.length, totalEvents: total });
+  logger.info("Aggregation query executed", {
+    groupBy,
+    itemCount: items.length,
+    totalEvents: total,
+  });
 
-  return { items, total, groupedBy: groupBy };
+  return {
+    items,
+    total,
+    groupedBy: groupBy,
+  };
 };

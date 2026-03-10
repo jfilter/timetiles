@@ -1,34 +1,23 @@
 /**
- * API endpoint for initiating and listing data exports.
+ * API endpoint for requesting a user data export.
  *
- * POST: Request a new data export
- * GET: List user's export history
+ * Checks rate limits, verifies no existing export is in progress,
+ * creates an export record, and queues a background job to generate
+ * the export file.
  *
  * @module
  * @category API
  */
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
-
+import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getDataExportService } from "@/lib/services/data-export-service";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
-import { createErrorHandler } from "@/lib/utils/api-response";
-import config from "@/payload.config";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 
-/**
- * POST /api/account/download-data
- * Request a new data export.
- */
-export const POST = withAuth(async (request: AuthenticatedRequest) => {
-  const handleError = createErrorHandler("initiate data export", logger);
-  try {
-    const payload = await getPayload({ config });
-    const user = request.user!;
-
+export const POST = apiRoute({
+  auth: "required",
+  handler: async ({ payload, user }) => {
     // Rate limiting
     const rateLimitService = getRateLimitService(payload);
 
@@ -37,7 +26,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     if (!rateLimitCheck.allowed) {
       const resetTime = rateLimitCheck.resetTime ? new Date(rateLimitCheck.resetTime).toISOString() : undefined;
 
-      return NextResponse.json(
+      return Response.json(
         {
           error: "Too many export requests. Please try again later.",
           resetTime,
@@ -50,14 +39,16 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
     // Check for existing pending/processing export
     const existingExports = await payload.find({
       collection: DATA_EXPORTS_COLLECTION,
-      where: { and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }] },
+      where: {
+        and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }],
+      },
       limit: 1,
       overrideAccess: true,
     });
 
     if (existingExports.docs.length > 0) {
       const existing = existingExports.docs[0];
-      return NextResponse.json(
+      return Response.json(
         {
           error: "Export already in progress",
           exportId: existing?.id,
@@ -89,22 +80,24 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       // Re-check for existing exports in case of race condition
       const raceCheck = await payload.find({
         collection: DATA_EXPORTS_COLLECTION,
-        where: { and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }] },
+        where: {
+          and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }],
+        },
         limit: 1,
         overrideAccess: true,
       });
       if (raceCheck.docs.length > 0) {
-        return NextResponse.json(
-          { error: "Export already in progress", exportId: raceCheck.docs[0]?.id },
-          { status: 409 }
-        );
+        return Response.json({ error: "Export already in progress", exportId: raceCheck.docs[0]?.id }, { status: 409 });
       }
       throw createError;
     }
 
-    // Queue background job — if queueing fails, mark the record as failed
+    // Queue background job -- if queueing fails, mark the record as failed
     try {
-      await payload.jobs.queue({ task: "data-export", input: { exportId: exportRecord.id } });
+      await payload.jobs.queue({
+        task: "data-export",
+        input: { exportId: exportRecord.id },
+      });
     } catch (queueError) {
       await payload.update({
         collection: DATA_EXPORTS_COLLECTION,
@@ -117,7 +110,7 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
 
     logger.info({ userId: user.id, exportId: exportRecord.id }, "Data export requested");
 
-    return NextResponse.json(
+    return Response.json(
       {
         success: true,
         message: "Export started. You will receive an email when ready.",
@@ -126,45 +119,5 @@ export const POST = withAuth(async (request: AuthenticatedRequest) => {
       },
       { status: 202 }
     );
-  } catch (error) {
-    return handleError(error);
-  }
-});
-
-/**
- * GET /api/account/download-data
- * List user's export history.
- */
-export const GET = withAuth(async (request: AuthenticatedRequest) => {
-  const handleError = createErrorHandler("list data exports", logger);
-  try {
-    const payload = await getPayload({ config });
-    const user = request.user!;
-
-    // Get user's exports
-    const exports = await payload.find({
-      collection: DATA_EXPORTS_COLLECTION,
-      where: { user: { equals: user.id } },
-      sort: "-requestedAt",
-      limit: 10,
-      overrideAccess: true,
-    });
-
-    // Transform for response (hide internal fields)
-    const exportList = exports.docs.map((exp) => ({
-      id: exp.id,
-      status: exp.status,
-      requestedAt: exp.requestedAt,
-      completedAt: exp.completedAt,
-      expiresAt: exp.expiresAt,
-      fileSize: exp.fileSize,
-      downloadCount: exp.downloadCount,
-      summary: exp.summary,
-      errorLog: exp.status === "failed" ? exp.errorLog : undefined,
-    }));
-
-    return NextResponse.json({ exports: exportList, total: exports.totalDocs });
-  } catch (error) {
-    return handleError(error);
-  }
+  },
 });

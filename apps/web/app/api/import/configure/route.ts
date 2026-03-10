@@ -11,16 +11,12 @@
 import fs from "node:fs";
 
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import type { Payload } from "payload";
-import { getPayload } from "payload";
 
+import { apiRoute, AppError, ForbiddenError, ValidationError } from "@/lib/api";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
-import { type AuthenticatedRequest, withAuth } from "@/lib/middleware/auth";
 import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
-import { badRequest, forbidden } from "@/lib/utils/api-response";
-import config from "@/payload.config";
 import type { User } from "@/payload-types";
 
 import type {
@@ -200,7 +196,7 @@ const getOrCreateCatalog = async (
 
 // Create the import file record from preview metadata and wizard configuration
 const createImportFileRecord = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
+  payload: Payload,
   user: User,
   previewMeta: PreviewMetadata,
   body: ConfigureImportRequest,
@@ -246,29 +242,15 @@ const createImportFileRecord = async (
   return importFile;
 };
 
-// Handle errors from the configure-import endpoint
-const handleConfigureImportError = (error: unknown): NextResponse => {
-  // Bug 15: surface quota-exceeded as 429 rather than 500
+/**
+ * Convert QuotaExceededError to AppError so the framework handles it correctly.
+ * Bug 15: surface quota-exceeded as 429 rather than 500.
+ */
+const rethrowQuotaError = (error: unknown): never => {
   if (error instanceof QuotaExceededError) {
-    return NextResponse.json({ error: error.message, code: "QUOTA_EXCEEDED" }, { status: error.statusCode });
+    throw new AppError(error.statusCode, error.message, "QUOTA_EXCEEDED");
   }
-
-  logger.error("Failed to configure import", {
-    error,
-    message: error instanceof Error ? error.message : "Unknown error",
-    stack: error instanceof Error ? error.stack : undefined,
-  });
-  const errorMessage = error instanceof Error ? error.message : "Unknown error";
-  const errorStack = error instanceof Error ? error.stack : undefined;
-  return NextResponse.json(
-    {
-      error: "Failed to start import",
-      details: errorMessage,
-      stack: process.env.NODE_ENV !== "production" ? errorStack : undefined,
-      code: "INTERNAL_ERROR",
-    },
-    { status: 500 }
-  );
+  throw error;
 };
 
 /**
@@ -277,81 +259,83 @@ const handleConfigureImportError = (error: unknown): NextResponse => {
  * Takes the wizard configuration (previewId, catalog, datasets, field mappings)
  * and creates the import file record to start processing.
  */
-export const POST = withAuth(async (req: AuthenticatedRequest) => {
-  try {
-    const payload = await getPayload({ config });
-    const user = req.user!;
-    const body = (await req.json()) as ConfigureImportRequest;
-    logger.debug("Configure import request received", {
-      previewId: body.previewId,
-      catalogId: body.catalogId,
-      sheetMappingsCount: body.sheetMappings?.length,
-      geocodingEnabled: body.geocodingEnabled,
-    });
+export const POST = apiRoute({
+  auth: "required",
+  handler: async ({ req, user, payload }) => {
+    try {
+      const body = (await req.json()) as ConfigureImportRequest;
+      logger.debug("Configure import request received", {
+        previewId: body.previewId,
+        catalogId: body.catalogId,
+        sheetMappingsCount: body.sheetMappings?.length,
+        geocodingEnabled: body.geocodingEnabled,
+      });
 
-    const previewMeta = loadPreviewMetadata(body.previewId);
+      const previewMeta = loadPreviewMetadata(body.previewId);
 
-    // Validate request
-    const validationError = validateRequest(body, previewMeta, user);
-    if (validationError) {
-      return validationError;
-    }
+      // Validate request
+      const validationError = validateRequest(body, previewMeta, user);
+      if (validationError) {
+        return validationError;
+      }
 
-    // Get or create catalog
-    const finalCatalogId = await getOrCreateCatalog(payload, req, body.catalogId, body.newCatalogName, user);
-    if (finalCatalogId === "forbidden") {
-      return forbidden("You do not have access to this catalog");
-    }
-    if (finalCatalogId === null) {
-      return badRequest("New catalog name is required");
-    }
+      // Get or create catalog
+      const finalCatalogId = await getOrCreateCatalog(payload, req, body.catalogId, body.newCatalogName, user);
+      if (finalCatalogId === "forbidden") {
+        throw new ForbiddenError("You do not have access to this catalog");
+      }
+      if (finalCatalogId === null) {
+        throw new ValidationError("New catalog name is required");
+      }
 
-    // Process sheet mappings and create/update datasets
-    const { datasetIdMap, datasetMappingEntries } = await processSheetMappings(
-      payload,
-      req,
-      body.sheetMappings,
-      body.fieldMappings,
-      finalCatalogId,
-      body.deduplicationStrategy,
-      body.geocodingEnabled
-    );
-
-    // Create the import file record
-    const importFile = await createImportFileRecord(
-      payload,
-      user,
-      previewMeta!,
-      body,
-      finalCatalogId,
-      datasetIdMap,
-      datasetMappingEntries
-    );
-
-    // Create scheduled import if requested
-    let scheduledImportId: number | null = null;
-    if (body.createSchedule?.enabled) {
-      scheduledImportId = await createScheduledImport(
+      // Process sheet mappings and create/update datasets
+      const { datasetIdMap, datasetMappingEntries } = await processSheetMappings(
         payload,
-        body.createSchedule,
+        req,
+        body.sheetMappings,
+        body.fieldMappings,
         finalCatalogId,
-        datasetMappingEntries,
-        user,
-        importFile.id,
-        previewMeta!
+        body.deduplicationStrategy,
+        body.geocodingEnabled
       );
+
+      // Create the import file record
+      const importFile = await createImportFileRecord(
+        payload,
+        user,
+        previewMeta!,
+        body,
+        finalCatalogId,
+        datasetIdMap,
+        datasetMappingEntries
+      );
+
+      // Create scheduled import if requested
+      let scheduledImportId: number | null = null;
+      if (body.createSchedule?.enabled) {
+        scheduledImportId = await createScheduledImport(
+          payload,
+          body.createSchedule,
+          finalCatalogId,
+          datasetMappingEntries,
+          user,
+          importFile.id,
+          previewMeta!
+        );
+      }
+
+      cleanupPreview(body.previewId);
+
+      return Response.json({
+        success: true,
+        importFileId: importFile.id,
+        catalogId: finalCatalogId,
+        datasets: Object.fromEntries(datasetIdMap),
+        scheduledImportId: scheduledImportId ?? undefined,
+      });
+    } catch (error) {
+      // Bug 15: surface quota-exceeded as 429 rather than 500
+      return rethrowQuotaError(error);
     }
-
-    cleanupPreview(body.previewId);
-
-    return NextResponse.json({
-      success: true,
-      importFileId: importFile.id,
-      catalogId: finalCatalogId,
-      datasets: Object.fromEntries(datasetIdMap),
-      scheduledImportId: scheduledImportId ?? undefined,
-    });
-  } catch (error) {
-    return handleConfigureImportError(error);
-  }
+  },
 });

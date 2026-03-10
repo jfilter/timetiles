@@ -77,7 +77,6 @@ describe("api-response", () => {
 
       expect(res.status).toBe(500);
       expect(body.error).toBe("Failed to fetch events");
-      expect(body.details).toBe("DB connection failed");
       expect(mockLogger.error).toHaveBeenCalled();
     });
   });

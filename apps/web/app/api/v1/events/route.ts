@@ -8,20 +8,13 @@
  * for the client.
  * @module
  */
-import { NextResponse } from "next/server";
-import type { Where } from "payload";
-import { getPayload } from "payload";
+import type { Payload, Where } from "payload";
 
+import { apiRoute } from "@/lib/api";
 import { type MapBounds, parseBoundsParameter } from "@/lib/geospatial";
-import { logger } from "@/lib/logger";
-import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
-import { createErrorHandler } from "@/lib/utils/api-response";
 import { extractListParameters, normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
-import config from "@/payload.config";
 import type { Event, User } from "@/payload-types";
-
-const handleError = createErrorHandler("fetch events list", logger);
 
 const addCatalogFilter = (where: Where, catalog: string) => {
   const catalogId = parseStrictInteger(catalog);
@@ -153,11 +146,10 @@ const transformEvent = (event: Event) => {
   };
 };
 
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
-  try {
-    const payload = await getPayload({ config });
-
-    const parameters = extractListParameters(request.nextUrl.searchParams);
+export const GET = apiRoute({
+  auth: "optional",
+  handler: async ({ req, user, payload }) => {
+    const parameters = extractListParameters(req.nextUrl.searchParams);
 
     // Validate bounds parameter
     const boundsResult = parseBoundsParameter(parameters.boundsParam);
@@ -166,13 +158,11 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
     }
 
     const where = buildWhereClause(parameters, boundsResult.bounds);
-    const result = await executeEventsQuery(payload, where, parameters, request.user);
+    const result = await executeEventsQuery(payload, where, parameters, user);
     const response = buildListResponse(result);
 
-    return NextResponse.json(response);
-  } catch (error) {
-    return handleError(error);
-  }
+    return Response.json(response);
+  },
 });
 
 const addLocationExistsFilter = (where: Where) => {
@@ -228,7 +218,7 @@ const addDateFiltersToWhere = (where: Where, startDate: string | null, endDate: 
 };
 
 const executeEventsQuery = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
+  payload: Payload,
   where: Where,
   parameters: ReturnType<typeof extractListParameters>,
   user?: User | null
@@ -244,7 +234,17 @@ const executeEventsQuery = async (
     overrideAccess: false,
   });
 
-const buildListResponse = (result: Awaited<ReturnType<typeof executeEventsQuery>>) => ({
+const buildListResponse = (result: {
+  docs: Event[];
+  page?: number;
+  limit: number;
+  totalDocs: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  nextPage?: number | null;
+  prevPage?: number | null;
+}) => ({
   events: result.docs.map(transformEvent),
   pagination: {
     page: result.page,

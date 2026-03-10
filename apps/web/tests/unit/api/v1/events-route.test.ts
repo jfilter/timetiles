@@ -17,9 +17,17 @@ vi.mock("@/lib/middleware/auth", () => ({
   withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
 }));
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("@/lib/middleware/rate-limit", () => ({
+  withRateLimit: (handler: any) => handler,
+}));
 
-vi.mock("@/lib/geospatial", () => ({ parseBoundsParameter: mocks.mockParseBoundsParameter }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+}));
+
+vi.mock("@/lib/geospatial", () => ({
+  parseBoundsParameter: mocks.mockParseBoundsParameter,
+}));
 
 vi.mock("@/lib/utils/event-params", () => ({
   extractListParameters: mocks.mockExtractListParameters,
@@ -38,6 +46,15 @@ vi.mock("@/lib/utils/event-params", () => ({
       .filter((value): value is number => value != null),
 }));
 
+vi.mock("@/lib/services/aggregation-filters", () => ({
+  normalizeEndDate: (endDate: string | null): string | null => {
+    if (!endDate) return null;
+    if (endDate.includes("T")) return endDate;
+    return `${endDate}T23:59:59.999Z`;
+  },
+}));
+
+vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -46,13 +63,19 @@ import { GET } from "@/app/api/v1/events/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
 const createRequest = (queryString: string, user: unknown = null) =>
-  ({ user, nextUrl: new URL(`http://localhost:3000/api/v1/events${queryString}`) }) as unknown as AuthenticatedRequest;
+  ({
+    user,
+    nextUrl: new URL(`http://localhost:3000/api/v1/events${queryString}`),
+  }) as unknown as AuthenticatedRequest;
 
 describe.sequential("GET /api/v1/events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.mockGetPayload.mockResolvedValue({ find: mocks.mockPayloadFind });
+    mocks.mockGetPayload.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({ user: null }),
+      find: mocks.mockPayloadFind,
+    });
     mocks.mockParseBoundsParameter.mockReturnValue({ bounds: null });
     mocks.mockExtractListParameters.mockReturnValue({
       catalog: null,
@@ -91,14 +114,24 @@ describe.sequential("GET /api/v1/events", () => {
       sort: "-eventTimestamp",
     });
 
-    const response = await GET(createRequest(""), undefined);
+    const response = await GET(createRequest(""), { params: Promise.resolve({}) });
 
+    if (response.status !== 200) {
+      const body = await response.clone().json();
+      console.error("DEBUG events-route 500 body:", JSON.stringify(body));
+    }
     expect(response.status).toBe(200);
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          and: expect.arrayContaining([{ eventTimestamp: { less_than_equal: "2024-03-31T23:59:59.999Z" } }]),
+          and: expect.arrayContaining([
+            {
+              eventTimestamp: {
+                less_than_equal: "2024-03-31T23:59:59.999Z",
+              },
+            },
+          ]),
         }),
       })
     );
@@ -116,9 +149,16 @@ describe.sequential("GET /api/v1/events", () => {
       limit: 100,
       sort: "-eventTimestamp",
     });
-    mocks.mockParseBoundsParameter.mockReturnValue({ bounds: { west: 170, east: -170, south: -10, north: 10 } });
+    mocks.mockParseBoundsParameter.mockReturnValue({
+      bounds: {
+        west: 170,
+        east: -170,
+        south: -10,
+        north: 10,
+      },
+    });
 
-    const response = await GET(createRequest(""), undefined);
+    const response = await GET(createRequest(""), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
@@ -128,8 +168,16 @@ describe.sequential("GET /api/v1/events", () => {
           and: expect.arrayContaining([
             {
               or: [
-                { "location.longitude": { greater_than_equal: 170 } },
-                { "location.longitude": { less_than_equal: -170 } },
+                {
+                  "location.longitude": {
+                    greater_than_equal: 170,
+                  },
+                },
+                {
+                  "location.longitude": {
+                    less_than_equal: -170,
+                  },
+                },
               ],
             },
           ]),
@@ -151,13 +199,21 @@ describe.sequential("GET /api/v1/events", () => {
       sort: "-eventTimestamp",
     });
 
-    const response = await GET(createRequest("?catalog=abc"), undefined);
+    const response = await GET(createRequest("?catalog=abc"), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ and: expect.arrayContaining([{ id: { equals: -1 } }]) }),
+        where: expect.objectContaining({
+          and: expect.arrayContaining([
+            {
+              id: {
+                equals: -1,
+              },
+            },
+          ]),
+        }),
       })
     );
   });
@@ -175,13 +231,21 @@ describe.sequential("GET /api/v1/events", () => {
       sort: "-eventTimestamp",
     });
 
-    const response = await GET(createRequest("?datasets=10oops"), undefined);
+    const response = await GET(createRequest("?datasets=10oops"), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ and: expect.arrayContaining([{ id: { equals: -1 } }]) }),
+        where: expect.objectContaining({
+          and: expect.arrayContaining([
+            {
+              id: {
+                equals: -1,
+              },
+            },
+          ]),
+        }),
       })
     );
   });

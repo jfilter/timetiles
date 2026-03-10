@@ -17,24 +17,19 @@
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";
-import { NextResponse } from "next/server";
-import { getPayload } from "payload";
+import type { Payload } from "payload";
 
+import { apiRoute } from "@/lib/api";
 import type { MapBounds } from "@/lib/geospatial";
 import { parseBoundsParameter } from "@/lib/geospatial";
-import { logError } from "@/lib/logger";
-import { type AuthenticatedRequest, withOptionalAuth } from "@/lib/middleware/auth";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { internalError } from "@/lib/utils/api-response";
 import { buildEventFilters } from "@/lib/utils/event-filters";
 import { extractHistogramParameters, type HistogramParameters } from "@/lib/utils/event-params";
-import config from "@/payload.config";
 
-export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
-  try {
-    const payload = await getPayload({ config });
-
-    const parameters = extractHistogramParameters(request.nextUrl.searchParams);
+export const GET = apiRoute({
+  auth: "optional",
+  handler: async ({ req, user, payload }) => {
+    const parameters = extractHistogramParameters(req.nextUrl.searchParams);
     const boundsResult = parseBoundsParameter(parameters.boundsParam);
     if (boundsResult.error) {
       return boundsResult.error;
@@ -42,27 +37,24 @@ export const GET = withOptionalAuth(async (request: AuthenticatedRequest): Promi
     const bounds = boundsResult.bounds;
 
     // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, request.user);
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
     const filters = buildEventFilters({ parameters, accessibleCatalogIds, bounds });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyAccess === true || filters.denyResults === true) {
-      return NextResponse.json(buildEmptyHistogramResponse());
+      return Response.json(buildEmptyHistogramResponse());
     }
 
     const histogramResult = await executeHistogramQuery(payload, parameters, bounds, accessibleCatalogIds);
     const response = buildHistogramResponse(histogramResult.rows);
 
-    return NextResponse.json(response);
-  } catch (_error) {
-    logError(_error, "Failed to calculate histogram", { parameters: _error });
-    return internalError("Failed to calculate histogram");
-  }
+    return Response.json(response);
+  },
 });
 
 const executeHistogramQuery = async (
-  payload: Awaited<ReturnType<typeof getPayload>>,
+  payload: Payload,
   parameters: HistogramParameters,
   bounds: MapBounds | null,
   accessibleCatalogIds: number[]
