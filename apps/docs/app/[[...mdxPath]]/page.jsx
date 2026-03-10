@@ -1,18 +1,24 @@
+/**
+ * Dynamic MDX page renderer for Nextra documentation.
+ *
+ * @module
+ * @category Pages
+ */
 import { generateStaticParamsFor, importPage } from "nextra/pages";
 
 import { useMDXComponents as getMDXComponents } from "../../mdx-components";
 
 export const generateStaticParams = generateStaticParamsFor("mdxPath");
 
-export async function generateMetadata(props) {
+export const generateMetadata = async (props) => {
   const params = await props.params;
   const { metadata } = await importPage(params.mdxPath);
   return metadata;
-}
+};
 
 const Wrapper = getMDXComponents().wrapper;
 
-export default async function Page(props) {
+const Page = async (props) => {
   const params = await props.params;
   const { default: MDXContent, toc, metadata, sourceCode } = await importPage(params.mdxPath);
   return (
@@ -20,4 +26,6 @@ export default async function Page(props) {
       <MDXContent {...props} params={params} />
     </Wrapper>
   );
-}
+};
+
+export default Page;
