@@ -90,5 +90,4 @@ fs.writeFileSync(yamlPath, yaml.stringify(doc));
 const jsonPath = path.join(publicDir, "openapi.json");
 fs.writeFileSync(jsonPath, JSON.stringify(doc, null, 2));
 
-// oxlint-disable-next-line no-console
 console.log(`OpenAPI spec generated:\n  YAML: ${yamlPath}\n  JSON: ${jsonPath}`);

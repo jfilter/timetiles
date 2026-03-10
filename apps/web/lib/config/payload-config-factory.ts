@@ -167,7 +167,6 @@ const configureProduction = (config: Config, serverURL: string) => {
  * Creates a Payload configuration with the specified options.
  * Simplified factory following Payload's own buildConfigWithDefaults pattern.
  */
-// oxlint-disable-next-line complexity -- Payload config requires many conditional options
 export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}) => {
   const {
     environment = process.env.NODE_ENV ?? "development",

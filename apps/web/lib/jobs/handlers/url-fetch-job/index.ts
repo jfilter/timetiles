@@ -53,7 +53,6 @@ interface ImportContext {
 /**
  * Handles successful fetch and creates import file.
  */
-/* oxlint-disable complexity -- Complex import file creation logic */
 /* eslint-disable sonarjs/max-lines-per-function -- Complex import file creation logic */
 const handleFetchSuccess = async (
   payload: Payload,

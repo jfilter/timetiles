@@ -390,7 +390,8 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
   // Update lastSavedAt for persistence
   return { ...newState, lastSavedAt: new Date().toISOString() };
 };
-/* eslint-enable sonarjs/max-lines-per-function, complexity */
+/* eslint-enable sonarjs/max-lines-per-function */
+/* oxlint-enable complexity */
 
 // Context
 interface WizardContextValue {

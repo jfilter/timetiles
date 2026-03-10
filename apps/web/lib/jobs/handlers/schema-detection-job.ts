@@ -13,7 +13,6 @@
  *
  * @module
  */
-/* oxlint-disable complexity -- Schema detection handles multiple column types and validation cases */
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";

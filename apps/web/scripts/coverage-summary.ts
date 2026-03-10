@@ -13,7 +13,6 @@
  *
  * @module
  */
-/* oxlint-disable no-console */
 import { existsSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 

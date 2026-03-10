@@ -303,10 +303,107 @@ const extractSchemaChanges = (comparison: SchemaComparison, detectedSchema: Reco
   return { breakingChanges, newFields };
 };
 
+// Handle schema mode failure — updates job to FAILED and returns early result
+const handleSchemaModeFailure = async (
+  payload: Payload,
+  jobIdTyped: number,
+  importJobId: number | string,
+  schemaModeResult: SchemaModeResult,
+  validationData: {
+    detectedSchema: Record<string, unknown>;
+    breakingChanges: { field: string; change: string }[];
+    newFields: { field: string; type: string; optional: boolean }[];
+    transformSuggestions: ReturnType<typeof detectTransforms>;
+    isBreaking: boolean;
+  }
+) => {
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: jobIdTyped,
+    data: {
+      schema: validationData.detectedSchema,
+      schemaValidation: {
+        isCompatible: false,
+        breakingChanges: validationData.breakingChanges,
+        newFields: validationData.newFields,
+        transformSuggestions: validationData.transformSuggestions,
+        requiresApproval: false,
+        approvalReason: schemaModeResult.failureReason,
+      },
+      stage: PROCESSING_STAGE.FAILED,
+      errors: [{ row: 0, error: schemaModeResult.failureReason ?? "Schema validation failed" }],
+    },
+  });
+
+  await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
+
+  return {
+    output: {
+      requiresApproval: false,
+      hasBreakingChanges: validationData.isBreaking,
+      newFields: validationData.newFields.length,
+      failed: true,
+      failureReason: schemaModeResult.failureReason,
+    },
+  };
+};
+
+// Apply validation result — determines next stage and updates the job
+const applyValidationResult = async (
+  payload: Payload,
+  jobIdTyped: number,
+  importJobId: number | string,
+  resultData: {
+    detectedSchema: Record<string, unknown>;
+    comparison: SchemaComparison;
+    breakingChanges: { field: string; change: string }[];
+    newFields: { field: string; type: string; optional: boolean }[];
+    transformSuggestions: ReturnType<typeof detectTransforms>;
+    requiresApproval: boolean;
+    approvalReason: string;
+    hasChanges: boolean;
+  }
+) => {
+  let nextStage: (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
+  if (resultData.requiresApproval) {
+    nextStage = PROCESSING_STAGE.AWAIT_APPROVAL;
+  } else if (resultData.hasChanges) {
+    nextStage = PROCESSING_STAGE.CREATE_SCHEMA_VERSION;
+  } else {
+    nextStage = PROCESSING_STAGE.GEOCODE_BATCH;
+  }
+
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: jobIdTyped,
+    data: {
+      schema: resultData.detectedSchema,
+      schemaValidation: {
+        isCompatible: !resultData.comparison.isBreaking,
+        breakingChanges: resultData.breakingChanges,
+        newFields: resultData.newFields,
+        transformSuggestions: resultData.transformSuggestions,
+        requiresApproval: resultData.requiresApproval,
+        approvalReason: resultData.approvalReason,
+      },
+      stage: nextStage,
+    },
+  });
+
+  await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
+
+  return {
+    nextStage,
+    output: {
+      requiresApproval: resultData.requiresApproval,
+      hasBreakingChanges: resultData.comparison.isBreaking,
+      newFields: resultData.newFields.length,
+    },
+  };
+};
+
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
-  // eslint-disable-next-line sonarjs/max-lines-per-function
-  // oxlint-disable-next-line complexity
   handler: async (context: JobHandlerContext) => {
     const payload = (context.req?.payload ?? context.payload) as Payload;
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
@@ -322,14 +419,12 @@ export const validateSchemaJob = {
     const startTime = Date.now();
 
     try {
-      // Load all required resources
       const { job, dataset, importFile } = await loadResources(payload, jobIdTyped);
 
-      // Start VALIDATE_SCHEMA stage
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
       await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA, uniqueRows);
 
-      // Check event quota against the number of rows to be imported
+      // Check event quota
       if (importFile.user) {
         const user =
           typeof importFile.user === "object"
@@ -342,136 +437,57 @@ export const validateSchemaJob = {
         }
       }
 
-      // Get schema from cached builder state (no file reading needed)
-      const { detectedSchema } = await getSchemaFromCache({
-        schemaBuilderState: job.schemaBuilderState,
-      });
-
-      // Get current schema and compare
+      // Schema detection and comparison
+      const { detectedSchema } = await getSchemaFromCache({ schemaBuilderState: job.schemaBuilderState });
       const currentSchema = await getCurrentSchema(payload, dataset.id);
       const comparison = compareSchemas(currentSchema, detectedSchema);
-
-      // Detect potential import transforms from schema changes
       const transformSuggestions = detectTransforms(currentSchema, detectedSchema, comparison.changes);
-
-      logger.info("Transform detection complete", {
-        suggestionsCount: transformSuggestions.length,
-        suggestions: transformSuggestions.map((s) => ({
-          from: s.from,
-          to: s.to,
-          confidence: s.confidence,
-        })),
-      });
-
-      // Require approval if there are high-confidence transform suggestions
       const hasHighConfidenceTransforms = transformSuggestions.some((s) => s.confidence >= 80);
-
-      // Extract changes
       const { breakingChanges, newFields } = extractSchemaChanges(comparison, detectedSchema);
       const hasChanges = comparison.changes.length > 0;
 
-      // Check for schema mode from processingOptions (used by scheduled imports)
+      // Schema mode evaluation
       const processingOptions = (importFile.processingOptions as ProcessingOptions) ?? {};
-      const schemaMode = processingOptions.schemaMode;
+      const schemaModeResult = evaluateSchemaMode(
+        processingOptions.schemaMode,
+        comparison,
+        hasHighConfidenceTransforms
+      );
 
-      // Evaluate schema mode if present
-      const schemaModeResult = evaluateSchemaMode(schemaMode, comparison, hasHighConfidenceTransforms);
-
-      // Handle schema mode failure
       if (schemaModeResult.shouldFail) {
         logger.warn("Schema validation failed due to schema mode", {
-          schemaMode,
+          schemaMode: processingOptions.schemaMode,
           reason: schemaModeResult.failureReason,
-          changes: comparison.changes.length,
+        });
+        return await handleSchemaModeFailure(payload, jobIdTyped, importJobId, schemaModeResult, {
+          detectedSchema,
+          breakingChanges,
+          newFields,
+          transformSuggestions,
           isBreaking: comparison.isBreaking,
         });
-
-        await payload.update({
-          collection: COLLECTION_NAMES.IMPORT_JOBS,
-          id: jobIdTyped,
-          data: {
-            schema: detectedSchema,
-            schemaValidation: {
-              isCompatible: false,
-              breakingChanges,
-              newFields,
-              transformSuggestions,
-              requiresApproval: false,
-              approvalReason: schemaModeResult.failureReason,
-            },
-            stage: PROCESSING_STAGE.FAILED,
-            errors: [{ row: 0, error: schemaModeResult.failureReason ?? "Schema validation failed" }],
-          },
-        });
-
-        await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
-
-        return {
-          output: {
-            requiresApproval: false,
-            hasBreakingChanges: comparison.isBreaking,
-            newFields: newFields.length,
-            failed: true,
-            failureReason: schemaModeResult.failureReason,
-          },
-        };
       }
 
-      // Determine approval requirement
-      // If schema mode specifies approval is required, use that; otherwise fall back to dataset config
       const requiresApproval = determineRequiresApproval(
         schemaModeResult.requiresApproval,
-        schemaMode,
+        processingOptions.schemaMode,
         comparison,
         dataset,
         hasHighConfidenceTransforms
       );
-
-      // Determine next stage based on approval requirement and whether schema changed
-      let nextStage: (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
-      if (requiresApproval) {
-        nextStage = PROCESSING_STAGE.AWAIT_APPROVAL;
-      } else if (hasChanges) {
-        nextStage = PROCESSING_STAGE.CREATE_SCHEMA_VERSION;
-      } else {
-        nextStage = PROCESSING_STAGE.GEOCODE_BATCH;
-      }
-
-      logger.info("Schema validation determined next stage", {
-        schemaMode,
-        hasChanges,
-        requiresApproval,
-        nextStage,
-      });
-
-      // Determine approval reason
       const approvalReason =
         schemaModeResult.approvalReason ?? getApprovalReason(hasHighConfidenceTransforms, comparison.isBreaking);
 
-      // Update job with validation results
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: jobIdTyped,
-        data: {
-          schema: detectedSchema,
-          schemaValidation: {
-            isCompatible: !comparison.isBreaking,
-            breakingChanges,
-            newFields,
-            transformSuggestions, // Store transform suggestions
-            requiresApproval,
-            approvalReason,
-          },
-          stage: nextStage,
-        },
+      const result = await applyValidationResult(payload, jobIdTyped, importJobId, {
+        detectedSchema,
+        comparison,
+        breakingChanges,
+        newFields,
+        transformSuggestions,
+        requiresApproval,
+        approvalReason,
+        hasChanges,
       });
-
-      // Complete VALIDATE_SCHEMA stage
-      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
-
-      // Stage transition to next stage (AWAIT_APPROVAL, CREATE_SCHEMA_VERSION, or GEOCODE_BATCH)
-      // automatically queues appropriate job via afterChange hook
-      // No manual queueing needed here
 
       logPerformance("Schema validation", Date.now() - startTime, {
         importJobId,
@@ -479,13 +495,7 @@ export const validateSchemaJob = {
         requiresApproval,
       });
 
-      return {
-        output: {
-          requiresApproval,
-          hasBreakingChanges: comparison.isBreaking,
-          newFields: newFields.length,
-        },
-      };
+      return { output: result.output };
     } catch (error) {
       logError(error, "Schema validation failed", { importJobId });
 
@@ -494,12 +504,7 @@ export const validateSchemaJob = {
         id: jobIdTyped,
         data: {
           stage: PROCESSING_STAGE.FAILED,
-          errors: [
-            {
-              row: 0,
-              error: error instanceof Error ? error.message : "Unknown error",
-            },
-          ],
+          errors: [{ row: 0, error: error instanceof Error ? error.message : "Unknown error" }],
         },
       });
 

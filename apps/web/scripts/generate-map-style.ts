@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/* oxlint-disable no-console */
 /**
  * Generates custom MapLibre styles with cartographic design system colors.
  *

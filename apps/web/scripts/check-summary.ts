@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/* oxlint-disable no-console */
 /**
  * Combined code quality check summary script.
  *

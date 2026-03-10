@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/* oxlint-disable no-console */
 /**
  * AI-friendly test runner with summary output.
  *
