@@ -254,7 +254,7 @@ const processEventBatch = async (
   return { eventsCreated, eventsSkipped, errors };
 };
 
-const markJobCompleted = async (payload: Payload, importJobId: string | number, _job: ImportJob) => {
+const markJobCompleted = async (payload: Payload, importJobId: string | number) => {
   // Re-query job for current state (errors may have accumulated across batches)
   const currentJob = await payload.findByID({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
@@ -403,7 +403,7 @@ const handleBatchCompletion = async (
   hasMore: boolean
 ) => {
   if (!hasMore) {
-    await markJobCompleted(payload, importJobId, job);
+    await markJobCompleted(payload, importJobId);
     const importFileId = extractRelationId(job.importFile);
     await updateImportFileStatusIfAllJobsComplete(payload, importFileId!);
     return;
@@ -506,7 +506,7 @@ export const createEventsBatchJob = {
       // Handle empty batch (end of file)
       if (rows.length === 0) {
         await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);
-        await markJobCompleted(payload, importJobId, job);
+        await markJobCompleted(payload, importJobId);
         const importFileId = extractRelationId(job.importFile)!;
         await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
         return { output: { completed: true } };
