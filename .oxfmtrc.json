@@ -41,6 +41,8 @@
     "packages/assets/logos/**/*.html",
     "coverage/",
     "test-results/",
+    ".test-results/",
+    ".ethereal-credentials.json",
     "playwright-report/",
     ".lint-results/",
     ".typecheck-results/",
