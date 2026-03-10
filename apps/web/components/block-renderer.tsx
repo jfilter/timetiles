@@ -333,7 +333,7 @@ const renderTestimonials = (block: TestimonialsBlock, key: string) => (
   </div>
 );
 
-const blockRenderers: Record<string, (block: Block, key: string) => React.ReactNode> = {
+const blockRenderers: Record<string, (block: Block, key: string) => React.ReactElement> = {
   hero: (block, key) => renderHero(block as HeroBlock, key),
   features: (block, key) => renderFeatures(block as FeaturesBlock, key),
   stats: (block, key) => renderStats(block as StatsBlock, key),
@@ -387,21 +387,13 @@ const blockRenderers: Record<string, (block: Block, key: string) => React.ReactN
   },
 };
 
-export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
-  if (!blocks || blocks.length === 0) {
-    return null;
-  }
-
-  return (
-    <>
-      {blocks.map((block, index) => {
+export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => (
+  <>
+    {(blocks ?? [])
+      .filter((block) => block.blockType in blockRenderers)
+      .map((block, index) => {
         const key = block.id ?? `${block.blockType}-${index}`;
-        const renderer = blockRenderers[block.blockType];
-        if (!renderer) {
-          return null;
-        }
-        return renderer(block, key);
+        return blockRenderers[block.blockType]!(block, key);
       })}
-    </>
-  );
-};
+  </>
+);
