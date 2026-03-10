@@ -9,7 +9,7 @@
  *
  * @module
  */
-import type { CollectionConfig } from "payload";
+import type { Access, CollectionConfig, Where } from "payload";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
 
@@ -25,31 +25,19 @@ const DatasetSchemas: CollectionConfig = {
     group: "Data",
   },
   access: {
-    // Schema access inherits from dataset access
-    read: async ({ req, data }) => {
-      const { user } = req;
+    // Schema access uses denormalized fields for zero-query access control
+    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+    read: (({ req: { user } }): boolean | Where => {
       if (user?.role === "admin" || user?.role === "editor") return true;
 
-      // On list operations, data may be undefined — schemas are accessed via dataset endpoints
-      if (!data?.dataset) return false;
+      if (user) {
+        return {
+          or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }],
+        } as Where;
+      }
 
-      // Get dataset to check access
-      const datasetId = extractRelationId(data.dataset)!;
-      const dataset = await req.payload.findByID({ collection: "datasets", id: datasetId });
-      if (!dataset) return false;
-
-      // Get catalog for combined access check
-      const catalogId = extractRelationId(dataset.catalog);
-      const catalog = catalogId ? await req.payload.findByID({ collection: "catalogs", id: catalogId }) : null;
-
-      // Both dataset AND catalog must be public (matching dataset access rules)
-      if (dataset.isPublic && catalog?.isPublic) return true;
-
-      // Catalog owner can access their own schemas
-      if (!user || !catalog?.createdBy) return false;
-      const createdById = extractRelationId(catalog.createdBy);
-      return user.id === createdById;
-    },
+      return { datasetIsPublic: { equals: true } };
+    }) as Access,
 
     // Auto-generated during imports - no manual creation
     create: () => false,
@@ -72,6 +60,25 @@ const DatasetSchemas: CollectionConfig = {
       index: true,
       admin: {
         description: "Dataset this schema belongs to",
+      },
+    },
+    {
+      name: "datasetIsPublic",
+      type: "checkbox",
+      defaultValue: false,
+      index: true,
+      admin: {
+        hidden: true,
+        description: "Denormalized: dataset.isPublic AND catalog.isPublic for zero-query access control",
+      },
+    },
+    {
+      name: "catalogOwnerId",
+      type: "number",
+      index: true,
+      admin: {
+        hidden: true,
+        description: "Denormalized: catalog.createdBy for zero-query owner access control",
       },
     },
     {
@@ -257,6 +264,35 @@ const DatasetSchemas: CollectionConfig = {
       ],
     },
   ],
+  hooks: {
+    beforeChange: [
+      async ({ data, operation, req }) => {
+        if (operation !== "create" || !data?.dataset) return data;
+
+        const datasetId = extractRelationId(data.dataset);
+        if (!datasetId) return data;
+
+        const dataset = await req.payload.findByID({
+          collection: "datasets",
+          id: datasetId,
+          depth: 1,
+          overrideAccess: true,
+          req,
+        });
+
+        if (!dataset) return data;
+
+        const catalog = typeof dataset.catalog === "object" ? dataset.catalog : null;
+        const accessFields = {
+          datasetIsPublic: (dataset.isPublic ?? false) && (catalog?.isPublic ?? false),
+          catalogOwnerId: catalog?.createdBy ? extractRelationId(catalog.createdBy) : undefined,
+        };
+        Object.assign(data, accessFields);
+
+        return data;
+      },
+    ],
+  },
 };
 
 export default DatasetSchemas;

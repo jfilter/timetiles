@@ -762,6 +762,14 @@ export interface DatasetSchema {
    */
   dataset: number | Dataset;
   /**
+   * Denormalized: dataset.isPublic AND catalog.isPublic for zero-query access control
+   */
+  datasetIsPublic?: boolean | null;
+  /**
+   * Denormalized: catalog.createdBy for zero-query owner access control
+   */
+  catalogOwnerId?: number | null;
+  /**
    * Schema version number (auto-incremented)
    */
   versionNumber: number;
@@ -2967,6 +2975,8 @@ export interface DatasetsSelect<T extends boolean = true> {
  */
 export interface DatasetSchemasSelect<T extends boolean = true> {
   dataset?: T;
+  datasetIsPublic?: T;
+  catalogOwnerId?: T;
   versionNumber?: T;
   displayName?: T;
   schema?: T;

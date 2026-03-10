@@ -15,6 +15,7 @@
 import type { CollectionConfig, PayloadRequest } from "payload";
 
 import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
@@ -85,6 +86,28 @@ const syncDatasetsWithCatalog = async (
       collection: "datasets",
       where: { catalog: { equals: catalogId } },
       data: datasetUpdates,
+      overrideAccess: true,
+      req,
+    });
+  }
+};
+
+/** Sync catalog changes to dataset-schemas in a dataset */
+const syncDatasetSchemasWithCatalog = async (
+  req: PayloadRequest,
+  datasetId: number,
+  datasetIsPublic: boolean,
+  changes: { createdByChanged: boolean; isPublicChanged: boolean; newCreatedBy: unknown; newIsPublic: boolean }
+): Promise<void> => {
+  const schemaUpdates: Record<string, unknown> = {};
+  if (changes.createdByChanged) schemaUpdates.catalogOwnerId = changes.newCreatedBy;
+  if (changes.isPublicChanged) schemaUpdates.datasetIsPublic = datasetIsPublic && changes.newIsPublic;
+
+  if (Object.keys(schemaUpdates).length > 0) {
+    await req.payload.update({
+      collection: "dataset-schemas",
+      where: { dataset: { equals: datasetId } },
+      data: schemaUpdates,
       overrideAccess: true,
       req,
     });
@@ -239,6 +262,52 @@ const Catalogs: CollectionConfig = {
         const changes = detectCatalogChanges(previousDoc, doc);
         if (!changes.createdByChanged && !changes.isPublicChanged) return doc;
 
+        // Audit visibility and ownership changes (best-effort)
+        const ownerId = extractRelationId<number>(doc.createdBy);
+        if (ownerId) {
+          try {
+            const owner = await req.payload.findByID({
+              collection: "users",
+              id: ownerId,
+              overrideAccess: true,
+              depth: 0,
+            });
+
+            if (changes.isPublicChanged) {
+              await auditLog(req.payload, {
+                action: AUDIT_ACTIONS.CATALOG_VISIBILITY_CHANGED,
+                userId: ownerId,
+                userEmail: owner.email,
+                performedBy: req.user?.id !== ownerId ? req.user?.id : undefined,
+                details: {
+                  catalogId: doc.id,
+                  catalogName: doc.name,
+                  previousIsPublic: !changes.newIsPublic,
+                  newIsPublic: changes.newIsPublic,
+                },
+              });
+            }
+
+            if (changes.createdByChanged) {
+              const prevOwnerId = extractRelationId<number>(previousDoc?.createdBy);
+              await auditLog(req.payload, {
+                action: AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED,
+                userId: prevOwnerId ?? ownerId,
+                userEmail: owner.email,
+                performedBy: req.user?.id,
+                details: {
+                  catalogId: doc.id,
+                  catalogName: doc.name,
+                  previousOwnerId: prevOwnerId,
+                  newOwnerId: ownerId,
+                },
+              });
+            }
+          } catch {
+            /* audit is best-effort */
+          }
+        }
+
         // Get all datasets in this catalog (needed for events update)
         const datasets = await req.payload.find({
           collection: "datasets",
@@ -252,9 +321,10 @@ const Catalogs: CollectionConfig = {
         // Sync changes to datasets
         await syncDatasetsWithCatalog(req, doc.id, changes);
 
-        // Sync changes to events in all datasets
+        // Sync changes to events and dataset-schemas in all datasets
         for (const dataset of datasets.docs) {
           await syncEventsWithCatalog(req, dataset.id, dataset.isPublic ?? false, changes);
+          await syncDatasetSchemasWithCatalog(req, dataset.id, dataset.isPublic ?? false, changes);
         }
 
         return doc;

@@ -12,6 +12,7 @@
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
 
 import { logger } from "@/lib/logger";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
@@ -159,14 +160,51 @@ export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({
   if (operation !== "update") return doc;
   if (previousDoc?.isPublic === doc.isPublic) return doc;
 
-  const newIsPublic = doc.isPublic ?? false;
+  // Audit visibility change (best-effort)
+  const datasetOwnerId = extractRelationId<number>(doc.createdBy);
+  if (datasetOwnerId) {
+    try {
+      const owner = await req.payload.findByID({
+        collection: "users",
+        id: datasetOwnerId,
+        overrideAccess: true,
+        depth: 0,
+      });
+      await auditLog(req.payload, {
+        action: AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED,
+        userId: datasetOwnerId,
+        userEmail: owner.email,
+        performedBy: req.user?.id !== datasetOwnerId ? req.user?.id : undefined,
+        details: {
+          datasetId: doc.id,
+          datasetName: doc.name,
+          previousIsPublic: previousDoc?.isPublic ?? false,
+          newIsPublic: doc.isPublic ?? false,
+        },
+      });
+    } catch {
+      /* audit is best-effort */
+    }
+  }
 
-  logger.info(`Syncing datasetIsPublic=${newIsPublic} to events in dataset ${doc.id}`);
+  const newIsPublic = doc.isPublic ?? false;
+  const catalogIsPublic = doc.catalogIsPublic ?? false;
+  const combinedIsPublic = newIsPublic && catalogIsPublic;
+
+  logger.info(`Syncing datasetIsPublic=${combinedIsPublic} to events and dataset-schemas in dataset ${doc.id}`);
 
   await req.payload.update({
     collection: "events",
     where: { dataset: { equals: doc.id } },
-    data: { datasetIsPublic: newIsPublic },
+    data: { datasetIsPublic: combinedIsPublic },
+    overrideAccess: true,
+    req,
+  });
+
+  await req.payload.update({
+    collection: "dataset-schemas",
+    where: { dataset: { equals: doc.id } },
+    data: { datasetIsPublic: combinedIsPublic },
     overrideAccess: true,
     req,
   });
