@@ -31,10 +31,10 @@ import config from "@/payload.config";
 export const POST = withRateLimit(
   withAuth(
     async (request: AuthenticatedRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
-      const handleError = createErrorHandler("retry import job", logger);
+      const { id } = await context.params;
+      const handleError = createErrorHandler(`retry import job ${id}`, logger);
       try {
         const payload = await getPayload({ config });
-        const { id } = await context.params;
 
         // Get the import job with access control
         const importJob = await payload

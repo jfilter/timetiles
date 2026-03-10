@@ -379,7 +379,7 @@ export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enab
     queryKey: eventsQueryKeys.histogram(filters, bounds),
     queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal),
     enabled: enabled && bounds != null, // Only run when bounds are available
-    ...QUERY_PRESETS.standard,
+    ...QUERY_PRESETS.expensive,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
@@ -498,7 +498,7 @@ export const useEventsAggregationQuery = (
     queryKey: eventsQueryKeys.aggregation(filters, bounds, groupBy),
     queryFn: ({ signal }) => fetchAggregation(filters, bounds, groupBy, signal),
     enabled: enabled && bounds != null,
-    ...QUERY_PRESETS.standard,
+    ...QUERY_PRESETS.expensive,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });

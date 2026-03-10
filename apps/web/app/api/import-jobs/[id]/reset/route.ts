@@ -45,10 +45,10 @@ const VALID_RESET_STAGES = [
 export const POST = withRateLimit(
   withAuth(
     async (request: AuthenticatedRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
-      const handleError = createErrorHandler("reset import job", logger);
+      const { id } = await context.params;
+      const handleError = createErrorHandler(`reset import job ${id}`, logger);
       try {
         const payload = await getPayload({ config });
-        const { id } = await context.params;
 
         // Only admins can reset stages
         if (request.user?.role !== "admin") {

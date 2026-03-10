@@ -71,7 +71,7 @@ const generateAccountExistsEmailHTML = (resetUrl: string): string => {
 };
 
 export const POST = async (request: Request): Promise<Response> => {
-  const handleError = createErrorHandler("register user", logger);
+  const handleError = createErrorHandler("register", logger);
   try {
     const payload = await getPayload({ config });
 
