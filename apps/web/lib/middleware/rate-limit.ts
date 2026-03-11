@@ -1,9 +1,8 @@
 /**
- * Rate limiting middleware for API routes.
+ * Rate limiting utilities for API routes.
  *
- * Provides composable middleware functions that enforce rate limits
- * based on trust levels or specific configurations. Integrates with
- * the existing rate-limit-service for centralized limit management.
+ * Provides a rate limit check function used by `apiRoute` to enforce
+ * trust-level or configuration-based rate limits.
  *
  * @module
  * @category Middleware
@@ -19,8 +18,6 @@ import {
   type RateLimitConfig,
 } from "@/lib/services/rate-limit-service";
 import type { User } from "@/payload-types";
-
-import type { AuthenticatedRequest } from "./auth";
 
 export type RateLimitType = "API_GENERAL" | "FILE_UPLOAD";
 
@@ -58,30 +55,9 @@ export interface RateLimitOptions {
 }
 
 /**
- * Middleware that enforces rate limiting on API routes.
- *
- * Can use either trust-level based rate limiting (for general APIs)
- * or specific rate limit configurations (for specialized endpoints).
- *
- * @example
- * ```typescript
- * // Trust-level based rate limiting
- * export const GET = withRateLimit(
- *   withOptionalAuth(handler),
- *   { type: "API_GENERAL" }
- * );
- *
- * // Specific configuration rate limiting
- * export const GET = withRateLimit(
- *   withAuth(handler),
- *   { configName: "PROGRESS_CHECK" }
- * );
- * ```
- */
-/**
  * Check rate limit and return a 429 Response if exceeded, or null if allowed.
  *
- * Used internally by both `withRateLimit` (middleware) and `apiRoute` (post-auth).
+ * Used by `apiRoute` for post-auth rate limiting.
  */
 export const checkRateLimit = async (
   request: Request,
@@ -119,36 +95,3 @@ export const checkRateLimit = async (
 
   return null;
 };
-
-/**
- * Middleware that enforces rate limiting on API routes.
- *
- * Can use either trust-level based rate limiting (for general APIs)
- * or specific rate limit configurations (for specialized endpoints).
- *
- * @example
- * ```typescript
- * // Trust-level based rate limiting
- * export const GET = withRateLimit(
- *   withOptionalAuth(handler),
- *   { type: "API_GENERAL" }
- * );
- *
- * // Specific configuration rate limiting
- * export const GET = withRateLimit(
- *   withAuth(handler),
- *   { configName: "PROGRESS_CHECK" }
- * );
- * ```
- */
-export const withRateLimit =
-  <TContext = unknown>(
-    handler: (req: AuthenticatedRequest, context: TContext) => Promise<Response> | Response,
-    options?: RateLimitOptions
-  ) =>
-  async (request: AuthenticatedRequest, context: TContext) => {
-    const rateLimitResponse = await checkRateLimit(request, request.user, options ?? {});
-    if (rateLimitResponse) return rateLimitResponse;
-
-    return handler(request, context);
-  };

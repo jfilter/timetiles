@@ -2,8 +2,8 @@
 /**
  * Unit tests for the configure-import API route.
  *
- * Tests the POST handler through the withAuth middleware with mocked
- * external dependencies (Payload, filesystem).
+ * Tests the POST handler with mocked external dependencies
+ * (Payload, filesystem).
  *
  * @module
  * @category Tests
@@ -32,11 +32,7 @@ vi.mock("node:fs", () => ({
   default: { existsSync: mocks.mockExistsSync, readFileSync: mocks.mockReadFileSync, unlinkSync: mocks.mockUnlinkSync },
 }));
 
-vi.mock("@/lib/middleware/auth", () => ({
-  withAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
-  withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
-  withAdminAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
-}));
+vi.mock("@/lib/middleware/auth", () => ({}));
 
 vi.mock("@/lib/services/quota-service", () => {
   class QuotaExceededError extends Error {

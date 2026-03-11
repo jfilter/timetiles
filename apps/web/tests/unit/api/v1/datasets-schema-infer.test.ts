@@ -12,12 +12,9 @@ const mocks = vi.hoisted(() => ({
   mockFindByID: vi.fn(),
 }));
 
-vi.mock("@/lib/middleware/auth", () => ({ withAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler) }));
+vi.mock("@/lib/middleware/auth", () => ({}));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-  checkRateLimit: vi.fn().mockResolvedValue(null),
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 

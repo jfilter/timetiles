@@ -48,23 +48,9 @@ vi.mock("@/lib/constants/quota-constants", () => ({
   },
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-  checkRateLimit: vi.fn().mockResolvedValue(null),
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
-vi.mock("@/lib/middleware/auth", () => ({
-  withAuth: (handler: any) => async (req: any, ctx: any) => {
-    const payload = await mocks.mockGetPayload();
-    const { user } = await payload.auth({ headers: req.headers });
-    if (!user) {
-      const { NextResponse } = await import("next/server");
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-    Object.assign(req, { user });
-    return handler(req, ctx);
-  },
-}));
+vi.mock("@/lib/middleware/auth", () => ({}));
 
 vi.mock("@/lib/services/rate-limit-service", () => ({
   getClientIdentifier: vi.fn().mockReturnValue("test-client"),
