@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/* eslint-disable sonarjs/os-command */
 /**
  * Combined code quality check summary script.
  *
