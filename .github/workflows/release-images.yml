@@ -28,6 +28,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         include:
           - runner: ubuntu-24.04
@@ -60,7 +61,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=main-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=main-${{ matrix.platform }}
+          cache-to: type=gha,mode=min,scope=main-${{ matrix.platform }}
 
       - name: Export digest
         run: |
@@ -81,6 +82,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         include:
           - runner: ubuntu-24.04
@@ -113,7 +115,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=allinone-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=allinone-${{ matrix.platform }}
+          cache-to: type=gha,mode=min,scope=allinone-${{ matrix.platform }}
 
       - name: Export digest
         run: |
