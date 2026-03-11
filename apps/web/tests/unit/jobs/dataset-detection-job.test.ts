@@ -60,7 +60,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
     // Mock context
     mockContext = {
-      payload: mockPayload,
+      req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: {} },
       input: { importFileId: "import-file-123", catalogId: "456" },
     };

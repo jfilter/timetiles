@@ -186,8 +186,6 @@ const getApprovalReason = (hasHighConfidenceTransforms: boolean, isBreaking: boo
   return "Manual approval required by dataset configuration";
 };
 
-// Helper function removed - schema creation now happens in CREATE_SCHEMA_VERSION stage for both auto and manual approval
-
 /**
  * Check quota limits for the import
  */
@@ -231,7 +229,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   }
 };
 
-// Extract schema changes for backward compatibility
+/** Transform SchemaComparison changes into structured breaking/new-field lists for job output */
 const extractSchemaChanges = (comparison: SchemaComparison, detectedSchema: Record<string, unknown>) => {
   const breakingChanges = comparison.changes
     .filter((c) => c.severity === "error")
@@ -362,7 +360,7 @@ const applyValidationResult = async (
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
     const { importJobId } = input;
 

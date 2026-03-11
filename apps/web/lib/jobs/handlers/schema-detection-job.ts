@@ -316,7 +316,7 @@ const handleCompletion = async (
 export const schemaDetectionJob = {
   slug: JOB_TYPES.DETECT_SCHEMA,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as SchemaDetectionJobInput["input"];
     const { importJobId, batchNumber } = input;
 

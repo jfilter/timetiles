@@ -20,10 +20,7 @@ const logger = createLogger("quota-reset-job");
 export const quotaResetJobConfig = {
   slug: "quota-reset" as const,
   handler: async (context: JobHandlerContext) => {
-    const payload = context.req?.payload ?? context.payload;
-    if (!payload) {
-      throw new Error("Payload instance not found in job context");
-    }
+    const { payload } = context.req;
 
     try {
       logger.info("Starting daily quota reset job");

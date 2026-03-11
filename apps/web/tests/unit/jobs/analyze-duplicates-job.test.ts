@@ -50,7 +50,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
     // Mock context
     mockContext = {
-      payload: mockPayload,
+      req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: "running" } as any,
       input: { importJobId: "import-123" } as any,
     };

@@ -15,19 +15,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
-// Re-export types for backward compatibility with existing consumers
-export type {
-  AuthConfig,
-  ConfidenceLevel,
-  FieldMapping,
-  FieldMappingSuggestion,
-  LanguageDetectionResult,
-  SheetInfo,
-  SheetMapping,
-  SuggestedMappings,
-  UrlAuthConfig,
-} from "@/lib/types/import-wizard";
-
 // Constants
 const STORAGE_KEY = "timetiles_import_wizard_draft";
 const STORAGE_EXPIRY_HOURS = 24;

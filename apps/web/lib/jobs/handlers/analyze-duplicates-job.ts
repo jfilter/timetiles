@@ -235,7 +235,7 @@ const updateJobWithDuplicates = async (
 export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as AnalyzeDuplicatesJobInput["input"];
     const { importJobId } = input;
 

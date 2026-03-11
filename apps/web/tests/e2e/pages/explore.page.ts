@@ -12,8 +12,6 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export class ExplorePage {
   readonly page: Page;
   readonly map: Locator;
-  /** @deprecated Use catalogButtons instead - UI redesigned from select to buttons */
-  readonly catalogSelect: Locator;
   readonly catalogButtons: Locator;
   readonly dataSourcesSection: Locator;
   readonly datasetCheckboxes: Locator;
@@ -29,9 +27,7 @@ export class ExplorePage {
   constructor(page: Page) {
     this.page = page;
     this.map = page.getByRole("region", { name: "Map" }).first();
-    // @deprecated - Legacy selector, UI was redesigned. Catalogs are now buttons.
-    this.catalogSelect = page.locator("#catalog-select"); // eslint-disable-line sonarjs/deprecation
-    // New catalog UI: buttons under "Data Sources" / "Catalogs" section
+    // Catalog UI: buttons under "Data Sources" / "Catalogs" section
     this.dataSourcesSection = page.getByRole("button", { name: /Data Sources/i });
     // Catalog buttons contain "X datasets" and "Y events" text in divs
     // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test

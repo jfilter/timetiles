@@ -8,12 +8,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type {
-  FieldMapping,
-  SheetInfo,
-  SheetMapping,
-  WizardStep,
-} from "../../../app/(frontend)/import/_components/wizard-context";
+import type { FieldMapping, SheetInfo, SheetMapping } from "@/lib/types/import-wizard";
+import type { WizardStep } from "../../../app/(frontend)/import/_components/wizard-context";
 
 // Re-create the reducer logic for testing since it's internal to the component
 // This tests the reducer logic without needing React context

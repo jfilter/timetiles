@@ -12,7 +12,7 @@ import { Button } from "@timetiles/ui/components/button";
 import { ArrowLeft, Redo2, Save, Undo2 } from "lucide-react";
 import Link from "next/link";
 
-import type { SheetInfo } from "@/app/(frontend)/import/_components/wizard-context";
+import type { SheetInfo } from "@/lib/types/import-wizard";
 
 interface FlowEditorHeaderProps {
   sheetInfo: SheetInfo | null;

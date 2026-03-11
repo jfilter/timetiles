@@ -247,7 +247,7 @@ const processSheetWithMapping = async (
 export const datasetDetectionJob = {
   slug: JOB_TYPES.DATASET_DETECTION,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as DatasetDetectionJobInput["input"];
     const { importFileId, catalogId } = input;
     const jobId = String(context.job?.id ?? "unknown");

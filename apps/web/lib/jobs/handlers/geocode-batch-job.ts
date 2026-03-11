@@ -123,7 +123,7 @@ export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
 
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as GeocodingBatchJobInput["input"];
     const { importJobId } = input;
 

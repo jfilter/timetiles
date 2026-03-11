@@ -11,7 +11,7 @@
 
 import type { Edge, Node } from "@xyflow/react";
 
-import type { FieldMapping } from "@/app/(frontend)/import/_components/wizard-context";
+import type { FieldMapping } from "@/lib/types/import-wizard";
 
 import type { ImportTransform } from "./import-transforms";
 

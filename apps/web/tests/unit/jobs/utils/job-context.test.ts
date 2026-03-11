@@ -30,32 +30,6 @@ describe("Job Context Utilities", () => {
       expect(result.input.fileType).toBe("csv");
     });
 
-    it("should extract payload from legacy context.payload", () => {
-      const mockPayload = { collections: {} } as any;
-      const context: JobHandlerContext = {
-        payload: mockPayload,
-        input: { importJobId: 456, filePath: "/path/to/file.xlsx", fileType: "xlsx" as const },
-      };
-
-      const result = extractFileParsingContext(context);
-      expect(result.payload).toBe(mockPayload);
-      expect(result.input.importJobId).toBe(456);
-    });
-
-    it("should prefer req.payload over legacy context.payload", () => {
-      const reqPayload = { collections: {}, source: "req" } as any;
-      const contextPayload = { collections: {}, source: "context" } as any;
-      const context: JobHandlerContext = {
-        req: { payload: reqPayload },
-        payload: contextPayload,
-        input: { importJobId: 789, filePath: "/path/to/file.csv", fileType: "csv" as const },
-      };
-
-      const result = extractFileParsingContext(context);
-      expect(result.payload).toBe(reqPayload);
-      expect((result.payload as any).source).toBe("req");
-    });
-
     it("should extract input with all required fields", () => {
       const mockPayload = { collections: {} } as any;
       const input: FileParsingJobPayload["input"] = {
@@ -69,21 +43,22 @@ describe("Job Context Utilities", () => {
       expect(result.input).toEqual(input);
     });
 
-    it("should throw error when payload is missing", () => {
-      const context: JobHandlerContext = {
+    it("should throw error when req is missing", () => {
+      const context = {
         input: { importJobId: 123, filePath: "/path/to/file.csv", fileType: "csv" as const },
-      };
+      } as unknown as JobHandlerContext;
 
-      expect(() => extractFileParsingContext(context)).toThrow("Payload instance not found in job context");
+      expect(() => extractFileParsingContext(context)).toThrow();
     });
 
-    it("should throw error when payload is null", () => {
+    it("should handle null payload by returning it (no validation)", () => {
       const context: JobHandlerContext = {
         req: { payload: null as any },
         input: { importJobId: 123, filePath: "/path/to/file.csv", fileType: "csv" as const },
       };
 
-      expect(() => extractFileParsingContext(context)).toThrow("Payload instance not found in job context");
+      const result = extractFileParsingContext(context);
+      expect(result.payload).toBeNull();
     });
 
     it("should throw error when importJobId is missing", () => {
@@ -112,20 +87,6 @@ describe("Job Context Utilities", () => {
 
       expect(() => extractFileParsingContext(context)).toThrow("Import Job ID is required for file parsing job");
     });
-
-    it("should handle additional context properties", () => {
-      const mockPayload = { collections: {} } as any;
-      const context: JobHandlerContext = {
-        req: { payload: mockPayload },
-        input: { importJobId: 123, filePath: "/path/to/file.csv", fileType: "csv" as const },
-        job: { id: "job-123", taskStatus: { progress: 50 } },
-        customProperty: "custom-value",
-      };
-
-      const result = extractFileParsingContext(context);
-      expect(result.payload).toBe(mockPayload);
-      expect(result.input.importJobId).toBe(123);
-    });
   });
 
   describe("extractEventCreationContext", () => {
@@ -143,32 +104,6 @@ describe("Job Context Utilities", () => {
       expect(result.input.batchNumber).toBe(1);
     });
 
-    it("should extract payload from legacy context.payload", () => {
-      const mockPayload = { collections: {} } as any;
-      const context: JobHandlerContext = {
-        payload: mockPayload,
-        input: { importJobId: 456, processedData: [], batchNumber: 2 },
-      };
-
-      const result = extractEventCreationContext(context);
-      expect(result.payload).toBe(mockPayload);
-      expect(result.input.importJobId).toBe(456);
-    });
-
-    it("should prefer req.payload over legacy context.payload", () => {
-      const reqPayload = { collections: {}, source: "req" } as any;
-      const contextPayload = { collections: {}, source: "context" } as any;
-      const context: JobHandlerContext = {
-        req: { payload: reqPayload },
-        payload: contextPayload,
-        input: { importJobId: 789, processedData: [{ data: "test" }], batchNumber: 3 },
-      };
-
-      const result = extractEventCreationContext(context);
-      expect(result.payload).toBe(reqPayload);
-      expect((result.payload as any).source).toBe("req");
-    });
-
     it("should validate importJobId presence", () => {
       const mockPayload = { collections: {} } as any;
       const input: EventCreationJobPayload["input"] = {
@@ -182,19 +117,22 @@ describe("Job Context Utilities", () => {
       expect(result.input).toEqual(input);
     });
 
-    it("should throw error when payload is missing", () => {
-      const context: JobHandlerContext = { input: { importJobId: 123, processedData: [], batchNumber: 1 } };
+    it("should throw error when req is missing", () => {
+      const context = {
+        input: { importJobId: 123, processedData: [], batchNumber: 1 },
+      } as unknown as JobHandlerContext;
 
-      expect(() => extractEventCreationContext(context)).toThrow("Payload instance not found in job context");
+      expect(() => extractEventCreationContext(context)).toThrow();
     });
 
-    it("should throw error when payload is null", () => {
+    it("should handle null payload by returning it (no validation)", () => {
       const context: JobHandlerContext = {
         req: { payload: null as any },
         input: { importJobId: 123, processedData: [], batchNumber: 1 },
       };
 
-      expect(() => extractEventCreationContext(context)).toThrow("Payload instance not found in job context");
+      const result = extractEventCreationContext(context);
+      expect(result.payload).toBeNull();
     });
 
     it("should throw error when importJobId is missing", () => {

@@ -74,7 +74,7 @@ describe.sequential("Failure Transitions Integration", () => {
       });
 
       const detectionContext = {
-        payload,
+        req: { payload },
         job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
       };
 
@@ -100,7 +100,7 @@ describe.sequential("Failure Transitions Integration", () => {
       });
 
       const detectionContext = {
-        payload,
+        req: { payload },
         job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
       };
 
@@ -116,7 +116,7 @@ describe.sequential("Failure Transitions Integration", () => {
       const nonExistentJobId = "non-existent-job-id";
 
       const duplicateContext = {
-        payload,
+        req: { payload },
         job: { id: "duplicate-job", input: { importJobId: nonExistentJobId, batchNumber: 0 } },
       };
 
@@ -137,7 +137,7 @@ describe.sequential("Failure Transitions Integration", () => {
       const nonExistentJobId = "non-existent-job-id";
 
       const schemaContext = {
-        payload,
+        req: { payload },
         job: { id: "schema-job", input: { importJobId: nonExistentJobId, batchNumber: 0 } },
       };
 
@@ -161,7 +161,7 @@ Event 2,2024-01-02,San Francisco CA`;
       });
 
       const detectionContext = {
-        payload,
+        req: { payload },
         job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
       };
       await datasetDetectionJob.handler(detectionContext);
@@ -173,18 +173,18 @@ Event 2,2024-01-02,San Francisco CA`;
       const importJob = importJobs.docs[0];
 
       await analyzeDuplicatesJob.handler({
-        payload,
+        req: { payload },
         job: { id: "duplicate-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
       await schemaDetectionJob.handler({
-        payload,
+        req: { payload },
         job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
       await expect(
         geocodeBatchJob.handler({
-          payload,
+          req: { payload },
           job: { id: "geocoding-job", input: { importJobId: "non-existent", batchNumber: 0 } },
         })
       ).rejects.toThrow("Not Found");
@@ -194,7 +194,7 @@ Event 2,2024-01-02,San Francisco CA`;
   describe("Event Creation Failures", () => {
     it("should handle event creation errors when import job not found", async () => {
       const eventContext = {
-        payload,
+        req: { payload },
         job: { id: "event-job", input: { importJobId: "non-existent", batchNumber: 0 } },
       };
 
@@ -214,7 +214,7 @@ Event 2,2024-01-02,San Francisco CA`;
       });
 
       const detectionContext = {
-        payload,
+        req: { payload },
         job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
       };
 

@@ -96,7 +96,6 @@ describe("Import Transforms - Integration", () => {
       await schemaDetectionJob.handler({
         job: { id: "test-schema-detection-1", input: { importJobId: importJob.id, batchNumber: 0 } },
         req: { payload },
-        payload,
         input: { importJobId: importJob.id, batchNumber: 0 },
       });
 
@@ -154,7 +153,6 @@ Item 2,200`;
       await schemaDetectionJob.handler({
         job: { id: "test-schema-detection-2", input: { importJobId: importJob.id, batchNumber: 0 } },
         req: { payload },
-        payload,
         input: { importJobId: importJob.id, batchNumber: 0 },
       });
 
@@ -200,7 +198,6 @@ Item 2,200`;
       await schemaDetectionJob.handler({
         job: { id: "test-detection-1", input: { importJobId: importJob1.id, batchNumber: 0 } },
         req: { payload },
-        payload,
         input: { importJobId: importJob1.id, batchNumber: 0 },
       });
 
@@ -239,7 +236,6 @@ Item 2,200`;
       await schemaDetectionJob.handler({
         job: { id: "test-detection-2", input: { importJobId: importJob2.id, batchNumber: 0 } },
         req: { payload },
-        payload,
         input: { importJobId: importJob2.id, batchNumber: 0 },
       });
 
@@ -248,7 +244,6 @@ Item 2,200`;
       await validateSchemaJob.handler({
         job: { id: "test-validation-1", input: { importJobId: importJob2.id } },
         req: { payload },
-        payload,
         input: { importJobId: importJob2.id },
       });
 

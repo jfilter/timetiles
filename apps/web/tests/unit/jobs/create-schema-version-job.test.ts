@@ -66,7 +66,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     // Mock context
     mockContext = {
-      payload: mockPayload,
+      req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: "running" } as any,
       input: { importJobId: "import-123" } as any,
     };
@@ -127,7 +127,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         autoApproved: false,
         approvedBy: 789,
         importSources: [],
-        req: undefined,
+        req: mockContext.req,
       });
 
       // Verify job updates
@@ -265,9 +265,11 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         dataset: "dataset-456",
         schema: mockImportJob.schema,
         fieldMetadata: {},
+        fieldMappings: undefined,
         autoApproved: false,
         approvedBy: "user-789", // Should extract ID from object
         importSources: [],
+        req: mockContext.req,
       });
     });
   });

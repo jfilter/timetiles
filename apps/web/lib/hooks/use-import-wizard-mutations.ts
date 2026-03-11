@@ -11,12 +11,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 
-import type {
-  FieldMapping,
-  SheetInfo,
-  SheetMapping,
-  UrlAuthConfig,
-} from "@/app/(frontend)/import/_components/wizard-context";
+import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 
 import { fetchJson } from "../api/http-error";
 

@@ -29,9 +29,6 @@ import { COLLECTION_GEOCODING_PROVIDERS, FOOTER_SLUG, MAIN_MENU_SLUG } from "./c
 import type { RelationshipConfig } from "./relationship-config";
 import { RELATIONSHIP_CONFIG } from "./relationship-config";
 
-// Keep local constant for backward compatibility
-const GEOCODING_PROVIDERS_COLLECTION = COLLECTION_GEOCODING_PROVIDERS;
-
 const getLocationCacheCount = (preset: string): number => {
   switch (preset) {
     case "development":
@@ -198,7 +195,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
 
     // Geocoding providers - service configuration
-    [GEOCODING_PROVIDERS_COLLECTION]: {
+    [COLLECTION_GEOCODING_PROVIDERS]: {
       count: (preset) => {
         switch (preset) {
           case "development":
@@ -329,7 +326,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         "pages",
         MAIN_MENU_SLUG,
         FOOTER_SLUG,
-        GEOCODING_PROVIDERS_COLLECTION,
+        COLLECTION_GEOCODING_PROVIDERS,
       ],
       volume: "large",
       realism: "realistic",

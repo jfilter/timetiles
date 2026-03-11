@@ -36,7 +36,9 @@ import {
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
-import { type ConfidenceLevel, type FieldMapping, type SuggestedMappings, useWizard } from "../wizard-context";
+import type { ConfidenceLevel, FieldMapping, SuggestedMappings } from "@/lib/types/import-wizard";
+
+import { useWizard } from "../wizard-context";
 
 /**
  * Check if a field mapping is complete (has all required fields)

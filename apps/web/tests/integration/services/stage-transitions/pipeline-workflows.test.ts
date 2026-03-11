@@ -87,7 +87,7 @@ describe.sequential("Pipeline Workflow Transitions", () => {
     });
 
     const detectionContext = {
-      payload,
+      req: { payload },
       job: { id: "detection-job-1", input: { importFileId: importFile.id, catalogId: testCatalogId } },
     };
     await datasetDetectionJob.handler(detectionContext);
@@ -100,16 +100,19 @@ describe.sequential("Pipeline Workflow Transitions", () => {
     const datasetId = extractRelationId(importJob.dataset);
 
     await analyzeDuplicatesJob.handler({
-      payload,
+      req: { payload },
       job: { id: "duplicate-job-1", input: { importJobId: importJob.id, batchNumber: 0 } },
     });
 
     await schemaDetectionJob.handler({
-      payload,
+      req: { payload },
       job: { id: "schema-job-1", input: { importJobId: importJob.id, batchNumber: 0 } },
     });
 
-    await validateSchemaJob.handler({ payload, job: { id: "validation-job-1", input: { importJobId: importJob.id } } });
+    await validateSchemaJob.handler({
+      req: { payload },
+      job: { id: "validation-job-1", input: { importJobId: importJob.id } },
+    });
 
     return { importFile, importJob, datasetId };
   };
@@ -134,17 +137,17 @@ describe.sequential("Pipeline Workflow Transitions", () => {
     });
 
     await analyzeDuplicatesJob.handler({
-      payload,
+      req: { payload },
       job: { id: "duplicate-job-2", input: { importJobId: importJob2.id, batchNumber: 0 } },
     });
 
     await schemaDetectionJob.handler({
-      payload,
+      req: { payload },
       job: { id: "schema-job-2", input: { importJobId: importJob2.id, batchNumber: 0 } },
     });
 
     await validateSchemaJob.handler({
-      payload,
+      req: { payload },
       job: { id: "validation-job-2", input: { importJobId: importJob2.id } },
     });
 
@@ -292,7 +295,7 @@ Event 1,2024-01-01,Location 1`;
       });
 
       const detectionContext = {
-        payload,
+        req: { payload },
         job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
       };
       await datasetDetectionJob.handler(detectionContext);
@@ -304,16 +307,19 @@ Event 1,2024-01-01,Location 1`;
       const importJob = importJobs.docs[0];
 
       await analyzeDuplicatesJob.handler({
-        payload,
+        req: { payload },
         job: { id: "duplicate-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
       await schemaDetectionJob.handler({
-        payload,
+        req: { payload },
         job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
-      await validateSchemaJob.handler({ payload, job: { id: "validation-job", input: { importJobId: importJob.id } } });
+      await validateSchemaJob.handler({
+        req: { payload },
+        job: { id: "validation-job", input: { importJobId: importJob.id } },
+      });
 
       const updatedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
 
@@ -334,7 +340,7 @@ Event 2,2024-01-02`;
       });
 
       const detectionContext = {
-        payload,
+        req: { payload },
         job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
       };
       await datasetDetectionJob.handler(detectionContext);
@@ -346,18 +352,21 @@ Event 2,2024-01-02`;
       const importJob = importJobs.docs[0];
 
       await analyzeDuplicatesJob.handler({
-        payload,
+        req: { payload },
         job: { id: "duplicate-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
       await schemaDetectionJob.handler({
-        payload,
+        req: { payload },
         job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
       const beforeValidation = await payload.findByID({ collection: "import-jobs", id: importJob.id });
 
-      await validateSchemaJob.handler({ payload, job: { id: "validation-job", input: { importJobId: importJob.id } } });
+      await validateSchemaJob.handler({
+        req: { payload },
+        job: { id: "validation-job", input: { importJobId: importJob.id } },
+      });
 
       const afterValidation = await payload.findByID({ collection: "import-jobs", id: importJob.id });
 
@@ -387,7 +396,7 @@ Event 2,2024-01-02,Location 2`;
       });
 
       const detectionContext = {
-        payload,
+        req: { payload },
         job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
       };
       await datasetDetectionJob.handler(detectionContext);
@@ -399,29 +408,32 @@ Event 2,2024-01-02,Location 2`;
       const importJob = importJobs.docs[0];
 
       await analyzeDuplicatesJob.handler({
-        payload,
+        req: { payload },
         job: { id: "duplicate-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
       await schemaDetectionJob.handler({
-        payload,
+        req: { payload },
         job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
-      await validateSchemaJob.handler({ payload, job: { id: "validation-job", input: { importJobId: importJob.id } } });
+      await validateSchemaJob.handler({
+        req: { payload },
+        job: { id: "validation-job", input: { importJobId: importJob.id } },
+      });
 
       await createSchemaVersionJob.handler({
-        payload,
+        req: { payload },
         job: { id: "create-schema-version-job", input: { importJobId: importJob.id } },
       });
 
       await geocodeBatchJob.handler({
-        payload,
+        req: { payload },
         job: { id: "geocoding-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 
       await createEventsBatchJob.handler({
-        payload,
+        req: { payload },
         job: { id: "event-job", input: { importJobId: importJob.id, batchNumber: 0 } },
       });
 

@@ -280,7 +280,7 @@ export const createMockContext = <T = unknown>(
   input: T,
   jobId: string = TEST_IDS.JOB
 ): JobHandlerContext => {
-  return { payload, job: { id: jobId, taskStatus: "running" }, input } as unknown as JobHandlerContext;
+  return { req: { payload }, job: { id: jobId, taskStatus: "running" }, input } as unknown as JobHandlerContext;
 };
 
 /**

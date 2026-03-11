@@ -108,8 +108,6 @@ export const updateScheduledImportFailure = async (
     const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
 
     const currentRetries = (scheduledImport.currentRetries ?? 0) + 1;
-    // maxRetries is intentionally unused - keeping for future retry logic
-    // const maxRetries = scheduledImport.retryConfig?.maxRetries ?? 3;
 
     // Update execution history
     const executionHistory = scheduledImport.executionHistory ?? [];

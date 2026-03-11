@@ -320,7 +320,7 @@ const performFetch = async (
 export const urlFetchJob = {
   slug: "url-fetch",
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as UrlFetchJobInput;
 
     const startTime = Date.now();

@@ -394,7 +394,7 @@ const checkEventQuotaForFirstBatch = async (
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CreateEventsBatchJobInput["input"];
     const { importJobId, batchNumber } = input;
 

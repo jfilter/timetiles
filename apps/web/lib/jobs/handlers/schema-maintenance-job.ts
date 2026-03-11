@@ -171,7 +171,7 @@ export const schemaMaintenanceJob = {
   waitUntil: 600000, // 10 minutes timeout
   handler: async (context: JobHandlerContext): Promise<{ output: SchemaMaintenanceResult }> => {
     const input = (context.input ?? context.job?.input) as SchemaMaintenanceJobInput | undefined;
-    const payload = context.payload as Payload;
+    const { payload } = context.req;
     const startTime = Date.now();
 
     const maxDatasets = input?.maxDatasets ?? 100;

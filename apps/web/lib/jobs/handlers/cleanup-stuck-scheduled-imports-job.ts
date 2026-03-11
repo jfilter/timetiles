@@ -109,12 +109,8 @@ const resetStuckImport = async (
 export const cleanupStuckScheduledImportsJob = {
   slug: "cleanup-stuck-scheduled-imports",
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CleanupStuckScheduledImportsJobInput;
-
-    if (!payload) {
-      throw new Error("Payload not available in job context");
-    }
 
     const stuckThresholdHours = input?.stuckThresholdHours ?? 2;
     const dryRun = input?.dryRun ?? false;
@@ -122,7 +118,7 @@ export const cleanupStuckScheduledImportsJob = {
 
     try {
       logger.info("Starting cleanup stuck scheduled imports job", {
-        jobId: context.job?.id ?? context.id,
+        jobId: context.job?.id,
         stuckThresholdHours,
         dryRun,
       });
@@ -154,11 +150,11 @@ export const cleanupStuckScheduledImportsJob = {
         errors: processResult.errors.length > 0 ? processResult.errors : undefined,
       };
 
-      logger.info("Cleanup stuck scheduled imports job completed", { jobId: context.job?.id ?? context.id, ...result });
+      logger.info("Cleanup stuck scheduled imports job completed", { jobId: context.job?.id, ...result });
 
       return { output: result };
     } catch (error) {
-      logError(error, "Cleanup stuck scheduled imports job failed", { jobId: context.job?.id ?? context.id });
+      logError(error, "Cleanup stuck scheduled imports job failed", { jobId: context.job?.id });
       throw error;
     }
   },

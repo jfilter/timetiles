@@ -26,7 +26,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/lib/hooks/use-import-wizard-mutations";
 
-import type { UrlAuthConfig } from "../wizard-context";
+import type { UrlAuthConfig } from "@/lib/types/import-wizard";
+
 import { useWizard } from "../wizard-context";
 
 export interface StepUploadProps {

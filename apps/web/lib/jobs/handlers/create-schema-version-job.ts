@@ -6,7 +6,7 @@
  *
  * @module
  */
-import type { Payload, PayloadRequest } from "payload";
+import type { PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError } from "@/lib/logger";
@@ -53,7 +53,7 @@ const getApprovedById = (approvedBy: unknown): number | null => {
 export const createSchemaVersionJob = {
   slug: JOB_TYPES.CREATE_SCHEMA_VERSION,
   handler: async (context: JobHandlerContext) => {
-    const payload = (context.req?.payload ?? context.payload) as Payload;
+    const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CreateSchemaVersionJobInput["input"];
     const { importJobId } = input;
 

@@ -6,10 +6,7 @@
  */
 export { ImportWizard, type ImportWizardProps } from "./import-wizard";
 export {
-  type FieldMapping,
   type NavigationConfig,
-  type SheetInfo,
-  type SheetMapping,
   useWizard,
   WizardProvider,
   type WizardProviderProps,

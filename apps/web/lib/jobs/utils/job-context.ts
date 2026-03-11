@@ -30,23 +30,16 @@ export interface EventCreationJobPayload {
   input: { importJobId: ImportJob["id"]; processedData: Record<string, unknown>[]; batchNumber: number };
 }
 
-// Job handler context type that works with both Payload types and test mocks
+// Job handler context type matching Payload CMS TaskHandler signature
 export type JobHandlerContext<T = unknown> = {
   input?: T;
   job?: { id: string | number; taskStatus?: Record<string, unknown>; [key: string]: unknown };
-  req?: { payload: Payload; user?: unknown };
-  // Legacy test support - payload directly on context
-  payload?: Payload;
-  // Support any additional properties for backwards compatibility
-  [key: string]: unknown;
+  req: { payload: Payload; user?: unknown };
 };
 
 // Helper function to extract and validate context
 export const extractFileParsingContext = (context: JobHandlerContext) => {
-  const payload = (context.req?.payload ?? context.payload) as Payload;
-  if (payload == null) {
-    throw new Error("Payload instance not found in job context");
-  }
+  const { payload } = context.req;
 
   const input = context.input as FileParsingJobPayload["input"];
   if (input?.importJobId == null) {
@@ -57,10 +50,7 @@ export const extractFileParsingContext = (context: JobHandlerContext) => {
 };
 
 export const extractEventCreationContext = (context: JobHandlerContext) => {
-  const payload = (context.req?.payload ?? context.payload) as Payload;
-  if (payload == null) {
-    throw new Error("Payload instance not found in job context");
-  }
+  const { payload } = context.req;
 
   const input = context.input as EventCreationJobPayload["input"];
   if (input?.importJobId == null) {

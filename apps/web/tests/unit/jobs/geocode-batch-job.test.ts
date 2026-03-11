@@ -49,7 +49,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     mocks.createGeocodingService.mockReset().mockReturnValue({ geocode: mocks.geocode });
     mocks.getFileRowCount.mockReset();
     mockPayload = createMockPayload();
-    mockContext = { payload: mockPayload, input: { importJobId: 123 } } as unknown as JobHandlerContext;
+    mockContext = { req: { payload: mockPayload }, input: { importJobId: 123 } } as unknown as JobHandlerContext;
   });
 
   afterEach(() => {
