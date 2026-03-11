@@ -9,6 +9,8 @@
  */
 "use client";
 
+import { useMemo } from "react";
+
 import { useSiteOptional } from "@/lib/context/site-context";
 
 /**
@@ -17,22 +19,22 @@ import { useSiteOptional } from "@/lib/context/site-context";
  */
 export const SiteBranding = () => {
   const siteContext = useSiteOptional();
+  const colors = siteContext?.branding.colors;
 
-  if (!siteContext?.branding.colors) {
+  const style = useMemo((): (React.CSSProperties & Record<string, string>) | undefined => {
+    if (!colors) return undefined;
+    const { primary, secondary, background } = colors;
+    if (!primary && !secondary && !background) return undefined;
+    const s: React.CSSProperties & Record<string, string> = {};
+    if (primary) s["--site-color-primary"] = primary;
+    if (secondary) s["--site-color-secondary"] = secondary;
+    if (background) s["--site-color-background"] = background;
+    return s;
+  }, [colors]);
+
+  if (!style) {
     return null;
   }
-
-  const { primary, secondary, background } = siteContext.branding.colors;
-
-  // Only render if at least one color is set
-  if (!primary && !secondary && !background) {
-    return null;
-  }
-
-  const style: React.CSSProperties & Record<string, string> = {};
-  if (primary) style["--site-color-primary"] = primary;
-  if (secondary) style["--site-color-secondary"] = secondary;
-  if (background) style["--site-color-background"] = background;
 
   return <div data-site-branding="" style={style} className="contents" />;
 };

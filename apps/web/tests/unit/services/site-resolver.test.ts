@@ -182,7 +182,7 @@ describe.sequential("site-resolver", () => {
       const payload = createPayloadMock();
       payload.find.mockResolvedValueOnce({ docs: [] });
 
-      const result = await resolveSite(payload as any, undefined);
+      const result = await resolveSite(payload as any);
 
       expect(result).toBeNull();
     });

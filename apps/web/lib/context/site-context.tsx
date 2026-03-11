@@ -20,7 +20,7 @@ import type { Site } from "@/payload-types";
 const getMediaUrl = (media: unknown): string | undefined => {
   if (!media) return undefined;
   if (typeof media === "number") return undefined;
-  if (typeof media === "object" && media !== null && "url" in media) {
+  if (typeof media === "object" && media != null && "url" in media) {
     return (media as { url?: string | null }).url ?? undefined;
   }
   return undefined;

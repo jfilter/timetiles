@@ -98,7 +98,6 @@ export const findDefaultView = async (payload: Payload, siteId?: number): Promis
     const result = await payload.find({ collection: "views", where, limit: 1, depth: 1 });
 
     const view = result.docs[0] ?? null;
-    // eslint-disable-next-line require-atomic-updates -- Race condition is acceptable for caching; concurrent calls fetch same data
     defaultViewCache.set(cacheId, view);
     return view;
   } catch (error) {

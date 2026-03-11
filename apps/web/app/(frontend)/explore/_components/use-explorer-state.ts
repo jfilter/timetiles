@@ -50,8 +50,6 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
   // Data sources for filter labels
   const { data: dataSources } = useDataSourcesQuery();
-  const catalogs = dataSources?.catalogs ?? [];
-  const datasets = dataSources?.datasets ?? [];
 
   // Zustand store
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
@@ -141,8 +139,8 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
     // Data sources
     dataSources,
-    catalogs,
-    datasets,
+    catalogs: dataSources?.catalogs ?? [],
+    datasets: dataSources?.datasets ?? [],
 
     // UI store
     mapBounds,

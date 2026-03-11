@@ -24,10 +24,10 @@ import { ExploreContent } from "./_components/explore-content";
 export const dynamic = "force-dynamic";
 
 interface ExplorePageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function ExplorePage({ searchParams }: ExplorePageProps) {
+export default async function ExplorePage({ searchParams }: Readonly<ExplorePageProps>) {
   const payload = await getPayload({ config });
   const headersList = await headers();
   const host = headersList.get("host");

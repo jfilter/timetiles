@@ -30,11 +30,10 @@ import {
 } from "@timetiles/ui";
 import type { Metadata } from "next";
 import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { getPayload } from "payload";
-
-import { headers } from "next/headers";
 
 import { ConditionalTopMenuBar } from "@/app/_components/conditional-top-menu-bar";
 import { IconMapper } from "@/components/icon-mapper";
