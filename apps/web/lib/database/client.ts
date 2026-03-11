@@ -10,6 +10,29 @@
 
 import { Client } from "pg";
 
+import { parseDatabaseUrl } from "./url";
+
+/** Cached defaults parsed from DATABASE_URL */
+let _envDefaults: { host: string; port: number; user: string; password: string } | null = null;
+
+/** Parse DATABASE_URL once and cache the result for use as connection defaults */
+const getEnvDefaults = () => {
+  if (!_envDefaults && process.env.DATABASE_URL) {
+    try {
+      const parsed = parseDatabaseUrl(process.env.DATABASE_URL);
+      _envDefaults = {
+        host: parsed.host,
+        port: Number.parseInt(parsed.port, 10),
+        user: parsed.username,
+        password: parsed.password,
+      };
+    } catch {
+      // Invalid URL, fall through to hardcoded defaults
+    }
+  }
+  return _envDefaults;
+};
+
 /**
  * Options for creating a database client
  */
@@ -82,12 +105,13 @@ export const createDatabaseClient = (options: DatabaseClientOptions = {}): Clien
     return new Client({ connectionString: options.connectionString });
   }
 
-  // Otherwise, use individual parameters with defaults
+  // Otherwise, use individual parameters with defaults derived from DATABASE_URL
+  const env = getEnvDefaults();
   return new Client({
-    host: options.host ?? "localhost",
-    port: options.port ?? 5432,
-    user: options.user ?? "timetiles_user",
-    password: options.password ?? "timetiles_password",
+    host: options.host ?? env?.host ?? "localhost",
+    port: options.port ?? env?.port ?? 5432,
+    user: options.user ?? env?.user ?? "timetiles_user",
+    password: options.password ?? env?.password ?? "timetiles_password",
     database: options.database ?? "postgres",
   });
 };
