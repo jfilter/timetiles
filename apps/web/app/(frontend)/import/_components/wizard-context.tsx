@@ -12,6 +12,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
 
+import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
@@ -450,39 +451,26 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
   // Validate preview file exists when we have a previewId
   // If preview is invalid (file deleted, expired), clear file state and go back to upload step
   // Skip validation during processing (step 6) since the preview is cleaned up after import starts
+  const validationEnabled = state.currentStep !== 6 && state.importFileId === null;
+  const { data: validationData } = usePreviewValidationQuery(state.previewId, validationEnabled);
+
   useEffect(() => {
-    const validatePreview = async () => {
-      // Don't validate if no preview, during processing, or if import has started
-      if (!state.previewId || state.currentStep === 6 || state.importFileId !== null) return;
-
-      try {
-        const response = await fetch(`/api/import/validate-preview?previewId=${state.previewId}`);
-        const data = await response.json();
-
-        if (!data.valid) {
-          // Preview file no longer exists - clear file state
-          dispatch({ type: "CLEAR_FILE" });
-          // If we were past the upload step, go back to it
-          if (state.currentStep > 2) {
-            // Determine the target step when preview is invalid
-            const getTargetStep = (): WizardStep => {
-              if (wasAuthenticatedOnStart) {
-                return 2;
-              }
-              return state.currentStep > 1 ? 2 : 1;
-            };
-            dispatch({ type: "SET_STEP", step: getTargetStep() });
+    if (validationData && !validationData.valid) {
+      // Preview file no longer exists - clear file state
+      dispatch({ type: "CLEAR_FILE" });
+      // If we were past the upload step, go back to it
+      if (state.currentStep > 2) {
+        const getTargetStep = (): WizardStep => {
+          if (wasAuthenticatedOnStart) {
+            return 2;
           }
-          // Clear invalid state from storage
-          clearStorage();
-        }
-      } catch {
-        // Network error - don't clear state, let the user retry
+          return state.currentStep > 1 ? 2 : 1;
+        };
+        dispatch({ type: "SET_STEP", step: getTargetStep() });
       }
-    };
-
-    void validatePreview();
-  }, [state.previewId, state.currentStep, state.importFileId, wasAuthenticatedOnStart]);
+      clearStorage();
+    }
+  }, [validationData, state.currentStep, wasAuthenticatedOnStart]);
 
   // Save to localStorage on state changes (debounced)
   useEffect(() => {

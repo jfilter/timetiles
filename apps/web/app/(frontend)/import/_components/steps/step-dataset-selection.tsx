@@ -12,20 +12,15 @@
 import { Card, CardContent, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
+import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
 import { useWizard } from "../wizard-context";
 
 export interface StepDatasetSelectionProps {
   className?: string;
-}
-
-interface Catalog {
-  id: number;
-  name: string;
-  datasets: Array<{ id: number; name: string }>;
 }
 
 /** Stable empty array to avoid creating a new reference on each render. */
@@ -104,9 +99,10 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     return () => setNavigationConfig({});
   }, [setNavigationConfig, nextStep]);
 
-  const [catalogs, setCatalogs] = useState<Catalog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: catalogsData, isLoading, error: queryError } = useCatalogsQuery();
+  const catalogs = catalogsData?.catalogs ?? [];
+  const errorMessage = queryError instanceof Error ? queryError.message : "Failed to load catalogs";
+  const error = queryError ? errorMessage : null;
 
   // Derive a clean catalog name from the uploaded file name
   const suggestedCatalogName = useMemo(() => {
@@ -114,33 +110,12 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     return humanizeFileName(state.file.name);
   }, [state.file?.name]);
 
-  // Fetch user's catalogs on mount
+  // Auto-select "new catalog" if user has no existing catalogs
   useEffect(() => {
-    const fetchCatalogs = async () => {
-      try {
-        const response = await fetch("/api/catalogs/with-datasets", { credentials: "include" });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch catalogs");
-        }
-
-        const data = await response.json();
-        setCatalogs(data.catalogs);
-
-        // Auto-select "new catalog" if user has no existing catalogs
-        // and pre-fill the name from the uploaded file
-        if (data.catalogs.length === 0 && selectedCatalogId === null) {
-          setCatalog("new", suggestedCatalogName);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load catalogs");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void fetchCatalogs();
-  }, [selectedCatalogId, setCatalog, suggestedCatalogName]);
+    if (catalogs.length === 0 && selectedCatalogId === null && !isLoading) {
+      setCatalog("new", suggestedCatalogName);
+    }
+  }, [catalogs.length, selectedCatalogId, isLoading, setCatalog, suggestedCatalogName]);
 
   const handleCatalogChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {

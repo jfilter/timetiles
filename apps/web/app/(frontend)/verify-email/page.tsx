@@ -9,62 +9,58 @@
  */
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
 
 import { PageLayout } from "@/components/layout/page-layout";
 
-type VerificationStatus = "loading" | "success" | "error" | "no-token";
+type VerificationStatus = "idle" | "loading" | "success" | "error" | "no-token";
+
+const verifyEmailRequest = async (token: string) => {
+  const response = await fetch(`/api/users/verify/${token}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!response.ok) {
+    const errorData: unknown = await response.json().catch(() => ({}));
+    const message =
+      typeof errorData === "object" && errorData !== null && "message" in errorData
+        ? String(errorData.message)
+        : "Failed to verify email. The link may have expired.";
+    throw new Error(message);
+  }
+};
 
 const VerifyEmailContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [status, setStatus] = useState<VerificationStatus>("loading");
-  const [errorMessage, setErrorMessage] = useState<string>("");
-
   const token = searchParams.get("token");
 
-  const verifyEmail = useCallback(
-    async (verificationToken: string) => {
-      try {
-        const response = await fetch(`/api/users/verify/${verificationToken}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (response.ok) {
-          setStatus("success");
-          // Redirect to import page after 3 seconds
-          setTimeout(() => {
-            router.push("/import");
-          }, 3000);
-        } else {
-          const errorData: unknown = await response.json().catch(() => ({}));
-          const message =
-            typeof errorData === "object" && errorData !== null && "message" in errorData
-              ? String(errorData.message)
-              : "Failed to verify email. The link may have expired.";
-          setErrorMessage(message);
-          setStatus("error");
-        }
-      } catch {
-        setErrorMessage("An error occurred while verifying your email. Please try again.");
-        setStatus("error");
-      }
+  const mutation = useMutation({
+    mutationFn: verifyEmailRequest,
+    onSuccess: () => {
+      setTimeout(() => router.push("/import"), 3000);
     },
-    [router]
-  );
+  });
 
   useEffect(() => {
-    if (!token) {
-      setStatus("no-token");
-      return;
+    if (token && !mutation.isPending && !mutation.isSuccess && !mutation.isError) {
+      mutation.mutate(token);
     }
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps -- one-shot on mount
 
-    void verifyEmail(token);
-  }, [token, verifyEmail]);
+  const getStatus = (): VerificationStatus => {
+    if (!token) return "no-token";
+    if (mutation.isSuccess) return "success";
+    if (mutation.isError) return "error";
+    return "loading";
+  };
+  const status = getStatus();
+  const errorMessage = mutation.error?.message ?? "";
 
   return (
     <div className="min-h-screen bg-gray-50">
