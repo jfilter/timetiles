@@ -1,70 +1,59 @@
 /**
- * Schedule Service Management API..
+ * Schedule Service Management API.
  *
- * Provides endpoints to manage the schedule service for automated imports.
- * Requires admin authentication.
+ * Provides endpoints to check scheduling status and manually trigger
+ * the schedule manager job. Requires admin authentication.
  *
  * @module
  */
 
-import { z } from "zod";
-
 import { apiRoute } from "@/lib/api";
 import { createRequestLogger } from "@/lib/logger";
-import { getScheduleService, startScheduleService, stopScheduleService } from "@/lib/services/schedule-service";
 
 const logger = createRequestLogger("schedule-service-api");
 
 /**
  * GET /api/admin/schedule-service.
- * Returns the current status of the schedule service.
+ * Returns the current scheduling status (native cron + feature flag).
  */
 export const GET = apiRoute({
   auth: "admin",
   rateLimit: { type: "API_GENERAL" },
-  handler: ({ payload }) => {
-    const service = getScheduleService(payload);
-    const status = service.getStatus();
+  handler: async ({ payload }) => {
+    const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+    const enabled = await isFeatureEnabled(payload, "enableScheduledJobExecution");
 
-    return Response.json({ success: true, status });
+    const recentJobs = await payload.find({
+      collection: "payload-jobs",
+      where: { taskSlug: { equals: "schedule-manager" } },
+      limit: 1,
+      sort: "-createdAt",
+    });
+
+    return Response.json({
+      success: true,
+      status: {
+        schedulingMethod: "payload-native-cron",
+        cron: "* * * * *",
+        featureFlagEnabled: enabled,
+        lastJobCreatedAt: recentJobs.docs[0]?.createdAt ?? null,
+      },
+    });
   },
 });
 
 /**
- * POST /api/admin/schedule-service/start.
- * Starts the schedule service.
+ * POST /api/admin/schedule-service.
+ * Manually triggers a one-off schedule manager job.
  */
 export const POST = apiRoute({
   auth: "admin",
   rateLimit: { type: "API_GENERAL" },
-  body: z.object({ intervalMs: z.number().positive().optional(), enabled: z.boolean().optional() }),
-  handler: ({ payload, body }) => {
-    const serviceConfig = {
-      intervalMs: body.intervalMs ?? 60000, // Default: 1 minute
-      enabled: body.enabled !== false, // Default: true
-    };
+  handler: async ({ payload }) => {
+    const job = await payload.jobs.queue({ task: "schedule-manager", input: {} });
 
-    const service = startScheduleService(payload, serviceConfig);
-    const status = service.getStatus();
+    logger.info({ jobId: job.id }, "Schedule manager job manually queued");
 
-    logger.info({ serviceConfig, status }, "Schedule service started");
-
-    return Response.json({ success: true, message: "Schedule service started", status });
-  },
-});
-
-/**
- * DELETE /api/admin/schedule-service.
- * Stops the schedule service.
- */
-export const DELETE = apiRoute({
-  auth: "admin",
-  rateLimit: { type: "API_GENERAL" },
-  handler: () => {
-    stopScheduleService();
-
-    logger.info("Schedule service stopped");
-
-    return Response.json({ success: true, message: "Schedule service stopped" });
+    return Response.json({ success: true, message: "Schedule manager job queued", jobId: job.id });
   },
 });
