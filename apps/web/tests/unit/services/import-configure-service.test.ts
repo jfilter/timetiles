@@ -27,8 +27,6 @@ vi.mock("@/lib/services/quota-service", () => ({
   QuotaExceededError: class QuotaExceededError extends Error {},
 }));
 
-import type { FieldMapping, SheetMapping } from "@/lib/types/import-wizard";
-
 import {
   buildDatasetMapping,
   buildFieldMappingOverrides,
@@ -36,6 +34,7 @@ import {
   buildIdStrategy,
   translateSchemaMode,
 } from "@/lib/services/import-configure-service";
+import type { FieldMapping, SheetMapping } from "@/lib/types/import-wizard";
 
 const fullFieldMapping: FieldMapping = {
   sheetIndex: 0,

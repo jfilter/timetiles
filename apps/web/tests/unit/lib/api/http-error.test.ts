@@ -51,7 +51,7 @@ describe("fetchJson", () => {
 
   it("returns parsed JSON on successful response", async () => {
     const data = { items: [1, 2, 3] };
-    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve(data) } as Response);
+    fetchMock.mockResolvedValue({ ok: true, json: async () => data } as Response);
 
     const result = await fetchJson<{ items: number[] }>("/api/test");
 
@@ -60,7 +60,7 @@ describe("fetchJson", () => {
   });
 
   it("passes init options through to fetch", async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as Response);
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
 
     await fetchJson("/api/test", { method: "POST", headers: { "Content-Type": "application/json" } });
 
@@ -77,7 +77,7 @@ describe("fetchJson", () => {
       ok: false,
       status: 404,
       statusText: "Not Found",
-      json: () => Promise.resolve(errorBody),
+      json: async () => errorBody,
     } as Response);
 
     try {
@@ -96,7 +96,7 @@ describe("fetchJson", () => {
       ok: false,
       status: 422,
       statusText: "Unprocessable Entity",
-      json: () => Promise.resolve({ message: "Validation failed" }),
+      json: async () => ({ message: "Validation failed" }),
     } as Response);
 
     try {
@@ -112,7 +112,7 @@ describe("fetchJson", () => {
       ok: false,
       status: 409,
       statusText: "Conflict",
-      json: () => Promise.resolve({ code: "DUPLICATE", id: 42 }),
+      json: async () => ({ code: "DUPLICATE", id: 42 }),
     } as Response);
 
     try {
@@ -131,7 +131,9 @@ describe("fetchJson", () => {
       ok: false,
       status: 500,
       statusText: "Internal Server Error",
-      json: () => Promise.reject(new SyntaxError("Unexpected token")),
+      json: async (): Promise<unknown> => {
+        throw new SyntaxError("Unexpected token");
+      },
     } as Response);
 
     try {
@@ -150,7 +152,7 @@ describe("fetchJson", () => {
       ok: false,
       status: 403,
       statusText: "Forbidden",
-      json: () => Promise.resolve({ error: "Access denied" }),
+      json: async () => ({ error: "Access denied" }),
     } as Response);
 
     try {

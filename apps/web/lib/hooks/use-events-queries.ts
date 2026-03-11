@@ -239,7 +239,7 @@ export const useFullHistogramQuery = (filters: FilterState) => {
   const fullRangeFilters: FilterState = { ...filters, startDate: null, endDate: null, fieldFilters: {} };
 
   return useQuery({
-    queryKey: eventsQueryKeys.histogramFull(filters),
+    queryKey: eventsQueryKeys.histogramFull(fullRangeFilters),
     queryFn: ({ signal }) => fetchHistogram(fullRangeFilters, null, signal),
     ...QUERY_PRESETS.stable,
     refetchOnWindowFocus: false,
