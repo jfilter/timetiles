@@ -5,8 +5,9 @@
  * Components can use useView() to access view settings for:
  * - Data scope (catalogs/datasets to show)
  * - Filter configuration
- * - Branding (logo, colors, title)
  * - Map settings (bounds, zoom, style)
+ *
+ * Branding is on the Site, not the View. See site-context.tsx.
  *
  * @module
  * @category Context
@@ -38,16 +39,6 @@ interface ViewContextValue {
     defaultFilters?: Record<string, string[]>;
   };
 
-  /** Branding configuration from view */
-  branding: {
-    domain?: string;
-    title?: string;
-    logoUrl?: string;
-    faviconUrl?: string;
-    colors?: { primary?: string; secondary?: string; background?: string };
-    headerHtml?: string;
-  };
-
   /** Map settings from view */
   mapSettings: {
     defaultBounds?: { north: number; south: number; east: number; west: number };
@@ -71,29 +62,8 @@ interface ViewProviderProps {
 }
 
 /**
- * Extracts the URL from a media object or ID.
- */
-const getMediaUrl = (media: NonNullable<View["branding"]>["logo"]): string | undefined => {
-  if (!media) return undefined;
-  if (typeof media === "number") return undefined;
-  return media.url ?? undefined;
-};
-
-/**
  * Provider component for View context.
- * Should be placed high in the component tree, typically in the root layout.
- *
- * @example
- * ```tsx
- * // In app/layout.tsx or a layout component
- * const view = await resolveView(payload, { host, pathname });
- *
- * return (
- *   <ViewProvider view={view}>
- *     {children}
- *   </ViewProvider>
- * );
- * ```
+ * Should wrap explorer pages where views are active.
  */
 export const ViewProvider = ({ view, children }: ViewProviderProps): React.ReactElement => {
   // oxlint-disable-next-line complexity
@@ -138,21 +108,6 @@ export const ViewProvider = ({ view, children }: ViewProviderProps): React.React
         defaultFilters,
       },
 
-      branding: {
-        domain: view?.branding?.domain ?? undefined,
-        title: view?.branding?.title ?? undefined,
-        logoUrl: getMediaUrl(view?.branding?.logo),
-        faviconUrl: getMediaUrl(view?.branding?.favicon),
-        colors: view?.branding?.colors
-          ? {
-              primary: view.branding.colors.primary ?? undefined,
-              secondary: view.branding.colors.secondary ?? undefined,
-              background: view.branding.colors.background ?? undefined,
-            }
-          : undefined,
-        headerHtml: view?.branding?.headerHtml ?? undefined,
-      },
-
       mapSettings: {
         defaultBounds: hasCompleteBounds
           ? { north: bounds.north!, south: bounds.south!, east: bounds.east!, west: bounds.west! }
@@ -174,17 +129,6 @@ export const ViewProvider = ({ view, children }: ViewProviderProps): React.React
  *
  * @returns The view context value
  * @throws Error if used outside of ViewProvider
- *
- * @example
- * ```tsx
- * const { view, branding, mapSettings } = useView();
- *
- * // Apply branding
- * document.title = branding.title ?? 'TimeTiles';
- *
- * // Use map settings
- * map.setZoom(mapSettings.defaultZoom ?? 10);
- * ```
  */
 export const useView = (): ViewContextValue => {
   const context = useContext(ViewContext);
@@ -197,16 +141,6 @@ export const useView = (): ViewContextValue => {
 /**
  * Hook to optionally access the current view context.
  * Returns null if used outside of ViewProvider.
- *
- * @returns The view context value or null
- *
- * @example
- * ```tsx
- * const viewContext = useViewOptional();
- *
- * // Safe to use without provider
- * const title = viewContext?.branding.title ?? 'TimeTiles';
- * ```
  */
 export const useViewOptional = (): ViewContextValue | null => {
   return useContext(ViewContext);

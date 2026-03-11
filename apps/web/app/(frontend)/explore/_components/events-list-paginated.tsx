@@ -15,6 +15,7 @@ import { useCallback, useMemo } from "react";
 
 import type { FilterState } from "@/lib/filters";
 import { type SimpleBounds, useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
+import { useViewScope } from "@/lib/hooks/use-view-scope";
 
 import { EventsList } from "./events-list";
 import { EventsListSkeleton } from "./events-list-skeleton";
@@ -38,11 +39,13 @@ export const EventsListPaginated = ({
   dateRangeLabel,
   onEventClick,
 }: Readonly<EventsListPaginatedProps>) => {
+  const scope = useViewScope();
+
   const { events, total, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, isError, error } =
-    useEventsInfiniteFlattened(filters, bounds, 20);
+    useEventsInfiniteFlattened(filters, bounds, 20, true, scope);
 
   // Get global total (without bounds filter) to show "X of Y" when map limits results
-  const { data: globalTotalData } = useEventsTotalQuery(filters);
+  const { data: globalTotalData } = useEventsTotalQuery(filters, true, scope);
 
   const handleLoadMore = useCallback(() => {
     void fetchNextPage();

@@ -8,26 +8,10 @@ import "@/tests/mocks/services/logger";
 
 import { describe, expect, it } from "vitest";
 
-import { extractViewSlugFromPath, getViewDataScopeFilter } from "@/lib/services/view-resolver";
+import { getViewDataScopeFilter } from "@/lib/services/view-resolver";
 import type { View } from "@/payload-types";
 
 describe("view-resolver utilities", () => {
-  describe("extractViewSlugFromPath", () => {
-    it("should extract slug from /v/slug path", () => {
-      expect(extractViewSlugFromPath("/v/city-events")).toBe("city-events");
-    });
-
-    it("should extract slug from nested path", () => {
-      expect(extractViewSlugFromPath("/v/city-events/explore")).toBe("city-events");
-    });
-
-    it("should return null for non-view paths", () => {
-      expect(extractViewSlugFromPath("/explore")).toBeNull();
-      expect(extractViewSlugFromPath("/")).toBeNull();
-      expect(extractViewSlugFromPath("/v/")).toBeNull();
-    });
-  });
-
   describe("getViewDataScopeFilter", () => {
     it("should return empty object for null view", () => {
       expect(getViewDataScopeFilter(null)).toEqual({});

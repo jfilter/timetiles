@@ -204,6 +204,7 @@ describe("Configuration Validation", () => {
       "catalogs",
       "datasets",
       "events",
+      "sites",
       "pages",
       "media",
       "location-cache",

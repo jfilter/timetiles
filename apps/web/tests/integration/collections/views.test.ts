@@ -3,28 +3,27 @@
  * Integration tests for the Views collection.
  *
  * Tests CRUD operations, access control, single default enforcement,
- * and view resolution by domain, slug, and default.
+ * and view resolution by slug and default (within a site).
  *
  * @module
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { clearSiteCache } from "@/lib/services/site-resolver";
 import {
   clearViewCache,
-  extractViewSlugFromPath,
   findDefaultView,
-  findViewByDomain,
   findViewBySlug,
   getViewDataScopeFilter,
   resolveView,
 } from "@/lib/services/view-resolver";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { User, View } from "@/payload-types";
+import type { Site, User, View } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
 describe.sequential("Views Collection", () => {
-  const collectionsToReset = ["views"];
+  const collectionsToReset = ["views", "sites"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
@@ -34,6 +33,9 @@ describe.sequential("Views Collection", () => {
   let adminUser: User;
   let regularUser: User;
   let otherUser: User;
+
+  // Test site
+  let testSite: Site;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
@@ -57,6 +59,14 @@ describe.sequential("Views Collection", () => {
   beforeEach(async () => {
     await testEnv.seedManager.truncate(collectionsToReset);
     clearViewCache();
+    clearSiteCache();
+
+    // Create a test site for views
+    testSite = await payload.create({
+      collection: "sites",
+      data: { name: "Test Site", slug: "test-site", isPublic: true, _status: "published" },
+      user: regularUser,
+    });
   });
 
   describe("CRUD Operations", () => {
@@ -66,16 +76,12 @@ describe.sequential("Views Collection", () => {
         data: {
           name: "Test View",
           slug: "test-view",
+          site: testSite.id,
           isDefault: false,
           isPublic: true,
           _status: "published",
           dataScope: { mode: "all" },
           filterConfig: { mode: "auto", maxFilters: 5 },
-          branding: {
-            domain: "test.example.com",
-            title: "Test Portal",
-            colors: { primary: "#3b82f6", secondary: "#1e40af", background: "#ffffff" },
-          },
           mapSettings: {
             defaultZoom: 10,
             defaultCenter: { latitude: 40.7128, longitude: -74.006 },
@@ -88,7 +94,7 @@ describe.sequential("Views Collection", () => {
       expect(view.id).toBeDefined();
       expect(view.name).toBe("Test View");
       expect(view.slug).toBe("test-view");
-      expect(view.branding?.domain).toBe("test.example.com");
+      expect(extractRelationId(view.site)).toBe(testSite.id);
       expect(view.mapSettings?.defaultZoom).toBe(10);
       // createdBy can be populated (object) or just an ID depending on depth
       const createdById = extractRelationId(view.createdBy);
@@ -98,25 +104,24 @@ describe.sequential("Views Collection", () => {
     it("should update a view", async () => {
       const view = await payload.create({
         collection: "views",
-        data: { name: "Original Name", slug: "original-slug", isPublic: true, _status: "published" },
+        data: { name: "Original Name", slug: "original-slug", site: testSite.id, isPublic: true, _status: "published" },
         user: regularUser,
       });
 
       const updated = await payload.update({
         collection: "views",
         id: view.id,
-        data: { name: "Updated Name", branding: { title: "Updated Title" } },
+        data: { name: "Updated Name" },
         user: regularUser,
       });
 
       expect(updated.name).toBe("Updated Name");
-      expect(updated.branding?.title).toBe("Updated Title");
     });
 
     it("should delete a view", async () => {
       const view = await payload.create({
         collection: "views",
-        data: { name: "To Delete", slug: "to-delete", isPublic: true, _status: "published" },
+        data: { name: "To Delete", slug: "to-delete", site: testSite.id, isPublic: true, _status: "published" },
         user: regularUser,
       });
 
@@ -132,7 +137,7 @@ describe.sequential("Views Collection", () => {
     it("should allow anyone to read public views", async () => {
       await payload.create({
         collection: "views",
-        data: { name: "Public View", slug: "public-view", isPublic: true, _status: "published" },
+        data: { name: "Public View", slug: "public-view", site: testSite.id, isPublic: true, _status: "published" },
         user: regularUser,
       });
 
@@ -149,7 +154,7 @@ describe.sequential("Views Collection", () => {
     it("should hide private views from other users", async () => {
       await payload.create({
         collection: "views",
-        data: { name: "Private View", slug: "private-view", isPublic: false, _status: "published" },
+        data: { name: "Private View", slug: "private-view", site: testSite.id, isPublic: false, _status: "published" },
         user: regularUser,
       });
 
@@ -167,7 +172,13 @@ describe.sequential("Views Collection", () => {
     it("should allow creator to read their own private views", async () => {
       await payload.create({
         collection: "views",
-        data: { name: "My Private View", slug: "my-private-view", isPublic: false, _status: "published" },
+        data: {
+          name: "My Private View",
+          slug: "my-private-view",
+          site: testSite.id,
+          isPublic: false,
+          _status: "published",
+        },
         user: regularUser,
       });
 
@@ -184,7 +195,13 @@ describe.sequential("Views Collection", () => {
     it("should allow admin to read all views", async () => {
       await payload.create({
         collection: "views",
-        data: { name: "Private View", slug: "admin-test-private", isPublic: false, _status: "published" },
+        data: {
+          name: "Private View",
+          slug: "admin-test-private",
+          site: testSite.id,
+          isPublic: false,
+          _status: "published",
+        },
         user: regularUser,
       });
 
@@ -201,7 +218,13 @@ describe.sequential("Views Collection", () => {
     it("should prevent other users from updating views", async () => {
       const view = await payload.create({
         collection: "views",
-        data: { name: "Protected View", slug: "protected-view", isPublic: true, _status: "published" },
+        data: {
+          name: "Protected View",
+          slug: "protected-view",
+          site: testSite.id,
+          isPublic: true,
+          _status: "published",
+        },
         user: regularUser,
       });
 
@@ -218,21 +241,34 @@ describe.sequential("Views Collection", () => {
     });
   });
 
-  describe("Single Default Enforcement", () => {
-    it("should unset other defaults when setting a new default", async () => {
-      // Create first default view
+  describe("Single Default Enforcement (site-scoped)", () => {
+    it("should unset other defaults within the same site", async () => {
       const view1 = await payload.create({
         collection: "views",
-        data: { name: "First Default", slug: "first-default", isDefault: true, isPublic: true, _status: "published" },
+        data: {
+          name: "First Default",
+          slug: "first-default",
+          site: testSite.id,
+          isDefault: true,
+          isPublic: true,
+          _status: "published",
+        },
         user: regularUser,
       });
 
       expect(view1.isDefault).toBe(true);
 
-      // Create second default view
+      // Create second default view in the same site
       const view2 = await payload.create({
         collection: "views",
-        data: { name: "Second Default", slug: "second-default", isDefault: true, isPublic: true, _status: "published" },
+        data: {
+          name: "Second Default",
+          slug: "second-default",
+          site: testSite.id,
+          isDefault: true,
+          isPublic: true,
+          _status: "published",
+        },
         user: regularUser,
       });
 
@@ -242,6 +278,47 @@ describe.sequential("Views Collection", () => {
       const updatedView1 = await payload.findByID({ collection: "views", id: view1.id });
 
       expect(updatedView1.isDefault).toBe(false);
+    });
+
+    it("should allow defaults in different sites", async () => {
+      const otherSite = await payload.create({
+        collection: "sites",
+        data: { name: "Other Site", slug: "other-site", isPublic: true, _status: "published" },
+        user: regularUser,
+      });
+
+      const view1 = await payload.create({
+        collection: "views",
+        data: {
+          name: "Default in Site 1",
+          slug: "default-site-1",
+          site: testSite.id,
+          isDefault: true,
+          isPublic: true,
+          _status: "published",
+        },
+        user: regularUser,
+      });
+
+      const view2 = await payload.create({
+        collection: "views",
+        data: {
+          name: "Default in Site 2",
+          slug: "default-site-2",
+          site: otherSite.id,
+          isDefault: true,
+          isPublic: true,
+          _status: "published",
+        },
+        user: regularUser,
+      });
+
+      // Both should remain default since they're in different sites
+      const updatedView1 = await payload.findByID({ collection: "views", id: view1.id });
+      const updatedView2 = await payload.findByID({ collection: "views", id: view2.id });
+
+      expect(updatedView1.isDefault).toBe(true);
+      expect(updatedView2.isDefault).toBe(true);
     });
   });
 
@@ -254,52 +331,42 @@ describe.sequential("Views Collection", () => {
         data: {
           name: "Resolver Test View",
           slug: "resolver-test",
+          site: testSite.id,
           isDefault: false,
           isPublic: true,
           _status: "published",
-          branding: { domain: "resolver.example.com" },
         },
         user: regularUser,
       });
     });
 
-    it("should find view by domain", async () => {
-      const view = await findViewByDomain(payload, "resolver.example.com");
+    it("should find view by slug within a site", async () => {
+      const view = await findViewBySlug(payload, "resolver-test", testSite.id);
       expect(view).not.toBeNull();
       expect(view?.id).toBe(testView.id);
     });
 
-    it("should find view by slug", async () => {
-      const view = await findViewBySlug(payload, "resolver-test");
-      expect(view).not.toBeNull();
-      expect(view?.id).toBe(testView.id);
-    });
-
-    it("should find default view", async () => {
+    it("should find default view within a site", async () => {
       // Set view as default
       await payload.update({ collection: "views", id: testView.id, data: { isDefault: true } });
       clearViewCache();
 
-      const view = await findDefaultView(payload);
+      const view = await findDefaultView(payload, testSite.id);
       expect(view).not.toBeNull();
       expect(view?.id).toBe(testView.id);
     });
 
-    it("should resolve view by domain priority", async () => {
-      const view = await resolveView(payload, { host: "resolver.example.com", pathname: "/explore" });
+    it("should resolve view by slug", async () => {
+      const view = await resolveView(payload, testSite.id, "resolver-test");
       expect(view?.id).toBe(testView.id);
     });
 
-    it("should resolve view by slug from path", async () => {
-      const view = await resolveView(payload, { host: "localhost:3000", pathname: "/v/resolver-test/explore" });
-      expect(view?.id).toBe(testView.id);
-    });
+    it("should resolve default view when no slug", async () => {
+      await payload.update({ collection: "views", id: testView.id, data: { isDefault: true } });
+      clearViewCache();
 
-    it("should extract slug from path correctly", () => {
-      expect(extractViewSlugFromPath("/v/my-view")).toBe("my-view");
-      expect(extractViewSlugFromPath("/v/my-view/explore")).toBe("my-view");
-      expect(extractViewSlugFromPath("/explore")).toBeNull();
-      expect(extractViewSlugFromPath("/")).toBeNull();
+      const view = await resolveView(payload, testSite.id);
+      expect(view?.id).toBe(testView.id);
     });
   });
 

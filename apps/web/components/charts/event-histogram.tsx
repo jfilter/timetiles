@@ -20,6 +20,7 @@ import { useChartFilters } from "@/lib/hooks/use-chart-filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import type { HistogramData } from "@/lib/hooks/use-events-queries";
 import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
+import { useViewScope } from "@/lib/hooks/use-view-scope";
 
 import type { BaseChartProps } from "./types";
 
@@ -36,8 +37,9 @@ export const EventHistogram = ({ height = 200, className, bounds }: Readonly<Bas
   const chartTheme = useChartTheme();
   const { filters } = useFilters();
   const { handleDateClick } = useChartFilters();
+  const scope = useViewScope();
 
-  const histogramQuery = useHistogramQuery(filters, bounds ?? null);
+  const histogramQuery = useHistogramQuery(filters, bounds ?? null, true, scope);
   const { data: histogramData, isInitialLoad, isUpdating, isError } = useChartQuery(histogramQuery);
 
   const histogram = histogramData?.histogram ?? EMPTY_HISTOGRAM;

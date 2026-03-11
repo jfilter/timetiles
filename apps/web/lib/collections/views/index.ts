@@ -1,9 +1,9 @@
 /**
  * Defines the Views collection for configurable UI experiences.
  *
- * A View represents a complete UI configuration including data scope,
- * filter settings, branding, and map defaults. Views enable:
- * - Custom portals with branded experiences
+ * A View represents a UI configuration within a Site, including data scope,
+ * filter settings, and map defaults. Views enable:
+ * - Scoped data views within a site
  * - Embedded widgets with subset of data
  * - Different filter configurations per use case
  *
@@ -21,9 +21,9 @@ const Views: CollectionConfig = {
   ...createCommonConfig(),
   admin: {
     useAsTitle: "name",
-    defaultColumns: ["name", "slug", "isDefault", "isPublic", "updatedAt"],
+    defaultColumns: ["name", "slug", "site", "isDefault", "isPublic", "updatedAt"],
     group: "Configuration",
-    description: "Configure UI views with custom data scope, filters, and branding",
+    description: "Configure UI views with custom data scope, filters, and map settings",
   },
   access: {
     read: access.read,
@@ -44,6 +44,13 @@ const Views: CollectionConfig = {
     },
     createSlugField("views"),
     {
+      name: "site",
+      type: "relationship",
+      relationTo: "sites",
+      required: true,
+      admin: { description: "Site this view belongs to" },
+    },
+    {
       name: "isDefault",
       type: "checkbox",
       defaultValue: false,
@@ -51,7 +58,7 @@ const Views: CollectionConfig = {
         create: ({ req: { user } }) => user?.role === "admin",
         update: ({ req: { user } }) => user?.role === "admin",
       },
-      admin: { position: "sidebar", description: "Use as default view when no view specified (admin only)" },
+      admin: { position: "sidebar", description: "Default view within this site (admin only)" },
     },
 
     // ============ DATA SCOPE ============
@@ -164,35 +171,6 @@ const Views: CollectionConfig = {
           name: "defaultFilters",
           type: "json",
           admin: { description: 'Pre-set filter values on load (e.g., {"status": ["active"]})' },
-        },
-      ],
-    },
-
-    // ============ BRANDING ============
-    {
-      type: "group",
-      name: "branding",
-      label: "Branding",
-      admin: { description: "Custom branding for this view" },
-      fields: [
-        { name: "domain", type: "text", unique: true, admin: { description: "Custom domain (e.g., events.city.gov)" } },
-        { name: "title", type: "text", admin: { description: "Page title (defaults to app name)" } },
-        { name: "logo", type: "upload", relationTo: "media", admin: { description: "Custom logo image" } },
-        { name: "favicon", type: "upload", relationTo: "media", admin: { description: "Custom favicon" } },
-        {
-          name: "colors",
-          type: "group",
-          admin: { description: "Custom color scheme" },
-          fields: [
-            { name: "primary", type: "text", admin: { description: "Primary color (hex, e.g., #3b82f6)" } },
-            { name: "secondary", type: "text", admin: { description: "Secondary color (hex)" } },
-            { name: "background", type: "text", admin: { description: "Background color (hex)" } },
-          ],
-        },
-        {
-          name: "headerHtml",
-          type: "textarea",
-          admin: { description: "Custom HTML for header (analytics scripts, etc.)" },
         },
       ],
     },

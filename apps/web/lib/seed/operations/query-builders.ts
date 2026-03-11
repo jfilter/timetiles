@@ -26,6 +26,7 @@ export class QueryBuilders {
         return this.buildDatasetsWhereClause(item);
       case "events":
         return this.buildEventsWhereClause(item);
+      case "sites":
       case "pages":
         return this.buildSlugOrNameWhereClause(item);
       default:

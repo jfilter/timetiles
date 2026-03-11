@@ -16,6 +16,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Home",
     slug: "home",
+    site: "default" as unknown as number, // Resolved by relationship resolver via site slug
     pageBuilder: [
       {
         blockType: "hero",
@@ -88,6 +89,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "About",
     slug: "about",
+    site: "default" as unknown as number,
     pageBuilder: [
       {
         blockType: "hero",
@@ -234,6 +236,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Contact",
     slug: "contact",
+    site: "default" as unknown as number,
     pageBuilder: [
       {
         blockType: "hero",

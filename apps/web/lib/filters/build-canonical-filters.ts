@@ -85,7 +85,58 @@ export const buildCanonicalFilters = ({
     }
   }
 
+  // Scope constraints (view-level data scope)
+  applyScopeConstraints(filters, parameters);
+
   return filters;
+};
+
+/**
+ * Apply view-level scope constraints (scopeCatalogs / scopeDatasets).
+ *
+ * Intersects scope with already-resolved access-control filters.
+ * Sets `denyResults` when scope and user selections have empty intersection.
+ */
+const applyScopeConstraints = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {
+  if (filters.denyResults) return;
+
+  const { scopeCatalogs, scopeDatasets } = parameters;
+
+  // Scope catalogs
+  if (scopeCatalogs != null && scopeCatalogs.length > 0) {
+    if (filters.catalogId != null) {
+      // Specific catalog selected — must be within scope
+      if (!scopeCatalogs.includes(filters.catalogId)) {
+        filters.denyResults = true;
+        filters.catalogId = undefined;
+        return;
+      }
+    } else if (filters.catalogIds != null) {
+      // No specific catalog — intersect accessible IDs with scope
+      const intersection = filters.catalogIds.filter((id) => scopeCatalogs.includes(id));
+      if (intersection.length === 0) {
+        filters.denyResults = true;
+        return;
+      }
+      filters.catalogIds = intersection;
+    }
+  }
+
+  // Scope datasets
+  if (scopeDatasets != null && scopeDatasets.length > 0) {
+    if (filters.datasets != null && filters.datasets.length > 0) {
+      // User selected datasets — intersect with scope
+      const intersection = filters.datasets.filter((id) => scopeDatasets.includes(id));
+      if (intersection.length === 0) {
+        filters.denyResults = true;
+        return;
+      }
+      filters.datasets = intersection;
+    } else {
+      // No user selection — use scope directly
+      filters.datasets = scopeDatasets;
+    }
+  }
 };
 
 /**

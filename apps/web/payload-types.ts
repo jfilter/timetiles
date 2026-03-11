@@ -82,6 +82,7 @@ export interface Config {
     'location-cache': LocationCache;
     'geocoding-providers': GeocodingProvider;
     pages: Page;
+    sites: Site;
     views: View;
     'schema-detectors': SchemaDetector;
     'payload-kv': PayloadKv;
@@ -107,6 +108,7 @@ export interface Config {
     'location-cache': LocationCacheSelect<false> | LocationCacheSelect<true>;
     'geocoding-providers': GeocodingProvidersSelect<false> | GeocodingProvidersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
+    sites: SitesSelect<false> | SitesSelect<true>;
     views: ViewsSelect<false> | ViewsSelect<true>;
     'schema-detectors': SchemaDetectorsSelect<false> | SchemaDetectorsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -2131,6 +2133,10 @@ export interface Page {
    * URL-friendly identifier (auto-generated from name if not provided)
    */
   slug?: string | null;
+  /**
+   * Site this page belongs to
+   */
+  site: number | Site;
   pageBuilder: (
     | {
         title: string;
@@ -2361,13 +2367,96 @@ export interface Page {
         blockType: 'newsletterCTA';
       }
   )[];
+  /**
+   * User who created this page
+   */
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
- * Configure UI views with custom data scope, filters, and branding
+ * Configure sites with custom domains and branding
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sites".
+ */
+export interface Site {
+  id: number;
+  /**
+   * Internal name for this site
+   */
+  name: string;
+  /**
+   * URL-friendly identifier (auto-generated from name if not provided)
+   */
+  slug?: string | null;
+  /**
+   * Custom domain (e.g., events.city.gov)
+   */
+  domain?: string | null;
+  /**
+   * Use as fallback site when no domain match (admin only)
+   */
+  isDefault?: boolean | null;
+  /**
+   * Custom branding for this site (overrides platform defaults)
+   */
+  branding?: {
+    /**
+     * Site title (overrides platform site name)
+     */
+    title?: string | null;
+    /**
+     * Logo for light theme
+     */
+    logo?: (number | null) | Media;
+    /**
+     * Logo for dark theme
+     */
+    logoDark?: (number | null) | Media;
+    /**
+     * Custom favicon
+     */
+    favicon?: (number | null) | Media;
+    /**
+     * Custom color scheme
+     */
+    colors?: {
+      /**
+       * Primary color (hex, e.g., #3b82f6)
+       */
+      primary?: string | null;
+      /**
+       * Secondary color (hex)
+       */
+      secondary?: string | null;
+      /**
+       * Background color (hex)
+       */
+      background?: string | null;
+    };
+    /**
+     * Custom HTML for header (analytics scripts, etc.)
+     */
+    headerHtml?: string | null;
+  };
+  /**
+   * Allow public access to this site
+   */
+  isPublic?: boolean | null;
+  /**
+   * User who created this site
+   */
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Configure UI views with custom data scope, filters, and map settings
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "views".
@@ -2383,7 +2472,11 @@ export interface View {
    */
   slug?: string | null;
   /**
-   * Use as default view when no view specified (admin only)
+   * Site this view belongs to
+   */
+  site: number | Site;
+  /**
+   * Default view within this site (admin only)
    */
   isDefault?: boolean | null;
   /**
@@ -2449,48 +2542,6 @@ export interface View {
       | number
       | boolean
       | null;
-  };
-  /**
-   * Custom branding for this view
-   */
-  branding?: {
-    /**
-     * Custom domain (e.g., events.city.gov)
-     */
-    domain?: string | null;
-    /**
-     * Page title (defaults to app name)
-     */
-    title?: string | null;
-    /**
-     * Custom logo image
-     */
-    logo?: (number | null) | Media;
-    /**
-     * Custom favicon
-     */
-    favicon?: (number | null) | Media;
-    /**
-     * Custom color scheme
-     */
-    colors?: {
-      /**
-       * Primary color (hex, e.g., #3b82f6)
-       */
-      primary?: string | null;
-      /**
-       * Secondary color (hex)
-       */
-      secondary?: string | null;
-      /**
-       * Background color (hex)
-       */
-      background?: string | null;
-    };
-    /**
-     * Custom HTML for header (analytics scripts, etc.)
-     */
-    headerHtml?: string | null;
   };
   /**
    * Default map configuration
@@ -2783,6 +2834,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pages';
         value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'sites';
+        value: number | Site;
       } | null)
     | ({
         relationTo: 'views';
@@ -3551,6 +3606,7 @@ export interface GeocodingProvidersSelect<T extends boolean = true> {
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  site?: T;
   pageBuilder?:
     | T
     | {
@@ -3693,6 +3749,39 @@ export interface PagesSelect<T extends boolean = true> {
               blockName?: T;
             };
       };
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sites_select".
+ */
+export interface SitesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  domain?: T;
+  isDefault?: T;
+  branding?:
+    | T
+    | {
+        title?: T;
+        logo?: T;
+        logoDark?: T;
+        favicon?: T;
+        colors?:
+          | T
+          | {
+              primary?: T;
+              secondary?: T;
+              background?: T;
+            };
+        headerHtml?: T;
+      };
+  isPublic?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -3705,6 +3794,7 @@ export interface PagesSelect<T extends boolean = true> {
 export interface ViewsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
+  site?: T;
   isDefault?: T;
   dataScope?:
     | T
@@ -3729,22 +3819,6 @@ export interface ViewsSelect<T extends boolean = true> {
               id?: T;
             };
         defaultFilters?: T;
-      };
-  branding?:
-    | T
-    | {
-        domain?: T;
-        title?: T;
-        logo?: T;
-        favicon?: T;
-        colors?:
-          | T
-          | {
-              primary?: T;
-              secondary?: T;
-              background?: T;
-            };
-        headerHtml?: T;
       };
   mapSettings?:
     | T

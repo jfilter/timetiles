@@ -70,6 +70,12 @@ export interface SimpleBounds {
 /** Bounds can be MapLibre LngLatBounds, SimpleBounds, or null */
 export type BoundsType = LngLatBounds | SimpleBounds | null;
 
+/** View scope for constraining queries to a subset of catalogs/datasets */
+export interface ViewScope {
+  catalogIds?: number[];
+  datasetIds?: number[];
+}
+
 /**
  * Build URL search params from filter state without bounds.
  *
@@ -78,11 +84,13 @@ export type BoundsType = LngLatBounds | SimpleBounds | null;
  *
  * @param filters - Current filter state
  * @param additionalParams - Extra parameters to include
+ * @param scope - Optional view scope to constrain data
  * @returns URLSearchParams ready for API call
  */
 export const buildBaseEventParams = (
   filters: FilterState,
-  additionalParams: Record<string, string> = {}
+  additionalParams: Record<string, string> = {},
+  scope?: ViewScope
 ): URLSearchParams => {
   const params = new URLSearchParams();
 
@@ -107,6 +115,14 @@ export const buildBaseEventParams = (
     params.append("ff", JSON.stringify(filters.fieldFilters));
   }
 
+  // Add view scope params
+  if (scope?.catalogIds?.length) {
+    params.append("scopeCatalogs", scope.catalogIds.join(","));
+  }
+  if (scope?.datasetIds?.length) {
+    params.append("scopeDatasets", scope.datasetIds.join(","));
+  }
+
   Object.entries(additionalParams).forEach(([key, value]) => {
     params.append(key, value);
   });
@@ -128,9 +144,10 @@ export const buildBaseEventParams = (
 export const buildEventParams = (
   filters: FilterState,
   bounds: BoundsType,
-  additionalParams: Record<string, string> = {}
+  additionalParams: Record<string, string> = {},
+  scope?: ViewScope
 ): URLSearchParams => {
-  const params = buildBaseEventParams(filters, additionalParams);
+  const params = buildBaseEventParams(filters, additionalParams, scope);
 
   if (bounds) {
     const boundsData =

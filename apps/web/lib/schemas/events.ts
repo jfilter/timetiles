@@ -14,6 +14,7 @@ import {
   DateParamSchema,
   FieldFiltersParamSchema,
   PaginationSchema,
+  ScopeIdsParamSchema,
   z,
 } from "./common";
 
@@ -27,6 +28,8 @@ export const EventFiltersSchema = z.object({
   endDate: DateParamSchema,
   bounds: BoundsParamSchema,
   ff: FieldFiltersParamSchema,
+  scopeCatalogs: ScopeIdsParamSchema.optional(),
+  scopeDatasets: ScopeIdsParamSchema.optional(),
 });
 
 export type EventFilters = z.infer<typeof EventFiltersSchema>;

@@ -70,6 +70,97 @@ describe("buildCanonicalFilters", () => {
 
     expect(filters.fieldFilters).toEqual({ valid_key: ["A"] });
   });
+
+  describe("scope constraints", () => {
+    it("leaves filters unchanged when no scope params are provided", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { catalog: 1, datasets: [10, 20], ff: {} },
+        accessibleCatalogIds: [1, 2],
+      });
+
+      expect(filters.catalogId).toBe(1);
+      expect(filters.datasets).toEqual([10, 20]);
+      expect(filters.denyResults).toBeUndefined();
+    });
+
+    it("passes through catalogId when it is within scopeCatalogs", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { catalog: 1, scopeCatalogs: [1, 3], ff: {} },
+        accessibleCatalogIds: [1, 2],
+      });
+
+      expect(filters.catalogId).toBe(1);
+      expect(filters.denyResults).toBeUndefined();
+    });
+
+    it("denies results when catalogId is not within scopeCatalogs", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { catalog: 2, scopeCatalogs: [1, 3], ff: {} },
+        accessibleCatalogIds: [1, 2],
+      });
+
+      expect(filters.denyResults).toBe(true);
+    });
+
+    it("intersects catalogIds with scopeCatalogs", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { scopeCatalogs: [2, 3], ff: {} },
+        accessibleCatalogIds: [1, 2, 3, 4],
+      });
+
+      expect(filters.catalogIds).toEqual([2, 3]);
+      expect(filters.denyResults).toBeUndefined();
+    });
+
+    it("denies results when catalogIds and scopeCatalogs have empty intersection", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { scopeCatalogs: [5, 6], ff: {} },
+        accessibleCatalogIds: [1, 2],
+      });
+
+      expect(filters.denyResults).toBe(true);
+    });
+
+    it("intersects user datasets with scopeDatasets", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { datasets: [10, 20, 30], scopeDatasets: [20, 30, 40], ff: {} },
+        accessibleCatalogIds: [1],
+      });
+
+      expect(filters.datasets).toEqual([20, 30]);
+      expect(filters.denyResults).toBeUndefined();
+    });
+
+    it("denies results when user datasets and scopeDatasets have empty intersection", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { datasets: [10, 20], scopeDatasets: [30, 40], ff: {} },
+        accessibleCatalogIds: [1],
+      });
+
+      expect(filters.denyResults).toBe(true);
+    });
+
+    it("uses scopeDatasets directly when no user datasets are selected", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { scopeDatasets: [30, 40], ff: {} },
+        accessibleCatalogIds: [1],
+      });
+
+      expect(filters.datasets).toEqual([30, 40]);
+      expect(filters.denyResults).toBeUndefined();
+    });
+
+    it("applies both scopeCatalogs and scopeDatasets together", () => {
+      const filters = buildCanonicalFilters({
+        parameters: { datasets: [10, 20], scopeCatalogs: [2, 3], scopeDatasets: [20, 30], ff: {} },
+        accessibleCatalogIds: [1, 2, 3, 4],
+      });
+
+      expect(filters.catalogIds).toEqual([2, 3]);
+      expect(filters.datasets).toEqual([20]);
+      expect(filters.denyResults).toBeUndefined();
+    });
+  });
 });
 
 describe("normalizeEndDate", () => {
