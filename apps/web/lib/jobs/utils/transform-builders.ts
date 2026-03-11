@@ -1,0 +1,94 @@
+/**
+ * Shared utility for building typed ImportTransform arrays from dataset configuration.
+ *
+ * Used by both schema-detection-job and create-events-batch-job to ensure
+ * all 6 transform types are handled consistently.
+ *
+ * @module
+ * @category Jobs
+ */
+import type { ImportTransform } from "@/lib/types/import-transforms";
+import type { Dataset } from "@/payload-types";
+
+type DatasetTransformEntry = NonNullable<Dataset["importTransforms"]>[number];
+type TransformBase = { id: string; active: true; autoDetected: boolean };
+
+const buildRenameTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.to ? { ...base, type: "rename", from: t.from, to: t.to } : null;
+
+const buildDateParseTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.inputFormat && t.outputFormat
+    ? {
+        ...base,
+        type: "date-parse",
+        from: t.from,
+        inputFormat: t.inputFormat,
+        outputFormat: t.outputFormat,
+        timezone: t.timezone ?? undefined,
+      }
+    : null;
+
+const buildStringOpTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.operation
+    ? {
+        ...base,
+        type: "string-op",
+        from: t.from,
+        operation: t.operation,
+        pattern: t.pattern ?? undefined,
+        replacement: t.replacement ?? undefined,
+      }
+    : null;
+
+const buildConcatenateTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  Array.isArray(t.fromFields) && t.fromFields.length >= 2 && t.to
+    ? { ...base, type: "concatenate", fromFields: t.fromFields as string[], separator: t.separator ?? " ", to: t.to }
+    : null;
+
+const buildSplitTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.delimiter && Array.isArray(t.toFields) && t.toFields.length > 0
+    ? { ...base, type: "split", from: t.from, delimiter: t.delimiter, toFields: t.toFields as string[] }
+    : null;
+
+const buildTypeCastTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.fromType && t.toType && t.strategy
+    ? {
+        ...base,
+        type: "type-cast",
+        from: t.from,
+        fromType: t.fromType,
+        toType: t.toType as "string" | "number" | "boolean" | "date" | "array" | "object" | "null",
+        strategy: t.strategy,
+        customFunction: t.customFunction ?? undefined,
+      }
+    : null;
+
+const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: TransformBase) => ImportTransform | null> = {
+  rename: buildRenameTransform,
+  "date-parse": buildDateParseTransform,
+  "string-op": buildStringOpTransform,
+  concatenate: buildConcatenateTransform,
+  split: buildSplitTransform,
+  "type-cast": buildTypeCastTransform,
+};
+
+/** Build typed ImportTransform[] from a dataset's importTransforms configuration. */
+export const buildTransformsFromDataset = (dataset: Dataset): ImportTransform[] => {
+  const transforms: ImportTransform[] = [];
+
+  for (const t of dataset.importTransforms ?? []) {
+    if (typeof t !== "object" || !t?.id || !t.type || t.active !== true) {
+      continue;
+    }
+
+    const base: TransformBase = { id: t.id, active: true, autoDetected: Boolean(t.autoDetected) };
+    const builder = TRANSFORM_BUILDERS[t.type];
+    const transform = builder?.(t, base);
+
+    if (transform) {
+      transforms.push(transform);
+    }
+  }
+
+  return transforms;
+};
