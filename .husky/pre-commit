@@ -2,7 +2,7 @@
 
 # Format check runs on the entire repo (matches CI)
 echo "Checking formatting..."
-pnpm exec oxfmt --check .
+pnpm exec oxfmt --config .oxfmtrc.json --check .
 
 # Only check packages that have staged changes (avoids blocking on unrelated package errors)
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)

@@ -151,6 +151,7 @@ export interface Config {
       "data-export": TaskDataExport;
       "data-export-cleanup": TaskDataExportCleanup;
       "audit-log-ip-cleanup": TaskAuditLogIpCleanup;
+      "execute-account-deletion": TaskExecuteAccountDeletion;
       inline: { input: unknown; output: unknown };
     };
     workflows: unknown;
@@ -2247,7 +2248,8 @@ export interface PayloadJob {
           | "schema-maintenance"
           | "data-export"
           | "data-export-cleanup"
-          | "audit-log-ip-cleanup";
+          | "audit-log-ip-cleanup"
+          | "execute-account-deletion";
         taskID: string;
         input?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
         output?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
@@ -2277,6 +2279,7 @@ export interface PayloadJob {
         | "data-export"
         | "data-export-cleanup"
         | "audit-log-ip-cleanup"
+        | "execute-account-deletion"
       )
     | null;
   queue?: string | null;
@@ -3453,6 +3456,14 @@ export interface TaskDataExportCleanup {
  * via the `definition` "TaskAudit-log-ip-cleanup".
  */
 export interface TaskAuditLogIpCleanup {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskExecute-account-deletion".
+ */
+export interface TaskExecuteAccountDeletion {
   input?: unknown;
   output?: unknown;
 }

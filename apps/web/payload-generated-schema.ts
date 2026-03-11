@@ -672,6 +672,7 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum("enum_payload_jobs
   "data-export",
   "data-export-cleanup",
   "audit-log-ip-cleanup",
+  "execute-account-deletion",
 ]);
 export const enum_payload_jobs_log_state = db_schema.enum("enum_payload_jobs_log_state", ["failed", "succeeded"]);
 export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_task_slug", [
@@ -694,6 +695,7 @@ export const enum_payload_jobs_task_slug = db_schema.enum("enum_payload_jobs_tas
   "data-export",
   "data-export-cleanup",
   "audit-log-ip-cleanup",
+  "execute-account-deletion",
 ]);
 export const enum_main_menu_status = db_schema.enum("enum_main_menu_status", ["draft", "published"]);
 export const enum__main_menu_v_version_status = db_schema.enum("enum__main_menu_v_version_status", [

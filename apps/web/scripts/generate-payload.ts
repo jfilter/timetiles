@@ -84,9 +84,16 @@ const generate = () => {
     // Fix circular foreign key references in generated schema
     fixCircularReferences("payload-generated-schema.ts");
 
-    // Format generated files with oxfmt for consistent output across platforms
+    // Format generated files with oxfmt using explicit --config.
+    // oxfmt resolves .oxfmtrc.json from cwd only (oxc-project/oxc#19509),
+    // so we pass --config to ensure correct formatting regardless of cwd.
     logger.info("🎨 Formatting generated files...");
-    execSync("pnpm exec oxfmt --write payload-types.ts payload-generated-schema.ts", { stdio: "pipe" });
+    const repoRoot = join(process.cwd(), "../..");
+    const oxfmtBin = join(repoRoot, "node_modules/.bin/oxfmt");
+    const configPath = join(repoRoot, ".oxfmtrc.json");
+    execSync(`${oxfmtBin} --config ${configPath} --write payload-types.ts payload-generated-schema.ts`, {
+      stdio: "pipe",
+    });
     logger.info("✓ Files formatted");
 
     logger.info("✅ Successfully generated all Payload files!");
