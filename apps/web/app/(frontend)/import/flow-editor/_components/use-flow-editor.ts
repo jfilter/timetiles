@@ -12,10 +12,10 @@
 import { addEdge, type Connection, type Edge, type Node, useEdgesState, useNodesState } from "@xyflow/react";
 import { useCallback, useEffect, useState } from "react";
 
-import type { FieldMapping, SheetInfo } from "@/lib/types/import-wizard";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/types/flow-mapping";
 import { createSourceNodes, createTargetNodes, TARGET_FIELD_DEFINITIONS } from "@/lib/types/flow-mapping";
 import { createTransform, type TransformType } from "@/lib/types/import-transforms";
+import type { FieldMapping, SheetInfo } from "@/lib/types/import-wizard";
 
 type FlowNode = Node<SourceColumnNodeData | TargetFieldNodeData | TransformNodeData>;
 type FlowEdge = Edge<{ isValid: boolean; confidence?: number }>;
