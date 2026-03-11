@@ -23,6 +23,7 @@ import type { Event } from "@/payload-types";
 import { fetchJson, HttpError } from "../api/http-error";
 import type { FilterState } from "../filters";
 import { createLogger } from "../logger";
+import type { BoundsResponse } from "../types/event-bounds";
 import type { BoundsType, SimpleBounds } from "../utils/event-params";
 import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 import { QUERY_PRESETS } from "./query-presets";
@@ -82,12 +83,8 @@ export interface ClusterStatsResponse {
   p100: number;
 }
 
-export interface BoundsResponse {
-  bounds: SimpleBounds | null;
-  count: number;
-}
-
 // Re-export types for consumers of this module
+export type { BoundsResponse } from "../types/event-bounds";
 export type { BoundsType, SimpleBounds };
 
 // Fetch functions

@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 
+import { fetchJson } from "@/lib/api/http-error";
 import type { FeatureFlags } from "@/lib/services/feature-flag-service";
 
 /**
@@ -34,13 +35,10 @@ export const useAdminFeatureFlag = (flag: keyof FeatureFlags) => {
   useEffect(() => {
     const fetchFlag = async () => {
       try {
-        const response = await fetch("/api/feature-flags");
-        if (response.ok) {
-          const flags = (await response.json()) as FeatureFlags;
-          setIsEnabled(flags[flag] ?? true);
-        }
+        const flags = await fetchJson<FeatureFlags>("/api/feature-flags");
+        setIsEnabled(flags[flag] ?? true);
       } catch {
-        // Default to enabled if fetch fails
+        // Default to enabled if fetch fails (including non-ok responses)
         setIsEnabled(true);
       }
     };

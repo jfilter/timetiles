@@ -12,7 +12,21 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
 
+import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
+
+// Re-export types for backward compatibility with existing consumers
+export type {
+  AuthConfig,
+  ConfidenceLevel,
+  FieldMapping,
+  FieldMappingSuggestion,
+  LanguageDetectionResult,
+  SheetInfo,
+  SheetMapping,
+  SuggestedMappings,
+  UrlAuthConfig,
+} from "@/lib/types/import-wizard";
 
 // Constants
 const STORAGE_KEY = "timetiles_import_wizard_draft";
@@ -21,86 +35,7 @@ const STORAGE_EXPIRY_HOURS = 24;
 // Types
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
 
-/**
- * Confidence level for a field mapping suggestion
- */
-export type ConfidenceLevel = "high" | "medium" | "low" | "none";
-
-/**
- * A field mapping suggestion with confidence information
- */
-export interface FieldMappingSuggestion {
-  path: string | null;
-  confidence: number;
-  confidenceLevel: ConfidenceLevel;
-}
-
-/**
- * Language detection result
- */
-export interface LanguageDetection {
-  code: string;
-  name: string;
-  confidence: number;
-  isReliable: boolean;
-}
-
-/**
- * Suggested field mappings from auto-detection
- */
-export interface SuggestedMappings {
-  language: LanguageDetection;
-  mappings: {
-    titlePath: FieldMappingSuggestion;
-    descriptionPath: FieldMappingSuggestion;
-    locationNamePath: FieldMappingSuggestion;
-    timestampPath: FieldMappingSuggestion;
-    latitudePath: FieldMappingSuggestion;
-    longitudePath: FieldMappingSuggestion;
-    locationPath: FieldMappingSuggestion;
-  };
-}
-
-export interface SheetInfo {
-  index: number;
-  name: string;
-  rowCount: number;
-  headers: string[];
-  sampleData: Record<string, unknown>[];
-  suggestedMappings?: SuggestedMappings;
-}
-
-export interface SheetMapping {
-  sheetIndex: number;
-  datasetId: number | "new";
-  newDatasetName: string;
-  similarityScore: number | null;
-}
-
-export interface FieldMapping {
-  sheetIndex: number;
-  titleField: string | null;
-  descriptionField: string | null;
-  locationNameField: string | null;
-  dateField: string | null;
-  idField: string | null;
-  idStrategy: "external" | "computed" | "auto" | "hybrid";
-  locationField: string | null;
-  latitudeField: string | null;
-  longitudeField: string | null;
-}
-
 export type CatalogSelection = number | "new" | null;
-
-/** Auth configuration for URL imports */
-export interface UrlAuthConfig {
-  type: "none" | "api-key" | "bearer" | "basic";
-  apiKey?: string;
-  apiKeyHeader?: string;
-  bearerToken?: string;
-  username?: string;
-  password?: string;
-}
 
 /** Schedule configuration for creating scheduled imports */
 export interface ScheduleConfig {

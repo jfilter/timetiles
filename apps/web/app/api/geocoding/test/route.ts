@@ -16,8 +16,8 @@ export const POST = apiRoute({
   rateLimit: { type: "API_GENERAL" },
   body: z.object({ address: z.string().min(1) }),
   handler: async ({ body, payload }) => {
-    const { GeocodingService } = await import("@/lib/services/geocoding/geocoding-service");
-    const service = new GeocodingService(payload);
+    const { createGeocodingService } = await import("@/lib/services/geocoding");
+    const service = createGeocodingService(payload);
     const results = await service.testConfiguration(body.address);
     return Response.json(results);
   },

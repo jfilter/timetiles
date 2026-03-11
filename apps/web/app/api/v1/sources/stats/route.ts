@@ -13,15 +13,9 @@ import { sql } from "@payloadcms/db-postgres";
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
+import type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
 
-/**
- * Response format for data source stats endpoint.
- */
-interface DataSourceStatsResponse {
-  catalogCounts: Record<string, number>;
-  datasetCounts: Record<string, number>;
-  totalEvents: number;
-}
+export type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
 
 /**
  * GET handler for data source statistics.

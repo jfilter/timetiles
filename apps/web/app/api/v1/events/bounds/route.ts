@@ -20,6 +20,7 @@ import { logger } from "@/lib/logger";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
+import type { BoundsResponse } from "@/lib/types/event-bounds";
 import {
   buildCatalogSqlCondition,
   buildDatasetSqlCondition,
@@ -27,15 +28,7 @@ import {
   buildFieldFilterSqlConditions,
 } from "@/lib/utils/event-sql-filters";
 
-/**
- * Response format for the bounds endpoint.
- */
-export interface BoundsResponse {
-  /** Geographic bounds of matching events, or null if no events match */
-  bounds: { north: number; south: number; east: number; west: number } | null;
-  /** Total count of events within bounds */
-  count: number;
-}
+export type { BoundsResponse } from "@/lib/types/event-bounds";
 
 /**
  * GET /api/v1/events/bounds

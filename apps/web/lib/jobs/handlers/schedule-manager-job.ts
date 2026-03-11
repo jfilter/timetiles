@@ -12,8 +12,9 @@
 import type { Payload } from "payload";
 
 import { validateCronExpression } from "@/lib/collections/scheduled-imports/validation";
-import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
+import { triggerScheduledImport } from "@/lib/services/scheduled-import-trigger-service";
 import type { ScheduledImport } from "@/payload-types";
 
 // Unused but kept for future expansion
@@ -269,22 +270,6 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
   }
 };
 
-// Helper to generate import name from template
-const generateImportName = (
-  template: string | null | undefined,
-  scheduledImport: ScheduledImport,
-  currentTime: Date
-): string => {
-  const importName = template ?? "{{name}} - {{date}}";
-  const timeString = `${currentTime.getUTCHours().toString().padStart(2, "0")}:${currentTime.getUTCMinutes().toString().padStart(2, "0")}:${currentTime.getUTCSeconds().toString().padStart(2, "0")}`;
-
-  return importName
-    .replace("{{name}}", scheduledImport.name)
-    .replace("{{date}}", currentTime.toISOString().split("T")[0] ?? "")
-    .replace("{{time}}", timeString)
-    .replace("{{url}}", new URL(scheduledImport.sourceUrl).hostname);
-};
-
 // Helper to calculate next run with fallback
 const calculateNextRun = (scheduledImport: ScheduledImport, currentTime: Date): Date => {
   try {
@@ -300,10 +285,6 @@ const calculateNextRun = (scheduledImport: ScheduledImport, currentTime: Date): 
     return new Date(currentTime.getTime() + 24 * 60 * 60 * 1000); // Default to 24 hours
   }
 };
-
-// NOTE: Execution history is NOT recorded at queue time.
-// The actual success/failure entry is added by the url-fetch job handler
-// (in scheduled-import-utils.ts) when processing completes.
 
 // Helper to process a single scheduled import
 const processScheduledImport = async (
@@ -324,65 +305,11 @@ const processScheduledImport = async (
     return false;
   }
 
-  const importName = generateImportName(scheduledImport.importNameTemplate, scheduledImport, currentTime);
-
-  // CRITICAL: Set status to "running" BEFORE queuing job
-  await payload.update({
-    collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
-    id: scheduledImport.id,
-    data: { lastStatus: "running", lastRun: currentTime.toISOString() },
-  });
-
-  // Queue the URL fetch job
-  const urlFetchJob = await payload.jobs.queue({
-    task: JOB_TYPES.URL_FETCH,
-    input: {
-      scheduledImportId: scheduledImport.id,
-      sourceUrl: scheduledImport.sourceUrl,
-      authConfig: scheduledImport.authConfig,
-      catalogId:
-        // eslint-disable-next-line sonarjs/different-types-comparison -- Checking for object type is correct
-        typeof scheduledImport.catalog === "object" && scheduledImport.catalog !== null
-          ? scheduledImport.catalog.id
-          : (scheduledImport.catalog ?? undefined),
-      originalName: importName,
-      userId:
-        // eslint-disable-next-line sonarjs/different-types-comparison -- Checking for object type is correct
-        typeof scheduledImport.createdBy === "object" && scheduledImport.createdBy !== null
-          ? scheduledImport.createdBy.id
-          : scheduledImport.createdBy,
-      triggeredBy: "schedule", // Add triggeredBy field
-    },
-  });
-
   const nextRun = calculateNextRun(scheduledImport, currentTime);
 
-  // Update statistics - only increment totalRuns at queue time.
-  // successfulRuns/failedRuns are updated by the job handler on completion.
-  const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
-  stats.totalRuns = (stats.totalRuns ?? 0) + 1;
-
-  // Update the scheduled import record with next run time and statistics.
-  // Execution history is NOT recorded here - it's added by the url-fetch
-  // job handler when processing completes with actual success/failure status.
-  await payload.update({
-    collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
-    id: scheduledImport.id,
-    data: {
-      lastRun: currentTime.toISOString(),
-      nextRun: nextRun.toISOString(),
-      lastStatus: "running",
-      currentRetries: 0,
-      statistics: stats,
-    },
-  });
-
-  logger.info("Triggered scheduled import", {
-    scheduledImportId: scheduledImport.id,
-    scheduledImportName: scheduledImport.name,
-    urlFetchJobId: urlFetchJob.id,
+  await triggerScheduledImport(payload, scheduledImport, currentTime, {
+    triggeredBy: "schedule",
     nextRun: nextRun.toISOString(),
-    url: scheduledImport.sourceUrl,
   });
 
   return true;

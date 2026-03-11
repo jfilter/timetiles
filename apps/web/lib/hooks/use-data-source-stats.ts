@@ -12,16 +12,10 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchJson } from "../api/http-error";
+import type { DataSourceStatsResponse } from "../types/data-source-stats";
 import { QUERY_PRESETS } from "./query-presets";
 
-/**
- * Response format for data source stats endpoint.
- */
-export interface DataSourceStatsResponse {
-  catalogCounts: Record<string, number>;
-  datasetCounts: Record<string, number>;
-  totalEvents: number;
-}
+export type { DataSourceStatsResponse } from "../types/data-source-stats";
 
 /**
  * Query key for data source stats.

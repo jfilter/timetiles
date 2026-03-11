@@ -17,7 +17,10 @@ import { z } from "zod";
 import { apiRoute, ForbiddenError, NotFoundError, ValidationError } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
+import type { SchemaInferenceResponse } from "@/lib/types/schema-inference";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+
+export type { SchemaInferenceOptions, SchemaInferenceResponse } from "@/lib/types/schema-inference";
 
 export const POST = apiRoute({
   auth: "required",
@@ -76,9 +79,9 @@ export const POST = apiRoute({
             id: result.schema.id,
             versionNumber: result.schema.versionNumber,
             createdAt: result.schema.createdAt,
-            eventCountAtCreation: result.schema.eventCountAtCreation,
+            eventCountAtCreation: result.schema.eventCountAtCreation ?? undefined,
           }
         : null,
-    });
+    } satisfies SchemaInferenceResponse);
   },
 });

@@ -2,7 +2,9 @@
  * Service functions for the import configuration workflow.
  *
  * Extracts Payload-dependent orchestration logic from the configure-import
- * API route into a testable service layer.
+ * API route into a testable service layer. Also contains pure helper functions
+ * for building dataset mappings, field mapping overrides, ID strategies, and
+ * geo field detection config used during import configuration.
  *
  * @module
  * @category Services
@@ -12,6 +14,10 @@ import fs from "node:fs";
 import type { NextRequest } from "next/server";
 import type { Payload } from "payload";
 
+import { AppError } from "@/lib/api";
+import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
+import { createLogger } from "@/lib/logger";
+import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
 import type {
   ConfigureImportRequest,
   CreateScheduleConfig,
@@ -19,15 +25,130 @@ import type {
   FieldMapping,
   PreviewMetadata,
   SheetMapping,
-} from "@/app/api/import/configure/helpers";
-import { buildDatasetMapping, processDataset, translateSchemaMode } from "@/app/api/import/configure/helpers";
-import { AppError } from "@/lib/api";
-import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
-import { createLogger } from "@/lib/logger";
-import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
+} from "@/lib/types/import-wizard";
 import type { User } from "@/payload-types";
 
 const logger = createLogger("import-configure-service");
+
+// Build field mapping overrides from wizard configuration
+export const buildFieldMappingOverrides = (fieldMapping: FieldMapping | undefined) => {
+  if (!fieldMapping) return {};
+  return {
+    titlePath: fieldMapping.titleField,
+    descriptionPath: fieldMapping.descriptionField,
+    timestampPath: fieldMapping.dateField,
+    latitudePath: fieldMapping.latitudeField,
+    longitudePath: fieldMapping.longitudeField,
+    locationPath: fieldMapping.locationField,
+  };
+};
+
+// Build ID strategy configuration
+export const buildIdStrategy = (
+  fieldMapping: FieldMapping | undefined,
+  deduplicationStrategy: ConfigureImportRequest["deduplicationStrategy"]
+) => {
+  if (!fieldMapping) {
+    return { type: "auto" as const, duplicateStrategy: deduplicationStrategy };
+  }
+  return {
+    type: fieldMapping.idStrategy,
+    externalIdPath: fieldMapping.idField,
+    duplicateStrategy: deduplicationStrategy,
+  };
+};
+
+// Build geo field detection config
+export const buildGeoFieldDetection = (fieldMapping: FieldMapping | undefined, geocodingEnabled: boolean) => ({
+  autoDetect: geocodingEnabled,
+  latitudePath: fieldMapping?.latitudeField ?? undefined,
+  longitudePath: fieldMapping?.longitudeField ?? undefined,
+});
+
+// Build dataset mapping metadata for the import job
+export const buildDatasetMapping = (sheetMappings: SheetMapping[], datasetMappingEntries: DatasetMappingEntry[]) => {
+  if (sheetMappings.length === 1) {
+    return { mappingType: "single", singleDataset: datasetMappingEntries[0]?.dataset };
+  }
+  return { mappingType: "multiple", sheetMappings: datasetMappingEntries };
+};
+
+/**
+ * Translate user-friendly schema mode to dataset schemaConfig fields.
+ */
+export const translateSchemaMode = (mode: CreateScheduleConfig["schemaMode"]) => {
+  switch (mode) {
+    case "strict":
+      return { locked: true, autoGrow: false, autoApproveNonBreaking: false };
+    case "additive":
+      return { locked: false, autoGrow: true, autoApproveNonBreaking: true };
+    case "flexible":
+      return { locked: false, autoGrow: true, autoApproveNonBreaking: false };
+    default:
+      return { locked: false, autoGrow: true, autoApproveNonBreaking: true };
+  }
+};
+
+// Create or update dataset with wizard configuration
+export const processDataset = async (
+  payload: Payload,
+  req: NextRequest,
+  sheetMapping: SheetMapping,
+  fieldMapping: FieldMapping | undefined,
+  catalogId: number,
+  deduplicationStrategy: ConfigureImportRequest["deduplicationStrategy"],
+  geocodingEnabled: boolean
+): Promise<number> => {
+  const fieldMappingOverrides = buildFieldMappingOverrides(fieldMapping);
+  const idStrategy = buildIdStrategy(fieldMapping, deduplicationStrategy);
+  const deduplicationConfig = { enabled: true, strategy: deduplicationStrategy };
+  const geoFieldDetection = buildGeoFieldDetection(fieldMapping, geocodingEnabled);
+
+  // Auto-approve non-breaking schema changes for wizard imports
+  // since the user already configured field mappings
+  const schemaConfig = { autoApproveNonBreaking: true };
+
+  if (sheetMapping.datasetId === "new") {
+    // Bug 14 fix: pass req so Payload hooks and access control know the acting user
+    const newDataset = await payload.create({
+      collection: "datasets",
+      data: {
+        name: sheetMapping.newDatasetName,
+        catalog: catalogId,
+        language: "eng",
+        isPublic: true, // Default to public for wizard imports
+        fieldMappingOverrides,
+        idStrategy,
+        deduplicationConfig,
+        geoFieldDetection,
+        schemaConfig,
+      },
+      req,
+    });
+
+    logger.info(
+      { datasetId: newDataset.id, name: sheetMapping.newDatasetName, sheetIndex: sheetMapping.sheetIndex },
+      "Created new dataset with wizard config"
+    );
+
+    return newDataset.id;
+  }
+
+  // Bug 14 fix: pass req so Payload hooks and access control know the acting user
+  await payload.update({
+    collection: "datasets",
+    id: sheetMapping.datasetId,
+    data: { fieldMappingOverrides, idStrategy, deduplicationConfig, geoFieldDetection, schemaConfig },
+    req,
+  });
+
+  logger.info(
+    { datasetId: sheetMapping.datasetId, sheetIndex: sheetMapping.sheetIndex },
+    "Updated existing dataset with wizard config"
+  );
+
+  return sheetMapping.datasetId;
+};
 
 /**
  * Process all sheet mappings and return dataset mapping entries.

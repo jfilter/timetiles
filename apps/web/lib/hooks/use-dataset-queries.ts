@@ -9,24 +9,11 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { HttpError } from "../api/http-error";
+import type { HttpError } from "../api/http-error";
+import { fetchJson } from "../api/http-error";
+import type { SchemaInferenceOptions, SchemaInferenceResponse } from "../types/schema-inference";
 
-interface SchemaInferenceOptions {
-  /** Maximum number of events to sample (default: 500) */
-  sampleSize?: number;
-  /** Number of events to process per batch (default: 100) */
-  batchSize?: number;
-  /** Generate schema even if one already exists and is fresh (default: false) */
-  forceRegenerate?: boolean;
-}
-
-interface SchemaInferenceResponse {
-  success: boolean;
-  generated: boolean;
-  message: string;
-  eventsSampled?: number;
-  schema: { id: number; versionNumber: number; createdAt: string; eventCountAtCreation?: number } | null;
-}
+export type { SchemaInferenceOptions, SchemaInferenceResponse } from "../types/schema-inference";
 
 /**
  * Hook for triggering schema inference on a dataset.
@@ -49,19 +36,11 @@ export const useInferSchemaForDataset = () => {
 
   return useMutation<SchemaInferenceResponse, HttpError, { datasetId: number } & SchemaInferenceOptions>({
     mutationFn: async ({ datasetId, ...options }) => {
-      const response = await fetch(`/api/v1/datasets/${datasetId}/schema/infer`, {
+      return fetchJson<SchemaInferenceResponse>(`/api/v1/datasets/${datasetId}/schema/infer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(options),
       });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({ error: "Unknown error" }));
-        const message = (body as { error?: string }).error ?? `Failed to infer schema: ${response.statusText}`;
-        throw new HttpError(response.status, message, body);
-      }
-
-      return response.json();
     },
     onSuccess: (data, variables) => {
       // Invalidate relevant queries when schema is generated

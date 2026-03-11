@@ -18,7 +18,7 @@ import type {
   UrlAuthConfig,
 } from "@/app/(frontend)/import/_components/wizard-context";
 
-import { HttpError } from "../api/http-error";
+import { fetchJson } from "../api/http-error";
 
 interface PreviewSchemaUploadResponse {
   sheets: SheetInfo[];
@@ -64,53 +64,26 @@ interface ImportConfigureResponse {
 }
 
 const previewSchemaUpload = async (formData: FormData): Promise<PreviewSchemaUploadResponse> => {
-  const response = await fetch("/api/import/preview-schema/upload", {
+  return fetchJson<PreviewSchemaUploadResponse>("/api/import/preview-schema/upload", {
     method: "POST",
     body: formData,
-    credentials: "include",
   });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => undefined);
-    const message = (body as { error?: string })?.error ?? "Failed to process file";
-    throw new HttpError(response.status, message, body);
-  }
-
-  return response.json() as Promise<PreviewSchemaUploadResponse>;
 };
 
 const previewSchemaUrl = async (request: PreviewSchemaUrlRequest): Promise<PreviewSchemaUrlResponse> => {
-  const response = await fetch("/api/import/preview-schema/url", {
+  return fetchJson<PreviewSchemaUrlResponse>("/api/import/preview-schema/url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
-    credentials: "include",
   });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => undefined);
-    const message = (body as { error?: string })?.error ?? "Failed to fetch URL";
-    throw new HttpError(response.status, message, body);
-  }
-
-  return response.json() as Promise<PreviewSchemaUrlResponse>;
 };
 
 const importConfigure = async (request: ImportConfigureRequest): Promise<ImportConfigureResponse> => {
-  const response = await fetch("/api/import/configure", {
+  return fetchJson<ImportConfigureResponse>("/api/import/configure", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify(request),
   });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => undefined);
-    const message = (body as { error?: string })?.error ?? "Failed to start import";
-    throw new HttpError(response.status, message, body);
-  }
-
-  return response.json() as Promise<ImportConfigureResponse>;
 };
 
 /**

@@ -8,42 +8,16 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { HttpError } from "../api/http-error";
-import type { ExportSummary } from "../services/data-export-types";
+import { fetchJson } from "../api/http-error";
+import type { DataExport, ExportListResponse, RequestExportResponse } from "../types/data-export-api";
 import { formatDate, parseDateInput } from "../utils/date";
 
-interface DataExport {
-  id: number;
-  status: "pending" | "processing" | "ready" | "failed" | "expired";
-  requestedAt: string;
-  completedAt?: string | null;
-  expiresAt?: string | null;
-  fileSize?: number | null;
-  downloadCount?: number | null;
-  summary?: ExportSummary | null;
-  errorLog?: string;
-}
-
-interface ExportListResponse {
-  exports: DataExport[];
-  total: number;
-}
-
-interface RequestExportResponse {
-  success: boolean;
-  message: string;
-  exportId: number;
-  summary: ExportSummary;
-}
-
-interface RequestExportError {
-  error: string;
-  exportId?: number;
-  status?: string;
-  requestedAt?: string;
-  resetTime?: string;
-  failedWindow?: string;
-}
+export type {
+  DataExport,
+  ExportListResponse,
+  RequestExportError,
+  RequestExportResponse,
+} from "../types/data-export-api";
 
 /**
  * Query key for data exports.
@@ -54,26 +28,21 @@ export const dataExportKeys = {
   latest: () => [...dataExportKeys.all, "latest"] as const,
 };
 
+/** Shape returned by the Payload REST API for the data-exports collection. */
+interface PayloadDataExportsResponse {
+  docs: DataExport[];
+  totalDocs: number;
+}
+
 /**
  * Fetch the user's data exports.
  */
 const fetchDataExports = async (): Promise<ExportListResponse> => {
-  const response = await fetch("/api/data-exports?sort=-requestedAt&limit=10", {
-    method: "GET",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => undefined);
-    const message = (body as { error?: string })?.error ?? "Failed to fetch exports";
-    throw new HttpError(response.status, message, body);
-  }
-
-  const payload = await response.json();
+  const data = await fetchJson<PayloadDataExportsResponse>("/api/data-exports?sort=-requestedAt&limit=10");
 
   // Transform Payload REST response to match expected format
   return {
-    exports: payload.docs.map((exp: Record<string, unknown>) => ({
+    exports: data.docs.map((exp) => ({
       id: exp.id,
       status: exp.status,
       requestedAt: exp.requestedAt,
@@ -84,7 +53,7 @@ const fetchDataExports = async (): Promise<ExportListResponse> => {
       summary: exp.summary,
       errorLog: exp.status === "failed" ? exp.errorLog : undefined,
     })),
-    total: payload.totalDocs,
+    total: data.totalDocs,
   };
 };
 
@@ -92,14 +61,7 @@ const fetchDataExports = async (): Promise<ExportListResponse> => {
  * Request a new data export.
  */
 const requestDataExport = async (): Promise<RequestExportResponse> => {
-  const response = await fetch("/api/data-exports/request", { method: "POST", credentials: "include" });
-
-  if (!response.ok) {
-    const body: RequestExportError = await response.json().catch(() => ({ error: "Failed to request export" }));
-    throw new HttpError(response.status, body.error || "Failed to request export", body);
-  }
-
-  return response.json();
+  return fetchJson<RequestExportResponse>("/api/data-exports/request", { method: "POST" });
 };
 
 // Returns polling interval or false to stop - React Query expects this pattern

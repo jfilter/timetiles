@@ -25,10 +25,6 @@ vi.mock("../../../lib/hooks/use-chart-query", () => ({
   useChartQuery: (query: any) => ({ ...query, isInitialLoad: false, isUpdating: false }),
 }));
 
-vi.mock("../../../lib/hooks/use-chart-filters", () => ({
-  useChartFilters: () => ({ handleDatasetClick: vi.fn(), handleCatalogClick: vi.fn() }),
-}));
-
 vi.mock("@timetiles/ui/charts", () => ({
   useChartTheme: () => ({
     backgroundColor: "#ffffff",

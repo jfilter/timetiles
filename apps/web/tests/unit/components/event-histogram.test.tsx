@@ -49,9 +49,7 @@ vi.mock("../../../lib/hooks/use-chart-query", () => ({
   }),
 }));
 
-vi.mock("../../../lib/hooks/use-chart-filters", () => ({
-  useChartFilters: () => ({ handleDateClick: vi.fn(), handleDatasetClick: vi.fn(), handleCatalogClick: vi.fn() }),
-}));
+vi.mock("../../../lib/hooks/use-chart-filters", () => ({ useChartFilters: () => ({ handleDateClick: vi.fn() }) }));
 
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({

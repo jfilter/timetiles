@@ -41,12 +41,12 @@ describe("fetchJson", () => {
   const fetchMock = vi.fn<typeof globalThis.fetch>();
 
   beforeEach(() => {
+    fetchMock.mockReset();
     globalThis.fetch = fetchMock;
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    vi.restoreAllMocks();
   });
 
   it("returns parsed JSON on successful response", async () => {
@@ -70,7 +70,8 @@ describe("fetchJson", () => {
     });
   });
 
-  it("throws HttpError with status and body on non-ok response", async () => {
+  it("extracts error message from body and falls back to statusText", async () => {
+    // Case 1: body.error is extracted as the message
     const errorBody = { error: "Not found", code: "NOT_FOUND" };
     fetchMock.mockResolvedValue({
       ok: false,
@@ -86,8 +87,42 @@ describe("fetchJson", () => {
       expect(error).toBeInstanceOf(HttpError);
       const httpError = error as HttpError;
       expect(httpError.status).toBe(404);
-      expect(httpError.message).toBe("Not Found");
+      expect(httpError.message).toBe("Not found");
       expect(httpError.body).toEqual(errorBody);
+    }
+
+    // Case 2: body.message is extracted when body.error is absent
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      json: () => Promise.resolve({ message: "Validation failed" }),
+    } as Response);
+
+    try {
+      await fetchJson("/api/test");
+      expect.fail("Expected fetchJson to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpError);
+      expect((error as HttpError).message).toBe("Validation failed");
+    }
+
+    // Case 3: falls back to statusText when body has neither error nor message
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 409,
+      statusText: "Conflict",
+      json: () => Promise.resolve({ code: "DUPLICATE", id: 42 }),
+    } as Response);
+
+    try {
+      await fetchJson("/api/test");
+      expect.fail("Expected fetchJson to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpError);
+      const httpError = error as HttpError;
+      expect(httpError.message).toBe("Conflict");
+      expect(httpError.body).toEqual({ code: "DUPLICATE", id: 42 });
     }
   });
 
@@ -125,6 +160,8 @@ describe("fetchJson", () => {
       const httpError = error as HttpError;
       // Verify the retry policy in providers.tsx can use instanceof check
       expect(httpError.status >= 400 && httpError.status < 500).toBe(true);
+      // Extracts the `error` field from the response body as the message
+      expect(httpError.message).toBe("Access denied");
     }
   });
 });

@@ -1,8 +1,8 @@
 /**
  * Hook for handling chart click interactions and filter updates.
  *
- * Provides standardized callbacks for updating URL-based filters when
- * users click on chart elements (bars, points, etc.).
+ * Provides a date click handler for updating URL-based date filters when
+ * users click on histogram bars.
  *
  * @module
  * @category Hooks
@@ -15,10 +15,6 @@ import { useCallback } from "react";
 interface ChartFilterHandlers {
   /** Callback for date-based chart clicks */
   handleDateClick: (date: Date) => void;
-  /** Callback for dataset-based chart clicks */
-  handleDatasetClick: (datasetId: number) => void;
-  /** Callback for catalog-based chart clicks */
-  handleCatalogClick: (catalogId: number) => void;
 }
 
 /**
@@ -43,8 +39,6 @@ interface ChartFilterHandlers {
 export const useChartFilters = (): ChartFilterHandlers => {
   const [, setStartDate] = useQueryState("startDate");
   const [, setEndDate] = useQueryState("endDate");
-  const [, setDataset] = useQueryState("dataset");
-  const [, setCatalog] = useQueryState("catalog");
 
   const formatDate = useCallback((d: Date) => {
     const year = d.getFullYear();
@@ -62,19 +56,5 @@ export const useChartFilters = (): ChartFilterHandlers => {
     [setStartDate, setEndDate, formatDate]
   );
 
-  const handleDatasetClick = useCallback(
-    (datasetId: number) => {
-      void setDataset(String(datasetId));
-    },
-    [setDataset]
-  );
-
-  const handleCatalogClick = useCallback(
-    (catalogId: number) => {
-      void setCatalog(String(catalogId));
-    },
-    [setCatalog]
-  );
-
-  return { handleDateClick, handleDatasetClick, handleCatalogClick };
+  return { handleDateClick };
 };

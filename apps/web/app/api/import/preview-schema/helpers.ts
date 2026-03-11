@@ -15,11 +15,11 @@ import { FIELD_PATTERNS, LATITUDE_PATTERNS, LONGITUDE_PATTERNS } from "@timetile
 import Papa from "papaparse";
 import { read, utils } from "xlsx";
 
-import {
-  detectLanguageFromSamples,
-  type LanguageDetectionResult,
-} from "@/lib/services/schema-builder/language-detection";
+import { detectLanguageFromSamples } from "@/lib/services/schema-builder/language-detection";
+import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
 import { isPrivateUrl } from "@/lib/utils/url-validation";
+
+export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
 
 export const ALLOWED_MIME_TYPES = [
   "text/csv",
@@ -33,49 +33,6 @@ export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const SAMPLE_ROW_COUNT = 5;
 export const FILE_EXTENSION_REGEX = /\.(csv|xls|xlsx|ods)$/i;
 export const SUPPORTED_EXTENSIONS = [".csv", ".xls", ".xlsx", ".ods"];
-
-/** Confidence level for field mapping suggestion */
-type ConfidenceLevel = "high" | "medium" | "low" | "none";
-
-/** Field mapping suggestion with confidence */
-interface FieldMappingSuggestion {
-  path: string | null;
-  confidence: number;
-  confidenceLevel: ConfidenceLevel;
-}
-
-/** Suggested mappings from auto-detection */
-interface SuggestedMappings {
-  language: LanguageDetectionResult;
-  mappings: {
-    titlePath: FieldMappingSuggestion;
-    descriptionPath: FieldMappingSuggestion;
-    timestampPath: FieldMappingSuggestion;
-    latitudePath: FieldMappingSuggestion;
-    longitudePath: FieldMappingSuggestion;
-    locationPath: FieldMappingSuggestion;
-  };
-}
-
-export interface SheetInfo {
-  index: number;
-  name: string;
-  rowCount: number;
-  headers: string[];
-  sampleData: Record<string, unknown>[];
-  suggestedMappings?: SuggestedMappings;
-}
-
-/** Auth configuration for URL fetching (matches ScheduledImport authConfig structure) */
-export interface AuthConfig {
-  type: "none" | "api-key" | "bearer" | "basic";
-  apiKey?: string;
-  apiKeyHeader?: string;
-  bearerToken?: string;
-  username?: string;
-  password?: string;
-  customHeaders?: string | Record<string, string>;
-}
 
 /**
  * Get confidence level from confidence score
@@ -163,6 +120,7 @@ export const detectSuggestedMappings = (
     mappings: {
       titlePath: detectFieldFromHeaders(headers, "title", langCode),
       descriptionPath: detectFieldFromHeaders(headers, "description", langCode),
+      locationNamePath: detectFieldFromHeaders(headers, "locationName", langCode),
       timestampPath: detectFieldFromHeaders(headers, "timestamp", langCode),
       latitudePath: detectFieldFromHeaders(headers, "latitude", langCode),
       longitudePath: detectFieldFromHeaders(headers, "longitude", langCode),
