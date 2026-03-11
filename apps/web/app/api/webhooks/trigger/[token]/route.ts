@@ -7,16 +7,13 @@
  * @module
  * @category API
  */
-
-import type { Payload } from "payload";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
-import { JOB_TYPES } from "@/lib/constants/import-constants";
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { queueWebhookImport } from "@/lib/services/scheduled-import-trigger-service";
 import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
-import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledImport } from "@/payload-types";
 
 interface RateLimitResponse {
@@ -48,89 +45,6 @@ const createRateLimitResponse = (rateLimitCheck: { failedWindow?: string; resetT
       "Retry-After": Math.ceil(((rateLimitCheck.resetTime ?? Date.now()) - Date.now()) / 1000).toString(),
     },
   });
-};
-
-const generateImportName = (scheduledImport: ScheduledImport, currentTime: Date): string => {
-  const importName = scheduledImport.importNameTemplate ?? "{{name}} - {{date}}";
-  return importName
-    .replace("{{name}}", scheduledImport.name)
-    .replace("{{date}}", currentTime.toISOString().split("T")[0] ?? "")
-    .replace("{{time}}", currentTime.toTimeString().split(" ")[0] ?? "")
-    .replace("{{url}}", new URL(scheduledImport.sourceUrl).hostname);
-};
-
-/**
- * Update statistics when a webhook triggers an import.
- * Execution history is NOT recorded here because the import has only been queued,
- * not completed. The actual success/failure entry is added by the job handler
- * when processing finishes.
- */
-const updateStatisticsOnTrigger = async (payload: Payload, scheduledImport: ScheduledImport): Promise<void> => {
-  const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
-  stats.totalRuns = (stats.totalRuns ?? 0) + 1;
-
-  await payload.update({ collection: "scheduled-imports", id: scheduledImport.id, data: { statistics: stats } });
-};
-
-/** Queue the import job and update statistics for a validated scheduled import. */
-const queueImportAndRespond = async (payload: Payload, scheduledImport: ScheduledImport): Promise<Response> => {
-  const currentTime = new Date();
-  const importName = generateImportName(scheduledImport, currentTime);
-
-  // CRITICAL: Set status to "running" BEFORE queuing job
-  const previousStatus = scheduledImport.lastStatus ?? null;
-  await payload.update({
-    collection: "scheduled-imports",
-    id: scheduledImport.id,
-    data: { lastStatus: "running", lastRun: currentTime.toISOString() },
-  });
-
-  // Queue URL fetch job - wrapped in try/catch to revert status on failure
-  let urlFetchJob;
-  try {
-    urlFetchJob = await payload.jobs.queue({
-      task: JOB_TYPES.URL_FETCH,
-      input: {
-        scheduledImportId: scheduledImport.id,
-        sourceUrl: scheduledImport.sourceUrl,
-        authConfig: scheduledImport.authConfig,
-        catalogId: extractRelationId(scheduledImport.catalog),
-        originalName: importName,
-        userId: extractRelationId(scheduledImport.createdBy),
-        triggeredBy: "webhook",
-      },
-    });
-  } catch (queueError) {
-    // Revert lastStatus so the import doesn't get stuck as "running"
-    logError(queueError, "Failed to queue webhook job, reverting status", {
-      scheduledImportId: scheduledImport.id,
-      previousStatus,
-    });
-    await payload.update({
-      collection: "scheduled-imports",
-      id: scheduledImport.id,
-      data: { lastStatus: previousStatus },
-    });
-    return internalError("Failed to queue import job");
-  }
-
-  // Update statistics (execution history is recorded by the job handler on completion)
-  await updateStatisticsOnTrigger(payload, scheduledImport);
-
-  logger.info(
-    {
-      scheduledImportId: scheduledImport.id,
-      name: scheduledImport.name,
-      jobId: urlFetchJob.id,
-      triggeredBy: "webhook",
-    },
-    "Webhook triggered import successfully"
-  );
-
-  return Response.json(
-    { success: true, message: "Import triggered successfully", status: "triggered", jobId: urlFetchJob.id.toString() },
-    { status: 200 }
-  );
 };
 
 export const POST = apiRoute({
@@ -183,7 +97,15 @@ export const POST = apiRoute({
       );
     }
 
-    return queueImportAndRespond(payload, scheduledImport);
+    try {
+      const { jobId } = await queueWebhookImport(payload, scheduledImport);
+      return Response.json(
+        { success: true, message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() },
+        { status: 200 }
+      );
+    } catch {
+      return internalError("Failed to queue import job");
+    }
   },
 });
 
