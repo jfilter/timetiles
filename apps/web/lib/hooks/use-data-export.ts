@@ -8,6 +8,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { HttpError } from "../api/http-error";
 import type { ExportSummary } from "../services/data-export-types";
 import { formatDate, parseDateInput } from "../utils/date";
 
@@ -63,8 +64,9 @@ const fetchDataExports = async (): Promise<ExportListResponse> => {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error ?? "Failed to fetch exports");
+    const body = await response.json().catch(() => undefined);
+    const message = (body as { error?: string })?.error ?? "Failed to fetch exports";
+    throw new HttpError(response.status, message, body);
   }
 
   const payload = await response.json();
@@ -93,8 +95,8 @@ const requestDataExport = async (): Promise<RequestExportResponse> => {
   const response = await fetch("/api/data-exports/request", { method: "POST", credentials: "include" });
 
   if (!response.ok) {
-    const error: RequestExportError = await response.json();
-    throw new Error(error.error || "Failed to request export");
+    const body: RequestExportError = await response.json().catch(() => ({ error: "Failed to request export" }));
+    throw new HttpError(response.status, body.error || "Failed to request export", body);
   }
 
   return response.json();

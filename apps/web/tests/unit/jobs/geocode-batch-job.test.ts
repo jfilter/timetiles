@@ -18,19 +18,17 @@ import { createMockDataset, createMockImportJob, createMockPayload } from "@/tes
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
+  const geocode = vi.fn();
   return {
     readAllRowsFromFile: vi.fn(),
-    geocodeAddress: vi.fn(),
-    initializeGeocoding: vi.fn(),
+    geocode,
+    createGeocodingService: vi.fn(() => ({ geocode })),
     getFileRowCount: vi.fn(),
   };
 });
 
 // Mock external dependencies
-vi.mock("@/lib/services/geocoding", () => ({
-  geocodeAddress: mocks.geocodeAddress,
-  initializeGeocoding: mocks.initializeGeocoding,
-}));
+vi.mock("@/lib/services/geocoding", () => ({ createGeocodingService: mocks.createGeocodingService }));
 
 vi.mock("@/lib/utils/file-readers", () => ({
   readAllRowsFromFile: mocks.readAllRowsFromFile,
@@ -47,8 +45,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     vi.clearAllMocks();
     // Explicitly reset hoisted mocks to clear both call history AND implementations
     mocks.readAllRowsFromFile.mockReset();
-    mocks.geocodeAddress.mockReset();
-    mocks.initializeGeocoding.mockReset();
+    mocks.geocode.mockReset();
+    mocks.createGeocodingService.mockReset().mockReturnValue({ geocode: mocks.geocode });
     mocks.getFileRowCount.mockReset();
     mockPayload = createMockPayload();
     mockContext = { payload: mockPayload, input: { importJobId: 123 } } as unknown as JobHandlerContext;
@@ -79,7 +77,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Mock findByID to return the job for the initial call and for ProgressTrackingService calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      mocks.geocodeAddress
+      mocks.geocode
         .mockResolvedValueOnce({
           latitude: 40.7128,
           longitude: -74.006,
@@ -96,9 +94,9 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const result = await geocodeBatchJob.handler(mockContext);
 
       // Should only geocode unique locations (2 unique, not 3 total)
-      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(2);
-      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
-      expect(mocks.geocodeAddress).toHaveBeenCalledWith("456 Oak Ave");
+      expect(mocks.geocode).toHaveBeenCalledTimes(2);
+      expect(mocks.geocode).toHaveBeenCalledWith("123 Main St");
+      expect(mocks.geocode).toHaveBeenCalledWith("456 Oak Ave");
 
       // Should store results as location → coordinates map
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -139,7 +137,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      mocks.geocodeAddress.mockResolvedValueOnce({
+      mocks.geocode.mockResolvedValueOnce({
         latitude: 40.7128,
         longitude: -74.006,
         confidence: 0.9,
@@ -149,8 +147,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const result = await geocodeBatchJob.handler(mockContext);
 
       // Should only geocode the one valid location
-      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
-      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
+      expect(mocks.geocode).toHaveBeenCalledTimes(1);
+      expect(mocks.geocode).toHaveBeenCalledWith("123 Main St");
 
       expect(result.output).toEqual({ totalRows: 4, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
@@ -166,7 +164,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      mocks.geocodeAddress
+      mocks.geocode
         .mockResolvedValueOnce({
           latitude: 40.7128,
           longitude: -74.006,
@@ -178,7 +176,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const result = await geocodeBatchJob.handler(mockContext);
 
       // Should geocode both, but only one succeeds
-      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(2);
+      expect(mocks.geocode).toHaveBeenCalledTimes(2);
 
       expect(result.output).toEqual({ totalRows: 2, uniqueLocations: 2, geocodedCount: 1, failedCount: 1 });
 
@@ -210,7 +208,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should not read file or geocode anything
       expect(mocks.readAllRowsFromFile).not.toHaveBeenCalled();
-      expect(mocks.geocodeAddress).not.toHaveBeenCalled();
+      expect(mocks.geocode).not.toHaveBeenCalled();
 
       // Should transition directly to CREATE_EVENTS
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -233,7 +231,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const result = await geocodeBatchJob.handler(mockContext);
 
       // Should not call geocoding
-      expect(mocks.geocodeAddress).not.toHaveBeenCalled();
+      expect(mocks.geocode).not.toHaveBeenCalled();
 
       // Should store empty results
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -256,7 +254,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      mocks.geocodeAddress.mockResolvedValueOnce({
+      mocks.geocode.mockResolvedValueOnce({
         latitude: 40.7128,
         longitude: -74.006,
         confidence: 0.9,
@@ -266,8 +264,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const result = await geocodeBatchJob.handler(mockContext);
 
       // Should only geocode once (trimmed values are identical)
-      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
-      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
+      expect(mocks.geocode).toHaveBeenCalledTimes(1);
+      expect(mocks.geocode).toHaveBeenCalledWith("123 Main St");
 
       expect(result.output).toEqual({ totalRows: 2, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
@@ -331,7 +329,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      mocks.geocodeAddress.mockResolvedValueOnce({
+      mocks.geocode.mockResolvedValueOnce({
         latitude: 40.7128,
         longitude: -74.006,
         confidence: 0.9,
@@ -341,8 +339,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const result = await geocodeBatchJob.handler(mockContext);
 
       // Should only geocode the valid string location
-      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(1);
-      expect(mocks.geocodeAddress).toHaveBeenCalledWith("123 Main St");
+      expect(mocks.geocode).toHaveBeenCalledTimes(1);
+      expect(mocks.geocode).toHaveBeenCalledWith("123 Main St");
 
       expect(result.output).toEqual({ totalRows: 4, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
@@ -363,7 +361,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      mocks.geocodeAddress.mockRejectedValue(new Error("Geocoding failed"));
+      mocks.geocode.mockRejectedValue(new Error("Geocoding failed"));
 
       const result = await geocodeBatchJob.handler(mockContext);
 
@@ -418,7 +416,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       mockPayload.findByID.mockResolvedValue(mockImportJob);
 
       // Mock successful geocoding for all
-      mocks.geocodeAddress.mockResolvedValue({
+      mocks.geocode.mockResolvedValue({
         latitude: 40.7128,
         longitude: -74.006,
         confidence: 0.9,
@@ -428,7 +426,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const result = await geocodeBatchJob.handler(mockContext);
 
       // Should geocode exactly 50 unique locations, not 100
-      expect(mocks.geocodeAddress).toHaveBeenCalledTimes(50);
+      expect(mocks.geocode).toHaveBeenCalledTimes(50);
 
       expect(result.output).toEqual({ totalRows: 100, uniqueLocations: 50, geocodedCount: 50, failedCount: 0 });
     });

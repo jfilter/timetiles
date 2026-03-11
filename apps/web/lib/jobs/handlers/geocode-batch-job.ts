@@ -16,7 +16,8 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { geocodeAddress, initializeGeocoding } from "@/lib/services/geocoding";
+import { createGeocodingService } from "@/lib/services/geocoding";
+import type { GeocodingService } from "@/lib/services/geocoding/geocoding-service";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import type { GeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
@@ -65,6 +66,7 @@ interface GeocodingFailure {
  * Geocode unique locations with progress tracking.
  */
 const geocodeUniqueLocations = async (
+  geocodingService: GeocodingService,
   payload: Payload,
   importJobId: string | number,
   locations: Set<string>,
@@ -83,7 +85,7 @@ const geocodeUniqueLocations = async (
 
   for (const location of locations) {
     try {
-      const result = await geocodeAddress(location);
+      const result = await geocodingService.geocode(location);
       results[location] = {
         coordinates: { lat: result.latitude, lng: result.longitude },
         confidence: result.confidence ?? 0,
@@ -131,8 +133,8 @@ export const geocodeBatchJob = {
     const startTime = Date.now();
 
     try {
-      // Initialize the geocoding service with payload to load providers from database
-      initializeGeocoding(payload);
+      // Create a geocoding service scoped to this job invocation
+      const geocodingService = createGeocodingService(payload);
 
       const { job, importFile } = await loadJobResources(payload, importJobId);
 
@@ -173,6 +175,7 @@ export const geocodeBatchJob = {
 
       // Geocode unique locations
       const { results, successCount, failureCount, failures } = await geocodeUniqueLocations(
+        geocodingService,
         payload,
         importJobId,
         uniqueLocations,

@@ -61,16 +61,19 @@ describe.sequential("Pipeline Workflow Transitions", () => {
 
   beforeEach(async () => {
     // Re-apply spies each test (global afterEach restores all mocks)
-    vi.spyOn(geocodingModule, "geocodeAddress").mockResolvedValue({
-      latitude: 40.7128,
-      longitude: -74.006,
-      confidence: 0.9,
-      normalizedAddress: "New York, NY, USA",
-      provider: "mock",
-      components: {},
-      metadata: {},
-    });
-    vi.spyOn(geocodingModule, "initializeGeocoding").mockImplementation(() => {});
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      geocode: vi
+        .fn()
+        .mockResolvedValue({
+          latitude: 40.7128,
+          longitude: -74.006,
+          confidence: 0.9,
+          normalizedAddress: "New York, NY, USA",
+          provider: "mock",
+          components: {},
+          metadata: {},
+        }),
+    } as unknown as ReturnType<typeof geocodingModule.createGeocodingService>);
 
     await testEnv.seedManager.truncate(collectionsToReset);
   });

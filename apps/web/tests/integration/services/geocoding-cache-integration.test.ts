@@ -116,9 +116,6 @@ describe.sequential("Geocoding Cache Integration", () => {
       },
     });
 
-    const { initializeGeocoding } = await import("../../../lib/services/geocoding");
-    initializeGeocoding(payload);
-
     const { users } = await withUsers(testEnv, { importer: { role: "user" } });
     testUserId = users.importer.id;
 

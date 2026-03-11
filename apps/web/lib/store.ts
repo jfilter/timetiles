@@ -2,9 +2,9 @@
  * This file defines the application's global state management using Zustand.
  *
  * It sets up a store for UI state that is not managed via URL query parameters, such as
- * the state of drawers, map bounds, and the currently selected theme. The store is configured
- * with middleware for developer tools (`devtools`) and local storage persistence (`persist`)
- * to improve the development experience and remember user preferences across sessions.
+ * the state of drawers and map bounds. The store is configured with middleware for
+ * developer tools (`devtools`) and local storage persistence (`persist`) to improve
+ * the development experience and remember user preferences across sessions.
  *
  * Additionally, it includes helper functions for managing the filter state that *is*
  * stored in the URL, providing a centralized place for filter-related logic.
@@ -19,8 +19,6 @@ interface UIState {
   isFilterDrawerOpen: boolean;
   mapBounds: { north: number; south: number; east: number; west: number } | null;
   mapStats: { visibleEvents: number; totalEvents: number } | null;
-  selectedEvent: string | null;
-  theme: "light" | "dark" | "system";
 }
 
 // Define the shape of our UI-only store
@@ -32,8 +30,6 @@ interface UIStore {
   toggleFilterDrawer: () => void;
   setMapBounds: (bounds: UIState["mapBounds"]) => void;
   setMapStats: (stats: UIState["mapStats"]) => void;
-  setSelectedEvent: (eventId: string | null) => void;
-  setTheme: (theme: "light" | "dark" | "system") => void;
 }
 
 // Helper function to create UI state setters
@@ -47,7 +43,7 @@ export const useUIStore = create<UIStore>()(
     persist(
       (set) => ({
         // Initial state
-        ui: { isFilterDrawerOpen: true, mapBounds: null, mapStats: null, selectedEvent: null, theme: "system" },
+        ui: { isFilterDrawerOpen: true, mapBounds: null, mapStats: null },
 
         // UI actions
         setFilterDrawerOpen: createUIStateSetter(set, "isFilterDrawerOpen"),
@@ -57,13 +53,11 @@ export const useUIStore = create<UIStore>()(
 
         setMapBounds: createUIStateSetter(set, "mapBounds"),
         setMapStats: createUIStateSetter(set, "mapStats"),
-        setSelectedEvent: createUIStateSetter(set, "selectedEvent"),
-        setTheme: createUIStateSetter(set, "theme"),
       }),
       {
         name: "timetiles-ui-store",
         // Only persist UI state
-        partialize: (state) => ({ ui: { isFilterDrawerOpen: state.ui.isFilterDrawerOpen, theme: state.ui.theme } }),
+        partialize: (state) => ({ ui: { isFilterDrawerOpen: state.ui.isFilterDrawerOpen } }),
       }
     )
   )
