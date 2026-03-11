@@ -217,12 +217,6 @@ export const enum_scheduled_imports_execution_history_status = db_schema.enum(
   ["success", "failed"]
 );
 export const trig_by = db_schema.enum("trig_by", ["schedule", "webhook", "manual", "system"]);
-export const enum_scheduled_imports_auth_config_type = db_schema.enum("enum_scheduled_imports_auth_config_type", [
-  "none",
-  "api-key",
-  "bearer",
-  "basic",
-]);
 export const enum_scheduled_imports_schedule_type = db_schema.enum("enum_scheduled_imports_schedule_type", [
   "frequency",
   "cron",
@@ -238,6 +232,12 @@ export const enum_scheduled_imports_schema_mode = db_schema.enum("enum_scheduled
   "additive",
   "flexible",
 ]);
+export const enum_scheduled_imports_auth_config_type = db_schema.enum("enum_scheduled_imports_auth_config_type", [
+  "none",
+  "api-key",
+  "bearer",
+  "basic",
+]);
 export const enum_scheduled_imports_last_status = db_schema.enum("enum_scheduled_imports_last_status", [
   "success",
   "failed",
@@ -247,10 +247,6 @@ export const enum_scheduled_imports_status = db_schema.enum("enum_scheduled_impo
 export const enum__scheduled_imports_v_version_execution_history_status = db_schema.enum(
   "enum__scheduled_imports_v_version_execution_history_status",
   ["success", "failed"]
-);
-export const enum__scheduled_imports_v_version_auth_config_type = db_schema.enum(
-  "enum__scheduled_imports_v_version_auth_config_type",
-  ["none", "api-key", "bearer", "basic"]
 );
 export const enum__scheduled_imports_v_version_schedule_type = db_schema.enum(
   "enum__scheduled_imports_v_version_schedule_type",
@@ -263,6 +259,10 @@ export const enum__scheduled_imports_v_version_frequency = db_schema.enum(
 export const enum__scheduled_imports_v_version_schema_mode = db_schema.enum(
   "enum__scheduled_imports_v_version_schema_mode",
   ["strict", "additive", "flexible"]
+);
+export const enum__scheduled_imports_v_version_auth_config_type = db_schema.enum(
+  "enum__scheduled_imports_v_version_auth_config_type",
+  ["none", "api-key", "bearer", "basic"]
 );
 export const enum__scheduled_imports_v_version_last_status = db_schema.enum(
   "enum__scheduled_imports_v_version_last_status",
@@ -1835,13 +1835,6 @@ export const scheduled_imports = db_schema.table(
     description: varchar("description"),
     enabled: boolean("enabled").default(true),
     sourceUrl: varchar("source_url"),
-    authConfig_type: enum_scheduled_imports_auth_config_type("auth_config_type").default("none"),
-    authConfig_apiKey: varchar("auth_config_api_key"),
-    authConfig_apiKeyHeader: varchar("auth_config_api_key_header").default("X-API-Key"),
-    authConfig_bearerToken: varchar("auth_config_bearer_token"),
-    authConfig_username: varchar("auth_config_username"),
-    authConfig_password: varchar("auth_config_password"),
-    authConfig_customHeaders: jsonb("auth_config_custom_headers"),
     catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, { onDelete: "set null" }),
     dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, { onDelete: "set null" }),
     multiSheetConfig_enabled: boolean("multi_sheet_config_enabled").default(false),
@@ -1853,9 +1846,13 @@ export const scheduled_imports = db_schema.table(
     sourceImportFile: integer("source_import_file_id").references((): AnyPgColumn => import_files.id, {
       onDelete: "set null",
     }),
-    webhookEnabled: boolean("webhook_enabled").default(false),
-    webhookToken: varchar("webhook_token"),
-    webhookUrl: varchar("webhook_url"),
+    authConfig_type: enum_scheduled_imports_auth_config_type("auth_config_type").default("none"),
+    authConfig_apiKey: varchar("auth_config_api_key"),
+    authConfig_apiKeyHeader: varchar("auth_config_api_key_header").default("X-API-Key"),
+    authConfig_bearerToken: varchar("auth_config_bearer_token"),
+    authConfig_username: varchar("auth_config_username"),
+    authConfig_password: varchar("auth_config_password"),
+    authConfig_customHeaders: jsonb("auth_config_custom_headers"),
     retryConfig_maxRetries: numeric("retry_config_max_retries", { mode: "number" }).default(3),
     retryConfig_retryDelayMinutes: numeric("retry_config_retry_delay_minutes", { mode: "number" }).default(5),
     retryConfig_exponentialBackoff: boolean("retry_config_exponential_backoff").default(true),
@@ -1875,6 +1872,9 @@ export const scheduled_imports = db_schema.table(
     statistics_successfulRuns: numeric("statistics_successful_runs", { mode: "number" }).default(0),
     statistics_failedRuns: numeric("statistics_failed_runs", { mode: "number" }).default(0),
     statistics_averageDuration: numeric("statistics_average_duration", { mode: "number" }).default(0),
+    webhookEnabled: boolean("webhook_enabled").default(false),
+    webhookToken: varchar("webhook_token"),
+    webhookUrl: varchar("webhook_url"),
     updatedAt: timestamp("updated_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { mode: "string", withTimezone: true, precision: 3 }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -1953,14 +1953,6 @@ export const _scheduled_imports_v = db_schema.table(
     version_description: varchar("version_description"),
     version_enabled: boolean("version_enabled").default(true),
     version_sourceUrl: varchar("version_source_url"),
-    version_authConfig_type:
-      enum__scheduled_imports_v_version_auth_config_type("version_auth_config_type").default("none"),
-    version_authConfig_apiKey: varchar("version_auth_config_api_key"),
-    version_authConfig_apiKeyHeader: varchar("version_auth_config_api_key_header").default("X-API-Key"),
-    version_authConfig_bearerToken: varchar("version_auth_config_bearer_token"),
-    version_authConfig_username: varchar("version_auth_config_username"),
-    version_authConfig_password: varchar("version_auth_config_password"),
-    version_authConfig_customHeaders: jsonb("version_auth_config_custom_headers"),
     version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id, { onDelete: "set null" }),
     version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id, { onDelete: "set null" }),
     version_multiSheetConfig_enabled: boolean("version_multi_sheet_config_enabled").default(false),
@@ -1972,9 +1964,14 @@ export const _scheduled_imports_v = db_schema.table(
     version_sourceImportFile: integer("version_source_import_file_id").references((): AnyPgColumn => import_files.id, {
       onDelete: "set null",
     }),
-    version_webhookEnabled: boolean("version_webhook_enabled").default(false),
-    version_webhookToken: varchar("version_webhook_token"),
-    version_webhookUrl: varchar("version_webhook_url"),
+    version_authConfig_type:
+      enum__scheduled_imports_v_version_auth_config_type("version_auth_config_type").default("none"),
+    version_authConfig_apiKey: varchar("version_auth_config_api_key"),
+    version_authConfig_apiKeyHeader: varchar("version_auth_config_api_key_header").default("X-API-Key"),
+    version_authConfig_bearerToken: varchar("version_auth_config_bearer_token"),
+    version_authConfig_username: varchar("version_auth_config_username"),
+    version_authConfig_password: varchar("version_auth_config_password"),
+    version_authConfig_customHeaders: jsonb("version_auth_config_custom_headers"),
     version_retryConfig_maxRetries: numeric("version_retry_config_max_retries", { mode: "number" }).default(3),
     version_retryConfig_retryDelayMinutes: numeric("version_retry_config_retry_delay_minutes", {
       mode: "number",
@@ -2004,6 +2001,9 @@ export const _scheduled_imports_v = db_schema.table(
     version_statistics_successfulRuns: numeric("version_statistics_successful_runs", { mode: "number" }).default(0),
     version_statistics_failedRuns: numeric("version_statistics_failed_runs", { mode: "number" }).default(0),
     version_statistics_averageDuration: numeric("version_statistics_average_duration", { mode: "number" }).default(0),
+    version_webhookEnabled: boolean("version_webhook_enabled").default(false),
+    version_webhookToken: varchar("version_webhook_token"),
+    version_webhookUrl: varchar("version_webhook_url"),
     version_updatedAt: timestamp("version_updated_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_createdAt: timestamp("version_created_at", { mode: "string", withTimezone: true, precision: 3 }),
     version_deletedAt: timestamp("version_deleted_at", { mode: "string", withTimezone: true, precision: 3 }),
@@ -5411,17 +5411,17 @@ type DatabaseSchema = {
   enum__import_jobs_v_version_last_successful_stage: typeof enum__import_jobs_v_version_last_successful_stage;
   enum_scheduled_imports_execution_history_status: typeof enum_scheduled_imports_execution_history_status;
   trig_by: typeof trig_by;
-  enum_scheduled_imports_auth_config_type: typeof enum_scheduled_imports_auth_config_type;
   enum_scheduled_imports_schedule_type: typeof enum_scheduled_imports_schedule_type;
   enum_scheduled_imports_frequency: typeof enum_scheduled_imports_frequency;
   enum_scheduled_imports_schema_mode: typeof enum_scheduled_imports_schema_mode;
+  enum_scheduled_imports_auth_config_type: typeof enum_scheduled_imports_auth_config_type;
   enum_scheduled_imports_last_status: typeof enum_scheduled_imports_last_status;
   enum_scheduled_imports_status: typeof enum_scheduled_imports_status;
   enum__scheduled_imports_v_version_execution_history_status: typeof enum__scheduled_imports_v_version_execution_history_status;
-  enum__scheduled_imports_v_version_auth_config_type: typeof enum__scheduled_imports_v_version_auth_config_type;
   enum__scheduled_imports_v_version_schedule_type: typeof enum__scheduled_imports_v_version_schedule_type;
   enum__scheduled_imports_v_version_frequency: typeof enum__scheduled_imports_v_version_frequency;
   enum__scheduled_imports_v_version_schema_mode: typeof enum__scheduled_imports_v_version_schema_mode;
+  enum__scheduled_imports_v_version_auth_config_type: typeof enum__scheduled_imports_v_version_auth_config_type;
   enum__scheduled_imports_v_version_last_status: typeof enum__scheduled_imports_v_version_last_status;
   enum__scheduled_imports_v_version_status: typeof enum__scheduled_imports_v_version_status;
   enum_events_coordinate_source_type: typeof enum_events_coordinate_source_type;

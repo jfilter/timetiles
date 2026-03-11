@@ -1071,36 +1071,6 @@ export interface ScheduledImport {
    */
   sourceUrl: string;
   /**
-   * Authentication configuration for accessing the URL
-   */
-  authConfig?: {
-    type?: ("none" | "api-key" | "bearer" | "basic") | null;
-    /**
-     * API key to include in request header
-     */
-    apiKey?: string | null;
-    /**
-     * Header name for API key
-     */
-    apiKeyHeader?: string | null;
-    /**
-     * Bearer token for Authorization header
-     */
-    bearerToken?: string | null;
-    /**
-     * Username for basic authentication
-     */
-    username?: string | null;
-    /**
-     * Password for basic authentication
-     */
-    password?: string | null;
-    /**
-     * Additional custom headers as JSON object
-     */
-    customHeaders?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
-  };
-  /**
    * Catalog to import data into
    */
   catalog: number | Catalog;
@@ -1162,14 +1132,35 @@ export interface ScheduledImport {
    */
   sourceImportFile?: (number | null) | ImportFile;
   /**
-   * Enable webhook URL for triggering this import on-demand
+   * Authentication configuration for accessing the URL
    */
-  webhookEnabled?: boolean | null;
-  webhookToken?: string | null;
-  /**
-   * POST to this URL to trigger the import
-   */
-  webhookUrl?: string | null;
+  authConfig?: {
+    type?: ("none" | "api-key" | "bearer" | "basic") | null;
+    /**
+     * API key to include in request header
+     */
+    apiKey?: string | null;
+    /**
+     * Header name for API key
+     */
+    apiKeyHeader?: string | null;
+    /**
+     * Bearer token for Authorization header
+     */
+    bearerToken?: string | null;
+    /**
+     * Username for basic authentication
+     */
+    username?: string | null;
+    /**
+     * Password for basic authentication
+     */
+    password?: string | null;
+    /**
+     * Additional custom headers as JSON object
+     */
+    customHeaders?: { [k: string]: unknown } | unknown[] | string | number | boolean | null;
+  };
   /**
    * Retry behavior configuration
    */
@@ -1285,6 +1276,15 @@ export interface ScheduledImport {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Enable webhook URL for triggering this import on-demand
+   */
+  webhookEnabled?: boolean | null;
+  webhookToken?: string | null;
+  /**
+   * POST to this URL to trigger the import
+   */
+  webhookUrl?: string | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -2607,9 +2607,6 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   description?: T;
   enabled?: T;
   sourceUrl?: T;
-  authConfig?:
-    | T
-    | { type?: T; apiKey?: T; apiKeyHeader?: T; bearerToken?: T; username?: T; password?: T; customHeaders?: T };
   catalog?: T;
   dataset?: T;
   multiSheetConfig?: T | { enabled?: T; sheets?: T | { sheetIdentifier?: T; dataset?: T; skipIfMissing?: T; id?: T } };
@@ -2619,9 +2616,9 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   importNameTemplate?: T;
   schemaMode?: T;
   sourceImportFile?: T;
-  webhookEnabled?: T;
-  webhookToken?: T;
-  webhookUrl?: T;
+  authConfig?:
+    | T
+    | { type?: T; apiKey?: T; apiKeyHeader?: T; bearerToken?: T; username?: T; password?: T; customHeaders?: T };
   retryConfig?: T | { maxRetries?: T; retryDelayMinutes?: T; exponentialBackoff?: T };
   advancedOptions?:
     | T
@@ -2643,6 +2640,9 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   executionHistory?:
     | T
     | { executedAt?: T; status?: T; duration?: T; recordsImported?: T; error?: T; jobId?: T; triggeredBy?: T; id?: T };
+  webhookEnabled?: T;
+  webhookToken?: T;
+  webhookUrl?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
