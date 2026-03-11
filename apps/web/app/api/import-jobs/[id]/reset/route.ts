@@ -11,11 +11,11 @@
  */
 import { z } from "zod";
 
-import { apiRoute } from "@/lib/api";
+import { apiRoute, safeFindByID } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
-import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import type { ImportJob } from "@/payload-types";
 
 /**
  * Valid stages for manual reset.
@@ -30,29 +30,15 @@ const VALID_RESET_STAGES = [
 
 export const POST = apiRoute({
   auth: "admin",
+  rateLimit: { configName: "ADMIN_IMPORT_RESET" },
   params: z.object({ id: z.string() }),
   body: z.object({ targetStage: z.enum(VALID_RESET_STAGES), clearRetries: z.boolean().optional() }),
-  handler: async ({ payload, user, req, params, body }) => {
+  handler: async ({ payload, user, params, body }) => {
     const { id } = params;
-
-    // Rate limiting
-    const rateLimitService = getRateLimitService(payload);
-    const clientId = getClientIdentifier(req);
-    const rateLimitResult = rateLimitService.checkConfiguredRateLimit(clientId, RATE_LIMITS.ADMIN_IMPORT_RESET);
-    if (!rateLimitResult.allowed) {
-      return Response.json({ error: "Too many requests" }, { status: 429 });
-    }
-
     const { targetStage, clearRetries = true } = body;
 
     // Get the import job (admins have access to all jobs)
-    const importJob = await payload
-      .findByID({ collection: "import-jobs", id, user, overrideAccess: false })
-      .catch(() => null);
-
-    if (!importJob) {
-      return Response.json({ error: "Import job not found" }, { status: 404 });
-    }
+    const importJob = await safeFindByID<ImportJob>(payload, { collection: "import-jobs", id, user });
 
     // Reset via ErrorRecoveryService
     const result = await ErrorRecoveryService.resetJobToStage(payload, importJob.id, targetStage, clearRetries);

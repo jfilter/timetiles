@@ -21,7 +21,7 @@ import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
-import { parseStrictInteger } from "@/lib/utils/event-params";
+import { optionalStrictInteger, requireStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
@@ -31,24 +31,14 @@ import type { Dataset, DatasetSchema } from "@/payload-types";
  */
 export class SchemaVersioningService {
   private static normalizeRequiredId(value: string | number, label: string): number {
-    const normalizedValue = typeof value === "number" ? value : parseStrictInteger(value);
-
-    if (normalizedValue == null || !Number.isInteger(normalizedValue)) {
-      throw new Error(`Invalid ${label} ID`);
-    }
-
-    return normalizedValue;
+    return requireStrictInteger(value, label);
   }
 
   private static normalizeOptionalId(
     value: string | number | null | undefined,
     label: string
   ): number | null | undefined {
-    if (value == null) {
-      return value;
-    }
-
-    return this.normalizeRequiredId(value, label);
+    return optionalStrictInteger(value, label);
   }
 
   /**

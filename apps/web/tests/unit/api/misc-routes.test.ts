@@ -48,7 +48,10 @@ vi.mock("@/lib/constants/quota-constants", () => ({
   },
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler }));
+vi.mock("@/lib/middleware/rate-limit", () => ({
+  withRateLimit: (handler: any) => handler,
+  checkRateLimit: vi.fn().mockResolvedValue(null),
+}));
 
 vi.mock("@/lib/middleware/auth", () => ({
   withAuth: (handler: any) => async (req: any, ctx: any) => {

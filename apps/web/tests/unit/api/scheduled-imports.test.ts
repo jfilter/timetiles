@@ -30,7 +30,11 @@ const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn() }));
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
-vi.mock("@/lib/middleware/rate-limit", () => ({ withRateLimit: (handler: any) => handler, type: {} as any }));
+vi.mock("@/lib/middleware/rate-limit", () => ({
+  withRateLimit: (handler: any) => handler,
+  checkRateLimit: vi.fn().mockResolvedValue(null),
+  type: {} as any,
+}));
 
 // Import AFTER mocks
 const { POST } = await import("@/app/api/scheduled-imports/[id]/trigger/route");
@@ -97,7 +101,7 @@ describe.sequential("POST /api/scheduled-imports/[id]/trigger", () => {
     expect(response.status).toBe(404);
 
     const data = await response.json();
-    expect(data.error).toBe("Schedule not found or access denied");
+    expect(data.error).toBe("scheduled imports not found or access denied");
   });
 
   it("should enforce access control via overrideAccess: false", async () => {

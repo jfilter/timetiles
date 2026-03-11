@@ -26,7 +26,7 @@ import {
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { logError, logger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
-import { parseStrictInteger } from "@/lib/utils/event-params";
+import { requireStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob, User } from "@/payload-types";
 
@@ -160,13 +160,7 @@ export interface RecoveryResult {
  */
 export class ErrorRecoveryService {
   private static normalizeJobId(jobId: string | number): number {
-    const normalizedJobId = typeof jobId === "number" ? jobId : parseStrictInteger(jobId);
-
-    if (normalizedJobId == null || !Number.isInteger(normalizedJobId)) {
-      throw new Error("Invalid import job ID");
-    }
-
-    return normalizedJobId;
+    return requireStrictInteger(jobId, "import job");
   }
 
   /**

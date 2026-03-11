@@ -16,7 +16,7 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api";
 import { logError, logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 import { hashEmail } from "@/lib/utils/hash";
 
@@ -116,21 +116,10 @@ const updateEmailAndNotify = async (
 
 export const POST = apiRoute({
   auth: "required",
+  rateLimit: { configName: "EMAIL_CHANGE", keyPrefix: (u) => `email-change:${u!.id}` },
   body: z.object({ newEmail: z.email().transform((s) => s.trim().toLowerCase()), password: z.string().min(1) }),
   handler: async ({ payload, user, req, body }) => {
-    // Rate limiting
     const clientId = getClientIdentifier(req);
-    const rateLimitService = getRateLimitService(payload);
-
-    const emailChangeCheck = rateLimitService.checkConfiguredRateLimit(
-      `email-change:${user.id}`,
-      RATE_LIMITS.EMAIL_CHANGE
-    );
-
-    if (!emailChangeCheck.allowed) {
-      return Response.json({ error: "Too many email change attempts. Please try again later." }, { status: 429 });
-    }
-
     const { newEmail, password } = body;
 
     // Check if email is same as current

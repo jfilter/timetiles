@@ -1,13 +1,16 @@
 /**
- * Catalog ownership validation utility.
+ * Catalog ownership and access control utilities.
  *
- * Used by import-files and dataset-detection-job to verify that a user
- * has access to a catalog before targeting it for imports.
+ * Shared by collection hooks (events, datasets) and import pipeline
+ * to validate catalog access and extract denormalized access fields.
  *
  * @module
  * @category Utils
  */
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
+
+import type { Config } from "@/payload-types";
+import type { Dataset } from "@/payload-types";
 
 import { extractRelationId } from "./relation-id";
 
@@ -35,4 +38,35 @@ export const validateCatalogOwnership = async (
   if (catalogOwnerId !== user.id && !isPublicCatalog) {
     throw new Error("You can only import files into your own or public catalogs");
   }
+};
+
+/**
+ * Safe fetch by ID in a Payload hook context (uses `req` for transaction sharing).
+ * Returns null instead of throwing on not-found or permission errors.
+ */
+export const safeFetchRecord = async <T>(
+  req: PayloadRequest,
+  collection: keyof Config["collections"],
+  id: number | string,
+  depth = 0
+): Promise<T | null> => {
+  try {
+    return (await req.payload.findByID({ collection, id, depth, overrideAccess: true, req })) as T;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Extract denormalized access control fields from a dataset with populated catalog.
+ * Used by events and datasets hooks to set datasetIsPublic and catalogOwnerId.
+ */
+export const extractDenormalizedAccessFields = (
+  dataset: Dataset
+): { datasetIsPublic: boolean; catalogOwnerId: number | undefined } => {
+  const catalog = typeof dataset.catalog === "object" ? dataset.catalog : null;
+  const catalogIsPublic = catalog?.isPublic ?? false;
+  const datasetIsPublic = (dataset.isPublic ?? false) && catalogIsPublic;
+  const catalogOwnerId = catalog?.createdBy ? extractRelationId<number>(catalog.createdBy) : undefined;
+  return { datasetIsPublic, catalogOwnerId };
 };

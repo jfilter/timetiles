@@ -27,20 +27,14 @@ import {
 import { STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
 import type { StageProgress } from "@/lib/types/progress-tracking";
 import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
-import { parseStrictInteger } from "@/lib/utils/event-params";
+import { requireStrictInteger } from "@/lib/utils/event-params";
 
 /**
  * Centralized progress tracking service for detailed per-stage tracking.
  */
 export class ProgressTrackingService {
   private static normalizeJobId(jobId: string | number): number {
-    const normalizedJobId = typeof jobId === "number" ? jobId : parseStrictInteger(jobId);
-
-    if (normalizedJobId == null || !Number.isInteger(normalizedJobId)) {
-      throw new Error("Invalid import job ID");
-    }
-
-    return normalizedJobId;
+    return requireStrictInteger(jobId, "import job");
   }
 
   /**

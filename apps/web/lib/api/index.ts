@@ -4,5 +4,13 @@
  * @module
  * @category API
  */
-export { AppError, ConflictError, ForbiddenError, handleError, NotFoundError, ValidationError } from "./errors";
+export {
+  AppError,
+  ConflictError,
+  ForbiddenError,
+  handleError,
+  NotFoundError,
+  safeFindByID,
+  ValidationError,
+} from "./errors";
 export { apiRoute } from "./handler";

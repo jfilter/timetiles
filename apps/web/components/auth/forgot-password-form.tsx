@@ -11,9 +11,10 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface ForgotPasswordFormProps {
   /** Callback fired on successful submission */
@@ -23,12 +24,8 @@ export interface ForgotPasswordFormProps {
 }
 
 export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPasswordFormProps>) => {
-  const [email, setEmail] = useState("");
+  const [email, handleEmailChange] = useInputState();
   const { status, error, isLoading, submit } = useFormSubmission();
-
-  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  }, []);
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {

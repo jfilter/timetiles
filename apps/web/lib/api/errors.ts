@@ -4,9 +4,11 @@
  * @module
  * @category API
  */
+import type { Payload } from "payload";
 import { z } from "zod";
 
 import { logError } from "@/lib/logger";
+import type { User } from "@/payload-types";
 
 export class AppError extends Error {
   constructor(
@@ -42,6 +44,26 @@ export class ConflictError extends AppError {
     super(409, message, "CONFLICT");
   }
 }
+
+/**
+ * Fetch a record by ID with Payload access control.
+ * Returns the record or throws NotFoundError (caught by apiRoute's handleError).
+ */
+export const safeFindByID = async <T>(
+  payload: Payload,
+  options: { collection: string; id: string | number; user?: User; depth?: number; overrideAccess?: boolean }
+): Promise<T> => {
+  const { collection, id, user, depth = 0, overrideAccess = false } = options;
+  const record = await payload
+    .findByID({ collection, id, depth, user, overrideAccess } as Parameters<Payload["findByID"]>[0])
+    .catch(() => null);
+
+  if (!record) {
+    throw new NotFoundError(`${collection.replaceAll("-", " ")} not found or access denied`);
+  }
+
+  return record as T;
+};
 
 /**
  * Centralized error handler for API routes.

@@ -17,11 +17,12 @@
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Lock, Mail } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface RegisterFormProps {
   /** Callback fired on successful registration */
@@ -34,22 +35,10 @@ export interface RegisterFormProps {
 
 export const RegisterForm = ({ onSuccess, onError, className }: Readonly<RegisterFormProps>) => {
   const { isEnabled: registrationEnabled, isLoading: flagsLoading } = useFeatureEnabled("enableRegistration");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, handleEmailChange] = useInputState();
+  const [password, handlePasswordChange] = useInputState();
+  const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isLoading, submit } = useFormSubmission();
-
-  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  }, []);
-
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-  }, []);
-
-  const handleConfirmPasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfirmPassword(e.target.value);
-  }, []);
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {

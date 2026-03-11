@@ -9,7 +9,7 @@ import { getPayload, type Payload } from "payload";
 import type { z } from "zod";
 
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
-import { type RateLimitOptions, withRateLimit } from "@/lib/middleware/rate-limit";
+import { checkRateLimit, type RateLimitOptions } from "@/lib/middleware/rate-limit";
 import config from "@/payload.config";
 import type { User } from "@/payload-types";
 
@@ -94,6 +94,12 @@ export const apiRoute = <
         }
       }
 
+      // --- Rate limiting (after auth so user-based keys work) ---
+      if (routeConfig.rateLimit) {
+        const rateLimitResponse = await checkRateLimit(req, authReq.user, routeConfig.rateLimit);
+        if (rateLimitResponse) return rateLimitResponse;
+      }
+
       // --- Validate body ---
       const body = routeConfig.body ? routeConfig.body.parse(await req.json().catch(() => ({}))) : (undefined as TBody);
 
@@ -119,11 +125,6 @@ export const apiRoute = <
       return handleError(err);
     }
   };
-
-  // Wrap with rate limiting if configured
-  if (routeConfig.rateLimit) {
-    return withRateLimit(coreHandler, routeConfig.rateLimit);
-  }
 
   return coreHandler;
 };

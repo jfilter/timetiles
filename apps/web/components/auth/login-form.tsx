@@ -12,9 +12,10 @@
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface LoginFormProps {
   /** Callback fired on successful login */
@@ -26,17 +27,9 @@ export interface LoginFormProps {
 }
 
 export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormProps>) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, handleEmailChange] = useInputState();
+  const [password, handlePasswordChange] = useInputState();
   const { error, isLoading, submit } = useFormSubmission();
-
-  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  }, []);
-
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-  }, []);
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {

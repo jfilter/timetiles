@@ -12,37 +12,24 @@
  */
 import { z } from "zod";
 
-import { apiRoute } from "@/lib/api";
+import { apiRoute, safeFindByID } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { getQuotaService } from "@/lib/services/quota-service";
-import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import type { ImportJob } from "@/payload-types";
 
 export const POST = apiRoute({
   auth: "required",
+  rateLimit: { configName: "IMPORT_RETRY" },
   params: z.object({ id: z.string() }),
-  handler: async ({ payload, user, req, params }) => {
+  handler: async ({ payload, user, params }) => {
     const { id } = params;
 
-    // Rate limiting
-    const rateLimitService = getRateLimitService(payload);
-    const clientId = getClientIdentifier(req);
-    const rateLimitResult = rateLimitService.checkConfiguredRateLimit(clientId, RATE_LIMITS.IMPORT_RETRY);
-    if (!rateLimitResult.allowed) {
-      return Response.json({ error: "Too many requests" }, { status: 429 });
-    }
-
     // Get the import job with access control
-    const importJob = await payload
-      .findByID({ collection: "import-jobs", id, depth: 1, user, overrideAccess: false })
-      .catch(() => null);
-
-    if (!importJob) {
-      return Response.json({ error: "Import job not found or access denied" }, { status: 404 });
-    }
+    const importJob = await safeFindByID<ImportJob>(payload, { collection: "import-jobs", id, depth: 1, user });
 
     // Verify job is in failed state
     if (importJob.stage !== PROCESSING_STAGE.FAILED) {

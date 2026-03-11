@@ -12,26 +12,15 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
 export const POST = apiRoute({
   auth: "required",
+  rateLimit: { configName: "PASSWORD_CHANGE", keyPrefix: (u) => `password-change:${u!.id}` },
   body: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }),
   handler: async ({ payload, user, req, body }) => {
-    // Rate limiting
     const clientId = getClientIdentifier(req);
-    const rateLimitService = getRateLimitService(payload);
-
-    const passwordChangeCheck = rateLimitService.checkConfiguredRateLimit(
-      `password-change:${user.id}`,
-      RATE_LIMITS.PASSWORD_CHANGE
-    );
-
-    if (!passwordChangeCheck.allowed) {
-      return Response.json({ error: "Too many password change attempts. Please try again later." }, { status: 429 });
-    }
-
     const { currentPassword, newPassword } = body;
 
     // Verify current password

@@ -12,36 +12,9 @@ import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequ
 
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
+import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, Event } from "@/payload-types";
-
-/** Extract denormalized access control fields from dataset/catalog */
-const extractAccessControlFields = (
-  dataset: Dataset
-): { datasetIsPublic: boolean; catalogOwnerId: number | undefined } => {
-  const catalog = typeof dataset.catalog === "object" ? dataset.catalog : null;
-  const catalogIsPublic = catalog?.isPublic ?? false;
-
-  // datasetIsPublic should only be true if BOTH dataset AND catalog are public
-  const datasetIsPublic = (dataset.isPublic ?? false) && catalogIsPublic;
-
-  // Get catalog creator ID (owner)
-  let catalogOwnerId: number | undefined;
-  if (catalog?.createdBy) {
-    catalogOwnerId = extractRelationId(catalog.createdBy);
-  }
-
-  return { datasetIsPublic, catalogOwnerId };
-};
-
-/** Fetch dataset with catalog populated */
-const fetchDatasetWithCatalog = async (req: PayloadRequest, datasetId: number | string): Promise<Dataset | null> => {
-  try {
-    return await req.payload.findByID({ collection: "datasets", id: datasetId, depth: 1, overrideAccess: true, req });
-  } catch {
-    return null;
-  }
-};
 
 /** Check event creation quota for user */
 const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
@@ -67,10 +40,10 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
   // Set denormalized access control fields
   if (data?.dataset) {
     const datasetId = extractRelationId(data.dataset)!;
-    const dataset = await fetchDatasetWithCatalog(req, datasetId);
+    const dataset = await safeFetchRecord<Dataset>(req, "datasets", datasetId, 1);
 
     if (dataset) {
-      const accessFields = extractAccessControlFields(dataset);
+      const accessFields = extractDenormalizedAccessFields(dataset);
       // Assign collected values (avoids race condition warnings)
       Object.assign(data, accessFields);
     }

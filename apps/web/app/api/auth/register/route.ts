@@ -17,7 +17,6 @@ import { z } from "zod";
 import { apiRoute, AppError } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { logError, logger } from "@/lib/logger";
-import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import { maskEmail } from "@/lib/utils/masking";
 
 // Rate limit config for registration (strict to prevent enumeration attacks)
@@ -64,26 +63,13 @@ const generateAccountExistsEmailHTML = (resetUrl: string): string => {
 
 export const POST = apiRoute({
   auth: "none",
+  rateLimit: { config: REGISTRATION_RATE_LIMIT },
   body: z.object({ email: z.email().transform((s) => s.trim().toLowerCase()), password: z.string().min(8) }),
-  handler: async ({ req, payload, body }) => {
+  handler: async ({ payload, body }) => {
     // Check if registration is enabled
     const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
     if (!(await isFeatureEnabled(payload, "enableRegistration"))) {
       throw new AppError(403, "Registration is currently disabled.", "FORBIDDEN");
-    }
-
-    // Apply rate limiting
-    const clientId = getClientIdentifier(req);
-    const rateLimitService = getRateLimitService(payload);
-    const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(clientId, REGISTRATION_RATE_LIMIT);
-
-    if (!rateLimitCheck.allowed) {
-      const retryAfter = rateLimitCheck.resetTime ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000) : 60;
-
-      return new Response(
-        JSON.stringify({ error: "Too many registration attempts. Please try again later.", retryAfter }),
-        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(retryAfter) } }
-      );
     }
 
     const { email: normalizedEmail, password } = body;

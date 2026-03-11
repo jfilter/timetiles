@@ -12,8 +12,9 @@
  */
 import { z } from "zod";
 
-import { apiRoute } from "@/lib/api";
+import { apiRoute, safeFindByID } from "@/lib/api";
 import { logError, logger } from "@/lib/logger";
+import type { ScheduledImport } from "@/payload-types";
 
 export const POST = apiRoute({
   auth: "required",
@@ -22,13 +23,12 @@ export const POST = apiRoute({
     const numericId = params.id;
 
     // Fetch schedule with access control enforced by Payload
-    const existingSchedule = await payload
-      .findByID({ collection: "scheduled-imports", id: numericId, depth: 1, user, overrideAccess: false })
-      .catch(() => null);
-
-    if (!existingSchedule) {
-      return Response.json({ error: "Schedule not found or access denied" }, { status: 404 });
-    }
+    const existingSchedule = await safeFindByID<ScheduledImport>(payload, {
+      collection: "scheduled-imports",
+      id: numericId,
+      depth: 1,
+      user,
+    });
 
     // Atomically claim the import by updating only if not already running.
     // This prevents a race condition where two concurrent trigger requests

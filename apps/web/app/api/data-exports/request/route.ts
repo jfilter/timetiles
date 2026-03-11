@@ -11,31 +11,13 @@
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getDataExportService } from "@/lib/services/data-export-service";
-import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 
 export const POST = apiRoute({
   auth: "required",
+  rateLimit: { configName: "DATA_EXPORT", keyPrefix: (u) => `data-export:${u!.id}` },
   handler: async ({ payload, user }) => {
-    // Rate limiting
-    const rateLimitService = getRateLimitService(payload);
-
-    const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(`data-export:${user.id}`, RATE_LIMITS.DATA_EXPORT);
-
-    if (!rateLimitCheck.allowed) {
-      const resetTime = rateLimitCheck.resetTime ? new Date(rateLimitCheck.resetTime).toISOString() : undefined;
-
-      return Response.json(
-        {
-          error: "Too many export requests. Please try again later.",
-          resetTime,
-          failedWindow: rateLimitCheck.failedWindow,
-        },
-        { status: 429 }
-      );
-    }
-
     // Check for existing pending/processing export
     const existingExports = await payload.find({
       collection: DATA_EXPORTS_COLLECTION,

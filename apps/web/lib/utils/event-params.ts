@@ -31,6 +31,24 @@ export const parseStrictInteger = (value: string | number | null | undefined): n
   return parseInt(trimmedValue, 10);
 };
 
+/** Parse a value as a strict integer, throwing with context if invalid. */
+export const requireStrictInteger = (value: string | number, label: string): number => {
+  const result = parseStrictInteger(value);
+  if (result == null) {
+    throw new Error(`Invalid ${label} ID`);
+  }
+  return result;
+};
+
+/** Parse an optional value as a strict integer, passing through null/undefined. */
+export const optionalStrictInteger = (
+  value: string | number | null | undefined,
+  label: string
+): number | null | undefined => {
+  if (value == null) return value;
+  return requireStrictInteger(value, label);
+};
+
 export const normalizeStrictIntegerList = (values: Array<string | number>): number[] =>
   values.map((value) => parseStrictInteger(value)).filter((value): value is number => value != null);
 

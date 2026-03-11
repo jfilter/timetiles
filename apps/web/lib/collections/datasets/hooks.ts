@@ -14,6 +14,7 @@ import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequ
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { safeFetchRecord } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
@@ -22,15 +23,6 @@ const validatePrivateImportAllowed = async (req: PayloadRequest, isPublic: boole
   const allowPrivate = await isFeatureEnabled(req.payload, "allowPrivateImports");
   if (!allowPrivate && isPublic === false) {
     throw new Error("Private datasets are currently disabled. Please make the dataset public.");
-  }
-};
-
-/** Fetch catalog by ID */
-const fetchCatalog = async (req: PayloadRequest, catalogId: number | string): Promise<Catalog | null> => {
-  try {
-    return await req.payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true, req });
-  } catch {
-    return null;
   }
 };
 
@@ -72,7 +64,7 @@ const processCatalogValidation = async (
   originalDoc?: Partial<Dataset>
 ): Promise<CatalogFields> => {
   const catalogId = extractRelationId(catalogRef)!;
-  const catalog = await fetchCatalog(req, catalogId);
+  const catalog = await safeFetchRecord<Catalog>(req, "catalogs", catalogId);
 
   if (!catalog) {
     return { catalogIsPublic: false };

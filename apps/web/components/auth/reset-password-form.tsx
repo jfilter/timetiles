@@ -11,10 +11,11 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface ResetPasswordFormProps {
   /** Reset token from the email link */
@@ -26,17 +27,9 @@ export interface ResetPasswordFormProps {
 }
 
 export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<ResetPasswordFormProps>) => {
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [password, handlePasswordChange] = useInputState();
+  const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isLoading, submit } = useFormSubmission();
-
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-  }, []);
-
-  const handleConfirmPasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfirmPassword(e.target.value);
-  }, []);
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {

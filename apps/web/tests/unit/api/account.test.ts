@@ -267,7 +267,7 @@ describe.sequential("POST /api/users/change-email", () => {
 
     expect(response.status).toBe(429);
     const data = await response.json();
-    expect(data.error).toContain("Too many email change attempts");
+    expect(data.error).toContain("Too many requests");
   });
 });
 
