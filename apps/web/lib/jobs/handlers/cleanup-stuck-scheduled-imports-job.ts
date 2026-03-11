@@ -108,6 +108,7 @@ const resetStuckImport = async (
 
 export const cleanupStuckScheduledImportsJob = {
   slug: "cleanup-stuck-scheduled-imports",
+  schedule: [{ cron: "0 * * * *", queue: "maintenance" as const }],
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CleanupStuckScheduledImportsJobInput;

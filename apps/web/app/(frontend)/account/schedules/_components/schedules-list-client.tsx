@@ -25,6 +25,11 @@ import {
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
+import {
+  useDeleteScheduledImportMutation,
+  useToggleScheduledImportMutation,
+  useTriggerScheduledImportMutation,
+} from "@/lib/hooks/use-scheduled-import-mutations";
 import type { ScheduledImport } from "@/payload-types";
 
 // Helper to get toggle button icon based on loading state
@@ -189,99 +194,75 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
   const [schedules, setSchedules] = useState(initialSchedules);
   const [loadingStates, setLoadingStates] = useState<Record<number, string>>({});
 
-  // Toggle schedule enabled/disabled
-  const handleToggleEnabled = useCallback(async (id: number, currentEnabled: boolean) => {
-    setLoadingStates((prev) => ({ ...prev, [id]: "toggling" }));
+  const toggleMutation = useToggleScheduledImportMutation();
+  const deleteMutation = useDeleteScheduledImportMutation();
+  const triggerMutation = useTriggerScheduledImportMutation();
 
-    try {
-      const response = await fetch(`/api/scheduled-imports/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ enabled: !currentEnabled }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update schedule");
-      }
-
-      const updated = await response.json();
-      setSchedules((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: updated.doc.enabled } : s)));
-    } finally {
-      setLoadingStates((prev) => {
-        const newState = { ...prev };
-        delete newState[id];
-        return newState;
-      });
-    }
+  const clearLoading = useCallback((id: number) => {
+    setLoadingStates((prev) => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
   }, []);
 
-  // Trigger manual run
-  const handleManualRun = useCallback(async (id: number) => {
-    setLoadingStates((prev) => ({ ...prev, [id]: "running" }));
-
-    try {
-      const response = await fetch(`/api/scheduled-imports/${id}/trigger`, { method: "POST", credentials: "include" });
-
-      if (!response.ok) {
-        throw new Error("Failed to trigger import");
-      }
-
-      // Refresh schedule to get updated lastRun
-      const refreshResponse = await fetch(`/api/scheduled-imports/${id}`, { credentials: "include" });
-
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json();
-        setSchedules((prev) => prev.map((s) => (s.id === id ? data : s)));
-      }
-    } finally {
-      setLoadingStates((prev) => {
-        const newState = { ...prev };
-        delete newState[id];
-        return newState;
-      });
-    }
+  const updateScheduleEnabled = useCallback((id: number, updated: ScheduledImport) => {
+    setSchedules((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: updated.enabled } : s)));
   }, []);
 
-  // Delete schedule
-  const handleDelete = useCallback(async (id: number) => {
-    if (!confirm("Are you sure you want to delete this scheduled import?")) {
-      return;
-    }
-
-    setLoadingStates((prev) => ({ ...prev, [id]: "deleting" }));
-
-    try {
-      const response = await fetch(`/api/scheduled-imports/${id}`, { method: "DELETE", credentials: "include" });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete schedule");
-      }
-
-      setSchedules((prev) => prev.filter((s) => s.id !== id));
-    } finally {
-      setLoadingStates((prev) => {
-        const newState = { ...prev };
-        delete newState[id];
-        return newState;
-      });
-    }
+  const replaceSchedule = useCallback((id: number, updated: ScheduledImport) => {
+    setSchedules((prev) => prev.map((s) => (s.id === id ? updated : s)));
   }, []);
 
-  // Create stable callbacks map for each schedule to avoid inline functions
-  const scheduleCallbacks = useMemo(() => {
-    return schedules.reduce(
-      (acc, schedule) => {
-        acc[schedule.id] = {
-          onToggle: () => void handleToggleEnabled(schedule.id, schedule.enabled ?? false),
-          onRun: () => void handleManualRun(schedule.id),
-          onDelete: () => void handleDelete(schedule.id),
-        };
-        return acc;
-      },
-      {} as Record<number, { onToggle: () => void; onRun: () => void; onDelete: () => void }>
-    );
-  }, [schedules, handleToggleEnabled, handleManualRun, handleDelete]);
+  const removeSchedule = useCallback((id: number) => {
+    setSchedules((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  const handleToggleEnabled = useCallback(
+    (id: number, currentEnabled: boolean) => {
+      setLoadingStates((prev) => ({ ...prev, [id]: "toggling" }));
+      toggleMutation.mutate(
+        { id, enabled: !currentEnabled },
+        { onSuccess: (updated) => updateScheduleEnabled(id, updated), onSettled: () => clearLoading(id) }
+      );
+    },
+    [toggleMutation, clearLoading, updateScheduleEnabled]
+  );
+
+  const handleManualRun = useCallback(
+    (id: number) => {
+      setLoadingStates((prev) => ({ ...prev, [id]: "running" }));
+      triggerMutation.mutate(id, {
+        onSuccess: (updated) => replaceSchedule(id, updated),
+        onSettled: () => clearLoading(id),
+      });
+    },
+    [triggerMutation, clearLoading, replaceSchedule]
+  );
+
+  const handleDelete = useCallback(
+    (id: number) => {
+      if (!confirm("Are you sure you want to delete this scheduled import?")) return;
+      setLoadingStates((prev) => ({ ...prev, [id]: "deleting" }));
+      deleteMutation.mutate(id, { onSuccess: () => removeSchedule(id), onSettled: () => clearLoading(id) });
+    },
+    [deleteMutation, clearLoading, removeSchedule]
+  );
+
+  const scheduleCallbacks = useMemo(
+    () =>
+      Object.fromEntries(
+        schedules.map((s) => [
+          s.id,
+          {
+            onToggle: () => handleToggleEnabled(s.id, s.enabled ?? false),
+            onRun: () => handleManualRun(s.id),
+            onDelete: () => handleDelete(s.id),
+          },
+        ])
+      ) as Record<number, { onToggle: () => void; onRun: () => void; onDelete: () => void }>,
+    [schedules, handleToggleEnabled, handleManualRun, handleDelete]
+  );
 
   if (schedules.length === 0) {
     return (

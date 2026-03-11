@@ -14,36 +14,14 @@ import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { AlertCircleIcon, CheckCircle2Icon, ExternalLinkIcon, Loader2Icon, MapIcon, RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+
+import { type ProgressApiResponse, useImportProgressQuery } from "@/lib/hooks/use-import-progress-query";
 
 import { useWizard } from "../wizard-context";
 
 export interface StepProcessingProps {
   className?: string;
-}
-
-// API response structure from /api/import/[importId]/progress
-interface ProgressApiResponse {
-  type: string;
-  id: number;
-  status: "pending" | "parsing" | "processing" | "completed" | "failed";
-  originalName: string;
-  catalogId: number | null;
-  datasetsCount: number;
-  datasetsProcessed: number;
-  overallProgress: number;
-  estimatedCompletionTime: string | null;
-  jobs: Array<{
-    id: string | number;
-    datasetId: string | number;
-    datasetName?: string;
-    currentStage: string;
-    overallProgress: number;
-    stages?: Array<{ name: string; status: string; progress: number }>;
-    results?: { totalEvents?: number };
-  }>;
-  errorLog?: string | null;
-  completedAt?: string | null;
 }
 
 // Internal progress state
@@ -169,51 +147,9 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
     return () => setNavigationConfig({});
   }, [setNavigationConfig]);
 
-  const [progress, setProgress] = useState<ImportProgress | null>(null);
-  const [pollError, setPollError] = useState<string | null>(null);
-
-  // Poll for progress updates
-  useEffect(() => {
-    if (!importFileId) return;
-
-    let isActive = true;
-    const pollInterval = 2000; // 2 seconds
-
-    const fetchProgress = async () => {
-      try {
-        const response = await fetch(`/api/import/${importFileId}/progress`, { credentials: "include" });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch progress");
-        }
-
-        const data = (await response.json()) as ProgressApiResponse;
-        if (isActive) {
-          setProgress(transformProgressResponse(data));
-          setPollError(null);
-        }
-      } catch (err) {
-        if (isActive) {
-          setPollError(err instanceof Error ? err.message : "Failed to fetch progress");
-        }
-      }
-    };
-
-    // Initial fetch
-    void fetchProgress();
-
-    // Set up polling
-    const interval = setInterval(() => {
-      if (progress?.status !== "completed" && progress?.status !== "failed") {
-        void fetchProgress();
-      }
-    }, pollInterval);
-
-    return () => {
-      isActive = false;
-      clearInterval(interval);
-    };
-  }, [importFileId, progress?.status]);
+  const { data: progressData, error: progressError } = useImportProgressQuery(importFileId ?? null);
+  const progress = useMemo(() => (progressData ? transformProgressResponse(progressData) : null), [progressData]);
+  const pollError = progressError instanceof Error ? progressError.message : null;
 
   const handleComplete = useCallback(() => {
     complete();

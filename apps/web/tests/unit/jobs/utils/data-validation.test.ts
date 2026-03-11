@@ -1,7 +1,7 @@
 /**
  * Unit tests for data validation and normalization utilities.
  *
- * Tests validation, date parsing, string extraction, and tag parsing.
+ * Tests validation, string extraction, and tag parsing.
  *
  * @module
  * @category Tests
@@ -10,7 +10,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   hasValidProperty,
-  parseDate,
   parseTagsFromRow,
   safeStringValue,
   validateRequiredFields,
@@ -126,74 +125,6 @@ describe("Data Validation Utilities", () => {
       const result = validateRequiredFields(data, mockLogger);
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
-    });
-  });
-
-  describe("parseDate", () => {
-    it("should parse Date object", () => {
-      const date = new Date("2024-03-15T10:30:00.000Z");
-      const result = parseDate(date);
-      expect(result).toBe("2024-03-15T10:30:00.000Z");
-    });
-
-    it("should parse timestamp number", () => {
-      const timestamp = new Date("2024-03-15T10:30:00.000Z").getTime();
-      const result = parseDate(timestamp);
-      expect(result).toBe("2024-03-15T10:30:00.000Z");
-    });
-
-    it("should parse ISO date string", () => {
-      const result = parseDate("2024-03-15T10:30:00.000Z");
-      expect(result).toBe("2024-03-15T10:30:00.000Z");
-    });
-
-    it("should parse various date string formats", () => {
-      // Common formats
-      expect(parseDate("2024-03-15")).toContain("2024-03-15");
-      expect(parseDate("03/15/2024")).toContain("2024");
-      expect(parseDate("March 15, 2024")).toContain("2024");
-      expect(parseDate("15 Mar 2024")).toContain("2024");
-    });
-
-    it("should return current date for empty string", () => {
-      const before = new Date();
-      const result = parseDate("");
-      const after = new Date();
-
-      const resultDate = new Date(result);
-      expect(resultDate.getTime()).toBeGreaterThanOrEqual(before.getTime());
-      expect(resultDate.getTime()).toBeLessThanOrEqual(after.getTime());
-    });
-
-    it("should return current date for whitespace-only string", () => {
-      const before = new Date();
-      const result = parseDate("   ");
-      const after = new Date();
-
-      const resultDate = new Date(result);
-      expect(resultDate.getTime()).toBeGreaterThanOrEqual(before.getTime());
-      expect(resultDate.getTime()).toBeLessThanOrEqual(after.getTime());
-    });
-
-    it("should return current date for invalid date string", () => {
-      const before = new Date();
-      const result = parseDate("not a date");
-      const after = new Date();
-
-      const resultDate = new Date(result);
-      expect(resultDate.getTime()).toBeGreaterThanOrEqual(before.getTime());
-      expect(resultDate.getTime()).toBeLessThanOrEqual(after.getTime());
-    });
-
-    it("should handle dates with time zones", () => {
-      const result = parseDate("2024-03-15T10:30:00+05:00");
-      expect(result).toContain("2024-03-15");
-      expect(new Date(result).getUTCHours()).toBe(5); // UTC time = 10:30-05:00 = 05:30
-    });
-
-    it("should trim whitespace from date strings", () => {
-      const result = parseDate("  2024-03-15T10:30:00.000Z  ");
-      expect(result).toBe("2024-03-15T10:30:00.000Z");
     });
   });
 

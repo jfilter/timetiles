@@ -16,17 +16,12 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { apiRoute } from "@/lib/api";
+import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import { toSqlConditions } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { normalizeEndDate } from "@/lib/services/aggregation-filters";
 import type { BoundsResponse } from "@/lib/types/event-bounds";
-import {
-  buildCatalogSqlCondition,
-  buildDatasetSqlCondition,
-  buildDateSqlConditions,
-  buildFieldFilterSqlConditions,
-} from "@/lib/utils/event-sql-filters";
 
 export type { BoundsResponse } from "@/lib/types/event-bounds";
 
@@ -49,47 +44,28 @@ export const GET = apiRoute({
   auth: "optional",
   query: EventFiltersSchema,
   handler: async ({ query, user, payload }) => {
-    const endDate = normalizeEndDate(query.endDate ?? null);
-    const hasCatalogFilter = query.catalog != null;
-
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
     // If no accessible catalogs and no catalog filter specified, return empty result
-    if (accessibleCatalogIds.length === 0 && !hasCatalogFilter) {
+    if (accessibleCatalogIds.length === 0 && query.catalog == null) {
       return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
     }
 
-    // Build SQL conditions
-    const conditions: ReturnType<typeof sql>[] = [
+    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds });
+
+    if (filters.denyResults) {
+      return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
+    }
+
+    // Build SQL conditions from canonical filters
+    const filterConditions = toSqlConditions(filters);
+    const conditions = [
       sql`e.location_longitude IS NOT NULL`,
       sql`e.location_latitude IS NOT NULL`,
+      ...filterConditions,
     ];
 
-    // Apply catalog access control
-    if (hasCatalogFilter) {
-      if (accessibleCatalogIds.includes(query.catalog!)) {
-        conditions.push(buildCatalogSqlCondition(query.catalog));
-      } else {
-        return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
-      }
-    } else {
-      conditions.push(buildCatalogSqlCondition(undefined, accessibleCatalogIds));
-    }
-
-    // Apply dataset filter
-    if (query.datasets != null && query.datasets.length > 0) {
-      const datasetCondition = buildDatasetSqlCondition(query.datasets);
-      conditions.push(datasetCondition ?? sql`FALSE`);
-    }
-
-    // Apply date and field filters
-    conditions.push(
-      ...buildDateSqlConditions(query.startDate ?? null, endDate),
-      ...buildFieldFilterSqlConditions(query.ff)
-    );
-
-    // Combine conditions using reduce with initial value
     const whereClause = conditions.reduce((acc, cond) => sql`${acc} AND ${cond}`, sql`TRUE`);
 
     // Execute bounds query using MIN/MAX for efficient computation

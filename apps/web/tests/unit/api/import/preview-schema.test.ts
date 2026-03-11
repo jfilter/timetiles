@@ -14,10 +14,8 @@ import "@/tests/mocks/services/logger";
 
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => {
-  const mockAuthFn = vi.fn();
   const mockGetPayloadFn = vi.fn();
   return {
-    mockAuth: mockAuthFn,
     mockGetPayload: mockGetPayloadFn,
     mockPapaParse: vi.fn(),
     mockXlsxRead: vi.fn(),
@@ -81,21 +79,7 @@ vi.mock("@timetiles/payload-schema-detection", () => ({
 
 vi.mock("@/lib/utils/url-validation", () => ({ isPrivateUrl: mocks.mockIsPrivateUrl }));
 
-// Mock withAuth to bypass Payload authentication entirely
-vi.mock("@/lib/middleware/auth", () => ({
-  withAuth: (handler: (...args: unknown[]) => unknown) => {
-    return async (request: Request, context: unknown) => {
-      // Simulate the withAuth middleware by calling our mockAuth
-      const authResult = await mocks.mockAuth();
-      if (!authResult?.user) {
-        return Response.json({ error: "Authentication required" }, { status: 401 });
-      }
-      // Attach user to request (mimicking real withAuth)
-      (request as unknown as Record<string, unknown>).user = authResult.user;
-      return handler(request, context);
-    };
-  },
-}));
+vi.mock("@/lib/middleware/auth", () => ({}));
 
 // 4. Vitest imports and source code AFTER mocks
 import type { NextRequest } from "next/server";
@@ -145,7 +129,6 @@ describe.sequential("POST /api/import/preview-schema/upload", () => {
     }
 
     mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
-    mocks.mockAuth.mockResolvedValue({ user: mockUser });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockDetectLanguageFromSamples.mockReturnValue({ code: "eng", confidence: 0.9 });
     mocks.mockIsPrivateUrl.mockReturnValue(false);
@@ -333,7 +316,6 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
     }
 
     mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
-    mocks.mockAuth.mockResolvedValue({ user: mockUser });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockBuildAuthHeaders.mockReturnValue({});
     mocks.mockDetectLanguageFromSamples.mockReturnValue({ code: "eng", confidence: 0.9 });

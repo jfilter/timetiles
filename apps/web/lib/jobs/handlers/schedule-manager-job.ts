@@ -344,6 +344,7 @@ const handleImportError = async (payload: Payload, scheduledImport: ScheduledImp
 
 export const scheduleManagerJob = {
   slug: "schedule-manager",
+  schedule: [{ cron: "* * * * *", queue: "default" as const }],
   handler: async ({ job, req }: { job?: { id?: string | number }; req?: { payload?: Payload } }) => {
     const payload = req?.payload;
 

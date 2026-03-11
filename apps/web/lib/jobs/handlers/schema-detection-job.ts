@@ -30,32 +30,7 @@ import type { Dataset, ImportJob } from "@/payload-types";
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { extractDuplicateRows, loadJobAndFilePath } from "../utils/resource-loading";
-
-// Helper to extract active transforms from dataset
-const extractActiveTransforms = (dataset: Dataset): ImportTransform[] => {
-  const transforms: ImportTransform[] = [];
-  for (const t of dataset.importTransforms ?? []) {
-    if (
-      t != null &&
-      typeof t === "object" &&
-      typeof t.id === "string" &&
-      typeof t.type === "string" &&
-      typeof t.from === "string" &&
-      typeof t.to === "string" &&
-      t.active === true
-    ) {
-      transforms.push({
-        id: t.id,
-        type: t.type as "rename",
-        from: t.from,
-        to: t.to,
-        active: true,
-        autoDetected: Boolean(t.autoDetected),
-      });
-    }
-  }
-  return transforms;
-};
+import { buildTransformsFromDataset } from "../utils/transform-builders";
 
 // Helper to load dataset and extract active transforms
 const loadDatasetAndTransforms = async (
@@ -73,7 +48,7 @@ const loadDatasetAndTransforms = async (
         : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
 
     if (dataset) {
-      transforms = extractActiveTransforms(dataset);
+      transforms = buildTransformsFromDataset(dataset);
     }
   } catch (error) {
     // If dataset loading fails, continue with no transforms

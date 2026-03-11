@@ -18,16 +18,12 @@ import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
 import { DEFAULT_CLUSTER_STATS } from "@/lib/constants/map";
+import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { toSqlConditions } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import { ClusterStatsQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
-import {
-  buildCatalogSqlCondition,
-  buildDatasetSqlCondition,
-  buildDateSqlConditions,
-  buildFieldFilterSqlConditions,
-} from "@/lib/utils/event-sql-filters";
 
 export const GET = apiRoute({
   auth: "optional",
@@ -41,10 +37,10 @@ export const GET = apiRoute({
       return Response.json(DEFAULT_CLUSTER_STATS);
     }
 
-    const filters = buildEventFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
+    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return default stats
-    if (filters.denyAccess === true || filters.denyResults === true) {
+    if (filters.denyResults) {
       return Response.json(DEFAULT_CLUSTER_STATS);
     }
 
@@ -54,19 +50,16 @@ export const GET = apiRoute({
   },
 });
 
-const calculateGlobalStats = async (payload: Payload, filters: EventFilters) => {
-  const { catalogId, catalogIds, datasets, startDate, endDate, fieldFilters } = filters;
-
-  // Build filter conditions using shared utilities
-  const filterConditions = [
-    buildCatalogSqlCondition(catalogId, catalogIds),
-    ...(datasets != null && datasets.length > 0 ? [buildDatasetSqlCondition(datasets)] : []),
-    ...buildDateSqlConditions(startDate, endDate),
-    ...buildFieldFilterSqlConditions(fieldFilters),
-  ].filter(Boolean);
+const calculateGlobalStats = async (payload: Payload, filters: CanonicalEventFilters) => {
+  const filterConditions = toSqlConditions(filters);
 
   const extraConditions =
-    filterConditions.length > 0 ? filterConditions.reduce((acc, cond) => sql`${acc} AND ${cond}`, sql``) : sql``;
+    filterConditions.length > 0
+      ? filterConditions.reduce(
+          (acc: ReturnType<typeof sql>, cond: ReturnType<typeof sql>) => sql`${acc} AND ${cond}`,
+          sql``
+        )
+      : sql``;
 
   // Query to get event counts grouped by location (simulating clustering at high zoom)
   const result = (await payload.db.drizzle.execute(sql`

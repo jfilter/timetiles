@@ -10,8 +10,9 @@
 import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
+import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
-import { type AggregationFilters, buildAggregationWhereClause } from "@/lib/services/aggregation-filters";
 
 /**
  * Aggregated item in response.
@@ -48,11 +49,11 @@ export type GroupByField = "catalog" | "dataset";
 export const executeAggregationQuery = async (
   payload: Payload,
   groupBy: GroupByField,
-  filters: AggregationFilters,
+  filters: CanonicalEventFilters,
   accessibleCatalogIds: number[]
 ): Promise<AggregationResponse> => {
-  // Build WHERE clause from filters
-  const whereClause = buildAggregationWhereClause(filters, accessibleCatalogIds);
+  // Build WHERE clause from canonical filters
+  const whereClause = toSqlWhereClause(filters);
 
   // Build SELECT and GROUP BY clauses based on groupBy field
   let selectClause;

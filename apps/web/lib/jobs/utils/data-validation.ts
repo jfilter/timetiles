@@ -3,14 +3,12 @@
  *
  * This module contains helpers for various data quality and transformation tasks, such as:
  * - Performing basic structural validation on the parsed data.
- * - Normalizing date strings into a consistent ISO format.
  * - Safely accessing and cleaning string values from row objects.
  * - Extracting and parsing tags from common field names.
  *
  * @module
  */
 import type { createJobLogger } from "@/lib/logger";
-import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
 
 import { getObjectProperty } from "./data-parsing";
 
@@ -56,33 +54,6 @@ export const validateRequiredFields = (
   });
 
   return { isValid: errors.length === 0, errors };
-};
-
-export const parseDate = (dateString: string | number | Date): string => {
-  if (dateString instanceof Date) {
-    return isValidDate(dateString) ? dateString.toISOString() : new Date().toISOString();
-  }
-
-  if (typeof dateString === "number") {
-    const dateObj = new Date(dateString);
-    return isValidDate(dateObj) ? dateObj.toISOString() : new Date().toISOString();
-  }
-
-  if (typeof dateString !== "string" || dateString.trim() === "") {
-    return new Date().toISOString();
-  }
-
-  const trimmed = dateString.trim();
-  if (hasInvalidIsoDatePart(trimmed)) {
-    return new Date().toISOString();
-  }
-
-  const parsed = new Date(trimmed);
-  if (!isValidDate(parsed)) {
-    return new Date().toISOString();
-  }
-
-  return parsed.toISOString();
 };
 
 export const safeStringValue = (row: Record<string, unknown>, key: string): string | null => {

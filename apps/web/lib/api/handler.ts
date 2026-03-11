@@ -30,7 +30,7 @@ interface RouteContext<TBody, TQuery, TParams, TAuth extends AuthMode> {
 interface RouteConfig<TBody = undefined, TQuery = undefined, TParams = undefined, TAuth extends AuthMode = "required"> {
   /** Auth mode. Default: "required" */
   auth?: TAuth;
-  /** Rate limit options (composable with existing withRateLimit middleware) */
+  /** Rate limit options */
   rateLimit?: RateLimitOptions;
   /** Zod schema for request body (parsed from request.json()) */
   body?: z.ZodType<TBody>;

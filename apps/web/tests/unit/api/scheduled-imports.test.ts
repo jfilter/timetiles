@@ -30,11 +30,7 @@ const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn() }));
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-  checkRateLimit: vi.fn().mockResolvedValue(null),
-  type: {} as any,
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
 // Import AFTER mocks
 const { POST } = await import("@/app/api/scheduled-imports/[id]/trigger/route");

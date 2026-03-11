@@ -9,10 +9,10 @@
  * @category API
  */
 import { apiRoute } from "@/lib/api";
+import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import { logger } from "@/lib/logger";
 import { AggregateQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { type AggregationFilters, normalizeEndDate } from "@/lib/services/aggregation-filters";
 import { executeAggregationQuery } from "@/lib/services/aggregation-service";
 
 /**
@@ -41,15 +41,7 @@ export const GET = apiRoute({
       return Response.json({ items: [], total: 0, groupedBy: groupBy });
     }
 
-    // Build filters object directly from Zod-validated query
-    const filters: AggregationFilters = {
-      catalog: query.catalog,
-      datasets: query.datasets,
-      startDate: query.startDate ?? null,
-      endDate: normalizeEndDate(query.endDate ?? null),
-      bounds: query.bounds ?? null,
-      fieldFilters: Object.keys(query.ff).length > 0 ? query.ff : null,
-    };
+    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds });
 
     // Execute aggregation query
     const result = await executeAggregationQuery(payload, groupBy, filters, accessibleCatalogIds);

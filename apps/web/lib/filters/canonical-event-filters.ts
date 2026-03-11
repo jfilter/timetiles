@@ -1,0 +1,44 @@
+/**
+ * Canonical filter model for event queries.
+ *
+ * Single source of truth for resolved, access-controlled, normalized
+ * filter state. All event query paths (SQL, Payload, JSONB) consume
+ * this interface via output adapters.
+ *
+ * @module
+ * @category Filters
+ */
+
+/**
+ * Resolved event filters with access control applied and values normalized.
+ */
+export interface CanonicalEventFilters {
+  /** Single catalog ID when user requested a specific catalog and has access */
+  catalogId?: number;
+  /** All accessible catalog IDs (when no specific catalog requested) */
+  catalogIds?: number[];
+  /** Dataset IDs to filter by */
+  datasets?: number[];
+  /** Start date for temporal filtering (ISO 8601) */
+  startDate?: string | null;
+  /** End date for temporal filtering — always normalized with end-of-day */
+  endDate?: string | null;
+  /** Geographic bounds for spatial filtering */
+  bounds?: CanonicalBounds | null;
+  /** Only include events with geocoded locations */
+  requireLocation?: boolean;
+  /** Field filters for categorical filtering (keys always validated) */
+  fieldFilters?: Record<string, string[]>;
+  /** When true, filters are valid but should match no rows (access denied) */
+  denyResults?: boolean;
+}
+
+/**
+ * Geographic bounding box in {north, south, east, west} format.
+ */
+export interface CanonicalBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}

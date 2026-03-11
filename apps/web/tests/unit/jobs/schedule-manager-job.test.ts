@@ -26,6 +26,12 @@ describe.sequential("scheduleManagerJob", () => {
     vi.restoreAllMocks();
   });
 
+  it("should have a cron schedule configured", () => {
+    expect(scheduleManagerJob.schedule).toBeDefined();
+    expect(scheduleManagerJob.schedule).toHaveLength(1);
+    expect(scheduleManagerJob.schedule[0]!.cron).toBe("* * * * *");
+  });
+
   describe("handler", () => {
     const createMockContext = () => {
       const mockPayload = {
