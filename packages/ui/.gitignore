@@ -1,0 +1,4 @@
+# TypeScript build output (consumers resolve .ts/.tsx source directly)
+src/**/*.js
+src/**/*.d.ts
+src/**/*.d.ts.map

@@ -10,7 +10,14 @@
     "./design-system": "./DESIGN_SYSTEM.md",
     "./charts": "./src/components/charts/index.ts",
     "./icons": "./src/components/icons/index.ts",
-    "./lib/utils": "./src/lib/utils.ts"
+    "./lib/utils": "./src/lib/utils.ts",
+    "./lib/chart-themes": "./src/lib/chart-themes.ts",
+    "./components/button": "./src/components/button.tsx",
+    "./components/card": "./src/components/card.tsx",
+    "./components/dropdown-menu": "./src/components/dropdown-menu.tsx",
+    "./components/input": "./src/components/input.tsx",
+    "./components/label": "./src/components/label.tsx",
+    "./components/select": "./src/components/select.tsx"
   },
   "scripts": {
     "build": "tsc --build",
