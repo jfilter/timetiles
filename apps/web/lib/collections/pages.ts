@@ -9,7 +9,7 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { createCommonConfig, createSlugField, isEditorOrAdmin } from "./shared-fields";
+import { createCommonConfig, createCreatedByField, createSlugField, isEditorOrAdmin } from "./shared-fields";
 
 const iconOptions = [
   { label: "Email", value: "email" },
@@ -40,7 +40,7 @@ const accentOptions = [
 export const Pages: CollectionConfig = {
   slug: "pages",
   ...createCommonConfig(),
-  admin: { useAsTitle: "title", group: "Content" },
+  admin: { useAsTitle: "title", defaultColumns: ["title", "slug", "site", "updatedAt"], group: "Content" },
   access: {
     read: () => true,
     create: isEditorOrAdmin,
@@ -51,6 +51,13 @@ export const Pages: CollectionConfig = {
   fields: [
     { name: "title", type: "text", required: true },
     createSlugField("pages", "title"),
+    {
+      name: "site",
+      type: "relationship",
+      relationTo: "sites",
+      required: true,
+      admin: { description: "Site this page belongs to" },
+    },
     {
       name: "pageBuilder",
       type: "blocks",
@@ -331,5 +338,6 @@ export const Pages: CollectionConfig = {
         },
       ],
     },
+    createCreatedByField("User who created this page"),
   ],
 };

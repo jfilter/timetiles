@@ -19,6 +19,7 @@ import { useFilters, useSelectedEvent } from "@/lib/filters";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useBoundsQuery, useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
+import { useViewScope } from "@/lib/hooks/use-view-scope";
 import { useUIStore } from "@/lib/store";
 
 import { simplifyBounds } from "./map-explorer-helpers";
@@ -40,14 +41,15 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const onMapPositionChangeRef = useRef(options?.onMapPositionChange);
   onMapPositionChangeRef.current = options?.onMapPositionChange;
 
+  // View scope for data filtering
+  const scope = useViewScope();
+
   // URL state
   const { filters, activeFilterCount } = useFilters();
   const { selectedEventId, openEvent, closeEvent } = useSelectedEvent();
 
   // Data sources for filter labels
   const { data: dataSources } = useDataSourcesQuery();
-  const catalogs = dataSources?.catalogs ?? [];
-  const datasets = dataSources?.datasets ?? [];
 
   // Zustand store
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
@@ -60,14 +62,16 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const simpleBounds = useMemo(() => simplifyBounds(mapBounds), [mapBounds]);
   const debouncedSimpleBounds = useDebounce(simpleBounds, 300);
 
-  // Data fetching
+  // Data fetching (with view scope)
   const { data: clustersData, isLoading: clustersLoading } = useMapClustersQuery(
     filters,
     debouncedSimpleBounds,
-    mapZoom
+    mapZoom,
+    true,
+    scope
   );
-  const { data: clusterStats } = useClusterStatsQuery(filters);
-  const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters);
+  const { data: clusterStats } = useClusterStatsQuery(filters, true, scope);
+  const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters, true, scope);
 
   const clusters = clustersData?.features ?? [];
 
@@ -135,8 +139,8 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
     // Data sources
     dataSources,
-    catalogs,
-    datasets,
+    catalogs: dataSources?.catalogs ?? [],
+    datasets: dataSources?.datasets ?? [],
 
     // UI store
     mapBounds,
@@ -155,6 +159,9 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     boundsData,
     boundsLoading,
     isLoadingInitialBounds,
+
+    // View scope
+    scope,
 
     // Callbacks
     handleZoomToData,

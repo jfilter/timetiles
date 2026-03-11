@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
+import type { ViewScope } from "@/lib/utils/event-params";
 import {
   buildBaseEventParams,
   buildEventParams,
@@ -83,6 +84,54 @@ describe("event-params", () => {
       const filters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
       const params = buildEventParams(filters, null);
       expect(params.get("bounds")).toBeNull();
+    });
+  });
+
+  describe("scope parameter", () => {
+    const emptyFilters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+
+    it("buildBaseEventParams without scope produces no scope params", () => {
+      const params = buildBaseEventParams(emptyFilters);
+      expect(params.get("scopeCatalogs")).toBeNull();
+      expect(params.get("scopeDatasets")).toBeNull();
+    });
+
+    it("buildBaseEventParams with scope containing catalogIds", () => {
+      const scope: ViewScope = { catalogIds: [1, 2, 3] };
+      const params = buildBaseEventParams(emptyFilters, {}, scope);
+      expect(params.get("scopeCatalogs")).toBe("1,2,3");
+      expect(params.get("scopeDatasets")).toBeNull();
+    });
+
+    it("buildBaseEventParams with scope containing datasetIds", () => {
+      const scope: ViewScope = { datasetIds: [10, 20] };
+      const params = buildBaseEventParams(emptyFilters, {}, scope);
+      expect(params.get("scopeCatalogs")).toBeNull();
+      expect(params.get("scopeDatasets")).toBe("10,20");
+    });
+
+    it("buildBaseEventParams with scope containing both catalogIds and datasetIds", () => {
+      const scope: ViewScope = { catalogIds: [5], datasetIds: [50, 60] };
+      const params = buildBaseEventParams(emptyFilters, {}, scope);
+      expect(params.get("scopeCatalogs")).toBe("5");
+      expect(params.get("scopeDatasets")).toBe("50,60");
+    });
+
+    it("buildBaseEventParams with empty scope adds no params", () => {
+      const scope: ViewScope = {};
+      const params = buildBaseEventParams(emptyFilters, {}, scope);
+      expect(params.get("scopeCatalogs")).toBeNull();
+      expect(params.get("scopeDatasets")).toBeNull();
+      expect(params.toString()).toBe("");
+    });
+
+    it("buildEventParams threads scope through to params", () => {
+      const bounds = { north: 41, south: 40, east: -73, west: -74 };
+      const scope: ViewScope = { catalogIds: [7, 8], datasetIds: [99] };
+      const params = buildEventParams(emptyFilters, bounds, {}, scope);
+      expect(params.get("scopeCatalogs")).toBe("7,8");
+      expect(params.get("scopeDatasets")).toBe("99");
+      expect(params.get("bounds")).not.toBeNull();
     });
   });
 });

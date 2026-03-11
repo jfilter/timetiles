@@ -1,35 +1,49 @@
 /**
  * This file defines the main data exploration page of the application.
  *
- * On desktop: Renders MapExplorer with split map/list view
- * On mobile: Renders ListExplorer with tabbed navigation (Map/Chart/List)
+ * Resolves the active view from search params and wraps the explorer
+ * in a ViewProvider. The site is resolved in the layout above.
  *
- * This unifies the mobile experience - both /explore and /explore/list
- * show the same tabbed interface on mobile devices.
+ * URL patterns:
+ * - /explore — default view for the active site
+ * - /explore?view=parks — named view within the active site
  *
  * @module
  */
-import { Suspense } from "react";
+import { headers } from "next/headers";
+import { getPayload } from "payload";
 
-import { ListExplorer } from "@/app/(frontend)/explore/_components/list-explorer";
-import { MapExplorer } from "@/app/(frontend)/explore/_components/map-explorer";
+import { ViewProvider } from "@/lib/context/view-context";
+import { resolveSite } from "@/lib/services/site-resolver";
+import { resolveView } from "@/lib/services/view-resolver";
+import config from "@/payload.config";
+
+import { ExploreContent } from "./_components/explore-content";
 
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";
 
-const LOADING_ELEMENT = <div>Loading explorer...</div>;
+interface ExplorePageProps {
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-export default function ExplorePage() {
+export default async function ExplorePage({ searchParams }: Readonly<ExplorePageProps>) {
+  const payload = await getPayload({ config });
+  const headersList = await headers();
+  const host = headersList.get("host");
+
+  // Resolve site from domain
+  const site = await resolveSite(payload, host);
+  const siteId = site?.id;
+
+  // Resolve view from search params
+  const params = await searchParams;
+  const viewSlug = typeof params.view === "string" ? params.view : undefined;
+  const view = await resolveView(payload, siteId, viewSlug);
+
   return (
-    <Suspense fallback={LOADING_ELEMENT}>
-      {/* Desktop: MapExplorer with split view */}
-      <div className="hidden md:block">
-        <MapExplorer />
-      </div>
-      {/* Mobile: ListExplorer with tabbed navigation */}
-      <div className="md:hidden">
-        <ListExplorer />
-      </div>
-    </Suspense>
+    <ViewProvider view={view}>
+      <ExploreContent />
+    </ViewProvider>
   );
 }

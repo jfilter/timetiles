@@ -25,6 +25,7 @@ import { footerSeed } from "../seeds/footer";
 import { geocodingProviderSeeds } from "../seeds/geocoding-providers";
 import { mainMenuSeed } from "../seeds/main-menu";
 import { pagesSeed } from "../seeds/pages";
+import { siteSeeds } from "../seeds/sites";
 import { userSeeds } from "../seeds/users";
 import type { SeedData } from "../types";
 import { DataProcessing } from "./data-processing";
@@ -418,6 +419,8 @@ export class SeedingOperations {
         return [mainMenuSeed];
       case FOOTER_SLUG:
         return [footerSeed];
+      case "sites":
+        return siteSeeds;
       case "pages":
         return pagesSeed;
       default:

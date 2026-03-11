@@ -67,6 +67,9 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
     },
   ],
 
+  // Pages depend on sites
+  pages: [{ field: "site", targetCollection: "sites", searchField: "slug", required: true }],
+
   // Events depend on datasets
   events: [
     {

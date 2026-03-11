@@ -17,6 +17,7 @@ import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { useFilters } from "@/lib/filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import { useEventsAggregationQuery } from "@/lib/hooks/use-events-queries";
+import { useViewScope } from "@/lib/hooks/use-view-scope";
 
 import type { BaseChartProps } from "./types";
 
@@ -41,9 +42,10 @@ const AggregationBarChartComponent = ({
 }: Readonly<AggregationBarChartProps>) => {
   const chartTheme = useChartTheme();
   const { filters } = useFilters();
+  const scope = useViewScope();
 
   // Fetch aggregation data using unified endpoint (viewport-filtered)
-  const aggregationQuery = useEventsAggregationQuery(filters, bounds ?? null, type);
+  const aggregationQuery = useEventsAggregationQuery(filters, bounds ?? null, type, true, scope);
   const { data, isInitialLoad, isUpdating, isError } = useChartQuery(aggregationQuery);
 
   // Store latest data in ref for stable click handler

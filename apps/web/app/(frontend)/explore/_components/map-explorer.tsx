@@ -77,6 +77,7 @@ export const MapExplorer = () => {
     boundsData,
     boundsLoading,
     isLoadingInitialBounds,
+    scope,
     handleZoomToData,
     handleBoundsChange,
   } = useExplorerState({ onMapPositionChange: handleMapPositionChange });
@@ -99,10 +100,16 @@ export const MapExplorer = () => {
   );
 
   // React Query hooks for data fetching - use simple bounds directly for better cache key comparison
-  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(filters, debouncedSimpleBounds, 1000);
+  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(
+    filters,
+    debouncedSimpleBounds,
+    1000,
+    true,
+    scope
+  );
 
   // Fetch total count without bounds filter for global statistics
-  const { data: totalEventsData } = useEventsTotalQuery(filters);
+  const { data: totalEventsData } = useEventsTotalQuery(filters, true, scope);
 
   // Extract data from queries
   const events = eventsData?.events ?? EMPTY_EVENTS;

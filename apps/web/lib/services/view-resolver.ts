@@ -1,29 +1,25 @@
 /**
  * View resolver service for determining the active View configuration.
  *
- * Resolves views in priority order:
- * 1. Custom domain match (e.g., events.city.gov)
- * 2. URL slug match (e.g., /v/city-events)
- * 3. Default view (isDefault: true)
- * 4. Null (no view configured)
+ * Resolves views within a site:
+ * 1. Slug match (e.g., ?view=city-events)
+ * 2. Default view (isDefault: true within the site)
+ * 3. Null (no view configured)
  *
  * @module
  * @category Services
  */
-import type { Payload } from "payload";
+import type { Payload, Where } from "payload";
 
 import type { View } from "@/payload-types";
 
 import { logger } from "../logger";
 
-/** Cache for resolved views (domain -> view) */
-const viewCacheByDomain = new Map<string, View | null>();
-
-/** Cache for resolved views (slug -> view) */
+/** Cache for resolved views (cacheKey -> view) */
 const viewCacheBySlug = new Map<string, View | null>();
 
-/** Cache for default view */
-let defaultViewCache: View | null | undefined;
+/** Cache for default views (siteId -> view) */
+const defaultViewCache = new Map<number, View | null>();
 
 /** Cache TTL in milliseconds (5 minutes) */
 const CACHE_TTL = 5 * 60 * 1000;
@@ -37,178 +33,115 @@ let lastCacheClear = Date.now();
 const maybeClearCache = (): void => {
   const now = Date.now();
   if (now - lastCacheClear > CACHE_TTL) {
-    viewCacheByDomain.clear();
     viewCacheBySlug.clear();
-    defaultViewCache = undefined;
+    defaultViewCache.clear();
     lastCacheClear = now;
   }
 };
 
 /**
- * Finds a view by custom domain.
- *
- * @param payload - Payload instance
- * @param domain - The domain to match (e.g., events.city.gov)
- * @returns The matching view or null
- */
-export const findViewByDomain = async (payload: Payload, domain: string): Promise<View | null> => {
-  maybeClearCache();
-
-  // Check cache first
-  if (viewCacheByDomain.has(domain)) {
-    return viewCacheByDomain.get(domain) ?? null;
-  }
-
-  try {
-    const result = await payload.find({
-      collection: "views",
-      where: { "branding.domain": { equals: domain }, _status: { equals: "published" } },
-      limit: 1,
-      sort: "createdAt",
-      depth: 1, // Include logo/favicon media
-    });
-
-    const view = result.docs[0] ?? null;
-    viewCacheByDomain.set(domain, view);
-    return view;
-  } catch (error) {
-    logger.error({ error, domain }, "Error finding view by domain");
-    return null;
-  }
-};
-
-/**
- * Finds a view by URL slug.
+ * Finds a view by slug within a site.
  *
  * @param payload - Payload instance
  * @param slug - The slug to match (e.g., city-events)
+ * @param siteId - The site ID to scope the search
  * @returns The matching view or null
  */
-export const findViewBySlug = async (payload: Payload, slug: string): Promise<View | null> => {
+export const findViewBySlug = async (payload: Payload, slug: string, siteId?: number): Promise<View | null> => {
   maybeClearCache();
 
-  // Check cache first
-  if (viewCacheBySlug.has(slug)) {
-    return viewCacheBySlug.get(slug) ?? null;
+  const cacheKey = `${siteId ?? "global"}:${slug}`;
+  if (viewCacheBySlug.has(cacheKey)) {
+    return viewCacheBySlug.get(cacheKey) ?? null;
   }
 
   try {
-    const result = await payload.find({
-      collection: "views",
-      where: { slug: { equals: slug }, _status: { equals: "published" } },
-      limit: 1,
-      depth: 1,
-    });
+    const where: Where = {
+      slug: { equals: slug },
+      _status: { equals: "published" },
+      ...(siteId != null && { site: { equals: siteId } }),
+    };
+
+    const result = await payload.find({ collection: "views", where, limit: 1, depth: 1 });
 
     const view = result.docs[0] ?? null;
-    viewCacheBySlug.set(slug, view);
+    viewCacheBySlug.set(cacheKey, view);
     return view;
   } catch (error) {
-    logger.error({ error, slug }, "Error finding view by slug");
+    logger.error({ error, slug, siteId }, "Error finding view by slug");
     return null;
   }
 };
 
 /**
- * Finds the default view (isDefault: true).
+ * Finds the default view within a site (isDefault: true).
  *
  * @param payload - Payload instance
+ * @param siteId - The site ID to scope the search
  * @returns The default view or null
  */
-export const findDefaultView = async (payload: Payload): Promise<View | null> => {
+export const findDefaultView = async (payload: Payload, siteId?: number): Promise<View | null> => {
   maybeClearCache();
 
-  // Check cache first
-  if (defaultViewCache !== undefined) {
-    return defaultViewCache;
+  const cacheId = siteId ?? 0;
+  if (defaultViewCache.has(cacheId)) {
+    return defaultViewCache.get(cacheId) ?? null;
   }
 
   try {
-    const result = await payload.find({
-      collection: "views",
-      where: { isDefault: { equals: true }, _status: { equals: "published" } },
-      limit: 1,
-      depth: 1,
-    });
+    const where: Where = {
+      isDefault: { equals: true },
+      _status: { equals: "published" },
+      ...(siteId != null && { site: { equals: siteId } }),
+    };
+
+    const result = await payload.find({ collection: "views", where, limit: 1, depth: 1 });
 
     const view = result.docs[0] ?? null;
-    // eslint-disable-next-line require-atomic-updates -- Race condition is acceptable for caching; concurrent calls fetch same data
-    defaultViewCache = view;
+    defaultViewCache.set(cacheId, view);
     return view;
   } catch (error) {
-    logger.error({ error }, "Error finding default view");
+    logger.error({ error, siteId }, "Error finding default view");
     return null;
   }
 };
 
 /**
- * Extracts the view slug from a URL path.
- * Expects paths like /v/city-events or /v/city-events/explore
- *
- * @param pathname - The URL pathname
- * @returns The slug or null if not a view path
- */
-export const extractViewSlugFromPath = (pathname: string): string | null => {
-  const match = /^\/v\/([^/]+)/.exec(pathname);
-  return match?.[1] ?? null;
-};
-
-/**
- * Resolves the active view for a request.
+ * Resolves the active view for a request within a site.
  *
  * Resolution priority:
- * 1. Custom domain match
- * 2. URL slug match (/v/[slug])
- * 3. Default view
+ * 1. Slug match
+ * 2. Default view within the site
  *
  * @param payload - Payload instance
- * @param options - Resolution options
+ * @param siteId - The site ID
+ * @param slug - Optional view slug
  * @returns The resolved view or null
  */
-export const resolveView = async (
-  payload: Payload,
-  options: { host?: string | null; pathname?: string | null }
-): Promise<View | null> => {
-  const { host, pathname } = options;
-
-  // 1. Try domain match (skip localhost and known dev domains)
-  if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
-    // Strip port if present
-    const domain = host.split(":")[0] ?? host;
-    const viewByDomain = await findViewByDomain(payload, domain);
-    if (viewByDomain) {
-      logger.debug({ domain }, "Resolved view by domain");
-      return viewByDomain;
+export const resolveView = async (payload: Payload, siteId?: number, slug?: string | null): Promise<View | null> => {
+  // 1. Try slug match
+  if (slug) {
+    const viewBySlug = await findViewBySlug(payload, slug, siteId);
+    if (viewBySlug) {
+      logger.debug({ slug, siteId }, "Resolved view by slug");
+      return viewBySlug;
     }
   }
 
-  // 2. Try slug from URL path
-  if (pathname) {
-    const slug = extractViewSlugFromPath(pathname);
-    if (slug) {
-      const viewBySlug = await findViewBySlug(payload, slug);
-      if (viewBySlug) {
-        logger.debug({ slug }, "Resolved view by slug");
-        return viewBySlug;
-      }
-    }
+  // 2. Fall back to default view within the site
+  const view = await findDefaultView(payload, siteId);
+  if (view) {
+    logger.debug({ siteId }, "Resolved default view");
   }
-
-  // 3. Fall back to default view
-  const defaultView = await findDefaultView(payload);
-  if (defaultView) {
-    logger.debug("Resolved default view");
-  }
-  return defaultView;
+  return view;
 };
 
 /**
  * Clears all view caches. Useful for testing or after admin changes.
  */
 export const clearViewCache = (): void => {
-  viewCacheByDomain.clear();
   viewCacheBySlug.clear();
-  defaultViewCache = undefined;
+  defaultViewCache.clear();
   lastCacheClear = Date.now();
 };
 

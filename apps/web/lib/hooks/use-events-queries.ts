@@ -24,7 +24,7 @@ import { fetchJson, HttpError } from "../api/http-error";
 import type { FilterState } from "../filters";
 import { createLogger } from "../logger";
 import type { BoundsResponse } from "../types/event-bounds";
-import type { BoundsType, SimpleBounds } from "../utils/event-params";
+import type { BoundsType, SimpleBounds, ViewScope } from "../utils/event-params";
 import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 import { QUERY_PRESETS } from "./query-presets";
 
@@ -85,16 +85,17 @@ export interface ClusterStatsResponse {
 
 // Re-export types for consumers of this module
 export type { BoundsResponse } from "../types/event-bounds";
-export type { BoundsType, SimpleBounds };
+export type { BoundsType, SimpleBounds, ViewScope };
 
 // Fetch functions
 const fetchEvents = async (
   filters: FilterState,
   bounds: BoundsType,
   limit: number = 1000,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  scope?: ViewScope
 ): Promise<EventsListResponse> => {
-  const params = buildEventParams(filters, bounds, { limit: limit.toString() });
+  const params = buildEventParams(filters, bounds, { limit: limit.toString() }, scope);
 
   logger.debug("Fetching events list", { filters, bounds, limit });
 
@@ -118,9 +119,10 @@ const fetchMapClusters = async (
   filters: FilterState,
   bounds: BoundsType,
   zoom: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  scope?: ViewScope
 ): Promise<MapClustersResponse> => {
-  const params = buildEventParams(filters, bounds, { zoom: zoom.toString() });
+  const params = buildEventParams(filters, bounds, { zoom: zoom.toString() }, scope);
 
   logger.debug("Fetching map clusters", { filters, bounds, zoom });
 
@@ -130,25 +132,30 @@ const fetchMapClusters = async (
 const fetchHistogram = async (
   filters: FilterState,
   bounds: BoundsType,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  scope?: ViewScope
 ): Promise<HistogramResponse> => {
-  const params = buildEventParams(filters, bounds);
+  const params = buildEventParams(filters, bounds, {}, scope);
 
   logger.debug("Fetching histogram", { filters, bounds });
 
   return fetchJson<HistogramResponse>(`/api/v1/events/temporal?${params.toString()}`, { signal });
 };
 
-const fetchClusterStats = async (filters: FilterState, signal?: AbortSignal): Promise<ClusterStatsResponse> => {
-  const params = buildBaseEventParams(filters);
+const fetchClusterStats = async (
+  filters: FilterState,
+  signal?: AbortSignal,
+  scope?: ViewScope
+): Promise<ClusterStatsResponse> => {
+  const params = buildBaseEventParams(filters, {}, scope);
 
   logger.debug("Fetching global cluster stats", { filters });
 
   return fetchJson<ClusterStatsResponse>(`/api/v1/events/geo/stats?${params.toString()}`, { signal });
 };
 
-const fetchBounds = async (filters: FilterState, signal?: AbortSignal): Promise<BoundsResponse> => {
-  const params = buildBaseEventParams(filters);
+const fetchBounds = async (filters: FilterState, signal?: AbortSignal, scope?: ViewScope): Promise<BoundsResponse> => {
+  const params = buildBaseEventParams(filters, {}, scope);
 
   logger.debug("Fetching event bounds", { filters });
 
@@ -160,27 +167,29 @@ export const eventsQueryKeys = {
   all: ["events"] as const,
   detail: (eventId: number) => [...eventsQueryKeys.all, "detail", eventId] as const,
   lists: () => [...eventsQueryKeys.all, "list"] as const,
-  list: (filters: FilterState, bounds: BoundsType, limit: number) =>
-    [...eventsQueryKeys.lists(), { filters, bounds, limit }] as const,
+  list: (filters: FilterState, bounds: BoundsType, limit: number, scope?: ViewScope) =>
+    [...eventsQueryKeys.lists(), { filters, bounds, limit, scope }] as const,
   infinite: () => [...eventsQueryKeys.all, "infinite"] as const,
-  infiniteList: (filters: FilterState, bounds: BoundsType, limit: number) =>
-    [...eventsQueryKeys.infinite(), { filters, bounds, limit }] as const,
+  infiniteList: (filters: FilterState, bounds: BoundsType, limit: number, scope?: ViewScope) =>
+    [...eventsQueryKeys.infinite(), { filters, bounds, limit, scope }] as const,
   clusters: () => [...eventsQueryKeys.all, "clusters"] as const,
-  cluster: (filters: FilterState, bounds: BoundsType, zoom: number) =>
-    [...eventsQueryKeys.clusters(), { filters, bounds, zoom }] as const,
+  cluster: (filters: FilterState, bounds: BoundsType, zoom: number, scope?: ViewScope) =>
+    [...eventsQueryKeys.clusters(), { filters, bounds, zoom, scope }] as const,
   clusterStats: () => [...eventsQueryKeys.all, "cluster-stats"] as const,
-  clusterStat: (filters: FilterState) => [...eventsQueryKeys.clusterStats(), { filters }] as const,
+  clusterStat: (filters: FilterState, scope?: ViewScope) =>
+    [...eventsQueryKeys.clusterStats(), { filters, scope }] as const,
   histograms: () => [...eventsQueryKeys.all, "histogram"] as const,
-  histogram: (filters: FilterState, bounds: BoundsType) =>
-    [...eventsQueryKeys.histograms(), { filters, bounds }] as const,
+  histogram: (filters: FilterState, bounds: BoundsType, scope?: ViewScope) =>
+    [...eventsQueryKeys.histograms(), { filters, bounds, scope }] as const,
   aggregations: () => [...eventsQueryKeys.all, "aggregation"] as const,
-  aggregation: (filters: FilterState, bounds: BoundsType, groupBy: "catalog" | "dataset") =>
-    [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy }] as const,
+  aggregation: (filters: FilterState, bounds: BoundsType, groupBy: "catalog" | "dataset", scope?: ViewScope) =>
+    [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy, scope }] as const,
   histogramsFull: () => [...eventsQueryKeys.all, "histogram-full"] as const,
-  histogramFull: (filters: FilterState) =>
-    [...eventsQueryKeys.histogramsFull(), { catalog: filters.catalog, datasets: filters.datasets }] as const,
+  histogramFull: (filters: FilterState, scope?: ViewScope) =>
+    [...eventsQueryKeys.histogramsFull(), { catalog: filters.catalog, datasets: filters.datasets, scope }] as const,
   bounds: () => [...eventsQueryKeys.all, "bounds"] as const,
-  boundsFiltered: (filters: FilterState) => [...eventsQueryKeys.bounds(), { filters }] as const,
+  boundsFiltered: (filters: FilterState, scope?: ViewScope) =>
+    [...eventsQueryKeys.bounds(), { filters, scope }] as const,
 };
 
 // Query hooks
@@ -188,11 +197,12 @@ export const useEventsListQuery = (
   filters: FilterState,
   bounds: BoundsType,
   limit: number = 1000,
-  enabled: boolean = true
+  enabled: boolean = true,
+  scope?: ViewScope
 ) =>
   useQuery({
-    queryKey: eventsQueryKeys.list(filters, bounds, limit),
-    queryFn: ({ signal }) => fetchEvents(filters, bounds, limit, signal),
+    queryKey: eventsQueryKeys.list(filters, bounds, limit, scope),
+    queryFn: ({ signal }) => fetchEvents(filters, bounds, limit, signal, scope),
     enabled: enabled && bounds != null, // Only run when bounds are available
     ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
@@ -200,29 +210,40 @@ export const useEventsListQuery = (
   });
 
 // Hook to get total count without bounds filter (for global statistics)
-export const useEventsTotalQuery = (filters: FilterState, enabled: boolean = true) =>
+export const useEventsTotalQuery = (filters: FilterState, enabled: boolean = true, scope?: ViewScope) =>
   useQuery({
-    queryKey: eventsQueryKeys.list(filters, null, 1), // bounds=null, limit=1 (we only need the total)
-    queryFn: ({ signal }) => fetchEvents(filters, null, 1, signal),
+    queryKey: eventsQueryKeys.list(filters, null, 1, scope), // bounds=null, limit=1 (we only need the total)
+    queryFn: ({ signal }) => fetchEvents(filters, null, 1, signal, scope),
     enabled,
     ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
   });
 
-export const useMapClustersQuery = (filters: FilterState, bounds: BoundsType, zoom: number, enabled: boolean = true) =>
+export const useMapClustersQuery = (
+  filters: FilterState,
+  bounds: BoundsType,
+  zoom: number,
+  enabled: boolean = true,
+  scope?: ViewScope
+) =>
   useQuery({
-    queryKey: eventsQueryKeys.cluster(filters, bounds, zoom),
-    queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal),
+    queryKey: eventsQueryKeys.cluster(filters, bounds, zoom, scope),
+    queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal, scope),
     enabled: enabled && bounds != null, // Only run when bounds are available
     ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
 
-export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enabled: boolean = true) =>
+export const useHistogramQuery = (
+  filters: FilterState,
+  bounds: BoundsType,
+  enabled: boolean = true,
+  scope?: ViewScope
+) =>
   useQuery({
-    queryKey: eventsQueryKeys.histogram(filters, bounds),
-    queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal),
+    queryKey: eventsQueryKeys.histogram(filters, bounds, scope),
+    queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal, scope),
     enabled: enabled && bounds != null, // Only run when bounds are available
     ...QUERY_PRESETS.expensive,
     refetchOnWindowFocus: false,
@@ -235,21 +256,21 @@ export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enab
  * Used by the time range slider to show the complete temporal distribution
  * regardless of the currently selected date range.
  */
-export const useFullHistogramQuery = (filters: FilterState) => {
+export const useFullHistogramQuery = (filters: FilterState, scope?: ViewScope) => {
   const fullRangeFilters: FilterState = { ...filters, startDate: null, endDate: null, fieldFilters: {} };
 
   return useQuery({
-    queryKey: eventsQueryKeys.histogramFull(fullRangeFilters),
-    queryFn: ({ signal }) => fetchHistogram(fullRangeFilters, null, signal),
+    queryKey: eventsQueryKeys.histogramFull(fullRangeFilters, scope),
+    queryFn: ({ signal }) => fetchHistogram(fullRangeFilters, null, signal, scope),
     ...QUERY_PRESETS.stable,
     refetchOnWindowFocus: false,
   });
 };
 
-export const useClusterStatsQuery = (filters: FilterState, enabled: boolean = true) =>
+export const useClusterStatsQuery = (filters: FilterState, enabled: boolean = true, scope?: ViewScope) =>
   useQuery({
-    queryKey: eventsQueryKeys.clusterStat(filters),
-    queryFn: ({ signal }) => fetchClusterStats(filters, signal),
+    queryKey: eventsQueryKeys.clusterStat(filters, scope),
+    queryFn: ({ signal }) => fetchClusterStats(filters, signal, scope),
     enabled,
     ...QUERY_PRESETS.stable,
     refetchOnWindowFocus: false,
@@ -265,10 +286,10 @@ export const useClusterStatsQuery = (filters: FilterState, enabled: boolean = tr
  * @param enabled - Whether the query should be enabled
  * @returns React Query result with bounds data
  */
-export const useBoundsQuery = (filters: FilterState, enabled: boolean = true) =>
+export const useBoundsQuery = (filters: FilterState, enabled: boolean = true, scope?: ViewScope) =>
   useQuery({
-    queryKey: eventsQueryKeys.boundsFiltered(filters),
-    queryFn: ({ signal }) => fetchBounds(filters, signal),
+    queryKey: eventsQueryKeys.boundsFiltered(filters, scope),
+    queryFn: ({ signal }) => fetchBounds(filters, signal, scope),
     enabled,
     ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
@@ -279,9 +300,10 @@ const fetchAggregation = async (
   filters: FilterState,
   bounds: BoundsType,
   groupBy: "catalog" | "dataset",
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  scope?: ViewScope
 ): Promise<AggregationResponse> => {
-  const params = buildEventParams(filters, bounds, { groupBy });
+  const params = buildEventParams(filters, bounds, { groupBy }, scope);
   const url = `/api/v1/events/stats?${params.toString()}`;
 
   logger.debug("Fetching aggregation", { env: process.env.NODE_ENV, groupBy });
@@ -294,11 +316,12 @@ export const useEventsAggregationQuery = (
   filters: FilterState,
   bounds: BoundsType,
   groupBy: "catalog" | "dataset",
-  enabled: boolean = true
+  enabled: boolean = true,
+  scope?: ViewScope
 ) =>
   useQuery({
-    queryKey: eventsQueryKeys.aggregation(filters, bounds, groupBy),
-    queryFn: ({ signal }) => fetchAggregation(filters, bounds, groupBy, signal),
+    queryKey: eventsQueryKeys.aggregation(filters, bounds, groupBy, scope),
+    queryFn: ({ signal }) => fetchAggregation(filters, bounds, groupBy, signal, scope),
     enabled: enabled && bounds != null,
     ...QUERY_PRESETS.expensive,
     refetchOnWindowFocus: false,
@@ -311,9 +334,10 @@ const fetchEventsPage = async (
   bounds: BoundsType,
   page: number,
   limit: number = 20,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  scope?: ViewScope
 ): Promise<EventsListResponse> => {
-  const params = buildEventParams(filters, bounds, { limit: limit.toString(), page: page.toString() });
+  const params = buildEventParams(filters, bounds, { limit: limit.toString(), page: page.toString() }, scope);
 
   logger.debug("Fetching events page", { filters, bounds, page, limit });
 
@@ -337,11 +361,12 @@ export const useEventsInfiniteQuery = (
   filters: FilterState,
   bounds: BoundsType,
   limit: number = 20,
-  enabled: boolean = true
+  enabled: boolean = true,
+  scope?: ViewScope
 ) =>
   useInfiniteQuery({
-    queryKey: eventsQueryKeys.infiniteList(filters, bounds, limit),
-    queryFn: ({ pageParam, signal }) => fetchEventsPage(filters, bounds, pageParam, limit, signal),
+    queryKey: eventsQueryKeys.infiniteList(filters, bounds, limit, scope),
+    queryFn: ({ pageParam, signal }) => fetchEventsPage(filters, bounds, pageParam, limit, signal, scope),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
     enabled: enabled && bounds != null,
@@ -354,9 +379,10 @@ export const useEventsInfiniteFlattened = (
   filters: FilterState,
   bounds: BoundsType,
   limit: number = 20,
-  enabled: boolean = true
+  enabled: boolean = true,
+  scope?: ViewScope
 ) => {
-  const query = useEventsInfiniteQuery(filters, bounds, limit, enabled);
+  const query = useEventsInfiniteQuery(filters, bounds, limit, enabled, scope);
 
   // Flatten all pages into a single array
   const events = useMemo(() => {

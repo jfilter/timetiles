@@ -85,7 +85,59 @@ export const buildCanonicalFilters = ({
     }
   }
 
+  // Scope constraints (view-level data scope)
+  applyScopeConstraints(filters, parameters);
+
   return filters;
+};
+
+/** Apply view-level scope constraints (scopeCatalogs / scopeDatasets). */
+const applyScopeConstraints = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {
+  if (filters.denyResults) return;
+
+  const { scopeCatalogs, scopeDatasets } = parameters;
+
+  if (scopeCatalogs != null && scopeCatalogs.length > 0) {
+    applyCatalogScope(filters, scopeCatalogs);
+  }
+
+  if (!filters.denyResults && scopeDatasets != null && scopeDatasets.length > 0) {
+    applyDatasetScope(filters, scopeDatasets);
+  }
+};
+
+/** Intersect catalog access with view scope. */
+const applyCatalogScope = (filters: CanonicalEventFilters, scopeCatalogs: number[]): void => {
+  if (filters.catalogId != null) {
+    if (!scopeCatalogs.includes(filters.catalogId)) {
+      filters.denyResults = true;
+      filters.catalogId = undefined;
+    }
+    return;
+  }
+
+  if (filters.catalogIds != null) {
+    const intersection = filters.catalogIds.filter((id) => scopeCatalogs.includes(id));
+    if (intersection.length === 0) {
+      filters.denyResults = true;
+    } else {
+      filters.catalogIds = intersection;
+    }
+  }
+};
+
+/** Intersect user dataset selection with view scope. */
+const applyDatasetScope = (filters: CanonicalEventFilters, scopeDatasets: number[]): void => {
+  if (filters.datasets != null && filters.datasets.length > 0) {
+    const intersection = filters.datasets.filter((id) => scopeDatasets.includes(id));
+    if (intersection.length === 0) {
+      filters.denyResults = true;
+    } else {
+      filters.datasets = intersection;
+    }
+  } else {
+    filters.datasets = scopeDatasets;
+  }
 };
 
 /**

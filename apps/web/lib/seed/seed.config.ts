@@ -173,10 +173,17 @@ export const SEED_CONFIG: SeedConfiguration = {
       options: { useGeographicClustering: true, temporalDistribution: "realistic", includeGeocoding: true },
     },
 
+    // Sites - multi-domain configuration
+    sites: {
+      count: 1, // Default site
+      dependencies: [],
+      options: { staticContent: true },
+    },
+
     // Pages - static content (home, about, contact)
     pages: {
       count: 3, // Static: home, about, contact pages
-      dependencies: [],
+      dependencies: ["sites"],
       options: { staticContent: true },
     },
 
@@ -285,7 +292,7 @@ export const SEED_CONFIG: SeedConfiguration = {
   presets: {
     testing: {
       description: "Fast, deterministic data for unit/integration tests",
-      enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
+      enabled: ["users", "catalogs", "datasets", "events", "sites", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
       volume: "small",
       realism: "simple",
       performance: "fast",
@@ -303,7 +310,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     e2e: {
       description: "Moderate, realistic data for E2E UI testing",
-      enabled: ["users", "catalogs", "datasets", "events", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
+      enabled: ["users", "catalogs", "datasets", "events", "sites", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
       volume: "medium",
       realism: "realistic",
       performance: "balanced",
@@ -323,6 +330,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         "catalogs",
         "datasets",
         "events",
+        "sites",
         "pages",
         MAIN_MENU_SLUG,
         FOOTER_SLUG,

@@ -16,8 +16,8 @@ import type { View } from "@/payload-types";
 export { setCreatedByHook as setCreatedBy } from "../shared-fields";
 
 /**
- * Enforces that only one view can be the default.
- * When a view is set as default, unsets any other default views.
+ * Enforces that only one view can be the default within its site.
+ * When a view is set as default, unsets any other default views in the same site.
  */
 export const enforceSingleDefault: CollectionBeforeChangeHook<View> = async ({
   data,
@@ -36,20 +36,25 @@ export const enforceSingleDefault: CollectionBeforeChangeHook<View> = async ({
   const isNowDefault = data.isDefault ?? false;
 
   if (isNowDefault && !wasDefault) {
-    // On update, exclude the current document; on create, update all defaults
-    const idFilter = operation === "update" && originalDoc?.id ? { not_equals: originalDoc.id } : undefined;
+    // Determine the site ID for scoping
+    const siteId = typeof data.site === "number" ? data.site : (data.site as { id: number } | undefined)?.id;
 
-    // Unset isDefault on all other views (overrideAccess to clear across all users)
-    await req.payload.update({
-      collection: "views",
-      where: { isDefault: { equals: true }, ...(idFilter && { id: idFilter }) },
-      data: { isDefault: false },
-      depth: 0,
-      overrideAccess: true,
-      context: {
-        skipEnforceSingleDefault: true, // Prevent recursion
-      },
-    });
+    if (siteId != null) {
+      // On update, exclude the current document; on create, update all defaults
+      const idFilter = operation === "update" && originalDoc?.id ? { not_equals: originalDoc.id } : undefined;
+
+      // Unset isDefault on other views within the same site
+      await req.payload.update({
+        collection: "views",
+        where: { isDefault: { equals: true }, site: { equals: siteId }, ...(idFilter && { id: idFilter }) },
+        data: { isDefault: false },
+        depth: 0,
+        overrideAccess: true,
+        context: {
+          skipEnforceSingleDefault: true, // Prevent recursion
+        },
+      });
+    }
   }
 
   return data;

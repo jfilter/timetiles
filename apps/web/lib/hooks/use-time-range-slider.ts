@@ -15,6 +15,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useFilters } from "@/lib/filters";
 import type { HistogramResponse } from "@/lib/hooks/use-events-queries";
 import { useFullHistogramQuery } from "@/lib/hooks/use-events-queries";
+import { useViewScope } from "@/lib/hooks/use-view-scope";
 
 import { formatISODate, parseISODate } from "../utils/date-slider";
 
@@ -94,7 +95,8 @@ export const useTimeRangeSlider = ({
   const [isEditingDates, setIsEditingDates] = useState(false);
 
   // Fetch histogram data for full date range (no date filter applied)
-  const { data: histogramData, isLoading } = useFullHistogramQuery(filters);
+  const scope = useViewScope();
+  const { data: histogramData, isLoading } = useFullHistogramQuery(filters, scope);
 
   // Memoize histogram to prevent useMemo dependencies from changing on every render
   const histogram = useMemo(() => histogramData?.histogram ?? [], [histogramData?.histogram]);

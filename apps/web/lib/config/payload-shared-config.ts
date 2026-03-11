@@ -23,6 +23,7 @@ import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
 import ScheduledImports from "@/lib/collections/scheduled-imports/index";
+import Sites from "@/lib/collections/sites";
 import UserUsage from "@/lib/collections/user-usage";
 import Users from "@/lib/collections/users";
 import Views from "@/lib/collections/views";
@@ -73,6 +74,7 @@ export const COLLECTIONS = {
   "location-cache": LocationCache,
   "geocoding-providers": GeocodingProviders,
   pages: Pages,
+  sites: Sites,
   views: Views,
 } as const;
 
@@ -101,6 +103,7 @@ export const ALL_COLLECTIONS = [
   AuditLog,
   DataExports,
   // Configuration
+  Sites,
   Views,
 ];
 

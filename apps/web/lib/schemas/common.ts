@@ -140,4 +140,20 @@ const isValidBoundsObject = (parsed: unknown): boolean => {
  */
 export const BoundsParamSchema = z.preprocess(parseBoundsString, BoundsSchema.optional());
 
+/**
+ * Scope IDs parameter for view data scoping.
+ * Same format as DatasetsParamSchema — comma-separated string → number array.
+ */
+export const ScopeIdsParamSchema = z
+  .preprocess((val) => {
+    if (Array.isArray(val)) {
+      return val.flatMap((v) => String(v).split(",")).filter(Boolean);
+    }
+    if (typeof val === "string") {
+      return val.split(",").filter(Boolean);
+    }
+    return [];
+  }, z.array(z.coerce.number().int()))
+  .openapi({ type: "array", items: { type: "integer" } });
+
 export { z };

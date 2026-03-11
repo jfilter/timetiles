@@ -15,6 +15,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { getDatasetColors } from "@/lib/constants/dataset-colors";
+import { useViewOptional } from "@/lib/context/view-context";
 import { useFilters } from "@/lib/filters";
 import {
   type DataSourceCatalog,
@@ -36,6 +37,61 @@ const CATALOG_VISIBLE_WHEN_COLLAPSED = 4;
 
 /** Number of datasets to show before collapsing */
 const DATASET_COLLAPSE_THRESHOLD = 10;
+
+/** Count datasets per catalog */
+const countDatasetsByCatalog = (datasets: DataSourceDataset[]): Record<string, number> => {
+  const counts: Record<string, number> = {};
+  for (const dataset of datasets) {
+    if (dataset.catalogId != null) {
+      const catalogId = String(dataset.catalogId);
+      counts[catalogId] = (counts[catalogId] ?? 0) + 1;
+    }
+  }
+  return counts;
+};
+
+/** Filter and sort catalogs by event count, applying view scope if present */
+const filterAndSortCatalogs = (
+  catalogs: DataSourceCatalog[],
+  scopeCatalogIds: number[] | undefined,
+  eventCounts: Record<string, number> | undefined
+): DataSourceCatalog[] => {
+  let filtered = catalogs;
+  if (scopeCatalogIds?.length) {
+    const scopeIds = new Set(scopeCatalogIds);
+    filtered = filtered.filter((c) => scopeIds.has(c.id));
+  }
+  return [...filtered].sort((a, b) => {
+    const countA = eventCounts?.[String(a.id)] ?? 0;
+    const countB = eventCounts?.[String(b.id)] ?? 0;
+    if (countB !== countA) return countB - countA;
+    return a.name.localeCompare(b.name);
+  });
+};
+
+/** Filter and sort datasets by catalog and scope, sorted by event count */
+const filterAndSortDatasets = (
+  datasets: DataSourceDataset[],
+  catalogFilter: string | null,
+  scopeDatasetIds: number[] | undefined,
+  eventCounts: Record<string, number> | undefined
+): DataSourceDataset[] => {
+  let filtered = datasets;
+  if (scopeDatasetIds?.length) {
+    const scopeIds = new Set(scopeDatasetIds);
+    filtered = filtered.filter((d) => scopeIds.has(d.id));
+  }
+  const catalogDatasets =
+    catalogFilter == null
+      ? filtered
+      : filtered.filter((d) => d.catalogId != null && String(d.catalogId) === catalogFilter);
+  return [...catalogDatasets].sort((a, b) => {
+    const countA = eventCounts?.[String(a.id)] ?? 0;
+    const countB = eventCounts?.[String(b.id)] ?? 0;
+    if (countB !== countA) return countB - countA;
+    return a.name.localeCompare(b.name);
+  });
+};
 
 /**
  * Format large numbers compactly (e.g., 12450 -> "12.4k")
@@ -142,53 +198,67 @@ const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipPro
   );
 };
 
+/** Reusable expand/collapse toggle button */
+const ExpandCollapseButton = ({
+  isExpanded,
+  collapsedLabel,
+  onToggle,
+}: {
+  isExpanded: boolean;
+  collapsedLabel: string;
+  onToggle: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    className="text-cartographic-blue hover:text-cartographic-blue/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
+  >
+    {isExpanded ? (
+      <>
+        <ChevronUp className="h-3 w-3" />
+        Show less
+      </>
+    ) : (
+      <>
+        <ChevronDown className="h-3 w-3" />
+        {collapsedLabel}
+      </>
+    )}
+  </button>
+);
+
 export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset }: DataSourceSelectorProps) => {
   const { filters, setCatalog, setDatasets } = useFilters();
   const [catalogsExpanded, setCatalogsExpanded] = useState(false);
   const [datasetsExpanded, setDatasetsExpanded] = useState(false);
 
+  // View scope for filtering displayed catalogs/datasets
+  const viewContext = useViewOptional();
+  const scopeCatalogIds = viewContext?.dataScope.catalogIds;
+  const scopeDatasetIds = viewContext?.dataScope.datasetIds;
+
   // Fetch lightweight catalog/dataset data
   const { data: dataSources } = useDataSourcesQuery();
 
   // Sort catalogs by event count (descending), then by name
-  const sortedCatalogs = useMemo(() => {
-    const catalogs = dataSources?.catalogs ?? [];
-    return [...catalogs].sort((a, b) => {
-      const countA = eventCountsByCatalog?.[String(a.id)] ?? 0;
-      const countB = eventCountsByCatalog?.[String(b.id)] ?? 0;
-      if (countB !== countA) return countB - countA;
-      return a.name.localeCompare(b.name);
-    });
-  }, [dataSources?.catalogs, eventCountsByCatalog]);
+  // Filter by view scope if active
+  const sortedCatalogs = useMemo(
+    () => filterAndSortCatalogs(dataSources?.catalogs ?? [], scopeCatalogIds, eventCountsByCatalog),
+    [dataSources?.catalogs, eventCountsByCatalog, scopeCatalogIds]
+  );
 
   // Get datasets for selected catalog, sorted by event count
-  const filteredDatasets = useMemo(() => {
-    const datasets = dataSources?.datasets ?? [];
-    const catalogDatasets =
-      filters.catalog == null
-        ? datasets
-        : datasets.filter((d) => d.catalogId != null && String(d.catalogId) === filters.catalog);
-
-    return [...catalogDatasets].sort((a, b) => {
-      const countA = eventCountsByDataset?.[String(a.id)] ?? 0;
-      const countB = eventCountsByDataset?.[String(b.id)] ?? 0;
-      if (countB !== countA) return countB - countA;
-      return a.name.localeCompare(b.name);
-    });
-  }, [dataSources?.datasets, filters.catalog, eventCountsByDataset]);
+  // Filter by view scope if active
+  const filteredDatasets = useMemo(
+    () => filterAndSortDatasets(dataSources?.datasets ?? [], filters.catalog, scopeDatasetIds, eventCountsByDataset),
+    [dataSources?.datasets, filters.catalog, eventCountsByDataset, scopeDatasetIds]
+  );
 
   // Count datasets per catalog
-  const datasetCountByCatalog = useMemo(() => {
-    const datasets = dataSources?.datasets ?? [];
-    const counts: Record<string, number> = {};
-    for (const dataset of datasets) {
-      if (dataset.catalogId != null) {
-        const catalogId = String(dataset.catalogId);
-        counts[catalogId] = (counts[catalogId] ?? 0) + 1;
-      }
-    }
-    return counts;
-  }, [dataSources?.datasets]);
+  const datasetCountByCatalog = useMemo(
+    () => countDatasetsByCatalog(dataSources?.datasets ?? []),
+    [dataSources?.datasets]
+  );
 
   // Handle catalog selection - auto-select all datasets in that catalog
   const handleCatalogSelect = useCallback(
@@ -271,23 +341,11 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
 
         {/* Expand/collapse button for many catalogs */}
         {useCatalogCollapse && (
-          <button
-            type="button"
-            onClick={handleToggleCatalogsExpanded}
-            className="text-cartographic-blue hover:text-cartographic-blue/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
-          >
-            {catalogsExpanded ? (
-              <>
-                <ChevronUp className="h-3 w-3" />
-                Show less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-3 w-3" />
-                Show all ({hiddenCatalogCount} more)
-              </>
-            )}
-          </button>
+          <ExpandCollapseButton
+            isExpanded={catalogsExpanded}
+            collapsedLabel={`Show all (${hiddenCatalogCount} more)`}
+            onToggle={handleToggleCatalogsExpanded}
+          />
         )}
       </div>
 
@@ -330,23 +388,11 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
 
               {/* Expand/collapse button for many datasets */}
               {useDatasetCollapse && (
-                <button
-                  type="button"
-                  onClick={handleToggleDatasetsExpanded}
-                  className="text-cartographic-blue hover:text-cartographic-blue/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
-                >
-                  {datasetsExpanded ? (
-                    <>
-                      <ChevronUp className="h-3 w-3" />
-                      Show less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="h-3 w-3" />
-                      Show all datasets
-                    </>
-                  )}
-                </button>
+                <ExpandCollapseButton
+                  isExpanded={datasetsExpanded}
+                  collapsedLabel="Show all datasets"
+                  onToggle={handleToggleDatasetsExpanded}
+                />
               )}
             </>
           )}
