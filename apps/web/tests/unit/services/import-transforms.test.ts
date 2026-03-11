@@ -7,14 +7,9 @@
  */
 import { describe, expect, it } from "vitest";
 
-import {
-  applyTransforms,
-  applyTransformsBatch,
-  deleteByPath,
-  getByPath,
-  setByPath,
-} from "@/lib/services/import-transforms";
+import { applyTransforms, applyTransformsBatch } from "@/lib/services/import-transforms";
 import type { ImportTransform } from "@/lib/types/import-transforms";
+import { deleteByPath, getByPath, setByPath } from "@/lib/utils/object-path";
 
 describe("Path utilities", () => {
   describe("getByPath", () => {

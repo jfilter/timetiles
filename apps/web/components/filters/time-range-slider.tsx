@@ -12,7 +12,7 @@
 "use client";
 
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
-import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date-format";
+import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date-slider";
 
 interface TimeRangeSliderProps {
   startDate: string | null;

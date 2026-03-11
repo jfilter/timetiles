@@ -12,6 +12,15 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, MapPin } from "lucide-react";
 import { useCallback } from "react";
 
+import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
+import {
+  formatDateRange,
+  getDatasetInfo,
+  getEventData,
+  getEventTitle,
+  getLocationDisplay,
+  safeToString,
+} from "@/lib/utils/event-detail";
 import type { Event } from "@/payload-types";
 
 import { EventsListSkeleton } from "./events-list-skeleton";
@@ -28,101 +37,6 @@ interface EventsListProps {
   onEventClick?: (eventId: number) => void;
 }
 
-const safeToString = (value: unknown): string => {
-  if (value == null) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (value instanceof Date) return value.toISOString();
-  return "";
-};
-
-interface EventData {
-  title?: string;
-  name?: string;
-  description?: string;
-  startDate?: string;
-  endDate?: string;
-  city?: string;
-  country?: string;
-  [key: string]: unknown;
-}
-
-const getEventData = (event: Event): EventData => {
-  return typeof event.data === "object" && event.data != null && !Array.isArray(event.data)
-    ? (event.data as EventData)
-    : {};
-};
-
-const getDatasetInfo = (dataset: unknown): { name: string; id: number } | null => {
-  if (typeof dataset === "object" && dataset != null) {
-    const d = dataset as Record<string, unknown>;
-    // API returns 'title', Payload returns 'name'
-    let name: string | null = null;
-    if (typeof d.title === "string") {
-      name = d.title;
-    } else if (typeof d.name === "string") {
-      name = d.name;
-    }
-    const id = typeof d.id === "number" ? d.id : null;
-    if (name && id !== null) {
-      return { name, id };
-    }
-  }
-  return null;
-};
-
-const getLocationDisplay = (event: Event, eventData: EventData): string | null => {
-  // Prefer location name (venue, place name) if available
-  if (event.locationName) {
-    return event.locationName;
-  }
-  // Fall back to geocoded/normalized address
-  if (event.geocodingInfo?.normalizedAddress) {
-    return event.geocodingInfo.normalizedAddress;
-  }
-  // Final fallback to city/country from data
-  const cityCountry = [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean);
-  return cityCountry.length > 0 ? cityCountry.join(", ") : null;
-};
-
-const formatDateRange = (startDate: unknown, endDate: unknown): string => {
-  const hasStart = startDate != null && safeToString(startDate) !== "";
-  const hasEnd = endDate != null && safeToString(endDate) !== "";
-
-  if (!hasStart && !hasEnd) return "";
-
-  const parts: string[] = [];
-  if (hasStart) {
-    parts.push(new Date(safeToString(startDate)).toLocaleDateString("en-US"));
-  }
-  if (hasEnd && safeToString(startDate) !== safeToString(endDate)) {
-    parts.push(new Date(safeToString(endDate)).toLocaleDateString("en-US"));
-  }
-
-  return parts.join(" - ");
-};
-
-// Dataset badge colors - assigned by ID so first datasets get best colors
-const DATASET_BADGE_COLORS = [
-  "bg-cartographic-blue/10 text-cartographic-blue",
-  "bg-cartographic-terracotta/10 text-cartographic-terracotta",
-  "bg-cartographic-forest/10 text-cartographic-forest",
-  "bg-cartographic-teal/10 text-cartographic-teal",
-  "bg-cartographic-amber/10 text-cartographic-amber",
-  "bg-cartographic-plum/10 text-cartographic-plum",
-  "bg-cartographic-rose/10 text-cartographic-rose",
-  "bg-cartographic-olive/10 text-cartographic-olive",
-  "bg-cartographic-navy/10 text-cartographic-navy",
-  "bg-cartographic-slate/10 text-cartographic-slate",
-] as const;
-
-const getDatasetBadgeClass = (datasetId: number | null): string => {
-  // Use ID directly - dataset 1 gets color 0, dataset 2 gets color 1, etc.
-  const index = datasetId === null ? 0 : (datasetId - 1) % DATASET_BADGE_COLORS.length;
-  // Index is always valid since we use modulo with array length
-  return DATASET_BADGE_COLORS[index] ?? DATASET_BADGE_COLORS[0];
-};
-
 interface EventItemProps {
   event: Event;
   eventId: number;
@@ -131,7 +45,7 @@ interface EventItemProps {
 
 const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
   const eventData = getEventData(event);
-  const title = safeToString(eventData.title) || safeToString(eventData.name) || "Untitled Event";
+  const title = getEventTitle(eventData);
   const description = safeToString(eventData.description);
   const datasetInfo = getDatasetInfo(event.dataset);
   const locationDisplay = getLocationDisplay(event, eventData);
@@ -182,7 +96,7 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
       {description && <CardDescription className="mt-2 line-clamp-2">{description}</CardDescription>}
 
       {/* Location and Date row with icons */}
-      {(locationDisplay != null || dateRange !== "") && (
+      {(locationDisplay != null || dateRange != null) && (
         <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
           {locationDisplay && (
             <div className="flex min-w-0 items-center gap-1.5">

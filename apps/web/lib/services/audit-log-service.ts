@@ -12,6 +12,7 @@ import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { hashEmail, hashIpAddress } from "@/lib/utils/hash";
+import { getByPath } from "@/lib/utils/object-path";
 
 const logger = createLogger("audit-log-service");
 
@@ -104,16 +105,6 @@ export interface FieldAuditConfig {
   detailsFn?: (oldValue: unknown, newValue: unknown) => Record<string, unknown>;
 }
 
-/** Get a nested value from an object using a dot-separated path. */
-const getNestedValue = (obj: Record<string, unknown>, path: string): unknown => {
-  let current: unknown = obj;
-  for (const key of path.split(".")) {
-    if (current == null || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[key];
-  }
-  return current;
-};
-
 /** Simple deep equality check using JSON serialization. */
 const deepEqual = (a: unknown, b: unknown): boolean => {
   if (a === b) return true;
@@ -143,8 +134,8 @@ export const auditFieldChanges = async (
   const promises: Promise<void>[] = [];
 
   for (const field of fields) {
-    const oldValue = getNestedValue(args.previousDoc, field.fieldPath);
-    const newValue = getNestedValue(args.doc, field.fieldPath);
+    const oldValue = getByPath(args.previousDoc, field.fieldPath);
+    const newValue = getByPath(args.doc, field.fieldPath);
 
     if (!deepEqual(oldValue, newValue)) {
       const details = field.detailsFn ? field.detailsFn(oldValue, newValue) : { previousValue: oldValue, newValue };

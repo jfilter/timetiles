@@ -16,6 +16,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, ExternalLink, MapPin, X } from "lucide-react";
 import Link from "next/link";
 
+import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import { formatDate } from "@/lib/utils/date";
 import {
   formatDateRange,
@@ -51,27 +52,6 @@ interface EventDetailContentProps {
   /** Retry callback for error state */
   onRetry?: () => void;
 }
-
-// Dataset badge colors - assigned by ID so first datasets get best colors
-const DATASET_BADGE_COLORS = [
-  "bg-cartographic-blue/10 text-cartographic-blue",
-  "bg-cartographic-terracotta/10 text-cartographic-terracotta",
-  "bg-cartographic-forest/10 text-cartographic-forest",
-  "bg-cartographic-teal/10 text-cartographic-teal",
-  "bg-cartographic-amber/10 text-cartographic-amber",
-  "bg-cartographic-plum/10 text-cartographic-plum",
-  "bg-cartographic-rose/10 text-cartographic-rose",
-  "bg-cartographic-olive/10 text-cartographic-olive",
-  "bg-cartographic-navy/10 text-cartographic-navy",
-  "bg-cartographic-slate/10 text-cartographic-slate",
-] as const;
-
-const getDatasetBadgeClass = (datasetId: number | null): string => {
-  // Use ID directly - dataset 1 gets color 0, dataset 2 gets color 1, etc.
-  const index = datasetId === null ? 0 : (datasetId - 1) % DATASET_BADGE_COLORS.length;
-  // Index is always valid since we use modulo with array length
-  return DATASET_BADGE_COLORS[index] ?? DATASET_BADGE_COLORS[0];
-};
 
 export const EventDetailContent = ({
   event,

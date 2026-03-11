@@ -17,7 +17,7 @@ import { useFilters } from "@/lib/filters";
 import type { HistogramResponse } from "@/lib/hooks/use-events-queries";
 import { buildBaseEventParams } from "@/lib/utils/event-params";
 
-import { formatISODate, parseISODate } from "../utils/date-format";
+import { formatISODate, parseISODate } from "../utils/date-slider";
 
 interface UseTimeRangeSliderProps {
   startDate: string | null;

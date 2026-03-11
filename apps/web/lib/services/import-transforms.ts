@@ -24,6 +24,7 @@ import type {
   TypeCastTransform,
 } from "@/lib/types/import-transforms";
 import { isValidDate } from "@/lib/utils/date";
+import { deleteByPath, getByPath, setByPath } from "@/lib/utils/object-path";
 
 import { logger } from "../logger";
 
@@ -441,111 +442,6 @@ const runCustomTransform = (value: unknown, customCode: string): unknown => {
     return fn(value, context);
   } catch (error) {
     throw new Error(`Custom transform failed: ${error instanceof Error ? error.message : String(error)}`);
-  }
-};
-
-/**
- * Get value at path using dot notation.
- *
- * Supports nested paths like "user.email" or "coordinates.0".
- * Returns undefined if any part of the path doesn't exist.
- *
- * @param obj - The object to traverse
- * @param path - Dot-separated path string (e.g., "user.email")
- * @returns Value at the path, or undefined if not found
- *
- * @example
- * ```typescript
- * const obj = { user: { email: "test@example.com" } };
- * getByPath(obj, "user.email"); // Returns: "test@example.com"
- * getByPath(obj, "user.phone"); // Returns: undefined
- * ```
- */
-export const getByPath = (obj: unknown, path: string): unknown =>
-  path.split(".").reduce((current: unknown, key: string) => {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-    if (typeof current === "object" && key in current) {
-      return (current as Record<string, unknown>)[key];
-    }
-    return undefined;
-  }, obj);
-
-/**
- * Set value at path using dot notation.
- *
- * Creates nested objects as needed along the path.
- * Supports setting values in nested structures.
- *
- * @param obj - The object to modify (mutated in place)
- * @param path - Dot-separated path string (e.g., "user.email")
- * @param value - Value to set at the path
- *
- * @example
- * ```typescript
- * const obj = {};
- * setByPath(obj, "user.email", "test@example.com");
- * // Result: { user: { email: "test@example.com" } }
- * ```
- */
-export const setByPath = (obj: Record<string, unknown>, path: string, value: unknown): void => {
-  const keys = path.split(".");
-  const lastKey = keys.pop();
-
-  if (!lastKey) {
-    throw new Error(`Invalid path: ${path}`);
-  }
-
-  // Navigate/create nested structure
-  const target = keys.reduce((current: Record<string, unknown>, key: string) => {
-    // Create nested object if it doesn't exist
-    if (!(key in current) || typeof current[key] !== "object" || current[key] === null) {
-      current[key] = {};
-    }
-    return current[key] as Record<string, unknown>;
-  }, obj);
-
-  // Set the value at the target
-  target[lastKey] = value;
-};
-
-/**
- * Delete value at path using dot notation.
- *
- * Removes the property at the specified path.
- * Does nothing if the path doesn't exist.
- * Does not clean up empty parent objects.
- *
- * @param obj - The object to modify (mutated in place)
- * @param path - Dot-separated path string (e.g., "user.email")
- *
- * @example
- * ```typescript
- * const obj = { user: { email: "test@example.com", name: "John" } };
- * deleteByPath(obj, "user.email");
- * // Result: { user: { name: "John" } }
- * ```
- */
-export const deleteByPath = (obj: Record<string, unknown>, path: string): void => {
-  const keys = path.split(".");
-  const lastKey = keys.pop();
-
-  if (!lastKey) {
-    return;
-  }
-
-  // Navigate to parent object
-  const parent = keys.reduce((current: unknown, key: string) => {
-    if (current === null || current === undefined || typeof current !== "object") {
-      return undefined;
-    }
-    return (current as Record<string, unknown>)[key];
-  }, obj);
-
-  // Delete the property if parent exists and is an object
-  if (parent && typeof parent === "object") {
-    delete (parent as Record<string, unknown>)[lastKey];
   }
 };
 

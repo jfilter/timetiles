@@ -14,35 +14,13 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { getDatasetColors } from "@/lib/constants/dataset-colors";
 import { useFilters } from "@/lib/filters";
 import {
   type DataSourceCatalog,
   type DataSourceDataset,
   useDataSourcesQuery,
 } from "@/lib/hooks/use-data-sources-query";
-
-// Dataset badge colors - assigned by ID so first datasets get best colors (shared with events-list)
-const DATASET_BADGE_COLORS = [
-  { bg: "bg-cartographic-blue/10", text: "text-cartographic-blue", border: "border-cartographic-blue/30" },
-  {
-    bg: "bg-cartographic-terracotta/10",
-    text: "text-cartographic-terracotta",
-    border: "border-cartographic-terracotta/30",
-  },
-  { bg: "bg-cartographic-forest/10", text: "text-cartographic-forest", border: "border-cartographic-forest/30" },
-  { bg: "bg-cartographic-teal/10", text: "text-cartographic-teal", border: "border-cartographic-teal/30" },
-  { bg: "bg-cartographic-amber/10", text: "text-cartographic-amber", border: "border-cartographic-amber/30" },
-  { bg: "bg-cartographic-plum/10", text: "text-cartographic-plum", border: "border-cartographic-plum/30" },
-  { bg: "bg-cartographic-rose/10", text: "text-cartographic-rose", border: "border-cartographic-rose/30" },
-  { bg: "bg-cartographic-olive/10", text: "text-cartographic-olive", border: "border-cartographic-olive/30" },
-  { bg: "bg-cartographic-navy/10", text: "text-cartographic-navy", border: "border-cartographic-navy/30" },
-  { bg: "bg-cartographic-slate/10", text: "text-cartographic-slate", border: "border-cartographic-slate/30" },
-] as const;
-
-const getDatasetColors = (datasetId: number) => {
-  const index = (datasetId - 1) % DATASET_BADGE_COLORS.length;
-  return DATASET_BADGE_COLORS[index]!;
-};
 
 interface DataSourceSelectorProps {
   /** Event counts by catalog ID - shows total events per catalog */
