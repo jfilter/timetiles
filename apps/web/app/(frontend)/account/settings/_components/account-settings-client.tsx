@@ -26,24 +26,27 @@ interface AccountSettingsClientProps {
 
 export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState(user);
+  const [emailOverride, setEmailOverride] = useState<string | null>(null);
+  const [deletionOverride, setDeletionOverride] = useState<{
+    status: "active" | "pending_deletion";
+    scheduledAt: string | null;
+  } | null>(null);
+
+  const displayEmail = emailOverride ?? user.email;
+  const displayDeletionStatus = deletionOverride?.status ?? user.deletionStatus;
+  const displayDeletionScheduledAt = deletionOverride ? deletionOverride.scheduledAt : user.deletionScheduledAt;
 
   const handleDeletionScheduled = useCallback((deletionScheduledAt: string) => {
-    setCurrentUser((prev) => ({ ...prev, deletionStatus: "pending_deletion" as const, deletionScheduledAt }));
+    setDeletionOverride({ status: "pending_deletion", scheduledAt: deletionScheduledAt });
     setShowDeleteModal(false);
   }, []);
 
   const handleDeletionCancelled = useCallback(() => {
-    setCurrentUser((prev) => ({
-      ...prev,
-      deletionStatus: "active" as const,
-      deletionScheduledAt: null,
-      deletionRequestedAt: null,
-    }));
+    setDeletionOverride({ status: "active", scheduledAt: null });
   }, []);
 
   const handleEmailChanged = useCallback((newEmail: string) => {
-    setCurrentUser((prev) => ({ ...prev, email: newEmail }));
+    setEmailOverride(newEmail);
   }, []);
 
   const handleOpenDeleteModal = useCallback(() => {
@@ -57,11 +60,8 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
   return (
     <div className="space-y-6">
       {/* Pending Deletion Banner */}
-      {currentUser.deletionStatus === "pending_deletion" && currentUser.deletionScheduledAt && (
-        <PendingDeletionBanner
-          deletionScheduledAt={currentUser.deletionScheduledAt}
-          onCancelled={handleDeletionCancelled}
-        />
+      {displayDeletionStatus === "pending_deletion" && displayDeletionScheduledAt && (
+        <PendingDeletionBanner deletionScheduledAt={displayDeletionScheduledAt} onCancelled={handleDeletionCancelled} />
       )}
 
       {/* Profile Information */}
@@ -73,23 +73,23 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
         <CardContent className="space-y-4">
           <div>
             <span className="text-muted-foreground text-sm font-medium">Email</span>
-            <p className="text-sm">{currentUser.email}</p>
+            <p className="text-sm">{displayEmail}</p>
           </div>
-          {(currentUser.firstName ?? currentUser.lastName) && (
+          {(user.firstName ?? user.lastName) && (
             <div>
               <span className="text-muted-foreground text-sm font-medium">Name</span>
-              <p className="text-sm">{[currentUser.firstName, currentUser.lastName].filter(Boolean).join(" ")}</p>
+              <p className="text-sm">{[user.firstName, user.lastName].filter(Boolean).join(" ")}</p>
             </div>
           )}
           <div>
             <span className="text-muted-foreground text-sm font-medium">Role</span>
-            <p className="text-sm capitalize">{currentUser.role}</p>
+            <p className="text-sm capitalize">{user.role}</p>
           </div>
         </CardContent>
       </Card>
 
       {/* Change Email */}
-      <ChangeEmailForm currentEmail={currentUser.email} onEmailChanged={handleEmailChanged} />
+      <ChangeEmailForm currentEmail={displayEmail} onEmailChanged={handleEmailChanged} />
 
       {/* Change Password */}
       <ChangePasswordForm />
@@ -127,9 +127,9 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
           <Button
             variant="destructive"
             onClick={handleOpenDeleteModal}
-            disabled={currentUser.deletionStatus === "pending_deletion"}
+            disabled={displayDeletionStatus === "pending_deletion"}
           >
-            {currentUser.deletionStatus === "pending_deletion" ? "Deletion Scheduled" : "Delete Account"}
+            {displayDeletionStatus === "pending_deletion" ? "Deletion Scheduled" : "Delete Account"}
           </Button>
         </CardContent>
       </Card>

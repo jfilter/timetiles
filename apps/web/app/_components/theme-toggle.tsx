@@ -11,18 +11,13 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
-import { useTheme } from "@/lib/hooks/use-theme";
+import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 
 export const ThemeToggle = () => {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Only render theme-dependent UI after mounting to avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   const toggleTheme = useCallback(() => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");

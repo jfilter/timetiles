@@ -25,6 +25,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
+
 const newsletterCtaVariants = cva("relative overflow-hidden", {
   variants: {
     variant: {
@@ -53,8 +55,6 @@ export interface NewsletterCTAProps extends VariantProps<typeof newsletterCtaVar
   className?: string;
 }
 
-type SubmitStatus = "idle" | "loading" | "success" | "error";
-
 const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
   (
     {
@@ -69,47 +69,10 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
     },
     ref
   ) => {
-    const [email, setEmail] = React.useState("");
-    const [status, setStatus] = React.useState<SubmitStatus>("idle");
-    const [message, setMessage] = React.useState("");
-
-    const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
-
-      if (!email) return;
-
-      setStatus("loading");
-      setMessage("");
-
-      try {
-        const response = await fetch("/api/newsletter/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, ...additionalData }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          setStatus("success");
-          setMessage("Successfully subscribed! Check your email to confirm.");
-          setEmail("");
-        } else {
-          setStatus("error");
-          setMessage(data.error ?? "Subscription failed. Please try again.");
-        }
-      } catch (error) {
-        setStatus("error");
-        const errorMessage = error instanceof Error ? error.message : "Network error. Please try again.";
-        setMessage(errorMessage);
-      }
-
-      // Reset status after 8 seconds
-      setTimeout(() => {
-        setStatus("idle");
-        setMessage("");
-      }, 8000);
-    };
+    const { email, setEmail, status, message, handleSubmit } = useNewsletterSubscription({
+      resetDelay: 8000,
+      additionalData,
+    });
 
     return (
       <section ref={ref} className={cn(newsletterCtaVariants({ variant, size }), className)}>

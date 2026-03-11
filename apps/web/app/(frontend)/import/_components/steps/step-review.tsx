@@ -26,7 +26,10 @@ import {
   SparklesIcon,
   TextIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
+
+import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutations";
+import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
 import type { ScheduleConfig } from "../wizard-context";
 import { useWizard } from "../wizard-context";
@@ -70,100 +73,101 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     scheduleConfig,
   } = state;
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const configureMutation = useImportConfigureMutation();
 
-  // Local schedule config state (initialized from context or defaults)
-  const [localScheduleConfig, setLocalScheduleConfig] = useState<ScheduleConfig>(
-    scheduleConfig ?? { ...DEFAULT_SCHEDULE_CONFIG, name: file?.name?.replace(/\.[^/.]+$/, "") ?? "" }
+  const defaultScheduleName = file?.name ? humanizeFileName(file.name) : "";
+
+  const getActiveScheduleConfig = useCallback(
+    (): ScheduleConfig => scheduleConfig ?? { ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName },
+    [scheduleConfig, defaultScheduleName]
   );
 
-  // Sync local state back to context
-  useEffect(() => {
-    if (sourceUrl) {
-      setScheduleConfig(localScheduleConfig.enabled ? localScheduleConfig : null);
-    }
-  }, [localScheduleConfig, sourceUrl, setScheduleConfig]);
+  const activeScheduleConfig = getActiveScheduleConfig();
 
-  // Handler for toggle button click
+  const updateScheduleField = useCallback(
+    (updates: Partial<ScheduleConfig>) => {
+      setScheduleConfig({ ...getActiveScheduleConfig(), ...updates });
+    },
+    [getActiveScheduleConfig, setScheduleConfig]
+  );
+
   const handleToggleScheduleEnabled = useCallback(() => {
-    setLocalScheduleConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
-  }, []);
+    if (scheduleConfig?.enabled) {
+      setScheduleConfig(null);
+    } else {
+      setScheduleConfig({ ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName, enabled: true });
+    }
+  }, [scheduleConfig?.enabled, defaultScheduleName, setScheduleConfig]);
 
-  // Handler for schedule name change
-  const handleScheduleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalScheduleConfig((prev) => ({ ...prev, name: e.target.value }));
-  }, []);
+  const handleScheduleNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      updateScheduleField({ name: e.target.value });
+    },
+    [updateScheduleField]
+  );
 
-  // Handler for schedule type change
-  const handleScheduleTypeChange = useCallback((value: string) => {
-    setLocalScheduleConfig((prev) => ({ ...prev, scheduleType: value as "frequency" | "cron" }));
-  }, []);
+  const handleScheduleTypeChange = useCallback(
+    (value: string) => {
+      updateScheduleField({ scheduleType: value as "frequency" | "cron" });
+    },
+    [updateScheduleField]
+  );
 
-  // Handler for frequency change
-  const handleFrequencyChange = useCallback((value: string) => {
-    setLocalScheduleConfig((prev) => ({ ...prev, frequency: value as "hourly" | "daily" | "weekly" | "monthly" }));
-  }, []);
+  const handleFrequencyChange = useCallback(
+    (value: string) => {
+      updateScheduleField({ frequency: value as "hourly" | "daily" | "weekly" | "monthly" });
+    },
+    [updateScheduleField]
+  );
 
-  // Handler for cron expression change
-  const handleCronExpressionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalScheduleConfig((prev) => ({ ...prev, cronExpression: e.target.value }));
-  }, []);
+  const handleCronExpressionChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      updateScheduleField({ cronExpression: e.target.value });
+    },
+    [updateScheduleField]
+  );
 
-  // Handler for schema mode change
-  const handleSchemaModeChange = useCallback((value: string) => {
-    setLocalScheduleConfig((prev) => ({ ...prev, schemaMode: value as "strict" | "additive" | "flexible" }));
-  }, []);
+  const handleSchemaModeChange = useCallback(
+    (value: string) => {
+      updateScheduleField({ schemaMode: value as "strict" | "additive" | "flexible" });
+    },
+    [updateScheduleField]
+  );
 
-  // Handle the import start - called from navigation
   const handleStartImport = useCallback(async () => {
-    setIsSubmitting(true);
     setError(null);
 
     try {
-      // Build request body
-      const requestBody: Record<string, unknown> = {
-        previewId: state.previewId,
+      const createSchedule =
+        sourceUrl && activeScheduleConfig.enabled
+          ? {
+              enabled: true as const,
+              sourceUrl,
+              name: activeScheduleConfig.name,
+              scheduleType: activeScheduleConfig.scheduleType,
+              frequency: activeScheduleConfig.scheduleType === "frequency" ? activeScheduleConfig.frequency : undefined,
+              cronExpression:
+                activeScheduleConfig.scheduleType === "cron" ? activeScheduleConfig.cronExpression : undefined,
+              schemaMode: activeScheduleConfig.schemaMode,
+              authConfig: authConfig ?? undefined,
+            }
+          : undefined;
+
+      const data = await configureMutation.mutateAsync({
+        previewId: state.previewId ?? "",
         catalogId: selectedCatalogId,
         newCatalogName: selectedCatalogId === "new" ? newCatalogName : undefined,
         sheetMappings,
         fieldMappings,
         deduplicationStrategy,
         geocodingEnabled,
-      };
-
-      // Add schedule creation config if enabled
-      if (sourceUrl && localScheduleConfig.enabled) {
-        requestBody.createSchedule = {
-          enabled: true,
-          sourceUrl,
-          name: localScheduleConfig.name,
-          scheduleType: localScheduleConfig.scheduleType,
-          frequency: localScheduleConfig.scheduleType === "frequency" ? localScheduleConfig.frequency : undefined,
-          cronExpression: localScheduleConfig.scheduleType === "cron" ? localScheduleConfig.cronExpression : undefined,
-          schemaMode: localScheduleConfig.schemaMode,
-          authConfig: authConfig ?? undefined,
-        };
-      }
-
-      const response = await fetch("/api/import/configure", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(requestBody),
+        createSchedule,
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Failed to start import");
-      }
-
-      const data = await response.json();
       startProcessing(data.importFileId, data.scheduledImportId);
       nextStep();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start import");
-    } finally {
-      setIsSubmitting(false);
     }
   }, [
     state.previewId,
@@ -175,7 +179,8 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     geocodingEnabled,
     sourceUrl,
     authConfig,
-    localScheduleConfig,
+    activeScheduleConfig,
+    configureMutation,
     startProcessing,
     nextStep,
     setError,
@@ -183,9 +188,13 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   // Configure navigation for this step
   useEffect(() => {
-    setNavigationConfig({ onNext: handleStartImport, nextLabel: "Start Import", isLoading: isSubmitting });
+    setNavigationConfig({
+      onNext: handleStartImport,
+      nextLabel: "Start Import",
+      isLoading: configureMutation.isPending,
+    });
     return () => setNavigationConfig({});
-  }, [setNavigationConfig, handleStartImport, isSubmitting]);
+  }, [setNavigationConfig, handleStartImport, configureMutation.isPending]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -428,15 +437,15 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
             </div>
             <Button
               type="button"
-              variant={localScheduleConfig.enabled ? "default" : "outline"}
+              variant={activeScheduleConfig.enabled ? "default" : "outline"}
               size="sm"
               onClick={handleToggleScheduleEnabled}
               aria-label="Enable scheduled import"
             >
-              {localScheduleConfig.enabled ? "Enabled" : "Disabled"}
+              {activeScheduleConfig.enabled ? "Enabled" : "Disabled"}
             </Button>
           </div>
-          {localScheduleConfig.enabled && (
+          {activeScheduleConfig.enabled && (
             <CardContent className="space-y-6 p-6">
               {/* Source URL display */}
               <div className="flex items-start gap-3">
@@ -453,7 +462,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                 <Input
                   id="schedule-name"
                   placeholder="My scheduled import"
-                  value={localScheduleConfig.name}
+                  value={activeScheduleConfig.name}
                   onChange={handleScheduleNameChange}
                 />
               </div>
@@ -462,7 +471,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="schedule-type">Schedule Type</Label>
-                  <Select value={localScheduleConfig.scheduleType} onValueChange={handleScheduleTypeChange}>
+                  <Select value={activeScheduleConfig.scheduleType} onValueChange={handleScheduleTypeChange}>
                     <SelectTrigger id="schedule-type">
                       <SelectValue />
                     </SelectTrigger>
@@ -472,10 +481,10 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     </SelectContent>
                   </Select>
                 </div>
-                {localScheduleConfig.scheduleType === "frequency" ? (
+                {activeScheduleConfig.scheduleType === "frequency" ? (
                   <div className="space-y-2">
                     <Label htmlFor="frequency">Frequency</Label>
-                    <Select value={localScheduleConfig.frequency} onValueChange={handleFrequencyChange}>
+                    <Select value={activeScheduleConfig.frequency} onValueChange={handleFrequencyChange}>
                       <SelectTrigger id="frequency">
                         <SelectValue />
                       </SelectTrigger>
@@ -493,7 +502,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     <Input
                       id="cron-expression"
                       placeholder="0 0 * * *"
-                      value={localScheduleConfig.cronExpression}
+                      value={activeScheduleConfig.cronExpression}
                       onChange={handleCronExpressionChange}
                     />
                   </div>
@@ -503,7 +512,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               {/* Schema mode */}
               <div className="space-y-2">
                 <Label htmlFor="schema-mode">Schema Change Handling</Label>
-                <Select value={localScheduleConfig.schemaMode} onValueChange={handleSchemaModeChange}>
+                <Select value={activeScheduleConfig.schemaMode} onValueChange={handleSchemaModeChange}>
                   <SelectTrigger id="schema-mode">
                     <SelectValue />
                   </SelectTrigger>

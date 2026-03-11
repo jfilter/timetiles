@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/lib/hooks/use-import-wizard-mutations";
+
 import type { UrlAuthConfig } from "../wizard-context";
 import { useWizard } from "../wizard-context";
 
@@ -57,14 +59,15 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   // Input mode - file upload or URL
   const [inputMode, setInputMode] = useState<InputMode>(sourceUrl ? "url" : "file");
 
+  const uploadMutation = usePreviewSchemaUploadMutation();
+  const urlMutation = usePreviewSchemaUrlMutation();
+
   // File upload state
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // URL input state
   const [urlInput, setUrlInput] = useState(sourceUrl ?? "");
-  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
   const [showAuthConfig, setShowAuthConfig] = useState(false);
   const [authConfig, setAuthConfig] = useState<UrlAuthConfig>({
     type: "none",
@@ -140,26 +143,13 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   };
 
   const processFile = async (selectedFile: File) => {
-    setIsUploading(true);
     setError(null);
 
     try {
-      // Create form data for preview API
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      const response = await fetch("/api/import/preview-schema/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Failed to process file");
-      }
-
-      const data = await response.json();
+      const data = await uploadMutation.mutateAsync(formData);
 
       setFile(
         { name: selectedFile.name, size: selectedFile.size, mimeType: selectedFile.type },
@@ -168,43 +158,24 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process file");
-    } finally {
-      setIsUploading(false);
     }
   };
 
-  // Process URL to fetch and preview schema
   const processUrl = async () => {
     if (!urlInput.trim()) {
       setError("Please enter a URL");
       return;
     }
 
-    setIsLoadingUrl(true);
     setError(null);
 
     try {
-      // Build auth config payload - only include fields relevant to auth type
       const authPayload = authConfig.type === "none" ? undefined : authConfig;
 
-      const response = await fetch("/api/import/preview-schema/url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl: urlInput.trim(), authConfig: authPayload }),
-        credentials: "include",
-      });
+      const data = await urlMutation.mutateAsync({ sourceUrl: urlInput.trim(), authConfig: authPayload });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Failed to fetch URL");
-      }
-
-      const data = await response.json();
-
-      // Store the source URL and auth config in wizard state
       setSourceUrl(urlInput.trim(), authConfig.type === "none" ? null : authConfig);
 
-      // Set file info from URL response
       setFile(
         {
           name: data.fileName ?? new URL(urlInput).pathname.split("/").pop() ?? "url-import",
@@ -217,8 +188,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch URL");
-    } finally {
-      setIsLoadingUrl(false);
     }
   };
 
@@ -240,14 +209,14 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       className={cn(
         "rounded-lg border-2 border-dashed p-12 text-center transition-colors",
         isDragging ? "border-primary bg-primary/5" : "border-border",
-        isUploading && "pointer-events-none opacity-50"
+        uploadMutation.isPending && "pointer-events-none opacity-50"
       )}
       role="presentation"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {isUploading ? (
+      {uploadMutation.isPending ? (
         <div className="flex flex-col items-center">
           <Loader2Icon className="text-primary h-12 w-12 animate-spin" />
           <p className="text-muted-foreground mt-4">Processing file...</p>
@@ -356,11 +325,11 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
             placeholder="https://example.com/data.csv"
             value={urlInput}
             onChange={handleUrlInputChange}
-            disabled={isLoadingUrl}
+            disabled={urlMutation.isPending}
             className="flex-1"
           />
-          <Button type="button" onClick={handleFetchClick} disabled={isLoadingUrl || !urlInput.trim()}>
-            {isLoadingUrl ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Fetch"}
+          <Button type="button" onClick={handleFetchClick} disabled={urlMutation.isPending || !urlInput.trim()}>
+            {urlMutation.isPending ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Fetch"}
           </Button>
         </div>
         <p className="text-muted-foreground text-sm">

@@ -23,6 +23,8 @@
 import { cn } from "@timetiles/ui/lib/utils";
 import * as React from "react";
 
+import { useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
+
 export interface NewsletterFormProps {
   /** Optional headline text */
   headline?: string;
@@ -36,8 +38,6 @@ export interface NewsletterFormProps {
   className?: string;
 }
 
-type SubmitStatus = "idle" | "loading" | "success" | "error";
-
 const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
   (
     {
@@ -49,47 +49,10 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
     },
     ref
   ) => {
-    const [email, setEmail] = React.useState("");
-    const [status, setStatus] = React.useState<SubmitStatus>("idle");
-    const [message, setMessage] = React.useState("");
-
-    const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
-
-      if (!email) return;
-
-      setStatus("loading");
-      setMessage("");
-
-      try {
-        const response = await fetch("/api/newsletter/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, ...additionalData }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          setStatus("success");
-          setMessage("Successfully subscribed!");
-          setEmail("");
-        } else {
-          setStatus("error");
-          setMessage(data.error ?? "Subscription failed. Please try again.");
-        }
-      } catch (error) {
-        setStatus("error");
-        const errorMessage = error instanceof Error ? error.message : "Network error. Please try again.";
-        setMessage(errorMessage);
-      }
-
-      // Reset status after 5 seconds
-      setTimeout(() => {
-        setStatus("idle");
-        setMessage("");
-      }, 5000);
-    };
+    const { email, setEmail, status, message, handleSubmit } = useNewsletterSubscription({
+      resetDelay: 5000,
+      additionalData,
+    });
 
     return (
       <div

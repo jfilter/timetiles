@@ -12,6 +12,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
 
+import { humanizeFileName } from "@/lib/utils/humanize-file-name";
+
 // Constants
 const STORAGE_KEY = "timetiles_import_wizard_draft";
 const STORAGE_EXPIRY_HOURS = 24;
@@ -234,12 +236,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         // For single-sheet files (like CSV), use the file name instead of "Sheet1"
         const getDatasetName = (sheet: SheetInfo) => {
           if (action.sheets.length === 1 && action.file?.name) {
-            // Use file name without extension
-            return action.file.name
-              .replace(/\.[^/.]+$/, "")
-              .replaceAll(/[-_]+/g, " ")
-              .replaceAll(/\s+/g, " ")
-              .trim();
+            return humanizeFileName(action.file.name);
           }
           return sheet.name;
         };

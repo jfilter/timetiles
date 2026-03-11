@@ -14,6 +14,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { humanizeFileName } from "@/lib/utils/humanize-file-name";
+
 import { useWizard } from "../wizard-context";
 
 export interface StepDatasetSelectionProps {
@@ -109,12 +111,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   // Derive a clean catalog name from the uploaded file name
   const suggestedCatalogName = useMemo(() => {
     if (!state.file?.name) return "";
-    // Remove file extension and clean up the name
-    return state.file.name
-      .replace(/\.[^/.]+$/, "") // Remove extension
-      .replaceAll(/[-_]+/g, " ") // Replace dashes/underscores with spaces
-      .replaceAll(/\s+/g, " ") // Collapse multiple spaces
-      .trim();
+    return humanizeFileName(state.file.name);
   }, [state.file?.name]);
 
   // Fetch user's catalogs on mount
