@@ -139,7 +139,7 @@ const runLintCheck = (): CheckResults["lint"] => {
   const resultsPath = path.join(historyDir, `${ts}.json`);
 
   try {
-    // Run ESLint with JSON output
+    // Run ESLint with JSON output (resultsPath is derived from a timestamp, not user input)
     execSync(
       `pnpm exec eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --format json --output-file ${resultsPath}`,
       { stdio: "pipe" }

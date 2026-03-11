@@ -16,12 +16,12 @@ TimeTiles uses a **layered security model** with cookie-based authentication, tw
 
 Payload CMS provides built-in cookie-based authentication. JWTs are stored in HTTP-only cookies, never exposed as bearer tokens in responses.
 
-| Feature            | Behavior                                                | Reference                               |
-| ------------------ | ------------------------------------------------------- | --------------------------------------- |
-| Login              | Cookie-based session via Payload auth                   | `lib/collections/users.ts` `auth` block |
-| Email verification | Required; tokens do not expire (Payload v3 limitation)  | `auth.verify` config                    |
-| Password reset     | Email link; 1-hour token expiry (Payload default)       | `auth.forgotPassword` config            |
-| Self-registration  | Open; constrained by `beforeChange` hook (see below)    | `access.create`                         |
+| Feature            | Behavior                                               | Reference                               |
+| ------------------ | ------------------------------------------------------ | --------------------------------------- |
+| Login              | Cookie-based session via Payload auth                  | `lib/collections/users.ts` `auth` block |
+| Email verification | Required; tokens do not expire (Payload v3 limitation) | `auth.verify` config                    |
+| Password reset     | Email link; 1-hour token expiry (Payload default)      | `auth.forgotPassword` config            |
+| Self-registration  | Open; constrained by `beforeChange` hook (see below)   | `access.create`                         |
 
 ## Authorization: Two Orthogonal Axes
 

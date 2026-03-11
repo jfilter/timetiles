@@ -95,7 +95,7 @@ const mockUser = {
 };
 
 /** Default params context for routes without dynamic segments. */
-const defaultParams = { params: Promise.resolve({}) };
+const defaultParams = { params: {} as unknown as Promise<Record<string, never>> };
 
 /**
  * Create a NextRequest-like object for apiRoute handler tests.

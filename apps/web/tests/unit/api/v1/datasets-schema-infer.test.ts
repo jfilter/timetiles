@@ -33,7 +33,7 @@ import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 const createRequest = (user: unknown) =>
   ({ user, json: vi.fn().mockResolvedValue({}) }) as unknown as AuthenticatedRequest;
 
-const createContext = (id: string) => ({ params: Promise.resolve({ id }) });
+const createContext = (id: string) => ({ params: { id } as unknown as Promise<{ id: string }> });
 
 describe.sequential("POST /api/v1/datasets/[id]/schema/infer", () => {
   beforeEach(() => {

@@ -35,7 +35,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
     const request = new NextRequest(`http://localhost:3000/api/webhooks/trigger/${token}`, { method });
 
     if (method === "POST") {
-      return POST(request, { params: Promise.resolve({ token }) });
+      return POST(request, { params: { token } as unknown as Promise<{ token: string }> });
     } else {
       return GET();
     }
