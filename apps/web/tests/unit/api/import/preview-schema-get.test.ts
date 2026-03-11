@@ -212,7 +212,7 @@ describe.sequential("GET /api/import/preview-schema", () => {
 
     it("should return multiple sheets for an Excel file", async () => {
       mocks.mockExistsSync.mockReturnValue(true);
-      mocks.mockReadFileSync.mockImplementation((filePath: string) => {
+      mocks.mockReadFileSync.mockImplementation((filePath: string): string => {
         if (String(filePath).endsWith(".meta.json")) {
           return mockMetadata({
             filePath: `/tmp/timetiles-wizard-preview/${VALID_UUID}.xlsx`,
@@ -220,7 +220,8 @@ describe.sequential("GET /api/import/preview-schema", () => {
             mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           });
         }
-        return Buffer.from("excel-content");
+        // xlsx.read() accepts string input — returns binary content as string for test
+        return "excel-content";
       });
 
       mocks.mockXlsxRead.mockReturnValue({ SheetNames: ["Events", "Venues"], Sheets: { Events: {}, Venues: {} } });
