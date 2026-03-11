@@ -298,10 +298,12 @@ function getEmojiByType(type: string): string {
 }
 
 // Run the script
-loadEnvFile();
-try {
+async function main(): Promise<void> {
+  loadEnvFile();
   await checkLatestCommitAnalyzed();
-} catch (error) {
+}
+
+main().catch((error) => {
   console.error("Fatal error:", error);
   process.exit(1);
-}
+});
