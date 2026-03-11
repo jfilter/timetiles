@@ -11,16 +11,15 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import type { SimpleBounds } from "@/lib/hooks/use-events-queries";
-import { normalizeStrictIntegerList, parseStrictInteger } from "@/lib/utils/event-params";
 
 /**
  * Filter parameters for event aggregation.
  */
 export interface AggregationFilters {
   /** Catalog ID to filter by (with access control) */
-  catalog?: string | null;
-  /** Dataset IDs to filter by (comma-separated) */
-  datasets?: string[] | null;
+  catalog?: number;
+  /** Dataset IDs to filter by */
+  datasets?: number[];
   /** Start date for event timestamp filter (inclusive) */
   startDate?: string | null;
   /** End date for event timestamp filter (inclusive to end of day) */
@@ -71,13 +70,12 @@ export const buildAggregationWhereClause = (
 
   // 1. Access Control (ALWAYS REQUIRED)
   // Never allow queries without access control filtering
-  if (filters.catalog != null && filters.catalog !== "") {
-    const catalogId = parseStrictInteger(filters.catalog);
+  if (filters.catalog != null) {
     // Only apply catalog filter if user has access to it
-    if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
-      clauses.push(sql`d.catalog_id = ${catalogId}`);
+    if (accessibleCatalogIds.includes(filters.catalog)) {
+      clauses.push(sql`d.catalog_id = ${filters.catalog}`);
     } else {
-      // A requested but inaccessible/invalid catalog should not broaden results.
+      // A requested but inaccessible catalog should not broaden results.
       clauses.push(sql`FALSE`);
     }
   } else {
@@ -97,17 +95,12 @@ export const buildAggregationWhereClause = (
 
   // 2. Dataset Filter (OPTIONAL)
   if (filters.datasets && filters.datasets.length > 0) {
-    const datasetIds = normalizeStrictIntegerList(filters.datasets);
-    if (datasetIds.length > 0) {
-      clauses.push(
-        sql`e.dataset_id IN (${sql.join(
-          datasetIds.map((id) => sql`${id}`),
-          sql`, `
-        )})`
-      );
-    } else {
-      clauses.push(sql`FALSE`);
-    }
+    clauses.push(
+      sql`e.dataset_id IN (${sql.join(
+        filters.datasets.map((id) => sql`${id}`),
+        sql`, `
+      )})`
+    );
   }
 
   // 3. Start Date Filter (OPTIONAL)

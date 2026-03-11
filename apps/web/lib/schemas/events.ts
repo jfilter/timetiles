@@ -9,7 +9,6 @@
  */
 import {
   BoundsParamSchema,
-  BoundsSchema,
   CatalogParamSchema,
   DatasetsParamSchema,
   DateParamSchema,
@@ -164,34 +163,6 @@ export type HistogramResponse = z.infer<typeof HistogramResponseSchema>;
  * Query parameters for GET /api/events/map-clusters
  */
 export const MapClustersQuerySchema = EventFiltersSchema.extend({
-  bounds: z.preprocess((val) => {
-    if (typeof val !== "string" || !val) return undefined;
-    try {
-      const parsed = JSON.parse(val) as Record<string, unknown>;
-      if (
-        typeof parsed === "object" &&
-        parsed != null &&
-        typeof parsed.north === "number" &&
-        typeof parsed.south === "number" &&
-        typeof parsed.east === "number" &&
-        typeof parsed.west === "number" &&
-        parsed.north > parsed.south &&
-        parsed.north <= 90 &&
-        parsed.south >= -90 &&
-        parsed.east <= 180 &&
-        parsed.west >= -180 &&
-        Number.isFinite(parsed.north) &&
-        Number.isFinite(parsed.south) &&
-        Number.isFinite(parsed.east) &&
-        Number.isFinite(parsed.west)
-      ) {
-        return parsed;
-      }
-      return undefined;
-    } catch {
-      return undefined;
-    }
-  }, BoundsSchema.describe("Required geographic bounding box")),
   zoom: z.coerce.number().int().min(0).max(28).default(10),
 }).openapi("MapClustersQuery");
 

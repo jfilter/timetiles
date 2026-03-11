@@ -19,22 +19,9 @@ import type { Payload } from "payload";
 
 import { apiRoute, ValidationError } from "@/lib/api";
 import type { MapBounds } from "@/lib/geospatial";
-import type { MapClustersQuery } from "@/lib/schemas/events";
 import { MapClustersQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
-import type { BaseEventParameters } from "@/lib/utils/event-params";
-
-/**
- * Convert Zod-parsed query parameters to BaseEventParameters for buildEventFilters.
- */
-const toBaseEventParameters = (query: MapClustersQuery): BaseEventParameters => ({
-  catalog: query.catalog != null ? String(query.catalog) : null,
-  datasets: query.datasets != null ? query.datasets.map(String) : [],
-  startDate: query.startDate ?? null,
-  endDate: query.endDate ?? null,
-  fieldFilters: query.ff,
-});
 
 export const GET = apiRoute({
   auth: "optional",
@@ -46,17 +33,16 @@ export const GET = apiRoute({
     }
 
     const bounds: MapBounds = query.bounds;
-    const parameters = toBaseEventParameters(query);
 
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
     // If no accessible catalogs and no catalog filter specified, return empty result
-    if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
+    if (accessibleCatalogIds.length === 0 && query.catalog == null) {
       return Response.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
     }
 
-    const filters = buildEventFilters({ parameters, accessibleCatalogIds, requireLocation: true });
+    const filters = buildEventFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyAccess === true || filters.denyResults === true) {

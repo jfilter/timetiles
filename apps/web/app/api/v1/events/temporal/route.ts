@@ -20,42 +20,26 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
-import type { MapBounds } from "@/lib/geospatial";
 import type { HistogramQuery } from "@/lib/schemas/events";
 import { HistogramQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
-import type { BaseEventParameters } from "@/lib/utils/event-params";
-
-/**
- * Convert Zod-parsed query parameters to BaseEventParameters for buildEventFilters.
- */
-const toBaseEventParameters = (query: HistogramQuery): BaseEventParameters => ({
-  catalog: query.catalog != null ? String(query.catalog) : null,
-  datasets: query.datasets != null ? query.datasets.map(String) : [],
-  startDate: query.startDate ?? null,
-  endDate: query.endDate ?? null,
-  fieldFilters: query.ff,
-});
 
 export const GET = apiRoute({
   auth: "optional",
   query: HistogramQuerySchema,
   handler: async ({ query, user, payload }) => {
-    const bounds: MapBounds | null = query.bounds ?? null;
-    const parameters = toBaseEventParameters(query);
-
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
-    const filters = buildEventFilters({ parameters, accessibleCatalogIds, bounds });
+    const filters = buildEventFilters({ parameters: query, accessibleCatalogIds });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyAccess === true || filters.denyResults === true) {
       return Response.json(buildEmptyHistogramResponse());
     }
 
-    const histogramResult = await executeHistogramQuery(payload, query, filters, bounds, accessibleCatalogIds);
+    const histogramResult = await executeHistogramQuery(payload, query, filters, accessibleCatalogIds);
     const response = buildHistogramResponse(histogramResult.rows);
 
     return Response.json(response);
@@ -66,12 +50,10 @@ const executeHistogramQuery = async (
   payload: Payload,
   query: HistogramQuery,
   _filters: EventFilters,
-  bounds: MapBounds | null,
   accessibleCatalogIds: number[]
 ) => {
   // Rebuild filters for the SQL function (needs fresh conversion)
-  const parameters = toBaseEventParameters(query);
-  const filters = buildEventFilters({ parameters, accessibleCatalogIds, bounds });
+  const filters = buildEventFilters({ parameters: query, accessibleCatalogIds });
 
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM calculate_event_histogram(

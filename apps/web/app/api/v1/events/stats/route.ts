@@ -61,26 +61,21 @@ export const GET = apiRoute({
   handler: async ({ query, user, payload }) => {
     const { groupBy } = query;
 
-    const catalog = query.catalog != null ? String(query.catalog) : null;
-    const datasets = query.datasets != null ? query.datasets.map(String) : [];
-    const startDate = query.startDate ?? null;
-    const endDate = normalizeEndDate(query.endDate ?? null);
-
     // Get accessible catalog IDs for access control
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user ?? null);
 
     // If no accessible catalogs, return empty result
-    if (accessibleCatalogIds.length === 0 && !catalog) {
+    if (accessibleCatalogIds.length === 0 && query.catalog == null) {
       logger.info("No accessible catalogs for user", { user: user?.email ?? "anonymous" });
       return Response.json({ items: [], total: 0, groupedBy: groupBy });
     }
 
-    // Build filters object
+    // Build filters object directly from Zod-validated query
     const filters: AggregationFilters = {
-      catalog,
-      datasets,
-      startDate,
-      endDate,
+      catalog: query.catalog,
+      datasets: query.datasets,
+      startDate: query.startDate ?? null,
+      endDate: normalizeEndDate(query.endDate ?? null),
       bounds: query.bounds ?? null,
       fieldFilters: Object.keys(query.ff).length > 0 ? query.ff : null,
     };
@@ -162,8 +157,7 @@ const executeAggregationQuery = async (
   // If datasets are explicitly filtered, ensure all selected datasets appear in results
   // (even with 0 count if they have no events in viewport)
   if (groupBy === "dataset" && filters.datasets && filters.datasets.length > 0) {
-    // datasets are already string[] from the conversion above
-    const selectedDatasetIds = filters.datasets.map(Number).filter((id) => !Number.isNaN(id));
+    const selectedDatasetIds = filters.datasets;
 
     // Fetch dataset names for any missing datasets
     const missingDatasetIds = selectedDatasetIds.filter((id) => !resultMap.has(id));

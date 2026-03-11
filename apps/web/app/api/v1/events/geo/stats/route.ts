@@ -19,11 +19,9 @@ import type { Payload } from "payload";
 import { apiRoute } from "@/lib/api";
 import { DEFAULT_CLUSTER_STATS } from "@/lib/constants/map";
 import { logger } from "@/lib/logger";
-import type { ClusterStatsQuery } from "@/lib/schemas/events";
 import { ClusterStatsQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
-import type { BaseEventParameters } from "@/lib/utils/event-params";
 import {
   buildCatalogSqlCondition,
   buildDatasetSqlCondition,
@@ -31,32 +29,19 @@ import {
   buildFieldFilterSqlConditions,
 } from "@/lib/utils/event-sql-filters";
 
-/**
- * Convert Zod-parsed query parameters to BaseEventParameters for buildEventFilters.
- */
-const toBaseEventParameters = (query: ClusterStatsQuery): BaseEventParameters => ({
-  catalog: query.catalog != null ? String(query.catalog) : null,
-  datasets: query.datasets != null ? query.datasets.map(String) : [],
-  startDate: query.startDate ?? null,
-  endDate: query.endDate ?? null,
-  fieldFilters: query.ff,
-});
-
 export const GET = apiRoute({
   auth: "optional",
   query: ClusterStatsQuerySchema,
   handler: async ({ query, user, payload }) => {
-    const parameters = toBaseEventParameters(query);
-
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
     // If no accessible catalogs and no catalog filter specified, return empty result
-    if (accessibleCatalogIds.length === 0 && !parameters.catalog) {
+    if (accessibleCatalogIds.length === 0 && query.catalog == null) {
       return Response.json(DEFAULT_CLUSTER_STATS);
     }
 
-    const filters = buildEventFilters({ parameters, accessibleCatalogIds, requireLocation: true });
+    const filters = buildEventFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return default stats
     if (filters.denyAccess === true || filters.denyResults === true) {

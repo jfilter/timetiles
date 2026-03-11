@@ -10,67 +10,51 @@ import { buildEventFilters } from "@/lib/utils/event-filters";
 
 describe("event-filters", () => {
   it("normalizes date-only end dates in buildEventFilters", () => {
-    const filters = buildEventFilters({
-      parameters: { catalog: null, datasets: [], startDate: null, endDate: "2024-03-31", fieldFilters: {} },
-      accessibleCatalogIds: [1, 2],
-      bounds: null,
-    });
+    const filters = buildEventFilters({ parameters: { endDate: "2024-03-31", ff: {} }, accessibleCatalogIds: [1, 2] });
 
     expect(filters.endDate).toBe("2024-03-31T23:59:59.999Z");
   });
 
-  it("filters invalid dataset ids in buildEventFilters", () => {
-    const filters = buildEventFilters({
-      parameters: { catalog: null, datasets: ["10", "abc", "20"], startDate: null, endDate: null, fieldFilters: {} },
-      accessibleCatalogIds: [1, 2],
-      bounds: null,
-    });
+  it("passes through dataset ids directly", () => {
+    const filters = buildEventFilters({ parameters: { datasets: [10, 20], ff: {} }, accessibleCatalogIds: [1, 2] });
 
     expect(filters.datasets).toEqual([10, 20]);
   });
 
-  it("rejects partially numeric dataset ids in buildEventFilters", () => {
-    const filters = buildEventFilters({
-      parameters: { catalog: null, datasets: ["10oops"], startDate: null, endDate: null, fieldFilters: {} },
-      accessibleCatalogIds: [1, 2],
-      bounds: null,
-    });
-
-    expect(filters.denyResults).toBe(true);
-    expect(filters.datasets).toBeUndefined();
-  });
-
-  it("returns no results when all dataset ids are invalid in buildEventFilters", () => {
-    const filters = buildEventFilters({
-      parameters: { catalog: null, datasets: ["abc", "def"], startDate: null, endDate: null, fieldFilters: {} },
-      accessibleCatalogIds: [1, 2],
-      bounds: null,
-    });
-
-    expect(filters.denyResults).toBe(true);
-    expect(filters.datasets).toBeUndefined();
-  });
-
-  it("treats an empty catalog as no catalog filter", () => {
-    const filters = buildEventFilters({
-      parameters: { catalog: "", datasets: [], startDate: null, endDate: null, fieldFilters: {} },
-      accessibleCatalogIds: [1, 2],
-      bounds: null,
-    });
+  it("treats undefined catalog as no catalog filter", () => {
+    const filters = buildEventFilters({ parameters: { ff: {} }, accessibleCatalogIds: [1, 2] });
 
     expect(filters.catalogIds).toEqual([1, 2]);
     expect(filters).not.toHaveProperty("denyAccess", true);
     expect(filters.catalogId).toBeUndefined();
   });
 
-  it("rejects partially numeric catalog ids", () => {
-    const filters = buildEventFilters({
-      parameters: { catalog: "1abc", datasets: [], startDate: null, endDate: null, fieldFilters: {} },
-      accessibleCatalogIds: [1, 2],
-      bounds: null,
-    });
+  it("sets catalogId when catalog is accessible", () => {
+    const filters = buildEventFilters({ parameters: { catalog: 1, ff: {} }, accessibleCatalogIds: [1, 2] });
+
+    expect(filters.catalogId).toBe(1);
+    expect(filters.denyResults).toBeUndefined();
+  });
+
+  it("denies results when catalog is inaccessible", () => {
+    const filters = buildEventFilters({ parameters: { catalog: 999, ff: {} }, accessibleCatalogIds: [1, 2] });
 
     expect(filters.denyResults).toBe(true);
     expect(filters.catalogId).toBeUndefined();
+  });
+
+  it("reads bounds from parameters", () => {
+    const filters = buildEventFilters({
+      parameters: { bounds: { north: 37.8, south: 37.7, east: -122.4, west: -122.5 }, ff: {} },
+      accessibleCatalogIds: [1],
+    });
+
+    expect(filters.bounds).toEqual({ minLng: -122.5, maxLng: -122.4, minLat: 37.7, maxLat: 37.8 });
+  });
+
+  it("passes field filters from ff", () => {
+    const filters = buildEventFilters({ parameters: { ff: { category: ["A", "B"] } }, accessibleCatalogIds: [1] });
+
+    expect(filters.fieldFilters).toEqual({ category: ["A", "B"] });
   });
 });

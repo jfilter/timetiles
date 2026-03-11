@@ -8,10 +8,8 @@
  * @module
  * @category Utils
  */
-import type { MapBounds } from "@/lib/geospatial";
+import type { EventFilters as EventQueryParams } from "@/lib/schemas/events";
 import { normalizeEndDate } from "@/lib/services/aggregation-filters";
-
-import { type BaseEventParameters, normalizeStrictIntegerList, parseStrictInteger } from "./event-params";
 
 /**
  * Event filters for SQL/Drizzle queries.
@@ -39,20 +37,14 @@ export interface EventFilters {
   fieldFilters?: Record<string, string[]>;
 }
 
-const normalizeDatasetIds = (datasets: string[]): number[] => normalizeStrictIntegerList(datasets);
-
 /**
  * Options for building event filters.
  */
 export interface BuildFiltersOptions {
-  /** Event parameters from request */
-  parameters: BaseEventParameters;
+  /** Zod-validated query parameters */
+  parameters: EventQueryParams;
   /** Catalog IDs the user has access to */
   accessibleCatalogIds: number[];
-  /** Optional geographic bounds */
-  bounds?: MapBounds | null;
-  /** Parse dataset IDs as integers (default: true) */
-  parseDatasetIds?: boolean;
   /** Require events to have geocoded locations (default: true) */
   requireLocation?: boolean;
 }
@@ -71,8 +63,6 @@ export interface BuildFiltersOptions {
 export const buildEventFilters = ({
   parameters,
   accessibleCatalogIds,
-  bounds,
-  parseDatasetIds = true,
   requireLocation = true,
 }: BuildFiltersOptions): EventFilters => {
   const filters: EventFilters = {};
@@ -83,13 +73,11 @@ export const buildEventFilters = ({
   }
 
   // Apply catalog access control
-  if (parameters.catalog != null && parameters.catalog !== "") {
-    const catalogId = parseStrictInteger(parameters.catalog);
-    // Only include if user has access to this catalog
-    if (catalogId != null && accessibleCatalogIds.includes(catalogId)) {
-      filters.catalogId = catalogId;
+  if (parameters.catalog != null) {
+    if (accessibleCatalogIds.includes(parameters.catalog)) {
+      filters.catalogId = parameters.catalog;
     } else {
-      // Invalid or inaccessible catalog filters should not broaden results.
+      // Inaccessible catalog should not broaden results.
       filters.denyResults = true;
     }
   } else {
@@ -98,32 +86,32 @@ export const buildEventFilters = ({
   }
 
   // Apply dataset filter
-  if (parameters.datasets.length > 0 && parameters.datasets[0] !== "") {
-    const datasetIds = parseDatasetIds ? normalizeDatasetIds(parameters.datasets) : [];
-    if (datasetIds.length > 0) {
-      filters.datasets = datasetIds;
-    } else if (parseDatasetIds) {
-      filters.denyResults = true;
-    }
+  if (parameters.datasets != null && parameters.datasets.length > 0) {
+    filters.datasets = parameters.datasets;
   }
 
   // Apply date filters
   if (parameters.startDate != null) {
     filters.startDate = parameters.startDate;
   }
-  const normalizedEndDate = normalizeEndDate(parameters.endDate);
+  const normalizedEndDate = normalizeEndDate(parameters.endDate ?? null);
   if (normalizedEndDate != null) {
     filters.endDate = normalizedEndDate;
   }
 
   // Apply bounds filter
-  if (bounds != null) {
-    filters.bounds = { minLng: bounds.west, maxLng: bounds.east, minLat: bounds.south, maxLat: bounds.north };
+  if (parameters.bounds != null) {
+    filters.bounds = {
+      minLng: parameters.bounds.west,
+      maxLng: parameters.bounds.east,
+      minLat: parameters.bounds.south,
+      maxLat: parameters.bounds.north,
+    };
   }
 
   // Apply field filters for categorical filtering
-  if (parameters.fieldFilters && Object.keys(parameters.fieldFilters).length > 0) {
-    filters.fieldFilters = parameters.fieldFilters;
+  if (Object.keys(parameters.ff).length > 0) {
+    filters.fieldFilters = parameters.ff;
   }
 
   return filters;

@@ -119,10 +119,13 @@ describe("event schemas", () => {
       }
     });
 
-    it("should reject invalid bounds JSON", () => {
+    it("should treat invalid bounds JSON as undefined", () => {
       const result = MapClustersQuerySchema.safeParse({ bounds: '{"north":52}', zoom: 10 });
-      // Invalid bounds (missing south/east/west) fails at BoundsSchema level
-      expect(result.success).toBe(false);
+      // Invalid bounds silently become undefined (validated at route level)
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.bounds).toBeUndefined();
+      }
     });
   });
 
