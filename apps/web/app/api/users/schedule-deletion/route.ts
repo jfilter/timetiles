@@ -15,6 +15,7 @@ import { logger } from "@/lib/logger";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { badRequest, rateLimited } from "@/lib/utils/api-response";
 import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
 export const POST = apiRoute({
@@ -32,7 +33,7 @@ export const POST = apiRoute({
     );
 
     if (!deletionCheck.allowed) {
-      return Response.json({ error: "Too many deletion attempts. Please try again later." }, { status: 429 });
+      return rateLimited("Too many deletion attempts. Please try again later.");
     }
 
     const { password } = body;
@@ -44,7 +45,7 @@ export const POST = apiRoute({
     );
 
     if (!passwordCheck.allowed) {
-      return Response.json({ error: "Too many failed password attempts. Please try again later." }, { status: 429 });
+      return rateLimited("Too many failed password attempts. Please try again later.");
     }
 
     // Verify password
@@ -63,18 +64,12 @@ export const POST = apiRoute({
     const canDelete = await deletionService.canDeleteUser(user.id);
 
     if (!canDelete.allowed) {
-      return Response.json(
-        { error: canDelete.reason ?? "Account cannot be deleted", code: "BAD_REQUEST" },
-        { status: 400 }
-      );
+      return badRequest(canDelete.reason ?? "Account cannot be deleted");
     }
 
     // Check if already pending deletion
     if (user.deletionStatus === "pending_deletion") {
-      return Response.json(
-        { error: "Deletion already scheduled", deletionScheduledAt: user.deletionScheduledAt },
-        { status: 400 }
-      );
+      return badRequest("Deletion already scheduled");
     }
 
     // Schedule deletion

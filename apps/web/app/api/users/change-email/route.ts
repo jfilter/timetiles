@@ -18,6 +18,7 @@ import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
+import { badRequest } from "@/lib/utils/api-response";
 import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 import { safeSendEmail } from "@/lib/utils/email";
 import { hashEmail } from "@/lib/utils/hash";
@@ -91,10 +92,7 @@ export const POST = apiRoute({
 
     // Check if email is same as current
     if (newEmail === user.email.toLowerCase()) {
-      return Response.json(
-        { error: "New email must be different from current email", code: "BAD_REQUEST" },
-        { status: 400 }
-      );
+      return badRequest("New email must be different from current email");
     }
 
     // Verify password

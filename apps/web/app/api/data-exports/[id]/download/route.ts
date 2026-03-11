@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { forbidden, gone, internalError, notFound } from "@/lib/utils/api-response";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
@@ -40,13 +41,13 @@ const streamExportFile = async (
       data: { status: "expired" },
       overrideAccess: true,
     });
-    return Response.json({ error: "Export has expired. Please request a new export." }, { status: 410 });
+    return gone("Export has expired. Please request a new export.");
   }
 
   // Verify file exists
   const filePath = exportRecord.filePath;
   if (!filePath) {
-    return Response.json({ error: "Export file not found" }, { status: 404 });
+    return notFound("Export file not found");
   }
 
   let fileStats;
@@ -59,7 +60,7 @@ const streamExportFile = async (
       data: { status: "failed", errorLog: "Export file missing from disk" },
       overrideAccess: true,
     });
-    return Response.json({ error: "Export file not found on disk" }, { status: 404 });
+    return notFound("Export file not found on disk");
   }
 
   // Increment download count -- re-read to minimize race window
@@ -111,14 +112,14 @@ export const GET = apiRoute({
     });
 
     if (!exportRecord) {
-      return Response.json({ error: "Export not found" }, { status: 404 });
+      return notFound("Export not found");
     }
 
     // Verify ownership
     const ownerId = extractRelationId(exportRecord.user);
 
     if (user.id !== ownerId && user.role !== "admin") {
-      return Response.json({ error: "Access denied" }, { status: 403 });
+      return forbidden("Access denied");
     }
 
     // Check status
@@ -130,14 +131,11 @@ export const GET = apiRoute({
     }
 
     if (exportRecord.status === "failed") {
-      return Response.json(
-        { error: "Export failed", reason: exportRecord.errorLog ?? "Unknown error" },
-        { status: 500 }
-      );
+      return internalError("Export failed", "EXPORT_FAILED", { reason: exportRecord.errorLog ?? "Unknown error" });
     }
 
     if (exportRecord.status === "expired") {
-      return Response.json({ error: "Export has expired. Please request a new export." }, { status: 410 });
+      return gone("Export has expired. Please request a new export.");
     }
 
     return streamExportFile(payload, exportId, normalizedExportId, exportRecord, user.id);

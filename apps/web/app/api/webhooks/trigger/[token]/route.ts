@@ -15,6 +15,7 @@ import { apiRoute } from "@/lib/api";
 import { JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledImport } from "@/payload-types";
 
@@ -110,7 +111,7 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
       id: scheduledImport.id,
       data: { lastStatus: previousStatus },
     });
-    return Response.json({ error: "Failed to queue import job", code: "INTERNAL_ERROR" }, { status: 500 });
+    return internalError("Failed to queue import job");
   }
 
   // Update statistics (execution history is recorded by the job handler on completion)
@@ -157,7 +158,7 @@ export const POST = apiRoute({
     // to prevent token enumeration attacks
     if (scheduledImports.docs.length === 0) {
       logger.warn({ token: token.substring(0, 8) + "..." }, "Webhook trigger failed - invalid token");
-      return Response.json({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" }, { status: 401 });
+      return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
     const scheduledImport = scheduledImports.docs[0] as ScheduledImport;
@@ -167,7 +168,7 @@ export const POST = apiRoute({
         { scheduledImportId: scheduledImport.id, name: scheduledImport.name },
         "Webhook trigger failed - webhook disabled"
       );
-      return Response.json({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" }, { status: 401 });
+      return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
     // CRITICAL: Check if already running (prevents concurrent executions)
@@ -186,8 +187,4 @@ export const POST = apiRoute({
   },
 });
 
-export const GET = () =>
-  Response.json(
-    { error: "Method not allowed. Use POST to trigger imports.", code: "METHOD_NOT_ALLOWED" },
-    { status: 405 }
-  );
+export const GET = () => methodNotAllowed("Method not allowed. Use POST to trigger imports.");

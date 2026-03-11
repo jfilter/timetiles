@@ -14,6 +14,7 @@ import { z } from "zod";
 
 import { apiRoute, safeFindByID } from "@/lib/api";
 import { logError, logger } from "@/lib/logger";
+import { conflict, internalError } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";
 
 export const POST = apiRoute({
@@ -42,7 +43,7 @@ export const POST = apiRoute({
     });
 
     if (claimResult.docs.length === 0) {
-      return Response.json({ error: "Import is already running" }, { status: 409 });
+      return conflict("Import is already running");
     }
 
     try {
@@ -62,7 +63,7 @@ export const POST = apiRoute({
     } catch (error) {
       logError(error, "Error triggering scheduled import");
       logger.error({ error, scheduleId: numericId, userId: user.id }, "Error triggering scheduled import");
-      return Response.json({ error: "Internal server error" }, { status: 500 });
+      return internalError();
     }
   },
 });

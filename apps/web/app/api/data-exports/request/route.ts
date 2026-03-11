@@ -13,6 +13,7 @@ import type { Payload } from "payload";
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getDataExportService } from "@/lib/services/data-export-service";
+import { conflict } from "@/lib/utils/api-response";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 
@@ -34,15 +35,11 @@ export const POST = apiRoute({
 
     if (existingExports.docs.length > 0) {
       const existing = existingExports.docs[0];
-      return Response.json(
-        {
-          error: "Export already in progress",
-          exportId: existing?.id,
-          status: existing?.status,
-          requestedAt: existing?.requestedAt,
-        },
-        { status: 409 }
-      );
+      return conflict("Export already in progress", "EXPORT_IN_PROGRESS", {
+        exportId: existing?.id,
+        status: existing?.status,
+        requestedAt: existing?.requestedAt,
+      });
     }
 
     // Get export summary
@@ -66,7 +63,7 @@ export const POST = apiRoute({
       // Re-check for existing exports in case of race condition
       const raceCheck = await findActiveExport(payload, user.id);
       if (raceCheck.docs.length > 0) {
-        return Response.json({ error: "Export already in progress", exportId: raceCheck.docs[0]?.id }, { status: 409 });
+        return conflict("Export already in progress", "EXPORT_IN_PROGRESS", { exportId: raceCheck.docs[0]?.id });
       }
       throw createError;
     }

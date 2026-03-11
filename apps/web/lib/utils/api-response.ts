@@ -94,6 +94,37 @@ export const methodNotAllowed = (message: string, code?: string): NextResponse<E
   apiError(message, 405, code ?? "METHOD_NOT_ALLOWED");
 
 /**
+ * Create a 409 Conflict error response.
+ *
+ * @param message - Error message describing the conflict
+ * @param code - Optional error code
+ * @param details - Optional conflict context (e.g., existing resource ID)
+ * @returns NextResponse with 409 status
+ */
+export const conflict = (message: string, code?: string, details?: unknown): NextResponse<ErrorResponse> =>
+  apiError(message, 409, code ?? "CONFLICT", details);
+
+/**
+ * Create a 429 Rate Limited error response.
+ *
+ * @param message - Error message describing the rate limit
+ * @param code - Optional error code
+ * @returns NextResponse with 429 status
+ */
+export const rateLimited = (message: string = "Too many requests", code?: string): NextResponse<ErrorResponse> =>
+  apiError(message, 429, code ?? "RATE_LIMITED");
+
+/**
+ * Create a 410 Gone error response.
+ *
+ * @param message - Error message describing the expired resource
+ * @param code - Optional error code
+ * @returns NextResponse with 410 status
+ */
+export const gone = (message: string, code?: string): NextResponse<ErrorResponse> =>
+  apiError(message, 410, code ?? "GONE");
+
+/**
  * Create a 500 Internal Server Error response.
  *
  * @param message - Error message (should be generic, not expose internal details)

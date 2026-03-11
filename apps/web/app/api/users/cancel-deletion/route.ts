@@ -11,13 +11,14 @@ import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+import { badRequest } from "@/lib/utils/api-response";
 
 export const POST = apiRoute({
   auth: "required",
   handler: async ({ payload, user }) => {
     // Check if deletion is pending
     if (user.deletionStatus !== "pending_deletion") {
-      return Response.json({ error: "No pending deletion to cancel" }, { status: 400 });
+      return badRequest("No pending deletion to cancel");
     }
 
     // Cancel deletion

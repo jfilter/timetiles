@@ -15,6 +15,7 @@ import { apiRoute, safeFindByID } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
+import { badRequest } from "@/lib/utils/api-response";
 import type { ImportJob } from "@/payload-types";
 
 /**
@@ -49,7 +50,7 @@ export const POST = apiRoute({
         "Admin stage reset failed"
       );
 
-      return Response.json({ error: result.error ?? "Failed to reset import job" }, { status: 400 });
+      return badRequest(result.error ?? "Failed to reset import job");
     }
 
     logger.info(

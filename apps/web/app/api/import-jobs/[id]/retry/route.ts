@@ -18,6 +18,7 @@ import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { getQuotaService } from "@/lib/services/quota-service";
+import { badRequest, forbidden } from "@/lib/utils/api-response";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
 
@@ -33,10 +34,7 @@ export const POST = apiRoute({
 
     // Verify job is in failed state
     if (importJob.stage !== PROCESSING_STAGE.FAILED) {
-      return Response.json(
-        { error: `Import job is not in failed state. Current stage: ${importJob.stage}` },
-        { status: 400 }
-      );
+      return badRequest(`Import job is not in failed state. Current stage: ${importJob.stage}`);
     }
 
     // Atomically claim the retry by transitioning stage away from FAILED
@@ -48,7 +46,7 @@ export const POST = apiRoute({
     });
 
     if (claimResult.docs.length === 0) {
-      return Response.json({ error: "Retry already in progress for this import job" }, { status: 400 });
+      return badRequest("Retry already in progress for this import job");
     }
 
     // Get import file for quota check
@@ -64,9 +62,9 @@ export const POST = apiRoute({
       const quotaCheck = await quotaService.checkQuota(fileUser, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1);
 
       if (!quotaCheck.allowed) {
-        return Response.json(
-          { error: "Quota exceeded. Cannot retry import at this time. Please try again tomorrow." },
-          { status: 403 }
+        return forbidden(
+          "Quota exceeded. Cannot retry import at this time. Please try again tomorrow.",
+          "QUOTA_EXCEEDED"
         );
       }
     }
@@ -77,7 +75,7 @@ export const POST = apiRoute({
     if (!result.success) {
       logger.warn({ importJobId: importJob.id, userId: user.id, reason: result.error }, "Manual retry attempt failed");
 
-      return Response.json({ error: result.error ?? "Failed to retry import job" }, { status: 400 });
+      return badRequest(result.error ?? "Failed to retry import job");
     }
 
     logger.info(
