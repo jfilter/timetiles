@@ -36,6 +36,7 @@ export const buildFieldMappingOverrides = (fieldMapping: FieldMapping | undefine
   return {
     titlePath: fieldMapping.titleField,
     descriptionPath: fieldMapping.descriptionField,
+    locationNamePath: fieldMapping.locationNameField,
     timestampPath: fieldMapping.dateField,
     latitudePath: fieldMapping.latitudeField,
     longitudePath: fieldMapping.longitudeField,
