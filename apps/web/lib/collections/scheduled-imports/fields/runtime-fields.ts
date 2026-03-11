@@ -1,5 +1,9 @@
 /**
- * Execution tracking fields for scheduled imports.
+ * Runtime and operational fields for scheduled imports.
+ *
+ * Combines execution tracking (retry config, status, statistics, history)
+ * and webhook configuration that support the operational lifecycle of a
+ * scheduled import.
  *
  * @module
  * @category Collections
@@ -7,7 +11,11 @@
 
 import type { Field } from "payload";
 
-export const executionFields: Field[] = [
+// ---------------------------------------------------------------------------
+// Execution tracking fields
+// ---------------------------------------------------------------------------
+
+const executionFields: Field[] = [
   // Retry Configuration
   {
     name: "retryConfig",
@@ -182,3 +190,50 @@ export const executionFields: Field[] = [
     ],
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Webhook fields
+// ---------------------------------------------------------------------------
+
+const webhookFields: Field[] = [
+  {
+    name: "webhookEnabled",
+    type: "checkbox",
+    defaultValue: false,
+    admin: { position: "sidebar", description: "Enable webhook URL for triggering this import on-demand" },
+  },
+  {
+    name: "webhookToken",
+    type: "text",
+    maxLength: 64,
+    admin: {
+      hidden: true, // Not shown in UI, only stored in DB
+    },
+  },
+  {
+    name: "webhookUrl",
+    type: "text",
+    admin: {
+      readOnly: true,
+      description: "POST to this URL to trigger the import",
+      condition: (data) => Boolean(data?.webhookEnabled && data?.webhookToken),
+    },
+    hooks: {
+      afterRead: [
+        ({ data }) => {
+          if (data?.webhookEnabled && data?.webhookToken) {
+            const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+            return `${baseUrl}/api/webhooks/trigger/${data.webhookToken}`;
+          }
+          return null;
+        },
+      ],
+    },
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Combined export
+// ---------------------------------------------------------------------------
+
+export const runtimeFields: Field[] = [...executionFields, ...webhookFields];

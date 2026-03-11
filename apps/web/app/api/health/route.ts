@@ -22,10 +22,10 @@ const determineHealthStatus = (results: Record<string, { status: string }>) => {
   const hasWarning = Object.values(results).some((r) => r.status === "warning");
 
   if (hasError || postgisNotFound) {
-    logger.warn("Health check returning 503 due to errors", { hasError, postgisNotFound, results });
+    logger.warn({ hasError, postgisNotFound, results }, "Health check returning 503 due to errors");
     return 503;
   } else if (hasPending || hasWarning) {
-    logger.info("Health check has warnings but returning 200", { hasPending, hasWarning });
+    logger.info({ hasPending, hasWarning }, "Health check has warnings but returning 200");
     return 200;
   } else {
     logger.info("Health check passed successfully");
@@ -61,7 +61,7 @@ export const GET = apiRoute({
 
     try {
       const results = await runHealthChecks();
-      logger.debug("Health check results:", results);
+      logger.debug({ results }, "Health check results");
 
       const overallStatus = determineHealthStatus(results);
       return new Response(JSON.stringify(results), {
@@ -69,10 +69,13 @@ export const GET = apiRoute({
         headers: { "Content-Type": "application/json" },
       });
     } catch (error) {
-      logger.error("Health check failed with exception", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        "Health check failed with exception"
+      );
 
       const errorResponse = createErrorResponse(error);
       return new Response(

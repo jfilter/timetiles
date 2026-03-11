@@ -8,23 +8,29 @@
  * @module
  * @category API
  */
+import type { Payload } from "payload";
+
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getDataExportService } from "@/lib/services/data-export-service";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 
+/** Find an active (pending or processing) export for the given user. */
+const findActiveExport = (payload: Payload, userId: number) =>
+  payload.find({
+    collection: DATA_EXPORTS_COLLECTION,
+    where: { and: [{ user: { equals: userId } }, { status: { in: ["pending", "processing"] } }] },
+    limit: 1,
+    overrideAccess: true,
+  });
+
 export const POST = apiRoute({
   auth: "required",
   rateLimit: { configName: "DATA_EXPORT", keyPrefix: (u) => `data-export:${u!.id}` },
   handler: async ({ payload, user }) => {
     // Check for existing pending/processing export
-    const existingExports = await payload.find({
-      collection: DATA_EXPORTS_COLLECTION,
-      where: { and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }] },
-      limit: 1,
-      overrideAccess: true,
-    });
+    const existingExports = await findActiveExport(payload, user.id);
 
     if (existingExports.docs.length > 0) {
       const existing = existingExports.docs[0];
@@ -58,12 +64,7 @@ export const POST = apiRoute({
       });
     } catch (createError) {
       // Re-check for existing exports in case of race condition
-      const raceCheck = await payload.find({
-        collection: DATA_EXPORTS_COLLECTION,
-        where: { and: [{ user: { equals: user.id } }, { status: { in: ["pending", "processing"] } }] },
-        limit: 1,
-        overrideAccess: true,
-      });
+      const raceCheck = await findActiveExport(payload, user.id);
       if (raceCheck.docs.length > 0) {
         return Response.json({ error: "Export already in progress", exportId: raceCheck.docs[0]?.id }, { status: 409 });
       }

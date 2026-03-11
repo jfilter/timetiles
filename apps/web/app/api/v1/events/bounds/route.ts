@@ -125,10 +125,10 @@ export const GET = apiRoute({
       return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
     }
 
-    logger.debug("Computed event bounds", {
-      count: row.count,
-      bounds: { west: row.west, south: row.south, east: row.east, north: row.north },
-    });
+    logger.debug(
+      { count: row.count, bounds: { west: row.west, south: row.south, east: row.east, north: row.north } },
+      "Computed event bounds"
+    );
 
     return Response.json({
       bounds: {

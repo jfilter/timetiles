@@ -31,7 +31,7 @@ import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import { createEventData } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
-import { extractDuplicateRows } from "../utils/resource-loading";
+import { extractDuplicateRows, loadJobResources } from "../utils/resource-loading";
 import { getImportFilePath } from "../utils/upload-path";
 
 /**
@@ -288,34 +288,6 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number) 
   }
 };
 
-const getJobResources = async (payload: Payload, importJobId: string | number) => {
-  const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
-
-  if (!job) {
-    throw new Error(`Import job not found: ${importJobId}`);
-  }
-
-  // Always fetch dataset by ID to ensure we have all fields including idStrategy
-  const datasetId = extractRelationId(job.dataset)!;
-
-  const dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId });
-
-  if (!dataset) {
-    throw new Error("Dataset not found");
-  }
-
-  const importFile =
-    typeof job.importFile === "object"
-      ? job.importFile
-      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: job.importFile });
-
-  if (!importFile) {
-    throw new Error("Import file not found");
-  }
-
-  return { job, dataset, importFile };
-};
-
 const processBatchData = async (
   payload: Payload,
   job: ImportJob,
@@ -442,7 +414,7 @@ export const createEventsBatchJob = {
     const startTime = Date.now();
 
     try {
-      const { job, dataset, importFile } = await getJobResources(payload, importJobId);
+      const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
 
       // Start CREATE_EVENTS stage on first batch
       if (batchNumber === 0) {

@@ -16,7 +16,9 @@ import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
-import { logError, logger } from "@/lib/logger";
+import { generateAccountExistsEmailHTML } from "@/lib/email/templates";
+import { logger } from "@/lib/logger";
+import { safeSendEmail } from "@/lib/utils/email";
 import { maskEmail } from "@/lib/utils/masking";
 
 // Rate limit config for registration (strict to prevent enumeration attacks)
@@ -26,39 +28,6 @@ const REGISTRATION_RATE_LIMIT = {
     { limit: 10, windowMs: 60 * 60 * 1000, name: "hourly" }, // 10 per hour
     { limit: 20, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 20 per day
   ],
-};
-
-/**
- * Generates HTML email for existing account notification.
- * Sent when someone tries to register with an email that already has an account.
- */
-const generateAccountExistsEmailHTML = (resetUrl: string): string => {
-  return `
-    <!DOCTYPE html>
-    <html>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <h1>Account Registration Attempt</h1>
-        <p>Hello,</p>
-        <p>Someone (possibly you) tried to create a TimeTiles account with this email address.</p>
-        <p>Since you already have an account, no new account was created.</p>
-        <p><strong>If this was you:</strong></p>
-        <ul>
-          <li>You may have forgotten you already have an account</li>
-          <li>If you forgot your password, you can reset it below</li>
-        </ul>
-        <p style="margin: 20px 0;">
-          <a href="${resetUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-            Reset Password
-          </a>
-        </p>
-        <p><strong>If this wasn't you:</strong></p>
-        <p>You can safely ignore this email. Your account is secure and no changes were made.</p>
-        <p style="margin-top: 30px; color: #666; font-size: 12px;">
-          This is an automated security notification from TimeTiles.
-        </p>
-      </body>
-    </html>
-  `;
 };
 
 export const POST = apiRoute({
@@ -84,24 +53,23 @@ export const POST = apiRoute({
 
     if (existingUser.docs.length > 0) {
       // User exists - send notification email (don't reveal this to the client)
-      logger.info(`Registration attempt for existing email: ${maskEmail(normalizedEmail)}`);
+      logger.info({ email: maskEmail(normalizedEmail) }, "Registration attempt for existing email");
 
-      try {
-        // Generate password reset URL so user can recover their account
-        const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
-        const resetUrl = `${baseUrl}/forgot-password`;
+      // Generate password reset URL so user can recover their account
+      const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+      const resetUrl = `${baseUrl}/forgot-password`;
 
-        await payload.sendEmail({
+      await safeSendEmail(
+        payload,
+        {
           to: normalizedEmail,
           subject: "TimeTiles - Account Registration Attempt",
           html: generateAccountExistsEmailHTML(resetUrl),
-        });
+        },
+        `Failed to send account exists email to: ${maskEmail(normalizedEmail)}`
+      );
 
-        logger.info(`Sent account exists notification to: ${maskEmail(normalizedEmail)}`);
-      } catch (emailError) {
-        // Log but don't fail - we still want to return success to prevent enumeration
-        logError(emailError, `Failed to send account exists email to: ${maskEmail(normalizedEmail)}`);
-      }
+      logger.info({ email: maskEmail(normalizedEmail) }, "Sent account exists notification");
 
       // Return same success response as new registration
       return Response.json({ success: true, message: "Please check your email to verify your account." });
@@ -124,7 +92,7 @@ export const POST = apiRoute({
         // based on the auth.verify configuration in users collection
       });
 
-      logger.info(`New user registered: ${maskEmail(normalizedEmail)}`);
+      logger.info({ email: maskEmail(normalizedEmail) }, "New user registered");
 
       return Response.json({ success: true, message: "Please check your email to verify your account." });
     } catch (createError) {
@@ -135,7 +103,7 @@ export const POST = apiRoute({
       if (errorMessage.includes("unique") || errorMessage.includes("duplicate")) {
         // Race condition - user was created between check and create
         // Return success to prevent enumeration
-        logger.warn(`Race condition during registration for: ${maskEmail(normalizedEmail)}`);
+        logger.warn({ email: maskEmail(normalizedEmail) }, "Race condition during registration");
 
         return Response.json({ success: true, message: "Please check your email to verify your account." });
       }

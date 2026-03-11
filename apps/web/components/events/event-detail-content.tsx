@@ -11,16 +11,33 @@
 /* oxlint-disable complexity -- Event detail rendering has many conditional display sections */
 "use client";
 
-import { Button, Card, CardContent, ContentState } from "@timetiles/ui";
+import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { AlertTriangle, Calendar, Check, Copy, ExternalLink, Loader2, MapPin, Share2, X } from "lucide-react";
+import { Calendar, ExternalLink, MapPin, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
 
 import { formatDate } from "@/lib/utils/date";
+import {
+  formatDateRange,
+  getDatasetInfo,
+  getEventData,
+  getEventTitle,
+  getLocationDisplay,
+  hasValidCoordinates,
+  safeToString,
+} from "@/lib/utils/event-detail";
 import type { Event } from "@/payload-types";
 
-export interface EventDetailContentProps {
+import { EventDetailError } from "./event-detail-error";
+import { EventDetailSkeleton } from "./event-detail-skeleton";
+import { EventMetadataCard } from "./event-metadata-card";
+import { FieldBox } from "./field-box";
+import { ShareButton } from "./share-button";
+
+export type { EventDetailContentProps };
+export { EventDetailError, EventDetailSkeleton };
+
+interface EventDetailContentProps {
   /** The event data to display */
   event: Event;
   /** Variant: 'modal' shows close/share actions, 'page' shows different layout */
@@ -34,90 +51,6 @@ export interface EventDetailContentProps {
   /** Retry callback for error state */
   onRetry?: () => void;
 }
-
-// Type for event data object
-interface EventData {
-  title?: string;
-  name?: string;
-  description?: string;
-  startDate?: string;
-  endDate?: string;
-  city?: string;
-  country?: string;
-  [key: string]: unknown;
-}
-
-const safeToString = (value: unknown): string => {
-  if (value == null) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (value instanceof Date) return value.toISOString();
-  return "";
-};
-
-const getEventData = (event: Event): EventData => {
-  return typeof event.data === "object" && event.data != null && !Array.isArray(event.data)
-    ? (event.data as EventData)
-    : {};
-};
-
-const getEventTitle = (eventData: EventData): string => {
-  return safeToString(eventData.title) || safeToString(eventData.name) || "Untitled Event";
-};
-
-const getDatasetInfo = (dataset: unknown): { name: string; id: number } | null => {
-  if (typeof dataset === "object" && dataset != null && "id" in dataset) {
-    const d = dataset as Record<string, unknown>;
-    // API returns 'title', Payload returns 'name'
-    let name: string | null = null;
-    if (typeof d.title === "string") {
-      name = d.title;
-    } else if (typeof d.name === "string") {
-      name = d.name;
-    }
-    if (name) {
-      return { name, id: Number(d.id) };
-    }
-  }
-  return null;
-};
-
-const formatDateRange = (startDate: unknown, endDate: unknown): string | null => {
-  const hasStart = startDate != null && safeToString(startDate) !== "";
-  const hasEnd = endDate != null && safeToString(endDate) !== "";
-
-  if (!hasStart && !hasEnd) return null;
-
-  const parts: string[] = [];
-  if (hasStart) {
-    parts.push(new Date(safeToString(startDate)).toLocaleDateString("en-US"));
-  }
-  if (hasEnd && safeToString(startDate) !== safeToString(endDate)) {
-    parts.push(new Date(safeToString(endDate)).toLocaleDateString("en-US"));
-  }
-
-  return parts.join(" - ");
-};
-
-const getLocationDisplay = (event: Event, eventData: EventData): string | null => {
-  // Prefer location name (venue, place name) if available
-  if (event.locationName) {
-    return event.locationName;
-  }
-  // Fall back to geocoded/normalized address
-  if (event.geocodingInfo?.normalizedAddress) {
-    return event.geocodingInfo.normalizedAddress;
-  }
-  // Final fallback to city/country from data
-  const cityCountry = [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean);
-  return cityCountry.length > 0 ? cityCountry.join(", ") : null;
-};
-
-const hasValidCoordinates = (location: Event["location"]): boolean => {
-  return (
-    location?.latitude != null && location.latitude !== 0 && location?.longitude != null && location.longitude !== 0
-  );
-};
 
 // Dataset badge colors - assigned by ID so first datasets get best colors
 const DATASET_BADGE_COLORS = [
@@ -139,168 +72,6 @@ const getDatasetBadgeClass = (datasetId: number | null): string => {
   // Index is always valid since we use modulo with array length
   return DATASET_BADGE_COLORS[index] ?? DATASET_BADGE_COLORS[0];
 };
-
-// Loading skeleton component
-export const EventDetailSkeleton = () => (
-  <div className="animate-pulse space-y-6">
-    <div className="space-y-3">
-      <div className="bg-muted h-5 w-24 rounded-sm" />
-      <div className="bg-muted h-8 w-3/4 rounded" />
-    </div>
-    <div className="space-y-2">
-      <div className="bg-muted h-4 w-full rounded" />
-      <div className="bg-muted h-4 w-5/6 rounded" />
-    </div>
-    <div className="bg-muted h-5 w-full rounded" />
-    <div className="flex flex-wrap gap-2">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="bg-muted h-14 min-w-[140px] flex-1 rounded-sm" />
-      ))}
-    </div>
-  </div>
-);
-
-// Error state component
-export const EventDetailError = ({ error, onRetry }: { error: Error | null; onRetry?: () => void }) => {
-  const isNotFound = error?.message?.includes("not found");
-  return (
-    <ContentState
-      variant="error"
-      icon={
-        <div className="bg-destructive/10 rounded-full p-4">
-          <AlertTriangle className="text-destructive h-8 w-8" />
-        </div>
-      }
-      title={isNotFound ? "Event Not Found" : "Failed to Load Event"}
-      subtitle={
-        isNotFound
-          ? "This event may have been deleted or you don't have permission to view it."
-          : "There was a problem loading the event details. Please try again."
-      }
-      onRetry={isNotFound ? undefined : onRetry}
-      className="py-12"
-    />
-  );
-};
-
-// Share button with internal state management
-const ShareButton = ({ title }: { title: string }) => {
-  const [shareState, setShareState] = useState<"idle" | "copying" | "copied" | "error">("idle");
-
-  const handleShare = useCallback(() => {
-    const performShare = async () => {
-      setShareState("copying");
-      try {
-        const url = window.location.href;
-
-        if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-          await navigator.share({ title, url });
-          setShareState("idle");
-          return;
-        }
-
-        await navigator.clipboard.writeText(url);
-        setShareState("copied");
-        setTimeout(() => setShareState("idle"), 2000);
-      } catch (err: unknown) {
-        if ((err as Error).name !== "AbortError") {
-          setShareState("error");
-          setTimeout(() => setShareState("idle"), 2000);
-        } else {
-          setShareState("idle");
-        }
-      }
-    };
-
-    void performShare();
-  }, [title]);
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="hover:bg-muted"
-      onClick={handleShare}
-      disabled={shareState === "copying"}
-      aria-label={shareState === "copied" ? "Link copied" : "Share event"}
-    >
-      {shareState === "copying" && <Loader2 className="h-5 w-5 animate-spin" />}
-      {shareState === "copied" && <Check className="text-cartographic-forest h-5 w-5" />}
-      {shareState === "error" && <Copy className="text-destructive h-5 w-5" />}
-      {shareState === "idle" && <Share2 className="h-5 w-5" />}
-    </Button>
-  );
-};
-
-// Field box component for flexible attribute display
-interface FieldBoxProps {
-  label: string;
-  value: string;
-  mono?: boolean;
-  capitalize?: boolean;
-  status?: "success" | "failed" | "pending";
-}
-
-// Calculate flex-grow based on value length for responsive sizing
-const getFlexGrow = (value: string): string => {
-  const len = value.length;
-  if (len <= 10) return "flex-[1_1_140px]"; // Short: coordinates, status
-  if (len <= 25) return "flex-[2_1_180px]"; // Medium: dates, providers
-  return "flex-[3_1_240px]"; // Long: addresses, descriptions
-};
-
-const FieldBox = ({ label, value, mono, capitalize, status }: FieldBoxProps) => (
-  <div className={cn("bg-muted/40 dark:bg-muted/20 rounded-sm px-3 py-2", getFlexGrow(value))}>
-    <p className="text-muted-foreground mb-0.5 text-xs">{label}</p>
-    <p
-      className={cn(
-        "text-sm",
-        mono && "font-mono",
-        capitalize && "capitalize",
-        status === "success" && "text-cartographic-forest",
-        status === "failed" && "text-destructive"
-      )}
-    >
-      {value}
-    </p>
-  </div>
-);
-
-// Event metadata card (page variant only)
-const EventMetadataCard = ({ event }: { event: Event }) => (
-  <Card variant="ghost" padding="sm">
-    <CardContent className="p-4">
-      <h4 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">Metadata</h4>
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-muted-foreground">Created</p>
-          <p>{formatDate(event.createdAt)}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Updated</p>
-          <p>{formatDate(event.updatedAt)}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Validation</p>
-          <p
-            className={cn(
-              event.validationStatus === "valid" && "text-cartographic-forest",
-              event.validationStatus !== "valid" && "text-destructive"
-            )}
-          >
-            {event.validationStatus === "valid" ? "Valid" : "Invalid"}
-          </p>
-        </div>
-        {event.importBatch != null && (
-          <div>
-            <p className="text-muted-foreground">Import Batch</p>
-            <p>{event.importBatch}</p>
-          </div>
-        )}
-      </div>
-    </CardContent>
-  </Card>
-);
 
 export const EventDetailContent = ({
   event,

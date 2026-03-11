@@ -293,11 +293,10 @@ export const processDataset = async (
       req,
     });
 
-    logger.info("Created new dataset with wizard config", {
-      datasetId: newDataset.id,
-      name: sheetMapping.newDatasetName,
-      sheetIndex: sheetMapping.sheetIndex,
-    });
+    logger.info(
+      { datasetId: newDataset.id, name: sheetMapping.newDatasetName, sheetIndex: sheetMapping.sheetIndex },
+      "Created new dataset with wizard config"
+    );
 
     return newDataset.id;
   }
@@ -310,10 +309,10 @@ export const processDataset = async (
     req,
   });
 
-  logger.info("Updated existing dataset with wizard config", {
-    datasetId: sheetMapping.datasetId,
-    sheetIndex: sheetMapping.sheetIndex,
-  });
+  logger.info(
+    { datasetId: sheetMapping.datasetId, sheetIndex: sheetMapping.sheetIndex },
+    "Updated existing dataset with wizard config"
+  );
 
   return sheetMapping.datasetId;
 };

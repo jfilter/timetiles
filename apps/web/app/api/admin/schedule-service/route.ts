@@ -47,7 +47,7 @@ export const POST = apiRoute({
     const service = startScheduleService(payload, serviceConfig);
     const status = service.getStatus();
 
-    logger.info("Schedule service started", { serviceConfig, status });
+    logger.info({ serviceConfig, status }, "Schedule service started");
 
     return Response.json({ success: true, message: "Schedule service started", status });
   },

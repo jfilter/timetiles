@@ -28,13 +28,9 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 
 import { createCommonConfig, createOwnershipAccess } from "../shared-fields";
-import { authFields } from "./fields/auth-fields";
-import { basicFields } from "./fields/basic-fields";
-import { executionFields } from "./fields/execution-fields";
-import { scheduleFields } from "./fields/schedule-fields";
-import { schemaConfigFields } from "./fields/schema-config-fields";
-import { targetFields } from "./fields/target-fields";
-import { webhookFields } from "./fields/webhook-fields";
+import { coreFields } from "./fields/core-fields";
+import { importConfigFields } from "./fields/import-config-fields";
+import { runtimeFields } from "./fields/runtime-fields";
 import { beforeChangeHook } from "./hooks";
 import { validateCronExpression, validateUrl } from "./validation";
 
@@ -210,15 +206,7 @@ const ScheduledImports: CollectionConfig = {
     // Only owners, editors, or admins can read version history
     readVersions: createOwnershipAccess("scheduled-imports"),
   },
-  fields: [
-    ...basicFields,
-    ...authFields,
-    ...targetFields,
-    ...scheduleFields,
-    ...schemaConfigFields,
-    ...webhookFields,
-    ...executionFields,
-  ],
+  fields: [...coreFields, ...importConfigFields, ...runtimeFields],
   hooks: {
     beforeChange: [
       beforeChangeHook,

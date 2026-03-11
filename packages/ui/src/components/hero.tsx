@@ -11,6 +11,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { heroGridStyle } from "../lib/grid-backgrounds";
+
 const heroVariants = cva("relative flex items-center justify-center overflow-hidden bg-background", {
   variants: {
     variant: { centered: "text-center", split: "text-left", "full-bleed": "min-h-screen" },
@@ -28,23 +30,13 @@ const heroVariants = cva("relative flex items-center justify-center overflow-hid
   defaultVariants: { variant: "centered", size: "default", background: "grid" },
 });
 
-const gridBackgroundStyle = {
-  backgroundImage: `
-    linear-gradient(var(--color-foreground) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px),
-    linear-gradient(var(--color-foreground) 0.5px, transparent 0.5px),
-    linear-gradient(90deg, var(--color-foreground) 0.5px, transparent 0.5px)
-  `,
-  backgroundSize: "60px 60px, 60px 60px, 20px 20px, 20px 20px",
-};
-
 const Hero = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> & VariantProps<typeof heroVariants>>(
   ({ className, variant, size, background, children, ...props }, ref) => {
     return (
       <section ref={ref} className={cn(heroVariants({ variant, size, background, className }))} {...props}>
         {/* Subtle grid background */}
         {background === "grid" && (
-          <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.08]" style={gridBackgroundStyle} />
+          <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.08]" style={heroGridStyle} />
         )}
 
         {/* Content container */}

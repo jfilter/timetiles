@@ -35,7 +35,7 @@ export const GET = apiRoute({
       }
     })();
 
-    logger.info("Preview mode enabled", { collection, slug, userId: user.id });
+    logger.info({ collection, slug, userId: user.id }, "Preview mode enabled");
 
     redirect(redirectPath);
   },

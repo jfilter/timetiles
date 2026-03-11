@@ -1,5 +1,9 @@
 /**
- * Authentication field definitions for scheduled imports.
+ * Import configuration fields for scheduled imports.
+ *
+ * Combines schema configuration and authentication fields that control
+ * how the scheduled import handles data detection, validation, and
+ * secure access to the source URL.
  *
  * Sensitive credential fields (apiKey, bearerToken, password) are encrypted
  * at rest using AES-256-GCM via Payload field hooks. Encryption is transparent
@@ -12,6 +16,40 @@
 import type { Field, FieldHook } from "payload";
 
 import { decryptField, encryptField, isEncrypted } from "@/lib/utils/encryption";
+
+// ---------------------------------------------------------------------------
+// Schema configuration fields
+// ---------------------------------------------------------------------------
+
+const schemaConfigFields: Field[] = [
+  {
+    name: "schemaMode",
+    type: "select",
+    defaultValue: "additive",
+    options: [
+      { label: "Strict - Schema must match exactly", value: "strict" },
+      { label: "Additive - Accept new fields automatically", value: "additive" },
+      { label: "Flexible - Require approval for changes", value: "flexible" },
+    ],
+    admin: {
+      description:
+        "How to handle schema changes during scheduled executions. " +
+        "Strict: fail if schema differs. " +
+        "Additive: auto-accept new fields. " +
+        "Flexible: require approval for changes.",
+    },
+  },
+  {
+    name: "sourceImportFile",
+    type: "relationship",
+    relationTo: "import-files",
+    admin: { readOnly: true, description: "The original import file this schedule was created from (via wizard)" },
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Authentication fields — encrypted credentials for URL access
+// ---------------------------------------------------------------------------
 
 const getSecret = (): string => {
   const secret = process.env.PAYLOAD_SECRET;
@@ -37,7 +75,7 @@ const decryptAfterRead: FieldHook = ({ value }) => {
 
 const credentialHooks = { beforeChange: [encryptBeforeChange], afterRead: [decryptAfterRead] };
 
-export const authFields: Field[] = [
+const authFields: Field[] = [
   {
     name: "authConfig",
     type: "group",
@@ -102,3 +140,9 @@ export const authFields: Field[] = [
     ],
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Combined export
+// ---------------------------------------------------------------------------
+
+export const importConfigFields: Field[] = [...schemaConfigFields, ...authFields];

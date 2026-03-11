@@ -66,7 +66,7 @@ export const POST = apiRoute({
     const arrayBuffer = await file.arrayBuffer();
     fs.writeFileSync(previewFilePath, Buffer.from(arrayBuffer));
 
-    logger.info("File saved for preview", { previewId, fileName: file.name, fileSize: file.size, userId: user.id });
+    logger.info({ previewId, fileName: file.name, fileSize: file.size, userId: user.id }, "File saved for preview");
 
     // Parse file to get sheet info
     let sheets: SheetInfo[];
@@ -75,7 +75,7 @@ export const POST = apiRoute({
     } catch (parseError) {
       // Clean up temp file on parse error
       fs.unlinkSync(previewFilePath);
-      logger.error("Failed to parse file", { error: parseError });
+      logger.error({ error: parseError }, "Failed to parse file");
       throw new ValidationError("Failed to parse file. Please check the file format.");
     }
 
@@ -89,12 +89,15 @@ export const POST = apiRoute({
       fileSize: file.size,
     });
 
-    logger.info("Preview schema generated", {
-      previewId,
-      sheetsCount: sheets.length,
-      totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
-      isUrlSource: false,
-    });
+    logger.info(
+      {
+        previewId,
+        sheetsCount: sheets.length,
+        totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
+        isUrlSource: false,
+      },
+      "Preview schema generated"
+    );
 
     return Response.json({ previewId, sheets });
   },

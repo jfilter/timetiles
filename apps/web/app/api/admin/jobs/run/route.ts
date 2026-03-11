@@ -54,12 +54,15 @@ export const POST = apiRoute({
     const iterations = body.iterations ?? 10;
 
     const initial = await fetchJobStats(payload);
-    logger.info("Jobs run starting", {
-      payloadJobsCount: initial.payloadJobs.totalDocs,
-      importJobsCount: initial.importJobs.totalDocs,
-      importFilesCount: initial.importFiles.totalDocs,
-      importFileStatuses: mapFileStatuses(initial.importFiles.docs),
-    });
+    logger.info(
+      {
+        payloadJobsCount: initial.payloadJobs.totalDocs,
+        importJobsCount: initial.importJobs.totalDocs,
+        importFilesCount: initial.importFiles.totalDocs,
+        importFileStatuses: mapFileStatuses(initial.importFiles.docs),
+      },
+      "Jobs run starting"
+    );
 
     let iterationsRun = 0;
     for (let i = 0; i < iterations; i++) {
@@ -69,15 +72,18 @@ export const POST = apiRoute({
     }
 
     const final = await fetchJobStats(payload);
-    logger.info("Jobs run completed", {
-      iterationsRun,
-      limit,
-      payloadJobsCount: final.payloadJobs.totalDocs,
-      importJobsCount: final.importJobs.totalDocs,
-      importFilesCount: final.importFiles.totalDocs,
-      importFileStatuses: mapFileStatuses(final.importFiles.docs),
-      importJobStages: mapJobStages(final.importJobs.docs),
-    });
+    logger.info(
+      {
+        iterationsRun,
+        limit,
+        payloadJobsCount: final.payloadJobs.totalDocs,
+        importJobsCount: final.importJobs.totalDocs,
+        importFilesCount: final.importFiles.totalDocs,
+        importFileStatuses: mapFileStatuses(final.importFiles.docs),
+        importJobStages: mapJobStages(final.importJobs.docs),
+      },
+      "Jobs run completed"
+    );
 
     return Response.json({
       success: true,

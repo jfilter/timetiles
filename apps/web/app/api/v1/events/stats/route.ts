@@ -66,7 +66,7 @@ export const GET = apiRoute({
 
     // If no accessible catalogs, return empty result
     if (accessibleCatalogIds.length === 0 && query.catalog == null) {
-      logger.info("No accessible catalogs for user", { user: user?.email ?? "anonymous" });
+      logger.info({ user: user?.email ?? "anonymous" }, "No accessible catalogs for user");
       return Response.json({ items: [], total: 0, groupedBy: groupBy });
     }
 
@@ -188,7 +188,7 @@ const executeAggregationQuery = async (
   // Calculate total events
   const total = items.reduce((sum, item) => sum + item.count, 0);
 
-  logger.info("Aggregation query executed", { groupBy, itemCount: items.length, totalEvents: total });
+  logger.info({ groupBy, itemCount: items.length, totalEvents: total }, "Aggregation query executed");
 
   return { items, total, groupedBy: groupBy };
 };

@@ -110,11 +110,10 @@ const createScheduledImport = async (
   await Promise.all(
     datasetMappingEntries.map(async (entry) => {
       await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig } });
-      logger.info("Updated dataset schema config for schedule", {
-        datasetId: entry.dataset,
-        schemaMode: scheduleConfig.schemaMode,
-        schemaConfig,
-      });
+      logger.info(
+        { datasetId: entry.dataset, schemaMode: scheduleConfig.schemaMode, schemaConfig },
+        "Updated dataset schema config for schedule"
+      );
     })
   );
 
@@ -147,13 +146,16 @@ const createScheduledImport = async (
 
   const scheduledImport = await payload.create({ collection: "scheduled-imports", data: baseData });
 
-  logger.info("Created scheduled import from wizard", {
-    scheduledImportId: scheduledImport.id,
-    name: scheduleConfig.name,
-    sourceUrl: scheduleConfig.sourceUrl,
-    catalogId,
-    datasetIds: datasetMappingEntries.map((e) => e.dataset),
-  });
+  logger.info(
+    {
+      scheduledImportId: scheduledImport.id,
+      name: scheduleConfig.name,
+      sourceUrl: scheduleConfig.sourceUrl,
+      catalogId,
+      datasetIds: datasetMappingEntries.map((e) => e.dataset),
+    },
+    "Created scheduled import from wizard"
+  );
 
   return scheduledImport.id;
 };
@@ -191,7 +193,7 @@ const getOrCreateCatalog = async (
     req,
   });
 
-  logger.info("Created new catalog", { catalogId: newCatalog.id, name: newCatalogName, userId: user.id });
+  logger.info({ catalogId: newCatalog.id, name: newCatalogName, userId: user.id }, "Created new catalog");
   return newCatalog.id;
 };
 
@@ -233,12 +235,10 @@ const createImportFileRecord = async (
     },
   });
 
-  logger.info("Import file created", {
-    importFileId: importFile.id,
-    originalName: previewMeta.originalName,
-    catalogId: finalCatalogId,
-    userId: user.id,
-  });
+  logger.info(
+    { importFileId: importFile.id, originalName: previewMeta.originalName, catalogId: finalCatalogId, userId: user.id },
+    "Import file created"
+  );
 
   return importFile;
 };
@@ -265,12 +265,15 @@ export const POST = apiRoute({
   body: ConfigureImportBodySchema,
   handler: async ({ body, req, user, payload }) => {
     try {
-      logger.debug("Configure import request received", {
-        previewId: body.previewId,
-        catalogId: body.catalogId,
-        sheetMappingsCount: body.sheetMappings.length,
-        geocodingEnabled: body.geocodingEnabled,
-      });
+      logger.debug(
+        {
+          previewId: body.previewId,
+          catalogId: body.catalogId,
+          sheetMappingsCount: body.sheetMappings.length,
+          geocodingEnabled: body.geocodingEnabled,
+        },
+        "Configure import request received"
+      );
 
       const previewMeta = loadPreviewMetadata(body.previewId);
 

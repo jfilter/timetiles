@@ -12,6 +12,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { headerGridStyle } from "../lib/grid-backgrounds";
 import { cn } from "../lib/utils";
 
 const headerVariants = cva("sticky top-0 z-50 w-full border-b backdrop-blur-sm transition-all duration-200", {
@@ -33,16 +34,6 @@ export interface HeaderProps extends React.HTMLAttributes<HTMLElement>, VariantP
    */
   decorative?: boolean;
 }
-
-// Cartographic grid background style (defined outside component to avoid creating new objects on each render)
-const decorativeGridStyle: React.CSSProperties = {
-  backgroundImage: `
-    linear-gradient(to right, var(--cartographic-navy) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--cartographic-navy) 1px, transparent 1px)
-  `,
-  backgroundSize: "40px 40px",
-  opacity: "0.1",
-};
 
 /**
  * Main header component with sticky positioning and cartographic styling.
@@ -68,11 +59,7 @@ const Header = React.forwardRef<HTMLElement, HeaderProps>(
       <header ref={ref} className={cn(headerVariants({ variant, decorative }), className)} {...props}>
         {/* Cartographic grid overlay (when decorative) */}
         {decorative && (
-          <div
-            className="absolute inset-0 opacity-100 dark:opacity-50"
-            style={decorativeGridStyle}
-            aria-hidden="true"
-          />
+          <div className="absolute inset-0 opacity-100 dark:opacity-50" style={headerGridStyle} aria-hidden="true" />
         )}
 
         {/* Content container */}

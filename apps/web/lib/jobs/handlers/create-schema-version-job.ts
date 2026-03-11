@@ -16,6 +16,7 @@ import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+import { loadDataset, loadImportJob } from "../utils/resource-loading";
 
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
@@ -33,20 +34,6 @@ const shouldSkipSchemaVersionCreation = (job: {
   }
 
   return result;
-};
-
-// Helper to get dataset from job
-const getDatasetFromJob = async (payload: Payload, job: { dataset: unknown }): Promise<{ id: number | string }> => {
-  const dataset =
-    typeof job.dataset === "object" && job.dataset
-      ? job.dataset
-      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset as number | string });
-
-  if (!dataset) {
-    throw new Error("Dataset not found");
-  }
-
-  return dataset as { id: number | string };
 };
 
 // Helper to extract approvedBy user ID
@@ -76,11 +63,7 @@ export const createSchemaVersionJob = {
 
     try {
       // Get import job
-      const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
-
-      if (!job) {
-        throw new Error(`Import job not found: ${importJobId}`);
-      }
+      const job = await loadImportJob(payload, importJobId);
 
       // Start CREATE_SCHEMA_VERSION stage
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
@@ -108,7 +91,7 @@ export const createSchemaVersionJob = {
       }
 
       // Get dataset and prepare schema version data
-      const dataset = await getDatasetFromJob(payload, job);
+      const dataset = await loadDataset(payload, job.dataset);
       const fieldStats = getFieldStats(job);
 
       // Determine if this is auto-approved or manual-approved

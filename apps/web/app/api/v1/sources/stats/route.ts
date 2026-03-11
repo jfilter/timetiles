@@ -38,7 +38,7 @@ export const GET = apiRoute({
 
     // If no accessible catalogs, return empty result
     if (accessibleCatalogIds.length === 0) {
-      logger.info("No accessible catalogs for user", { user: user?.email ?? "anonymous" });
+      logger.info({ user: user?.email ?? "anonymous" }, "No accessible catalogs for user");
       return Response.json({ catalogCounts: {}, datasetCounts: {}, totalEvents: 0 });
     }
 
@@ -82,11 +82,10 @@ export const GET = apiRoute({
     // Calculate total events
     const totalEvents = Object.values(catalogCounts).reduce((sum, count) => sum + count, 0);
 
-    logger.info("Data source stats fetched", {
-      catalogCount: Object.keys(catalogCounts).length,
-      datasetCount: Object.keys(datasetCounts).length,
-      totalEvents,
-    });
+    logger.info(
+      { catalogCount: Object.keys(catalogCounts).length, datasetCount: Object.keys(datasetCounts).length, totalEvents },
+      "Data source stats fetched"
+    );
 
     const response: DataSourceStatsResponse = { catalogCounts, datasetCounts, totalEvents };
 

@@ -3,9 +3,6 @@
  *
  * @module
  */
-export {
-  EventDetailContent,
-  type EventDetailContentProps,
-  EventDetailError,
-  EventDetailSkeleton,
-} from "./event-detail-content";
+export { EventDetailContent, type EventDetailContentProps } from "./event-detail-content";
+export { EventDetailError } from "./event-detail-error";
+export { EventDetailSkeleton } from "./event-detail-skeleton";

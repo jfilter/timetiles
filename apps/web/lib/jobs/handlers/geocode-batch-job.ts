@@ -21,10 +21,10 @@ import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import type { GeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import { readAllRowsFromFile } from "@/lib/utils/file-readers";
-import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
+import { loadJobResources } from "../utils/resource-loading";
 import { getImportFilePath } from "../utils/upload-path";
 
 /**
@@ -117,40 +117,6 @@ const geocodeUniqueLocations = async (
   return { results, successCount, failureCount, failures };
 };
 
-/**
- * Get job resources and validate them.
- */
-const getJobResources = async (
-  payload: Payload,
-  importJobId: string | number
-): Promise<{ job: ImportJob; dataset: Dataset; importFile: ImportFile }> => {
-  const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
-
-  if (!job) {
-    throw new Error(`Import job not found: ${importJobId}`);
-  }
-
-  const dataset =
-    typeof job.dataset === "object"
-      ? job.dataset
-      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
-
-  if (!dataset) {
-    throw new Error("Dataset not found");
-  }
-
-  const importFile =
-    typeof job.importFile === "object"
-      ? job.importFile
-      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: job.importFile });
-
-  if (!importFile) {
-    throw new Error("Import file not found");
-  }
-
-  return { job, dataset, importFile };
-};
-
 export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
 
@@ -168,7 +134,7 @@ export const geocodeBatchJob = {
       // Initialize the geocoding service with payload to load providers from database
       initializeGeocoding(payload);
 
-      const { job, importFile } = await getJobResources(payload, importJobId);
+      const { job, importFile } = await loadJobResources(payload, importJobId);
 
       // Get geocoding candidate (locationPath) from field mappings
       const geocodingCandidate = getGeocodingCandidate(job);
@@ -242,7 +208,7 @@ export const geocodeBatchJob = {
         });
 
         // Also update the import file status with error message (user-facing)
-        const { importFile } = await getJobResources(payload, importJobId);
+        const { importFile } = await loadJobResources(payload, importJobId);
         await payload.update({
           collection: COLLECTION_NAMES.IMPORT_FILES,
           id: importFile.id,

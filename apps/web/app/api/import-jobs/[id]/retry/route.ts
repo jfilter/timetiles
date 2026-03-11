@@ -75,16 +75,15 @@ export const POST = apiRoute({
     const result = await ErrorRecoveryService.recoverFailedJob(payload, importJob.id);
 
     if (!result.success) {
-      logger.warn("Manual retry attempt failed", { importJobId: importJob.id, userId: user.id, reason: result.error });
+      logger.warn({ importJobId: importJob.id, userId: user.id, reason: result.error }, "Manual retry attempt failed");
 
       return Response.json({ error: result.error ?? "Failed to retry import job" }, { status: 400 });
     }
 
-    logger.info("Manual retry initiated", {
-      importJobId: importJob.id,
-      userId: user.id,
-      nextRetryAt: result.nextRetryAt,
-    });
+    logger.info(
+      { importJobId: importJob.id, userId: user.id, nextRetryAt: result.nextRetryAt },
+      "Manual retry initiated"
+    );
 
     return Response.json({
       success: true,

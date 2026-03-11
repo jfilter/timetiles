@@ -30,35 +30,7 @@ import type { ImportJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-
-// Helper function to load required resources
-const loadResources = async (payload: Payload, importJobId: number) => {
-  const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
-
-  if (!job) {
-    throw new Error(`Import job not found: ${importJobId}`);
-  }
-
-  const dataset =
-    typeof job.dataset === "object"
-      ? job.dataset
-      : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
-
-  if (!dataset) {
-    throw new Error("Dataset not found");
-  }
-
-  const importFile =
-    typeof job.importFile === "object"
-      ? job.importFile
-      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: job.importFile });
-
-  if (!importFile) {
-    throw new Error("Import file not found");
-  }
-
-  return { job, dataset, importFile };
-};
+import { loadJobResources } from "../utils/resource-loading";
 
 // Helper function to get schema from cached builder state
 const getSchemaFromCache = async (job: {
@@ -404,7 +376,7 @@ export const validateSchemaJob = {
     const startTime = Date.now();
 
     try {
-      const { job, dataset, importFile } = await loadResources(payload, jobIdTyped);
+      const { job, dataset, importFile } = await loadJobResources(payload, jobIdTyped);
 
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
       await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA, uniqueRows);

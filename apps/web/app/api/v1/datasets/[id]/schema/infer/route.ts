@@ -56,17 +56,15 @@ export const POST = apiRoute({
       // No body or invalid JSON - use defaults
     }
 
-    logger.info("Schema inference requested", { datasetId, userId: user.id, options });
+    logger.info({ datasetId, userId: user.id, options }, "Schema inference requested");
 
     // Perform schema inference
     const result = await SchemaInferenceService.inferSchemaFromEvents(payload, datasetId, options);
 
-    logger.info("Schema inference completed", {
-      datasetId,
-      userId: user.id,
-      generated: result.generated,
-      eventsSampled: result.eventsSampled,
-    });
+    logger.info(
+      { datasetId, userId: user.id, generated: result.generated, eventsSampled: result.eventsSampled },
+      "Schema inference completed"
+    );
 
     return Response.json({
       success: true,

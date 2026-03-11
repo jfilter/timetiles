@@ -68,7 +68,7 @@ export const POST = apiRoute({
     if (!serviceResponse.ok) {
       // Handle duplicate email (already subscribed) — only 409 Conflict is unambiguous
       if (serviceResponse.status === 409) {
-        logger.info(`Email already subscribed: ${email}`);
+        logger.info({ email }, "Email already subscribed");
         return Response.json(
           {
             success: true,
@@ -92,7 +92,7 @@ export const POST = apiRoute({
       );
     }
 
-    logger.info(`Successfully subscribed email: ${email}`);
+    logger.info({ email }, "Successfully subscribed email");
 
     return Response.json(
       {

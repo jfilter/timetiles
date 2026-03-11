@@ -44,25 +44,25 @@ export const POST = apiRoute({
     const result = await ErrorRecoveryService.resetJobToStage(payload, importJob.id, targetStage, clearRetries);
 
     if (!result.success) {
-      logger.warn("Admin stage reset failed", {
-        importJobId: importJob.id,
-        adminId: user.id,
-        fromStage: importJob.stage,
-        targetStage,
-        reason: result.error,
-      });
+      logger.warn(
+        { importJobId: importJob.id, adminId: user.id, fromStage: importJob.stage, targetStage, reason: result.error },
+        "Admin stage reset failed"
+      );
 
       return Response.json({ error: result.error ?? "Failed to reset import job" }, { status: 400 });
     }
 
-    logger.info("Admin manually reset import job stage", {
-      importJobId: importJob.id,
-      adminId: user.id,
-      adminEmail: user.email,
-      fromStage: importJob.stage,
-      targetStage,
-      clearedRetries: clearRetries,
-    });
+    logger.info(
+      {
+        importJobId: importJob.id,
+        adminId: user.id,
+        adminEmail: user.email,
+        fromStage: importJob.stage,
+        targetStage,
+        clearedRetries: clearRetries,
+      },
+      "Admin manually reset import job stage"
+    );
 
     return Response.json({
       success: true,

@@ -67,11 +67,10 @@ export const POST = apiRoute({
     // Cast to the ScheduledImport authConfig type expected by buildAuthHeaders
     const authHeaders = buildAuthHeaders(authConfig as Parameters<typeof buildAuthHeaders>[0]);
 
-    logger.info("Fetching data from URL", {
-      url: sourceUrl,
-      hasAuth: authConfig?.type !== "none" && authConfig !== undefined,
-      userId: user.id,
-    });
+    logger.info(
+      { url: sourceUrl, hasAuth: authConfig?.type !== "none" && authConfig !== undefined, userId: user.id },
+      "Fetching data from URL"
+    );
 
     const previewId = uuidv4();
     const previewDir = getPreviewDir();
@@ -108,20 +107,17 @@ export const POST = apiRoute({
       originalName = path.basename(parsedUrl.pathname) || `url-import${fileExtension}`;
       fileSize = fetchResult.data.length;
 
-      logger.info("URL data fetched and saved for preview", {
-        previewId,
-        sourceUrl,
-        detectedType: mimeType,
-        fileSize,
-        userId: user.id,
-      });
+      logger.info(
+        { previewId, sourceUrl, detectedType: mimeType, fileSize, userId: user.id },
+        "URL data fetched and saved for preview"
+      );
     } catch (fetchError) {
       // Re-throw ValidationError instances (from our own validation above)
       if (fetchError instanceof ValidationError) {
         throw fetchError;
       }
       const errorMessage = fetchError instanceof Error ? fetchError.message : "Unknown error";
-      logger.error("Failed to fetch URL", { sourceUrl, error: fetchError });
+      logger.error({ sourceUrl, error: fetchError }, "Failed to fetch URL");
       throw new ValidationError(`Failed to fetch URL: ${errorMessage}`);
     }
 
@@ -132,7 +128,7 @@ export const POST = apiRoute({
     } catch (parseError) {
       // Clean up temp file on parse error
       fs.unlinkSync(previewFilePath);
-      logger.error("Failed to parse file", { error: parseError });
+      logger.error({ error: parseError }, "Failed to parse file");
       throw new ValidationError("Failed to parse file. Please check the file format.");
     }
 
@@ -147,12 +143,15 @@ export const POST = apiRoute({
       sourceUrl,
     });
 
-    logger.info("Preview schema generated", {
-      previewId,
-      sheetsCount: sheets.length,
-      totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
-      isUrlSource: true,
-    });
+    logger.info(
+      {
+        previewId,
+        sheetsCount: sheets.length,
+        totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
+        isUrlSource: true,
+      },
+      "Preview schema generated"
+    );
 
     return Response.json({
       previewId,

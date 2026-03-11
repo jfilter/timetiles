@@ -116,12 +116,15 @@ const queueImportAndRespond = async (payload: Payload, scheduledImport: Schedule
   // Update statistics (execution history is recorded by the job handler on completion)
   await updateStatisticsOnTrigger(payload, scheduledImport);
 
-  logger.info("Webhook triggered import successfully", {
-    scheduledImportId: scheduledImport.id,
-    name: scheduledImport.name,
-    jobId: urlFetchJob.id,
-    triggeredBy: "webhook",
-  });
+  logger.info(
+    {
+      scheduledImportId: scheduledImport.id,
+      name: scheduledImport.name,
+      jobId: urlFetchJob.id,
+      triggeredBy: "webhook",
+    },
+    "Webhook triggered import successfully"
+  );
 
   return Response.json(
     { success: true, message: "Import triggered successfully", status: "triggered", jobId: urlFetchJob.id.toString() },
@@ -153,26 +156,26 @@ export const POST = apiRoute({
     // Security: Return same error message for invalid token and disabled webhook
     // to prevent token enumeration attacks
     if (scheduledImports.docs.length === 0) {
-      logger.warn("Webhook trigger failed - invalid token", { token: token.substring(0, 8) + "..." });
+      logger.warn({ token: token.substring(0, 8) + "..." }, "Webhook trigger failed - invalid token");
       return Response.json({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" }, { status: 401 });
     }
 
     const scheduledImport = scheduledImports.docs[0] as ScheduledImport;
 
     if (!scheduledImport.webhookEnabled) {
-      logger.warn("Webhook trigger failed - webhook disabled", {
-        scheduledImportId: scheduledImport.id,
-        name: scheduledImport.name,
-      });
+      logger.warn(
+        { scheduledImportId: scheduledImport.id, name: scheduledImport.name },
+        "Webhook trigger failed - webhook disabled"
+      );
       return Response.json({ error: "Invalid or disabled webhook", code: "INVALID_WEBHOOK" }, { status: 401 });
     }
 
     // CRITICAL: Check if already running (prevents concurrent executions)
     if (scheduledImport.lastStatus === "running") {
-      logger.info("Webhook trigger skipped - import already running", {
-        scheduledImportId: scheduledImport.id,
-        name: scheduledImport.name,
-      });
+      logger.info(
+        { scheduledImportId: scheduledImport.id, name: scheduledImport.name },
+        "Webhook trigger skipped - import already running"
+      );
       return Response.json(
         { success: true, message: "Import already running, skipped", status: "skipped" },
         { status: 200 }
