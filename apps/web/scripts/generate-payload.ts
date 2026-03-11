@@ -3,9 +3,11 @@
 /**
  * Unified Payload Generation Script.
  *
- * This script generates all Payload-related files (types and database schema)
- * and formats them with oxfmt to ensure consistent formatting
- * across all environments (local development and CI/CD).
+ * This script generates all Payload-related files (types and database schema).
+ * Neither generated file is formatted with oxfmt — they are left as raw
+ * Payload output so they match what `payload migrate` auto-generates
+ * (via typescript.autoGenerate) during CI. The only post-processing is
+ * the circular foreign key fix on the schema file.
  *
  * @module
  */
@@ -84,17 +86,9 @@ const generate = () => {
     // Fix circular foreign key references in generated schema
     fixCircularReferences("payload-generated-schema.ts");
 
-    // Format generated files with oxfmt using explicit --config.
-    // oxfmt resolves .oxfmtrc.json from cwd only (oxc-project/oxc#19509),
-    // so we pass --config to ensure correct formatting regardless of cwd.
-    logger.info("🎨 Formatting generated files...");
-    const repoRoot = join(process.cwd(), "../..");
-    const oxfmtBin = join(repoRoot, "node_modules/.bin/oxfmt");
-    const configPath = join(repoRoot, ".oxfmtrc.json");
-    execSync(`${oxfmtBin} --config ${configPath} --write payload-types.ts payload-generated-schema.ts`, {
-      stdio: "pipe",
-    });
-    logger.info("✓ Files formatted");
+    // Generated files are NOT formatted with oxfmt — they must match raw
+    // Payload output so CI validation passes (payload migrate auto-regenerates
+    // types via typescript.autoGenerate during init).
 
     logger.info("✅ Successfully generated all Payload files!");
     logger.info("Files updated: payload-types.ts, payload-generated-schema.ts");

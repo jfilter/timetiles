@@ -27,7 +27,7 @@ const fetchDataSources = async (): Promise<DataSourcesResponse> => {
   return response.json();
 };
 
-export const dataSourcesKeys = { all: ["data-sources"] as const };
+const dataSourcesKeys = { all: ["data-sources"] as const };
 
 /**
  * Hook to fetch lightweight catalog and dataset data.

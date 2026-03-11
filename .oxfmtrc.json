@@ -22,6 +22,8 @@
     "build/",
     "node_modules/",
     "*.generated.*",
+    "apps/web/payload-types.ts",
+    "apps/web/payload-generated-schema.ts",
     "apps/docs/content/reference/api/**/*.md",
     "apps/docs/content/reference/api/**/*.mdx",
     "apps/docs/content/reference/api/**/_meta.js",
