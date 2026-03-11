@@ -136,7 +136,7 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
     <ReactFlowProvider>
       <FlowEditorHeader sheetInfo={sheetInfo} onSave={handleSave} />
       <div className="flex flex-1 overflow-hidden">
-        <div ref={reactFlowWrapper} className="flex-1" onDragOver={onDragOver} onDrop={onDrop}>
+        <div ref={reactFlowWrapper} className="flex-1" role="presentation" onDragOver={onDragOver} onDrop={onDrop}>
           <ReactFlow
             nodes={nodes}
             edges={edges}

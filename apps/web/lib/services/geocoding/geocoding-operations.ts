@@ -297,7 +297,7 @@ export class GeocodingOperations {
         confidence = 0.7;
     }
 
-    return Math.min(Math.max(confidence, 0.0), 1.0);
+    return Math.min(Math.max(confidence, 0), 1);
   }
 
   private handleGeocodingError(error: unknown, address: string): never {

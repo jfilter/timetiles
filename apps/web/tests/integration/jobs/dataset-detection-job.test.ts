@@ -60,7 +60,7 @@ describe.sequential("Dataset Detection Job", () => {
     const csvContent = "name,date\nEvent 1,2024-01-01\nEvent 2,2024-01-02\n";
 
     // Create import file using helper
-    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "test.csv",
       mimeType: "text/csv",
       user: uploadUserId,
@@ -109,7 +109,7 @@ describe.sequential("Dataset Detection Job", () => {
     });
 
     // Create import file with matching originalName
-    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename,
       mimeType: "text/csv",
       user: uploadUserId,
@@ -150,7 +150,7 @@ describe.sequential("Dataset Detection Job", () => {
     });
 
     // Create import file WITHOUT originalName
-    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "different-name.csv", // Different from dataset name
       mimeType: "text/csv",
       user: uploadUserId,

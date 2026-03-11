@@ -34,7 +34,7 @@ const parseStrictCronNumber = (value: string): number | null => {
     return null;
   }
 
-  return parseInt(trimmedValue, 10);
+  return Number.parseInt(trimmedValue, 10);
 };
 
 const validateRange = (field: string, min: number, max: number, name: string): string | true => {

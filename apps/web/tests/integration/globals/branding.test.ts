@@ -6,8 +6,9 @@
  *
  * @module
  */
-import { existsSync, unlinkSync } from "fs";
-import { join } from "path";
+import { existsSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";

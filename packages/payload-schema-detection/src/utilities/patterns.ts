@@ -395,7 +395,7 @@ const isDateField = (stats: FieldStatistics): boolean => {
  */
 const parseCoordinate = (value: string): number | null => {
   const trimmed = value.trim();
-  const parsed = parseFloat(trimmed);
+  const parsed = Number.parseFloat(trimmed);
   return isNaN(parsed) ? null : parsed;
 };
 
@@ -470,7 +470,7 @@ const checkCommaFormat = (samples: unknown[]): { format: string; confidence: num
 
   for (const sample of samples) {
     if (typeof sample !== "string") continue;
-    const parts = sample.split(",").map((p) => parseFloat(p.trim()));
+    const parts = sample.split(",").map((p) => Number.parseFloat(p.trim()));
     if (parts.length === 2 && parts.every((p) => !isNaN(p))) {
       matches++;
       const [first, second] = parts as [number, number];

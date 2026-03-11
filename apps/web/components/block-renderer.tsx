@@ -219,7 +219,7 @@ const renderHero = (block: HeroBlock, key: string) => {
 };
 
 const renderFeatures = (block: FeaturesBlock, key: string) => {
-  const columnCount = (block.columns ? parseInt(block.columns, 10) : 3) as 1 | 2 | 3 | 4;
+  const columnCount = (block.columns ? Number.parseInt(block.columns, 10) : 3) as 1 | 2 | 3 | 4;
   return (
     <Features key={key}>
       {(block.sectionTitle ?? block.sectionDescription) && (

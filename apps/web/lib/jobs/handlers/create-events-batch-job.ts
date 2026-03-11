@@ -34,12 +34,68 @@ import type { JobHandlerContext } from "../utils/job-context";
 import { extractDuplicateRows, loadJobResources } from "../utils/resource-loading";
 import { getImportFilePath } from "../utils/upload-path";
 
-/**
- * Build ImportTransform array from dataset configuration.
- * Handles all transform types: rename, date-parse, string-op, concatenate, split, type-cast
- */
-// oxlint-disable-next-line complexity
-// eslint-disable-next-line sonarjs/cognitive-complexity
+type DatasetTransformEntry = NonNullable<Dataset["importTransforms"]>[number];
+type TransformBase = { id: string; active: true; autoDetected: boolean };
+
+const buildRenameTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.to ? { ...base, type: "rename", from: t.from, to: t.to } : null;
+
+const buildDateParseTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.inputFormat && t.outputFormat
+    ? {
+        ...base,
+        type: "date-parse",
+        from: t.from,
+        inputFormat: t.inputFormat,
+        outputFormat: t.outputFormat,
+        timezone: t.timezone ?? undefined,
+      }
+    : null;
+
+const buildStringOpTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.operation
+    ? {
+        ...base,
+        type: "string-op",
+        from: t.from,
+        operation: t.operation,
+        pattern: t.pattern ?? undefined,
+        replacement: t.replacement ?? undefined,
+      }
+    : null;
+
+const buildConcatenateTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  Array.isArray(t.fromFields) && t.fromFields.length >= 2 && t.to
+    ? { ...base, type: "concatenate", fromFields: t.fromFields as string[], separator: t.separator ?? " ", to: t.to }
+    : null;
+
+const buildSplitTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.delimiter && Array.isArray(t.toFields) && t.toFields.length > 0
+    ? { ...base, type: "split", from: t.from, delimiter: t.delimiter, toFields: t.toFields as string[] }
+    : null;
+
+const buildTypeCastTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+  t.from && t.fromType && t.toType && t.strategy
+    ? {
+        ...base,
+        type: "type-cast",
+        from: t.from,
+        fromType: t.fromType,
+        toType: t.toType as "string" | "number" | "boolean" | "date" | "array" | "object" | "null",
+        strategy: t.strategy,
+        customFunction: t.customFunction ?? undefined,
+      }
+    : null;
+
+const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: TransformBase) => ImportTransform | null> = {
+  rename: buildRenameTransform,
+  "date-parse": buildDateParseTransform,
+  "string-op": buildStringOpTransform,
+  concatenate: buildConcatenateTransform,
+  split: buildSplitTransform,
+  "type-cast": buildTypeCastTransform,
+};
+
 const buildTransformsFromDataset = (dataset: Dataset): ImportTransform[] => {
   const transforms: ImportTransform[] = [];
 
@@ -48,78 +104,12 @@ const buildTransformsFromDataset = (dataset: Dataset): ImportTransform[] => {
       continue;
     }
 
-    const base = { id: t.id, active: true, autoDetected: Boolean(t.autoDetected) };
+    const base: TransformBase = { id: t.id, active: true, autoDetected: Boolean(t.autoDetected) };
+    const builder = TRANSFORM_BUILDERS[t.type];
+    const transform = builder?.(t, base);
 
-    switch (t.type) {
-      case "rename":
-        if (t.from && t.to) {
-          transforms.push({ ...base, type: "rename", from: t.from, to: t.to });
-        }
-        break;
-
-      case "date-parse":
-        if (t.from && t.inputFormat && t.outputFormat) {
-          transforms.push({
-            ...base,
-            type: "date-parse",
-            from: t.from,
-            inputFormat: t.inputFormat,
-            outputFormat: t.outputFormat,
-            timezone: t.timezone ?? undefined,
-          });
-        }
-        break;
-
-      case "string-op":
-        if (t.from && t.operation) {
-          transforms.push({
-            ...base,
-            type: "string-op",
-            from: t.from,
-            operation: t.operation,
-            pattern: t.pattern ?? undefined,
-            replacement: t.replacement ?? undefined,
-          });
-        }
-        break;
-
-      case "concatenate":
-        if (Array.isArray(t.fromFields) && t.fromFields.length >= 2 && t.to) {
-          transforms.push({
-            ...base,
-            type: "concatenate",
-            fromFields: t.fromFields as string[],
-            separator: t.separator ?? " ",
-            to: t.to,
-          });
-        }
-        break;
-
-      case "split":
-        if (t.from && t.delimiter && Array.isArray(t.toFields) && t.toFields.length > 0) {
-          transforms.push({
-            ...base,
-            type: "split",
-            from: t.from,
-            delimiter: t.delimiter,
-            toFields: t.toFields as string[],
-          });
-        }
-        break;
-
-      case "type-cast":
-        if (t.from && t.fromType && t.toType && t.strategy) {
-          transforms.push({
-            ...base,
-            type: "type-cast",
-            from: t.from,
-            fromType: t.fromType,
-            toType: t.toType as "string" | "number" | "boolean" | "date" | "array" | "object" | "null",
-            strategy: t.strategy,
-            customFunction: t.customFunction ?? undefined,
-          });
-        }
-        break;
+    if (transform) {
+      transforms.push(transform);
     }
   }
 

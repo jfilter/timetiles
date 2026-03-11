@@ -38,7 +38,7 @@ const assertSafeIdentifier = (value: string, pattern: RegExp, type: string): voi
 
 const toQualifiedCollectionTableName = (collection: string): string => {
   assertSafeIdentifier(collection, /^[a-z0-9-]+$/, "collection name");
-  return `payload."${collection.replace(/-/g, "_")}"`;
+  return `payload."${collection.replaceAll("-", "_")}"`;
 };
 
 const toQualifiedTableName = (tableName: string): string => {

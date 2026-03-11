@@ -58,10 +58,10 @@ export const COLLECTION_NAMES = {
 } as const;
 
 export const BATCH_SIZES = {
-  DUPLICATE_ANALYSIS: parseInt(process.env.BATCH_SIZE_DUPLICATE_ANALYSIS ?? "5000", 10),
-  SCHEMA_DETECTION: parseInt(process.env.BATCH_SIZE_SCHEMA_DETECTION ?? "10000", 10),
-  EVENT_CREATION: parseInt(process.env.BATCH_SIZE_EVENT_CREATION ?? "1000", 10),
-  DATABASE_CHUNK: parseInt(process.env.BATCH_SIZE_DATABASE_CHUNK ?? "1000", 10),
+  DUPLICATE_ANALYSIS: Number.parseInt(process.env.BATCH_SIZE_DUPLICATE_ANALYSIS ?? "5000", 10),
+  SCHEMA_DETECTION: Number.parseInt(process.env.BATCH_SIZE_SCHEMA_DETECTION ?? "10000", 10),
+  EVENT_CREATION: Number.parseInt(process.env.BATCH_SIZE_EVENT_CREATION ?? "1000", 10),
+  DATABASE_CHUNK: Number.parseInt(process.env.BATCH_SIZE_DATABASE_CHUNK ?? "1000", 10),
 } as const;
 
 export type ImportStatus = (typeof IMPORT_STATUS)[keyof typeof IMPORT_STATUS];

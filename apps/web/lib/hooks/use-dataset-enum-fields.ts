@@ -38,9 +38,9 @@ const humanizeFieldPath = (path: string): string => {
   const lastSegment = path.split(".").pop() ?? path;
 
   return lastSegment
-    .replace(/_/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    .replaceAll("_", " ")
+    .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
+    .replaceAll(/\b\w/g, (c) => c.toUpperCase());
 };
 
 /**

@@ -26,7 +26,7 @@ describe("event-processing", () => {
     });
 
     it("should extract from separate lat/lng columns", () => {
-      mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
+      mockParseCoordinate.mockImplementation((v: string) => Number.parseFloat(v));
 
       const row = { latitude: "52.5", longitude: "13.4" };
       const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
@@ -47,7 +47,7 @@ describe("event-processing", () => {
     });
 
     it("should extract from combined comma format", () => {
-      mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
+      mockParseCoordinate.mockImplementation((v: string) => Number.parseFloat(v));
 
       const row = { coords: "52.5, 13.4" };
       const result = extractCoordinatesFromRow(row, { combinedColumn: "coords", coordinateFormat: "combined_comma" });
@@ -69,7 +69,7 @@ describe("event-processing", () => {
     });
 
     it("should extract from combined space format", () => {
-      mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
+      mockParseCoordinate.mockImplementation((v: string) => Number.parseFloat(v));
 
       const row = { coords: "52.5 13.4" };
       const result = extractCoordinatesFromRow(row, { combinedColumn: "coords", coordinateFormat: "combined_space" });
@@ -105,7 +105,7 @@ describe("event-processing", () => {
     });
 
     it("should handle numeric coordinate values", () => {
-      mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
+      mockParseCoordinate.mockImplementation((v: string) => Number.parseFloat(v));
 
       const row = { latitude: 52.5, longitude: 13.4 };
       const result = extractCoordinatesFromRow(row, { latitudeColumn: "latitude", longitudeColumn: "longitude" });
@@ -144,7 +144,7 @@ describe("event-processing", () => {
     });
 
     it("should prefer separate columns over combined", () => {
-      mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
+      mockParseCoordinate.mockImplementation((v: string) => Number.parseFloat(v));
 
       const row = { latitude: "52.5", longitude: "13.4", coords: "0, 0" };
       const result = extractCoordinatesFromRow(row, {
@@ -171,7 +171,7 @@ describe("event-processing", () => {
     });
 
     it("should include coordinates when available", () => {
-      mockParseCoordinate.mockImplementation((v: string) => parseFloat(v));
+      mockParseCoordinate.mockImplementation((v: string) => Number.parseFloat(v));
 
       const row = { title: "Test", date: "2024-01-01", latitude: "52.5", longitude: "13.4" };
 

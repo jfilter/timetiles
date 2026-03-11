@@ -4,7 +4,7 @@
  * @module
  * @category Utils
  */
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 
 /** Hash an email address (lowercased and trimmed) using SHA-256. */
 export const hashEmail = (email: string): string =>

@@ -27,7 +27,7 @@ interface ParsedArgs {
 }
 
 const parseArguments = (args: string[]): ParsedArgs => {
-  const validPresets = ["testing", "e2e", "development"];
+  const validPresets = new Set(["testing", "e2e", "development"]);
   let preset = "development";
   const collections: string[] = [];
   let truncate = false;
@@ -66,9 +66,9 @@ const parseArguments = (args: string[]): ParsedArgs => {
     } else if (arg === "--random") {
       randomSeed = Date.now();
     } else if (arg === "--seed" && nextArg) {
-      randomSeed = parseInt(nextArg, 10);
+      randomSeed = Number.parseInt(nextArg, 10);
       skipNext = true;
-    } else if (validPresets.includes(arg)) {
+    } else if (validPresets.has(arg)) {
       preset = arg;
     } else if (!arg.startsWith("--")) {
       collections.push(arg);

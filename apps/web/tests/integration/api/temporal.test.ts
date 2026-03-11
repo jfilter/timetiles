@@ -73,7 +73,7 @@ describe("/api/v1/events/temporal", () => {
         collection: "events",
         data: {
           uniqueId: `histogram-test-event-${i + 1}`,
-          dataset: parseInt(testDatasetId),
+          dataset: Number.parseInt(testDatasetId),
           data: {
             title: `Test Event ${i + 1}`,
             description: `Test event for histogram on ${testDates[i]?.toISOString()}`,

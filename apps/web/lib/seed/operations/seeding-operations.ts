@@ -107,34 +107,23 @@ export class SeedingOperations {
     return result;
   }
 
-  // eslint-disable-next-line sonarjs/cognitive-complexity -- Global seeding requires handling multiple conditional paths
   private async seedGlobalCollection(seedData: SeedData, collectionName: string): Promise<void> {
-    if (collectionName === MAIN_MENU_SLUG) {
-      try {
-        const menuData = Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData;
-        const payload = this.seedManager.payloadInstance;
-        if (!payload) {
-          throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
-        }
-        await payload.updateGlobal({ slug: MAIN_MENU_SLUG, data: menuData as Config["globals"]["main-menu"] });
-        logger.info(`Seeded ${MAIN_MENU_SLUG} global successfully!`);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        logger.error({ global: collectionName }, `Failed to seed ${MAIN_MENU_SLUG} global: ${errorMsg}`);
+    if (collectionName !== MAIN_MENU_SLUG && collectionName !== FOOTER_SLUG) return;
+
+    try {
+      const data = Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData;
+      const payload = this.seedManager.payloadInstance;
+      if (!payload) {
+        throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
       }
-    } else if (collectionName === FOOTER_SLUG) {
-      try {
-        const footerData = Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData;
-        const payload = this.seedManager.payloadInstance;
-        if (!payload) {
-          throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
-        }
-        await payload.updateGlobal({ slug: FOOTER_SLUG, data: footerData as Config["globals"]["footer"] });
-        logger.info(`Seeded ${FOOTER_SLUG} global successfully!`);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        logger.error({ global: collectionName }, `Failed to seed ${FOOTER_SLUG} global: ${errorMsg}`);
-      }
+      await payload.updateGlobal({
+        slug: collectionName,
+        data: data as Config["globals"]["main-menu"] & Config["globals"]["footer"],
+      });
+      logger.info(`Seeded ${collectionName} global successfully!`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error({ global: collectionName }, `Failed to seed ${collectionName} global: ${errorMsg}`);
     }
   }
 

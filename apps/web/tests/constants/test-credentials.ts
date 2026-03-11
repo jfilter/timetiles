@@ -34,6 +34,20 @@ export const TEST_CREDENTIALS = {
     shortSecretKey: "secret-key",
   },
   database: { password: "test123456" },
+  // Integration test passwords for auth flows
+  auth: {
+    secure: "SecurePassword123!",
+    correct: "CorrectPassword123!",
+    wrong: "WrongPassword123!",
+    any: "AnyPassword123!",
+    newSecure: "NewSecurePassword123!",
+    admin: "AdminPassword123!",
+    user: "UserPassword123!",
+  },
+  // Seed passwords for development/test environments
+  seed: { admin: "admin123", editor: "editor123", demo: "demo" },
+  // Intentionally weak/invalid passwords for security tests
+  security: { hacked: "hacked123", localApi: "localapi123", temp: "temp123", short: "short", wrong: "wrongpassword" },
 } as const;
 
 // Additional test tokens

@@ -8,10 +8,11 @@
  * @category E2E Setup
  */
 
-import { type ChildProcess, execSync, spawn } from "child_process";
+import { type ChildProcess, execSync, spawn } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { config as loadEnv } from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,13 +142,13 @@ export default async function globalSetup(): Promise<void> {
 
   // Build if no production build exists (using compile mode to skip prerendering)
   const buildIdPath = path.join(webDir, ".next", "BUILD_ID");
-  const fs = await import("fs");
-  if (!fs.existsSync(buildIdPath)) {
+  const fs = await import("node:fs");
+  if (fs.existsSync(buildIdPath)) {
+    console.log(`✅ Using existing build`);
+  } else {
     console.log(`🔨 Building application (compile mode)...`);
     // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
     execSync(`cd "${webDir}" && pnpm build:compile`, { env: serverEnv, stdio: "inherit" });
-  } else {
-    console.log(`✅ Using existing build`);
   }
 
   // Check if standalone build exists (used for production/Docker deployments)

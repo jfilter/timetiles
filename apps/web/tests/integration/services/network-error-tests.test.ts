@@ -357,12 +357,12 @@ describe.sequential("Network Error Handling Tests", () => {
     it("should handle authentication failures", async () => {
       testServer.route("/protected.csv", (req, res) => {
         const authHeader = req.headers.authorization;
-        if (authHeader !== "Bearer valid-token") {
-          res.writeHead(401, { "Content-Type": "text/plain" });
-          res.end("Unauthorized");
-        } else {
+        if (authHeader === "Bearer valid-token") {
           res.writeHead(200, { "Content-Type": "text/csv" });
           res.end("test,data\n1,2");
+        } else {
+          res.writeHead(401, { "Content-Type": "text/plain" });
+          res.end("Unauthorized");
         }
       });
 

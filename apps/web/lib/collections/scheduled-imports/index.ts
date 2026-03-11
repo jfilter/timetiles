@@ -166,6 +166,63 @@ const validateScheduleConfig = (data: unknown): void => {
   }
 };
 
+const trackScheduleQuotaUsage = async (
+  req: PayloadRequest,
+  ownerId: string | number,
+  operation: "create" | "update",
+  doc: Record<string, unknown>,
+  previousDoc?: Record<string, unknown>
+): Promise<void> => {
+  const quotaService = getQuotaService(req.payload);
+
+  if (operation === "create" && doc.enabled !== false) {
+    await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+    return;
+  }
+
+  if (operation !== "update" || !previousDoc) return;
+
+  const wasEnabled = previousDoc.enabled;
+  const isEnabled = doc.enabled;
+
+  if (!wasEnabled && isEnabled) {
+    await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+  } else if (wasEnabled && !isEnabled) {
+    await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+  }
+};
+
+const isAdminModifyingOtherUser = (
+  operation: "create" | "update",
+  req: { user?: User | null },
+  ownerId: string | number | null | undefined
+): boolean => operation === "update" && !!req.user && !!ownerId && req.user.id !== ownerId && req.user.role === "admin";
+
+const auditAdminModification = async (
+  req: PayloadRequest,
+  doc: Record<string, unknown>,
+  previousDoc: Record<string, unknown> | undefined,
+  ownerId: number
+): Promise<void> => {
+  try {
+    const owner = await req.payload.findByID({ collection: "users", id: ownerId, overrideAccess: true, depth: 0 });
+    await auditLog(req.payload, {
+      action: AUDIT_ACTIONS.SCHEDULED_IMPORT_ADMIN_MODIFIED,
+      userId: ownerId,
+      userEmail: owner.email,
+      performedBy: req.user!.id,
+      details: {
+        scheduledImportId: doc.id,
+        scheduledImportName: doc.name,
+        enabledChanged: previousDoc?.enabled !== doc.enabled,
+        newEnabled: doc.enabled,
+      },
+    });
+  } catch {
+    /* audit is best-effort */
+  }
+};
+
 const ScheduledImports: CollectionConfig = {
   slug: "scheduled-imports",
   ...createCommonConfig(),
@@ -214,56 +271,14 @@ const ScheduledImports: CollectionConfig = {
     ],
     afterChange: [
       async ({ doc, operation, req, previousDoc }) => {
-        // Charge quota to the schedule owner, not the acting user (e.g., admin enabling another user's schedule)
         const ownerId = extractRelationId(doc.createdBy);
 
         if (ownerId) {
-          const quotaService = getQuotaService(req.payload);
-
-          // Track usage after successful creation of enabled schedule
-          if (operation === "create" && doc.enabled !== false) {
-            await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
-          }
-
-          // Handle update operations (enabling/disabling)
-          if (operation === "update" && previousDoc) {
-            const wasEnabled = previousDoc.enabled;
-            const isEnabled = doc.enabled;
-
-            if (!wasEnabled && isEnabled) {
-              // Schedule was enabled - increment usage
-              await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
-            } else if (wasEnabled && !isEnabled) {
-              // Schedule was disabled - decrement usage
-              await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
-            }
-          }
+          await trackScheduleQuotaUsage(req, ownerId, operation, doc, previousDoc);
         }
 
-        // Audit admin modifications to other users' scheduled imports
-        if (operation === "update" && req.user && ownerId && req.user.id !== ownerId && req.user.role === "admin") {
-          try {
-            const owner = await req.payload.findByID({
-              collection: "users",
-              id: ownerId,
-              overrideAccess: true,
-              depth: 0,
-            });
-            await auditLog(req.payload, {
-              action: AUDIT_ACTIONS.SCHEDULED_IMPORT_ADMIN_MODIFIED,
-              userId: ownerId,
-              userEmail: owner.email,
-              performedBy: req.user.id,
-              details: {
-                scheduledImportId: doc.id,
-                scheduledImportName: doc.name,
-                enabledChanged: previousDoc?.enabled !== doc.enabled,
-                newEnabled: doc.enabled,
-              },
-            });
-          } catch {
-            /* audit is best-effort */
-          }
+        if (ownerId && isAdminModifyingOtherUser(operation, req, ownerId)) {
+          await auditAdminModification(req, doc, previousDoc, ownerId);
         }
 
         return doc;

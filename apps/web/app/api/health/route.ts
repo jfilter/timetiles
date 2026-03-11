@@ -36,11 +36,11 @@ const determineHealthStatus = (results: Record<string, { status: string }>) => {
 const createErrorResponse = (error: unknown) => ({
   error: "Health check failed",
   message: error instanceof Error ? error.message : "Unknown error",
-  stack: process.env.NODE_ENV !== "production" ? (error as Error).stack : undefined,
+  stack: process.env.NODE_ENV === "production" ? undefined : (error as Error).stack,
   env: {
     NODE_ENV: process.env.NODE_ENV,
-    DATABASE_URL: process.env.DATABASE_URL != undefined ? "Set" : "Not set",
-    PAYLOAD_SECRET: process.env.PAYLOAD_SECRET != undefined ? "Set" : "Not set",
+    DATABASE_URL: process.env.DATABASE_URL == undefined ? "Not set" : "Set",
+    PAYLOAD_SECRET: process.env.PAYLOAD_SECRET == undefined ? "Not set" : "Set",
     LOG_LEVEL: process.env.LOG_LEVEL ?? "default",
   },
 });

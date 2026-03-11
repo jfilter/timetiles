@@ -38,6 +38,31 @@ const buildLongitudeBoundsClause = (bounds: SimpleBounds): ReturnType<typeof sql
   return sql`(e.location_longitude >= ${bounds.west} OR e.location_longitude <= ${bounds.east})`;
 };
 
+const buildBoundsClauses = (bounds: SimpleBounds): ReturnType<typeof sql>[] => [
+  sql`e.location_latitude >= ${bounds.south}`,
+  sql`e.location_latitude <= ${bounds.north}`,
+  buildLongitudeBoundsClause(bounds),
+];
+
+const buildFieldFilterClauses = (
+  fieldFilters: Record<string, string[]> | null | undefined
+): ReturnType<typeof sql>[] => {
+  if (!fieldFilters) return [];
+
+  const clauses: ReturnType<typeof sql>[] = [];
+  for (const [fieldKey, values] of Object.entries(fieldFilters)) {
+    if (Array.isArray(values) && values.length > 0) {
+      clauses.push(
+        sql`(e.data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
+          values.map((v) => sql`${v}`),
+          sql`, `
+        )})`
+      );
+    }
+  }
+  return clauses;
+};
+
 /**
  * Build SQL WHERE clause fragments from filter parameters.
  *
@@ -52,8 +77,8 @@ const buildLongitudeBoundsClause = (bounds: SimpleBounds): ReturnType<typeof sql
  * @example
  * ```typescript
  * const filters = {
- *   catalog: "1",
- *   datasets: ["5", "6"],
+ *   catalog: 1,
+ *   datasets: [5, 6],
  *   startDate: "2024-01-01",
  *   endDate: "2024-12-31",
  *   bounds: { north: 37.8, south: 37.7, east: -122.4, west: -122.5 }
@@ -61,7 +86,6 @@ const buildLongitudeBoundsClause = (bounds: SimpleBounds): ReturnType<typeof sql
  * const whereClause = buildAggregationWhereClause(filters, [1, 2, 3]);
  * ```
  */
-/* eslint-disable sonarjs/cognitive-complexity -- Multi-filter clause building is inherently branchy */
 export const buildAggregationWhereClause = (
   filters: AggregationFilters,
   accessibleCatalogIds: number[]
@@ -103,42 +127,14 @@ export const buildAggregationWhereClause = (
     );
   }
 
-  // 3. Start Date Filter (OPTIONAL)
-  if (filters.startDate) {
-    clauses.push(sql`e.event_timestamp >= ${filters.startDate}::timestamp`);
-  }
+  if (filters.startDate) clauses.push(sql`e.event_timestamp >= ${filters.startDate}::timestamp`);
+  if (filters.endDate) clauses.push(sql`e.event_timestamp <= ${filters.endDate}::timestamp`);
 
-  // 4. End Date Filter (OPTIONAL)
-  // Note: The calling code should append T23:59:59.999Z to endDate for end-of-day inclusivity
-  if (filters.endDate) {
-    clauses.push(sql`e.event_timestamp <= ${filters.endDate}::timestamp`);
-  }
+  if (filters.bounds) clauses.push(...buildBoundsClauses(filters.bounds));
+  clauses.push(...buildFieldFilterClauses(filters.fieldFilters));
 
-  // 5. Geographic Bounds Filter (OPTIONAL)
-  if (filters.bounds) {
-    clauses.push(sql`e.location_latitude >= ${filters.bounds.south}`);
-    clauses.push(sql`e.location_latitude <= ${filters.bounds.north}`);
-    clauses.push(buildLongitudeBoundsClause(filters.bounds));
-  }
-
-  // 6. Field Filters (OPTIONAL) - for categorical filtering by enum values
-  if (filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0) {
-    for (const [fieldKey, values] of Object.entries(filters.fieldFilters)) {
-      if (Array.isArray(values) && values.length > 0) {
-        clauses.push(
-          sql`(e.data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
-            values.map((v) => sql`${v}`),
-            sql`, `
-          )})`
-        );
-      }
-    }
-  }
-
-  // Combine all clauses with AND
   return sql.join(clauses, sql` AND `);
 };
-/* eslint-enable sonarjs/cognitive-complexity */
 
 /**
  * Normalize end date to include full day (23:59:59.999).

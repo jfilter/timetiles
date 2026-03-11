@@ -68,7 +68,7 @@ try {
   // Extract overall percentage from summary
   const match = summaryOutput.match(/All files[^|]*\|\s*([\d.]+)/);
   if (match) {
-    const overallCoverage = parseFloat(match[1]);
+    const overallCoverage = Number.parseFloat(match[1]);
     console.log(`\n🎯 Overall Coverage: ${overallCoverage.toFixed(2)}%`);
   }
 

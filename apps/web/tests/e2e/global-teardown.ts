@@ -7,8 +7,9 @@
  * @category E2E Setup
  */
 
+import path from "node:path";
+
 import { config as loadEnv } from "dotenv";
-import path from "path";
 
 // Load environment variables
 loadEnv({ path: path.resolve(process.cwd(), ".env.local") });

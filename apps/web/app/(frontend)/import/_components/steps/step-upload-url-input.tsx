@@ -32,7 +32,7 @@ export const UrlInputForm = ({ initialUrl, isLoading, onFetch }: Readonly<UrlInp
   });
 
   const handleFetchClick = useCallback(() => {
-    onFetch(urlInput.trim(), authConfig.type !== "none" ? authConfig : null);
+    onFetch(urlInput.trim(), authConfig.type === "none" ? null : authConfig);
   }, [urlInput, authConfig, onFetch]);
 
   const handleUrlInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

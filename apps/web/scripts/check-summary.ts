@@ -84,7 +84,7 @@ const runOxlintCheck = (): OxlintResults => {
   fs.mkdirSync(historyDir, { recursive: true });
   const ts = new Date()
     .toISOString()
-    .replace(/:/g, "-")
+    .replaceAll(":", "-")
     .replace(/\.\d+Z$/, "");
   const resultsPath = path.join(historyDir, `${ts}-oxlint.json`);
 
@@ -135,7 +135,7 @@ const runLintCheck = (): CheckResults["lint"] => {
   fs.mkdirSync(historyDir, { recursive: true });
   const ts = new Date()
     .toISOString()
-    .replace(/:/g, "-")
+    .replaceAll(":", "-")
     .replace(/\.\d+Z$/, "");
   const resultsPath = path.join(historyDir, `${ts}.json`);
 
@@ -205,7 +205,7 @@ const runTypeCheck = (): CheckResults["typecheck"] => {
   fs.mkdirSync(tcHistoryDir, { recursive: true });
   const tcTs = new Date()
     .toISOString()
-    .replace(/:/g, "-")
+    .replaceAll(":", "-")
     .replace(/\.\d+Z$/, "");
   const resultsPath = path.join(tcHistoryDir, `${tcTs}.json`);
 
@@ -246,8 +246,8 @@ const runTypeCheck = (): CheckResults["typecheck"] => {
 
         currentError = {
           file: match[1],
-          line: parseInt(match[2], 10),
-          column: parseInt(match[3], 10),
+          line: Number.parseInt(match[2], 10),
+          column: Number.parseInt(match[3], 10),
           code: match[5],
           message: match[6],
           severity,

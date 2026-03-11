@@ -67,7 +67,7 @@ describe.sequential("Job Queueing Tests", () => {
       const fileBuffer = fs.readFileSync(fixturePath);
 
       // Upload CSV file
-      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
         datasetsCount: 0,
@@ -109,7 +109,7 @@ describe.sequential("Job Queueing Tests", () => {
       const fileBuffer = fs.readFileSync(fixturePath);
 
       // Upload CSV file
-      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
         datasetsCount: 0,
@@ -175,7 +175,7 @@ describe.sequential("Job Queueing Tests", () => {
       const fixturePath = path.join(__dirname, "../../fixtures/events-german.csv");
       const fileBuffer = fs.readFileSync(fixturePath);
 
-      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
         datasetsCount: 0,

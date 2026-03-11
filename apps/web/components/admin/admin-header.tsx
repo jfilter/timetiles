@@ -81,7 +81,7 @@ const AdminHeader = () => {
       <div style={styles.leftSection}>
         <Image src={logo} alt="TimeTiles" width={32} height={32} style={styles.logoImage} />
         <span style={styles.brandText}>
-          TimeTiles
+          {"TimeTiles "}
           <span style={styles.dashboardBadge}>Dashboard</span>
         </span>
       </div>

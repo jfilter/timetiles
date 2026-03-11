@@ -79,7 +79,7 @@ Event 3,2024-01-03,Hamburg Germany
       schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
     });
 
-    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), csvContent, {
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "geocode-failure-test.csv",
       mimeType: "text/csv",
       user: testUserId,

@@ -66,7 +66,7 @@ const transformProgressResponse = (data: ProgressApiResponse): ImportProgress =>
   const currentStage = currentJob?.currentStage ?? data.jobs[0]?.currentStage ?? "Processing";
 
   const datasets = data.jobs.map((job) => ({
-    id: typeof job.datasetId === "string" ? parseInt(job.datasetId, 10) : job.datasetId,
+    id: typeof job.datasetId === "string" ? Number.parseInt(job.datasetId, 10) : job.datasetId,
     name: job.datasetName ?? `Dataset ${job.datasetId}`,
     eventsCount: job.results?.totalEvents ?? 0,
   }));

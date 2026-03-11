@@ -9,10 +9,9 @@
  */
 
 import { createReadStream } from "node:fs";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
+import { createServer } from "node:http";
 import * as path from "node:path";
-
-import type { IncomingMessage, Server, ServerResponse } from "http";
-import { createServer } from "http";
 
 export interface TestServerOptions {
   port?: number;

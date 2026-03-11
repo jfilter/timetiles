@@ -33,7 +33,7 @@ import {
  */
 const generateMockGeocodingResult = (address: string) => {
   // Use simple hash to generate consistent lat/lng from address
-  const hash = address.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = address.split("").reduce((acc, char) => acc + (char.codePointAt(0) ?? 0), 0);
   const lat = 30 + (hash % 40); // Range: 30-70
   const lng = -120 + (hash % 60); // Range: -120 to -60
 

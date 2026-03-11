@@ -202,7 +202,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       const data = await response.json();
 
       // Store the source URL and auth config in wizard state
-      setSourceUrl(urlInput.trim(), authConfig.type !== "none" ? authConfig : null);
+      setSourceUrl(urlInput.trim(), authConfig.type === "none" ? null : authConfig);
 
       // Set file info from URL response
       setFile(
@@ -242,6 +242,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         isDragging ? "border-primary bg-primary/5" : "border-border",
         isUploading && "pointer-events-none opacity-50"
       )}
+      role="presentation"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

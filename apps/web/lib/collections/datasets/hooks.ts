@@ -158,7 +158,7 @@ export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({
         action: AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED,
         userId: datasetOwnerId,
         userEmail: owner.email,
-        performedBy: req.user?.id !== datasetOwnerId ? req.user?.id : undefined,
+        performedBy: req.user?.id === datasetOwnerId ? undefined : req.user?.id,
         details: {
           datasetId: doc.id,
           datasetName: doc.name,

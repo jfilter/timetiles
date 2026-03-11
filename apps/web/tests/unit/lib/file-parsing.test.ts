@@ -9,9 +9,9 @@
  */
 // No mocking needed - use real file parsing libraries
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
-import os from "os";
 import Papa from "papaparse";
 import { read, utils, write } from "xlsx";
 
@@ -437,18 +437,18 @@ Event 2,2024-03-16
         const lowerHeaders = headers.map((h) => h.toLowerCase().trim());
 
         // Title variations
-        const titleVariations = ["title", "event_name", "name", "event_title"];
-        const titleMatch = lowerHeaders.find((h) => titleVariations.includes(h));
+        const titleVariations = new Set(["title", "event_name", "name", "event_title"]);
+        const titleMatch = lowerHeaders.find((h) => titleVariations.has(h));
         if (titleMatch) mapping.title = titleMatch;
 
         // Date variations
-        const dateVariations = ["date", "start_date", "event_date", "when"];
-        const dateMatch = lowerHeaders.find((h) => dateVariations.includes(h));
+        const dateVariations = new Set(["date", "start_date", "event_date", "when"]);
+        const dateMatch = lowerHeaders.find((h) => dateVariations.has(h));
         if (dateMatch) mapping.date = dateMatch;
 
         // Location variations
-        const locationVariations = ["location", "venue", "place", "where"];
-        const locationMatch = lowerHeaders.find((h) => locationVariations.includes(h));
+        const locationVariations = new Set(["location", "venue", "place", "where"]);
+        const locationMatch = lowerHeaders.find((h) => locationVariations.has(h));
         if (locationMatch) mapping.location = locationMatch;
 
         return mapping;
@@ -468,8 +468,8 @@ Event 2,2024-03-16
         const mapping: Record<string, string> = {};
         const lowerHeaders = headers.map((h) => h.toLowerCase().trim());
 
-        const titleVariations = ["title", "event_name", "name"];
-        const titleMatch = lowerHeaders.find((h) => titleVariations.includes(h));
+        const titleVariations = new Set(["title", "event_name", "name"]);
+        const titleMatch = lowerHeaders.find((h) => titleVariations.has(h));
         if (titleMatch) {
           const originalIndex = lowerHeaders.indexOf(titleMatch);
           if (originalIndex !== -1) {

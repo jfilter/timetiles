@@ -204,9 +204,9 @@ export const TimeRangeSlider = ({
             className="hover:bg-cartographic-navy/5 dark:hover:bg-cartographic-charcoal/5 w-full rounded py-1 text-center transition-colors"
           >
             <span className="text-cartographic-charcoal dark:text-cartographic-charcoal font-mono text-xs">
-              {startDate != null ? formatShortDate(parseISODate(startDate)) : formatShortDate(minTimestamp)}
+              {startDate == null ? formatShortDate(minTimestamp) : formatShortDate(parseISODate(startDate))}
               {" → "}
-              {endDate != null ? formatShortDate(parseISODate(endDate)) : formatShortDate(maxTimestamp)}
+              {endDate == null ? formatShortDate(maxTimestamp) : formatShortDate(parseISODate(endDate))}
             </span>
           </button>
         )}

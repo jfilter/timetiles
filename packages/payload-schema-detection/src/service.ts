@@ -46,7 +46,7 @@ export class SchemaDetectionService {
 
     // If no explicit default, use the last registered detector as fallback
     if (!this.defaultDetector && detectors.length > 0) {
-      this.defaultDetector = detectors[detectors.length - 1] ?? null;
+      this.defaultDetector = detectors.at(-1) ?? null;
     }
   }
 

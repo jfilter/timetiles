@@ -163,7 +163,7 @@ const validateTitleField = (stats: FieldStatistics, stringPct: number): number =
     const avgLength = stringValues.reduce((sum, s) => sum + s.length, 0) / stringValues.length;
 
     // Ideal title length: 10-100 characters
-    if (avgLength >= 10 && avgLength <= 100) return 1.0;
+    if (avgLength >= 10 && avgLength <= 100) return 1;
     // Acceptable: 5-200 characters
     if (avgLength >= 5 && avgLength <= 200) return 0.8;
     // Too short or too long
@@ -194,7 +194,7 @@ const validateDescriptionField = (stats: FieldStatistics, stringPct: number): nu
     const avgLength = stringValues.reduce((sum, s) => sum + s.length, 0) / stringValues.length;
 
     // Ideal description length: 20-500 characters
-    if (avgLength >= 20 && avgLength <= 500) return 1.0;
+    if (avgLength >= 20 && avgLength <= 500) return 1;
     // Acceptable: 10-1000 characters
     if (avgLength >= 10 && avgLength <= 1000) return 0.8;
     // Too short
@@ -232,7 +232,7 @@ const validateLocationNameField = (stats: FieldStatistics, stringPct: number): n
     // Long: "Deutsches Historisches Museum" (29 chars)
 
     // Ideal location name length: 3-50 characters
-    if (avgLength >= 3 && avgLength <= 50) return 1.0;
+    if (avgLength >= 3 && avgLength <= 50) return 1;
     // Acceptable: 2-100 characters
     if (avgLength >= 2 && avgLength <= 100) return 0.8;
     // Too short (likely codes)
@@ -264,7 +264,7 @@ const checkDateObjectsOrISOStrings = (stats: FieldStatistics): number => {
   const dateValueCount = dateObjects.length + isoDateStrings.length;
   const dateValuePct = dateValueCount / stats.uniqueSamples.length;
 
-  if (dateValuePct >= 0.7) return 1.0; // High confidence
+  if (dateValuePct >= 0.7) return 1; // High confidence
   if (dateValuePct >= 0.5) return 0.8;
   return 0;
 };
@@ -278,7 +278,7 @@ const checkDateFormat = (stats: FieldStatistics): number => {
   if (!hasDateFormat) return 0;
 
   const dateFormatPct = ((stats.formats?.date ?? 0) + (stats.formats?.dateTime ?? 0)) / stats.occurrences;
-  return Math.min(1.0, 0.7 + dateFormatPct * 0.3);
+  return Math.min(1, 0.7 + dateFormatPct * 0.3);
 };
 
 /**
@@ -374,7 +374,7 @@ const validateLocationField = (stats: FieldStatistics, stringPct: number): numbe
     // Landmarks: "Eiffel Tower, Paris" (20 chars)
 
     // Ideal location length: 3-100 characters
-    if (avgLength >= 3 && avgLength <= 100) return 1.0;
+    if (avgLength >= 3 && avgLength <= 100) return 1;
     // Acceptable: 2-500 characters
     if (avgLength >= 2 && avgLength <= 500) return 0.8;
     // Too short (likely codes not locations)

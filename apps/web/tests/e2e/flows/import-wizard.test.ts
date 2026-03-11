@@ -11,9 +11,10 @@
  * @module
  * @category E2E Tests
  */
-import path from "path";
-import { fileURLToPath } from "url";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
 import { ImportPage } from "../pages/import.page";
 
@@ -91,7 +92,7 @@ test.describe("Import Wizard - Authentication", () => {
     // Try to login with wrong password
     await importPage.loginTab.click();
     await importPage.emailInput.fill("admin@example.com");
-    await importPage.passwordInput.fill("wrongpassword");
+    await importPage.passwordInput.fill(TEST_CREDENTIALS.security.wrong);
     await importPage.loginButton.click();
 
     // Wait for login API response

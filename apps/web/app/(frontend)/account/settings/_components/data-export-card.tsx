@@ -179,7 +179,7 @@ export const DataExportCard = () => {
 
   const handleDownload = useCallback(() => {
     if (latestExport?.id) {
-      window.location.href = getExportDownloadUrl(latestExport.id);
+      globalThis.location.href = getExportDownloadUrl(latestExport.id);
     }
   }, [latestExport?.id]);
 

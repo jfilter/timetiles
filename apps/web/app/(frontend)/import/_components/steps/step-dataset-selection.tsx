@@ -112,8 +112,8 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     // Remove file extension and clean up the name
     return state.file.name
       .replace(/\.[^/.]+$/, "") // Remove extension
-      .replace(/[-_]+/g, " ") // Replace dashes/underscores with spaces
-      .replace(/\s+/g, " ") // Collapse multiple spaces
+      .replaceAll(/[-_]+/g, " ") // Replace dashes/underscores with spaces
+      .replaceAll(/\s+/g, " ") // Collapse multiple spaces
       .trim();
   }, [state.file?.name]);
 

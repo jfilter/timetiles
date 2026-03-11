@@ -361,7 +361,7 @@ export class ImportPage {
       .getAttribute("data-testid");
     if (!activeStep) return 0;
     const match = /progress-step-(\d+)/.exec(activeStep);
-    return match?.[1] ? parseInt(match[1], 10) : 0;
+    return match?.[1] ? Number.parseInt(match[1], 10) : 0;
   }
 
   /**

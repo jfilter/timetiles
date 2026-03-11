@@ -9,8 +9,7 @@
  * @category Integration Tests
  */
 import type { Payload } from "payload";
-import { vi } from "vitest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
 import * as fileReaders from "@/lib/utils/file-readers";

@@ -108,6 +108,45 @@ const handleSchemaApproval = (
   }
 };
 
+const validateImportFileOwnership = async (
+  importFile: ImportJob["importFile"] | undefined,
+  userId: number,
+  req: PayloadRequest
+): Promise<void> => {
+  if (!importFile) return;
+
+  const importFileId = extractRelationId(importFile);
+  if (!importFileId) return;
+
+  const file = await req.payload.findByID({ collection: "import-files", id: importFileId, overrideAccess: true });
+  const ownerId = extractRelationId(file?.user);
+  if (ownerId !== userId) {
+    throw new Error("You can only create import jobs for your own import files");
+  }
+};
+
+const validateDatasetCatalogAccess = async (
+  dataset: ImportJob["dataset"] | undefined,
+  userId: number,
+  req: PayloadRequest
+): Promise<void> => {
+  if (!dataset) return;
+
+  const datasetId = extractRelationId(dataset);
+  if (!datasetId) return;
+
+  const ds = await req.payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
+  const catalogId = extractRelationId(ds?.catalog);
+  if (!catalogId) return;
+
+  const catalog = await req.payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
+  const catalogOwnerId = extractRelationId(catalog?.createdBy);
+  const isPublicCatalog = catalog?.isPublic ?? false;
+  if (catalogOwnerId !== userId && !isPublicCatalog) {
+    throw new Error("You can only create import jobs for datasets in your own or public catalogs");
+  }
+};
+
 /**
  * Validates that a non-privileged user owns the referenced importFile and
  * has access to the target dataset's catalog when creating an import job.
@@ -119,38 +158,8 @@ const validateCreateOwnership = async (data: Partial<ImportJob>, req: PayloadReq
   const isPrivileged = user.role === "admin" || user.role === "editor";
   if (isPrivileged) return;
 
-  // Validate importFile belongs to this user
-  if (data.importFile) {
-    const importFileId = extractRelationId(data.importFile);
-    if (importFileId) {
-      const importFile = await req.payload.findByID({
-        collection: "import-files",
-        id: importFileId,
-        overrideAccess: true,
-      });
-      const ownerId = extractRelationId(importFile?.user);
-      if (ownerId !== user.id) {
-        throw new Error("You can only create import jobs for your own import files");
-      }
-    }
-  }
-
-  // Validate dataset is in user's own or public catalog
-  if (data.dataset) {
-    const datasetId = extractRelationId(data.dataset);
-    if (datasetId) {
-      const dataset = await req.payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
-      const catalogId = extractRelationId(dataset?.catalog);
-      if (catalogId) {
-        const catalog = await req.payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
-        const catalogOwnerId = extractRelationId(catalog?.createdBy);
-        const isPublicCatalog = catalog?.isPublic ?? false;
-        if (catalogOwnerId !== user.id && !isPublicCatalog) {
-          throw new Error("You can only create import jobs for datasets in your own or public catalogs");
-        }
-      }
-    }
-  }
+  await validateImportFileOwnership(data.importFile, user.id, req);
+  await validateDatasetCatalogAccess(data.dataset, user.id, req);
 };
 
 export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
@@ -174,75 +183,73 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
   },
 ];
 
+const isTerminalStageOverride = (fromStage: string, toStage: string): boolean =>
+  (fromStage === PROCESSING_STAGE.COMPLETED && toStage !== PROCESSING_STAGE.COMPLETED) ||
+  (fromStage === PROCESSING_STAGE.FAILED && toStage !== PROCESSING_STAGE.FAILED);
+
+const auditAdminStageOverride = async (req: PayloadRequest, doc: ImportJob, previousDoc: ImportJob): Promise<void> => {
+  if (req.user?.role !== "admin") return;
+
+  const fromStage = previousDoc.stage;
+  const toStage = doc.stage;
+  if (!isTerminalStageOverride(fromStage, toStage)) return;
+
+  await auditLog(req.payload, {
+    action: AUDIT_ACTIONS.IMPORT_JOB_STAGE_OVERRIDE,
+    userId: req.user.id,
+    userEmail: req.user.email,
+    details: {
+      importJobId: doc.id,
+      fromStage,
+      toStage,
+      overrideType: fromStage === PROCESSING_STAGE.COMPLETED ? "completed_state_reset" : "failed_recovery",
+    },
+  });
+};
+
+const trackImportJobQuota = async (req: PayloadRequest, doc: ImportJob): Promise<void> => {
+  const importFileId = extractRelationId(doc.importFile)!;
+  const importFile = await req.payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: importFileId });
+
+  if (!importFile?.user) return;
+
+  const userId = extractRelationId(importFile.user)!;
+  const quotaService = getQuotaService(req.payload);
+  await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1, req);
+  logger.info("Import job creation tracked for quota", { userId, importJobId: doc.id });
+};
+
+const handleFailedTransition = async (req: PayloadRequest, doc: ImportJob, error: string): Promise<void> => {
+  logger.error("Stage transition failed, marking job as FAILED", { importJobId: doc.id, error });
+  await req.payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: doc.id,
+    data: {
+      stage: PROCESSING_STAGE.FAILED,
+      errorLog: { error, context: "stage transition", timestamp: new Date().toISOString() },
+    },
+  });
+};
+
 export const afterChangeHooks: CollectionAfterChangeHook[] = [
   async ({ doc, previousDoc, req, operation }) => {
-    // Skip stage transition processing when called from recovery service
-    if (req.context?.skipStageTransition) {
-      return doc;
+    if (req.context?.skipStageTransition) return doc;
+
+    if (operation === "update" && previousDoc) {
+      await auditAdminStageOverride(req, doc, previousDoc);
     }
 
-    // Audit admin stage overrides
-    if (operation === "update" && previousDoc && req.user?.role === "admin") {
-      const fromStage = previousDoc.stage;
-      const toStage = doc.stage;
-
-      if (
-        (fromStage === PROCESSING_STAGE.COMPLETED && toStage !== PROCESSING_STAGE.COMPLETED) ||
-        (fromStage === PROCESSING_STAGE.FAILED && toStage !== PROCESSING_STAGE.FAILED)
-      ) {
-        await auditLog(req.payload, {
-          action: AUDIT_ACTIONS.IMPORT_JOB_STAGE_OVERRIDE,
-          userId: req.user.id,
-          userEmail: req.user.email,
-          details: {
-            importJobId: doc.id,
-            fromStage,
-            toStage,
-            overrideType: fromStage === PROCESSING_STAGE.COMPLETED ? "completed_state_reset" : "failed_recovery",
-          },
-        });
-      }
-    }
-
-    // Track import job creation for quota
     if (operation === "create") {
-      // Get the user who created this import job (from the import file)
-      const importFileId = extractRelationId(doc.importFile)!;
-      const importFile = await req.payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: importFileId });
-
-      if (importFile?.user) {
-        const userId = extractRelationId(importFile.user)!;
-
-        const quotaService = getQuotaService(req.payload);
-        await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1, req);
-
-        logger.info("Import job creation tracked for quota", { userId, importJobId: doc.id });
-      }
-    }
-    // Handle initial job creation
-    if (operation === "create") {
+      await trackImportJobQuota(req, doc);
       await req.payload.jobs.queue({ task: JOB_TYPES.ANALYZE_DUPLICATES, input: { importJobId: doc.id } });
       return doc;
     }
 
-    // Handle stage transitions
     const transitionResult = await StageTransitionService.processStageTransition(req.payload, doc, previousDoc);
     if (!transitionResult.success && transitionResult.error) {
-      logger.error("Stage transition failed, marking job as FAILED", {
-        importJobId: doc.id,
-        error: transitionResult.error,
-      });
-      await req.payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: doc.id,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: { error: transitionResult.error, context: "stage transition", timestamp: new Date().toISOString() },
-        },
-      });
+      await handleFailedTransition(req, doc, transitionResult.error);
     }
 
-    // Handle job completion status updates
     if (isJobCompleted(doc)) {
       await handleJobCompletion(req.payload, doc, req);
     }

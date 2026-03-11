@@ -253,7 +253,7 @@ const Catalogs: CollectionConfig = {
                 action: AUDIT_ACTIONS.CATALOG_VISIBILITY_CHANGED,
                 userId: ownerId,
                 userEmail: owner.email,
-                performedBy: req.user?.id !== ownerId ? req.user?.id : undefined,
+                performedBy: req.user?.id === ownerId ? undefined : req.user?.id,
                 details: {
                   catalogId: doc.id,
                   catalogName: doc.name,

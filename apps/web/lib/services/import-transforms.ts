@@ -121,7 +121,7 @@ const parseFormatParts = (
     month = 0,
     day = 0;
   for (let i = 0; i < 3; i++) {
-    const num = parseInt(parts[i]!, 10);
+    const num = Number.parseInt(parts[i]!, 10);
     if (isNaN(num)) return null;
     switch (order[i]) {
       case "Y":
@@ -194,7 +194,7 @@ const adjustForTimezone = (date: Date, timezone: string): Date => {
     hour12: false,
   }).formatToParts(date);
 
-  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? "0", 10);
+  const get = (type: string) => Number.parseInt(parts.find((p) => p.type === type)?.value ?? "0", 10);
   const tzLocal = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
   const offsetMs = tzLocal - date.getTime();
   return new Date(date.getTime() - offsetMs);
@@ -251,10 +251,10 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
       result = value.trim();
       break;
     case "replace":
-      if (transform.pattern !== undefined) {
-        result = value.replaceAll(transform.pattern, transform.replacement ?? "");
-      } else {
+      if (transform.pattern === undefined) {
         result = value;
+      } else {
+        result = value.replaceAll(transform.pattern, transform.replacement ?? "");
       }
       break;
     default:

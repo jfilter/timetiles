@@ -69,7 +69,6 @@ const MemoizedEnumField = ({
 
   return (
     <EnumFieldDropdown
-      fieldPath={fieldPath}
       label={label}
       values={values}
       selectedValues={selectedValues}

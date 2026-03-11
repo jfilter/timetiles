@@ -107,10 +107,10 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
           onMapPositionChangeRef.current(center, zoom);
         }
 
-        if (!isInitialBoundsApplied) {
-          setIsInitialBoundsApplied(true);
-        } else {
+        if (isInitialBoundsApplied) {
           setHasUserPanned(true);
+        } else {
+          setIsInitialBoundsApplied(true);
         }
       } else {
         setMapBounds(null);

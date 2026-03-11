@@ -974,7 +974,11 @@ export const withImportFile = async (
 
   // User is required for import-files. Create a test user if not provided.
   let userContext: any = undefined;
-  if (options?.user !== undefined) {
+  if (options?.user === undefined) {
+    const defaultUser = await getOrCreateDefaultImportUser(testEnv);
+    data.user = defaultUser.id;
+    userContext = defaultUser;
+  } else {
     data.user = options.user;
     // Try to get the full user object for context
     try {
@@ -982,10 +986,6 @@ export const withImportFile = async (
     } catch {
       // User might not exist, just use ID
     }
-  } else {
-    const defaultUser = await getOrCreateDefaultImportUser(testEnv);
-    data.user = defaultUser.id;
-    userContext = defaultUser;
   }
   if (options?.datasetsCount !== undefined) {
     data.datasetsCount = options.datasetsCount;

@@ -7,8 +7,9 @@
  * @module
  * @category Globals
  */
-import { existsSync, mkdirSync, readFileSync } from "fs";
-import { join } from "path";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import type { GlobalAfterChangeHook } from "payload";
 import sharp from "sharp";
 

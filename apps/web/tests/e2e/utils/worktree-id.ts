@@ -8,8 +8,8 @@
  * @category E2E Utils
  */
 
-import { execSync } from "child_process";
-import { createHash } from "crypto";
+import { execSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 /**
  * Get a short unique ID for the current git worktree.
@@ -70,7 +70,7 @@ export const getWorktreeBasePort = (): number => {
 
   // Convert first 4 hex chars to number, mod 90 to get offset 0-89
   // This gives port ranges 3000-3089, 3100-3189, ..., 11900-11989
-  const offset = parseInt(worktreeId.slice(0, 4), 16) % 90;
+  const offset = Number.parseInt(worktreeId.slice(0, 4), 16) % 90;
   return 3000 + offset * 100;
 };
 

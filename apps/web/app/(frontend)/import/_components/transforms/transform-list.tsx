@@ -263,44 +263,31 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
   );
 };
 
-/**
- * Display a summary of the transform configuration
- */
-const TransformSummary = ({ transform }: { transform: ImportTransform }) => {
-  let summary = "";
-
+const getTransformSummary = (transform: ImportTransform): string => {
   switch (transform.type) {
     case "rename":
-      summary = transform.from && transform.to ? `${transform.from} → ${transform.to}` : "Select field to rename";
-      break;
+      return transform.from && transform.to ? `${transform.from} → ${transform.to}` : "Select field to rename";
     case "date-parse":
-      summary =
-        transform.inputFormat && transform.outputFormat
-          ? `${transform.inputFormat} → ${transform.outputFormat}`
-          : "Configure date format";
-      break;
+      return transform.inputFormat && transform.outputFormat
+        ? `${transform.inputFormat} → ${transform.outputFormat}`
+        : "Configure date format";
     case "string-op":
-      summary = transform.from ? `Apply ${transform.operation} to ${transform.from}` : "Select field and operation";
-      break;
+      return transform.from ? `Apply ${transform.operation} to ${transform.from}` : "Select field and operation";
     case "concatenate":
-      summary =
-        transform.fromFields.length >= 2
-          ? `Join ${transform.fromFields.length} fields → ${transform.to || "?"}`
-          : "Select fields to concatenate";
-      break;
+      return transform.fromFields.length >= 2
+        ? `Join ${transform.fromFields.length} fields → ${transform.to || "?"}`
+        : "Select fields to concatenate";
     case "split":
-      summary =
-        transform.from && transform.toFields.length > 0
-          ? `Split ${transform.from} into ${transform.toFields.length} fields`
-          : "Configure split operation";
-      break;
+      return transform.from && transform.toFields.length > 0
+        ? `Split ${transform.from} into ${transform.toFields.length} fields`
+        : "Configure split operation";
     case "type-cast":
-      summary =
-        transform.from && transform.fromType && transform.toType
-          ? `${transform.from}: ${transform.fromType} → ${transform.toType}`
-          : "Configure type conversion";
-      break;
+      return transform.from && transform.fromType && transform.toType
+        ? `${transform.from}: ${transform.fromType} → ${transform.toType}`
+        : "Configure type conversion";
   }
-
-  return <p className="text-muted-foreground mt-0.5 truncate text-sm">{summary}</p>;
 };
+
+const TransformSummary = ({ transform }: { transform: ImportTransform }) => (
+  <p className="text-muted-foreground mt-0.5 truncate text-sm">{getTransformSummary(transform)}</p>
+);

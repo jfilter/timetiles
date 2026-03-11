@@ -52,6 +52,8 @@ const PaletteItem = memo(({ item }: Readonly<PaletteItemProps>) => {
   return (
     <div
       draggable
+      role="listitem"
+      tabIndex={0}
       onDragStart={handleDragStart}
       className={cn(
         "bg-muted/50 hover:bg-muted flex cursor-grab items-start gap-3 rounded-md border p-3 transition-colors",
@@ -74,9 +76,11 @@ export const NodePalette = ({ className }: Readonly<NodePaletteProps>) => {
       <h3 className="text-muted-foreground mb-2 font-mono text-[10px] tracking-wide uppercase">Transforms</h3>
       <p className="text-muted-foreground mb-3 text-xs">Drag a transform onto the canvas to add data processing</p>
 
-      {PALETTE_ITEMS.map((item) => (
-        <PaletteItem key={item.type} item={item} />
-      ))}
+      <div role="list" aria-label="Available transforms">
+        {PALETTE_ITEMS.map((item) => (
+          <PaletteItem key={item.type} item={item} />
+        ))}
+      </div>
     </div>
   );
 };

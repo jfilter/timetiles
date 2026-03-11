@@ -37,7 +37,7 @@ const fixCircularReferences = (filePath: string) => {
   let content = readFileSync(fullPath, "utf-8");
 
   // Remove any existing @ts-nocheck (no longer needed with proper fix)
-  content = content.replace(/\/\/ @ts-nocheck[^\n]*\n/g, "");
+  content = content.replaceAll(/\/\/ @ts-nocheck[^\n]*\n/g, "");
 
   // Annotate ALL .references() calls with AnyPgColumn for platform independence.
   // Payload generates tables in different order on macOS vs Linux, so we can't
@@ -59,11 +59,11 @@ const fixCircularReferences = (filePath: string) => {
     );
   }
 
-  if (finalContent !== content) {
+  if (finalContent === content) {
+    logger.debug(`No circular references found in ${filePath}`);
+  } else {
     writeFileSync(fullPath, finalContent, "utf-8");
     logger.info(`Fixed circular foreign key references in ${filePath}`);
-  } else {
-    logger.debug(`No circular references found in ${filePath}`);
   }
 };
 

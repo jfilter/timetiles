@@ -67,6 +67,7 @@ export const FileDropZone = ({
         isDragging ? "border-primary bg-primary/5" : "border-border",
         isUploading && "pointer-events-none opacity-50"
       )}
+      role="presentation"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={handleDrop}

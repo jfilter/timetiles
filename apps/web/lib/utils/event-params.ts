@@ -28,7 +28,7 @@ export const parseStrictInteger = (value: string | number | null | undefined): n
     return null;
   }
 
-  return parseInt(trimmedValue, 10);
+  return Number.parseInt(trimmedValue, 10);
 };
 
 /** Parse a value as a strict integer, throwing with context if invalid. */

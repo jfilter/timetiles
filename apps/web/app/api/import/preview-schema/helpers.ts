@@ -89,51 +89,43 @@ const getConfidenceLevel = (confidence: number): ConfidenceLevel => {
 
 type FieldPatternType = keyof typeof FIELD_PATTERNS;
 
+const matchPatternsToHeaders = (
+  headers: string[],
+  patterns: readonly RegExp[],
+  baseConfidence: number,
+  decrement: number,
+  minConfidence: number
+): FieldMappingSuggestion | null => {
+  for (let i = 0; i < patterns.length; i++) {
+    const pattern = patterns[i];
+    if (!pattern) continue;
+    const match = headers.find((h) => pattern.test(h));
+    if (match) {
+      const confidence = Math.max(minConfidence, baseConfidence - i * decrement);
+      return { path: match, confidence, confidenceLevel: getConfidenceLevel(confidence) };
+    }
+  }
+  return null;
+};
+
 /**
  * Detect a field mapping from headers based on patterns.
  * Uses patterns from the schema detection plugin.
  */
 const detectFieldFromHeaders = (headers: string[], fieldType: string, language: string): FieldMappingSuggestion => {
-  // Handle coordinate fields using dedicated patterns
-  if (fieldType === "latitude") {
-    return detectCoordinateField(headers, LATITUDE_PATTERNS);
-  }
-  if (fieldType === "longitude") {
-    return detectCoordinateField(headers, LONGITUDE_PATTERNS);
-  }
+  if (fieldType === "latitude") return detectCoordinateField(headers, LATITUDE_PATTERNS);
+  if (fieldType === "longitude") return detectCoordinateField(headers, LONGITUDE_PATTERNS);
 
-  // Handle semantic fields using FIELD_PATTERNS from plugin
   const fieldPatterns = FIELD_PATTERNS[fieldType as FieldPatternType];
-  if (!fieldPatterns) {
-    return { path: null, confidence: 0, confidenceLevel: "none" };
-  }
+  if (!fieldPatterns) return { path: null, confidence: 0, confidenceLevel: "none" };
 
-  // Get patterns for language, fallback to English
   const langPatterns = fieldPatterns[language as keyof typeof fieldPatterns] ?? fieldPatterns.eng;
-  const engPatterns = fieldPatterns.eng;
+  const langResult = matchPatternsToHeaders(headers, langPatterns, 0.9, 0.1, 0.5);
+  if (langResult) return langResult;
 
-  // Try language-specific patterns first
-  for (let i = 0; i < langPatterns.length; i++) {
-    const pattern = langPatterns[i];
-    if (!pattern) continue;
-    const match = headers.find((h) => pattern.test(h));
-    if (match) {
-      const confidence = 0.9 - i * 0.1;
-      return { path: match, confidence: Math.max(0.5, confidence), confidenceLevel: getConfidenceLevel(confidence) };
-    }
-  }
-
-  // Try English patterns as fallback (if not already using English)
   if (language !== "eng") {
-    for (let i = 0; i < engPatterns.length; i++) {
-      const pattern = engPatterns[i];
-      if (!pattern) continue;
-      const match = headers.find((h) => pattern.test(h));
-      if (match) {
-        const confidence = 0.7 - i * 0.1;
-        return { path: match, confidence: Math.max(0.3, confidence), confidenceLevel: getConfidenceLevel(confidence) };
-      }
-    }
+    const engResult = matchPatternsToHeaders(headers, fieldPatterns.eng, 0.7, 0.1, 0.3);
+    if (engResult) return engResult;
   }
 
   return { path: null, confidence: 0, confidenceLevel: "none" };

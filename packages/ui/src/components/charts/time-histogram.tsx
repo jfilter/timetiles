@@ -40,8 +40,6 @@ export interface TimeHistogramProps {
   isInitialLoad?: boolean;
   /** Show corner spinner badge (for updates) */
   isUpdating?: boolean;
-  /** Custom loading message */
-  loadingMessage?: string;
   /** Custom empty message */
   emptyMessage?: string;
   /** Bucket size in seconds (for adaptive tooltip formatting) */

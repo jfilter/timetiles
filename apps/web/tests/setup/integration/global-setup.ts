@@ -50,7 +50,7 @@ const setupDatabaseWithMigrations = async (dbName: string, dbUrl: string, worker
         reason: schemaError instanceof Error ? schemaError.message : "Schema verification failed",
       });
     }
-    const { execSync } = await import("child_process");
+    const { execSync } = await import("node:child_process");
     execSync("pnpm --filter web payload migrate", { stdio: "inherit" });
 
     // Verify again after migration

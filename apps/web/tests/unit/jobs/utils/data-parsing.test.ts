@@ -7,9 +7,9 @@
  * @category Tests
  */
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
-import os from "os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -65,7 +65,7 @@ describe("Data Parsing Utilities", () => {
     it("should reject prototype pollution (__proto__)", () => {
       const obj: Record<string, unknown> = {};
       setObjectProperty(obj, "__proto__", { polluted: true });
-      expect((obj as any).__proto__.polluted).toBeUndefined();
+      expect((Object.getPrototypeOf(obj) as Record<string, unknown>).polluted).toBeUndefined();
       expect(Object.hasOwn(Object.prototype, "polluted")).toBe(false);
     });
 

@@ -110,7 +110,7 @@ export class DataProcessing {
 
     for (let i = 0; i < needed; i++) {
       const baseItem = itemsArray[i % itemsArray.length];
-      const newItem = JSON.parse(JSON.stringify(baseItem)) as Record<string, unknown>;
+      const newItem = structuredClone(baseItem) as Record<string, unknown>;
 
       // Apply collection-specific variations
       this.applyCollectionSpecificVariations(newItem, i, collectionName);
@@ -240,7 +240,7 @@ export class DataProcessing {
           ? data.filter((user: unknown) => {
               const userObj = user as Record<string, unknown>;
               const email = userObj.email as string | undefined;
-              return email != null ? !email.includes("test") : true;
+              return email == null ? true : !email.includes("test");
             })
           : data
       ) as SeedData;

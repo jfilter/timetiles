@@ -62,7 +62,7 @@ describe.sequential("Import Files Collection", () => {
     const fileName = "valid-events.csv";
 
     // Use the helper function that properly handles file uploads
-    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
       user: testUserId,
       filename: fileName,
       datasetsCount: 0,
@@ -73,7 +73,7 @@ describe.sequential("Import Files Collection", () => {
     expect(importFile.filename).toBeDefined(); // Payload auto-generated
     expect(importFile.mimeType).toBe("text/csv"); // Should match our file
     expect(importFile.filesize).toBe(fileBuffer.length); // Should match file size
-    expect(importFile.catalog.id ?? importFile.catalog).toBe(parseInt(testCatalogId, 10));
+    expect(importFile.catalog.id ?? importFile.catalog).toBe(Number.parseInt(testCatalogId, 10));
     expect(importFile.status).toBe("pending");
   });
 
@@ -82,7 +82,7 @@ describe.sequential("Import Files Collection", () => {
     const fileBuffer = fs.readFileSync(testFilePath);
     const fileName = "valid-events.csv";
 
-    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
       user: testUserId,
       filename: fileName,
     });
@@ -115,7 +115,7 @@ describe.sequential("Import Files Collection", () => {
     const fileBuffer = fs.readFileSync(testFilePath);
     const fileName = "valid-events.csv";
 
-    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
       user: testUserId,
       filename: fileName,
     });

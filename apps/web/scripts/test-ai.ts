@@ -81,7 +81,7 @@ const historyDir = path.join(process.cwd(), ".test-results");
 fs.mkdirSync(historyDir, { recursive: true });
 const timestamp = new Date(startTime)
   .toISOString()
-  .replace(/:/g, "-")
+  .replaceAll(":", "-")
   .replace(/\.\d+Z$/, "");
 const resultsFilename = `${timestamp}.json`;
 const resultsPath = path.join(historyDir, resultsFilename);

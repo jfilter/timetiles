@@ -16,6 +16,13 @@ import {
   isTestDatabase,
   parseDatabaseUrl,
 } from "../../../lib/database/url";
+import { TEST_CREDENTIALS } from "../../constants/test-credentials";
+
+// Construct reusable test database URLs from centralized credentials
+const TEST_DB_USER = TEST_CREDENTIALS.basic.alternateUsername;
+const TEST_DB_PASS = TEST_CREDENTIALS.basic.alternatePassword;
+const TEST_DB_URL = `postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb`;
+const TEST_DB_URL_NO_PORT = `postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost/mydb`;
 
 describe("Database URL Utilities", () => {
   const originalEnv = process.env;
@@ -30,12 +37,12 @@ describe("Database URL Utilities", () => {
 
   describe("parseDatabaseUrl", () => {
     it("should parse a standard PostgreSQL URL", () => {
-      const url = "postgresql://user:pass@localhost:5432/mydb";
+      const url = TEST_DB_URL;
       const parsed = parseDatabaseUrl(url);
 
       expect(parsed).toEqual({
-        username: "user",
-        password: "pass",
+        username: TEST_DB_USER,
+        password: TEST_DB_PASS,
         host: "localhost",
         port: "5432",
         database: "mydb",
@@ -44,7 +51,7 @@ describe("Database URL Utilities", () => {
     });
 
     it("should use default port when not specified", () => {
-      const url = "postgresql://user:pass@localhost/mydb";
+      const url = TEST_DB_URL_NO_PORT;
       const parsed = parseDatabaseUrl(url);
 
       expect(parsed.port).toBe("5432");
@@ -61,53 +68,53 @@ describe("Database URL Utilities", () => {
   describe("constructDatabaseUrl", () => {
     it("should construct a valid PostgreSQL URL", () => {
       const url = constructDatabaseUrl({
-        username: "user",
-        password: "pass",
+        username: TEST_DB_USER,
+        password: TEST_DB_PASS,
         host: "localhost",
         port: "5432",
         database: "mydb",
       });
 
-      expect(url).toBe("postgresql://user:pass@localhost:5432/mydb");
+      expect(url).toBe(TEST_DB_URL);
     });
   });
 
   describe("deriveDatabaseUrl", () => {
     it("should create test database URL with worker ID", () => {
-      const baseUrl = "postgresql://user:pass@localhost:5432/mydb";
+      const baseUrl = TEST_DB_URL;
       const testUrl = deriveDatabaseUrl(baseUrl, { workerId: "1" });
 
-      expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test_1");
+      expect(testUrl).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test_1`);
     });
 
     it("should create test database URL without worker ID", () => {
-      const baseUrl = "postgresql://user:pass@localhost:5432/mydb";
+      const baseUrl = TEST_DB_URL;
       const testUrl = deriveDatabaseUrl(baseUrl, {});
 
-      expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test");
+      expect(testUrl).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test`);
     });
 
     it("should clean existing _test suffix to avoid duplication", () => {
-      const baseUrl = "postgresql://user:pass@localhost:5432/mydb_test";
+      const baseUrl = `postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test`;
       const testUrl = deriveDatabaseUrl(baseUrl, { workerId: "1" });
 
-      expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test_1");
+      expect(testUrl).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test_1`);
     });
 
     it("should handle existing _test_1 suffix", () => {
-      const baseUrl = "postgresql://user:pass@localhost:5432/mydb_test_1";
+      const baseUrl = `postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test_1`;
       const testUrl = deriveDatabaseUrl(baseUrl, { workerId: "2" });
 
-      expect(testUrl).toBe("postgresql://user:pass@localhost:5432/mydb_test_2");
+      expect(testUrl).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test_2`);
     });
   });
 
   describe("getDatabaseUrl", () => {
     it("should return DATABASE_URL when set", () => {
-      process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/mydb";
+      process.env.DATABASE_URL = TEST_DB_URL;
 
       const url = getDatabaseUrl();
-      expect(url).toBe("postgresql://user:pass@localhost:5432/mydb");
+      expect(url).toBe(TEST_DB_URL);
     });
 
     it("should throw when required and not set", () => {
@@ -126,42 +133,42 @@ describe("Database URL Utilities", () => {
 
   describe("getTestDatabaseUrl", () => {
     it("should return test database URL for current worker", () => {
-      process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/mydb";
+      process.env.DATABASE_URL = TEST_DB_URL;
       process.env.VITEST_WORKER_ID = "2";
 
       const url = getTestDatabaseUrl();
-      expect(url).toBe("postgresql://user:pass@localhost:5432/mydb_test_2");
+      expect(url).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test_2`);
     });
 
     it("should work without worker ID", () => {
-      process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/mydb";
+      process.env.DATABASE_URL = TEST_DB_URL;
       delete process.env.VITEST_WORKER_ID;
 
       const url = getTestDatabaseUrl();
-      expect(url).toBe("postgresql://user:pass@localhost:5432/mydb_test");
+      expect(url).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test`);
     });
   });
 
   describe("isTestDatabase", () => {
     it("should identify test databases", () => {
-      expect(isTestDatabase("postgresql://user:pass@localhost:5432/mydb_test")).toBe(true);
-      expect(isTestDatabase("postgresql://user:pass@localhost:5432/mydb_test_1")).toBe(true);
+      expect(isTestDatabase(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test`)).toBe(true);
+      expect(isTestDatabase(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test_1`)).toBe(true);
       // Note: We only check for _test suffix, not test_ prefix
     });
 
     it("should identify non-test databases", () => {
-      expect(isTestDatabase("postgresql://user:pass@localhost:5432/mydb")).toBe(false);
-      expect(isTestDatabase("postgresql://user:pass@localhost:5432/production")).toBe(false);
-      expect(isTestDatabase("postgresql://user:pass@localhost:5432/test_mydb")).toBe(false);
+      expect(isTestDatabase(TEST_DB_URL)).toBe(false);
+      expect(isTestDatabase(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/production`)).toBe(false);
+      expect(isTestDatabase(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/test_mydb`)).toBe(false);
     });
   });
 
   describe("getDatabaseInfo", () => {
     it("should return safe database info without password", () => {
-      const url = "postgresql://user:secret@localhost:5432/mydb";
+      const url = `postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb`;
       const info = getDatabaseInfo(url);
 
-      expect(info).toEqual({ username: "user", host: "localhost", port: "5432", database: "mydb" });
+      expect(info).toEqual({ username: TEST_DB_USER, host: "localhost", port: "5432", database: "mydb" });
 
       expect(info).not.toHaveProperty("password");
       expect(info).not.toHaveProperty("fullUrl");

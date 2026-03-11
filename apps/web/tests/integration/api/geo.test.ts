@@ -50,7 +50,7 @@ describe("/api/v1/events/geo", () => {
     const dataset = await payload.create({
       collection: "datasets",
       data: {
-        catalog: parseInt(testCatalogId),
+        catalog: Number.parseInt(testCatalogId),
         name: "Test Dataset for Clustering",
         slug: `test-clustering-dataset-${uniqueSuffix}`,
         description: {
@@ -97,7 +97,7 @@ describe("/api/v1/events/geo", () => {
         collection: "events",
         data: {
           uniqueId: `cluster-test-event-${i + 1}`,
-          dataset: parseInt(testDatasetId),
+          dataset: Number.parseInt(testDatasetId),
           data: {
             title: `Test Event ${i + 1}`,
             description: `Test event for clustering at ${testLocations[i]?.lat}, ${testLocations[i]?.lng}`,

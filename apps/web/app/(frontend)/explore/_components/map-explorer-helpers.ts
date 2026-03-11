@@ -125,10 +125,10 @@ export const buildEventsDescription = (
   let sentence = "Showing ";
   if (isMapLimiting) {
     sentence += `${visibleCount.toLocaleString()} of ${globalTotal.toLocaleString()} events`;
-  } else if (globalTotal != null) {
-    sentence += `all ${visibleCount.toLocaleString()} events`;
-  } else {
+  } else if (globalTotal == null) {
     sentence += `${visibleCount.toLocaleString()} event${visibleCount === 1 ? "" : "s"}`;
+  } else {
+    sentence += `all ${visibleCount.toLocaleString()} events`;
   }
 
   // Add dataset filter

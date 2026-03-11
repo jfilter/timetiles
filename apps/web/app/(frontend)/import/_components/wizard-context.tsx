@@ -237,8 +237,8 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
             // Use file name without extension
             return action.file.name
               .replace(/\.[^/.]+$/, "")
-              .replace(/[-_]+/g, " ")
-              .replace(/\s+/g, " ")
+              .replaceAll(/[-_]+/g, " ")
+              .replaceAll(/\s+/g, " ")
               .trim();
           }
           return sheet.name;

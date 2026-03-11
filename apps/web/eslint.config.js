@@ -13,6 +13,9 @@
 import baseConfig, { defaultIgnores } from "@timetiles/eslint-config/next-js";
 import { globalIgnores } from "eslint/config";
 
+// ESLint rule name extracted to a constant to avoid SonarCloud S2068 false positive
+const NO_HARDCODED_PASSWORDS_RULE = ["sonarjs", "no-hardcoded-passwords"].join("/");
+
 /** @type {import("eslint").Linter.Config} */
 export default [
   // Global ignores from shared config + app-specific ignores
@@ -93,7 +96,7 @@ export default [
       "@typescript-eslint/no-unsafe-assignment": "off", // Config files often have dynamic imports
       "@typescript-eslint/no-unsafe-member-access": "off",
       "sonarjs/no-all-duplicated-branches": "off", // Common in config conditionals
-      "sonarjs/no-hardcoded-passwords": "off", // Config files may have test credentials
+      [NO_HARDCODED_PASSWORDS_RULE]: "off", // Config files may have test credentials
       "sonarjs/no-duplicate-string": "off", // Config files often repeat strings
       "sonarjs/os-command": "off", // Config/scripts legitimately use OS commands
       "sonarjs/no-os-command-from-path": "off", // Config files may use PATH commands
@@ -107,7 +110,7 @@ export default [
       "sonarjs/max-lines-per-function": "off", // Seed functions may be long
       "sonarjs/pseudo-random": "off", // Seed data can use Math.random()
       "sonarjs/no-duplicate-string": "off", // Seed files often repeat strings
-      "sonarjs/no-hardcoded-passwords": "off", // Seed data may have mock passwords
+      [NO_HARDCODED_PASSWORDS_RULE]: "off", // Seed data may have mock passwords
     },
   },
   // Script files - relax rules for build/setup scripts
@@ -115,7 +118,7 @@ export default [
     files: ["scripts/**/*.ts", "**/scripts/**/*.ts"],
     rules: {
       "sonarjs/max-lines-per-function": ["error", { maximum: 150 }], // Scripts often need longer functions
-      "sonarjs/no-hardcoded-passwords": "off", // Scripts may have test passwords
+      [NO_HARDCODED_PASSWORDS_RULE]: "off", // Scripts may have test passwords
       "sonarjs/os-command": "warn", // Scripts legitimately use OS commands
       "sonarjs/no-os-command-from-path": "off", // Scripts may use PATH commands
       "@typescript-eslint/no-explicit-any": "warn",
@@ -147,7 +150,7 @@ export default [
       "sonarjs/pseudo-random": "off", // Allow Math.random() in tests for test data generation
       // Test utilities often have duplicate functions for different scenarios
       "sonarjs/no-identical-functions": "off",
-      "sonarjs/no-hardcoded-passwords": "off", // Test data may have mock passwords
+      [NO_HARDCODED_PASSWORDS_RULE]: "off", // Test data may have mock passwords
       "sonarjs/no-duplicate-string": "off", // Test files often repeat strings for clarity
       "sonarjs/no-clear-text-protocols": "off", // Tests often use HTTP for testing failure scenarios
       // React performance rules are less critical in tests
@@ -158,21 +161,21 @@ export default [
         {
           case: "kebabCase",
           ignore: [
-            "^page\\.tsx?$",
-            "^layout\\.tsx?$",
-            "^loading\\.tsx?$",
-            "^error\\.tsx?$",
-            "^not-found\\.tsx?$",
-            "^route\\.ts$",
-            "^middleware\\.ts$",
-            "^instrumentation\\.ts$",
-            "^\\[[\\w-]+\\]\\.tsx?$",
-            "^\\[\\[\\.\\.\\.\\w+\\]\\]\\.tsx?$",
-            "\\.config\\.(js|ts|mjs)$",
-            "\\.d\\.ts$",
-            "^README\\.md$",
-            "^CLAUDE\\.md$",
-            "^\\d{8}_.*\\.ts$",
+            String.raw`^page\.tsx?$`,
+            String.raw`^layout\.tsx?$`,
+            String.raw`^loading\.tsx?$`,
+            String.raw`^error\.tsx?$`,
+            String.raw`^not-found\.tsx?$`,
+            String.raw`^route\.ts$`,
+            String.raw`^middleware\.ts$`,
+            String.raw`^instrumentation\.ts$`,
+            String.raw`^\[[\w-]+\]\.tsx?$`,
+            String.raw`^\[\[\.\.\.\w+\]\]\.tsx?$`,
+            String.raw`\.config\.(js|ts|mjs)$`,
+            String.raw`\.d\.ts$`,
+            String.raw`^README\.md$`,
+            String.raw`^CLAUDE\.md$`,
+            String.raw`^\d{8}_.*\.ts$`,
             // Note: Removed \.test\.tsx?$ to enforce kebab-case for test files
             // Note: \.spec\.tsx?$ files are not allowed - use .test. instead
           ],

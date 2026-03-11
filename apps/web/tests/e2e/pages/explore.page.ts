@@ -200,7 +200,7 @@ export class ExplorePage {
 
     // Also wait for URL to update with catalog parameter
     await this.page
-      .waitForFunction(() => new URL(window.location.href).searchParams.has("catalog"), { timeout: 5000 })
+      .waitForFunction(() => new URL(globalThis.location.href).searchParams.has("catalog"), { timeout: 5000 })
       .catch(() => {
         // URL might not update immediately, continue anyway
       });
@@ -269,7 +269,7 @@ export class ExplorePage {
 
     // Wait for URL to update with the date
     await this.page
-      .waitForFunction((expectedDate) => window.location.href.includes(`startDate=${expectedDate}`), date, {
+      .waitForFunction((expectedDate) => globalThis.location.href.includes(`startDate=${expectedDate}`), date, {
         timeout: 5000,
       })
       .catch(() => {
@@ -294,7 +294,7 @@ export class ExplorePage {
 
     // Wait for URL to update with the date
     await this.page
-      .waitForFunction((expectedDate) => window.location.href.includes(`endDate=${expectedDate}`), date, {
+      .waitForFunction((expectedDate) => globalThis.location.href.includes(`endDate=${expectedDate}`), date, {
         timeout: 5000,
       })
       .catch(() => {
@@ -313,7 +313,7 @@ export class ExplorePage {
       await this.page
         .waitForFunction(
           () => {
-            const url = new URL(window.location.href);
+            const url = new URL(globalThis.location.href);
             return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
           },
           { timeout: 5000 }
@@ -387,7 +387,7 @@ export class ExplorePage {
     }
 
     // Remove commas from number (e.g., "1,245" -> "1245")
-    const count = Number.parseInt(matches[1].replace(/,/g, ""), 10);
+    const count = Number.parseInt(matches[1].replaceAll(",", ""), 10);
 
     // Debug logging to help understand what's happening
     console.log(`getEventCount: text="${text}", count=${count}`);

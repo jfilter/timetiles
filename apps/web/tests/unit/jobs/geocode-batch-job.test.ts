@@ -410,8 +410,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Generate 100 rows with 50 unique locations (each location appears twice)
       const rows = [];
       for (let i = 0; i < 50; i++) {
-        rows.push({ id: `${i * 2}`, address: `Address ${i}` });
-        rows.push({ id: `${i * 2 + 1}`, address: `Address ${i}` });
+        rows.push({ id: `${i * 2}`, address: `Address ${i}` }, { id: `${i * 2 + 1}`, address: `Address ${i}` });
       }
       mocks.readAllRowsFromFile.mockReturnValue(rows);
 

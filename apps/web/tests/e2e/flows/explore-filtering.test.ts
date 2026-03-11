@@ -82,7 +82,7 @@ test.describe("Explore Page - Filtering", () => {
     // Wait for URL to update with date parameters
     await explorePage.page.waitForFunction(
       () => {
-        const url = new URL(window.location.href);
+        const url = new URL(globalThis.location.href);
         return url.searchParams.has("startDate") && url.searchParams.has("endDate");
       },
       { timeout: 5000 }
@@ -112,7 +112,7 @@ test.describe("Explore Page - Filtering", () => {
     // Wait for URL parameters to be removed
     await explorePage.page.waitForFunction(
       () => {
-        const url = new URL(window.location.href);
+        const url = new URL(globalThis.location.href);
         return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
       },
       { timeout: 5000 }

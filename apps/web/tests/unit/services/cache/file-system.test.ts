@@ -6,9 +6,9 @@
  */
 
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
-import os from "os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system";
@@ -303,7 +303,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       await storage.set(key, "valid-value");
 
       // Corrupt the cache file - match the actual implementation
-      const crypto = await import("crypto");
+      const crypto = await import("node:crypto");
       const keyHash = crypto.createHash("sha256").update(key).digest("hex");
       const subDir = keyHash.substring(0, 2);
       const cacheFile = path.join(tempDir, subDir, `${keyHash}.cache`);

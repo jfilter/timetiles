@@ -8,7 +8,8 @@
  * @module
  * @category Jobs
  */
-import { unlink } from "fs/promises";
+import { unlink } from "node:fs/promises";
+
 import type { Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";

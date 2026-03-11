@@ -126,7 +126,7 @@ describe.sequential("Multi-Language Import Tests", () => {
     });
 
     // Upload CSV file - dataset-detection will find our pre-created dataset by name
-    const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), fileBuffer, {
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
       filename: fixtureName,
       mimeType: "text/csv",
       user: importerUserId,

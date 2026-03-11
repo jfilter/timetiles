@@ -13,6 +13,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { TRUST_LEVELS } from "../../../lib/constants/quota-constants.js";
+import { TEST_CREDENTIALS } from "../../constants/test-credentials.js";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment.js";
 
 describe.sequential("Authentication Flow", () => {
@@ -44,7 +45,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: testEmail,
-          password: "SecurePassword123!",
+          password: TEST_CREDENTIALS.auth.secure,
           firstName: "Test",
           lastName: "User",
           // Try to set admin role (should be forced to user)
@@ -78,7 +79,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: testEmail,
-          password: "SecurePassword123!",
+          password: TEST_CREDENTIALS.auth.secure,
           firstName: "Test",
           lastName: "User",
           role: "admin",
@@ -101,7 +102,7 @@ describe.sequential("Authentication Flow", () => {
 
       const user = await payload.create({
         collection: "users",
-        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
+        data: { email: testEmail, password: TEST_CREDENTIALS.auth.secure, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
@@ -118,7 +119,7 @@ describe.sequential("Authentication Flow", () => {
 
       const user = await payload.create({
         collection: "users",
-        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
+        data: { email: testEmail, password: TEST_CREDENTIALS.auth.secure, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
@@ -164,7 +165,7 @@ describe.sequential("Authentication Flow", () => {
 
       const user = await payload.create({
         collection: "users",
-        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
+        data: { email: testEmail, password: TEST_CREDENTIALS.auth.secure, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
@@ -179,7 +180,7 @@ describe.sequential("Authentication Flow", () => {
       const { payload } = testEnv;
       const timestamp = Date.now();
       const testEmail = `unverified-login-${timestamp}@test.com`;
-      const testPassword = "SecurePassword123!";
+      const testPassword = TEST_CREDENTIALS.auth.secure;
 
       // Create user (starts unverified)
       await payload.create({
@@ -198,7 +199,7 @@ describe.sequential("Authentication Flow", () => {
       const { payload } = testEnv;
       const timestamp = Date.now();
       const testEmail = `verified-login-${timestamp}@test.com`;
-      const testPassword = "SecurePassword123!";
+      const testPassword = TEST_CREDENTIALS.auth.secure;
 
       // Create user
       const user = await payload.create({
@@ -234,13 +235,13 @@ describe.sequential("Authentication Flow", () => {
       // Create user
       await payload.create({
         collection: "users",
-        data: { email: testEmail, password: "CorrectPassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
+        data: { email: testEmail, password: TEST_CREDENTIALS.auth.correct, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
       // Attempt login with wrong password
       await expect(
-        payload.login({ collection: "users", data: { email: testEmail, password: "WrongPassword123!" } })
+        payload.login({ collection: "users", data: { email: testEmail, password: TEST_CREDENTIALS.auth.wrong } })
       ).rejects.toThrow();
     });
 
@@ -248,7 +249,10 @@ describe.sequential("Authentication Flow", () => {
       const { payload } = testEnv;
 
       await expect(
-        payload.login({ collection: "users", data: { email: "nonexistent@test.com", password: "AnyPassword123!" } })
+        payload.login({
+          collection: "users",
+          data: { email: "nonexistent@test.com", password: TEST_CREDENTIALS.auth.any },
+        })
       ).rejects.toThrow();
     });
   });
@@ -262,7 +266,7 @@ describe.sequential("Authentication Flow", () => {
       // Create user (starts unverified)
       const user = await payload.create({
         collection: "users",
-        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
+        data: { email: testEmail, password: TEST_CREDENTIALS.auth.secure, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
@@ -304,7 +308,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: `admin-${timestamp}@test.com`,
-          password: "AdminPassword123!",
+          password: TEST_CREDENTIALS.auth.admin,
           role: "admin",
           trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
@@ -317,7 +321,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: `newuser-${timestamp}@test.com`,
-          password: "UserPassword123!",
+          password: TEST_CREDENTIALS.auth.user,
           role: "editor",
           trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
@@ -342,7 +346,7 @@ describe.sequential("Authentication Flow", () => {
       // Create user
       const user = await payload.create({
         collection: "users",
-        data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
+        data: { email: testEmail, password: TEST_CREDENTIALS.auth.secure, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
@@ -361,7 +365,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: `user1-${timestamp}@test.com`,
-          password: "SecurePassword123!",
+          password: TEST_CREDENTIALS.auth.secure,
           trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
@@ -371,7 +375,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: `user2-${timestamp}@test.com`,
-          password: "SecurePassword123!",
+          password: TEST_CREDENTIALS.auth.secure,
           trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
@@ -394,7 +398,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: `rolechange-${timestamp}@test.com`,
-          password: "SecurePassword123!",
+          password: TEST_CREDENTIALS.auth.secure,
           trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
@@ -423,7 +427,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: `admin-${timestamp}@test.com`,
-          password: "AdminPassword123!",
+          password: TEST_CREDENTIALS.auth.admin,
           role: "admin",
           trustLevel: `${TRUST_LEVELS.TRUSTED}`,
         },
@@ -436,7 +440,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: `regular-${timestamp}@test.com`,
-          password: "SecurePassword123!",
+          password: TEST_CREDENTIALS.auth.secure,
           trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,
@@ -462,7 +466,7 @@ describe.sequential("Authentication Flow", () => {
         collection: "users",
         data: {
           email: `noauth-${timestamp}@test.com`,
-          password: "SecurePassword123!",
+          password: TEST_CREDENTIALS.auth.secure,
           trustLevel: `${TRUST_LEVELS.BASIC}`,
         },
         disableVerificationEmail: true,

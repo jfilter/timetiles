@@ -8,11 +8,11 @@
  * @module
  * @category Services
  */
+import { createWriteStream } from "node:fs";
+import { mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import archiver from "archiver";
-import { createWriteStream } from "fs";
-import { mkdir, readFile, stat } from "fs/promises";
 import type { Payload } from "payload";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -201,7 +201,7 @@ export class DataExportService {
       }));
 
       yield events;
-      lastId = result.docs[result.docs.length - 1]?.id ?? lastId;
+      lastId = result.docs.at(-1)?.id ?? lastId;
 
       // If we got fewer than the batch size, we're done
       if (result.docs.length < EVENTS_PER_CHUNK) break;

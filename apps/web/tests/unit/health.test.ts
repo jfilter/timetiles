@@ -157,10 +157,10 @@ describe("health", () => {
         process.env.PAYLOAD_SECRET = origSecret;
         process.env.DATABASE_URL = origDbUrl;
         vi.unstubAllEnvs();
-        if (origSmtpHost !== undefined) {
-          process.env.EMAIL_SMTP_HOST = origSmtpHost;
-        } else {
+        if (origSmtpHost === undefined) {
           delete process.env.EMAIL_SMTP_HOST;
+        } else {
+          process.env.EMAIL_SMTP_HOST = origSmtpHost;
         }
       }
     });
@@ -194,15 +194,15 @@ describe("health", () => {
       } finally {
         process.env.PAYLOAD_SECRET = origSecret;
         process.env.DATABASE_URL = origDbUrl;
-        if (origSmtpHost !== undefined) {
-          process.env.EMAIL_SMTP_HOST = origSmtpHost;
-        } else {
+        if (origSmtpHost === undefined) {
           delete process.env.EMAIL_SMTP_HOST;
-        }
-        if (origSmtpUser !== undefined) {
-          process.env.EMAIL_SMTP_USER = origSmtpUser;
         } else {
+          process.env.EMAIL_SMTP_HOST = origSmtpHost;
+        }
+        if (origSmtpUser === undefined) {
           delete process.env.EMAIL_SMTP_USER;
+        } else {
+          process.env.EMAIL_SMTP_USER = origSmtpUser;
         }
       }
     });
@@ -236,15 +236,15 @@ describe("health", () => {
       } finally {
         process.env.PAYLOAD_SECRET = origSecret;
         process.env.DATABASE_URL = origDbUrl;
-        if (origSmtpHost !== undefined) {
-          process.env.EMAIL_SMTP_HOST = origSmtpHost;
-        } else {
+        if (origSmtpHost === undefined) {
           delete process.env.EMAIL_SMTP_HOST;
-        }
-        if (origSmtpUser !== undefined) {
-          process.env.EMAIL_SMTP_USER = origSmtpUser;
         } else {
+          process.env.EMAIL_SMTP_HOST = origSmtpHost;
+        }
+        if (origSmtpUser === undefined) {
           delete process.env.EMAIL_SMTP_USER;
+        } else {
+          process.env.EMAIL_SMTP_USER = origSmtpUser;
         }
       }
     });
@@ -278,10 +278,10 @@ describe("health", () => {
         process.env.PAYLOAD_SECRET = origSecret;
         process.env.DATABASE_URL = origDbUrl;
         vi.unstubAllEnvs();
-        if (origSmtpHost !== undefined) {
-          process.env.EMAIL_SMTP_HOST = origSmtpHost;
-        } else {
+        if (origSmtpHost === undefined) {
           delete process.env.EMAIL_SMTP_HOST;
+        } else {
+          process.env.EMAIL_SMTP_HOST = origSmtpHost;
         }
       }
     });
@@ -339,10 +339,10 @@ describe("health", () => {
       } finally {
         process.env.PAYLOAD_SECRET = origSecret;
         process.env.DATABASE_URL = origDbUrl;
-        if (origCI !== undefined) {
-          process.env.CI = origCI;
-        } else {
+        if (origCI === undefined) {
           delete process.env.CI;
+        } else {
+          process.env.CI = origCI;
         }
       }
     });

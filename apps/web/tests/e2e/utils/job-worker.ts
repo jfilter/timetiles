@@ -8,9 +8,10 @@
  * @category E2E Utils
  */
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { config as loadEnv } from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

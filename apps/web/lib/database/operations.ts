@@ -122,7 +122,7 @@ const executeQueryViaShell = (databaseName: string, sql: string, isCI: boolean, 
   } else {
     // Local development - use make commands with Docker
     // Escape SQL for shell
-    const escapedSql = sql.replace(/"/g, '\\"');
+    const escapedSql = sql.replaceAll('"', String.raw`\"`);
     command = `cd ../.. && make db-query DB_NAME=${databaseName} SQL="${escapedSql}"`;
   }
 

@@ -291,7 +291,7 @@ describe.sequential("Data Integrity Tests", () => {
         collection: "scheduled-imports",
         id: scheduledImport.id,
         data: {
-          lastRun: executionTimes[executionTimes.length - 1],
+          lastRun: executionTimes.at(-1),
           lastStatus: "success",
           executionHistory: executionHistory,
           statistics: {

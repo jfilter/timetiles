@@ -10,7 +10,7 @@
 
 /* eslint-disable react-hooks/rules-of-hooks -- Playwright fixture `use()` is not a React hook */
 
-import { expect, test as base } from "@playwright/test";
+import { test as base } from "@playwright/test";
 
 import { getWorktreeBasePort } from "../utils/worktree-id";
 
@@ -55,4 +55,4 @@ export const test = base.extend<{ baseURL: string }>({
   },
 });
 
-export { expect };
+export { expect } from "@playwright/test";

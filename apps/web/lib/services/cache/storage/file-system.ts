@@ -218,20 +218,20 @@ export class FileSystemCacheStorage implements CacheStorage {
 
     let cleared = 0;
 
-    if (!pattern) {
-      // Clear everything
-      const keys = Array.from(this.index.keys());
-      for (const key of keys) {
-        if (await this.delete(key)) {
-          cleared++;
-        }
-      }
-    } else {
+    if (pattern) {
       // Clear by pattern
       const regex = new RegExp(pattern);
       const keys = Array.from(this.index.keys());
       for (const key of keys) {
         if (regex.test(key) && (await this.delete(key))) {
+          cleared++;
+        }
+      }
+    } else {
+      // Clear everything
+      const keys = Array.from(this.index.keys());
+      for (const key of keys) {
+        if (await this.delete(key)) {
           cleared++;
         }
       }

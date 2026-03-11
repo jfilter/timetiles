@@ -267,15 +267,15 @@ export class RelationshipResolver {
       try {
         const relatedItem = await this.findRelatedItem(originalValue, config);
 
-        if (relatedItem != null) {
-          const typedItem = relatedItem as { id: string | number };
-          resolvedItems.push({ id: typedItem.id });
-        } else {
+        if (relatedItem == null) {
           const result = this.handleMissingRelationship(originalValue, config, collection);
           if (result == null) {
             return null; // Skip entire item if required relationship missing
           }
           // For optional relationships, continue processing other items in the array
+        } else {
+          const typedItem = relatedItem as { id: string | number };
+          resolvedItems.push({ id: typedItem.id });
         }
       } catch (error) {
         logger.error(

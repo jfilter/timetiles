@@ -103,25 +103,37 @@ export const hasActiveFilters = (filters: FilterState): boolean => {
   );
 };
 
+// Helper function to remove a specific field filter value
+const removeFieldFilterValue = (fieldFilters: Record<string, string[]>, value: string): Record<string, string[]> => {
+  const result = { ...fieldFilters };
+
+  if (!value.includes(":")) {
+    delete result[value];
+    return result;
+  }
+
+  const [fieldPath, filterValue] = value.split(":");
+  if (!fieldPath || !result[fieldPath]) return result;
+
+  result[fieldPath] = result[fieldPath].filter((v) => v !== filterValue);
+  if (result[fieldPath].length === 0) {
+    delete result[fieldPath];
+  }
+  return result;
+};
+
 // Helper function to remove a specific filter
-/* eslint-disable sonarjs/cognitive-complexity -- Switch-case with nested conditions for each filter type */
 export const removeFilter = (filters: FilterState, filterType: keyof FilterState, value?: string): FilterState => {
   const newFilters = { ...filters, fieldFilters: { ...filters.fieldFilters } };
 
   switch (filterType) {
     case "catalog":
       newFilters.catalog = null;
-      // Also clear datasets and field filters when catalog is removed
       newFilters.datasets = [];
       newFilters.fieldFilters = {};
       break;
     case "datasets":
-      if (value != null && value !== "") {
-        newFilters.datasets = newFilters.datasets.filter((id) => id !== value);
-      } else {
-        newFilters.datasets = [];
-      }
-      // Clear field filters when datasets change
+      newFilters.datasets = value != null && value !== "" ? newFilters.datasets.filter((id) => id !== value) : [];
       newFilters.fieldFilters = {};
       break;
     case "startDate":
@@ -131,28 +143,13 @@ export const removeFilter = (filters: FilterState, filterType: keyof FilterState
       newFilters.endDate = null;
       break;
     case "fieldFilters":
-      // value format: "fieldPath:filterValue" or just "fieldPath" to clear all values for that field
-      if (value != null && value !== "") {
-        if (value.includes(":")) {
-          const [fieldPath, filterValue] = value.split(":");
-          if (fieldPath && newFilters.fieldFilters[fieldPath]) {
-            newFilters.fieldFilters[fieldPath] = newFilters.fieldFilters[fieldPath].filter((v) => v !== filterValue);
-            if (newFilters.fieldFilters[fieldPath].length === 0) {
-              delete newFilters.fieldFilters[fieldPath];
-            }
-          }
-        } else {
-          delete newFilters.fieldFilters[value];
-        }
-      } else {
-        newFilters.fieldFilters = {};
-      }
+      newFilters.fieldFilters =
+        value != null && value !== "" ? removeFieldFilterValue(newFilters.fieldFilters, value) : {};
       break;
   }
 
   return newFilters;
 };
-/* eslint-enable sonarjs/cognitive-complexity */
 
 // Helper function to clear all filters
 export const clearAllFilters = (): FilterState => ({

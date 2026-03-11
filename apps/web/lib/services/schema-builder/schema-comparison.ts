@@ -436,7 +436,7 @@ const calculateSimilarity = (str1: string, str2: string): number => {
   const longer = leaf1.length > leaf2.length ? leaf1 : leaf2;
   const shorter = leaf1.length > leaf2.length ? leaf2 : leaf1;
 
-  if (longer.length === 0) return 1.0;
+  if (longer.length === 0) return 1;
 
   const distance = levenshteinDistance(longer.toLowerCase(), shorter.toLowerCase());
   return (longer.length - distance) / longer.length;

@@ -136,7 +136,7 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
 
   // Format event count as (visible/total)
   const eventCount =
-    mapStats != null ? `(${mapStats.visibleEvents.toLocaleString()}/${mapStats.totalEvents.toLocaleString()})` : null;
+    mapStats == null ? null : `(${mapStats.visibleEvents.toLocaleString()}/${mapStats.totalEvents.toLocaleString()})`;
 
   return (
     <div className="-mx-6 flex flex-1 items-center justify-between">

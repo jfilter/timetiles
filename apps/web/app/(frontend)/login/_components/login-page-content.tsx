@@ -23,7 +23,7 @@ const LoginContent = () => {
   const handleSuccess = useCallback(() => {
     // Use full page navigation to ensure server components re-render with new auth state
     // router.refresh() + router.push() has race condition where navigation happens before refresh
-    window.location.href = redirectTo;
+    globalThis.location.href = redirectTo;
   }, [redirectTo]);
 
   return (

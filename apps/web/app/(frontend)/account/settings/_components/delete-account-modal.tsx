@@ -105,6 +105,13 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
     setPassword(e.target.value);
   }, []);
 
+  const handleBackdropKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    },
+    [handleClose]
+  );
+
   const handleScheduleDeletion = useCallback(() => {
     if (!password) {
       setError("Password is required");
@@ -144,8 +151,12 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- Modal backdrop, keyboard dismiss handled by Escape key */}
-      <div className="fixed inset-0 bg-black/50" onClick={handleBackdropClick} />
+      <div
+        className="fixed inset-0 bg-black/50"
+        role="presentation"
+        onClick={handleBackdropClick}
+        onKeyDown={handleBackdropKeyDown}
+      />
 
       {/* Modal */}
       <Card className="relative z-10 mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto">
@@ -225,8 +236,8 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
                   <div className="rounded-md bg-amber-50 p-4 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                     <p className="text-sm">
-                      <strong>7-day grace period:</strong> You can cancel the deletion anytime within 7 days. After
-                      that, this action cannot be undone.
+                      <strong>{"7-day grace period: "}</strong>
+                      You can cancel the deletion anytime within 7 days. After that, this action cannot be undone.
                     </p>
                   </div>
                 </>

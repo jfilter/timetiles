@@ -50,7 +50,7 @@ export const tryParseDecimal = (str: string): number | null => {
   }
 
   const decimal = Number.parseFloat(trimmed);
-  return !Number.isNaN(decimal) ? decimal : null;
+  return Number.isNaN(decimal) ? null : decimal;
 };
 
 /**

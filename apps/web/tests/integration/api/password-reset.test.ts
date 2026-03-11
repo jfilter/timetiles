@@ -10,6 +10,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { TRUST_LEVELS } from "../../../lib/constants/quota-constants.js";
+import { TEST_CREDENTIALS } from "../../constants/test-credentials.js";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment.js";
 
 describe.sequential("Password Reset Flow", () => {
@@ -36,7 +37,7 @@ describe.sequential("Password Reset Flow", () => {
 
     await payload.create({
       collection: "users",
-      data: { email: testEmail, password: "SecurePassword123!", trustLevel: `${TRUST_LEVELS.BASIC}` },
+      data: { email: testEmail, password: TEST_CREDENTIALS.auth.secure, trustLevel: `${TRUST_LEVELS.BASIC}` },
       disableVerificationEmail: true,
     });
 
@@ -61,7 +62,7 @@ describe.sequential("Password Reset Flow", () => {
     await expect(
       payload.resetPassword({
         collection: "users",
-        data: { token: "invalid-token-12345", password: "NewSecurePassword123!" },
+        data: { token: "invalid-token-12345", password: TEST_CREDENTIALS.auth.newSecure },
         overrideAccess: true,
       })
     ).rejects.toThrow();

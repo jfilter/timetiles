@@ -139,10 +139,10 @@ const levenshteinDistance = (str1: string, str2: string): number => {
  * Calculate string similarity (0-1) using normalized Levenshtein distance
  */
 const calculateStringSimilarity = (str1: string, str2: string): number => {
-  const s1 = str1.toLowerCase().replace(/[_-]/g, "");
-  const s2 = str2.toLowerCase().replace(/[_-]/g, "");
+  const s1 = str1.toLowerCase().replaceAll(/[_-]/g, "");
+  const s2 = str2.toLowerCase().replaceAll(/[_-]/g, "");
 
-  if (s1 === s2) return 1.0;
+  if (s1 === s2) return 1;
   if (s1.length === 0 || s2.length === 0) return 0;
 
   const distance = levenshteinDistance(s1, s2);
@@ -178,7 +178,7 @@ const findBestMatch = (field: string, candidates: string[]): { field: string; sc
   for (const candidate of candidates) {
     // Exact match
     if (field.toLowerCase() === candidate.toLowerCase()) {
-      return { field: candidate, score: 1.0 };
+      return { field: candidate, score: 1 };
     }
 
     // Synonym match
@@ -204,7 +204,7 @@ const findBestMatch = (field: string, candidates: string[]): { field: string; sc
  * Calculate Jaccard index between two sets
  */
 const calculateJaccardIndex = (set1: Set<string>, set2: Set<string>): number => {
-  if (set1.size === 0 && set2.size === 0) return 1.0;
+  if (set1.size === 0 && set2.size === 0) return 1;
   if (set1.size === 0 || set2.size === 0) return 0;
 
   const intersection = new Set([...set1].filter((x) => set2.has(x)));

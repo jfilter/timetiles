@@ -136,7 +136,10 @@ export class ProgressiveSchemaBuilder {
   private updateTypeConflict(fieldPath: string, stats: FieldStatistics, newType: string, value: unknown): void {
     let conflict = this.state.typeConflicts.find((c) => c.path === fieldPath);
 
-    if (!conflict) {
+    if (conflict) {
+      // Update existing conflict - increment count for the new type
+      conflict.types[newType] = (conflict.types[newType] ?? 0) + 1;
+    } else {
       conflict = { path: fieldPath, types: {}, samples: [] };
 
       // Add all existing non-null types
@@ -149,9 +152,6 @@ export class ProgressiveSchemaBuilder {
       // Add the new conflicting type with count 1
       conflict.types[newType] = 1;
       this.state.typeConflicts.push(conflict);
-    } else {
-      // Update existing conflict - increment count for the new type
-      conflict.types[newType] = (conflict.types[newType] ?? 0) + 1;
     }
 
     if (conflict.samples.length < 5) {

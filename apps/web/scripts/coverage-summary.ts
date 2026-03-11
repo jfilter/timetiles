@@ -13,8 +13,8 @@
  *
  * @module
  */
-import { existsSync, readFileSync } from "fs";
-import { join, resolve } from "path";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 // Type definitions for JSON parsing
 interface PackageJson {
@@ -76,7 +76,7 @@ const getArgValue = (flag: string, defaultValue: string): string => {
 const showSimple = args.includes("--simple");
 const showDetails = args.includes("--details");
 const showThreshold = args.includes("--threshold");
-const threshold = parseFloat(getArgValue("--threshold", "80"));
+const threshold = Number.parseFloat(getArgValue("--threshold", "80"));
 
 // Try multiple locations for coverage files
 const possiblePaths = [

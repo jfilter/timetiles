@@ -38,8 +38,8 @@ vi.mock("@timetiles/ui/charts", () => ({
   }),
   BarChart: ({ data }: any) => (
     <div data-testid="bar-chart-mock">
-      {data.map((item: any, index: number) => (
-        <div key={index} data-value={item.value}>
+      {data.map((item: any) => (
+        <div key={`${String(item.label)}-${String(item.value)}`} data-value={item.value}>
           {item.label}: {item.value}
         </div>
       ))}

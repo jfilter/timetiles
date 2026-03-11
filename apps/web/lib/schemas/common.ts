@@ -99,38 +99,45 @@ export const FieldFiltersParamSchema = z.preprocess(
 );
 
 /**
+ * Parse and validate a JSON bounds string. Returns the parsed object or undefined.
+ */
+export const parseBoundsString = (val: unknown): Record<string, unknown> | undefined => {
+  if (typeof val !== "string" || !val) return undefined;
+  try {
+    const parsed = JSON.parse(val) as Record<string, unknown>;
+    if (!isValidBoundsObject(parsed)) return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+};
+
+const isValidBoundsObject = (parsed: unknown): boolean => {
+  if (typeof parsed !== "object" || parsed == null) return false;
+  const { north, south, east, west } = parsed as Record<string, unknown>;
+  return (
+    typeof north === "number" &&
+    typeof south === "number" &&
+    typeof east === "number" &&
+    typeof west === "number" &&
+    Number.isFinite(north) &&
+    Number.isFinite(south) &&
+    Number.isFinite(east) &&
+    Number.isFinite(west) &&
+    north > south &&
+    north <= 90 &&
+    south >= -90 &&
+    east <= 180 &&
+    west >= -180
+  );
+};
+
+/**
  * Bounds as JSON string parameter, parsed and validated into a MapBounds object.
  *
  * Accepts a JSON string like `{"north":37.8,"south":37.7,"east":-122.4,"west":-122.5}`.
  * Invalid or malformed bounds silently become `undefined`.
  */
-export const BoundsParamSchema = z.preprocess((val) => {
-  if (typeof val !== "string" || !val) return undefined;
-  try {
-    const parsed = JSON.parse(val) as Record<string, unknown>;
-    if (
-      typeof parsed === "object" &&
-      parsed != null &&
-      typeof parsed.north === "number" &&
-      typeof parsed.south === "number" &&
-      typeof parsed.east === "number" &&
-      typeof parsed.west === "number" &&
-      parsed.north > parsed.south &&
-      parsed.north <= 90 &&
-      parsed.south >= -90 &&
-      parsed.east <= 180 &&
-      parsed.west >= -180 &&
-      Number.isFinite(parsed.north) &&
-      Number.isFinite(parsed.south) &&
-      Number.isFinite(parsed.east) &&
-      Number.isFinite(parsed.west)
-    ) {
-      return parsed;
-    }
-    return undefined;
-  } catch {
-    return undefined;
-  }
-}, BoundsSchema.optional());
+export const BoundsParamSchema = z.preprocess(parseBoundsString, BoundsSchema.optional());
 
 export { z };

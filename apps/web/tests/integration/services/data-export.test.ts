@@ -11,9 +11,10 @@
  * @module
  */
 
-import { existsSync } from "fs";
-import { rm } from "fs/promises";
-import path from "path";
+import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import path from "node:path";
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { DataExportService } from "@/lib/services/data-export-service";

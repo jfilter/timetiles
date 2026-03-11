@@ -35,6 +35,27 @@ const normalizeTrustLevel = (trustLevel: string | number | null | undefined) => 
   return TRUST_LEVELS.REGULAR;
 };
 
+const filterDefinedQuotas = (quotas: Record<string, unknown> | undefined): Record<string, number> => {
+  const filtered: Record<string, number> = {};
+  if (!quotas) return filtered;
+  for (const key in quotas) {
+    if (quotas[key] !== undefined) {
+      filtered[key] = quotas[key] as number;
+    }
+  }
+  return filtered;
+};
+
+const initializeQuotasFromTrustLevel = (
+  data: Record<string, unknown>,
+  trustLevel: string | number | null | undefined
+): void => {
+  const normalized = normalizeTrustLevel(trustLevel);
+  const defaultQuotas = DEFAULT_QUOTAS[normalized];
+  const filteredProvidedQuotas = filterDefinedQuotas(data.quotas as Record<string, unknown> | undefined);
+  data.quotas = { ...defaultQuotas, ...filteredProvidedQuotas };
+};
+
 const Users: CollectionConfig = {
   slug: "users",
   // Disable versioning for users to avoid session clearing issues during user updates
@@ -319,43 +340,15 @@ const Users: CollectionConfig = {
         }
 
         // Auto-set quotas based on trust level ONLY when trust level actually changes
-        if (operation === "update" && data?.trustLevel !== undefined && originalDoc?.trustLevel !== data.trustLevel) {
-          const trustLevel = normalizeTrustLevel(data.trustLevel);
-          const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
-
-          if (defaultQuotas && !data.customQuotas) {
-            // Merge with defaults, filtering out undefined values from Payload's group initialization
-            const providedQuotas = data.quotas ?? {};
-            const filteredProvidedQuotas: Record<string, number> = {};
-
-            for (const key in providedQuotas) {
-              if (providedQuotas[key] !== undefined) {
-                filteredProvidedQuotas[key] = providedQuotas[key];
-              }
-            }
-
-            data.quotas = { ...defaultQuotas, ...filteredProvidedQuotas };
-          }
+        const isTrustLevelChange =
+          operation === "update" && data?.trustLevel !== undefined && originalDoc?.trustLevel !== data.trustLevel;
+        if (isTrustLevelChange && DEFAULT_QUOTAS[normalizeTrustLevel(data.trustLevel)] && !data.customQuotas) {
+          initializeQuotasFromTrustLevel(data, data.trustLevel);
         }
 
         // Initialize quotas on user creation
-        // Note: usage tracking is handled via user-usage collection (created in afterChange hook)
         if (operation === "create") {
-          const trustLevel = normalizeTrustLevel(data?.trustLevel);
-          const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
-
-          // Merge with defaults, filtering out undefined values from Payload's group initialization
-          // Payload initializes group fields with all fields set to undefined
-          const providedQuotas = data.quotas ?? {};
-          const filteredProvidedQuotas: Record<string, number> = {};
-
-          for (const key in providedQuotas) {
-            if (providedQuotas[key] !== undefined) {
-              filteredProvidedQuotas[key] = providedQuotas[key];
-            }
-          }
-
-          data.quotas = { ...defaultQuotas, ...filteredProvidedQuotas };
+          initializeQuotasFromTrustLevel(data, data?.trustLevel);
         }
 
         return data;
@@ -369,7 +362,7 @@ const Users: CollectionConfig = {
         if (operation !== "update" || !previousDoc) return doc;
 
         const targetUserId = doc.id;
-        const performedBy = req.user?.id !== targetUserId ? req.user?.id : undefined;
+        const performedBy = req.user?.id === targetUserId ? undefined : req.user?.id;
 
         // Audit trust level, role, and custom quota changes
         await auditFieldChanges(

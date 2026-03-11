@@ -19,14 +19,14 @@ const updateTypeDistribution = (stats: FieldStatistics, valueType: string): void
 };
 
 const updateNumericStats = (stats: FieldStatistics, value: number, occurrences: number): void => {
-  if (!stats.numericStats) {
-    stats.numericStats = { min: value, max: value, avg: value, isInteger: Number.isInteger(value) };
-  } else {
+  if (stats.numericStats) {
     stats.numericStats.min = Math.min(stats.numericStats.min, value);
     stats.numericStats.max = Math.max(stats.numericStats.max, value);
     // Update average (simplified)
     stats.numericStats.avg = (stats.numericStats.avg * (occurrences - 1) + value) / occurrences;
     stats.numericStats.isInteger = stats.numericStats.isInteger && Number.isInteger(value);
+  } else {
+    stats.numericStats = { min: value, max: value, avg: value, isInteger: Number.isInteger(value) };
   }
 };
 

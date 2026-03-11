@@ -54,10 +54,10 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
     };
 
     // Only check if we think we're not authenticated
-    if (!isAuthenticated) {
-      void checkAuthStatus();
-    } else {
+    if (isAuthenticated) {
       setIsCheckingAuth(false);
+    } else {
+      void checkAuthStatus();
     }
   }, [isAuthenticated, setAuth]);
 
@@ -83,7 +83,7 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
         }
       } catch {
         // Fallback to page reload
-        window.location.reload();
+        globalThis.location.reload();
       }
     })();
   }, [setAuth]);

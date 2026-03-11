@@ -10,6 +10,7 @@
  * @module
  * @category E2E Tests
  */
+import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
 
 test.describe("Navbar Authentication", () => {
@@ -74,8 +75,8 @@ test.describe("Navbar Authentication", () => {
       await expect(emailInput).toBeVisible();
       await expect(passwordInput).toBeVisible();
 
-      await emailInput.fill("admin@example.com");
-      await passwordInput.fill("admin123");
+      await emailInput.fill(TEST_EMAILS.admin);
+      await passwordInput.fill(TEST_CREDENTIALS.seed.admin);
 
       // Click Sign In button in form
       const submitButton = page.getByRole("button", { name: /sign in/i });
@@ -110,8 +111,8 @@ test.describe("Navbar Authentication", () => {
       await signInButton.click();
       await page.waitForURL(/\/login/);
 
-      await page.locator("#login-email").fill("admin@example.com");
-      await page.locator("#login-password").fill("admin123");
+      await page.locator("#login-email").fill(TEST_EMAILS.admin);
+      await page.locator("#login-password").fill(TEST_CREDENTIALS.seed.admin);
       await page.getByRole("button", { name: /sign in/i }).click();
 
       await page.waitForURL("/", { timeout: 10000 });
@@ -144,8 +145,8 @@ test.describe("Navbar Authentication", () => {
       await signInButton.click();
       await page.waitForURL(/\/login/);
 
-      await page.locator("#login-email").fill("admin@example.com");
-      await page.locator("#login-password").fill("admin123");
+      await page.locator("#login-email").fill(TEST_EMAILS.admin);
+      await page.locator("#login-password").fill(TEST_CREDENTIALS.seed.admin);
       await page.getByRole("button", { name: /sign in/i }).click();
 
       await page.waitForURL("/", { timeout: 10000 });
@@ -181,8 +182,8 @@ test.describe("Navbar Authentication", () => {
       const emailInput = page.locator("#login-email");
       const passwordInput = page.locator("#login-password");
 
-      await emailInput.fill("admin@example.com");
-      await passwordInput.fill("wrongpassword");
+      await emailInput.fill(TEST_EMAILS.admin);
+      await passwordInput.fill(TEST_CREDENTIALS.security.wrong);
 
       const submitButton = page.getByRole("button", { name: /sign in/i });
       await submitButton.click();
@@ -215,8 +216,8 @@ test.describe("Navbar Authentication", () => {
       await page.waitForLoadState("domcontentloaded");
 
       // Login
-      await page.locator("#login-email").fill("admin@example.com");
-      await page.locator("#login-password").fill("admin123");
+      await page.locator("#login-email").fill(TEST_EMAILS.admin);
+      await page.locator("#login-password").fill(TEST_CREDENTIALS.seed.admin);
       await page.getByRole("button", { name: /sign in/i }).click();
 
       // Should redirect to /explore

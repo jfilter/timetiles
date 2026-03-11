@@ -107,7 +107,7 @@ export const getDatabaseInfo = async (databaseName: string): Promise<DatabaseInf
 
     // Get database size
     const sizeResult = await postgresClient.query("SELECT pg_database_size($1) as size", [databaseName]);
-    info.size = parseInt(sizeResult.rows[0]?.size ?? "0");
+    info.size = Number.parseInt(sizeResult.rows[0]?.size ?? "0");
   } finally {
     await postgresClient.end();
   }
@@ -122,20 +122,20 @@ export const getDatabaseInfo = async (databaseName: string): Promise<DatabaseInf
       const postgisResult = await dbClient.query(
         "SELECT COUNT(*) as count FROM pg_extension WHERE extname = 'postgis'"
       );
-      info.hasPostGIS = parseInt(postgisResult.rows[0]?.count ?? "0") > 0;
+      info.hasPostGIS = Number.parseInt(postgisResult.rows[0]?.count ?? "0") > 0;
 
       // Check payload schema
       const schemaResult = await dbClient.query(
         "SELECT COUNT(*) as count FROM information_schema.schemata WHERE schema_name = 'payload'"
       );
-      info.hasPayloadSchema = parseInt(schemaResult.rows[0]?.count ?? "0") > 0;
+      info.hasPayloadSchema = Number.parseInt(schemaResult.rows[0]?.count ?? "0") > 0;
 
       // Count tables in payload schema if it exists
       if (info.hasPayloadSchema) {
         const tableResult = await dbClient.query(
           "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'payload'"
         );
-        info.tableCount = parseInt(tableResult.rows[0]?.count ?? "0");
+        info.tableCount = Number.parseInt(tableResult.rows[0]?.count ?? "0");
       }
     } catch (error) {
       // Database might not be accessible, return what we have

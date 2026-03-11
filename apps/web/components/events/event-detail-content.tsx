@@ -102,9 +102,9 @@ export const EventDetailContent = ({
   const badgeClass = getDatasetBadgeClass(datasetInfo?.id ?? null);
 
   // Get additional data fields (excluding known fields)
-  const knownFields = ["title", "name", "description", "startDate", "endDate", "city", "country", "id"];
+  const knownFields = new Set(["title", "name", "description", "startDate", "endDate", "city", "country", "id"]);
   const additionalFields = Object.entries(eventData).filter(
-    ([key, value]) => !knownFields.includes(key) && value != null && safeToString(value) !== ""
+    ([key, value]) => !knownFields.has(key) && value != null && safeToString(value) !== ""
   );
 
   return (
@@ -196,7 +196,7 @@ export const EventDetailContent = ({
 
           {/* Additional Data Fields */}
           {additionalFields.map(([key, value]) => (
-            <FieldBox key={key} label={key.replace(/([A-Z])/g, " $1").trim()} value={safeToString(value)} />
+            <FieldBox key={key} label={key.replaceAll(/([A-Z])/g, " $1").trim()} value={safeToString(value)} />
           ))}
         </div>
       </div>

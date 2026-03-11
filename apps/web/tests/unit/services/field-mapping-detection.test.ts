@@ -57,7 +57,7 @@ const createFieldStats = (
     stats[name] = {
       path: name,
       occurrences: 100,
-      occurrencePercent: 1.0,
+      occurrencePercent: 1,
       nullCount: 0,
       uniqueValues: 50,
       uniqueSamples: defaultSamples,

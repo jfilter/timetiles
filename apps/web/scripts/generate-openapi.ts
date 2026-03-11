@@ -7,10 +7,11 @@
  *
  * @module
  */
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
-import * as fs from "fs";
-import * as path from "path";
-import { fileURLToPath } from "url";
 import * as yaml from "yaml";
 
 import { registry } from "../lib/openapi/registry";

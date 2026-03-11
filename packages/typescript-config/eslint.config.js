@@ -1,4 +1,2 @@
-import config from "@timetiles/eslint-config/base";
-
 /** @type {import("eslint").Linter.Config} */
-export const eslintConfig = config;
+export { default as eslintConfig } from "@timetiles/eslint-config/base";

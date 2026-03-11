@@ -352,7 +352,7 @@ export const importJobFields: Field[] = [
         ({ data }) => {
           const datasetName = typeof data?.dataset === "object" ? data.dataset.name : "Unknown Dataset";
           const fileName = typeof data?.importFile === "object" ? data.importFile.filename : "Unknown File";
-          const sheetInfo = data?.sheetIndex !== undefined ? ` (Sheet ${data.sheetIndex + 1})` : "";
+          const sheetInfo = data?.sheetIndex === undefined ? "" : ` (Sheet ${data.sheetIndex + 1})`;
           return `${datasetName} - ${fileName}${sheetInfo}`;
         },
       ],

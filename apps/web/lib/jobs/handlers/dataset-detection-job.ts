@@ -210,14 +210,14 @@ const processSheetWithMapping = async (
 
       dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId as string });
 
-      if (!dataset) {
+      if (dataset) {
+        // Validate the import-file owner has access to the target dataset's catalog
+        await validateDatasetAccessForUser(payload, dataset, userId);
+      } else {
         if (!mapping.skipIfMissing) {
           throw new Error(`Configured dataset not found for sheet ${sheetName}`);
         }
         skipSheet = true;
-      } else {
-        // Validate the import-file owner has access to the target dataset's catalog
-        await validateDatasetAccessForUser(payload, dataset, userId);
       }
     } else {
       logger.info("No mapping found for sheet, skipping", { sheetName });

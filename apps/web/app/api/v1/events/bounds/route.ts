@@ -91,8 +91,10 @@ export const GET = apiRoute({
     }
 
     // Apply date and field filters
-    conditions.push(...buildDateSqlConditions(query.startDate ?? null, endDate));
-    conditions.push(...buildFieldFilterSqlConditions(query.ff));
+    conditions.push(
+      ...buildDateSqlConditions(query.startDate ?? null, endDate),
+      ...buildFieldFilterSqlConditions(query.ff)
+    );
 
     // Combine conditions using reduce with initial value
     const whereClause = conditions.reduce((acc, cond) => sql`${acc} AND ${cond}`, sql`TRUE`);
@@ -132,10 +134,10 @@ export const GET = apiRoute({
 
     return Response.json({
       bounds: {
-        north: parseFloat(row.north),
-        south: parseFloat(row.south),
-        east: parseFloat(row.east),
-        west: parseFloat(row.west),
+        north: Number.parseFloat(row.north),
+        south: Number.parseFloat(row.south),
+        east: Number.parseFloat(row.east),
+        west: Number.parseFloat(row.west),
       },
       count: row.count,
     } satisfies BoundsResponse);

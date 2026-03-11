@@ -164,8 +164,8 @@ try {
 
       currentError = {
         file: match[1],
-        line: parseInt(match[2], 10),
-        column: parseInt(match[3], 10),
+        line: Number.parseInt(match[2], 10),
+        column: Number.parseInt(match[3], 10),
         code: match[5],
         message: match[6],
         severity: match[4] as "error" | "warning",

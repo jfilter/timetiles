@@ -187,9 +187,9 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
   const filteredDatasets = useMemo(() => {
     const datasets = dataSources?.datasets ?? [];
     const catalogDatasets =
-      filters.catalog != null
-        ? datasets.filter((d) => d.catalogId != null && String(d.catalogId) === filters.catalog)
-        : datasets;
+      filters.catalog == null
+        ? datasets
+        : datasets.filter((d) => d.catalogId != null && String(d.catalogId) === filters.catalog);
 
     return [...catalogDatasets].sort((a, b) => {
       const countA = eventCountsByDataset?.[String(a.id)] ?? 0;

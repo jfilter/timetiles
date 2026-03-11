@@ -10,9 +10,9 @@
  */
 
 import { createReadStream } from "node:fs";
+import http from "node:http";
 import path from "node:path";
 
-import http from "http";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -561,7 +561,11 @@ describe.sequential("Webhook Import Service Integration", () => {
           input: {
             scheduledImportId: testScheduledImport.id,
             sourceUrl: `http://localhost:${testServerPort}/auth/basic.csv`,
-            authConfig: { type: "basic", username: "testuser", password: "testpass" },
+            authConfig: {
+              type: "basic",
+              username: TEST_CREDENTIALS.basic.username,
+              password: TEST_CREDENTIALS.basic.password,
+            },
             catalogId: testCatalog.id,
             originalName: "Basic Auth Test",
             userId: testUser.id,

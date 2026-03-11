@@ -232,6 +232,22 @@ export class ProviderManager {
     } as unknown as Parameters<typeof NodeGeocoder>[0]);
   }
 
+  private getOpenCageBoundsString(
+    bounds:
+      | {
+          enabled?: boolean | null;
+          southwest?: { lat?: number | null; lng?: number | null };
+          northeast?: { lat?: number | null; lng?: number | null };
+        }
+      | undefined
+  ): string | null {
+    if (!bounds?.enabled) return null;
+    const { southwest, northeast } = bounds;
+    if (southwest?.lat == null || southwest?.lng == null) return null;
+    if (northeast?.lat == null || northeast?.lng == null) return null;
+    return `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
+  }
+
   private createOpenCageGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
     const openCageConfig = (doc.config as Record<string, unknown>)?.opencage as Record<string, unknown> | undefined;
     if (
@@ -245,23 +261,11 @@ export class ProviderManager {
 
     const config: Record<string, unknown> = { provider: "opencage", apiKey: openCageConfig.apiKey, formatter: null };
 
-    // Add bounds if configured
-    const bounds = openCageConfig.bounds as
-      | {
-          enabled?: boolean | null;
-          southwest?: { lat?: number | null; lng?: number | null };
-          northeast?: { lat?: number | null; lng?: number | null };
-        }
-      | undefined;
-
-    if (
-      bounds?.enabled &&
-      bounds.northeast?.lat != null &&
-      bounds.northeast?.lng != null &&
-      bounds.southwest?.lat != null &&
-      bounds.southwest?.lng != null
-    ) {
-      config.bounds = `${bounds.southwest.lat},${bounds.southwest.lng},${bounds.northeast.lat},${bounds.northeast.lng}`;
+    const boundsString = this.getOpenCageBoundsString(
+      openCageConfig.bounds as Parameters<ProviderManager["getOpenCageBoundsString"]>[0]
+    );
+    if (boundsString) {
+      config.bounds = boundsString;
     }
 
     return NodeGeocoder(config as unknown as Options);

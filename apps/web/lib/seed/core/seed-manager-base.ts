@@ -23,17 +23,10 @@ import { RelationshipResolver } from "../relationship-resolver";
 const logger = createLogger("seed");
 
 export abstract class SeedManagerBase {
-  protected payload: Payload | null;
-  protected relationshipResolver: RelationshipResolver | null;
-  protected databaseOperations: DatabaseOperations | null;
+  protected payload: Payload | null = null;
+  protected relationshipResolver: RelationshipResolver | null = null;
+  protected databaseOperations: DatabaseOperations | null = null;
   protected isCleaningUp = false;
-
-  constructor() {
-    this.payload = null;
-    this.relationshipResolver = null;
-    this.databaseOperations = null;
-    this.isCleaningUp = false;
-  }
 
   async initialize() {
     if (!this.payload) {

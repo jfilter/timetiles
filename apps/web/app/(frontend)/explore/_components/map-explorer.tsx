@@ -86,7 +86,7 @@ export const MapExplorer = () => {
   useEffect(() => {
     if (hasClosedOnMobile.current) return;
     hasClosedOnMobile.current = true;
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const isMobile = globalThis.matchMedia("(max-width: 768px)").matches;
     if (isMobile && isFilterDrawerOpen) {
       setFilterDrawerOpen(false);
     }

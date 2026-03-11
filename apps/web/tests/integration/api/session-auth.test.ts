@@ -39,7 +39,7 @@ describe("Session Authentication", () => {
       const sessionsBefore = (await payload.db.drizzle.execute(
         sql`SELECT COUNT(*) as count FROM payload.users_sessions WHERE _parent_id = ${user.id}`
       )) as { rows: Array<{ count: string }> };
-      const countBefore = parseInt(sessionsBefore.rows[0]?.count ?? "0", 10);
+      const countBefore = Number.parseInt(sessionsBefore.rows[0]?.count ?? "0", 10);
       console.log(`Sessions before login: ${countBefore}`);
 
       // Login
@@ -58,7 +58,7 @@ describe("Session Authentication", () => {
       const sessionsAfter = (await payload.db.drizzle.execute(
         sql`SELECT COUNT(*) as count FROM payload.users_sessions WHERE _parent_id = ${user.id}`
       )) as { rows: Array<{ count: string }> };
-      const countAfter = parseInt(sessionsAfter.rows[0]?.count ?? "0", 10);
+      const countAfter = Number.parseInt(sessionsAfter.rows[0]?.count ?? "0", 10);
       console.log(`Sessions after login: ${countAfter}`);
 
       // Session should have been created

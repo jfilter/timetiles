@@ -29,8 +29,6 @@ interface EnumValue {
 }
 
 interface EnumFieldDropdownProps {
-  /** Field path in the data */
-  fieldPath: string;
   /** Human-readable label for the field */
   label: string;
   /** Available enum values with counts */

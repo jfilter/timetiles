@@ -40,7 +40,7 @@ export const EventFilters = () => {
   }, [setStartDate, setEndDate]);
 
   // Calculate active filter counts per section
-  const dataSourcesActiveCount = (filters.catalog != null ? 1 : 0) + filters.datasets.length;
+  const dataSourcesActiveCount = (filters.catalog == null ? 0 : 1) + filters.datasets.length;
   const timeRangeActiveCount = filters.startDate != null || filters.endDate != null ? 1 : 0;
 
   return (

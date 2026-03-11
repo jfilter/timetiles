@@ -83,19 +83,19 @@ const buildEmptyHistogramResponse = () => ({
 const buildHistogramResponse = (
   rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>
 ) => {
-  const total = rows.reduce((sum: number, row) => sum + parseInt(String(row.event_count), 10), 0);
+  const total = rows.reduce((sum: number, row) => sum + Number.parseInt(String(row.event_count), 10), 0);
 
   const histogram = rows.map((row) => ({
     date: new Date(row.bucket_start).toISOString(), // Bucket start as ISO 8601
     dateEnd: new Date(row.bucket_end).toISOString(), // Bucket end as ISO 8601
-    count: parseInt(String(row.event_count), 10),
+    count: Number.parseInt(String(row.event_count), 10),
   }));
 
   return {
     histogram,
     metadata: {
       total,
-      dateRange: { min: rows[0]?.bucket_start ?? null, max: rows[rows.length - 1]?.bucket_end ?? null },
+      dateRange: { min: rows[0]?.bucket_start ?? null, max: rows.at(-1)?.bucket_end ?? null },
       bucketSizeSeconds: rows[0]?.bucket_size_seconds ?? null,
       bucketCount: rows.length,
       counts: { datasets: 0, catalogs: 0 },

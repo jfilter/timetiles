@@ -110,7 +110,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
       .split("\n")
       .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
-    const postgisCount = parseInt(postgisLines[0]?.trim() || "0");
+    const postgisCount = Number.parseInt(postgisLines[0]?.trim() || "0");
     const hasPostGIS = postgisCount > 0;
 
     // Check payload schema
@@ -123,7 +123,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
       .split("\n")
       .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
-    const schemaCount = parseInt(schemaLines[0]?.trim() || "0");
+    const schemaCount = Number.parseInt(schemaLines[0]?.trim() || "0");
     const hasPayloadSchema = schemaCount > 0;
 
     // Count tables in payload schema
@@ -138,7 +138,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
         .split("\n")
         .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
-      tableCount = parseInt(tableLines[0]?.trim() || "0");
+      tableCount = Number.parseInt(tableLines[0]?.trim() || "0");
     }
 
     return { exists: true, hasPostGIS, hasPayloadSchema, tableCount };
@@ -320,23 +320,21 @@ export const resetTestDatabase = async (force: boolean = false): Promise<void> =
 
 // CLI interface
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const args = process.argv.slice(2);
-  const shouldFix = args.includes("--fix") || args.includes("--force");
+  const args = new Set(process.argv.slice(2));
+  const shouldFix = args.has("--fix") || args.has("--force");
 
-  void (async () => {
-    try {
-      const result = await validateTestDatabaseSchema();
+  try {
+    const result = await validateTestDatabaseSchema();
 
-      if (!result.isValid && shouldFix) {
-        logger.info("🔧 Auto-fixing detected issues...");
-        await resetTestDatabase(true);
-      } else if (!result.isValid) {
-        logger.info("💡 Use --fix flag to automatically reset the database");
-        process.exit(1);
-      }
-    } catch (error) {
-      logger.error("Schema validation failed:", error);
+    if (!result.isValid && shouldFix) {
+      logger.info("🔧 Auto-fixing detected issues...");
+      await resetTestDatabase(true);
+    } else if (!result.isValid) {
+      logger.info("💡 Use --fix flag to automatically reset the database");
       process.exit(1);
     }
-  })();
+  } catch (error) {
+    logger.error("Schema validation failed:", error);
+    process.exit(1);
+  }
 }

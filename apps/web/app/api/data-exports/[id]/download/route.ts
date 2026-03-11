@@ -7,10 +7,11 @@
  * @module
  * @category API
  */
-import { createReadStream } from "fs";
-import { stat } from "fs/promises";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { Readable } from "node:stream";
+
 import type { Payload } from "payload";
-import { Readable } from "stream";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";

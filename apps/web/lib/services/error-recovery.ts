@@ -404,60 +404,57 @@ export class ErrorRecoveryService {
    *
    * @private
    */
-  private static classifyError(job: ImportJob): ErrorClassification {
-    const errorMessage = getErrorLogState(job)?.lastError?.toLowerCase() ?? "";
-
-    // File access errors - often recoverable
-    if (errorMessage.includes("enoent") || errorMessage.includes("file not found")) {
-      return { type: "permanent", reason: "File not found - file may have been deleted", retryable: false };
-    }
-
-    // Network/database connection errors - usually recoverable
-    if (
-      errorMessage.includes("connection") ||
-      errorMessage.includes("timeout") ||
-      errorMessage.includes("econnrefused")
-    ) {
-      return { type: "recoverable", reason: "Network or database connection issue", retryable: true };
-    }
-
-    // Memory/resource errors - often recoverable with delay
-    if (errorMessage.includes("memory") || errorMessage.includes("resource")) {
-      return { type: "recoverable", reason: "Resource exhaustion - may resolve with delay", retryable: true };
-    }
-
-    // Quota errors - cannot retry until quota resets
-    if (errorMessage.includes("quota") || errorMessage.includes("limit exceeded")) {
-      return {
+  private static readonly ERROR_PATTERNS: Array<{ keywords: string[]; classification: ErrorClassification }> = [
+    {
+      keywords: ["enoent", "file not found"],
+      classification: { type: "permanent", reason: "File not found - file may have been deleted", retryable: false },
+    },
+    {
+      keywords: ["connection", "timeout", "econnrefused"],
+      classification: { type: "recoverable", reason: "Network or database connection issue", retryable: true },
+    },
+    {
+      keywords: ["memory", "resource"],
+      classification: { type: "recoverable", reason: "Resource exhaustion - may resolve with delay", retryable: true },
+    },
+    {
+      keywords: ["quota", "limit exceeded"],
+      classification: {
         type: "user-action-required",
         reason: "Quota limit exceeded - will retry after quota resets",
         suggestedAction: "Wait for daily quota reset or upgrade plan",
-        retryable: false, // Don't retry quota errors
-      };
-    }
-
-    // Schema validation errors - may need user action
-    if (errorMessage.includes("schema") || errorMessage.includes("validation")) {
-      return {
+        retryable: false,
+      },
+    },
+    {
+      keywords: ["schema", "validation"],
+      classification: {
         type: "user-action-required",
         reason: "Schema or validation error - may need manual review",
         suggestedAction: "Review schema configuration or data format",
-        retryable: true, // Allow retry in case of transient validation issues
-      };
-    }
+        retryable: true,
+      },
+    },
+    {
+      keywords: ["rate limit", "429"],
+      classification: { type: "recoverable", reason: "Rate limiting - will resolve with delay", retryable: true },
+    },
+    {
+      keywords: ["permission", "unauthorized"],
+      classification: { type: "permanent", reason: "Permission denied - needs configuration fix", retryable: false },
+    },
+  ];
 
-    // Rate limiting - definitely recoverable
-    if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
-      return { type: "recoverable", reason: "Rate limiting - will resolve with delay", retryable: true };
-    }
+  private static classifyError(job: ImportJob): ErrorClassification {
+    const errorMessage = getErrorLogState(job)?.lastError?.toLowerCase() ?? "";
 
-    // Permission errors - usually permanent
-    if (errorMessage.includes("permission") || errorMessage.includes("unauthorized")) {
-      return { type: "permanent", reason: "Permission denied - needs configuration fix", retryable: false };
-    }
+    const matched = this.ERROR_PATTERNS.find((pattern) =>
+      pattern.keywords.some((keyword) => errorMessage.includes(keyword))
+    );
 
-    // Default to recoverable for unknown errors
-    return { type: "recoverable", reason: "Unknown error - attempting recovery", retryable: true };
+    return (
+      matched?.classification ?? { type: "recoverable", reason: "Unknown error - attempting recovery", retryable: true }
+    );
   }
 
   /**

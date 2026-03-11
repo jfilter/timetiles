@@ -9,6 +9,7 @@
  * @module
  */
 import type { User } from "@/payload-types";
+import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
 // Use Payload type with specific omissions for seed data
 export type UserSeed = Omit<
@@ -34,7 +35,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
     {
       email: "admin@example.com",
 
-      password: "admin123", // Development seed password only
+      password: TEST_CREDENTIALS.seed.admin, // Development seed password only
       firstName: "Admin",
       lastName: "User",
       role: "admin",
@@ -45,7 +46,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
     {
       email: "editor@example.com",
 
-      password: "editor123", // Development seed password only
+      password: TEST_CREDENTIALS.seed.editor, // Development seed password only
       firstName: "Data",
       lastName: "Editor",
       role: "editor",
@@ -62,7 +63,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       {
         email: "demo@example.com",
 
-        password: "demo", // Development seed password only
+        password: TEST_CREDENTIALS.seed.demo, // Development seed password only
         firstName: "Demo",
         lastName: "User",
         role: "user",
@@ -73,7 +74,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       {
         email: "john.doe@example.com",
 
-        password: "password123", // Development seed password only
+        password: TEST_CREDENTIALS.basic.strongPassword, // Development seed password only
         firstName: "John",
         lastName: "Doe",
         role: "user",
@@ -84,7 +85,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       {
         email: "jane.smith@example.com",
 
-        password: "password123", // Development seed password only
+        password: TEST_CREDENTIALS.basic.strongPassword, // Development seed password only
         firstName: "Jane",
         lastName: "Smith",
         role: "user",
@@ -95,7 +96,7 @@ export const userSeeds = (environment: string): UserSeed[] => {
       {
         email: "inactive.user@example.com",
 
-        password: "password123", // Development seed password only
+        password: TEST_CREDENTIALS.basic.strongPassword, // Development seed password only
         firstName: "Inactive",
         lastName: "User",
         role: "user",

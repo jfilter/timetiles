@@ -111,7 +111,7 @@ export const GEOGRAPHIC_REGIONS = {
   },
   california: {
     name: "California",
-    bounds: { north: 42.0, south: 32.5, east: -114.1, west: -124.4 },
+    bounds: { north: 42, south: 32.5, east: -114.1, west: -124.4 },
     centers: [
       { name: "Los Angeles", lat: 34.0522, lng: -118.2437 },
       { name: "San Francisco", lat: 37.7749, lng: -122.4194 },
@@ -133,7 +133,7 @@ export const GEOGRAPHIC_REGIONS = {
   },
   europe: {
     name: "Europe",
-    bounds: { north: 60.0, south: 35.0, east: 40.0, west: -10.0 },
+    bounds: { north: 60, south: 35, east: 40, west: -10 },
     centers: [
       { name: "London", lat: 51.5074, lng: -0.1278 },
       { name: "Paris", lat: 48.8566, lng: 2.3522 },

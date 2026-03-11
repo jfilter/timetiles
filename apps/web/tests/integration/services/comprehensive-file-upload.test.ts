@@ -195,7 +195,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       logger.debug(`✓ Using cached fixture buffer (${multiSheetFixture.length} bytes)`);
 
       // Use the helper function that properly handles file uploads
-      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), multiSheetFixture, {
+      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), multiSheetFixture, {
         filename: fileName,
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         datasetsCount: 0,
@@ -265,7 +265,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       logger.debug(`✓ Using cached ODS fixture buffer (${odsFixture.length} bytes)`);
 
       // Use the helper function that properly handles file uploads
-      const { importFile } = await withImportFile(testEnv, parseInt(testCatalogId, 10), odsFixture, {
+      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), odsFixture, {
         filename: fileName,
         mimeType: "application/vnd.oasis.opendocument.spreadsheet",
         datasetsCount: 0,

@@ -647,7 +647,7 @@ describe("GeocodingService", () => {
       const result = await geocodingService.geocode("123 Main St, San Francisco, CA");
 
       expect(result.confidence).toBeGreaterThan(0.5);
-      expect(result.confidence).toBeLessThanOrEqual(1.0);
+      expect(result.confidence).toBeLessThanOrEqual(1);
     });
   });
 
@@ -655,7 +655,7 @@ describe("GeocodingService", () => {
     it("should normalize addresses for better cache matching", async () => {
       const baseAddress = `123 Cache Normalize St, San Francisco, CA ${testCounter}-${Date.now()}-${Math.random()}`;
       const address1 = baseAddress;
-      const address2 = baseAddress.toUpperCase().replaceAll(/,/g, ", ").replaceAll(/\s+/g, "  ") + "!!!";
+      const address2 = baseAddress.toUpperCase().replaceAll(",", ", ").replaceAll(/\s+/g, "  ") + "!!!";
 
       // Set up mocks BEFORE creating service
       mockGoogleGeocode.mockRejectedValue(new Error("Google not available"));

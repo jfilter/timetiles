@@ -73,7 +73,7 @@ export const findUserDocs = async <T extends CollectionSlug>(
   const result = await payload.find({
     collection,
     where,
-    ...(limit != null ? { limit } : { pagination: false }),
+    ...(limit == null ? { pagination: false } : { limit }),
     overrideAccess: true,
   });
 

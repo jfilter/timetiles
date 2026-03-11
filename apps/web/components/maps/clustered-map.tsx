@@ -129,7 +129,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
         target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
       }) => {
         const map = evt.target as MapRef;
-        (window as { _mapRef?: unknown })._mapRef = map;
+        (globalThis as { _mapRef?: unknown })._mapRef = map;
 
         // Use initialViewState if provided (URL position), otherwise fall back to initialBounds
         if (initialViewState) {

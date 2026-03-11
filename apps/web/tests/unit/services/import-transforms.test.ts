@@ -183,7 +183,7 @@ describe("applyTransforms", () => {
   });
 
   it("should handle complex nested transformations", () => {
-    const data = { event: { date: "2024-01-15", location: { city: "NYC", coords: { lat: 40.7, lng: -74.0 } } } };
+    const data = { event: { date: "2024-01-15", location: { city: "NYC", coords: { lat: 40.7, lng: -74 } } } };
 
     const transforms: ImportTransform[] = [
       { id: "1", type: "rename", from: "event.date", to: "start_date", active: true, autoDetected: false },
@@ -319,7 +319,7 @@ describe("applyTransformsBatch", () => {
 
   it("should not mutate original array", () => {
     const data = [{ date: "2024-01-15", name: "Event" }];
-    const original = JSON.parse(JSON.stringify(data));
+    const original = structuredClone(data);
 
     const transforms: ImportTransform[] = [
       { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },

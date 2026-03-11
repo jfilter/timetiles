@@ -9,13 +9,14 @@
  * @category Configuration
  */
 
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { nodemailerAdapter } from "@payloadcms/email-nodemailer";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { schemaDetectionPlugin } from "@timetiles/payload-schema-detection";
-import { existsSync, readFileSync, writeFileSync } from "fs";
 import nodemailer from "nodemailer";
-import { join } from "path";
 import type { Config, Plugin } from "payload";
 import { buildConfig } from "payload";
 import sharp from "sharp";

@@ -16,6 +16,7 @@ import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import { logger } from "@/lib/logger";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
+import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import {
   createIntegrationTestEnvironment,
   withScheduledImport,
@@ -435,7 +436,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         .respondWithAuth(
           "/basic-auth-data",
           "basic",
-          { username: "user", password: "pass" },
+          { username: TEST_CREDENTIALS.basic.alternateUsername, password: TEST_CREDENTIALS.basic.alternatePassword },
           { status: 200, body: "id,name\n1,test", headers: { "Content-Type": "text/csv" } }
         );
 
@@ -457,7 +458,11 @@ describe.sequential("Scheduled Imports Integration", () => {
       const basicAuthResult = await urlFetchJob.handler({
         input: {
           sourceUrl: `${testServerUrl}/basic-auth-data`,
-          authConfig: { type: "basic", username: "user", password: "pass" },
+          authConfig: {
+            type: "basic",
+            username: TEST_CREDENTIALS.basic.alternateUsername,
+            password: TEST_CREDENTIALS.basic.alternatePassword,
+          },
           catalogId: testCatalog.id,
           originalName: "test.csv",
           userId: testUser.id,
