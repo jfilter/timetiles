@@ -29,7 +29,10 @@ jobs:
 
       - name: Check formatting (oxfmt)
         timeout-minutes: 2
-        run: pnpm exec oxfmt --check .
+        # --threads=1 works around oxc-project/oxc#20033: race condition in
+        # worker threads causes random CSS files to crash with "Cannot use
+        # 'in' operator to search for 'importer' in undefined".
+        run: pnpm exec oxfmt --check --threads=1 .
 
       - name: Lint code (oxlint + ESLint)
         timeout-minutes: 5
