@@ -11,6 +11,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { fetchJson } from "@/lib/api/http-error";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 
 import { QUERY_PRESETS } from "./query-presets";
@@ -88,13 +89,9 @@ const selectTopEnumFields = (
  * Fetch dataset and extract fieldMetadata.
  */
 const fetchDatasetFieldMetadata = async (datasetId: string): Promise<Record<string, FieldStatistics> | null> => {
-  const response = await fetch(`/api/datasets/${datasetId}?depth=0`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch dataset");
-  }
-
-  const dataset = await response.json();
+  const dataset = await fetchJson<{ fieldMetadata?: Record<string, FieldStatistics> }>(
+    `/api/datasets/${datasetId}?depth=0`
+  );
   return dataset.fieldMetadata ?? null;
 };
 

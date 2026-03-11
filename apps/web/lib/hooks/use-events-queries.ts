@@ -6,50 +6,26 @@
  * - Fetching lists of events.
  * - Retrieving map clusters for efficient visualization of large datasets.
  * - Getting data for temporal histograms.
- * - Polling for the progress of data import jobs.
- * - Handling file uploads for new imports.
  *
  * By co-locating these hooks, it provides a consistent and organized way to manage server state
- * related to events and imports throughout the application.
+ * related to events throughout the application.
  *
  * @module
  */
 "use client";
 
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
 import type { Event } from "@/payload-types";
 
+import { fetchJson, HttpError } from "../api/http-error";
 import type { FilterState } from "../filters";
 import { createLogger } from "../logger";
 import type { BoundsType, SimpleBounds } from "../utils/event-params";
-import { buildBaseEventParams, buildEventParams, parseStrictInteger } from "../utils/event-params";
+import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 import { QUERY_PRESETS } from "./query-presets";
-
-// Helper function to determine polling interval
-// Returns false to stop polling or number for interval - React Query expects this pattern
-// eslint-disable-next-line sonarjs/function-return-type
-const getPollingInterval = (query: { state: { data?: { status?: string }; status: string } }): number | false => {
-  // Stop polling if the query itself is in error state (network failures, server errors)
-  if (query.state.status === "error") {
-    return false;
-  }
-
-  const data = query.state.data;
-  if (data?.status === "completed" || data?.status === "failed") {
-    return false;
-  }
-
-  // Stop polling for stages that require manual user action —
-  // the UI updates via mutation invalidation when the user approves
-  if (data?.status === "awaiting_approval") {
-    return false;
-  }
-
-  return 2000;
-};
 
 const logger = createLogger("EventsQueries");
 
@@ -98,35 +74,6 @@ export interface AggregationResponse {
   groupedBy: string;
 }
 
-export interface ImportJobProgress {
-  id: string;
-  datasetId: string;
-  datasetName?: string;
-  stage: string;
-  progress: number;
-  rowsTotal: number;
-  rowsProcessed: number;
-  batchNumber: number;
-  errors: number;
-  duplicates: { internal: number; external: number };
-  schemaValidation?: Record<string, unknown>;
-  results?: Record<string, unknown>;
-}
-
-export interface ImportProgressResponse {
-  type: "import-file";
-  id: string;
-  status: string;
-  originalName: string;
-  datasetsCount: number;
-  datasetsProcessed: number;
-  overallProgress: number;
-  jobs: ImportJobProgress[];
-  errorLog?: string;
-  completedAt?: string;
-  createdAt?: string;
-}
-
 export interface ClusterStatsResponse {
   p20: number;
   p40: number;
@@ -154,22 +101,19 @@ const fetchEvents = async (
 
   logger.debug("Fetching events list", { filters, bounds, limit });
 
-  const response = await fetch(`/api/v1/events?${params.toString()}`, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch events: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  const data = await fetchJson<{ events: Event[]; pagination: Record<string, unknown> }>(
+    `/api/v1/events?${params.toString()}`,
+    { signal }
+  );
 
   // Transform API response to match EventsListResponse interface
   return {
     events: data.events,
-    total: data.pagination.totalDocs,
-    page: data.pagination.page,
-    limit: data.pagination.limit,
-    hasNextPage: data.pagination.hasNextPage,
-    hasPrevPage: data.pagination.hasPrevPage,
+    total: data.pagination.totalDocs as number,
+    page: data.pagination.page as number,
+    limit: data.pagination.limit as number,
+    hasNextPage: data.pagination.hasNextPage as boolean,
+    hasPrevPage: data.pagination.hasPrevPage as boolean,
   };
 };
 
@@ -183,13 +127,7 @@ const fetchMapClusters = async (
 
   logger.debug("Fetching map clusters", { filters, bounds, zoom });
 
-  const response = await fetch(`/api/v1/events/geo?${params.toString()}`, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch map clusters: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<MapClustersResponse>;
+  return fetchJson<MapClustersResponse>(`/api/v1/events/geo?${params.toString()}`, { signal });
 };
 
 const fetchHistogram = async (
@@ -201,13 +139,7 @@ const fetchHistogram = async (
 
   logger.debug("Fetching histogram", { filters, bounds });
 
-  const response = await fetch(`/api/v1/events/temporal?${params.toString()}`, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch histogram: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<HistogramResponse>;
+  return fetchJson<HistogramResponse>(`/api/v1/events/temporal?${params.toString()}`, { signal });
 };
 
 const fetchClusterStats = async (filters: FilterState, signal?: AbortSignal): Promise<ClusterStatsResponse> => {
@@ -215,13 +147,7 @@ const fetchClusterStats = async (filters: FilterState, signal?: AbortSignal): Pr
 
   logger.debug("Fetching global cluster stats", { filters });
 
-  const response = await fetch(`/api/v1/events/geo/stats?${params.toString()}`, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch cluster stats: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<ClusterStatsResponse>;
+  return fetchJson<ClusterStatsResponse>(`/api/v1/events/geo/stats?${params.toString()}`, { signal });
 };
 
 const fetchBounds = async (filters: FilterState, signal?: AbortSignal): Promise<BoundsResponse> => {
@@ -229,66 +155,7 @@ const fetchBounds = async (filters: FilterState, signal?: AbortSignal): Promise<
 
   logger.debug("Fetching event bounds", { filters });
 
-  const response = await fetch(`/api/v1/events/bounds?${params.toString()}`, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch event bounds: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<BoundsResponse>;
-};
-
-const fetchImportProgress = async (importId: string, signal?: AbortSignal): Promise<ImportProgressResponse> => {
-  logger.debug("Fetching import progress", { importId });
-
-  const response = await fetch(`/api/import/${importId}/progress`, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch import progress: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<ImportProgressResponse>;
-};
-
-const uploadImport = async (
-  formData: FormData,
-  signal?: AbortSignal
-): Promise<{ importId: string; success: boolean }> => {
-  logger.debug("Uploading import file via Payload endpoint");
-
-  // Convert to Payload's expected format
-  const payloadFormData = new FormData();
-
-  // Get the file from the original FormData
-  const file = formData.get("file");
-  if (file) {
-    payloadFormData.append("file", file);
-  }
-
-  // Get other fields and put them in _payload as JSON
-  const catalogId = formData.get("catalogId");
-  const sessionId = formData.get("sessionId");
-  const normalizedCatalogId =
-    typeof catalogId === "string" && catalogId.trim() !== "" ? (parseStrictInteger(catalogId) ?? undefined) : undefined;
-
-  const payloadData = {
-    catalog: normalizedCatalogId,
-    sessionId: sessionId ?? undefined,
-    status: "pending",
-    datasetsCount: 0,
-    datasetsProcessed: 0,
-  };
-
-  payloadFormData.append("_payload", JSON.stringify(payloadData));
-
-  const response = await fetch("/api/import-files", { method: "POST", body: payloadFormData, signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to upload import: ${response.statusText}`);
-  }
-
-  const result = await response.json();
-  return { importId: result.doc?.id ?? result.id, success: true };
+  return fetchJson<BoundsResponse>(`/api/v1/events/bounds?${params.toString()}`, { signal });
 };
 
 // Query key factories
@@ -312,8 +179,6 @@ export const eventsQueryKeys = {
   aggregations: () => [...eventsQueryKeys.all, "aggregation"] as const,
   aggregation: (filters: FilterState, bounds: BoundsType, groupBy: "catalog" | "dataset") =>
     [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy }] as const,
-  imports: () => ["imports"] as const,
-  importProgress: (importId: string) => [...eventsQueryKeys.imports(), "progress", importId] as const,
   bounds: () => [...eventsQueryKeys.all, "bounds"] as const,
   boundsFiltered: (filters: FilterState) => [...eventsQueryKeys.bounds(), { filters }] as const,
 };
@@ -392,34 +257,6 @@ export const useBoundsQuery = (filters: FilterState, enabled: boolean = true) =>
     refetchOnWindowFocus: false,
   });
 
-export const useImportProgressQuery = (importId: string | null) =>
-  useQuery({
-    queryKey: eventsQueryKeys.importProgress(importId!),
-    queryFn: ({ signal }) => fetchImportProgress(importId!, signal),
-    enabled: importId != null,
-    refetchInterval: (query) => getPollingInterval(query),
-    retry: 3,
-    staleTime: 0,
-    gcTime: 30 * 1000,
-  });
-
-// Mutation hooks
-export const useImportUploadMutation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ formData, signal }: { formData: FormData; signal?: AbortSignal }) => uploadImport(formData, signal),
-    onSuccess: (data) => {
-      logger.info("Import upload successful", { importId: data.importId });
-      // Invalidate import progress queries to start polling
-      void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.importProgress(data.importId) });
-    },
-    onError: (error) => {
-      logger.error("Import upload failed", error);
-    },
-  });
-};
-
 // Utility hook to invalidate related queries when data changes
 export const useInvalidateEventsQueries = () => {
   const queryClient = useQueryClient();
@@ -452,13 +289,7 @@ const fetchAggregation = async (
 
   logger.debug("Fetching aggregation", { env: process.env.NODE_ENV, groupBy });
 
-  const response = await fetch(url, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch aggregation: ${response.statusText}`);
-  }
-
-  return response.json();
+  return fetchJson<AggregationResponse>(url, { signal });
 };
 
 // Unified aggregation query hook
@@ -489,21 +320,18 @@ const fetchEventsPage = async (
 
   logger.debug("Fetching events page", { filters, bounds, page, limit });
 
-  const response = await fetch(`/api/v1/events?${params.toString()}`, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch events: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  const data = await fetchJson<{ events: Event[]; pagination: Record<string, unknown> }>(
+    `/api/v1/events?${params.toString()}`,
+    { signal }
+  );
 
   return {
     events: data.events,
-    total: data.pagination.totalDocs,
-    page: data.pagination.page,
-    limit: data.pagination.limit,
-    hasNextPage: data.pagination.hasNextPage,
-    hasPrevPage: data.pagination.hasPrevPage,
+    total: data.pagination.totalDocs as number,
+    page: data.pagination.page as number,
+    limit: data.pagination.limit as number,
+    hasNextPage: data.pagination.hasNextPage as boolean,
+    hasPrevPage: data.pagination.hasPrevPage as boolean,
   };
 };
 
@@ -549,16 +377,7 @@ export const useEventsInfiniteFlattened = (
 const fetchEventById = async (eventId: number, signal?: AbortSignal): Promise<Event> => {
   logger.debug("Fetching event by ID", { eventId });
 
-  const response = await fetch(`/api/events/${eventId}?depth=2`, { signal });
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error("Event not found");
-    }
-    throw new Error(`Failed to fetch event: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<Event>;
+  return fetchJson<Event>(`/api/events/${eventId}?depth=2`, { signal });
 };
 
 /**
@@ -578,7 +397,7 @@ export const useEventDetailQuery = (eventId: number | null) =>
     ...QUERY_PRESETS.stable,
     retry: (failureCount, error) => {
       // Don't retry if event not found
-      if (error instanceof Error && error.message.includes("not found")) {
+      if (error instanceof HttpError && error.status === 404) {
         return false;
       }
       return failureCount < 2;

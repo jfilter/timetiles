@@ -11,6 +11,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { fetchJson } from "../api/http-error";
 import { QUERY_PRESETS } from "./query-presets";
 
 /**
@@ -31,13 +32,7 @@ export const dataSourceStatsQueryKey = ["data-source-stats"] as const;
  * Fetch data source statistics from the API.
  */
 const fetchDataSourceStats = async (): Promise<DataSourceStatsResponse> => {
-  const response = await fetch("/api/v1/sources/stats");
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch data source stats: ${response.status}`);
-  }
-
-  return response.json() as Promise<DataSourceStatsResponse>;
+  return fetchJson<DataSourceStatsResponse>("/api/v1/sources/stats");
 };
 
 /**

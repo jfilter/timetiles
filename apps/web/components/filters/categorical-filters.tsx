@@ -1,9 +1,10 @@
 /**
  * Container component for categorical/enum field filters.
  *
- * Fetches enum field metadata for the selected dataset and renders
- * multi-select dropdowns for each field. Only shown when exactly
- * one dataset is selected (enum fields are dataset-specific).
+ * Renders multi-select dropdowns for each enum field. The parent
+ * component is responsible for fetching enum field metadata and
+ * passing it as props. Only shown when exactly one dataset is
+ * selected (enum fields are dataset-specific).
  *
  * @module
  * @category Components
@@ -13,7 +14,7 @@
 import { useCallback } from "react";
 
 import { useFilters } from "@/lib/filters";
-import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
+import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
 
 import { EnumFieldDropdown } from "./enum-field-dropdown";
 
@@ -77,28 +78,28 @@ const MemoizedEnumField = ({
   );
 };
 
+/** Props for the CategoricalFilters component */
+export interface CategoricalFiltersProps {
+  /** Enum fields to display as filter dropdowns */
+  enumFields: EnumField[];
+  /** Whether the enum fields are currently loading */
+  isLoading: boolean;
+}
+
 /**
  * Categorical filters container.
  *
  * Renders enum field dropdowns when a single dataset is selected.
- * Uses the dataset's fieldMetadata to determine which fields are
- * enum candidates and auto-selects the top 5 by cardinality.
+ * Enum field data is fetched by the parent and passed as props.
  */
-export const CategoricalFilters = () => {
+export const CategoricalFilters = ({ enumFields, isLoading }: CategoricalFiltersProps) => {
   const { filters, setFieldFilter } = useFilters();
-
-  // Only show when exactly one dataset is selected
-  const singleDatasetId = filters.datasets.length === 1 ? (filters.datasets[0] ?? null) : null;
-  const { data: enumFields, isLoading, isError } = useDatasetEnumFieldsQuery(singleDatasetId);
-
-  // Don't render if no single dataset selected
-  if (!singleDatasetId) return null;
 
   // Show skeleton while loading
   if (isLoading) return <CategoricalFiltersSkeleton />;
 
-  // Don't show if error or no enum fields
-  if (isError || !enumFields || enumFields.length === 0) return null;
+  // Don't show if no enum fields
+  if (enumFields.length === 0) return null;
 
   return (
     <div className="space-y-3">

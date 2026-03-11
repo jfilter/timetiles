@@ -10,21 +10,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { DataSourcesResponse } from "@/app/api/v1/data-sources/route";
+import { fetchJson } from "@/lib/api/http-error";
+import type { DataSourcesResponse } from "@/lib/types/data-sources";
 
 import { QUERY_PRESETS } from "./query-presets";
 
 // Re-export types for consumers
-export type { DataSourceCatalog, DataSourceDataset, DataSourcesResponse } from "@/app/api/v1/data-sources/route";
+export type { DataSourceCatalog, DataSourceDataset, DataSourcesResponse } from "@/lib/types/data-sources";
 
 const fetchDataSources = async (): Promise<DataSourcesResponse> => {
-  const response = await fetch("/api/v1/data-sources");
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch data sources");
-  }
-
-  return response.json();
+  return fetchJson<DataSourcesResponse>("/api/v1/data-sources");
 };
 
 export const dataSourcesKeys = { all: ["data-sources"] as const };

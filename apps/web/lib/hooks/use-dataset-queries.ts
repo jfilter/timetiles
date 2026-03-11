@@ -9,6 +9,8 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { HttpError } from "../api/http-error";
+
 interface SchemaInferenceOptions {
   /** Maximum number of events to sample (default: 500) */
   sampleSize?: number;
@@ -45,7 +47,7 @@ interface SchemaInferenceResponse {
 export const useInferSchemaForDataset = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<SchemaInferenceResponse, Error, { datasetId: number } & SchemaInferenceOptions>({
+  return useMutation<SchemaInferenceResponse, HttpError, { datasetId: number } & SchemaInferenceOptions>({
     mutationFn: async ({ datasetId, ...options }) => {
       const response = await fetch(`/api/v1/datasets/${datasetId}/schema/infer`, {
         method: "POST",
@@ -54,8 +56,9 @@ export const useInferSchemaForDataset = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(error.error ?? `Failed to infer schema: ${response.statusText}`);
+        const body = await response.json().catch(() => ({ error: "Unknown error" }));
+        const message = (body as { error?: string }).error ?? `Failed to infer schema: ${response.statusText}`;
+        throw new HttpError(response.status, message, body);
       }
 
       return response.json();

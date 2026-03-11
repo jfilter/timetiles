@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { fetchJson } from "@/lib/api/http-error";
 import { useFilters } from "@/lib/filters";
 import type { HistogramResponse } from "@/lib/hooks/use-events-queries";
 import { buildBaseEventParams } from "@/lib/utils/event-params";
@@ -89,13 +90,7 @@ const fetchFullHistogram = async (catalog: string | null, datasets: string[]): P
   // Use buildBaseEventParams with no date filters to get full range
   const params = buildBaseEventParams({ catalog, datasets, startDate: null, endDate: null, fieldFilters: {} });
 
-  const response = await fetch(`/api/v1/events/temporal?${params.toString()}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch histogram: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<HistogramResponse>;
+  return fetchJson<HistogramResponse>(`/api/v1/events/temporal?${params.toString()}`);
 };
 
 export const useTimeRangeSlider = ({

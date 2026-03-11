@@ -10,22 +10,9 @@
  * @module
  */
 import { apiRoute } from "@/lib/api";
+import type { DataSourceCatalog, DataSourceDataset } from "@/lib/types/data-sources";
 
-export interface DataSourceCatalog {
-  id: number;
-  name: string;
-}
-
-export interface DataSourceDataset {
-  id: number;
-  name: string;
-  catalogId: number | null;
-}
-
-export interface DataSourcesResponse {
-  catalogs: DataSourceCatalog[];
-  datasets: DataSourceDataset[];
-}
+export type { DataSourceCatalog, DataSourceDataset, DataSourcesResponse } from "@/lib/types/data-sources";
 
 export const GET = apiRoute({
   auth: "optional",

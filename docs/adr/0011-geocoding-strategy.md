@@ -22,7 +22,7 @@ The geocoding system uses a four-component facade pattern:
 | `CacheManager`        | `lib/services/geocoding/cache-manager.ts`         | Reads/writes the `location-cache` collection; normalizes addresses; enforces TTL     |
 | `ProviderRateLimiter` | `lib/services/geocoding/provider-rate-limiter.ts` | In-memory token bucket per provider; singleton instance                              |
 
-A simplified entry point (`lib/services/geocoding.ts`) exposes `initializeGeocoding(payload)` and `geocodeAddress(address)` for use by the import pipeline.
+A simplified entry point (`lib/services/geocoding.ts`) exposes `createGeocodingService(payload)` which returns a `GeocodingService` instance for use by the import pipeline.
 
 ### Supported Providers
 
@@ -80,11 +80,11 @@ The `location-cache` collection (`lib/collections/location-cache.ts`) is a datab
 
 The `geocode-batch` job handler (`lib/jobs/handlers/geocode-batch-job.ts`) connects geocoding to the import pipeline (see ADR 0004):
 
-1. **Initialize**: Calls `initializeGeocoding(payload)` to set up the service with database access.
+1. **Create service**: Calls `createGeocodingService(payload)` to obtain a `GeocodingService` instance scoped to this job invocation.
 2. **Detect location field**: Uses `getGeocodingCandidate(job)` from field mappings. If no location field exists, the stage is skipped and the pipeline advances to `CREATE_EVENTS`.
 3. **Read rows**: Reads all rows from the import file.
 4. **Extract unique locations**: `extractUniqueLocations()` builds a `Set<string>` of distinct, trimmed location values. This is the primary optimization -- an import with 10,000 rows but 200 unique addresses only makes (at most) 200 API calls.
-5. **Geocode sequentially**: Each unique location is geocoded via `geocodeAddress()`. Progress is reported every 10 locations.
+5. **Geocode sequentially**: Each unique location is geocoded via `geocodingService.geocode()`. Progress is reported every 10 locations.
 6. **Store results**: Geocoded coordinates are saved to the import job's `geocodingResults` field as a map from location string to `{ coordinates, confidence, formattedAddress }`.
 7. **Failure handling**:
    - Individual failures are logged but do not block the import. Events for those locations are created without coordinates.

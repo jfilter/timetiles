@@ -16,12 +16,16 @@ import { useCallback } from "react";
 
 import { useFilters } from "@/lib/filters";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
+import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 
 import { CategoricalFilters } from "./categorical-filters";
 import { DataSourceSelector } from "./data-source-selector";
 import { FilterSection } from "./filter-section";
 import { TimeRangeSlider } from "./time-range-slider";
+
+/** Stable empty array to avoid creating new references on each render */
+const EMPTY_ENUM_FIELDS: EnumField[] = [];
 
 export const EventFilters = () => {
   const { filters, setStartDate, setEndDate, clearAllFilters, hasActiveFilters, activeFilterCount } = useFilters();
@@ -31,7 +35,7 @@ export const EventFilters = () => {
 
   // Fetch enum fields for categorical filters (only when single dataset selected)
   const singleDatasetId = filters.datasets.length === 1 ? (filters.datasets[0] ?? null) : null;
-  const { data: enumFields } = useDatasetEnumFieldsQuery(singleDatasetId);
+  const { data: enumFields, isLoading: isEnumFieldsLoading } = useDatasetEnumFieldsQuery(singleDatasetId);
   const hasEnumFields = enumFields != null && enumFields.length > 0;
 
   const handleClearDateFilters = useCallback(() => {
@@ -68,13 +72,13 @@ export const EventFilters = () => {
       </FilterSection>
 
       {/* Categorical Filters Section - only shown when single dataset selected and has enum fields */}
-      {filters.datasets.length === 1 && hasEnumFields && (
+      {filters.datasets.length === 1 && (hasEnumFields || isEnumFieldsLoading) && (
         <FilterSection
           title="Categories"
           defaultOpen
           activeCount={Object.values(filters.fieldFilters ?? {}).reduce((sum, vals) => sum + vals.length, 0)}
         >
-          <CategoricalFilters />
+          <CategoricalFilters enumFields={enumFields ?? EMPTY_ENUM_FIELDS} isLoading={isEnumFieldsLoading} />
         </FilterSection>
       )}
 

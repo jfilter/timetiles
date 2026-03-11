@@ -39,8 +39,9 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
 
   beforeEach(async () => {
     // Re-apply spies each test (global afterEach restores all mocks)
-    vi.spyOn(geocodingModule, "geocodeAddress").mockRejectedValue(new Error("Geocoding API unavailable"));
-    vi.spyOn(geocodingModule, "initializeGeocoding").mockImplementation(() => {});
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      geocode: vi.fn().mockRejectedValue(new Error("Geocoding API unavailable")),
+    } as unknown as ReturnType<typeof geocodingModule.createGeocodingService>);
 
     await testEnv.seedManager.truncate([
       "users",

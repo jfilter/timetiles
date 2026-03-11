@@ -9,6 +9,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 
+import { fetchJson } from "@/lib/api/http-error";
 import type { FeatureFlags } from "@/lib/services/feature-flag-service";
 
 import { QUERY_PRESETS } from "./query-presets";
@@ -19,11 +20,7 @@ const FEATURE_FLAGS_QUERY_KEY = ["feature-flags"] as const;
  * Fetches feature flags from the API.
  */
 const fetchFeatureFlags = async (): Promise<FeatureFlags> => {
-  const response = await fetch("/api/feature-flags");
-  if (!response.ok) {
-    throw new Error("Failed to fetch feature flags");
-  }
-  return response.json();
+  return fetchJson<FeatureFlags>("/api/feature-flags");
 };
 
 /**
