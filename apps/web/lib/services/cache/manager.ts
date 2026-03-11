@@ -1,121 +1,23 @@
 /**
- * Cache manager for creating and managing cache instances.
+ * Cache manager for tracking and managing cache instances.
  *
- * This manager provides a factory pattern for creating cache instances with different
- * storage backends and configurations. It manages singleton instances and provides
- * global cache operations.
+ * Provides global operations (cleanup, stats, destroy) across all registered
+ * cache instances. Individual caches register themselves via their own
+ * constructors; the manager does not create caches.
  *
  * @module
  * @category Services/Cache
  */
 
 import { logger } from "@/lib/logger";
-import { parseStrictInteger } from "@/lib/utils/event-params";
 
-import { Cache } from "./cache";
-import { FileSystemCacheStorage } from "./storage/file-system";
-import { MemoryCacheStorage } from "./storage/memory";
-import type { CacheConfig, CacheStorage } from "./types";
-
-export enum CacheBackend {
-  MEMORY = "memory",
-  FILESYSTEM = "filesystem",
-}
+import type { Cache } from "./cache";
 
 /**
- * Cache manager for creating and managing cache instances
+ * Cache manager for tracking and managing cache instances.
  */
 export class CacheManager {
   private static readonly instances = new Map<string, Cache>();
-
-  /**
-   * Create or get a cache instance
-   */
-  static getCache(name: string = "default", backend?: CacheBackend, config?: Partial<CacheConfig>): Cache {
-    const key = `${name}:${backend ?? "default"}`;
-
-    if (!this.instances.has(key)) {
-      const cache = this.createCache(name, backend, config);
-      this.instances.set(key, cache);
-      logger.info("Cache instance created", { name, backend: backend ?? this.getBackendFromEnv() });
-    }
-
-    return this.instances.get(key)!;
-  }
-
-  /**
-   * Create a new cache instance
-   */
-  private static createCache(name: string, backend?: CacheBackend, config?: Partial<CacheConfig>): Cache {
-    const selectedBackend = backend ?? this.getBackendFromEnv();
-    const storage = this.createStorage(selectedBackend, name);
-
-    return new Cache({ storage, keyPrefix: `${name}:`, defaultTTL: this.getDefaultTTL(), ...config });
-  }
-
-  /**
-   * Create storage backend
-   */
-  private static createStorage(backend: CacheBackend, name: string): CacheStorage {
-    switch (backend) {
-      case CacheBackend.MEMORY:
-        return new MemoryCacheStorage({
-          maxEntries: this.getMaxEntries(),
-          maxSize: this.getMaxSize(),
-          defaultTTL: this.getDefaultTTL(),
-        });
-
-      case CacheBackend.FILESYSTEM:
-      default:
-        return new FileSystemCacheStorage({
-          cacheDir: this.getCacheDir(name),
-          maxSize: this.getMaxSize(),
-          cleanupIntervalMs: this.getCleanupInterval(),
-          defaultTTL: this.getDefaultTTL(),
-        });
-    }
-  }
-
-  /**
-   * Get backend from environment
-   */
-  private static getBackendFromEnv(): CacheBackend {
-    const backend = process.env.CACHE_BACKEND?.toLowerCase();
-
-    switch (backend) {
-      case "memory":
-        return CacheBackend.MEMORY;
-      case "filesystem":
-      case "fs":
-      default:
-        return CacheBackend.FILESYSTEM;
-    }
-  }
-
-  /**
-   * Get configuration from environment
-   */
-  private static getDefaultTTL(): number {
-    return parseStrictInteger(process.env.CACHE_DEFAULT_TTL) ?? 3600;
-  }
-
-  private static getMaxEntries(): number {
-    return parseStrictInteger(process.env.CACHE_MAX_ENTRIES) ?? 1000;
-  }
-
-  private static getMaxSize(): number {
-    const sizeMB = parseStrictInteger(process.env.CACHE_MAX_SIZE_MB) ?? 500;
-    return sizeMB * 1024 * 1024;
-  }
-
-  private static getCacheDir(name: string): string {
-    const baseDir = process.env.CACHE_DIR ?? ".cache";
-    return `${baseDir}/${name}`;
-  }
-
-  private static getCleanupInterval(): number {
-    return parseStrictInteger(process.env.CACHE_CLEANUP_INTERVAL_MS) ?? 3600000; // 1 hour default
-  }
 
   /**
    * Clear all cache instances

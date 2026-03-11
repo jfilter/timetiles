@@ -9,7 +9,7 @@
  */
 import { apiRoute } from "@/lib/api";
 import { logError } from "@/lib/logger";
-import { getDefaultFeatureFlags, getFeatureFlags } from "@/lib/services/feature-flag-service";
+import { DISABLED_FLAGS, getFeatureFlags } from "@/lib/services/feature-flag-service";
 
 export const GET = apiRoute({
   auth: "none",
@@ -26,8 +26,8 @@ export const GET = apiRoute({
       });
     } catch (error) {
       logError(error, "Failed to fetch feature flags");
-      // Return defaults on error to prevent UI breakage
-      return Response.json(getDefaultFeatureFlags());
+      // Fail closed: return all-disabled flags when service is unavailable
+      return Response.json(DISABLED_FLAGS);
     }
   },
 });

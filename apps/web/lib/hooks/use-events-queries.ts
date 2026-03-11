@@ -14,7 +14,7 @@
  */
 "use client";
 
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
@@ -176,6 +176,9 @@ export const eventsQueryKeys = {
   aggregations: () => [...eventsQueryKeys.all, "aggregation"] as const,
   aggregation: (filters: FilterState, bounds: BoundsType, groupBy: "catalog" | "dataset") =>
     [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy }] as const,
+  histogramsFull: () => [...eventsQueryKeys.all, "histogram-full"] as const,
+  histogramFull: (filters: FilterState) =>
+    [...eventsQueryKeys.histogramsFull(), { catalog: filters.catalog, datasets: filters.datasets }] as const,
   bounds: () => [...eventsQueryKeys.all, "bounds"] as const,
   boundsFiltered: (filters: FilterState) => [...eventsQueryKeys.bounds(), { filters }] as const,
 };
@@ -226,6 +229,23 @@ export const useHistogramQuery = (filters: FilterState, bounds: BoundsType, enab
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
 
+/**
+ * Hook to fetch histogram data for the full date range (no date or bounds filters).
+ *
+ * Used by the time range slider to show the complete temporal distribution
+ * regardless of the currently selected date range.
+ */
+export const useFullHistogramQuery = (filters: FilterState) => {
+  const fullRangeFilters: FilterState = { ...filters, startDate: null, endDate: null, fieldFilters: {} };
+
+  return useQuery({
+    queryKey: eventsQueryKeys.histogramFull(filters),
+    queryFn: ({ signal }) => fetchHistogram(fullRangeFilters, null, signal),
+    ...QUERY_PRESETS.stable,
+    refetchOnWindowFocus: false,
+  });
+};
+
 export const useClusterStatsQuery = (filters: FilterState, enabled: boolean = true) =>
   useQuery({
     queryKey: eventsQueryKeys.clusterStat(filters),
@@ -253,26 +273,6 @@ export const useBoundsQuery = (filters: FilterState, enabled: boolean = true) =>
     ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
   });
-
-// Utility hook to invalidate related queries when data changes
-export const useInvalidateEventsQueries = () => {
-  const queryClient = useQueryClient();
-
-  return {
-    invalidateAll: () => {
-      void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.all });
-    },
-    invalidateLists: () => {
-      void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.lists() });
-    },
-    invalidateClusters: () => {
-      void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.clusters() });
-    },
-    invalidateHistograms: () => {
-      void queryClient.invalidateQueries({ queryKey: eventsQueryKeys.histograms() });
-    },
-  };
-};
 
 // Fetch function for unified aggregation endpoint
 const fetchAggregation = async (

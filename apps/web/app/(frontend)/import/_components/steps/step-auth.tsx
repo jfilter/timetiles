@@ -13,9 +13,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircle2Icon, Loader2Icon, MailIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 import { AuthTabs } from "@/components/auth";
+import { useCurrentUserQuery } from "@/lib/hooks/use-auth-mutations";
 
 import { useWizard } from "../wizard-context";
 
@@ -26,7 +27,14 @@ export interface StepAuthProps {
 export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
   const { state, nextStep, setAuth, setNavigationConfig } = useWizard();
   const { isAuthenticated, isEmailVerified } = state;
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check auth status on mount via API (workaround for SSR auth issues)
+  // Skip the query if we already know the user is authenticated
+  const {
+    data: currentUserData,
+    isLoading: isCheckingAuth,
+    refetch,
+  } = useCurrentUserQuery({ enabled: !isAuthenticated });
 
   // Hide navigation on auth step (it auto-advances when authenticated)
   useEffect(() => {
@@ -34,32 +42,13 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
     return () => setNavigationConfig({});
   }, [setNavigationConfig]);
 
-  // Check auth status on mount via API (workaround for SSR auth issues)
+  // Sync query result into wizard state
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const response = await fetch("/api/users/me", { credentials: "include" });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.user) {
-            const verified = data.user._verified === true;
-            setAuth(true, verified, data.user.id);
-          }
-        }
-      } catch {
-        // Not authenticated - keep current state
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-
-    // Only check if we think we're not authenticated
-    if (isAuthenticated) {
-      setIsCheckingAuth(false);
-    } else {
-      void checkAuthStatus();
+    if (currentUserData?.user) {
+      const verified = currentUserData.user._verified === true;
+      setAuth(true, verified, currentUserData.user.id);
     }
-  }, [isAuthenticated, setAuth]);
+  }, [currentUserData, setAuth]);
 
   // Auto-advance when authenticated and verified
   useEffect(() => {
@@ -70,23 +59,15 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
 
   // Handle successful auth - instead of page reload, check auth status
   const handleAuthSuccess = useCallback(() => {
-    // Check auth status via API after successful login
     void (async () => {
       try {
-        const response = await fetch("/api/users/me", { credentials: "include" });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.user) {
-            const verified = data.user._verified === true;
-            setAuth(true, verified, data.user.id);
-          }
-        }
+        await refetch();
       } catch {
         // Fallback to page reload
         globalThis.location.reload();
       }
     })();
-  }, [setAuth]);
+  }, [refetch]);
 
   // Handle switching to different account
   const handleSwitchAccount = useCallback(() => {

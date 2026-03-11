@@ -13,6 +13,7 @@ import { Check, Key, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
+import { useChangePasswordMutation } from "@/lib/hooks/use-account-mutations";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 
 export const ChangePasswordForm = () => {
@@ -20,6 +21,7 @@ export const ChangePasswordForm = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const { status, error, isLoading, submit, reset } = useFormSubmission();
+  const changePasswordMutation = useChangePasswordMutation();
 
   const handleCurrentPasswordChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,25 +61,15 @@ export const ChangePasswordForm = () => {
         if (newPassword !== confirmPassword) {
           throw new Error("New passwords do not match");
         }
-        const response = await fetch("/api/users/change-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ currentPassword, newPassword }),
-        });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error ?? "Failed to change password");
-        }
+        await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
 
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       });
     },
-    [currentPassword, newPassword, confirmPassword, submit]
+    [currentPassword, newPassword, confirmPassword, submit, changePasswordMutation]
   );
 
   return (

@@ -12,6 +12,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } fro
 import { AlertTriangle, Check, Clock, Download, Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
+import type { DataExport } from "@/lib/hooks/use-data-export";
 import {
   formatExportDate,
   formatFileSize,
@@ -25,16 +26,6 @@ interface ExportStatus {
   isPending: boolean;
   isReady: boolean;
   isFailed: boolean;
-}
-
-interface LatestExport {
-  id?: number;
-  status?: string;
-  requestedAt?: string | null;
-  completedAt?: string | null;
-  expiresAt?: string | null;
-  fileSize?: number | null;
-  errorLog?: string;
 }
 
 /**
@@ -73,7 +64,7 @@ const ExportPendingState = ({ requestedAt }: { requestedAt?: string | null }) =>
 /**
  * Ready state display with download info.
  */
-const ExportReadyState = ({ latestExport }: { latestExport: LatestExport }) => (
+const ExportReadyState = ({ latestExport }: { latestExport: DataExport }) => (
   <div className="rounded-md border-l-4 border-green-500 bg-green-50 p-4 dark:bg-green-950">
     <div className="flex items-start gap-3">
       <Check className="h-5 w-5 text-green-600 dark:text-green-400" />

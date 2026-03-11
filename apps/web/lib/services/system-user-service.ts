@@ -143,27 +143,6 @@ export class SystemUserService {
 
     return isSystem;
   }
-
-  /**
-   * Get the cached system user ID.
-   *
-   * This method returns the cached ID without making a database call.
-   * Returns null if the system user hasn't been looked up yet.
-   *
-   * @returns The system user ID or null if not cached
-   */
-  getSystemUserId(): number | null {
-    return this.cachedSystemUserId;
-  }
-
-  /**
-   * Clear the cached system user ID.
-   *
-   * Useful for testing or when the system user may have changed.
-   */
-  clearCache(): void {
-    this.cachedSystemUserId = null;
-  }
 }
 
 /**

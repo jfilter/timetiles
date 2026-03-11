@@ -14,6 +14,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback } from "react";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
+import { useResetPasswordMutation } from "@/lib/hooks/use-auth-mutations";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
@@ -30,6 +31,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
   const [password, handlePasswordChange] = useInputState();
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isLoading, submit } = useFormSubmission();
+  const resetPasswordMutation = useResetPasswordMutation();
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -47,25 +49,11 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
           throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
         }
 
-        const response = await fetch("/api/users/reset-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, password }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          const message =
-            typeof data === "object" && data !== null && "message" in data
-              ? String(data.message)
-              : "Failed to reset password. The link may have expired.";
-          throw new Error(message);
-        }
-
+        await resetPasswordMutation.mutateAsync({ token, password });
         onSuccess?.();
       });
     },
-    [password, confirmPassword, token, onSuccess, submit]
+    [password, confirmPassword, token, onSuccess, submit, resetPasswordMutation]
   );
 
   if (status === "success") {

@@ -6,7 +6,7 @@
  */
 
 export { Cache } from "./cache";
-export { CacheBackend, CacheManager } from "./manager";
+export { CacheManager } from "./manager";
 export { FileSystemCacheStorage } from "./storage/file-system";
 export { MemoryCacheStorage } from "./storage/memory";
 export type {

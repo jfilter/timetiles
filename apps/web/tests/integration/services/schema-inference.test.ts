@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { getSchemaFreshness, isSchemaStale } from "@/lib/services/schema-freshness";
+import { getSchemaFreshness } from "@/lib/services/schema-freshness";
 import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
 
 import {
@@ -206,24 +206,6 @@ describe.sequential("Schema Inference Service", () => {
 
       expect(freshness.stale).toBe(false);
       expect(freshness.reason).toBeUndefined();
-    });
-
-    it("provides isSchemaStale helper function", async () => {
-      // Create an event
-      await payload.create({
-        collection: "events",
-        data: {
-          dataset: testDatasetId,
-          uniqueId: generateUniqueId(testDatasetId),
-          data: { name: "Test" },
-          eventTimestamp: new Date().toISOString(),
-        },
-        overrideAccess: true,
-      });
-
-      // No schema should be stale when events exist
-      const stale = await isSchemaStale(payload, testDatasetId, null);
-      expect(stale).toBe(true);
     });
   });
 

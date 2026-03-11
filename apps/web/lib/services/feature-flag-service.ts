@@ -34,7 +34,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
 };
 
 /** Fail-closed defaults returned when the database is unavailable. */
-const DISABLED_FLAGS: FeatureFlags = {
+export const DISABLED_FLAGS: FeatureFlags = {
   allowPrivateImports: false,
   enableScheduledImports: false,
   enableRegistration: false,
@@ -101,17 +101,6 @@ export const getFeatureFlags = async (payload: Payload): Promise<FeatureFlags> =
 export const isFeatureEnabled = async (payload: Payload, flag: keyof FeatureFlags): Promise<boolean> => {
   const flags = await getFeatureFlags(payload);
   return flags[flag];
-};
-
-/**
- * Clears the feature flag cache.
- *
- * Call this after updating flags via the admin dashboard
- * to ensure the next read gets fresh values.
- */
-export const clearFeatureFlagCache = (): void => {
-  cachedFlags = null;
-  cacheTimestamp = 0;
 };
 
 /**

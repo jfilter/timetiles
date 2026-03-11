@@ -3,8 +3,7 @@
  *
  * Uses plain useState/useEffect instead of React Query because
  * the admin panel does not have a QueryClientProvider.
- * Defaults to enabled (true) on fetch failure so that informational
- * banners hide themselves when the API is unreachable.
+ * Defaults to disabled (false) on fetch failure (fail-closed policy).
  *
  * @module
  * @category Hooks
@@ -36,10 +35,10 @@ export const useAdminFeatureFlag = (flag: keyof FeatureFlags) => {
     const fetchFlag = async () => {
       try {
         const flags = await fetchJson<FeatureFlags>("/api/feature-flags");
-        setIsEnabled(flags[flag] ?? true);
+        setIsEnabled(flags[flag] ?? false);
       } catch {
-        // Default to enabled if fetch fails (including non-ok responses)
-        setIsEnabled(true);
+        // Fail closed: disable feature if fetch fails
+        setIsEnabled(false);
       }
     };
 

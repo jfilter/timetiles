@@ -9,14 +9,23 @@
  */
 import "@/tests/mocks/services/logger";
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { clearFeatureFlagCache, type FeatureFlags, getFeatureFlags } from "@/lib/services/feature-flag-service";
+import { type FeatureFlags, getFeatureFlags } from "@/lib/services/feature-flag-service";
 
 describe("getFeatureFlags", () => {
+  beforeAll(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
-    clearFeatureFlagCache();
+    // Advance past the 60s cache TTL to ensure a fresh state
+    vi.advanceTimersByTime(60_001);
   });
 
   it("should return all flags as false when payload.findGlobal throws", async () => {
@@ -73,9 +82,9 @@ describe("getFeatureFlags", () => {
     const errorFlags = await getFeatureFlags(mockPayload as any);
     expect(errorFlags.allowPrivateImports).toBe(false);
 
-    // Clear cache to simulate TTL expiry (error results should not be cached,
-    // but clearing ensures the second call hits findGlobal)
-    clearFeatureFlagCache();
+    // Advance past the cache TTL to simulate expiry (error results should not be cached,
+    // but advancing ensures the second call hits findGlobal)
+    vi.advanceTimersByTime(60_001);
 
     const successFlags = await getFeatureFlags(mockPayload as any);
     expect(successFlags.allowPrivateImports).toBe(true);

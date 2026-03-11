@@ -12,6 +12,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { Check, Loader2, Mail } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { useChangeEmailMutation } from "@/lib/hooks/use-account-mutations";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 
 interface ChangeEmailFormProps {
@@ -23,6 +24,7 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
   const { status, error, isLoading, submit, reset } = useFormSubmission();
+  const changeEmailMutation = useChangeEmailMutation();
 
   const handleNewEmailChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,25 +54,14 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
           throw new Error("New email must be different from current email");
         }
 
-        const response = await fetch("/api/users/change-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ newEmail: emailLower, password }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error ?? "Failed to change email");
-        }
+        await changeEmailMutation.mutateAsync({ newEmail: emailLower, password });
 
         setNewEmail("");
         setPassword("");
-        onEmailChanged(data.newEmail);
+        onEmailChanged(emailLower);
       });
     },
-    [newEmail, password, currentEmail, onEmailChanged, submit]
+    [newEmail, password, currentEmail, onEmailChanged, submit, changeEmailMutation]
   );
 
   return (

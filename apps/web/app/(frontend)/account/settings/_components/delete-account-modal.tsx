@@ -12,14 +12,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from "
 import { AlertTriangle, Check, Loader2, RefreshCw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-interface DeletionSummary {
-  catalogs: { public: number; private: number };
-  datasets: { public: number; private: number };
-  events: { inPublicDatasets: number; inPrivateDatasets: number };
-  scheduledImports: number;
-  importFiles: number;
-  media: number;
-}
+import { useDeletionSummaryQuery, useScheduleDeletionMutation } from "@/lib/hooks/use-account-mutations";
 
 interface DeleteAccountModalProps {
   open: boolean;
@@ -31,56 +24,51 @@ type Step = "summary" | "confirm" | "success";
 
 export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: DeleteAccountModalProps) => {
   const [step, setStep] = useState<Step>("summary");
-  const [summary, setSummary] = useState<DeletionSummary | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [deletionScheduledAt, setDeletionScheduledAt] = useState<string | null>(null);
+  const [deletionError, setDeletionError] = useState<string | null>(null);
 
-  const fetchSummary = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Fetch deletion summary when modal is open and on the summary step
+  const {
+    data: summaryData,
+    isLoading: isSummaryLoading,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useDeletionSummaryQuery({ enabled: open && step === "summary" });
 
-    try {
-      const response = await fetch("/api/account/deletion-summary", { credentials: "include" });
+  const scheduleDeletionMutation = useScheduleDeletionMutation();
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Failed to fetch summary");
-      }
+  // Derive summary and error from query data
+  const summary = summaryData?.canDelete ? summaryData.summary : null;
 
-      const data = await response.json();
-
-      if (!data.canDelete) {
-        setError(data.reason ?? "Cannot delete account");
-        return;
-      }
-
-      setSummary(data.summary);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data");
-    } finally {
-      setLoading(false);
+  const getSummaryDisplayError = (): string | null => {
+    if (summaryError) {
+      return summaryError instanceof Error ? summaryError.message : "Failed to load data";
     }
-  }, []);
+    if (summaryData && !summaryData.canDelete) {
+      return summaryData.reason ?? "Cannot delete account";
+    }
+    return null;
+  };
+  const summaryDisplayError = getSummaryDisplayError();
 
-  // Fetch deletion summary when modal opens
+  // Refetch summary when modal opens (ensures fresh data each time)
   useEffect(() => {
     if (open && step === "summary") {
-      void fetchSummary();
+      void refetchSummary();
     }
-  }, [open, step, fetchSummary]);
+  }, [open, step, refetchSummary]);
 
   // Reset state when modal closes
   useEffect(() => {
     if (!open) {
       setStep("summary");
-      setSummary(null);
-      setError(null);
       setPassword("");
       setDeletionScheduledAt(null);
+      setDeletionError(null);
+      scheduleDeletionMutation.reset();
     }
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- only reset on open change
 
   const handleClose = useCallback(() => {
     if (step === "success" && deletionScheduledAt) {
@@ -114,39 +102,27 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
   const handleScheduleDeletion = useCallback(() => {
     if (!password) {
-      setError("Password is required");
+      setDeletionError("Password is required");
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setDeletionError(null);
 
     void (async () => {
       try {
-        const response = await fetch("/api/users/schedule-deletion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ password }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error ?? "Failed to schedule deletion");
-        }
-
+        const data = await scheduleDeletionMutation.mutateAsync({ password });
         setDeletionScheduledAt(data.deletionScheduledAt);
         setStep("success");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to schedule deletion");
-      } finally {
-        setLoading(false);
+        setDeletionError(err instanceof Error ? err.message : "Failed to schedule deletion");
       }
     })();
-  }, [password]);
+  }, [password, scheduleDeletionMutation]);
 
   if (!open) return null;
+
+  const loading = step === "summary" ? isSummaryLoading : scheduleDeletionMutation.isPending;
+  const error = step === "summary" ? summaryDisplayError : deletionError;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

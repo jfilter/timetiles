@@ -79,17 +79,3 @@ export const getSchemaFreshness = async (
   // Schema is fresh (event count matches)
   return { stale: false, currentEventCount, schemaEventCount, schemaCreatedAt };
 };
-
-/**
- * Simple boolean check for schema staleness.
- *
- * @param payload - Payload instance
- * @param datasetId - ID of the dataset
- * @param schema - The current schema version (or null if no schema exists)
- * @returns true if schema is stale, false if fresh
- */
-export const isSchemaStale = async (
-  payload: Payload,
-  datasetId: number,
-  schema: DatasetSchema | null
-): Promise<boolean> => (await getSchemaFreshness(payload, datasetId, schema)).stale;

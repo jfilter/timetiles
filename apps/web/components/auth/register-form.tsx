@@ -20,6 +20,7 @@ import { Lock, Mail } from "lucide-react";
 import { useCallback } from "react";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
+import { useRegisterMutation } from "@/lib/hooks/use-auth-mutations";
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
 import { useFormSubmission } from "@/lib/hooks/use-form-submission";
 import { useInputState } from "@/lib/hooks/use-input-state";
@@ -39,6 +40,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const [password, handlePasswordChange] = useInputState();
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isLoading, submit } = useFormSubmission();
+  const registerMutation = useRegisterMutation();
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -56,25 +58,17 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
           throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
         }
 
-        // Use secure registration endpoint that prevents user enumeration
-        const response = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          const message = data.error ?? "Registration failed. Please try again.";
+        try {
+          await registerMutation.mutateAsync({ email, password });
+          onSuccess?.();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
           onError?.(message);
-          throw new Error(message);
+          throw err;
         }
-
-        onSuccess?.();
       });
     },
-    [email, password, confirmPassword, onSuccess, onError, submit]
+    [email, password, confirmPassword, onSuccess, onError, submit, registerMutation]
   );
 
   // Show loading state while checking feature flags

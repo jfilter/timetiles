@@ -9,14 +9,12 @@
  * @category Hooks
  */
 /* eslint-disable sonarjs/max-lines-per-function -- Hook consolidates all slider state/handlers from the component */
-import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { fetchJson } from "@/lib/api/http-error";
 import { useFilters } from "@/lib/filters";
 import type { HistogramResponse } from "@/lib/hooks/use-events-queries";
-import { buildBaseEventParams } from "@/lib/utils/event-params";
+import { useFullHistogramQuery } from "@/lib/hooks/use-events-queries";
 
 import { formatISODate, parseISODate } from "../utils/date-slider";
 
@@ -83,16 +81,6 @@ interface UseTimeRangeSliderReturn {
   handleHistogramClick: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-/**
- * Fetch histogram data for the full date range (no date filters)
- */
-const fetchFullHistogram = async (catalog: string | null, datasets: string[]): Promise<HistogramResponse> => {
-  // Use buildBaseEventParams with no date filters to get full range
-  const params = buildBaseEventParams({ catalog, datasets, startDate: null, endDate: null, fieldFilters: {} });
-
-  return fetchJson<HistogramResponse>(`/api/v1/events/temporal?${params.toString()}`);
-};
-
 export const useTimeRangeSlider = ({
   startDate,
   endDate,
@@ -106,12 +94,7 @@ export const useTimeRangeSlider = ({
   const [isEditingDates, setIsEditingDates] = useState(false);
 
   // Fetch histogram data for full date range (no date filter applied)
-  const { data: histogramData, isLoading } = useQuery({
-    queryKey: ["histogram-full", filters.catalog, filters.datasets],
-    queryFn: () => fetchFullHistogram(filters.catalog, filters.datasets),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 30 * 60 * 1000, // 30 minutes
-  });
+  const { data: histogramData, isLoading } = useFullHistogramQuery(filters);
 
   // Memoize histogram to prevent useMemo dependencies from changing on every render
   const histogram = useMemo(() => histogramData?.histogram ?? [], [histogramData?.histogram]);
