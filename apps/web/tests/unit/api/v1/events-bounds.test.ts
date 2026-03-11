@@ -12,14 +12,9 @@ const mocks = vi.hoisted(() => ({
   mockDrizzleExecute: vi.fn(),
 }));
 
-vi.mock("@/lib/middleware/auth", () => ({
-  withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
-}));
+vi.mock("@/lib/middleware/auth", () => ({}));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-  checkRateLimit: vi.fn().mockResolvedValue(null),
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
@@ -33,14 +28,6 @@ vi.mock("@payloadcms/db-postgres", () => ({
       raw: vi.fn((value: string) => ({ type: "raw", value })),
     }
   ),
-}));
-
-vi.mock("@/lib/services/aggregation-filters", () => ({
-  normalizeEndDate: (endDate: string | null): string | null => {
-    if (!endDate) return null;
-    if (endDate.includes("T")) return endDate;
-    return `${endDate}T23:59:59.999Z`;
-  },
 }));
 
 vi.mock("@payload-config", () => ({ default: {} }));

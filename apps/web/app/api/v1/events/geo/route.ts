@@ -18,10 +18,12 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { apiRoute, ValidationError } from "@/lib/api";
+import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { toClusteringJsonb } from "@/lib/filters/to-jsonb-payload";
 import type { MapBounds } from "@/lib/geospatial";
 import { MapClustersQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
 
 export const GET = apiRoute({
   auth: "optional",
@@ -42,10 +44,10 @@ export const GET = apiRoute({
       return Response.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
     }
 
-    const filters = buildEventFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
+    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return empty result
-    if (filters.denyAccess === true || filters.denyResults === true) {
+    if (filters.denyResults) {
       return Response.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
     }
 
@@ -56,28 +58,22 @@ export const GET = apiRoute({
   },
 });
 
-const executeClusteringQuery = async (payload: Payload, bounds: MapBounds, zoom: number, filters: EventFilters) => {
-  const { catalogId, catalogIds, datasets, startDate, endDate, fieldFilters } = filters;
-
-  return (await payload.db.drizzle.execute(sql`
+const executeClusteringQuery = async (
+  payload: Payload,
+  bounds: MapBounds,
+  zoom: number,
+  filters: CanonicalEventFilters
+) =>
+  (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
       ${bounds.west}::double precision,
       ${bounds.south}::double precision,
       ${bounds.east}::double precision,
       ${bounds.north}::double precision,
       ${zoom}::integer,
-      ${JSON.stringify({
-        catalogId: catalogId ?? undefined,
-        catalogIds: catalogIds != null && catalogIds.length > 0 ? catalogIds : undefined,
-        datasetId: datasets?.length === 1 ? datasets[0] : undefined,
-        datasets: datasets != null && datasets.length > 1 ? datasets : undefined,
-        startDate,
-        endDate,
-        fieldFilters: fieldFilters && Object.keys(fieldFilters).length > 0 ? fieldFilters : undefined,
-      })}::jsonb
+      ${toClusteringJsonb(filters)}::jsonb
     )
   `)) as { rows: Array<Record<string, unknown>> };
-};
 
 const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
   rows

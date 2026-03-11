@@ -3,74 +3,20 @@
  *
  * It provides a flexible endpoint that allows clients to retrieve events based on a variety
  * of filters, including catalog, datasets, geographic bounds, and date ranges. The handler
- * constructs a dynamic `Where` clause for the Payload query based on the provided
- * search parameters. The results are then serialized into a clean, consistent format
- * for the client.
+ * uses the canonical filter pipeline to build a Payload CMS Where clause, with access control
+ * enforced both through the filter model and Payload's built-in access control.
+ *
  * @module
  */
-import type { Payload, Where } from "payload";
+import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
-import type { MapBounds } from "@/lib/geospatial";
+import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import { toPayloadWhere } from "@/lib/filters/to-payload-where";
 import type { EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
-import { normalizeEndDate } from "@/lib/services/aggregation-filters";
+import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import type { Event, User } from "@/payload-types";
-
-const addCatalogFilter = (where: Where, catalogId: number) => {
-  where.and = [...(Array.isArray(where.and) ? where.and : []), { "dataset.catalog": { equals: catalogId } }];
-};
-
-const addDatasetFilter = (where: Where, datasetIds: number[]) => {
-  if (datasetIds.length === 0) {
-    // All provided IDs were invalid -- return no results instead of all events
-    where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { equals: -1 } }];
-    return;
-  }
-
-  where.and = [...(Array.isArray(where.and) ? where.and : []), { dataset: { in: datasetIds } }];
-};
-
-const addBoundsFilter = (where: Where, bounds: MapBounds) => {
-  const longitudeFilter =
-    bounds.west <= bounds.east
-      ? [
-          { "location.longitude": { greater_than_equal: bounds.west } },
-          { "location.longitude": { less_than_equal: bounds.east } },
-        ]
-      : [
-          {
-            or: [
-              { "location.longitude": { greater_than_equal: bounds.west } },
-              { "location.longitude": { less_than_equal: bounds.east } },
-            ],
-          },
-        ];
-
-  where.and = [
-    ...(Array.isArray(where.and) ? where.and : []),
-    { "location.latitude": { greater_than_equal: bounds.south } },
-    { "location.latitude": { less_than_equal: bounds.north } },
-    ...longitudeFilter,
-  ];
-};
-
-const addDateFilter = (where: Where, startDate: string | undefined, endDate: string | null) => {
-  const dateFilter: Record<string, string> = {};
-  if (startDate != null) dateFilter.greater_than_equal = startDate;
-  if (endDate != null) dateFilter.less_than_equal = endDate;
-
-  where.and = [...(Array.isArray(where.and) ? where.and : []), { eventTimestamp: dateFilter }];
-};
-
-const addFieldFilters = (where: Where, fieldFilters: Record<string, string[]>) => {
-  for (const [fieldPath, values] of Object.entries(fieldFilters)) {
-    if (values.length === 0) continue;
-
-    // Query the JSON data field using Payload's nested field syntax
-    where.and = [...(Array.isArray(where.and) ? where.and : []), { [`data.${fieldPath}`]: { in: values } }];
-  }
-};
 
 const extractFieldFromData = (data: unknown, path: string | null | undefined): string | null => {
   if (!path || typeof data !== "object" || data === null || Array.isArray(data)) {
@@ -143,7 +89,12 @@ export const GET = apiRoute({
   auth: "optional",
   query: EventListQuerySchema,
   handler: async ({ query, user, payload }) => {
-    const where = buildWhereClause(query);
+    // Get accessible catalog IDs for this user
+    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
+
+    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
+
+    const where = toPayloadWhere(filters);
     const result = await executeEventsQuery(payload, where, query, user);
     const response = buildListResponse(result);
 
@@ -151,59 +102,12 @@ export const GET = apiRoute({
   },
 });
 
-const addLocationExistsFilter = (where: Where) => {
-  // Only include events that have geocoded locations
-  // Events without coordinates cannot be displayed on the map
-  where.and = [
-    ...(Array.isArray(where.and) ? where.and : []),
-    { "location.latitude": { exists: true } },
-    { "location.longitude": { exists: true } },
-  ];
-};
-
-const buildWhereClause = (query: EventListQuery): Where => {
-  const where: Where = {};
-
-  addFiltersToWhere(where, query);
-  addLocationExistsFilter(where);
-  addBoundsToWhere(where, query.bounds ?? null);
-  addDateFiltersToWhere(where, query.startDate, query.endDate);
-
-  return where;
-};
-
-const addFiltersToWhere = (where: Where, query: EventListQuery) => {
-  const { catalog, datasets, ff } = query;
-  if (catalog != null || (datasets != null && datasets.length > 0)) {
-    if (catalog != null && (datasets == null || datasets.length === 0)) {
-      addCatalogFilter(where, catalog);
-    }
-    if (datasets != null && datasets.length > 0) {
-      addDatasetFilter(where, datasets);
-    }
-  }
-
-  // Add field filters if any
-  if (ff && Object.keys(ff).length > 0) {
-    addFieldFilters(where, ff);
-  }
-};
-
-const addBoundsToWhere = (where: Where, bounds: MapBounds | null) => {
-  if (bounds != null) {
-    addBoundsFilter(where, bounds);
-  }
-};
-
-const addDateFiltersToWhere = (where: Where, startDate: string | undefined, endDate: string | undefined) => {
-  const normalizedEndDate = normalizeEndDate(endDate ?? null);
-
-  if (startDate != null || normalizedEndDate != null) {
-    addDateFilter(where, startDate, normalizedEndDate);
-  }
-};
-
-const executeEventsQuery = async (payload: Payload, where: Where, query: EventListQuery, user?: User | null) =>
+const executeEventsQuery = async (
+  payload: Payload,
+  where: ReturnType<typeof toPayloadWhere>,
+  query: EventListQuery,
+  user?: User | null
+) =>
   payload.find({
     collection: "events",
     where,

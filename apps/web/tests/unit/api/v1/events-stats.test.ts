@@ -12,28 +12,18 @@ const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockGetAllAccessibleCatalogIds: vi.fn(),
   mockBuildAggregationWhereClause: vi.fn(),
-  mockNormalizeEndDate: vi.fn(),
   mockDrizzleExecute: vi.fn(),
 }));
 
-vi.mock("@/lib/middleware/auth", () => ({
-  withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
-  withAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
-}));
+vi.mock("@/lib/middleware/auth", () => ({}));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-  checkRateLimit: vi.fn().mockResolvedValue(null),
-}));
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
 vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
 
-vi.mock("@/lib/services/aggregation-filters", () => ({
-  buildAggregationWhereClause: mocks.mockBuildAggregationWhereClause,
-  normalizeEndDate: mocks.mockNormalizeEndDate,
-}));
+vi.mock("@/lib/filters/to-sql-conditions", () => ({ toSqlWhereClause: mocks.mockBuildAggregationWhereClause }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign((strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }), {
@@ -67,7 +57,6 @@ const setupDefaults = () => {
     db: { drizzle: { execute: mocks.mockDrizzleExecute } },
   });
 
-  mocks.mockNormalizeEndDate.mockReturnValue(null);
   mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
   mocks.mockBuildAggregationWhereClause.mockReturnValue("1=1");
   mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });

@@ -20,10 +20,11 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
+import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import { toHistogramJsonb } from "@/lib/filters/to-jsonb-payload";
 import type { HistogramQuery } from "@/lib/schemas/events";
 import { HistogramQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { buildEventFilters, type EventFilters } from "@/lib/utils/event-filters";
 
 export const GET = apiRoute({
   auth: "optional",
@@ -32,14 +33,14 @@ export const GET = apiRoute({
     // Get accessible catalog IDs for this user
     const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
 
-    const filters = buildEventFilters({ parameters: query, accessibleCatalogIds });
+    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds });
 
     // If user doesn't have access to the requested catalog, return empty result
-    if (filters.denyAccess === true || filters.denyResults === true) {
+    if (filters.denyResults) {
       return Response.json(buildEmptyHistogramResponse());
     }
 
-    const histogramResult = await executeHistogramQuery(payload, query, filters, accessibleCatalogIds);
+    const histogramResult = await executeHistogramQuery(payload, query, filters);
     const response = buildHistogramResponse(histogramResult.rows);
 
     return Response.json(response);
@@ -49,15 +50,11 @@ export const GET = apiRoute({
 const executeHistogramQuery = async (
   payload: Payload,
   query: HistogramQuery,
-  _filters: EventFilters,
-  accessibleCatalogIds: number[]
-) => {
-  // Rebuild filters for the SQL function (needs fresh conversion)
-  const filters = buildEventFilters({ parameters: query, accessibleCatalogIds });
-
-  return (await payload.db.drizzle.execute(sql`
+  filters: ReturnType<typeof buildCanonicalFilters>
+) =>
+  (await payload.db.drizzle.execute(sql`
     SELECT * FROM calculate_event_histogram(
-      ${JSON.stringify(filters)}::jsonb,
+      ${toHistogramJsonb(filters)}::jsonb,
       ${query.targetBuckets}::integer,
       ${query.minBuckets}::integer,
       ${query.maxBuckets}::integer
@@ -65,7 +62,6 @@ const executeHistogramQuery = async (
   `)) as {
     rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>;
   };
-};
 
 const buildEmptyHistogramResponse = () => ({
   histogram: [],

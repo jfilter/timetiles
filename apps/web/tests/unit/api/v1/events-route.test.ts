@@ -6,26 +6,19 @@
  */
 import "@/tests/mocks/services/logger";
 
-const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockPayloadFind: vi.fn() }));
-
-vi.mock("@/lib/middleware/auth", () => ({
-  withOptionalAuth: vi.fn((handler: (...args: unknown[]) => unknown) => handler),
+const mocks = vi.hoisted(() => ({
+  mockGetPayload: vi.fn(),
+  mockPayloadFind: vi.fn(),
+  mockGetAllAccessibleCatalogIds: vi.fn(),
 }));
 
-vi.mock("@/lib/middleware/rate-limit", () => ({
-  withRateLimit: (handler: any) => handler,
-  checkRateLimit: vi.fn().mockResolvedValue(null),
-}));
+vi.mock("@/lib/middleware/auth", () => ({}));
+
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/aggregation-filters", () => ({
-  normalizeEndDate: (endDate: string | null): string | null => {
-    if (!endDate) return null;
-    if (endDate.includes("T")) return endDate;
-    return `${endDate}T23:59:59.999Z`;
-  },
-}));
+vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
 
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
@@ -48,6 +41,7 @@ describe.sequential("GET /api/v1/events", () => {
       auth: vi.fn().mockResolvedValue({ user: null }),
       find: mocks.mockPayloadFind,
     });
+    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
     mocks.mockPayloadFind.mockResolvedValue({
       docs: [],
       page: 1,

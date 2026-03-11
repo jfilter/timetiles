@@ -1,5 +1,5 @@
 /**
- * Unit tests for aggregation filter utilities.
+ * Unit tests for SQL filter adapter.
  *
  * @module
  * @category Tests
@@ -17,7 +17,8 @@ vi.mock("@payloadcms/db-postgres", () => ({
 
 import { describe, expect, it, vi } from "vitest";
 
-import { buildAggregationWhereClause, normalizeEndDate } from "@/lib/services/aggregation-filters";
+import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { toSqlConditions, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 
 const collectQueryStrings = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -35,47 +36,54 @@ const collectQueryStrings = (value: unknown): string[] => {
   return [];
 };
 
-describe("aggregation-filters", () => {
-  describe("normalizeEndDate", () => {
-    it("should return null for null input", () => {
-      expect(normalizeEndDate(null)).toBeNull();
-    });
+describe("toSqlConditions", () => {
+  it("builds an OR longitude clause for antimeridian-crossing bounds", () => {
+    const filters: CanonicalEventFilters = {
+      catalogIds: [1],
+      bounds: { north: 10, south: -10, west: 170, east: -170 },
+    };
 
-    it("should return null for empty string", () => {
-      expect(normalizeEndDate("")).toBeNull();
-    });
+    const conditions = toSqlConditions(filters);
+    const queryText = collectQueryStrings(conditions).join(" ");
 
-    it("should append end-of-day time to date-only string", () => {
-      expect(normalizeEndDate("2024-12-31")).toBe("2024-12-31T23:59:59.999Z");
-    });
-
-    it("should pass through dates that already include time", () => {
-      expect(normalizeEndDate("2024-12-31T12:00:00Z")).toBe("2024-12-31T12:00:00Z");
-    });
-
-    it("should pass through dates with any time component", () => {
-      expect(normalizeEndDate("2024-01-01T00:00:00.000Z")).toBe("2024-01-01T00:00:00.000Z");
-    });
+    expect(queryText).toContain("e.location_longitude >= ");
+    expect(queryText).toContain(" OR ");
+    expect(queryText).toContain("e.location_longitude <= ");
   });
 
-  describe("buildAggregationWhereClause", () => {
-    it("builds an OR longitude clause for antimeridian-crossing bounds", () => {
-      const clause = buildAggregationWhereClause({ bounds: { north: 10, south: -10, west: 170, east: -170 } }, [1]);
+  it("returns FALSE when denyResults is true", () => {
+    const filters: CanonicalEventFilters = { denyResults: true };
 
-      const queryText = collectQueryStrings(clause).join(" ");
+    const conditions = toSqlConditions(filters);
+    const queryText = collectQueryStrings(conditions).join(" ");
 
-      expect(queryText).toContain("e.location_longitude >= ");
-      expect(queryText).toContain(" OR ");
-      expect(queryText).toContain("e.location_longitude <= ");
-    });
+    expect(queryText).toContain("FALSE");
+  });
 
-    it("returns no results instead of broadening when the requested catalog is inaccessible", () => {
-      const clause = buildAggregationWhereClause({ catalog: 999 }, [1, 2]);
+  it("returns FALSE for empty catalogIds", () => {
+    const filters: CanonicalEventFilters = { catalogIds: [] };
 
-      const queryText = collectQueryStrings(clause).join(" ");
+    const conditions = toSqlConditions(filters);
+    const queryText = collectQueryStrings(conditions).join(" ");
 
-      expect(queryText).toContain("FALSE");
-      expect(queryText).not.toContain("d.catalog_id IN (");
-    });
+    expect(queryText).toContain("FALSE");
+  });
+});
+
+describe("toSqlWhereClause", () => {
+  it("joins multiple conditions with AND", () => {
+    const filters: CanonicalEventFilters = {
+      catalogId: 1,
+      startDate: "2024-01-01",
+      endDate: "2024-12-31T23:59:59.999Z",
+    };
+
+    const clause = toSqlWhereClause(filters);
+    const queryText = collectQueryStrings(clause).join(" ");
+
+    expect(queryText).toContain("d.catalog_id = ");
+    expect(queryText).toContain("e.event_timestamp >= ");
+    expect(queryText).toContain("e.event_timestamp <= ");
+    expect(queryText).toContain("::timestamptz");
   });
 });
