@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@timetiles/ui";
+import { Button } from "@timetiles/ui/components/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
@@ -33,7 +34,9 @@ import {
   SparklesIcon,
   TableIcon,
   TextIcon,
+  WorkflowIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import type { ConfidenceLevel, FieldMapping, SuggestedMappings } from "@/lib/types/import-wizard";
@@ -427,6 +430,18 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
         <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Map your fields</h2>
         <p className="text-cartographic-navy/70 mt-2">Tell us which columns contain your event data.</p>
       </div>
+
+      {/* Visual editor link */}
+      {state.previewId && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/import/flow-editor?previewId=${state.previewId}&sheetIndex=${activeSheetIndex}`}>
+              <WorkflowIcon className="mr-2 h-4 w-4" />
+              Open Visual Editor
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* Language detection banner */}
       <LanguageDetectionBanner suggestedMappings={suggestedMappings} />
