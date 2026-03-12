@@ -16,12 +16,12 @@ import { useCallback, useMemo, useState } from "react";
 
 import { getDatasetColors } from "@/lib/constants/dataset-colors";
 import { useViewOptional } from "@/lib/context/view-context";
-import { useFilters } from "@/lib/filters";
 import {
   type DataSourceCatalog,
   type DataSourceDataset,
   useDataSourcesQuery,
 } from "@/lib/hooks/use-data-sources-query";
+import { useFilters } from "@/lib/hooks/use-filters";
 
 import {
   CATALOG_COLLAPSE_THRESHOLD,

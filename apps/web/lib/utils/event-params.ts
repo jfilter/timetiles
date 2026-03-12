@@ -10,7 +10,7 @@
 
 import type { LngLatBounds } from "maplibre-gl";
 
-import type { FilterState } from "../filters";
+import type { FilterState } from "../types/filter-state";
 
 const INTEGER_PATTERN = /^-?\d+$/;
 

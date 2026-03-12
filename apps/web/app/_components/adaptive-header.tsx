@@ -29,7 +29,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
-import { useFilters } from "@/lib/filters";
+import { useFilters } from "@/lib/hooks/use-filters";
 import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 import { useUIStore } from "@/lib/store";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/utils/coordinates";

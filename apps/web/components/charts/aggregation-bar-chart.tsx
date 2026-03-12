@@ -14,9 +14,9 @@ import { BarChart, type BarChartDataItem, useChartTheme } from "@timetiles/ui/ch
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 
-import { useFilters } from "@/lib/filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import { useEventsAggregationQuery } from "@/lib/hooks/use-events-queries";
+import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 
 import type { BaseChartProps } from "./types";

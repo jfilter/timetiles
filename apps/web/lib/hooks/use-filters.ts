@@ -14,8 +14,8 @@
 import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState } from "nuqs";
 import { useCallback, useMemo } from "react";
 
-import type { FilterState } from "./types/filter-state";
-import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "./types/filter-state";
+import type { FilterState } from "../types/filter-state";
+import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../types/filter-state";
 
 // Re-export FilterState for external use
 export type { FilterState };

@@ -12,9 +12,9 @@
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import type { FilterState } from "@/lib/filters";
 import type { HistogramResponse } from "@/lib/hooks/use-events-queries";
 import { useFullHistogramQuery } from "@/lib/hooks/use-events-queries";
+import type { FilterState } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 
 import { formatISODate, parseISODate } from "../utils/date-slider";

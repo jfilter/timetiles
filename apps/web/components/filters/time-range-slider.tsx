@@ -11,7 +11,7 @@
  */
 "use client";
 
-import type { FilterState } from "@/lib/filters";
+import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
 import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date-slider";
 

@@ -13,7 +13,7 @@ import { NuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useSelectedEvent } from "@/lib/filters";
+import { useSelectedEvent } from "@/lib/hooks/use-filters";
 
 // Wrapper component with NuqsTestingAdapter
 const createWrapper =

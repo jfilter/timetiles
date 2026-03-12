@@ -21,9 +21,9 @@ import type { ClusterFeature } from "@/components/maps/clustered-map";
 import type { Event } from "@/payload-types";
 
 import { fetchJson, HttpError } from "../api/http-error";
-import type { FilterState } from "../filters";
 import { createLogger } from "../logger";
 import type { BoundsResponse } from "../types/event-bounds";
+import type { FilterState } from "../types/filter-state";
 import type { BoundsType, SimpleBounds, ViewScope } from "../utils/event-params";
 import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 import { QUERY_PRESETS } from "./query-presets";

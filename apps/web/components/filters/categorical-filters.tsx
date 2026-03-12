@@ -13,8 +13,8 @@
 
 import { useCallback } from "react";
 
-import { useFilters } from "@/lib/filters";
 import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
+import { useFilters } from "@/lib/hooks/use-filters";
 
 import { EnumFieldDropdown } from "./enum-field-dropdown";
 

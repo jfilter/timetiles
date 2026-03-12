@@ -15,11 +15,11 @@
 
 import { TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 
-import { useFilters } from "@/lib/filters";
 import { useChartFilters } from "@/lib/hooks/use-chart-filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import type { HistogramData } from "@/lib/hooks/use-events-queries";
 import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
+import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 
 import type { BaseChartProps } from "./types";

@@ -7,7 +7,7 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 
-import { useMapPosition } from "@/lib/filters";
+import { useMapPosition } from "@/lib/hooks/use-filters";
 
 import { renderWithProviders } from "../../setup/unit/react-render";
 

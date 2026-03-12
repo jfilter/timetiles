@@ -15,8 +15,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ClusteredMap } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
-import { useMapPosition } from "@/lib/filters";
 import { useEventsListQuery, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
+import { useMapPosition } from "@/lib/hooks/use-filters";
 import { useUIStore } from "@/lib/store";
 import type { Event } from "@/payload-types";
 

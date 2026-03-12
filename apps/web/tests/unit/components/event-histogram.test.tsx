@@ -21,8 +21,8 @@ vi.mock("@timetiles/ui/charts", async () => {
 });
 
 // Mock the filters hook
-vi.mock("../../../lib/filters", () => ({
-  useFilters: () => ({ filters: { catalog: null, datasets: [], startDate: null, endDate: null } }),
+vi.mock("../../../lib/hooks/use-filters", () => ({
+  useFilters: () => ({ filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} } }),
 }));
 
 // Mock the UI store
