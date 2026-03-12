@@ -153,6 +153,11 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
             }
           : undefined;
 
+      // Build transforms payload from wizard state
+      const transformsPayload = Object.entries(state.transforms)
+        .filter(([, t]) => t.length > 0)
+        .map(([idx, transforms]) => ({ sheetIndex: Number(idx), transforms }));
+
       const data = await configureMutation.mutateAsync({
         previewId: state.previewId ?? "",
         catalogId: selectedCatalogId,
@@ -161,6 +166,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         fieldMappings,
         deduplicationStrategy,
         geocodingEnabled,
+        transforms: transformsPayload.length > 0 ? transformsPayload : undefined,
         createSchedule,
       });
 
@@ -179,6 +185,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     geocodingEnabled,
     sourceUrl,
     authConfig,
+    state.transforms,
     activeScheduleConfig,
     configureMutation,
     startProcessing,

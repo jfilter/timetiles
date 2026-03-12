@@ -65,6 +65,37 @@ export const ConfigureImportBodySchema = z.object({
     .min(1),
   deduplicationStrategy: z.enum(["skip", "update", "version"]),
   geocodingEnabled: z.boolean(),
+  transforms: z
+    .array(
+      z.object({
+        sheetIndex: z.number().int().min(0),
+        transforms: z.array(
+          z.object({
+            id: z.string(),
+            type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split", "type-cast"]),
+            active: z.boolean(),
+            autoDetected: z.boolean(),
+            from: z.string().optional(),
+            to: z.string().optional(),
+            inputFormat: z.string().optional(),
+            outputFormat: z.string().optional(),
+            timezone: z.string().optional(),
+            operation: z.enum(["uppercase", "lowercase", "trim", "replace"]).optional(),
+            pattern: z.string().optional(),
+            replacement: z.string().optional(),
+            fromFields: z.array(z.string()).optional(),
+            separator: z.string().optional(),
+            delimiter: z.string().optional(),
+            toFields: z.array(z.string()).optional(),
+            fromType: z.enum(["string", "number", "boolean", "date", "array", "object", "null"]).optional(),
+            toType: z.enum(["string", "number", "boolean", "date", "array", "object", "null"]).optional(),
+            strategy: z.enum(["parse", "cast", "custom", "reject"]).optional(),
+            customFunction: z.string().optional(),
+          })
+        ),
+      })
+    )
+    .optional(),
   createSchedule: z
     .object({
       enabled: z.boolean(),

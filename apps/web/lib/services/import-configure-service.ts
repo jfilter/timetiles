@@ -18,6 +18,7 @@ import { AppError } from "@/lib/api";
 import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
+import type { ImportTransform } from "@/lib/types/import-transforms";
 import type {
   ConfigureImportRequest,
   CreateScheduleConfig,
@@ -26,7 +27,7 @@ import type {
   PreviewMetadata,
   SheetMapping,
 } from "@/lib/types/import-wizard";
-import type { User } from "@/payload-types";
+import type { Dataset, User } from "@/payload-types";
 
 const logger = createLogger("import-configure-service");
 
@@ -91,6 +92,7 @@ export const translateSchemaMode = (mode: CreateScheduleConfig["schemaMode"]) =>
 };
 
 // Create or update dataset with wizard configuration
+// eslint-disable-next-line max-params -- Transform support requires an additional parameter
 export const processDataset = async (
   payload: Payload,
   req: NextRequest,
@@ -98,7 +100,8 @@ export const processDataset = async (
   fieldMapping: FieldMapping | undefined,
   catalogId: number,
   deduplicationStrategy: ConfigureImportRequest["deduplicationStrategy"],
-  geocodingEnabled: boolean
+  geocodingEnabled: boolean,
+  transforms?: ImportTransform[]
 ): Promise<number> => {
   const fieldMappingOverrides = buildFieldMappingOverrides(fieldMapping);
   const idStrategy = buildIdStrategy(fieldMapping, deduplicationStrategy);
@@ -123,6 +126,9 @@ export const processDataset = async (
         deduplicationConfig,
         geoFieldDetection,
         schemaConfig,
+        ...(transforms && transforms.length > 0
+          ? { importTransforms: transforms as unknown as NonNullable<Dataset["importTransforms"]> }
+          : {}),
       },
       req,
     });
@@ -139,7 +145,14 @@ export const processDataset = async (
   await payload.update({
     collection: "datasets",
     id: sheetMapping.datasetId,
-    data: { fieldMappingOverrides, idStrategy, deduplicationConfig, geoFieldDetection, schemaConfig },
+    data: {
+      fieldMappingOverrides,
+      idStrategy,
+      deduplicationConfig,
+      geoFieldDetection,
+      schemaConfig,
+      ...(transforms ? { importTransforms: transforms as unknown as NonNullable<Dataset["importTransforms"]> } : {}),
+    },
     req,
   });
 
@@ -156,6 +169,7 @@ export const processDataset = async (
  * Bug 28 fix: process sequentially instead of in parallel to prevent race conditions
  * when multiple sheets target the same dataset.
  */
+// eslint-disable-next-line max-params -- Transform support requires an additional parameter
 export const processSheetMappings = async (
   payload: Payload,
   req: NextRequest,
@@ -163,13 +177,15 @@ export const processSheetMappings = async (
   fieldMappings: FieldMapping[],
   catalogId: number,
   deduplicationStrategy: ConfigureImportRequest["deduplicationStrategy"],
-  geocodingEnabled: boolean
+  geocodingEnabled: boolean,
+  transformsBySheet?: Array<{ sheetIndex: number; transforms: ImportTransform[] }>
 ): Promise<{ datasetIdMap: Map<number, number>; datasetMappingEntries: DatasetMappingEntry[] }> => {
   const datasetIdMap = new Map<number, number>();
   const datasetMappingEntries: DatasetMappingEntry[] = [];
 
   for (const sheetMapping of sheetMappings) {
     const fieldMapping = fieldMappings.find((fm) => fm.sheetIndex === sheetMapping.sheetIndex);
+    const sheetTransforms = transformsBySheet?.find((t) => t.sheetIndex === sheetMapping.sheetIndex)?.transforms;
     const datasetId = await processDataset(
       payload,
       req,
@@ -177,7 +193,8 @@ export const processSheetMappings = async (
       fieldMapping,
       catalogId,
       deduplicationStrategy,
-      geocodingEnabled
+      geocodingEnabled,
+      sheetTransforms
     );
 
     datasetIdMap.set(sheetMapping.sheetIndex, datasetId);

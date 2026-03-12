@@ -37,6 +37,7 @@ const baseWizardState: WizardState = {
   newCatalogName: "",
   sheetMappings: [],
   fieldMappings: [],
+  transforms: {},
   deduplicationStrategy: "skip",
   geocodingEnabled: true,
   scheduleConfig: null,

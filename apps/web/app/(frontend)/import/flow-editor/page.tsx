@@ -21,15 +21,13 @@ export const metadata: Metadata = {
 };
 
 interface FlowEditorPageProps {
-  searchParams: Promise<{ previewId?: string; sheetIndex?: string; scheduleId?: string; datasetId?: string }>;
+  searchParams: Promise<{ previewId?: string; sheetIndex?: string }>;
 }
 
 export default async function FlowEditorPage({ searchParams }: Readonly<FlowEditorPageProps>) {
   const params = await searchParams;
   const previewId = params.previewId ?? null;
   const sheetIndex = params.sheetIndex ? (parseStrictInteger(params.sheetIndex) ?? 0) : 0;
-  const scheduleId = params.scheduleId ? parseStrictInteger(params.scheduleId) : null;
-  const datasetId = params.datasetId ? parseStrictInteger(params.datasetId) : null;
 
-  return createElement(FlowEditorWrapper, { previewId, sheetIndex, scheduleId, datasetId });
+  return createElement(FlowEditorWrapper, { previewId, sheetIndex });
 }

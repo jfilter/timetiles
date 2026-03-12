@@ -13,6 +13,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 
+import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping } from "@/lib/types/import-wizard";
 
 import { StepAuth, StepDatasetSelection, StepFieldMapping, StepProcessing, StepReview, StepUpload } from "./steps";
@@ -24,7 +25,7 @@ export interface ImportWizardProps {
 }
 
 export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
-  const { state, setFieldMapping, goToStep } = useWizard();
+  const { state, setFieldMapping, setTransforms, goToStep } = useWizard();
   const { currentStep } = state;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
@@ -36,8 +37,20 @@ export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
     if (!applyMappings) return;
 
     try {
-      const mapping = JSON.parse(applyMappings) as FieldMapping;
-      setFieldMapping(mapping.sheetIndex, mapping);
+      const parsed = JSON.parse(applyMappings);
+
+      // New format: { fieldMapping, transforms }
+      if ("fieldMapping" in parsed && "transforms" in parsed) {
+        const data = parsed as { fieldMapping: FieldMapping; transforms: ImportTransform[] };
+        setFieldMapping(data.fieldMapping.sheetIndex, data.fieldMapping);
+        if (data.transforms.length > 0) {
+          setTransforms(data.fieldMapping.sheetIndex, data.transforms);
+        }
+      } else {
+        // Backward compatibility: old format is just a FieldMapping
+        const mapping = parsed as FieldMapping;
+        setFieldMapping(mapping.sheetIndex, mapping);
+      }
     } catch {
       // Invalid JSON — ignore
     }
@@ -52,7 +65,7 @@ export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
 
     // Clean URL to prevent re-application on re-render
     router.replace("/import", { scroll: false });
-  }, [searchParams, setFieldMapping, goToStep, router]);
+  }, [searchParams, setFieldMapping, setTransforms, goToStep, router]);
 
   // Scroll to top of content area when step changes
   useEffect(() => {

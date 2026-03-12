@@ -11,9 +11,8 @@
 
 import type { Edge, Node } from "@xyflow/react";
 
-import type { FieldMapping } from "@/lib/types/import-wizard";
-
 import type { ImportTransform } from "./import-transforms";
+import type { FieldMapping } from "./import-wizard";
 
 /**
  * Data for a source column node (left side of flow)
@@ -118,43 +117,6 @@ export interface FlowMappingEdgeData extends Record<string, unknown> {
 export type FlowMappingEdge = Edge<FlowMappingEdgeData>;
 
 /**
- * Complete flow mapping configuration for persistence
- */
-export interface FlowMappingConfig {
-  /** Schema version for migrations */
-  version: "1.0";
-  /** Serialized nodes */
-  nodes: SerializedNode[];
-  /** Serialized edges */
-  edges: SerializedEdge[];
-  /** List of transform configurations */
-  transforms: ImportTransform[];
-  /** Viewport state for restoring view */
-  viewport?: { x: number; y: number; zoom: number };
-}
-
-/**
- * Serialized node for database storage
- */
-export interface SerializedNode {
-  id: string;
-  type: FlowMappingNodeType;
-  position: { x: number; y: number };
-  data: FlowMappingNodeData;
-}
-
-/**
- * Serialized edge for database storage
- */
-export interface SerializedEdge {
-  id: string;
-  source: string;
-  target: string;
-  sourceHandle?: string;
-  targetHandle?: string;
-}
-
-/**
  * Target field definitions with metadata
  */
 export const TARGET_FIELD_DEFINITIONS: Array<{
@@ -215,47 +177,6 @@ export const TARGET_FIELD_DEFINITIONS: Array<{
     description: "External identifier for deduplication",
   },
 ];
-
-/**
- * Helper to convert flow state to FieldMapping
- */
-export const flowToFieldMapping = (
-  nodes: FlowMappingNode[],
-  edges: FlowMappingEdge[],
-  sheetIndex: number
-): FieldMapping => {
-  const mapping: FieldMapping = {
-    sheetIndex,
-    titleField: null,
-    descriptionField: null,
-    locationNameField: null,
-    dateField: null,
-    idField: null,
-    idStrategy: "auto",
-    locationField: null,
-    latitudeField: null,
-    longitudeField: null,
-  };
-
-  // Find direct connections from source to target (or through transforms)
-  for (const edge of edges) {
-    const sourceNode = nodes.find((n) => n.id === edge.source);
-    const targetNode = nodes.find((n) => n.id === edge.target);
-
-    if (sourceNode?.type === "source-column" && targetNode?.type === "target-field") {
-      const sourceData = sourceNode.data;
-      const targetData = targetNode.data;
-      const fieldKey = targetData.fieldKey as keyof FieldMapping;
-
-      if (fieldKey in mapping && fieldKey !== "sheetIndex" && fieldKey !== "idStrategy") {
-        // Dynamic property assignment requires intermediate cast
-        (mapping as unknown as Record<string, string | null>)[fieldKey] = sourceData.columnName;
-      }
-    }
-  }
-
-  return mapping;
-};
 
 /**
  * Helper to create initial nodes from sheet data

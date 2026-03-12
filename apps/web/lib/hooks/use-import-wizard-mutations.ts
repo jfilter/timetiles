@@ -11,6 +11,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 
+import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 
 import { fetchJson } from "../api/http-error";
@@ -41,6 +42,7 @@ interface ImportConfigureRequest {
   fieldMappings: FieldMapping[];
   deduplicationStrategy: string;
   geocodingEnabled: boolean;
+  transforms?: Array<{ sheetIndex: number; transforms: ImportTransform[] }>;
   createSchedule?: {
     enabled: boolean;
     sourceUrl: string;

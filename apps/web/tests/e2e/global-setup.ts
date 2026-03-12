@@ -69,7 +69,7 @@ const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
     await seedManager.truncate();
     await seedManager.seedWithConfig({
       preset: "e2e",
-      collections: ["users", "catalogs", "datasets", "events", "pages"],
+      collections: ["users", "catalogs", "datasets", "events", "sites", "pages"],
     });
     console.log("✅ Seeded E2E test data");
   } finally {
@@ -140,16 +140,12 @@ export default async function globalSetup(): Promise<void> {
     NEXT_TELEMETRY_DISABLED: "1",
   };
 
-  // Build if no production build exists (using compile mode to skip prerendering)
-  const buildIdPath = path.join(webDir, ".next", "BUILD_ID");
+  // Always rebuild to ensure test binary matches current source code.
+  // A stale build (e.g. from a previous branch) silently misses new features.
   const fs = await import("node:fs");
-  if (fs.existsSync(buildIdPath)) {
-    console.log(`✅ Using existing build`);
-  } else {
-    console.log(`🔨 Building application (compile mode)...`);
-    // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
-    execSync(`cd "${webDir}" && pnpm build:compile`, { env: serverEnv, stdio: "inherit" });
-  }
+  console.log(`🔨 Building application (compile mode)...`);
+  // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
+  execSync(`cd "${webDir}" && pnpm build:compile`, { env: serverEnv, stdio: "inherit" });
 
   // Check if standalone build exists (used for production/Docker deployments)
   const standaloneServerPath = path.join(webDir, ".next", "standalone", "server.js");

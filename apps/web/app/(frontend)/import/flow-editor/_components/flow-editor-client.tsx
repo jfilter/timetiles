@@ -37,8 +37,6 @@ import { useFlowEditor } from "./use-flow-editor";
 interface FlowEditorClientProps {
   previewId: string | null;
   sheetIndex: number;
-  scheduleId: number | null;
-  datasetId: number | null;
 }
 
 // Define custom node types
@@ -69,15 +67,15 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
     isLoading,
     error,
     sheetInfo,
-    flowToFieldMapping,
+    serializeFlowState,
   } = useFlowEditor(previewId, sheetIndex);
 
   // Save and return to wizard
   const handleSave = useCallback(() => {
-    const mapping = flowToFieldMapping();
-    const encoded = encodeURIComponent(JSON.stringify(mapping));
+    const { fieldMapping, transforms } = serializeFlowState();
+    const encoded = encodeURIComponent(JSON.stringify({ fieldMapping, transforms }));
     router.push(`/import?step=4&applyMappings=${encoded}`);
-  }, [flowToFieldMapping, router]);
+  }, [serializeFlowState, router]);
 
   // Handle drag over to allow drop
   const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {

@@ -54,6 +54,7 @@ const PaletteItem = memo(({ item }: Readonly<PaletteItemProps>) => {
       draggable
       role="listitem"
       tabIndex={0}
+      data-testid={`palette-item-${item.type}`}
       onDragStart={handleDragStart}
       className={cn(
         "bg-muted/50 hover:bg-muted flex cursor-grab items-start gap-3 rounded-md border p-3 transition-colors",

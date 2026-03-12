@@ -26,15 +26,8 @@ const FlowEditorClient = dynamic(() => import("./flow-editor-client").then((mod)
 export interface FlowEditorWrapperProps {
   previewId: string | null;
   sheetIndex: number;
-  scheduleId: number | null;
-  datasetId: number | null;
 }
 
-export const FlowEditorWrapper = ({
-  previewId,
-  sheetIndex,
-  scheduleId,
-  datasetId,
-}: Readonly<FlowEditorWrapperProps>) => (
-  <FlowEditorClient previewId={previewId} sheetIndex={sheetIndex} scheduleId={scheduleId} datasetId={datasetId} />
+export const FlowEditorWrapper = ({ previewId, sheetIndex }: Readonly<FlowEditorWrapperProps>) => (
+  <FlowEditorClient previewId={previewId} sheetIndex={sheetIndex} />
 );

@@ -10,6 +10,7 @@
  */
 import { apiRoute, ForbiddenError, ValidationError } from "@/lib/api";
 import { createLogger } from "@/lib/logger";
+import type { ImportTransform } from "@/lib/types/import-transforms";
 import {
   createImportFileRecord,
   createScheduledImport,
@@ -18,7 +19,13 @@ import {
   rethrowQuotaError,
 } from "@/lib/services/import-configure-service";
 
-import { cleanupPreview, ConfigureImportBodySchema, loadPreviewMetadata, validateRequest } from "./helpers";
+import {
+  cleanupPreview,
+  ConfigureImportBodySchema,
+  type ConfigureImportRequest,
+  loadPreviewMetadata,
+  validateRequest,
+} from "./helpers";
 
 const logger = createLogger("api-wizard-configure-import");
 
@@ -68,7 +75,8 @@ export const POST = apiRoute({
         body.fieldMappings,
         finalCatalogId,
         body.deduplicationStrategy,
-        body.geocodingEnabled
+        body.geocodingEnabled,
+        body.transforms as Array<{ sheetIndex: number; transforms: ImportTransform[] }> | undefined
       );
 
       // Create the import file record
@@ -76,7 +84,7 @@ export const POST = apiRoute({
         payload,
         user,
         previewMeta!,
-        body,
+        body as unknown as ConfigureImportRequest,
         finalCatalogId,
         datasetIdMap,
         datasetMappingEntries

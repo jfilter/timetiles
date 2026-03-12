@@ -11,7 +11,10 @@
 
 import type { LanguageDetectionResult } from "@/lib/services/schema-builder/language-detection";
 
+import type { ImportTransform } from "./import-transforms";
+
 export type { LanguageDetectionResult } from "@/lib/services/schema-builder/language-detection";
+export type { ImportTransform } from "./import-transforms";
 
 /** Confidence level for a field mapping suggestion */
 export type ConfidenceLevel = "high" | "medium" | "low" | "none";
@@ -106,6 +109,7 @@ export interface ConfigureImportRequest {
   deduplicationStrategy: "skip" | "update" | "version";
   geocodingEnabled: boolean;
   createSchedule?: CreateScheduleConfig;
+  transforms?: Array<{ sheetIndex: number; transforms: ImportTransform[] }>;
 }
 
 /** Entry in the dataset mapping metadata for import jobs */

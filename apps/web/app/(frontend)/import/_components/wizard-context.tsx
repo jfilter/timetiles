@@ -13,6 +13,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
 
 import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
+import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
@@ -62,6 +63,7 @@ export interface WizardState {
 
   // Step 4: Field Mapping
   fieldMappings: FieldMapping[];
+  transforms: Record<number, ImportTransform[]>;
 
   // Step 5: Review
   deduplicationStrategy: "skip" | "update" | "version";
@@ -96,6 +98,7 @@ const initialState: WizardState = {
   newCatalogName: "",
   sheetMappings: [],
   fieldMappings: [],
+  transforms: {},
   deduplicationStrategy: "skip",
   geocodingEnabled: true,
   scheduleConfig: null,
@@ -121,6 +124,7 @@ type WizardAction =
   | { type: "SET_SHEET_MAPPINGS"; mappings: SheetMapping[] }
   | { type: "SET_FIELD_MAPPING"; sheetIndex: number; mapping: Partial<FieldMapping> }
   | { type: "SET_FIELD_MAPPINGS"; mappings: FieldMapping[] }
+  | { type: "SET_TRANSFORMS"; sheetIndex: number; transforms: ImportTransform[] }
   | {
       type: "SET_IMPORT_OPTIONS";
       deduplicationStrategy?: WizardState["deduplicationStrategy"];
@@ -213,6 +217,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
           authConfig: null,
           sheetMappings: [],
           fieldMappings: [],
+          transforms: {},
           scheduleConfig: null,
         };
 
@@ -248,6 +253,9 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
 
       case "SET_FIELD_MAPPINGS":
         return { ...state, fieldMappings: action.mappings };
+
+      case "SET_TRANSFORMS":
+        return { ...state, transforms: { ...state.transforms, [action.sheetIndex]: action.transforms } };
 
       case "SET_IMPORT_OPTIONS":
         return {
@@ -304,6 +312,7 @@ interface WizardContextValue {
   setCatalog: (catalogId: number | "new" | null, newCatalogName?: string) => void;
   setSheetMapping: (sheetIndex: number, mapping: Partial<SheetMapping>) => void;
   setFieldMapping: (sheetIndex: number, mapping: Partial<FieldMapping>) => void;
+  setTransforms: (sheetIndex: number, transforms: ImportTransform[]) => void;
   setImportOptions: (options: {
     deduplicationStrategy?: WizardState["deduplicationStrategy"];
     geocodingEnabled?: boolean;
@@ -531,6 +540,10 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     dispatch({ type: "SET_FIELD_MAPPING", sheetIndex, mapping });
   }, []);
 
+  const setTransforms = useCallback((sheetIndex: number, transforms: ImportTransform[]) => {
+    dispatch({ type: "SET_TRANSFORMS", sheetIndex, transforms });
+  }, []);
+
   const setImportOptions = useCallback(
     (options: { deduplicationStrategy?: WizardState["deduplicationStrategy"]; geocodingEnabled?: boolean }) => {
       dispatch({ type: "SET_IMPORT_OPTIONS", ...options });
@@ -599,6 +612,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setCatalog,
       setSheetMapping,
       setFieldMapping,
+      setTransforms,
       setImportOptions,
       startProcessing,
       setError,
@@ -622,6 +636,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setCatalog,
       setSheetMapping,
       setFieldMapping,
+      setTransforms,
       setImportOptions,
       startProcessing,
       setError,

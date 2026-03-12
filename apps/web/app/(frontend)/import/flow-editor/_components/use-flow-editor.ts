@@ -14,7 +14,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/types/flow-mapping";
 import { createSourceNodes, createTargetNodes, TARGET_FIELD_DEFINITIONS } from "@/lib/types/flow-mapping";
-import { createTransform, type TransformType } from "@/lib/types/import-transforms";
+import {
+  createTransform,
+  type ImportTransform,
+  isTransformValid,
+  type TransformType,
+} from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo } from "@/lib/types/import-wizard";
 
 type FlowNode = Node<SourceColumnNodeData | TargetFieldNodeData | TransformNodeData>;
@@ -24,6 +29,11 @@ interface MappingPair {
   source: string | null;
   target: string;
   confidence: number;
+}
+
+interface FlowEditorResult {
+  fieldMapping: FieldMapping;
+  transforms: ImportTransform[];
 }
 
 interface UseFlowEditorResult {
@@ -37,7 +47,7 @@ interface UseFlowEditorResult {
   isLoading: boolean;
   error: string | null;
   sheetInfo: SheetInfo | null;
-  flowToFieldMapping: () => FieldMapping;
+  serializeFlowState: () => FlowEditorResult;
 }
 
 /**
@@ -152,40 +162,76 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     void loadPreviewData();
   }, [previewId, sheetIndex, setNodes, setEdges]);
 
-  // Handle new connections
+  // Handle new connections (source→target, source→transform, transform→target)
   const onConnect = useCallback(
     (params: Connection) => {
       const sourceNode = nodes.find((n) => n.id === params.source);
       const targetNode = nodes.find((n) => n.id === params.target);
 
-      if (sourceNode?.type !== "source-column" || targetNode?.type !== "target-field") return;
+      if (!sourceNode || !targetNode) return;
 
+      const isSourceToTarget = sourceNode.type === "source-column" && targetNode.type === "target-field";
+      const isSourceToTransform = sourceNode.type === "source-column" && targetNode.type === "transform";
+      const isTransformToTarget = sourceNode.type === "transform" && targetNode.type === "target-field";
+
+      if (!isSourceToTarget && !isSourceToTransform && !isTransformToTarget) return;
+
+      // Remove existing edges to the same target node
       setEdges((eds) => eds.filter((e) => e.target !== params.target));
       setEdges((eds) =>
         addEdge({ ...params, id: `edge-${params.source}-${params.target}`, data: { isValid: true } }, eds)
       );
 
-      const sourceData = sourceNode.data as SourceColumnNodeData;
-      setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id === params.source) {
-            return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } } as FlowNode;
-          }
-          if (node.id === params.target) {
-            return {
-              ...node,
-              data: {
-                ...(node.data as TargetFieldNodeData),
-                isConnected: true,
-                connectedColumn: sourceData.columnName,
-              },
-            } as FlowNode;
-          }
-          return node;
-        })
-      );
+      if (isSourceToTarget) {
+        const sourceData = sourceNode.data as SourceColumnNodeData;
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === params.source) {
+              return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } } as FlowNode;
+            }
+            if (node.id === params.target) {
+              return {
+                ...node,
+                data: {
+                  ...(node.data as TargetFieldNodeData),
+                  isConnected: true,
+                  connectedColumn: sourceData.columnName,
+                },
+              } as FlowNode;
+            }
+            return node;
+          })
+        );
+      } else if (isSourceToTransform) {
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === params.source) {
+              return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } } as FlowNode;
+            }
+            return node;
+          })
+        );
+      } else if (isTransformToTarget) {
+        // Find the source column upstream of this transform
+        const upstreamEdge = edges.find((e) => e.target === sourceNode.id);
+        const upstreamNode = upstreamEdge ? nodes.find((n) => n.id === upstreamEdge.source) : null;
+        const connectedColumn =
+          upstreamNode?.type === "source-column" ? (upstreamNode.data as SourceColumnNodeData).columnName : null;
+
+        setNodes((nds) =>
+          nds.map((node) => {
+            if (node.id === params.target) {
+              return {
+                ...node,
+                data: { ...(node.data as TargetFieldNodeData), isConnected: true, connectedColumn },
+              } as FlowNode;
+            }
+            return node;
+          })
+        );
+      }
     },
-    [nodes, setEdges, setNodes]
+    [nodes, edges, setEdges, setNodes]
   );
 
   // Handle edge deletion
@@ -194,7 +240,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       for (const edge of deletedEdges) {
         setNodes((nds) =>
           nds.map((node) => {
-            if (node.id === edge.source) {
+            if (node.id === edge.source && node.type === "source-column") {
               // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
               const stillConnected = edges.some((e) => e.source === edge.source && e.id !== edge.id);
               return {
@@ -202,7 +248,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
                 data: { ...(node.data as SourceColumnNodeData), isConnected: stillConnected },
               } as FlowNode;
             }
-            if (node.id === edge.target) {
+            if (node.id === edge.target && node.type === "target-field") {
               return {
                 ...node,
                 data: { ...(node.data as TargetFieldNodeData), isConnected: false, connectedColumn: null },
@@ -231,8 +277,9 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     [setNodes]
   );
 
-  // Convert flow state to FieldMapping
-  const flowToFieldMapping = useCallback((): FieldMapping => {
+  // Convert flow state to FieldMapping + ImportTransforms
+  // eslint-disable-next-line sonarjs/max-lines-per-function -- Serialization logic for both direct mappings and transform chains
+  const serializeFlowState = useCallback((): FlowEditorResult => {
     const mapping: FieldMapping = {
       sheetIndex,
       titleField: null,
@@ -245,7 +292,10 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       latitudeField: null,
       longitudeField: null,
     };
+    const transforms: ImportTransform[] = [];
+    const validKeys = TARGET_FIELD_DEFINITIONS.map((d) => d.fieldKey);
 
+    // Process direct source→target edges
     for (const edge of edges) {
       const sourceNode = nodes.find((n) => n.id === edge.source);
       const targetNode = nodes.find((n) => n.id === edge.target);
@@ -253,16 +303,56 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       if (sourceNode?.type === "source-column" && targetNode?.type === "target-field") {
         const sourceData = sourceNode.data as SourceColumnNodeData;
         const targetData = targetNode.data as TargetFieldNodeData;
-        const fieldKey = targetData.fieldKey;
-
-        const validKeys = TARGET_FIELD_DEFINITIONS.map((d) => d.fieldKey);
-        if (validKeys.includes(fieldKey)) {
-          (mapping as unknown as Record<string, string | null>)[fieldKey] = sourceData.columnName;
+        if (validKeys.includes(targetData.fieldKey)) {
+          (mapping as unknown as Record<string, string | null>)[targetData.fieldKey] = sourceData.columnName;
         }
       }
     }
 
-    return mapping;
+    // Process transform chains: source→transform→target
+    const transformNodes = nodes.filter((n) => n.type === "transform");
+    for (const tNode of transformNodes) {
+      const transformData = tNode.data as TransformNodeData;
+      if (!transformData.transform.active) continue;
+
+      // Find incoming edge: source-column → transform
+      const incomingEdge = edges.find((e) => e.target === tNode.id);
+      const srcNode = incomingEdge
+        ? nodes.find((n) => n.id === incomingEdge.source && n.type === "source-column")
+        : null;
+
+      // Find outgoing edge: transform → target-field
+      const outgoingEdge = edges.find((e) => e.source === tNode.id);
+      const tgtNode = outgoingEdge
+        ? nodes.find((n) => n.id === outgoingEdge.target && n.type === "target-field")
+        : null;
+
+      // Only include fully connected chains
+      if (!srcNode || !tgtNode) continue;
+
+      const sourceData = srcNode.data as SourceColumnNodeData;
+      const targetData = tgtNode.data as TargetFieldNodeData;
+
+      // Clone and auto-populate the transform's from field
+      const transform = { ...transformData.transform };
+      if ("from" in transform && !transform.from) {
+        (transform as { from: string }).from = sourceData.columnName;
+      }
+
+      // Only include valid transforms
+      if (!isTransformValid(transform)) continue;
+
+      transforms.push(transform);
+
+      // Also populate the field mapping for this chain
+      if (validKeys.includes(targetData.fieldKey)) {
+        // For rename: map to the output name; for others: column name is unchanged
+        const mappedColumn = transform.type === "rename" ? transform.to : sourceData.columnName;
+        (mapping as unknown as Record<string, string | null>)[targetData.fieldKey] = mappedColumn;
+      }
+    }
+
+    return { fieldMapping: mapping, transforms };
   }, [nodes, edges, sheetIndex]);
 
   return {
@@ -276,6 +366,6 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     isLoading,
     error,
     sheetInfo,
-    flowToFieldMapping,
+    serializeFlowState,
   };
 };
