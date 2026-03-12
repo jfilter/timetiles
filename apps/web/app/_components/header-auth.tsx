@@ -21,8 +21,9 @@ import {
 import { LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
+import { useLogoutMutation } from "@/lib/hooks/use-auth-mutations";
 import type { User } from "@/payload-types";
 
 interface HeaderAuthProps {
@@ -31,20 +32,16 @@ interface HeaderAuthProps {
 
 export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
   const router = useRouter();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const logoutMutation = useLogoutMutation();
 
   const handleLogout = useCallback(() => {
-    setIsLoggingOut(true);
-    void (async () => {
-      try {
-        await fetch("/api/users/logout", { method: "POST", credentials: "include" });
+    logoutMutation.mutate(undefined, {
+      onSettled: () => {
         router.refresh();
         router.push("/");
-      } catch {
-        setIsLoggingOut(false);
-      }
-    })();
-  }, [router]);
+      },
+    });
+  }, [logoutMutation, router]);
 
   // Not logged in - show sign in button
   if (!user) {
@@ -112,11 +109,11 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
 
         <DropdownMenuItem
           onClick={handleLogout}
-          disabled={isLoggingOut}
+          disabled={logoutMutation.isPending}
           className="text-destructive focus:text-destructive cursor-pointer"
         >
           <LogOut className="mr-2 h-4 w-4" />
-          {isLoggingOut ? "Signing out..." : "Sign Out"}
+          {logoutMutation.isPending ? "Signing out..." : "Sign Out"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -9,10 +9,10 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { FilterState } from "../../../lib/store";
-import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../../../lib/store";
+import type { FilterState } from "../../../lib/types/filter-state";
+import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../../../lib/types/filter-state";
 
-describe("Store Helper Functions", () => {
+describe("Filter State Helper Functions", () => {
   describe("getActiveFilterCount", () => {
     it("should return 0 for empty filters", () => {
       const filters: FilterState = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };

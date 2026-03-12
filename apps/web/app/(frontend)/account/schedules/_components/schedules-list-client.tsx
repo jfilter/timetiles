@@ -30,6 +30,7 @@ import {
   useToggleScheduledImportMutation,
   useTriggerScheduledImportMutation,
 } from "@/lib/hooks/use-scheduled-import-mutations";
+import { useScheduledImportsQuery } from "@/lib/hooks/use-scheduled-imports-query";
 import type { ScheduledImport } from "@/payload-types";
 
 // Helper to get toggle button icon based on loading state
@@ -191,7 +192,7 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: Sch
 };
 
 export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientProps) => {
-  const [schedules, setSchedules] = useState(initialSchedules);
+  const { data: schedules = [] } = useScheduledImportsQuery(initialSchedules);
   const [loadingStates, setLoadingStates] = useState<Record<number, string>>({});
 
   const toggleMutation = useToggleScheduledImportMutation();
@@ -206,47 +207,29 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
     });
   }, []);
 
-  const updateScheduleEnabled = useCallback((id: number, updated: ScheduledImport) => {
-    setSchedules((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: updated.enabled } : s)));
-  }, []);
-
-  const replaceSchedule = useCallback((id: number, updated: ScheduledImport) => {
-    setSchedules((prev) => prev.map((s) => (s.id === id ? updated : s)));
-  }, []);
-
-  const removeSchedule = useCallback((id: number) => {
-    setSchedules((prev) => prev.filter((s) => s.id !== id));
-  }, []);
-
   const handleToggleEnabled = useCallback(
     (id: number, currentEnabled: boolean) => {
       setLoadingStates((prev) => ({ ...prev, [id]: "toggling" }));
-      toggleMutation.mutate(
-        { id, enabled: !currentEnabled },
-        { onSuccess: (updated) => updateScheduleEnabled(id, updated), onSettled: () => clearLoading(id) }
-      );
+      toggleMutation.mutate({ id, enabled: !currentEnabled }, { onSettled: () => clearLoading(id) });
     },
-    [toggleMutation, clearLoading, updateScheduleEnabled]
+    [toggleMutation, clearLoading]
   );
 
   const handleManualRun = useCallback(
     (id: number) => {
       setLoadingStates((prev) => ({ ...prev, [id]: "running" }));
-      triggerMutation.mutate(id, {
-        onSuccess: (updated) => replaceSchedule(id, updated),
-        onSettled: () => clearLoading(id),
-      });
+      triggerMutation.mutate(id, { onSettled: () => clearLoading(id) });
     },
-    [triggerMutation, clearLoading, replaceSchedule]
+    [triggerMutation, clearLoading]
   );
 
   const handleDelete = useCallback(
     (id: number) => {
       if (!confirm("Are you sure you want to delete this scheduled import?")) return;
       setLoadingStates((prev) => ({ ...prev, [id]: "deleting" }));
-      deleteMutation.mutate(id, { onSuccess: () => removeSchedule(id), onSettled: () => clearLoading(id) });
+      deleteMutation.mutate(id, { onSettled: () => clearLoading(id) });
     },
-    [deleteMutation, clearLoading, removeSchedule]
+    [deleteMutation, clearLoading]
   );
 
   const scheduleCallbacks = useMemo(

@@ -12,8 +12,8 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { Check, Loader2, Mail } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import { useChangeEmailMutation } from "@/lib/hooks/use-account-mutations";
-import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { changeEmailRequest } from "@/lib/hooks/use-account-mutations";
+import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 
 interface ChangeEmailFormProps {
   currentEmail: string;
@@ -23,8 +23,21 @@ interface ChangeEmailFormProps {
 export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFormProps) => {
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { status, error, isLoading, submit, reset } = useFormSubmission();
-  const changeEmailMutation = useChangeEmailMutation();
+  const { status, error, isLoading, mutate, reset } = useFormMutation({
+    mutationFn: async (input: { newEmail: string; password: string; currentEmail: string }) => {
+      const emailLower = input.newEmail.trim().toLowerCase();
+      if (emailLower === input.currentEmail.toLowerCase()) {
+        throw new Error("New email must be different from current email");
+      }
+
+      return changeEmailRequest({ newEmail: emailLower, password: input.password });
+    },
+    onSuccess: (_, variables) => {
+      setNewEmail("");
+      setPassword("");
+      onEmailChanged(variables.newEmail.trim().toLowerCase());
+    },
+  });
 
   const handleNewEmailChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,20 +61,9 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
 
       if (!newEmail || !password) return;
 
-      submit(async () => {
-        const emailLower = newEmail.trim().toLowerCase();
-        if (emailLower === currentEmail.toLowerCase()) {
-          throw new Error("New email must be different from current email");
-        }
-
-        await changeEmailMutation.mutateAsync({ newEmail: emailLower, password });
-
-        setNewEmail("");
-        setPassword("");
-        onEmailChanged(emailLower);
-      });
+      mutate({ newEmail, password, currentEmail });
     },
-    [newEmail, password, currentEmail, onEmailChanged, submit, changeEmailMutation]
+    [newEmail, password, currentEmail, mutate]
   );
 
   return (

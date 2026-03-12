@@ -11,7 +11,9 @@
 
 import { Button } from "@timetiles/ui";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+
+import { useCancelDeletionMutation } from "@/lib/hooks/use-account-mutations";
 
 interface PendingDeletionBannerProps {
   deletionScheduledAt: string;
@@ -19,30 +21,14 @@ interface PendingDeletionBannerProps {
 }
 
 export const PendingDeletionBanner = ({ deletionScheduledAt, onCancelled }: PendingDeletionBannerProps) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const cancelMutation = useCancelDeletionMutation();
 
   const handleCancel = useCallback(() => {
-    setLoading(true);
-    setError(null);
+    cancelMutation.mutate(undefined, { onSuccess: () => onCancelled() });
+  }, [cancelMutation, onCancelled]);
 
-    void (async () => {
-      try {
-        const response = await fetch("/api/users/cancel-deletion", { method: "POST", credentials: "include" });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error ?? "Failed to cancel deletion");
-        }
-
-        onCancelled();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to cancel deletion");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [onCancelled]);
+  const loading = cancelMutation.isPending;
+  const error = cancelMutation.error?.message ?? null;
 
   const deletionDate = new Date(deletionScheduledAt);
   const daysRemaining = Math.max(0, Math.ceil((deletionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));

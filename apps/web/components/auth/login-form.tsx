@@ -14,8 +14,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import Link from "next/link";
 import { useCallback } from "react";
 
-import { useLoginMutation } from "@/lib/hooks/use-auth-mutations";
-import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { loginRequest } from "@/lib/hooks/use-auth-mutations";
+import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface LoginFormProps {
@@ -30,8 +30,11 @@ export interface LoginFormProps {
 export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormProps>) => {
   const [email, handleEmailChange] = useInputState();
   const [password, handlePasswordChange] = useInputState();
-  const { error, isLoading, submit } = useFormSubmission();
-  const loginMutation = useLoginMutation();
+  const { error, isLoading, mutate } = useFormMutation({
+    mutationFn: loginRequest,
+    onSuccess: () => onSuccess?.(),
+    onError: (err) => onError?.(err.message),
+  });
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -39,18 +42,9 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
 
       if (!email || !password) return;
 
-      submit(async () => {
-        try {
-          await loginMutation.mutateAsync({ email, password });
-          onSuccess?.();
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Invalid email or password";
-          onError?.(message);
-          throw err;
-        }
-      });
+      mutate({ email, password });
     },
-    [email, password, onSuccess, onError, submit, loginMutation]
+    [email, password, mutate]
   );
 
   return (

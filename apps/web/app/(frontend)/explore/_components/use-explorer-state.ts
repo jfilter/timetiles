@@ -29,13 +29,13 @@ interface UseExplorerStateOptions {
   onMapPositionChange?: (center: { lng: number; lat: number }, zoom: number) => void;
 }
 
+// eslint-disable-next-line sonarjs/max-lines-per-function -- Hook consolidates shared explorer state/queries/callbacks
 export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const [mapZoom, setMapZoom] = useState(9);
   const [hasUserPanned, setHasUserPanned] = useState(false);
   const [isInitialBoundsApplied, setIsInitialBoundsApplied] = useState(false);
 
   const mapRef = useRef<ClusteredMapHandle>(null);
-  const prevFiltersRef = useRef<unknown>(null);
 
   // Stable ref for onMapPositionChange to avoid re-creating handleBoundsChange
   const onMapPositionChangeRef = useRef(options?.onMapPositionChange);
@@ -75,14 +75,19 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
   const clusters = clustersData?.features ?? [];
 
-  // Reset user panning state when filters change
+  // Reset user panning state when filters change (using a stable key to avoid serializing the full object twice)
+  const filterKey = `${filters.catalog}|${filters.datasets.join(",")}|${filters.startDate}|${filters.endDate}|${Object.entries(
+    filters.fieldFilters
+  )
+    .map(([k, v]) => `${k}:${v.join(",")}`)
+    .join(";")}`;
+  const prevFilterKeyRef = useRef(filterKey);
   useEffect(() => {
-    const filtersChanged = JSON.stringify(prevFiltersRef.current) !== JSON.stringify(filters);
-    if (filtersChanged) {
-      prevFiltersRef.current = filters;
+    if (prevFilterKeyRef.current !== filterKey) {
+      prevFilterKeyRef.current = filterKey;
       setHasUserPanned(false);
     }
-  }, [filters]);
+  }, [filterKey]);
 
   const isLoadingInitialBounds = boundsLoading && !isInitialBoundsApplied;
 

@@ -4,15 +4,9 @@
  * @module
  * @category Components
  */
+import type { MapBounds } from "@/lib/geospatial/types";
 import type { DataSourceCatalog, DataSourceDataset } from "@/lib/hooks/use-data-sources-query";
-import type { FilterState } from "@/lib/store";
-
-export interface MapBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-}
+import type { FilterState } from "@/lib/types/filter-state";
 
 export interface FilterLabels {
   catalog?: string;

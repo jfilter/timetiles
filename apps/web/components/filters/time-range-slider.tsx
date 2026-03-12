@@ -11,10 +11,12 @@
  */
 "use client";
 
+import type { FilterState } from "@/lib/filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
 import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date-slider";
 
 interface TimeRangeSliderProps {
+  filters: FilterState;
   startDate: string | null;
   endDate: string | null;
   onStartDateChange: (date: string | null) => void;
@@ -22,6 +24,7 @@ interface TimeRangeSliderProps {
 }
 
 export const TimeRangeSlider = ({
+  filters,
   startDate,
   endDate,
   onStartDateChange,
@@ -51,7 +54,7 @@ export const TimeRangeSlider = ({
     handleCloseEditMode,
     handleHistogramKeyDown,
     handleHistogramClick,
-  } = useTimeRangeSlider({ startDate, endDate, onStartDateChange, onEndDateChange });
+  } = useTimeRangeSlider({ filters, startDate, endDate, onStartDateChange, onEndDateChange });
 
   // Loading state
   if (isLoading) {

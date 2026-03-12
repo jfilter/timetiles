@@ -22,6 +22,9 @@ interface UseFormSubmissionReturn {
 }
 
 /**
+ * @deprecated Use {@link useFormMutation} from `./use-form-mutation` instead.
+ * This hook duplicates state already tracked by React Query mutations.
+ *
  * Manages the loading/error/success lifecycle of a form submission.
  *
  * The caller provides an async action that performs the fetch and throws on error.

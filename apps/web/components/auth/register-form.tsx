@@ -20,9 +20,9 @@ import { Lock, Mail } from "lucide-react";
 import { useCallback } from "react";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
-import { useRegisterMutation } from "@/lib/hooks/use-auth-mutations";
+import { registerRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
-import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface RegisterFormProps {
@@ -39,8 +39,22 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const [email, handleEmailChange] = useInputState();
   const [password, handlePasswordChange] = useInputState();
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
-  const { status, error, isLoading, submit } = useFormSubmission();
-  const registerMutation = useRegisterMutation();
+  const { status, error, isLoading, mutate } = useFormMutation({
+    mutationFn: async (input: { email: string; password: string; confirmPassword: string }) => {
+      // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
+      if (input.password !== input.confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+
+      if (input.password.length < MIN_PASSWORD_LENGTH) {
+        throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      }
+
+      return registerRequest({ email: input.email, password: input.password });
+    },
+    onSuccess: () => onSuccess?.(),
+    onError: (err) => onError?.(err.message),
+  });
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -48,27 +62,9 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
 
       if (!email || !password || !confirmPassword) return;
 
-      submit(async () => {
-        // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
-        if (password !== confirmPassword) {
-          throw new Error("Passwords do not match");
-        }
-
-        if (password.length < MIN_PASSWORD_LENGTH) {
-          throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-        }
-
-        try {
-          await registerMutation.mutateAsync({ email, password });
-          onSuccess?.();
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
-          onError?.(message);
-          throw err;
-        }
-      });
+      mutate({ email, password, confirmPassword });
     },
-    [email, password, confirmPassword, onSuccess, onError, submit, registerMutation]
+    [email, password, confirmPassword, mutate]
   );
 
   // Show loading state while checking feature flags

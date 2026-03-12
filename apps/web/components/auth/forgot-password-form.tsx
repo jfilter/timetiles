@@ -13,8 +13,8 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback } from "react";
 
-import { useForgotPasswordMutation } from "@/lib/hooks/use-auth-mutations";
-import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { forgotPasswordRequest } from "@/lib/hooks/use-auth-mutations";
+import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface ForgotPasswordFormProps {
@@ -26,8 +26,10 @@ export interface ForgotPasswordFormProps {
 
 export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPasswordFormProps>) => {
   const [email, handleEmailChange] = useInputState();
-  const { status, error, isLoading, submit } = useFormSubmission();
-  const forgotPasswordMutation = useForgotPasswordMutation();
+  const { status, error, isLoading, mutate } = useFormMutation({
+    mutationFn: forgotPasswordRequest,
+    onSuccess: () => onSuccess?.(),
+  });
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -35,14 +37,9 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
 
       if (!email) return;
 
-      submit(async () => {
-        await forgotPasswordMutation.mutateAsync({ email });
-
-        // Always succeed regardless of response to prevent email enumeration
-        onSuccess?.();
-      });
+      mutate({ email });
     },
-    [email, onSuccess, submit, forgotPasswordMutation]
+    [email, mutate]
   );
 
   if (status === "success") {

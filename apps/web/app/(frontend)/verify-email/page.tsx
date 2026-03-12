@@ -9,47 +9,30 @@
  */
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
 import { PageLayout } from "@/components/layout/page-layout";
+import { useVerifyEmailMutation } from "@/lib/hooks/use-auth-mutations";
 
 type VerificationStatus = "idle" | "loading" | "success" | "error" | "no-token";
-
-const verifyEmailRequest = async (token: string) => {
-  const response = await fetch(`/api/users/verify/${token}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
-
-  if (!response.ok) {
-    const errorData: unknown = await response.json().catch(() => ({}));
-    const message =
-      typeof errorData === "object" && errorData !== null && "message" in errorData
-        ? String(errorData.message)
-        : "Failed to verify email. The link may have expired.";
-    throw new Error(message);
-  }
-};
 
 const VerifyEmailContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
 
-  const mutation = useMutation({
-    mutationFn: verifyEmailRequest,
-    onSuccess: () => {
-      setTimeout(() => router.push("/import"), 3000);
-    },
-  });
+  const mutation = useVerifyEmailMutation();
 
   useEffect(() => {
     if (token && !mutation.isPending && !mutation.isSuccess && !mutation.isError) {
-      mutation.mutate(token);
+      mutation.mutate(token, {
+        onSuccess: () => {
+          setTimeout(() => router.push("/import"), 3000);
+        },
+      });
     }
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps -- one-shot on mount
 

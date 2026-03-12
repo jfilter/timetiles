@@ -13,7 +13,7 @@ import type { ScheduledImport } from "@/payload-types";
 
 import { fetchJson } from "../api/http-error";
 
-const scheduledImportKeys = { all: ["scheduled-imports"] as const };
+export const scheduledImportKeys = { all: ["scheduled-imports"] as const };
 
 export const useToggleScheduledImportMutation = () => {
   const queryClient = useQueryClient();

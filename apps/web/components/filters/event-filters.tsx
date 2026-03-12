@@ -85,6 +85,7 @@ export const EventFilters = () => {
       {/* Time Range Section */}
       <FilterSection title="Time Range" defaultOpen activeCount={timeRangeActiveCount}>
         <TimeRangeSlider
+          filters={filters}
           startDate={filters.startDate}
           endDate={filters.endDate}
           onStartDateChange={setStartDate}

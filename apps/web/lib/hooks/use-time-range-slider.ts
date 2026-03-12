@@ -12,7 +12,7 @@
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { useFilters } from "@/lib/filters";
+import type { FilterState } from "@/lib/filters";
 import type { HistogramResponse } from "@/lib/hooks/use-events-queries";
 import { useFullHistogramQuery } from "@/lib/hooks/use-events-queries";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
@@ -20,6 +20,7 @@ import { useViewScope } from "@/lib/hooks/use-view-scope";
 import { formatISODate, parseISODate } from "../utils/date-slider";
 
 interface UseTimeRangeSliderProps {
+  filters: FilterState;
   startDate: string | null;
   endDate: string | null;
   onStartDateChange: (date: string | null) => void;
@@ -83,12 +84,12 @@ interface UseTimeRangeSliderReturn {
 }
 
 export const useTimeRangeSlider = ({
+  filters,
   startDate,
   endDate,
   onStartDateChange,
   onEndDateChange,
 }: UseTimeRangeSliderProps): UseTimeRangeSliderReturn => {
-  const { filters } = useFilters();
   const trackRef = useRef<HTMLDivElement>(null);
   const histogramRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<"start" | "end" | null>(null);

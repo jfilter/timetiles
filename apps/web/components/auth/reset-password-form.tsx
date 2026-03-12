@@ -14,8 +14,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback } from "react";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
-import { useResetPasswordMutation } from "@/lib/hooks/use-auth-mutations";
-import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { resetPasswordRequest } from "@/lib/hooks/use-auth-mutations";
+import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface ResetPasswordFormProps {
@@ -30,8 +30,21 @@ export interface ResetPasswordFormProps {
 export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<ResetPasswordFormProps>) => {
   const [password, handlePasswordChange] = useInputState();
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
-  const { status, error, isLoading, submit } = useFormSubmission();
-  const resetPasswordMutation = useResetPasswordMutation();
+  const { status, error, isLoading, mutate } = useFormMutation({
+    mutationFn: async (input: { token: string; password: string; confirmPassword: string }) => {
+      // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
+      if (input.password !== input.confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+
+      if (input.password.length < MIN_PASSWORD_LENGTH) {
+        throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      }
+
+      return resetPasswordRequest({ token: input.token, password: input.password });
+    },
+    onSuccess: () => onSuccess?.(),
+  });
 
   const handleSubmit = useCallback(
     (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -39,21 +52,9 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
 
       if (!password || !confirmPassword) return;
 
-      submit(async () => {
-        // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
-        if (password !== confirmPassword) {
-          throw new Error("Passwords do not match");
-        }
-
-        if (password.length < MIN_PASSWORD_LENGTH) {
-          throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-        }
-
-        await resetPasswordMutation.mutateAsync({ token, password });
-        onSuccess?.();
-      });
+      mutate({ token, password, confirmPassword });
     },
-    [password, confirmPassword, token, onSuccess, submit, resetPasswordMutation]
+    [password, confirmPassword, token, mutate]
   );
 
   if (status === "success") {

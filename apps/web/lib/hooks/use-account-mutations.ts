@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { DeletionSummary } from "../services/account-deletion-types";
 
@@ -106,54 +106,71 @@ export const useDeletionSummaryQuery = (options?: { enabled?: boolean }) => {
 /**
  * Change the current user's email via `/api/users/change-email`.
  */
-export const useChangeEmailMutation = () => {
-  return useMutation({
-    mutationFn: async (input: ChangeEmailInput): Promise<ChangeEmailResponse> => {
-      const response = await fetch("/api/users/change-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(input),
-      });
-
-      const data = (await response.json()) as ChangeEmailResponse & { error?: string };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Failed to change email");
-      }
-
-      return data;
-    },
+export const changeEmailRequest = async (input: ChangeEmailInput): Promise<ChangeEmailResponse> => {
+  const response = await fetch("/api/users/change-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
   });
+
+  const data = (await response.json()) as ChangeEmailResponse & { error?: string };
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Failed to change email");
+  }
+
+  return data;
 };
+
+export const useChangeEmailMutation = () => useMutation({ mutationFn: changeEmailRequest });
 
 /**
  * Change the current user's password via `/api/users/change-password`.
  */
-export const useChangePasswordMutation = () => {
-  return useMutation({
-    mutationFn: async (input: ChangePasswordInput): Promise<ChangePasswordResponse> => {
-      const response = await fetch("/api/users/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(input),
-      });
-
-      const data = (await response.json()) as ChangePasswordResponse & { error?: string };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Failed to change password");
-      }
-
-      return data;
-    },
+export const changePasswordRequest = async (input: ChangePasswordInput): Promise<ChangePasswordResponse> => {
+  const response = await fetch("/api/users/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
   });
+
+  const data = (await response.json()) as ChangePasswordResponse & { error?: string };
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Failed to change password");
+  }
+
+  return data;
 };
+
+export const useChangePasswordMutation = () => useMutation({ mutationFn: changePasswordRequest });
 
 /**
  * Schedule account deletion via `/api/users/schedule-deletion`.
  */
+/**
+ * Cancel a pending account deletion via `/api/users/cancel-deletion`.
+ */
+export const useCancelDeletionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      const response = await fetch("/api/users/cancel-deletion", { method: "POST", credentials: "include" });
+
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Failed to cancel deletion");
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: accountKeys.deletionSummary() });
+    },
+  });
+};
+
 export const useScheduleDeletionMutation = () => {
   return useMutation({
     mutationFn: async (input: ScheduleDeletionInput): Promise<ScheduleDeletionResponse> => {

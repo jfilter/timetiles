@@ -96,27 +96,25 @@ export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
  * response body for both success and error cases (Payload returns 4xx with a
  * JSON body containing `errors` or `message`).
  */
-export const useLoginMutation = () => {
-  return useMutation({
-    mutationFn: async (input: LoginInput): Promise<LoginResponse> => {
-      const response = await fetch("/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-        credentials: "include",
-      });
-
-      const data = (await response.json()) as LoginResponse;
-
-      if (response.ok && data.user) {
-        return data;
-      }
-
-      const message = data.errors?.[0]?.message ?? data.message ?? "Invalid email or password";
-      throw new Error(message);
-    },
+export const loginRequest = async (input: LoginInput): Promise<LoginResponse> => {
+  const response = await fetch("/api/users/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    credentials: "include",
   });
+
+  const data = (await response.json()) as LoginResponse;
+
+  if (response.ok && data.user) {
+    return data;
+  }
+
+  const message = data.errors?.[0]?.message ?? data.message ?? "Invalid email or password";
+  throw new Error(message);
 };
+
+export const useLoginMutation = () => useMutation({ mutationFn: loginRequest });
 
 /**
  * Register a new user via `/api/auth/register`.
@@ -125,65 +123,89 @@ export const useLoginMutation = () => {
  * `fetchJson` error-handling convention (uses `error` field, not HTTP status
  * for some validation errors).
  */
-export const useRegisterMutation = () => {
-  return useMutation({
-    mutationFn: async (input: RegisterInput): Promise<RegisterResponse> => {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-
-      const data = (await response.json()) as RegisterResponse;
-
-      if (!response.ok || !data.success) {
-        const message = data.error ?? "Registration failed. Please try again.";
-        throw new Error(message);
-      }
-
-      return data;
-    },
+export const registerRequest = async (input: RegisterInput): Promise<RegisterResponse> => {
+  const response = await fetch("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
+
+  const data = (await response.json()) as RegisterResponse;
+
+  if (!response.ok || !data.success) {
+    const message = data.error ?? "Registration failed. Please try again.";
+    throw new Error(message);
+  }
+
+  return data;
 };
+
+export const useRegisterMutation = () => useMutation({ mutationFn: registerRequest });
 
 /**
  * Request a password-reset email via Payload CMS `/api/users/forgot-password`.
  *
  * Always succeeds from the caller's perspective to prevent email enumeration.
  */
-export const useForgotPasswordMutation = () => {
-  return useMutation({
-    mutationFn: async (input: ForgotPasswordInput): Promise<void> => {
-      await fetch("/api/users/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-      // Always succeed regardless of response to prevent email enumeration
-    },
+export const forgotPasswordRequest = async (input: ForgotPasswordInput): Promise<void> => {
+  await fetch("/api/users/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
+  // Always succeed regardless of response to prevent email enumeration
 };
+
+export const useForgotPasswordMutation = () => useMutation({ mutationFn: forgotPasswordRequest });
 
 /**
  * Reset password via Payload CMS `/api/users/reset-password`.
  */
-export const useResetPasswordMutation = () => {
-  return useMutation({
-    mutationFn: async (input: ResetPasswordInput): Promise<void> => {
-      const response = await fetch("/api/users/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        const message =
-          typeof data === "object" && data !== null && "message" in data
-            ? String(data.message)
-            : "Failed to reset password. The link may have expired.";
-        throw new Error(message);
-      }
-    },
+export const resetPasswordRequest = async (input: ResetPasswordInput): Promise<void> => {
+  const response = await fetch("/api/users/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const message =
+      typeof data === "object" && data !== null && "message" in data
+        ? String(data.message)
+        : "Failed to reset password. The link may have expired.";
+    throw new Error(message);
+  }
 };
+
+export const useResetPasswordMutation = () => useMutation({ mutationFn: resetPasswordRequest });
+
+/**
+ * Logout via Payload CMS `/api/users/logout`.
+ */
+export const logoutRequest = async (): Promise<void> => {
+  await fetch("/api/users/logout", { method: "POST", credentials: "include" });
+};
+
+export const useLogoutMutation = () => useMutation({ mutationFn: logoutRequest });
+
+/**
+ * Verify email via Payload CMS `/api/users/verify/:token`.
+ */
+export const verifyEmailRequest = async (token: string): Promise<void> => {
+  const response = await fetch(`/api/users/verify/${token}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!response.ok) {
+    const errorData: unknown = await response.json().catch(() => ({}));
+    const message =
+      typeof errorData === "object" && errorData !== null && "message" in errorData
+        ? String(errorData.message)
+        : "Failed to verify email. The link may have expired.";
+    throw new Error(message);
+  }
+};
+
+export const useVerifyEmailMutation = () => useMutation({ mutationFn: verifyEmailRequest });

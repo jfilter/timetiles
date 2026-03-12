@@ -87,31 +87,44 @@ export interface ClusterStatsResponse {
 export type { BoundsResponse } from "../types/event-bounds";
 export type { BoundsType, SimpleBounds, ViewScope };
 
-// Fetch functions
-const fetchEvents = async (
+// Typed API response matching the actual /api/v1/events shape
+interface EventsApiPagination {
+  totalDocs: number;
+  page: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+interface EventsApiResponse {
+  events: Event[];
+  pagination: EventsApiPagination;
+}
+
+// Shared fetch function for events list (used by both list and infinite queries)
+const fetchEventsInternal = async (
   filters: FilterState,
   bounds: BoundsType,
-  limit: number = 1000,
+  options: { page?: number; limit?: number },
   signal?: AbortSignal,
   scope?: ViewScope
 ): Promise<EventsListResponse> => {
-  const params = buildEventParams(filters, bounds, { limit: limit.toString() }, scope);
+  const extra: Record<string, string> = {};
+  if (options.limit != null) extra.limit = options.limit.toString();
+  if (options.page != null) extra.page = options.page.toString();
+  const params = buildEventParams(filters, bounds, extra, scope);
 
-  logger.debug("Fetching events list", { filters, bounds, limit });
+  logger.debug("Fetching events", { filters, bounds, ...options });
 
-  const data = await fetchJson<{ events: Event[]; pagination: Record<string, unknown> }>(
-    `/api/v1/events?${params.toString()}`,
-    { signal }
-  );
+  const data = await fetchJson<EventsApiResponse>(`/api/v1/events?${params.toString()}`, { signal });
 
-  // Transform API response to match EventsListResponse interface
   return {
     events: data.events,
-    total: data.pagination.totalDocs as number,
-    page: data.pagination.page as number,
-    limit: data.pagination.limit as number,
-    hasNextPage: data.pagination.hasNextPage as boolean,
-    hasPrevPage: data.pagination.hasPrevPage as boolean,
+    total: data.pagination.totalDocs,
+    page: data.pagination.page,
+    limit: data.pagination.limit,
+    hasNextPage: data.pagination.hasNextPage,
+    hasPrevPage: data.pagination.hasPrevPage,
   };
 };
 
@@ -202,7 +215,7 @@ export const useEventsListQuery = (
 ) =>
   useQuery({
     queryKey: eventsQueryKeys.list(filters, bounds, limit, scope),
-    queryFn: ({ signal }) => fetchEvents(filters, bounds, limit, signal, scope),
+    queryFn: ({ signal }) => fetchEventsInternal(filters, bounds, { limit }, signal, scope),
     enabled: enabled && bounds != null, // Only run when bounds are available
     ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
@@ -213,7 +226,7 @@ export const useEventsListQuery = (
 export const useEventsTotalQuery = (filters: FilterState, enabled: boolean = true, scope?: ViewScope) =>
   useQuery({
     queryKey: eventsQueryKeys.list(filters, null, 1, scope), // bounds=null, limit=1 (we only need the total)
-    queryFn: ({ signal }) => fetchEvents(filters, null, 1, signal, scope),
+    queryFn: ({ signal }) => fetchEventsInternal(filters, null, { limit: 1 }, signal, scope),
     enabled,
     ...QUERY_PRESETS.standard,
     refetchOnWindowFocus: false,
@@ -328,34 +341,6 @@ export const useEventsAggregationQuery = (
     placeholderData: (previousData) => previousData,
   });
 
-// Fetch function with page support for infinite queries
-const fetchEventsPage = async (
-  filters: FilterState,
-  bounds: BoundsType,
-  page: number,
-  limit: number = 20,
-  signal?: AbortSignal,
-  scope?: ViewScope
-): Promise<EventsListResponse> => {
-  const params = buildEventParams(filters, bounds, { limit: limit.toString(), page: page.toString() }, scope);
-
-  logger.debug("Fetching events page", { filters, bounds, page, limit });
-
-  const data = await fetchJson<{ events: Event[]; pagination: Record<string, unknown> }>(
-    `/api/v1/events?${params.toString()}`,
-    { signal }
-  );
-
-  return {
-    events: data.events,
-    total: data.pagination.totalDocs as number,
-    page: data.pagination.page as number,
-    limit: data.pagination.limit as number,
-    hasNextPage: data.pagination.hasNextPage as boolean,
-    hasPrevPage: data.pagination.hasPrevPage as boolean,
-  };
-};
-
 // Infinite query hook for paginated events list
 export const useEventsInfiniteQuery = (
   filters: FilterState,
@@ -366,7 +351,7 @@ export const useEventsInfiniteQuery = (
 ) =>
   useInfiniteQuery({
     queryKey: eventsQueryKeys.infiniteList(filters, bounds, limit, scope),
-    queryFn: ({ pageParam, signal }) => fetchEventsPage(filters, bounds, pageParam, limit, signal, scope),
+    queryFn: ({ pageParam, signal }) => fetchEventsInternal(filters, bounds, { page: pageParam, limit }, signal, scope),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
     enabled: enabled && bounds != null,

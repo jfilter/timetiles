@@ -13,15 +13,31 @@ import { Check, Key, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
-import { useChangePasswordMutation } from "@/lib/hooks/use-account-mutations";
-import { useFormSubmission } from "@/lib/hooks/use-form-submission";
+import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
+import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 
 export const ChangePasswordForm = () => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const { status, error, isLoading, submit, reset } = useFormSubmission();
-  const changePasswordMutation = useChangePasswordMutation();
+  const { status, error, isLoading, mutate, reset } = useFormMutation({
+    mutationFn: async (input: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+      if (input.newPassword.length < MIN_PASSWORD_LENGTH) {
+        throw new Error(`New password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      }
+
+      if (input.newPassword !== input.confirmPassword) {
+        throw new Error("New passwords do not match");
+      }
+
+      return changePasswordRequest({ currentPassword: input.currentPassword, newPassword: input.newPassword });
+    },
+    onSuccess: () => {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+  });
 
   const handleCurrentPasswordChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,23 +69,9 @@ export const ChangePasswordForm = () => {
 
       if (!currentPassword || !newPassword || !confirmPassword) return;
 
-      submit(async () => {
-        if (newPassword.length < MIN_PASSWORD_LENGTH) {
-          throw new Error(`New password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-        }
-
-        if (newPassword !== confirmPassword) {
-          throw new Error("New passwords do not match");
-        }
-
-        await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
-
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      });
+      mutate({ currentPassword, newPassword, confirmPassword });
     },
-    [currentPassword, newPassword, confirmPassword, submit, changePasswordMutation]
+    [currentPassword, newPassword, confirmPassword, mutate]
   );
 
   return (

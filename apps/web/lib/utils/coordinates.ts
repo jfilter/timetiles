@@ -7,16 +7,7 @@
  * @module
  * @category Utils
  */
-
-/**
- * Map bounds interface matching the Zustand store structure.
- */
-export interface MapBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-}
+import type { MapBounds } from "@/lib/geospatial/types";
 
 const getCenterLongitude = (east: number, west: number): number => {
   if (east >= west) {

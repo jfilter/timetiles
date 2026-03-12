@@ -124,9 +124,9 @@ export const MapExplorer = () => {
   );
 
   // Mark as loaded once we have data
-  if (shouldMarkLoaded) {
-    setHasLoadedOnce(true);
-  }
+  useEffect(() => {
+    if (shouldMarkLoaded) setHasLoadedOnce(true);
+  }, [shouldMarkLoaded]);
 
   // Update map stats in Zustand store when data changes
   // Use totalEventsData.total for absolute count (not viewport-bounded)
