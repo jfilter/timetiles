@@ -25,7 +25,7 @@ export interface StepAuthProps {
 }
 
 export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
-  const { state, nextStep, setAuth, setNavigationConfig } = useWizard();
+  const { state, nextStep, setAuth } = useWizard();
   const { isAuthenticated, isEmailVerified } = state;
 
   // Check auth status on mount via API (workaround for SSR auth issues)
@@ -35,12 +35,6 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
     isLoading: isCheckingAuth,
     refetch,
   } = useCurrentUserQuery({ enabled: !isAuthenticated });
-
-  // Hide navigation on auth step (it auto-advances when authenticated)
-  useEffect(() => {
-    setNavigationConfig({ showBack: false, showNext: false });
-    return () => setNavigationConfig({});
-  }, [setNavigationConfig]);
 
   // Sync query result into wizard state
   useEffect(() => {

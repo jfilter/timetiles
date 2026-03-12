@@ -90,14 +90,8 @@ const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetN
 };
 
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
-  const { state, setCatalog, setSheetMapping, nextStep, setNavigationConfig } = useWizard();
+  const { state, setCatalog, setSheetMapping } = useWizard();
   const { sheets, selectedCatalogId, newCatalogName, sheetMappings } = state;
-
-  // Configure navigation for this step
-  useEffect(() => {
-    setNavigationConfig({ onNext: () => nextStep() });
-    return () => setNavigationConfig({});
-  }, [setNavigationConfig, nextStep]);
 
   const { data: catalogsData, isLoading, error: queryError } = useCatalogsQuery();
   const catalogs = catalogsData?.catalogs ?? [];

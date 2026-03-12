@@ -14,6 +14,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { STEP_NAV_CONFIGS } from "./step-nav-configs";
 import { useWizard } from "./wizard-context";
 
 export interface WizardNavigationProps {
@@ -24,14 +25,14 @@ export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>)
   const { state, nextStep, prevStep, reset, canProceed, navigationConfig } = useWizard();
   const { currentStep, startedAuthenticated } = state;
 
-  // Get config from context (steps set this via setNavigationConfig)
+  // Merge static per-step config with any dynamic config set at runtime
   const {
     onNext: configOnNext,
     nextLabel: configNextLabel,
     isLoading = false,
     showBack = true,
     showNext = true,
-  } = navigationConfig;
+  } = { ...STEP_NAV_CONFIGS[currentStep], ...navigationConfig };
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // First visible step is 2 (Upload) if user started authenticated, otherwise 1 (Sign In)

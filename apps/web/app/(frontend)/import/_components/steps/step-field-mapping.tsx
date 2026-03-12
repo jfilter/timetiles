@@ -34,7 +34,7 @@ import {
   WorkflowIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { ConfidenceLevel, FieldMapping, SuggestedMappings } from "@/lib/types/import-wizard";
 
@@ -101,14 +101,8 @@ const formatCellValue = (value: unknown): string => {
 };
 
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
-  const { state, setFieldMapping, setImportOptions, nextStep, setNavigationConfig } = useWizard();
+  const { state, setFieldMapping, setImportOptions } = useWizard();
   const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
-
-  // Configure navigation for this step
-  useEffect(() => {
-    setNavigationConfig({ onNext: () => nextStep() });
-    return () => setNavigationConfig({});
-  }, [setNavigationConfig, nextStep]);
 
   // State for active sheet tab (for multi-sheet files)
   const [activeSheetIndex, setActiveSheetIndex] = useState(sheets[0]?.index ?? 0);

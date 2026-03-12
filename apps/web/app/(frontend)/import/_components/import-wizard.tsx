@@ -15,6 +15,7 @@ import { useEffect, useRef } from "react";
 
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping } from "@/lib/types/import-wizard";
+import { retrieveMappingData } from "@/lib/utils/mapping-transfer";
 
 import { StepAuth, StepDatasetSelection, StepFieldMapping, StepProcessing, StepReview, StepUpload } from "./steps";
 import { useWizard, type WizardStep } from "./wizard-context";
@@ -33,26 +34,34 @@ export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
 
   // Apply field mappings returned from the visual flow editor
   useEffect(() => {
-    const applyMappings = searchParams.get("applyMappings");
-    if (!applyMappings) return;
+    const mappingKey = searchParams.get("mappingKey");
+    const applyMappings = searchParams.get("applyMappings"); // backward compat
 
-    try {
-      const parsed = JSON.parse(applyMappings);
-
-      // New format: { fieldMapping, transforms }
-      if ("fieldMapping" in parsed && "transforms" in parsed) {
-        const data = parsed as { fieldMapping: FieldMapping; transforms: ImportTransform[] };
-        setFieldMapping(data.fieldMapping.sheetIndex, data.fieldMapping);
-        if (data.transforms.length > 0) {
-          setTransforms(data.fieldMapping.sheetIndex, data.transforms);
-        }
-      } else {
-        // Backward compatibility: old format is just a FieldMapping
-        const mapping = parsed as FieldMapping;
-        setFieldMapping(mapping.sheetIndex, mapping);
+    const applyData = (data: { fieldMapping: FieldMapping; transforms: ImportTransform[] }) => {
+      setFieldMapping(data.fieldMapping.sheetIndex, data.fieldMapping);
+      if (data.transforms.length > 0) {
+        setTransforms(data.fieldMapping.sheetIndex, data.transforms);
       }
-    } catch {
-      // Invalid JSON — ignore
+    };
+
+    if (mappingKey) {
+      const data = retrieveMappingData(mappingKey);
+      if (data) applyData(data);
+    } else if (applyMappings) {
+      // Backward compatibility: URL-encoded JSON
+      try {
+        const parsed = JSON.parse(applyMappings);
+        if ("fieldMapping" in parsed && "transforms" in parsed) {
+          applyData(parsed as { fieldMapping: FieldMapping; transforms: ImportTransform[] });
+        } else {
+          const mapping = parsed as FieldMapping;
+          setFieldMapping(mapping.sheetIndex, mapping);
+        }
+      } catch {
+        // Invalid JSON — ignore
+      }
+    } else {
+      return; // No mapping data to apply
     }
 
     const stepParam = searchParams.get("step");

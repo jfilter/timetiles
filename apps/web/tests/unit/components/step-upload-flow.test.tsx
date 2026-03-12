@@ -20,7 +20,6 @@ const mockSetFile = vi.fn();
 const mockSetSourceUrl = vi.fn();
 const mockClearFile = vi.fn();
 const mockNextStep = vi.fn();
-const mockSetNavigationConfig = vi.fn();
 
 const baseWizardState: WizardState = {
   currentStep: 2,
@@ -57,7 +56,6 @@ vi.mock("@/app/(frontend)/import/_components/wizard-context", () => ({
     setSourceUrl: mockSetSourceUrl,
     clearFile: mockClearFile,
     nextStep: mockNextStep,
-    setNavigationConfig: mockSetNavigationConfig,
   }),
 }));
 
@@ -363,36 +361,6 @@ describe.sequential("StepUpload", () => {
 
       const tabs = document.querySelectorAll('[role="tab"]');
       expect(tabs).toHaveLength(0);
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Navigation
-  // -------------------------------------------------------------------------
-  describe("navigation", () => {
-    test("configures navigation on mount with onNext handler", async () => {
-      await act(async () => {
-        renderWithProviders(<StepUpload />);
-      });
-
-      expect(mockSetNavigationConfig).toHaveBeenCalledWith(expect.objectContaining({ onNext: expect.any(Function) }));
-    });
-
-    test("clears navigation config on unmount", async () => {
-      let unmountFn: () => void;
-
-      await act(async () => {
-        const { unmount } = renderWithProviders(<StepUpload />);
-        unmountFn = unmount;
-      });
-
-      mockSetNavigationConfig.mockClear();
-
-      act(() => {
-        unmountFn();
-      });
-
-      expect(mockSetNavigationConfig).toHaveBeenCalledWith({});
     });
   });
 });

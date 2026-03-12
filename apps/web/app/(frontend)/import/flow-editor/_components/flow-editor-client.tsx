@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { type DragEvent, useCallback, useMemo, useRef } from "react";
 
 import type { TransformType } from "@/lib/types/import-transforms";
+import { storeMappingData } from "@/lib/utils/mapping-transfer";
 
 import { FlowEditorHeader } from "./flow-editor-header";
 import { NodePalette } from "./node-palette";
@@ -73,8 +74,8 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
   // Save and return to wizard
   const handleSave = useCallback(() => {
     const { fieldMapping, transforms } = serializeFlowState();
-    const encoded = encodeURIComponent(JSON.stringify({ fieldMapping, transforms }));
-    router.push(`/import?step=4&applyMappings=${encoded}`);
+    const mappingKey = storeMappingData({ fieldMapping, transforms });
+    router.push(`/import?step=4&mappingKey=${encodeURIComponent(mappingKey)}`);
   }, [serializeFlowState, router]);
 
   // Handle drag over to allow drop

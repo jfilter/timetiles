@@ -14,7 +14,7 @@ import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { AlertCircleIcon, CheckCircle2Icon, ExternalLinkIcon, Loader2Icon, MapIcon, RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { type ProgressApiResponse, useImportProgressQuery } from "@/lib/hooks/use-import-progress-query";
 
@@ -138,14 +138,8 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
 };
 
 export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => {
-  const { state, complete, reset, setNavigationConfig } = useWizard();
+  const { state, complete, reset } = useWizard();
   const { importFileId, error: wizardError } = state;
-
-  // Hide navigation on processing step (it has custom action buttons)
-  useEffect(() => {
-    setNavigationConfig({ showBack: false, showNext: false });
-    return () => setNavigationConfig({});
-  }, [setNavigationConfig]);
 
   const { data: progressData, error: progressError } = useImportProgressQuery(importFileId ?? null);
   const progress = useMemo(() => (progressData ? transformProgressResponse(progressData) : null), [progressData]);
