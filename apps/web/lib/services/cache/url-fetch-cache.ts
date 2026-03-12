@@ -291,9 +291,45 @@ export class UrlFetchCache {
   }
 
   /**
-   * Fetch with caching support including ETags and conditional requests
+   * Fetch with caching support including ETags and conditional requests.
+   *
+   * When `timeout` is provided, an AbortController is wired into the
+   * underlying `fetch` calls so that the request aborts after the
+   * specified number of milliseconds.
    */
   async fetch(
+    url: string,
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string; timeout?: number }
+  ): Promise<CachedResponse> {
+    const { timeout, ...rest } = options ?? {};
+
+    // Wrap the real work so we can apply a timeout uniformly
+    if (timeout) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      // Merge the abort signal into the options forwarded to internal fetch calls
+      const optionsWithSignal: typeof rest = { ...rest, signal: controller.signal };
+
+      try {
+        return await this.fetchInner(url, optionsWithSignal);
+      } catch (error) {
+        if ((error as Error).name === "AbortError") {
+          throw new Error(`Request timeout after ${timeout}ms`);
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    return this.fetchInner(url, rest);
+  }
+
+  /**
+   * Core fetch implementation (timeout handling is in the public `fetch` method).
+   */
+  private async fetchInner(
     url: string,
     options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string }
   ): Promise<CachedResponse> {

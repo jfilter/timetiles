@@ -230,36 +230,6 @@ export const fetchUrlData = async (
 };
 
 /**
- * Helper to perform a single fetch attempt with timeout
- */
-const performFetchWithTimeout = async (
-  urlFetchCache: UrlFetchCache,
-  sourceUrl: string,
-  fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean },
-  timeout?: number
-) => {
-  let timeoutId: NodeJS.Timeout | undefined;
-
-  if (timeout) {
-    const controller = new AbortController();
-    timeoutId = setTimeout(() => controller.abort(), timeout);
-    fetchOpts.signal = controller.signal;
-  }
-
-  try {
-    const response = await urlFetchCache.fetch(sourceUrl, fetchOpts);
-    if (timeoutId) clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    if (timeoutId) clearTimeout(timeoutId);
-    if ((error as Error).name === "AbortError") {
-      throw new Error(`Request timeout after ${timeout}ms`);
-    }
-    throw error;
-  }
-};
-
-/**
  * Helper to validate response and check size limits
  */
 const validateResponse = (
@@ -296,24 +266,25 @@ const buildCacheOptions = (
   useCache: boolean,
   cacheOptions?: UrlFetchCacheOptions,
   userId?: string
-): RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string } => {
+): RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string; timeout?: number } => {
   return {
     method: fetchOptions.method ?? "GET",
     headers: { ...authHeaders, ...fetchOptions.headers },
     bypassCache: !useCache,
     forceRevalidate: cacheOptions?.forceRevalidate,
     userId,
+    timeout: fetchOptions.timeout,
   };
 };
 
 const processFetchResponse = async (
   urlFetchCache: UrlFetchCache,
   sourceUrl: string,
-  fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean },
+  fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; timeout?: number },
   fetchOptions: FetchOptions,
   attempt: number
 ): Promise<FetchResult> => {
-  const cachedResponse = await performFetchWithTimeout(urlFetchCache, sourceUrl, fetchOpts, fetchOptions.timeout);
+  const cachedResponse = await urlFetchCache.fetch(sourceUrl, fetchOpts);
 
   const cacheStatus = getCacheStatus(cachedResponse.headers);
   if (cacheStatus) {

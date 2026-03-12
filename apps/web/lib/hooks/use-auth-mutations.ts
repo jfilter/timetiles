@@ -11,6 +11,8 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
+import { fetchJson } from "../api/http-error";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -161,22 +163,12 @@ export const useForgotPasswordMutation = () => useMutation({ mutationFn: forgotP
 /**
  * Reset password via Payload CMS `/api/users/reset-password`.
  */
-export const resetPasswordRequest = async (input: ResetPasswordInput): Promise<void> => {
-  const response = await fetch("/api/users/reset-password", {
+export const resetPasswordRequest = (input: ResetPasswordInput): Promise<void> =>
+  fetchJson<void>("/api/users/reset-password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    const message =
-      typeof data === "object" && data !== null && "message" in data
-        ? String(data.message)
-        : "Failed to reset password. The link may have expired.";
-    throw new Error(message);
-  }
-};
 
 export const useResetPasswordMutation = () => useMutation({ mutationFn: resetPasswordRequest });
 
@@ -192,20 +184,7 @@ export const useLogoutMutation = () => useMutation({ mutationFn: logoutRequest }
 /**
  * Verify email via Payload CMS `/api/users/verify/:token`.
  */
-export const verifyEmailRequest = async (token: string): Promise<void> => {
-  const response = await fetch(`/api/users/verify/${token}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
-
-  if (!response.ok) {
-    const errorData: unknown = await response.json().catch(() => ({}));
-    const message =
-      typeof errorData === "object" && errorData !== null && "message" in errorData
-        ? String(errorData.message)
-        : "Failed to verify email. The link may have expired.";
-    throw new Error(message);
-  }
-};
+export const verifyEmailRequest = (token: string): Promise<void> =>
+  fetchJson<void>(`/api/users/verify/${token}`, { method: "POST", headers: { "Content-Type": "application/json" } });
 
 export const useVerifyEmailMutation = () => useMutation({ mutationFn: verifyEmailRequest });
