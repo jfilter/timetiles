@@ -92,7 +92,7 @@ export const translateSchemaMode = (mode: CreateScheduleConfig["schemaMode"]) =>
 };
 
 // Create or update dataset with wizard configuration
-// eslint-disable-next-line max-params -- Transform support requires an additional parameter
+/* oxlint-disable-next-line max-params -- Transform support requires an additional parameter */
 export const processDataset = async (
   payload: Payload,
   req: NextRequest,
@@ -169,7 +169,7 @@ export const processDataset = async (
  * Bug 28 fix: process sequentially instead of in parallel to prevent race conditions
  * when multiple sheets target the same dataset.
  */
-// eslint-disable-next-line max-params -- Transform support requires an additional parameter
+/* oxlint-disable-next-line max-params -- Transform support requires an additional parameter */
 export const processSheetMappings = async (
   payload: Payload,
   req: NextRequest,

@@ -41,7 +41,6 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isLoading, mutate } = useFormMutation({
     mutationFn: async (input: { email: string; password: string; confirmPassword: string }) => {
-      // eslint-disable-next-line security/detect-possible-timing-attacks -- client-side UI validation, not a security comparison
       if (input.password !== input.confirmPassword) {
         throw new Error("Passwords do not match");
       }

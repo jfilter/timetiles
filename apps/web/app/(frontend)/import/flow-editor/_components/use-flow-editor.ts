@@ -25,6 +25,65 @@ import type { FieldMapping, SheetInfo } from "@/lib/types/import-wizard";
 type FlowNode = Node<SourceColumnNodeData | TargetFieldNodeData | TransformNodeData>;
 type FlowEdge = Edge<{ isValid: boolean; confidence?: number }>;
 
+const NODE_TYPE_SOURCE = "source-column";
+const NODE_TYPE_TARGET = "target-field";
+const NODE_TYPE_TRANSFORM = "transform";
+
+/**
+ * Set a field mapping value if the target field key is valid
+ */
+const setMappingField = (mapping: FieldMapping, fieldKey: string, value: string, validKeys: string[]): void => {
+  if (validKeys.includes(fieldKey)) {
+    (mapping as unknown as Record<string, string | null>)[fieldKey] = value;
+  }
+};
+
+/**
+ * Process transform chains (source→transform→target) and collect valid transforms
+ */
+const collectTransformChains = (
+  nodes: FlowNode[],
+  edges: FlowEdge[],
+  mapping: FieldMapping,
+  validKeys: string[]
+): ImportTransform[] => {
+  const transforms: ImportTransform[] = [];
+  const transformNodes = nodes.filter((n) => n.type === NODE_TYPE_TRANSFORM);
+
+  for (const tNode of transformNodes) {
+    const transformData = tNode.data as TransformNodeData;
+    if (!transformData.transform.active) continue;
+
+    const incomingEdge = edges.find((e) => e.target === tNode.id);
+    const srcNode = incomingEdge
+      ? nodes.find((n) => n.id === incomingEdge.source && n.type === NODE_TYPE_SOURCE)
+      : null;
+
+    const outgoingEdge = edges.find((e) => e.source === tNode.id);
+    const tgtNode = outgoingEdge
+      ? nodes.find((n) => n.id === outgoingEdge.target && n.type === NODE_TYPE_TARGET)
+      : null;
+
+    if (!srcNode || !tgtNode) continue;
+
+    const sourceData = srcNode.data as SourceColumnNodeData;
+    const targetData = tgtNode.data as TargetFieldNodeData;
+
+    const transform = { ...transformData.transform };
+    if ("from" in transform && !transform.from) {
+      (transform as { from: string }).from = sourceData.columnName;
+    }
+
+    if (!isTransformValid(transform)) continue;
+
+    transforms.push(transform);
+    const mappedColumn = transform.type === "rename" ? transform.to : sourceData.columnName;
+    setMappingField(mapping, targetData.fieldKey, mappedColumn, validKeys);
+  }
+
+  return transforms;
+};
+
 interface MappingPair {
   source: string | null;
   target: string;
@@ -131,11 +190,11 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
           setNodes((nds) =>
             // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
             nds.map((node) => {
-              if (node.type === "source-column") {
+              if (node.type === NODE_TYPE_SOURCE) {
                 const isConnected = initialEdges.some((e) => e.source === node.id);
                 return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected } } as FlowNode;
               }
-              if (node.type === "target-field") {
+              if (node.type === NODE_TYPE_TARGET) {
                 const edge = initialEdges.find((e) => e.target === node.id);
                 const sourceNode = edge ? sourceNodes.find((n) => n.id === edge.source) : null;
                 return {
@@ -170,9 +229,9 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
 
       if (!sourceNode || !targetNode) return;
 
-      const isSourceToTarget = sourceNode.type === "source-column" && targetNode.type === "target-field";
-      const isSourceToTransform = sourceNode.type === "source-column" && targetNode.type === "transform";
-      const isTransformToTarget = sourceNode.type === "transform" && targetNode.type === "target-field";
+      const isSourceToTarget = sourceNode.type === NODE_TYPE_SOURCE && targetNode.type === NODE_TYPE_TARGET;
+      const isSourceToTransform = sourceNode.type === NODE_TYPE_SOURCE && targetNode.type === NODE_TYPE_TRANSFORM;
+      const isTransformToTarget = sourceNode.type === NODE_TYPE_TRANSFORM && targetNode.type === NODE_TYPE_TARGET;
 
       if (!isSourceToTarget && !isSourceToTransform && !isTransformToTarget) return;
 
@@ -216,7 +275,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
         const upstreamEdge = edges.find((e) => e.target === sourceNode.id);
         const upstreamNode = upstreamEdge ? nodes.find((n) => n.id === upstreamEdge.source) : null;
         const connectedColumn =
-          upstreamNode?.type === "source-column" ? (upstreamNode.data as SourceColumnNodeData).columnName : null;
+          upstreamNode?.type === NODE_TYPE_SOURCE ? (upstreamNode.data as SourceColumnNodeData).columnName : null;
 
         setNodes((nds) =>
           nds.map((node) => {
@@ -240,7 +299,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       for (const edge of deletedEdges) {
         setNodes((nds) =>
           nds.map((node) => {
-            if (node.id === edge.source && node.type === "source-column") {
+            if (node.id === edge.source && node.type === NODE_TYPE_SOURCE) {
               // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
               const stillConnected = edges.some((e) => e.source === edge.source && e.id !== edge.id);
               return {
@@ -248,7 +307,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
                 data: { ...(node.data as SourceColumnNodeData), isConnected: stillConnected },
               } as FlowNode;
             }
-            if (node.id === edge.target && node.type === "target-field") {
+            if (node.id === edge.target && node.type === NODE_TYPE_TARGET) {
               return {
                 ...node,
                 data: { ...(node.data as TargetFieldNodeData), isConnected: false, connectedColumn: null },
@@ -268,7 +327,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       const transform = createTransform(type);
       const newNode: FlowNode = {
         id: `transform-${transform.id}`,
-        type: "transform",
+        type: NODE_TYPE_TRANSFORM,
         position,
         data: { transform, isEditing: false } as TransformNodeData,
       };
@@ -291,7 +350,6 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       latitudeField: null,
       longitudeField: null,
     };
-    const transforms: ImportTransform[] = [];
     const validKeys = TARGET_FIELD_DEFINITIONS.map((d) => d.fieldKey);
 
     // Process direct source→target edges
@@ -299,57 +357,15 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       const sourceNode = nodes.find((n) => n.id === edge.source);
       const targetNode = nodes.find((n) => n.id === edge.target);
 
-      if (sourceNode?.type === "source-column" && targetNode?.type === "target-field") {
+      if (sourceNode?.type === NODE_TYPE_SOURCE && targetNode?.type === NODE_TYPE_TARGET) {
         const sourceData = sourceNode.data as SourceColumnNodeData;
         const targetData = targetNode.data as TargetFieldNodeData;
-        if (validKeys.includes(targetData.fieldKey)) {
-          (mapping as unknown as Record<string, string | null>)[targetData.fieldKey] = sourceData.columnName;
-        }
+        setMappingField(mapping, targetData.fieldKey, sourceData.columnName, validKeys);
       }
     }
 
     // Process transform chains: source→transform→target
-    const transformNodes = nodes.filter((n) => n.type === "transform");
-    for (const tNode of transformNodes) {
-      const transformData = tNode.data as TransformNodeData;
-      if (!transformData.transform.active) continue;
-
-      // Find incoming edge: source-column → transform
-      const incomingEdge = edges.find((e) => e.target === tNode.id);
-      const srcNode = incomingEdge
-        ? nodes.find((n) => n.id === incomingEdge.source && n.type === "source-column")
-        : null;
-
-      // Find outgoing edge: transform → target-field
-      const outgoingEdge = edges.find((e) => e.source === tNode.id);
-      const tgtNode = outgoingEdge
-        ? nodes.find((n) => n.id === outgoingEdge.target && n.type === "target-field")
-        : null;
-
-      // Only include fully connected chains
-      if (!srcNode || !tgtNode) continue;
-
-      const sourceData = srcNode.data as SourceColumnNodeData;
-      const targetData = tgtNode.data as TargetFieldNodeData;
-
-      // Clone and auto-populate the transform's from field
-      const transform = { ...transformData.transform };
-      if ("from" in transform && !transform.from) {
-        (transform as { from: string }).from = sourceData.columnName;
-      }
-
-      // Only include valid transforms
-      if (!isTransformValid(transform)) continue;
-
-      transforms.push(transform);
-
-      // Also populate the field mapping for this chain
-      if (validKeys.includes(targetData.fieldKey)) {
-        // For rename: map to the output name; for others: column name is unchanged
-        const mappedColumn = transform.type === "rename" ? transform.to : sourceData.columnName;
-        (mapping as unknown as Record<string, string | null>)[targetData.fieldKey] = mappedColumn;
-      }
-    }
+    const transforms = collectTransformChains(nodes, edges, mapping, validKeys);
 
     return { fieldMapping: mapping, transforms };
   }, [nodes, edges, sheetIndex]);
