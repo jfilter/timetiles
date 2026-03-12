@@ -13,52 +13,24 @@ import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from "payl
 import { clearViewCache } from "@/lib/services/view-resolver";
 import type { View } from "@/payload-types";
 
+import { createEnforceSingleDefault } from "../shared-hooks";
+
 export { setCreatedByHook as setCreatedBy } from "../shared-fields";
 
 /**
  * Enforces that only one view can be the default within its site.
  * When a view is set as default, unsets any other default views in the same site.
  */
-export const enforceSingleDefault: CollectionBeforeChangeHook<View> = async ({
-  data,
-  req,
-  operation,
-  originalDoc,
-  context,
-}) => {
-  // Skip if called recursively from another enforceSingleDefault
-  if (context?.skipEnforceSingleDefault) {
-    return data;
-  }
-
-  // Only run if isDefault is being set to true
-  const wasDefault = originalDoc?.isDefault ?? false;
-  const isNowDefault = data.isDefault ?? false;
-
-  if (isNowDefault && !wasDefault) {
-    // Determine the site ID for scoping
-    const siteId = typeof data.site === "number" ? data.site : (data.site as { id: number } | undefined)?.id;
-
-    if (siteId != null) {
-      // On update, exclude the current document; on create, update all defaults
-      const idFilter = operation === "update" && originalDoc?.id ? { not_equals: originalDoc.id } : undefined;
-
-      // Unset isDefault on other views within the same site
-      await req.payload.update({
-        collection: "views",
-        where: { isDefault: { equals: true }, site: { equals: siteId }, ...(idFilter && { id: idFilter }) },
-        data: { isDefault: false },
-        depth: 0,
-        overrideAccess: true,
-        context: {
-          skipEnforceSingleDefault: true, // Prevent recursion
-        },
-      });
-    }
-  }
-
-  return data;
-};
+export const enforceSingleDefault: CollectionBeforeChangeHook<View> = createEnforceSingleDefault({
+  collection: "views",
+  scope: {
+    field: "site",
+    getId: (data) => {
+      const site = data.site;
+      return typeof site === "number" ? site : (site as { id: number } | undefined)?.id;
+    },
+  },
+});
 
 /**
  * Invalidates the view resolver cache after any view change.

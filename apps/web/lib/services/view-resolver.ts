@@ -9,102 +9,26 @@
  * @module
  * @category Services
  */
-import type { Payload, Where } from "payload";
+import type { Payload } from "payload";
 
 import type { View } from "@/payload-types";
 
 import { logger } from "../logger";
+import { createCachedResolver } from "./create-cached-resolver";
 
-/** Cache for resolved views (cacheKey -> view) */
-const viewCacheBySlug = new Map<string, View | null>();
-
-/** Cache for default views (siteId -> view) */
-const defaultViewCache = new Map<number, View | null>();
-
-/** Cache TTL in milliseconds (5 minutes) */
-const CACHE_TTL = 5 * 60 * 1000;
-
-/** Last cache clear timestamp */
-let lastCacheClear = Date.now();
-
-/**
- * Clears the view cache if TTL has expired.
- */
-const maybeClearCache = (): void => {
-  const now = Date.now();
-  if (now - lastCacheClear > CACHE_TTL) {
-    viewCacheBySlug.clear();
-    defaultViewCache.clear();
-    lastCacheClear = now;
-  }
-};
+const resolver = createCachedResolver<View>({ collection: "views", keyField: "slug", scopeField: "site" });
 
 /**
  * Finds a view by slug within a site.
- *
- * @param payload - Payload instance
- * @param slug - The slug to match (e.g., city-events)
- * @param siteId - The site ID to scope the search
- * @returns The matching view or null
  */
-export const findViewBySlug = async (payload: Payload, slug: string, siteId?: number): Promise<View | null> => {
-  maybeClearCache();
-
-  const cacheKey = `${siteId ?? "global"}:${slug}`;
-  if (viewCacheBySlug.has(cacheKey)) {
-    return viewCacheBySlug.get(cacheKey) ?? null;
-  }
-
-  try {
-    const where: Where = {
-      slug: { equals: slug },
-      _status: { equals: "published" },
-      ...(siteId != null && { site: { equals: siteId } }),
-    };
-
-    const result = await payload.find({ collection: "views", where, limit: 1, depth: 1 });
-
-    const view = result.docs[0] ?? null;
-    viewCacheBySlug.set(cacheKey, view);
-    return view;
-  } catch (error) {
-    logger.error({ error, slug, siteId }, "Error finding view by slug");
-    return null;
-  }
-};
+export const findViewBySlug = (payload: Payload, slug: string, siteId?: number): Promise<View | null> =>
+  resolver.findByKey(payload, slug, siteId);
 
 /**
  * Finds the default view within a site (isDefault: true).
- *
- * @param payload - Payload instance
- * @param siteId - The site ID to scope the search
- * @returns The default view or null
  */
-export const findDefaultView = async (payload: Payload, siteId?: number): Promise<View | null> => {
-  maybeClearCache();
-
-  const cacheId = siteId ?? 0;
-  if (defaultViewCache.has(cacheId)) {
-    return defaultViewCache.get(cacheId) ?? null;
-  }
-
-  try {
-    const where: Where = {
-      isDefault: { equals: true },
-      _status: { equals: "published" },
-      ...(siteId != null && { site: { equals: siteId } }),
-    };
-
-    const result = await payload.find({ collection: "views", where, limit: 1, depth: 1 });
-
-    const view = result.docs[0] ?? null;
-    defaultViewCache.set(cacheId, view);
-    return view;
-  } catch (error) {
-    logger.error({ error, siteId }, "Error finding default view");
-    return null;
-  }
-};
+export const findDefaultView = (payload: Payload, siteId?: number): Promise<View | null> =>
+  resolver.findDefault(payload, siteId);
 
 /**
  * Resolves the active view for a request within a site.
@@ -112,11 +36,6 @@ export const findDefaultView = async (payload: Payload, siteId?: number): Promis
  * Resolution priority:
  * 1. Slug match
  * 2. Default view within the site
- *
- * @param payload - Payload instance
- * @param siteId - The site ID
- * @param slug - Optional view slug
- * @returns The resolved view or null
  */
 export const resolveView = async (payload: Payload, siteId?: number, slug?: string | null): Promise<View | null> => {
   // 1. Try slug match
@@ -140,17 +59,12 @@ export const resolveView = async (payload: Payload, siteId?: number, slug?: stri
  * Clears all view caches. Useful for testing or after admin changes.
  */
 export const clearViewCache = (): void => {
-  viewCacheBySlug.clear();
-  defaultViewCache.clear();
-  lastCacheClear = Date.now();
+  resolver.clearCache();
 };
 
 /**
  * Gets the data scope filter for a view.
  * Returns filter constraints for catalogs/datasets based on view configuration.
- *
- * @param view - The view configuration
- * @returns Filter constraints for data queries
  */
 export const getViewDataScopeFilter = (view: View | null): { catalogIds?: number[]; datasetIds?: number[] } => {
   if (!view?.dataScope) {
