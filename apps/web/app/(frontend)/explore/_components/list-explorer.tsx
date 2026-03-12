@@ -31,25 +31,13 @@ export const ListExplorer = () => {
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
 
   // Shared explorer state
-  const {
-    hasUserPanned,
-    mapRef,
-    filters,
-    selectedEventId,
-    openEvent,
-    closeEvent,
-    datasets,
-    isFilterDrawerOpen,
-    toggleFilterDrawer,
-    debouncedSimpleBounds,
-    clusters,
-    clusterStats,
-    boundsData,
-    boundsLoading,
-    isLoadingInitialBounds,
-    handleZoomToData,
-    handleBoundsChange,
-  } = useExplorerState();
+  const explorer = useExplorerState();
+  const { map, filters: filterState, selection, data, ui } = explorer;
+  const { filters } = filterState;
+  const { selectedEventId, openEvent, closeEvent } = selection;
+  const { datasets, clusters, clusterStats, boundsData, boundsLoading, isLoadingInitialBounds } = data;
+  const { isFilterDrawerOpen, toggleFilterDrawer } = ui;
+  const { ref: mapRef, debouncedSimpleBounds, hasUserPanned, handleZoomToData, handleBoundsChange } = map;
 
   // Show "zoom to data" button when user has panned and we have bounds data
   const showZoomToData = hasUserPanned && boundsData?.bounds != null && !boundsLoading;

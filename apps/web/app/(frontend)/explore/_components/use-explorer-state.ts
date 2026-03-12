@@ -129,47 +129,31 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   );
 
   return {
-    // State
-    mapZoom,
-    hasUserPanned,
-    isInitialBoundsApplied,
-    mapRef,
-
-    // URL state
-    filters,
-    activeFilterCount,
-    selectedEventId,
-    openEvent,
-    closeEvent,
-
-    // Data sources
-    dataSources,
-    catalogs: dataSources?.catalogs ?? [],
-    datasets: dataSources?.datasets ?? [],
-
-    // UI store
-    mapBounds,
-    isFilterDrawerOpen,
-    toggleFilterDrawer,
-    setFilterDrawerOpen,
-
-    // Bounds
-    simpleBounds,
-    debouncedSimpleBounds,
-
-    // Query data
-    clusters,
-    clustersLoading,
-    clusterStats,
-    boundsData,
-    boundsLoading,
-    isLoadingInitialBounds,
-
-    // View scope
+    map: {
+      zoom: mapZoom,
+      ref: mapRef,
+      bounds: mapBounds,
+      simpleBounds,
+      debouncedSimpleBounds,
+      hasUserPanned,
+      isInitialBoundsApplied,
+      handleBoundsChange,
+      handleZoomToData,
+    },
+    filters: { filters, activeFilterCount },
+    selection: { selectedEventId, openEvent, closeEvent },
+    data: {
+      dataSources,
+      catalogs: dataSources?.catalogs ?? [],
+      datasets: dataSources?.datasets ?? [],
+      clusters,
+      clustersLoading,
+      clusterStats,
+      boundsData,
+      boundsLoading,
+      isLoadingInitialBounds,
+    },
+    ui: { isFilterDrawerOpen, toggleFilterDrawer, setFilterDrawerOpen },
     scope,
-
-    // Callbacks
-    handleZoomToData,
-    handleBoundsChange,
   };
 };

@@ -60,14 +60,14 @@ interface ImportConfigureResponse {
   scheduledImportId?: number;
 }
 
-const previewSchemaUpload = async (formData: FormData): Promise<PreviewSchemaUploadResponse> => {
+export const previewSchemaUpload = async (formData: FormData): Promise<PreviewSchemaUploadResponse> => {
   return fetchJson<PreviewSchemaUploadResponse>("/api/import/preview-schema/upload", {
     method: "POST",
     body: formData,
   });
 };
 
-const previewSchemaUrl = async (request: PreviewSchemaUrlRequest): Promise<PreviewSchemaUrlResponse> => {
+export const previewSchemaUrl = async (request: PreviewSchemaUrlRequest): Promise<PreviewSchemaUrlResponse> => {
   return fetchJson<PreviewSchemaUrlResponse>("/api/import/preview-schema/url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -75,7 +75,7 @@ const previewSchemaUrl = async (request: PreviewSchemaUrlRequest): Promise<Previ
   });
 };
 
-const importConfigure = async (request: ImportConfigureRequest): Promise<ImportConfigureResponse> => {
+export const importConfigure = async (request: ImportConfigureRequest): Promise<ImportConfigureResponse> => {
   return fetchJson<ImportConfigureResponse>("/api/import/configure", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

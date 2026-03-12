@@ -23,13 +23,10 @@ import {
   TableRow,
 } from "@timetiles/ui";
 import { Button } from "@timetiles/ui/components/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   CalendarIcon,
-  CheckCircleIcon,
   FileSpreadsheetIcon,
-  HashIcon,
   MapPinIcon,
   SparklesIcon,
   TableIcon,
@@ -37,11 +34,14 @@ import {
   WorkflowIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { ConfidenceLevel, FieldMapping, SuggestedMappings } from "@/lib/types/import-wizard";
 
 import { useWizard } from "../wizard-context";
+import { FieldSelect } from "./field-select";
+import { IdStrategyCard } from "./id-strategy-card";
+import { SheetTabButton } from "./sheet-tab-button";
 
 /**
  * Check if a field mapping is complete (has all required fields)
@@ -52,35 +52,6 @@ const isMappingComplete = (mapping: FieldMapping | undefined): boolean => {
     mapping.titleField !== null &&
     mapping.dateField !== null &&
     (mapping.locationField !== null || (mapping.latitudeField !== null && mapping.longitudeField !== null))
-  );
-};
-
-/**
- * Confidence badge component showing auto-detection confidence level.
- */
-const ConfidenceBadge = ({ level, className }: Readonly<{ level: ConfidenceLevel; className?: string }>) => {
-  if (level === "none") return null;
-
-  const styles = {
-    high: "bg-cartographic-forest/10 text-cartographic-forest",
-    medium: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
-    low: "bg-muted text-muted-foreground",
-  };
-
-  const labels = { high: "Auto-detected", medium: "Suggested", low: "Best guess" };
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs font-medium",
-        styles[level],
-        className
-      )}
-      data-testid={`confidence-badge-${level}`}
-    >
-      {level === "high" && <CheckCircleIcon className="h-3 w-3" />}
-      {labels[level]}
-    </span>
   );
 };
 
@@ -127,226 +98,6 @@ const formatCellValue = (value: unknown): string => {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (value instanceof Date) return value.toISOString();
   return JSON.stringify(value);
-};
-
-const ID_STRATEGIES = [
-  { value: "auto", label: "Auto-generate", description: "Generate unique IDs automatically" },
-  { value: "external", label: "Use source ID", description: "Use ID from your data" },
-  { value: "computed", label: "Compute from fields", description: "Generate from selected fields" },
-  { value: "hybrid", label: "Hybrid", description: "Use source ID if available, otherwise compute" },
-] as const;
-
-const DEDUP_STRATEGIES = [
-  { value: "skip", label: "Skip duplicates", description: "Don't import events that already exist" },
-  { value: "update", label: "Update existing", description: "Update existing events with new data" },
-  { value: "version", label: "Create versions", description: "Keep both old and new versions" },
-] as const;
-
-interface FieldSelectProps {
-  id: string;
-  label: string;
-  field: keyof FieldMapping;
-  required: boolean;
-  icon: React.ReactNode;
-  value: string | null;
-  headers: string[];
-  onFieldChange: (field: keyof FieldMapping, value: string | null) => void;
-  disabled?: boolean;
-  /** Confidence level from auto-detection */
-  confidenceLevel?: ConfidenceLevel;
-  /** Whether the current value matches the auto-detected suggestion */
-  isAutoDetected?: boolean;
-}
-
-const FieldSelect = ({
-  id,
-  label,
-  field,
-  required,
-  icon,
-  value,
-  headers,
-  onFieldChange,
-  disabled = false,
-  confidenceLevel,
-  isAutoDetected = false,
-}: Readonly<FieldSelectProps>) => {
-  const handleValueChange = useCallback(
-    (val: string) => onFieldChange(field, val === "__none__" ? null : val),
-    [field, onFieldChange]
-  );
-
-  return (
-    <div className="space-y-2" data-testid={`field-mapping-row-${field}`}>
-      <Label htmlFor={id} className="text-cartographic-charcoal flex min-h-6 items-center gap-2">
-        {icon && <span className="text-cartographic-navy/50">{icon}</span>}
-        {label}
-        {required && <span className="text-cartographic-terracotta">*</span>}
-        {isAutoDetected && confidenceLevel && confidenceLevel !== "none" && <ConfidenceBadge level={confidenceLevel} />}
-      </Label>
-      <Select value={value ?? "__none__"} onValueChange={handleValueChange} disabled={disabled}>
-        <SelectTrigger
-          id={id}
-          className={cn(
-            "h-11",
-            required && !value && "border-cartographic-terracotta/50",
-            isAutoDetected && confidenceLevel === "high" && "border-cartographic-forest/40 border-dashed",
-            disabled && "cursor-not-allowed opacity-60"
-          )}
-        >
-          <SelectValue placeholder="Select column..." />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none__">Select column...</SelectItem>
-          {headers.map((header) => (
-            <SelectItem key={header} value={header}>
-              {header}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-};
-
-interface SheetTabButtonProps {
-  sheetIndex: number;
-  displayName: string;
-  rowCount: number;
-  isComplete: boolean;
-  isActive: boolean;
-  onSelect: (index: number) => void;
-}
-
-const SheetTabButton = memo(
-  ({ sheetIndex, displayName, rowCount, isComplete, isActive, onSelect }: Readonly<SheetTabButtonProps>) => {
-    const handleClick = useCallback(() => {
-      onSelect(sheetIndex);
-    }, [onSelect, sheetIndex]);
-
-    return (
-      <button
-        type="button"
-        onClick={handleClick}
-        data-testid={`sheet-tab-${sheetIndex}`}
-        className={cn(
-          "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
-          isActive
-            ? "border-cartographic-blue bg-cartographic-blue/10 text-cartographic-blue"
-            : "border-cartographic-navy/20 hover:border-cartographic-navy/40 text-cartographic-charcoal",
-          isComplete && !isActive && "border-cartographic-forest/40 bg-cartographic-forest/5"
-        )}
-      >
-        {isComplete && <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />}
-        <span>{displayName}</span>
-        <span className="text-cartographic-navy/50 font-mono text-xs">({rowCount})</span>
-      </button>
-    );
-  }
-);
-SheetTabButton.displayName = "SheetTabButton";
-
-interface IdStrategyCardProps {
-  idStrategy: FieldMapping["idStrategy"];
-  idField: string | null;
-  headers: string[];
-  deduplicationStrategy: string;
-  onFieldChange: (field: keyof FieldMapping, value: string | null) => void;
-  onDeduplicationChange: (value: string) => void;
-}
-
-const IdStrategyCard = ({
-  idStrategy,
-  idField,
-  headers,
-  deduplicationStrategy,
-  onFieldChange,
-  onDeduplicationChange,
-}: Readonly<IdStrategyCardProps>) => {
-  const showIdField = idStrategy === "external" || idStrategy === "hybrid";
-
-  const handleStrategyChange = useCallback((val: string) => onFieldChange("idStrategy", val), [onFieldChange]);
-
-  const handleIdFieldChange = useCallback(
-    (val: string) => onFieldChange("idField", val === "__none__" ? null : val),
-    [onFieldChange]
-  );
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-cartographic-navy/10 flex h-10 w-10 items-center justify-center rounded-sm">
-            <HashIcon className="text-cartographic-navy h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Identity & Duplicates</h3>
-            <p className="text-cartographic-navy/70 text-sm">How to identify and handle duplicate events</p>
-          </div>
-        </div>
-      </div>
-      <CardContent className="space-y-4 p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="id-strategy" className="text-cartographic-charcoal">
-              ID generation
-            </Label>
-            <Select value={idStrategy} onValueChange={handleStrategyChange}>
-              <SelectTrigger id="id-strategy" className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ID_STRATEGIES.map((strategy) => (
-                  <SelectItem key={strategy.value} value={strategy.value}>
-                    {strategy.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dedup-strategy" className="text-cartographic-charcoal">
-              Duplicate handling
-            </Label>
-            <Select value={deduplicationStrategy} onValueChange={onDeduplicationChange}>
-              <SelectTrigger id="dedup-strategy" className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DEDUP_STRATEGIES.map((strategy) => (
-                  <SelectItem key={strategy.value} value={strategy.value}>
-                    {strategy.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {showIdField && (
-          <div className="space-y-2">
-            <Label htmlFor="id-field" className="text-cartographic-charcoal">
-              ID Field
-            </Label>
-            <Select value={idField ?? "__none__"} onValueChange={handleIdFieldChange}>
-              <SelectTrigger id="id-field" className="h-11">
-                <SelectValue placeholder="Select column..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Select column...</SelectItem>
-                {headers.map((header) => (
-                  <SelectItem key={header} value={header}>
-                    {header}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
 };
 
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {

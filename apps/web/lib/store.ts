@@ -9,10 +9,12 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 
+import type { MapBounds } from "@/lib/geospatial/types";
+
 // Define the shape of our UI state (non-URL state)
 interface UIState {
   isFilterDrawerOpen: boolean;
-  mapBounds: { north: number; south: number; east: number; west: number } | null;
+  mapBounds: MapBounds | null;
   mapStats: { visibleEvents: number; totalEvents: number } | null;
 }
 

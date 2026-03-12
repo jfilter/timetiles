@@ -55,32 +55,30 @@ export const MapExplorer = () => {
   );
 
   // Shared explorer state
+  const explorer = useExplorerState({ onMapPositionChange: handleMapPositionChange });
+  const { map, filters: filterState, selection, data, ui, scope } = explorer;
+  const { filters, activeFilterCount } = filterState;
+  const { selectedEventId, openEvent, closeEvent } = selection;
   const {
-    hasUserPanned,
-    mapRef,
-    filters,
-    activeFilterCount,
-    selectedEventId,
-    openEvent,
-    closeEvent,
     catalogs,
     datasets,
-    mapBounds,
-    isFilterDrawerOpen,
-    toggleFilterDrawer,
-    setFilterDrawerOpen,
-    simpleBounds,
-    debouncedSimpleBounds,
     clusters,
     clustersLoading,
     clusterStats,
     boundsData,
     boundsLoading,
     isLoadingInitialBounds,
-    scope,
+  } = data;
+  const { isFilterDrawerOpen, toggleFilterDrawer, setFilterDrawerOpen } = ui;
+  const {
+    ref: mapRef,
+    simpleBounds,
+    debouncedSimpleBounds,
+    hasUserPanned,
     handleZoomToData,
     handleBoundsChange,
-  } = useExplorerState({ onMapPositionChange: handleMapPositionChange });
+    bounds: mapBounds,
+  } = map;
 
   // Close filter drawer on mobile on first mount for better UX
   const hasClosedOnMobile = useRef(false);

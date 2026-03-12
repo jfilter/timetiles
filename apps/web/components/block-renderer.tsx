@@ -47,156 +47,23 @@ import {
 } from "@timetiles/ui";
 import React from "react";
 
+import type {
+  Block,
+  BlockRendererProps,
+  CTABlock,
+  DetailsGridBlock,
+  FeaturesBlock,
+  HeroBlock,
+  NewsletterCTABlock,
+  NewsletterFormBlock,
+  RichTextBlock,
+  StatsBlock,
+  TestimonialsBlock,
+  TimelineBlock,
+} from "@/lib/types/cms-blocks";
+
 import { IconMapper } from "./icon-mapper";
 import { RichText } from "./layout/rich-text";
-
-// Type definitions for blocks
-interface HeroBlock {
-  blockType: "hero";
-  title: string;
-  subtitle?: string | null;
-  description?: string | null;
-  background?: "gradient" | "grid" | null;
-  buttons?: Array<{ text: string; link: string; variant?: "default" | "outline" | null; id?: string | null }> | null;
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface FeatureItem {
-  icon: string;
-  title: string;
-  description: string;
-  accent?: "primary" | "secondary" | "accent" | "muted" | "none" | null;
-  id?: string | null;
-}
-
-interface FeaturesBlock {
-  blockType: "features";
-  sectionTitle?: string | null;
-  sectionDescription?: string | null;
-  features: FeatureItem[];
-  columns?: "1" | "2" | "3" | "4" | null;
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface StatItem {
-  value: string;
-  label: string;
-  icon?: string | null;
-  id?: string | null;
-}
-
-interface StatsBlock {
-  blockType: "stats";
-  stats: StatItem[];
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface DetailsGridItem {
-  icon: string;
-  label: string;
-  value: string;
-  link?: string | null;
-  id?: string | null;
-}
-
-interface DetailsGridBlock {
-  blockType: "detailsGrid";
-  sectionTitle?: string | null;
-  variant?: "grid-2" | "grid-3" | "grid-4" | "compact" | null;
-  items: DetailsGridItem[];
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface TimelineItem {
-  date: string;
-  title: string;
-  description: string;
-  id?: string | null;
-}
-
-interface TimelineBlock {
-  blockType: "timeline";
-  sectionTitle?: string | null;
-  variant?: "vertical" | "compact" | null;
-  items: TimelineItem[];
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface TestimonialItem {
-  quote: string;
-  author: string;
-  role?: string | null;
-  avatar?: string | null;
-  id?: string | null;
-}
-
-interface TestimonialsBlock {
-  blockType: "testimonials";
-  sectionTitle?: string | null;
-  variant?: "grid" | "single" | "masonry" | null;
-  items: TestimonialItem[];
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface RichTextBlock {
-  blockType: "richText";
-  content: unknown;
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface CTABlock {
-  blockType: "cta";
-  headline: string;
-  description?: string | null;
-  buttonText: string;
-  buttonLink: string;
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface NewsletterFormBlock {
-  blockType: "newsletterForm";
-  headline?: string | null;
-  placeholder?: string | null;
-  buttonText?: string | null;
-  id?: string | null;
-  blockName?: string | null;
-}
-
-interface NewsletterCTABlock {
-  blockType: "newsletterCTA";
-  headline?: string | null;
-  description?: string | null;
-  placeholder?: string | null;
-  buttonText?: string | null;
-  variant?: "default" | "elevated" | "centered" | null;
-  size?: "default" | "lg" | "xl" | null;
-  id?: string | null;
-  blockName?: string | null;
-}
-
-type Block =
-  | HeroBlock
-  | FeaturesBlock
-  | StatsBlock
-  | DetailsGridBlock
-  | TimelineBlock
-  | TestimonialsBlock
-  | RichTextBlock
-  | CTABlock
-  | NewsletterFormBlock
-  | NewsletterCTABlock;
-
-interface BlockRendererProps {
-  blocks: Block[];
-}
 
 const renderHero = (block: HeroBlock, key: string) => {
   const heroBackground = block.background === "gradient" ? "grid" : (block.background ?? "grid");

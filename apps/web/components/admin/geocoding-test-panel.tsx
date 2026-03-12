@@ -14,17 +14,8 @@
 
 import React, { useCallback, useState } from "react";
 
-interface TestResult {
-  success: boolean;
-  result?: { latitude: number; longitude: number; confidence: number; normalizedAddress: string };
-  error?: string;
-}
-
-interface TestResults {
-  google?: TestResult;
-  nominatim?: TestResult;
-  opencage?: TestResult;
-}
+import type { TestResult } from "@/lib/hooks/use-geocoding-test";
+import { useGeocodingTest } from "@/lib/hooks/use-geocoding-test";
 
 // Styles defined outside component to satisfy react-perf/jsx-no-new-object-as-prop
 const styles = {
@@ -108,46 +99,17 @@ const ResultDisplay = ({ result }: { result: TestResult | undefined }) => {
 
 export const GeocodingTestPanel = () => {
   const [testAddress, setTestAddress] = useState("1600 Amphitheatre Parkway, Mountain View, CA");
-  const [testing, setTesting] = useState(false);
-  const [results, setResults] = useState<TestResults | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleTest = useCallback(async () => {
-    if (!testAddress.trim()) return;
-
-    setTesting(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/geocoding/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: testAddress }),
-      });
-
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data.error ?? "Test failed");
-      }
-
-      const testResults = (await response.json()) as TestResults;
-      setResults(testResults);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Test failed");
-    } finally {
-      setTesting(false);
-    }
-  }, [testAddress]);
+  const { mutate, isPending, data: results, error } = useGeocodingTest();
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setTestAddress(e.target.value);
   }, []);
 
   const handleButtonClick = useCallback(() => {
-    void handleTest();
-  }, [handleTest]);
+    void mutate(testAddress);
+  }, [mutate, testAddress]);
 
-  const buttonStyle = testing ? styles.buttonDisabled : styles.buttonEnabled;
+  const buttonStyle = isPending ? styles.buttonDisabled : styles.buttonEnabled;
 
   return (
     <div style={styles.container}>
@@ -162,8 +124,8 @@ export const GeocodingTestPanel = () => {
           placeholder="Enter an address..."
           style={styles.input}
         />
-        <button onClick={handleButtonClick} disabled={testing || !testAddress.trim()} style={buttonStyle}>
-          {testing ? "Testing..." : "Test"}
+        <button onClick={handleButtonClick} disabled={isPending || !testAddress.trim()} style={buttonStyle}>
+          {isPending ? "Testing..." : "Test"}
         </button>
       </div>
 
