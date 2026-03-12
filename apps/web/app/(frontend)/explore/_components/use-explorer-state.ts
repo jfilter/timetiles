@@ -15,12 +15,13 @@ import type { LngLatBounds } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ClusteredMapHandle } from "@/components/maps/clustered-map";
-import { useFilters, useSelectedEvent } from "@/lib/filters";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useBoundsQuery, useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
+import { useFilters, useSelectedEvent } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 import { useUIStore } from "@/lib/store";
+import { serializeFilterKey } from "@/lib/types/filter-state";
 
 import { simplifyBounds } from "./map-explorer-helpers";
 
@@ -75,12 +76,8 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
   const clusters = clustersData?.features ?? [];
 
-  // Reset user panning state when filters change (using a stable key to avoid serializing the full object twice)
-  const filterKey = `${filters.catalog}|${filters.datasets.join(",")}|${filters.startDate}|${filters.endDate}|${Object.entries(
-    filters.fieldFilters
-  )
-    .map(([k, v]) => `${k}:${v.join(",")}`)
-    .join(";")}`;
+  // Reset user panning state when filters change
+  const filterKey = serializeFilterKey(filters);
   const prevFilterKeyRef = useRef(filterKey);
   useEffect(() => {
     if (prevFilterKeyRef.current !== filterKey) {

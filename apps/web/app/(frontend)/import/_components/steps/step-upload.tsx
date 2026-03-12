@@ -22,10 +22,11 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/lib/hooks/use-import-wizard-mutations";
 import type { UrlAuthConfig } from "@/lib/types/import-wizard";
+import { formatFileSize } from "@/lib/utils/format";
 
 import { useWizard } from "../wizard-context";
 
@@ -47,14 +48,8 @@ const ACCEPTED_TYPES = [
 type InputMode = "file" | "url";
 
 export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
-  const { state, setFile, setSourceUrl, clearFile, nextStep, setNavigationConfig } = useWizard();
+  const { state, setFile, setSourceUrl, clearFile } = useWizard();
   const { file, sheets, sourceUrl } = state;
-
-  // Configure navigation for this step
-  useEffect(() => {
-    setNavigationConfig({ onNext: () => nextStep() });
-    return () => setNavigationConfig({});
-  }, [setNavigationConfig, nextStep]);
 
   // Input mode - file upload or URL
   const [inputMode, setInputMode] = useState<InputMode>(sourceUrl ? "url" : "file");
@@ -196,12 +191,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     setError(null);
     setUrlInput("");
   }, [clearFile]);
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
 
   // Render the file upload area
   const renderFileUpload = () => (

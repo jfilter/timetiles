@@ -124,17 +124,7 @@ export const getExportDownloadUrl = (exportId: number): string => {
   return `/api/data-exports/${exportId}/download`;
 };
 
-/**
- * Format file size in human-readable format.
- */
-export const formatFileSize = (bytes: number | null | undefined): string => {
-  if (!bytes) return "Unknown size";
-
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-};
+export { formatFileSize } from "../utils/format";
 
 /**
  * Format date in a user-friendly way.

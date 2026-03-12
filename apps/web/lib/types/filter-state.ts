@@ -94,3 +94,21 @@ export const clearAllFilters = (): FilterState => ({
   endDate: null,
   fieldFilters: {},
 });
+
+/**
+ * Derive a stable string key from the current filter state.
+ *
+ * Used to detect filter changes without deep-comparing objects.
+ * Automatically includes every {@link FilterState} field so that
+ * adding a new field cannot be silently forgotten.
+ */
+export const serializeFilterKey = (filters: FilterState): string =>
+  JSON.stringify(filters, (_, value: unknown) => {
+    // Sort object keys so the output is deterministic regardless of insertion order
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
+      );
+    }
+    return value;
+  });

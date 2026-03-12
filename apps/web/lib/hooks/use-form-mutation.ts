@@ -2,8 +2,8 @@
  * Combined form mutation hook that merges React Query mutation with
  * form-specific status tracking.
  *
- * Replaces the pattern of `useFormSubmission` + `useMutation` to
- * eliminate double state tracking.
+ * Wraps React Query `useMutation` with form-specific status tracking
+ * to eliminate manual loading/error/success state management.
  *
  * @module
  * @category Hooks

@@ -29,6 +29,7 @@ import {
 import { useCallback, useEffect } from "react";
 
 import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutations";
+import { formatFileSize } from "@/lib/utils/format";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
 import type { ScheduleConfig } from "../wizard-context";
@@ -202,12 +203,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     });
     return () => setNavigationConfig({});
   }, [setNavigationConfig, handleStartImport, configureMutation.isPending]);
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
 
   // Get catalog and dataset names for display
   const catalogName = selectedCatalogId === "new" ? newCatalogName : `Catalog #${selectedCatalogId}`;
