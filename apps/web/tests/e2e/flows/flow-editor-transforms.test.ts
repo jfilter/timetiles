@@ -331,14 +331,12 @@ test.describe("Flow Editor Transforms", () => {
 
     // Find events from this import (they should have uppercase titles in their data)
     const uppercasedEvents = events.filter(
-      (e) => typeof e.data?.title === "string" && e.data.title === (e.data.title as string).toUpperCase()
+      (e) => typeof e.data?.title === "string" && e.data.title === e.data.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBeGreaterThan(0);
 
     // Verify specific title is uppercased (from valid-events.csv)
-    const techEvent = events.find(
-      (e) => typeof e.data?.title === "string" && (e.data.title as string).includes("TECH CONFERENCE")
-    );
+    const techEvent = events.find((e) => typeof e.data?.title === "string" && e.data.title.includes("TECH CONFERENCE"));
     expect(techEvent).toBeDefined();
     expect(techEvent!.data.title).toBe("TECH CONFERENCE 2024");
   });

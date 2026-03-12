@@ -278,7 +278,6 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
   );
 
   // Convert flow state to FieldMapping + ImportTransforms
-  // eslint-disable-next-line sonarjs/max-lines-per-function -- Serialization logic for both direct mappings and transform chains
   const serializeFlowState = useCallback((): FlowEditorResult => {
     const mapping: FieldMapping = {
       sheetIndex,

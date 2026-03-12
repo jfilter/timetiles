@@ -13,8 +13,8 @@ import type { LanguageDetectionResult } from "@/lib/services/schema-builder/lang
 
 import type { ImportTransform } from "./import-transforms";
 
-export type { LanguageDetectionResult } from "@/lib/services/schema-builder/language-detection";
 export type { ImportTransform } from "./import-transforms";
+export type { LanguageDetectionResult } from "@/lib/services/schema-builder/language-detection";
 
 /** Confidence level for a field mapping suggestion */
 export type ConfidenceLevel = "high" | "medium" | "low" | "none";
