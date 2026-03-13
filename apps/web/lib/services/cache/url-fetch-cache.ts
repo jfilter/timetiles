@@ -304,12 +304,13 @@ export class UrlFetchCache {
     const { timeout, ...rest } = options ?? {};
 
     // Wrap the real work so we can apply a timeout uniformly
-    if (timeout) {
+    if (timeout && timeout > 0) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      // Merge the abort signal into the options forwarded to internal fetch calls
-      const optionsWithSignal: typeof rest = { ...rest, signal: controller.signal };
+      // Combine timeout signal with any caller-provided signal
+      const signals = [controller.signal, rest.signal].filter(Boolean) as AbortSignal[];
+      const optionsWithSignal: typeof rest = { ...rest, signal: AbortSignal.any(signals) };
 
       try {
         return await this.fetchInner(url, optionsWithSignal);
