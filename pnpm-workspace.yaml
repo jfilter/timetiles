@@ -25,5 +25,5 @@ catalog:
   echarts: ^6.0.0
   echarts-for-react: ^3.0.6
   # Shared libraries
-  lucide-react: ^0.576.0
+  lucide-react: ^0.577.0
   franc: ^6.2.0
