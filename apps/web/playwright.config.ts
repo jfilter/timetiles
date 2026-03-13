@@ -37,7 +37,11 @@ export default defineConfig({
   workers: 4,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [["list"], ["json", { outputFile: "test-results/results.json" }]],
+  reporter: [
+    ["list"],
+    ["json", { outputFile: "test-results/results.json" }],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
+  ],
 
   /* Explicit output directory for test artifacts */
   outputDir: "./test-results",

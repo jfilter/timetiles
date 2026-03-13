@@ -257,35 +257,25 @@ else
 	pnpm --filter web test:e2e
 endif
 
-# Download and view E2E test artifacts (traces, screenshots) from latest failed CI run
+# Download and view Playwright HTML report from latest failed CI run
 # Usage: make test-e2e-debug [RUN_ID=<github-actions-run-id>]
 test-e2e-debug:
-	@mkdir -p /tmp/playwright-ci-results
-	@echo "📥 Downloading E2E artifacts from CI..."
+	@rm -rf /tmp/playwright-ci-report
+	@echo "📥 Downloading E2E report from CI..."
 ifdef RUN_ID
-	@gh run download $(RUN_ID) --name playwright-results --dir /tmp/playwright-ci-results 2>/dev/null || \
-		(echo "❌ No playwright-results artifact found for run $(RUN_ID)" && exit 1)
+	@gh run download $(RUN_ID) --name playwright-report --dir /tmp/playwright-ci-report 2>/dev/null || \
+		(echo "❌ No playwright-report artifact found for run $(RUN_ID)" && exit 1)
 else
-	@RUN=$$(gh run list --workflow ci.yml --limit 10 --json databaseId,conclusion --jq '[.[] | select(.conclusion=="failure")][0].databaseId') && \
-		if [ -z "$$RUN" ] || [ "$$RUN" = "null" ]; then echo "❌ No recent failed CI runs found"; exit 1; fi && \
+	@RUN=$$(gh run list --workflow ci.yml --limit 10 --json databaseId,conclusion \
+		--jq '[.[] | select(.conclusion=="failure")][0].databaseId') && \
+		if [ -z "$$RUN" ] || [ "$$RUN" = "null" ]; then \
+			echo "❌ No recent failed CI runs found"; exit 1; fi && \
 		echo "  Using latest failed run: $$RUN" && \
-		gh run download "$$RUN" --name playwright-results --dir /tmp/playwright-ci-results 2>/dev/null || \
-		(echo "❌ No playwright-results artifact found (E2E may have passed)" && exit 1)
+		gh run download "$$RUN" --name playwright-report --dir /tmp/playwright-ci-report 2>/dev/null || \
+		(echo "❌ No playwright-report artifact found" && exit 1)
 endif
-	@echo ""
-	@echo "📋 Failed test screenshots:"
-	@find /tmp/playwright-ci-results -name "*.png" | while read f; do echo "  $$f"; done
-	@echo ""
-	@echo "📋 Available traces:"
-	@find /tmp/playwright-ci-results -name "trace.zip" | while read f; do echo "  $$f"; done
-	@echo ""
-	@TRACE=$$(find /tmp/playwright-ci-results -name "trace.zip" | head -1) && \
-		if [ -n "$$TRACE" ]; then \
-			echo "🔍 Opening first trace in browser..." && \
-			pnpm --filter web exec playwright show-trace "$$TRACE"; \
-		else \
-			echo "No traces found."; \
-		fi
+	@echo "🔍 Opening Playwright report in browser..."
+	@pnpm --filter web exec playwright show-report /tmp/playwright-ci-report
 
 # =============================================================================
 # Deployment Tests
