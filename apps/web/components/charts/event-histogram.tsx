@@ -17,15 +17,15 @@ import { TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 
 import { useChartFilters } from "@/lib/hooks/use-chart-filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
-import type { HistogramData } from "@/lib/hooks/use-events-queries";
 import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
+import type { HistogramBucket } from "@/lib/schemas/events";
 
 import type { BaseChartProps } from "./types";
 
 /** Stable empty array to avoid creating a new reference when histogramData is null. */
-const EMPTY_HISTOGRAM: HistogramData[] = [];
+const EMPTY_HISTOGRAM: HistogramBucket[] = [];
 
 /**
  * Event histogram component with data fetching.

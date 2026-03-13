@@ -202,7 +202,9 @@ export const parseExcelPreview = (filePath: string): SheetInfo[] => {
 
       const obj: Record<string, unknown> = {};
       headerEntries.forEach(({ header, originalIndex }) => {
-        obj[header] = row[originalIndex] ?? null;
+        if (!Object.hasOwn(Object.prototype, header)) {
+          obj[header] = row[originalIndex] ?? null;
+        }
       });
       sampleData.push(obj);
     }

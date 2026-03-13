@@ -18,19 +18,24 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
+import type { AggregateResponse, ClusterStatsResponse, HistogramResponse } from "@/lib/schemas/events";
 import type { Event } from "@/payload-types";
 
 import { fetchJson, HttpError } from "../api/http-error";
 import { createLogger } from "../logger";
 import type { BoundsResponse } from "../types/event-bounds";
 import type { FilterState } from "../types/filter-state";
-import type { BoundsType, SimpleBounds, ViewScope } from "../utils/event-params";
+import type { BoundsType, ViewScope } from "../utils/event-params";
 import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 import { QUERY_PRESETS } from "./query-presets";
 
 const logger = createLogger("EventsQueries");
 
 // Types for API responses
+
+/**
+ * Client-side events list response (flattened from API pagination shape).
+ */
 export interface EventsListResponse {
   events: Event[];
   total: number;
@@ -40,52 +45,12 @@ export interface EventsListResponse {
   hasPrevPage: boolean;
 }
 
+/**
+ * Client-side map clusters response (subset of API GeoJSON FeatureCollection).
+ */
 export interface MapClustersResponse {
   features: ClusterFeature[];
 }
-
-export interface HistogramData {
-  date: string; // Bucket start timestamp (ISO 8601)
-  dateEnd: string; // Bucket end timestamp (ISO 8601)
-  count: number;
-}
-
-export interface HistogramResponse {
-  histogram: HistogramData[];
-  metadata: {
-    total: number;
-    dateRange: { min: string | null; max: string | null };
-    bucketSizeSeconds: number | null;
-    bucketCount: number;
-    counts: { datasets: number; catalogs: number };
-    topDatasets: Array<unknown>;
-    topCatalogs: Array<unknown>;
-  };
-}
-
-export interface AggregationItem {
-  id: number | string;
-  name: string;
-  count: number;
-}
-
-export interface AggregationResponse {
-  items: AggregationItem[];
-  total: number;
-  groupedBy: string;
-}
-
-export interface ClusterStatsResponse {
-  p20: number;
-  p40: number;
-  p60: number;
-  p80: number;
-  p100: number;
-}
-
-// Re-export types for consumers of this module
-export type { BoundsResponse } from "../types/event-bounds";
-export type { BoundsType, SimpleBounds, ViewScope };
 
 // Typed API response matching the actual /api/v1/events shape
 interface EventsApiPagination {
@@ -315,13 +280,13 @@ const fetchAggregation = async (
   groupBy: "catalog" | "dataset",
   signal?: AbortSignal,
   scope?: ViewScope
-): Promise<AggregationResponse> => {
+): Promise<AggregateResponse> => {
   const params = buildEventParams(filters, bounds, { groupBy }, scope);
   const url = `/api/v1/events/stats?${params.toString()}`;
 
   logger.debug("Fetching aggregation", { env: process.env.NODE_ENV, groupBy });
 
-  return fetchJson<AggregationResponse>(url, { signal });
+  return fetchJson<AggregateResponse>(url, { signal });
 };
 
 // Unified aggregation query hook

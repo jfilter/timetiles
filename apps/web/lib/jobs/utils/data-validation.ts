@@ -10,7 +10,12 @@
  */
 import type { createJobLogger } from "@/lib/logger";
 
-import { getObjectProperty } from "./data-parsing";
+const getObjectProperty = (obj: Record<string, unknown>, key: string): unknown => {
+  if (typeof key == "string" && Object.hasOwn(obj, key)) {
+    return obj[key];
+  }
+  return undefined;
+};
 
 export const validateRequiredFields = (
   parsedData: Record<string, unknown>[],

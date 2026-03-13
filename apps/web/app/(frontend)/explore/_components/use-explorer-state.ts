@@ -30,7 +30,6 @@ interface UseExplorerStateOptions {
   onMapPositionChange?: (center: { lng: number; lat: number }, zoom: number) => void;
 }
 
-// eslint-disable-next-line sonarjs/max-lines-per-function -- Hook consolidates shared explorer state/queries/callbacks
 export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const [mapZoom, setMapZoom] = useState(9);
   const [hasUserPanned, setHasUserPanned] = useState(false);

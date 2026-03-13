@@ -27,8 +27,8 @@ import Map, {
 } from "react-map-gl/maplibre";
 
 import { type ClusterStats, MAP_STYLES } from "@/lib/constants/map";
-import type { SimpleBounds } from "@/lib/hooks/use-events-queries";
 import { useTheme } from "@/lib/hooks/use-theme";
+import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import {
   buildClusterLayerConfig,

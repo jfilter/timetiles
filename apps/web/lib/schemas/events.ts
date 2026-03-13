@@ -103,6 +103,8 @@ export const AggregationItemSchema = z
   .object({ id: z.union([z.number(), z.string()]), name: z.string(), count: z.number().int() })
   .openapi("AggregationItem");
 
+export type AggregationItem = z.infer<typeof AggregationItemSchema>;
+
 /**
  * Response for GET /api/events/aggregate
  */
@@ -137,6 +139,8 @@ export const HistogramBucketSchema = z
     count: z.number().int(),
   })
   .openapi("HistogramBucket");
+
+export type HistogramBucket = z.infer<typeof HistogramBucketSchema>;
 
 /**
  * Response for GET /api/events/histogram

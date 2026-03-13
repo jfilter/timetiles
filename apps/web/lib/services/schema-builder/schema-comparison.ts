@@ -208,11 +208,6 @@ export const compareSchemas = (
     changes,
   };
 
-  // Debug check for test environment
-  if (process.env.NODE_ENV === "test" && Object.keys(context.oldProps).length === 0 && oldSchema.properties) {
-    // oldProps is empty but oldSchema.properties exists - this shouldn't happen
-  }
-
   // Run all detection phases
   const removedBreaking = detectRemovedFields(context);
   const addedBreaking = detectAddedFields(context);
@@ -257,47 +252,6 @@ const getFieldType = (prop: unknown): string => {
   }
 
   return "unknown";
-};
-
-/**
- * Generates a human-readable summary of schema changes.
- */
-export const generateChangeSummary = (comparison: SchemaComparison): string => {
-  const lines: string[] = [];
-
-  if (comparison.changes.length === 0) {
-    return "No schema changes detected";
-  }
-
-  lines.push(
-    `Schema Changes Summary:`,
-    `- Total changes: ${comparison.changes.length}`,
-    `- Breaking changes: ${comparison.isBreaking ? "Yes" : "No"}`,
-    `- Requires approval: ${comparison.requiresApproval ? "Yes" : "No"}`,
-    `- Can auto-approve: ${comparison.canAutoApprove ? "Yes" : "No"}`
-  );
-
-  const breakingChanges = comparison.changes.filter((c) => c.severity === "error");
-  if (breakingChanges.length > 0) {
-    lines.push("", "Breaking Changes:");
-    for (const change of breakingChanges) {
-      const details = change.details as { description?: string };
-      const fallback = change.type + " at " + change.path;
-      lines.push(`  - ${details.description ?? fallback}`);
-    }
-  }
-
-  const nonBreaking = comparison.changes.filter((c) => c.severity !== "error");
-  if (nonBreaking.length > 0) {
-    lines.push("", "Non-Breaking Changes:");
-    for (const change of nonBreaking) {
-      const details = change.details as { description?: string };
-      const fallback = change.type + " at " + change.path;
-      lines.push(`  - ${details.description ?? fallback}`);
-    }
-  }
-
-  return lines.join("\n");
 };
 
 /**

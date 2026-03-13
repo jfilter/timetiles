@@ -1,8 +1,8 @@
 /**
  * React Query hooks for authentication operations.
  *
- * Provides typed mutations for login, registration, forgot-password,
- * and reset-password, plus a query for the current user session.
+ * Provides request functions and React Query mutations for authentication
+ * operations, plus a query for the current user session.
  *
  * @module
  * @category Hooks
@@ -116,8 +116,6 @@ export const loginRequest = async (input: LoginInput): Promise<LoginResponse> =>
   throw new Error(message);
 };
 
-export const useLoginMutation = () => useMutation({ mutationFn: loginRequest });
-
 /**
  * Register a new user via `/api/auth/register`.
  *
@@ -142,8 +140,6 @@ export const registerRequest = async (input: RegisterInput): Promise<RegisterRes
   return data;
 };
 
-export const useRegisterMutation = () => useMutation({ mutationFn: registerRequest });
-
 /**
  * Request a password-reset email via Payload CMS `/api/users/forgot-password`.
  *
@@ -158,8 +154,6 @@ export const forgotPasswordRequest = async (input: ForgotPasswordInput): Promise
   // Always succeed regardless of response to prevent email enumeration
 };
 
-export const useForgotPasswordMutation = () => useMutation({ mutationFn: forgotPasswordRequest });
-
 /**
  * Reset password via Payload CMS `/api/users/reset-password`.
  */
@@ -169,8 +163,6 @@ export const resetPasswordRequest = (input: ResetPasswordInput): Promise<void> =
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-
-export const useResetPasswordMutation = () => useMutation({ mutationFn: resetPasswordRequest });
 
 /**
  * Logout via Payload CMS `/api/users/logout`.

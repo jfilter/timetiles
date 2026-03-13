@@ -12,7 +12,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { Check, Key, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
+import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
 import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 
@@ -22,13 +22,7 @@ export const ChangePasswordForm = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const { status, error, isLoading, mutate, reset } = useFormMutation({
     mutationFn: async (input: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
-      if (input.newPassword.length < MIN_PASSWORD_LENGTH) {
-        throw new Error(`New password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-      }
-
-      if (input.newPassword !== input.confirmPassword) {
-        throw new Error("New passwords do not match");
-      }
+      validatePasswords(input.newPassword, input.confirmPassword);
 
       return changePasswordRequest({ currentPassword: input.currentPassword, newPassword: input.newPassword });
     },

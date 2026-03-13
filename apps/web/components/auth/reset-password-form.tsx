@@ -13,7 +13,7 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback } from "react";
 
-import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
+import { validatePasswords } from "@/lib/constants/validation";
 import { resetPasswordRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
@@ -32,13 +32,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isLoading, mutate } = useFormMutation({
     mutationFn: async (input: { token: string; password: string; confirmPassword: string }) => {
-      if (input.password !== input.confirmPassword) {
-        throw new Error("Passwords do not match");
-      }
-
-      if (input.password.length < MIN_PASSWORD_LENGTH) {
-        throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-      }
+      validatePasswords(input.password, input.confirmPassword);
 
       return resetPasswordRequest({ token: input.token, password: input.password });
     },

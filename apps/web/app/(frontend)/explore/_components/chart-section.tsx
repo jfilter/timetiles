@@ -15,8 +15,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { EventHistogram } from "@/components/charts/event-histogram";
-import type { SimpleBounds } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
+import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { type ChartMeta, type ChartType, VisualizationPanel } from "./visualization-panel";
 

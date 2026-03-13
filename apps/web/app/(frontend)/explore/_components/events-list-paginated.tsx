@@ -13,9 +13,10 @@ import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
-import { type SimpleBounds, useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
+import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
+import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { EventsList } from "./events-list";
 import { EventsListSkeleton } from "./events-list-skeleton";

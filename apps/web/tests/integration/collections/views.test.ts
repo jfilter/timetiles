@@ -11,13 +11,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { clearSiteCache } from "@/lib/services/site-resolver";
-import {
-  clearViewCache,
-  findDefaultView,
-  findViewBySlug,
-  getViewDataScopeFilter,
-  resolveView,
-} from "@/lib/services/view-resolver";
+import { clearViewCache, findDefaultView, findViewBySlug, resolveView } from "@/lib/services/view-resolver";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Site, User, View } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
@@ -367,32 +361,6 @@ describe.sequential("Views Collection", () => {
 
       const view = await resolveView(payload, testSite.id);
       expect(view?.id).toBe(testView.id);
-    });
-  });
-
-  describe("Data Scope Filter", () => {
-    it("should return empty filter for mode=all", () => {
-      const filter = getViewDataScopeFilter({ dataScope: { mode: "all" } } as View);
-      expect(filter).toEqual({});
-    });
-
-    it("should return catalog IDs for mode=catalogs", () => {
-      const filter = getViewDataScopeFilter({
-        dataScope: { mode: "catalogs", catalogs: [{ id: 1 }, { id: 2 }] },
-      } as unknown as View);
-      expect(filter.catalogIds).toEqual([1, 2]);
-    });
-
-    it("should return dataset IDs for mode=datasets", () => {
-      const filter = getViewDataScopeFilter({
-        dataScope: { mode: "datasets", datasets: [{ id: 10 }, { id: 20 }] },
-      } as unknown as View);
-      expect(filter.datasetIds).toEqual([10, 20]);
-    });
-
-    it("should handle null view", () => {
-      const filter = getViewDataScopeFilter(null);
-      expect(filter).toEqual({});
     });
   });
 });

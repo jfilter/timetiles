@@ -9,8 +9,8 @@ import type { Feature } from "geojson";
 import type { MapRef } from "react-map-gl/maplibre";
 
 import { type ClusterStats, DEFAULT_CLUSTER_STATS, ensureAscendingPercentiles } from "@/lib/constants/map";
-import type { SimpleBounds } from "@/lib/hooks/use-events-queries";
 import { createLogger } from "@/lib/logger";
+import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import type { ClusterFeature } from "./clustered-map";
 

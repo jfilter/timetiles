@@ -13,7 +13,7 @@ import { useMemo } from "react";
 
 import { useViewOptional } from "@/lib/context/view-context";
 
-import type { ViewScope } from "./use-events-queries";
+import type { ViewScope } from "../utils/event-params";
 
 /**
  * Derives a ViewScope from the active view context.

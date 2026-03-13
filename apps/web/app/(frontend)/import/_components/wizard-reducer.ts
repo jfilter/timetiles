@@ -126,15 +126,19 @@ export type WizardAction =
   | { type: "RESET" }
   | { type: "RESTORE"; state: Partial<WizardState> };
 
-// Step titles
-export const STEP_TITLES: Record<WizardStep, string> = {
-  1: "Sign In",
-  2: "Upload File",
-  3: "Select Dataset",
-  4: "Map Fields",
-  5: "Review",
-  6: "Processing",
-};
+// Step definitions — single source of truth for titles and labels
+export const WIZARD_STEPS: ReadonlyArray<{ step: WizardStep; title: string; label: string; shortLabel: string }> = [
+  { step: 1, title: "Sign In", label: "Sign In", shortLabel: "Auth" },
+  { step: 2, title: "Upload File", label: "Upload", shortLabel: "Upload" },
+  { step: 3, title: "Select Dataset", label: "Dataset", shortLabel: "Dataset" },
+  { step: 4, title: "Map Fields", label: "Mapping", shortLabel: "Map" },
+  { step: 5, title: "Review", label: "Review", shortLabel: "Review" },
+  { step: 6, title: "Processing", label: "Import", shortLabel: "Import" },
+];
+
+export const STEP_TITLES: Record<WizardStep, string> = Object.fromEntries(
+  WIZARD_STEPS.map((s) => [s.step, s.title])
+) as Record<WizardStep, string>;
 
 // Reducer
 /* oxlint-disable complexity -- Complex reducer with many action types */

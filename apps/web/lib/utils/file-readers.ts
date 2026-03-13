@@ -138,7 +138,7 @@ const readBatchFromExcel = (
 
     const obj: Record<string, unknown> = {};
     headers.forEach((header, index) => {
-      if (header) {
+      if (header && !Object.hasOwn(Object.prototype, header)) {
         obj[header] = row[index] ?? null;
       }
     });

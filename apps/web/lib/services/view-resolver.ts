@@ -61,35 +61,3 @@ export const resolveView = async (payload: Payload, siteId?: number, slug?: stri
 export const clearViewCache = (): void => {
   resolver.clearCache();
 };
-
-/**
- * Gets the data scope filter for a view.
- * Returns filter constraints for catalogs/datasets based on view configuration.
- */
-export const getViewDataScopeFilter = (view: View | null): { catalogIds?: number[]; datasetIds?: number[] } => {
-  if (!view?.dataScope) {
-    return {};
-  }
-
-  const { mode, catalogs, datasets } = view.dataScope;
-
-  switch (mode) {
-    case "catalogs":
-      if (catalogs && catalogs.length > 0) {
-        const catalogIds = catalogs.map((c) => (typeof c === "number" ? c : c.id));
-        return { catalogIds };
-      }
-      return {};
-
-    case "datasets":
-      if (datasets && datasets.length > 0) {
-        const datasetIds = datasets.map((d) => (typeof d === "number" ? d : d.id));
-        return { datasetIds };
-      }
-      return {};
-
-    case "all":
-    default:
-      return {};
-  }
-};

@@ -13,16 +13,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { CheckIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
-import { useWizard, type WizardStep } from "./wizard-context";
-
-const ALL_STEPS: Array<{ step: WizardStep; label: string; shortLabel: string }> = [
-  { step: 1, label: "Sign In", shortLabel: "Auth" },
-  { step: 2, label: "Upload", shortLabel: "Upload" },
-  { step: 3, label: "Dataset", shortLabel: "Dataset" },
-  { step: 4, label: "Mapping", shortLabel: "Map" },
-  { step: 5, label: "Review", shortLabel: "Review" },
-  { step: 6, label: "Import", shortLabel: "Import" },
-];
+import { useWizard } from "./wizard-context";
+import { WIZARD_STEPS, type WizardStep } from "./wizard-reducer";
 
 export interface WizardProgressProps {
   className?: string;
@@ -79,7 +71,7 @@ export const WizardProgress = ({ className }: Readonly<WizardProgressProps>) => 
   // (not if they logged in during the wizard flow)
   const skipAuthStep = startedAuthenticated;
   const visibleSteps = useMemo(
-    () => (skipAuthStep ? ALL_STEPS.filter((s) => s.step !== 1) : ALL_STEPS),
+    () => (skipAuthStep ? WIZARD_STEPS.filter((s) => s.step !== 1) : WIZARD_STEPS),
     [skipAuthStep]
   );
 

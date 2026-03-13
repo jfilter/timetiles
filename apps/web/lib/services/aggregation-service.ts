@@ -13,24 +13,7 @@ import type { Payload } from "payload";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
-
-/**
- * Aggregated item in response.
- */
-export interface AggregationItem {
-  id: number | string;
-  name: string;
-  count: number;
-}
-
-/**
- * Response format for aggregation endpoint.
- */
-export interface AggregationResponse {
-  items: AggregationItem[];
-  total: number;
-  groupedBy: string;
-}
+import type { AggregateResponse, AggregationItem } from "@/lib/schemas/events";
 
 /**
  * Supported groupBy field types.
@@ -51,7 +34,7 @@ export const executeAggregationQuery = async (
   groupBy: GroupByField,
   filters: CanonicalEventFilters,
   accessibleCatalogIds: number[]
-): Promise<AggregationResponse> => {
+): Promise<AggregateResponse> => {
   // Build WHERE clause from canonical filters
   const whereClause = toSqlWhereClause(filters);
 

@@ -19,7 +19,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { Lock, Mail } from "lucide-react";
 import { useCallback } from "react";
 
-import { MIN_PASSWORD_LENGTH } from "@/lib/constants/validation";
+import { validatePasswords } from "@/lib/constants/validation";
 import { registerRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
 import { useFormMutation } from "@/lib/hooks/use-form-mutation";
@@ -41,13 +41,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isLoading, mutate } = useFormMutation({
     mutationFn: async (input: { email: string; password: string; confirmPassword: string }) => {
-      if (input.password !== input.confirmPassword) {
-        throw new Error("Passwords do not match");
-      }
-
-      if (input.password.length < MIN_PASSWORD_LENGTH) {
-        throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
-      }
+      validatePasswords(input.password, input.confirmPassword);
 
       return registerRequest({ email: input.email, password: input.password });
     },

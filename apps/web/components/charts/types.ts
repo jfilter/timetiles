@@ -7,7 +7,7 @@
  * @module
  * @category Components
  */
-import type { SimpleBounds } from "@/lib/hooks/use-events-queries";
+import type { SimpleBounds } from "@/lib/utils/event-params";
 
 /**
  * Common props for all chart components.
