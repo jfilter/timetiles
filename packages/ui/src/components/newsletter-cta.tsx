@@ -53,6 +53,8 @@ export interface NewsletterCTAProps extends VariantProps<typeof newsletterCtaVar
   additionalData?: Record<string, unknown>;
   /** Additional CSS classes */
   className?: string;
+  /** Custom submission handler; delegates to this instead of built-in fetch when provided */
+  onSubmit?: (email: string, additionalData?: Record<string, unknown>) => Promise<void>;
 }
 
 const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
@@ -66,12 +68,14 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
       buttonText = "Subscribe to Updates",
       additionalData,
       className,
+      onSubmit,
     },
     ref
   ) => {
     const { email, setEmail, status, message, handleSubmit } = useNewsletterSubscription({
       resetDelay: 8000,
       additionalData,
+      onSubmit,
     });
 
     return (

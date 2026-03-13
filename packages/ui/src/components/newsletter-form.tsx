@@ -36,6 +36,8 @@ export interface NewsletterFormProps {
   additionalData?: Record<string, unknown>;
   /** Additional CSS classes */
   className?: string;
+  /** Custom submission handler; delegates to this instead of built-in fetch when provided */
+  onSubmit?: (email: string, additionalData?: Record<string, unknown>) => Promise<void>;
 }
 
 const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
@@ -46,12 +48,14 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
       buttonText = "Subscribe",
       additionalData,
       className,
+      onSubmit,
     },
     ref
   ) => {
     const { email, setEmail, status, message, handleSubmit } = useNewsletterSubscription({
       resetDelay: 5000,
       additionalData,
+      onSubmit,
     });
 
     return (

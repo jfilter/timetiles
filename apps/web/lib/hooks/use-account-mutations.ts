@@ -106,8 +106,6 @@ export const changeEmailRequest = (input: ChangeEmailInput): Promise<ChangeEmail
     body: JSON.stringify(input),
   });
 
-export const useChangeEmailMutation = () => useMutation({ mutationFn: changeEmailRequest });
-
 /**
  * Change the current user's password via `/api/users/change-password`.
  */
@@ -118,8 +116,6 @@ export const changePasswordRequest = (input: ChangePasswordInput): Promise<Chang
     credentials: "include",
     body: JSON.stringify(input),
   });
-
-export const useChangePasswordMutation = () => useMutation({ mutationFn: changePasswordRequest });
 
 /**
  * Cancel a pending account deletion via `/api/users/cancel-deletion`.

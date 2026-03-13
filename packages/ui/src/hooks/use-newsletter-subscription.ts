@@ -3,8 +3,10 @@
 /**
  * Shared newsletter subscription state machine.
  *
- * Handles email input, POST to /api/newsletter/subscribe, status transitions,
- * and auto-reset with proper timer cleanup.
+ * Handles email input, status transitions, and auto-reset with proper timer
+ * cleanup. Accepts an optional `onSubmit` handler so the consuming app can
+ * control how the subscription request is made. When `onSubmit` is omitted the
+ * hook falls back to a built-in `fetch("/api/newsletter/subscribe")` call.
  *
  * @module
  * @category Hooks
@@ -16,6 +18,13 @@ type SubmitStatus = "idle" | "loading" | "success" | "error";
 interface UseNewsletterSubscriptionConfig {
   resetDelay?: number;
   additionalData?: Record<string, unknown>;
+  /**
+   * Custom submission handler. When provided, the hook delegates to this
+   * function instead of the built-in fetch. The handler receives the email
+   * and optional additional data, and should throw on failure so the hook's
+   * error handling can display the message.
+   */
+  onSubmit?: (email: string, additionalData?: Record<string, unknown>) => Promise<void>;
 }
 
 interface UseNewsletterSubscriptionReturn {
@@ -29,6 +38,7 @@ interface UseNewsletterSubscriptionReturn {
 export const useNewsletterSubscription = ({
   resetDelay = 5000,
   additionalData,
+  onSubmit,
 }: UseNewsletterSubscriptionConfig = {}): UseNewsletterSubscriptionReturn => {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<SubmitStatus>("idle");
@@ -53,22 +63,25 @@ export const useNewsletterSubscription = ({
       setMessage("");
 
       try {
-        const response = await fetch("/api/newsletter/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, ...additionalData }),
-        });
-
-        const data = (await response.json()) as { error?: string };
-
-        if (response.ok) {
-          setStatus("success");
-          setMessage("Successfully subscribed!");
-          setEmail("");
+        if (onSubmit) {
+          await onSubmit(email, additionalData);
         } else {
-          setStatus("error");
-          setMessage(data.error ?? "Subscription failed. Please try again.");
+          const response = await fetch("/api/newsletter/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, ...additionalData }),
+          });
+
+          const data = (await response.json()) as { error?: string };
+
+          if (!response.ok) {
+            throw new Error(data.error ?? "Subscription failed. Please try again.");
+          }
         }
+
+        setStatus("success");
+        setMessage("Successfully subscribed!");
+        setEmail("");
       } catch (error) {
         setStatus("error");
         const errorMessage = error instanceof Error ? error.message : "Network error. Please try again.";
@@ -83,7 +96,7 @@ export const useNewsletterSubscription = ({
         setMessage("");
       }, resetDelay);
     },
-    [email, additionalData, resetDelay]
+    [email, additionalData, resetDelay, onSubmit]
   );
 
   return { email, setEmail, status, message, handleSubmit };

@@ -65,6 +65,18 @@ import type {
 import { IconMapper } from "./icon-mapper";
 import { RichText } from "./layout/rich-text";
 
+const newsletterSubmit = async (email: string, additionalData?: Record<string, unknown>) => {
+  const res = await fetch("/api/newsletter/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, ...additionalData }),
+  });
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string };
+    throw new Error(data.error ?? "Subscription failed.");
+  }
+};
+
 const renderHero = (block: HeroBlock, key: string) => {
   const heroBackground = block.background === "gradient" ? "grid" : (block.background ?? "grid");
   return (
@@ -230,6 +242,7 @@ const blockRenderers: Record<string, (block: Block, key: string) => React.ReactE
           headline={b.headline ?? undefined}
           placeholder={b.placeholder ?? undefined}
           buttonText={b.buttonText ?? undefined}
+          onSubmit={newsletterSubmit}
         />
       </div>
     );
@@ -245,6 +258,7 @@ const blockRenderers: Record<string, (block: Block, key: string) => React.ReactE
         buttonText={b.buttonText ?? undefined}
         variant={b.variant ?? undefined}
         size={b.size ?? undefined}
+        onSubmit={newsletterSubmit}
       />
     );
   },

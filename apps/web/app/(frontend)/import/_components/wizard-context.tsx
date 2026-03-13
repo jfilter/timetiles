@@ -8,6 +8,38 @@
  * @module
  * @category Components
  */
+
+/*
+ * THREE-LAYER PERSISTENCE ARCHITECTURE
+ *
+ * The wizard persists state across three independent channels, each serving a
+ * distinct purpose:
+ *
+ * 1. localStorage (24h TTL, debounced 500ms)
+ *    Draft recovery after browser crash or accidental navigation away. Saves
+ *    the full wizard state so users don't lose work.
+ *    - Auth state is NEVER restored from localStorage to prevent cached
+ *      `isAuthenticated: true` surviving across accounts after logout.
+ *    - State is NOT saved during step 6 (processing) to avoid persisting
+ *      transient processing state.
+ *
+ * 2. sessionStorage (5min TTL, one-shot)
+ *    Transfers field-mapping JSON from the flow editor back to the wizard.
+ *    The payload is too large for URL params. Retrieved once on mount and
+ *    immediately deleted to prevent stale re-reads.
+ *
+ * 3. URL params (?step=N&mappingKey=KEY)
+ *    Coordinates flow-editor -> wizard return. Tells the wizard which step
+ *    to jump to and which sessionStorage key holds the mapping data.
+ *    Cleaned up immediately after reading to prevent re-application on
+ *    subsequent re-renders.
+ *
+ * Other key design decisions:
+ * - `startedAuthenticated` flag prevents hiding the auth step when a user
+ *   logs out mid-import.
+ * - Preview validation continuously checks if the uploaded file still exists
+ *   (files are auto-deleted after 24h); resets to step 2 if the file is gone.
+ */
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
