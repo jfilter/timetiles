@@ -63,7 +63,9 @@ export const triggerScheduledImport = async (
 ): Promise<{ jobId: number }> => {
   const importName = generateImportName(scheduledImport, currentTime);
 
-  // CRITICAL: Set status to "running" BEFORE queuing job
+  // Set status to "running" before queuing to prevent overlapping triggers.
+  // For webhooks, the route already claimed "running" atomically via SQL,
+  // so this is a no-op. For the schedule manager, this is the guard.
   await payload.update({
     collection: "scheduled-imports",
     id: scheduledImport.id,

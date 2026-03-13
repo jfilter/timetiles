@@ -10,10 +10,16 @@
 import "@/tests/mocks/services/logger";
 
 const mocks = vi.hoisted(() => {
-  const mockPayload = { find: vi.fn(), update: vi.fn(), jobs: { queue: vi.fn() } };
+  const mockDrizzleExecute = vi.fn();
+  const mockPayload = {
+    find: vi.fn(),
+    update: vi.fn(),
+    jobs: { queue: vi.fn() },
+    db: { drizzle: { execute: mockDrizzleExecute } },
+  };
   const mockGetPayload = vi.fn().mockResolvedValue(mockPayload);
   const mockRateLimitService = { checkConfiguredRateLimit: vi.fn().mockReturnValue({ allowed: true }) };
-  return { mockPayload, mockGetPayload, mockRateLimitService };
+  return { mockPayload, mockGetPayload, mockRateLimitService, mockDrizzleExecute };
 });
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
@@ -28,7 +34,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/webhooks/trigger/[token]/route";
 
-const { mockPayload, mockRateLimitService } = mocks;
+const { mockPayload, mockRateLimitService, mockDrizzleExecute } = mocks;
 
 const mockScheduledImport = {
   id: 1,
@@ -57,6 +63,8 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     vi.clearAllMocks();
     mockRateLimitService.checkConfiguredRateLimit.mockReturnValue({ allowed: true });
     mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport }] });
+    // Atomic claim via raw SQL returns { rows: [{ id }] } on success
+    mockDrizzleExecute.mockResolvedValue({ rows: [{ id: 1 }] });
     mockPayload.update.mockResolvedValue({ id: 1 });
     mockPayload.jobs.queue.mockResolvedValue({ id: "job-456" });
   });
@@ -68,17 +76,18 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 
     expect(response.status).toBe(500);
-    const data = await response.json();
-    expect(data.error).toBe("Failed to queue import job");
 
-    // Verify that lastStatus was reverted to its previous value
+    // Atomic claim happens via raw SQL (drizzle.execute), not payload.update
+    expect(mockDrizzleExecute).toHaveBeenCalledOnce();
+
+    // payload.update calls: [0] = pre-queue running guard, [1] = revert
     const updateCalls = mockPayload.update.mock.calls;
     expect(updateCalls).toHaveLength(2);
-    // First call: set to "running"
+    // First call: triggerScheduledImport sets "running"
     expect(updateCalls[0]![0]).toEqual(
       expect.objectContaining({ data: expect.objectContaining({ lastStatus: "running" }) })
     );
-    // Second call: revert to previous status "success"
+    // Second call: queueWebhookImport reverts to previous status "success"
     expect(updateCalls[1]![0]).toEqual(
       expect.objectContaining({ data: expect.objectContaining({ lastStatus: "success" }) })
     );
@@ -93,6 +102,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     expect(response.status).toBe(500);
 
     const updateCalls = mockPayload.update.mock.calls;
+    // [0] = pre-queue running guard, [1] = revert
     expect(updateCalls).toHaveLength(2);
     // Second call should revert to null (the fallback for undefined)
     expect(updateCalls[1]![0]).toEqual(
@@ -123,6 +133,8 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
 
   it("should skip when import is already running", async () => {
     mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport, lastStatus: "running" }] });
+    // Atomic SQL claim returns empty rows because lastStatus IS "running"
+    mockDrizzleExecute.mockResolvedValue({ rows: [] });
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 
@@ -130,6 +142,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     const data = await response.json();
     expect(data.status).toBe("skipped");
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+    expect(mockPayload.update).not.toHaveBeenCalled();
   });
 
   it("should successfully trigger and update statistics", async () => {

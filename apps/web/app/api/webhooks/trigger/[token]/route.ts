@@ -7,6 +7,7 @@
  * @module
  * @category API
  */
+import { sql } from "@payloadcms/db-postgres";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
@@ -85,8 +86,18 @@ export const POST = apiRoute({
       return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
-    // CRITICAL: Check if already running (prevents concurrent executions)
-    if (scheduledImport.lastStatus === "running") {
+    // Atomically claim "running" status via raw SQL to prevent concurrent executions.
+    // Payload's bulk update uses SELECT-then-UPDATE which has a TOCTOU race;
+    // a single UPDATE ... WHERE ... RETURNING is truly atomic.
+    const claimResult = (await payload.db.drizzle.execute(sql`
+      UPDATE payload.scheduled_imports
+      SET last_status = 'running'
+      WHERE id = ${scheduledImport.id}
+        AND (last_status IS NULL OR last_status != 'running')
+      RETURNING id
+    `)) as { rows: Array<{ id: number }> };
+
+    if (claimResult.rows.length === 0) {
       logger.info(
         { scheduledImportId: scheduledImport.id, name: scheduledImport.name },
         "Webhook trigger skipped - import already running"
