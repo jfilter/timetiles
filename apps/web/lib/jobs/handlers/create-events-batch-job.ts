@@ -18,7 +18,7 @@ import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
-import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import { createJobLogger, logError, logPerformance, logger } from "@/lib/logger";
 import { applyTransforms } from "@/lib/services/import-transforms";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { getQuotaService } from "@/lib/services/quota-service";
@@ -223,6 +223,9 @@ const processBatchData = async (
   return { rows, ...result };
 };
 
+/** Maximum number of individual errors stored on an import job. */
+const MAX_STORED_ERRORS = 500;
+
 const updateJobErrors = async (
   payload: Payload,
   importJobId: string | number,
@@ -231,10 +234,19 @@ const updateJobErrors = async (
 ) => {
   if (errors.length === 0) return;
 
+  const existingErrors = job.errors ?? [];
+  if (existingErrors.length >= MAX_STORED_ERRORS) {
+    logger.debug({ importJobId, skipped: errors.length }, "Error details cap reached, skipping storage");
+    return;
+  }
+
+  const remaining = MAX_STORED_ERRORS - existingErrors.length;
+  const errorsToStore = errors.slice(0, remaining);
+
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     id: importJobId,
-    data: { errors: [...(job.errors ?? []), ...errors] },
+    data: { errors: [...existingErrors, ...errorsToStore] },
   });
 };
 

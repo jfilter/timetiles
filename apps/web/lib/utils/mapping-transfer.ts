@@ -23,6 +23,9 @@ interface StoredMapping {
  * Store mapping data in sessionStorage and return a short key.
  */
 export const storeMappingData = (data: { fieldMapping: FieldMapping; transforms: ImportTransform[] }): string => {
+  if (typeof window === "undefined") {
+    throw new Error("storeMappingData can only be called in the browser");
+  }
   const key = `${STORAGE_PREFIX}${Date.now()}`;
   const entry: StoredMapping = { ...data, storedAt: Date.now() };
   sessionStorage.setItem(key, JSON.stringify(entry));
@@ -36,6 +39,8 @@ export const storeMappingData = (data: { fieldMapping: FieldMapping; transforms:
 export const retrieveMappingData = (
   key: string
 ): { fieldMapping: FieldMapping; transforms: ImportTransform[] } | null => {
+  if (typeof window === "undefined") return null;
+
   const raw = sessionStorage.getItem(key);
   if (!raw) return null;
 

@@ -13,8 +13,6 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-import type { ImportTransform } from "@/lib/types/import-transforms";
-import type { FieldMapping } from "@/lib/types/import-wizard";
 import { retrieveMappingData } from "@/lib/utils/mapping-transfer";
 
 import { StepAuth, StepDatasetSelection, StepFieldMapping, StepProcessing, StepReview, StepUpload } from "./steps";
@@ -32,36 +30,17 @@ export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Apply field mappings returned from the visual flow editor
+  // Apply field mappings returned from the visual flow editor via sessionStorage
   useEffect(() => {
     const mappingKey = searchParams.get("mappingKey");
-    const applyMappings = searchParams.get("applyMappings"); // backward compat
+    if (!mappingKey) return;
 
-    const applyData = (data: { fieldMapping: FieldMapping; transforms: ImportTransform[] }) => {
+    const data = retrieveMappingData(mappingKey);
+    if (data) {
       setFieldMapping(data.fieldMapping.sheetIndex, data.fieldMapping);
       if (data.transforms.length > 0) {
         setTransforms(data.fieldMapping.sheetIndex, data.transforms);
       }
-    };
-
-    if (mappingKey) {
-      const data = retrieveMappingData(mappingKey);
-      if (data) applyData(data);
-    } else if (applyMappings) {
-      // Backward compatibility: URL-encoded JSON
-      try {
-        const parsed = JSON.parse(applyMappings);
-        if ("fieldMapping" in parsed && "transforms" in parsed) {
-          applyData(parsed as { fieldMapping: FieldMapping; transforms: ImportTransform[] });
-        } else {
-          const mapping = parsed as FieldMapping;
-          setFieldMapping(mapping.sheetIndex, mapping);
-        }
-      } catch {
-        // Invalid JSON — ignore
-      }
-    } else {
-      return; // No mapping data to apply
     }
 
     const stepParam = searchParams.get("step");
