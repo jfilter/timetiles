@@ -206,6 +206,15 @@ const cleanupFileContent = (filePath: string): void => {
     modified = true;
   }
 
+  // Escape {{...}} template placeholders to prevent MDX JSX interpretation.
+  // TypeDoc comments like "Replaces {{name}}, {{date}}" cause ReferenceError
+  // because MDX evaluates {name} as a JSX expression.
+  const templatePattern = /\{\{([^}]+)\}\}/g;
+  if (templatePattern.test(content)) {
+    content = content.replace(templatePattern, "\\{\\{$1\\}\\}");
+    modified = true;
+  }
+
   // Escape <= and >= symbols in MDX content (outside code blocks)
   // These can cause MDX parsing errors when interpreted as JSX
   const lines = content.split("\n");
