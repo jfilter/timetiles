@@ -206,10 +206,14 @@ export class AccountDeletionService {
 
     logger.info({ userId, deletionScheduledAt: deletionDate.toISOString() }, "Account deletion scheduled");
 
-    // Send confirmation email
-    const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
-    const cancelUrl = `${baseUrl}/account/settings`;
-    await sendDeletionScheduledEmail(this.payload, user.email, user.firstName, deletionDate.toISOString(), cancelUrl);
+    // Send confirmation email — best-effort, state change already succeeded
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+      const cancelUrl = `${baseUrl}/account/settings`;
+      await sendDeletionScheduledEmail(this.payload, user.email, user.firstName, deletionDate.toISOString(), cancelUrl);
+    } catch (error) {
+      logError(error, "Failed to send deletion scheduled email", { userId });
+    }
 
     return { success: true, deletionScheduledAt: deletionDate.toISOString(), summary };
   }
@@ -237,8 +241,12 @@ export class AccountDeletionService {
 
     logger.info({ userId }, "Account deletion cancelled");
 
-    // Send cancellation email
-    await sendDeletionCancelledEmail(this.payload, user.email, user.firstName);
+    // Send cancellation email — best-effort, state change already succeeded
+    try {
+      await sendDeletionCancelledEmail(this.payload, user.email, user.firstName);
+    } catch (error) {
+      logError(error, "Failed to send deletion cancelled email", { userId });
+    }
   }
 
   /**
@@ -286,14 +294,18 @@ export class AccountDeletionService {
       result.success = true;
       logger.info({ userId, result }, "Account deletion completed");
 
-      // Send completion email (to original email before anonymization)
-      await sendDeletionCompletedEmail(
-        this.payload,
-        user.email,
-        user.firstName,
-        result.dataTransferred,
-        result.dataDeleted
-      );
+      // Send completion email — best-effort, deletion already succeeded
+      try {
+        await sendDeletionCompletedEmail(
+          this.payload,
+          user.email,
+          user.firstName,
+          result.dataTransferred,
+          result.dataDeleted
+        );
+      } catch (error) {
+        logError(error, "Failed to send deletion completed email", { userId });
+      }
 
       return result;
     } catch (error) {
