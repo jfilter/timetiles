@@ -99,6 +99,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       find: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn().mockResolvedValue({ docs: [] }),
       count: vi.fn().mockResolvedValue({ totalDocs: 2 }),
       jobs: { queue: vi.fn().mockResolvedValue({}) },
     };
@@ -450,6 +451,117 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         "create-events",
         5 // totalRows from duplicates.summary, NOT uniqueRows
       );
+    });
+
+    it("should not double-count failed rows in batch progress", async () => {
+      const mockImportJob: any = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        sheetIndex: 0,
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 5 } },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
+      const mockImportFile = createMockImportFile();
+
+      // 5 rows in a single batch — the 3rd row (index 2) will fail
+      const mockFileData = [
+        { id: "1", title: "Event 1" },
+        { id: "2", title: "Event 2" },
+        { id: "3", title: "Event 3" },
+        { id: "4", title: "Event 4" },
+        { id: "5", title: "Event 5" },
+      ];
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+      mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      // 3rd call throws, rest succeed
+      mockPayload.create
+        .mockResolvedValueOnce({ id: "event-1" })
+        .mockResolvedValueOnce({ id: "event-2" })
+        .mockRejectedValueOnce(new Error("DB error"))
+        .mockResolvedValueOnce({ id: "event-4" })
+        .mockResolvedValueOnce({ id: "event-5" });
+
+      mockPayload.update.mockResolvedValue({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      const result = await createEventsBatchJob.handler(mockContext);
+
+      // 4 created, 0 skipped (no duplicates), 1 error — no double-counting
+      expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 4, eventsSkipped: 0, errors: 1 } });
+
+      // batchRowsProcessed = eventsCreated + eventsSkipped + errors.length = 4 + 0 + 1 = 5
+      // Before the fix, eventsSkipped was incremented in the catch block too, giving 6
+      expect(mocks.updateStageProgress).toHaveBeenCalledWith(
+        mockPayload,
+        "import-123",
+        "create-events",
+        5, // totalRowsProcessed (rows.length)
+        5 // batchRowsProcessed (4 created + 0 skipped + 1 error = 5, not 6)
+      );
+    });
+  });
+
+  describe("Retry Idempotency", () => {
+    it("should delete events from prior attempt on retry", async () => {
+      const mockImportJob: any = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        sheetIndex: 0,
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
+      const mockImportFile = createMockImportFile();
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
+
+      // First count call (clean-slate check) returns 5 existing events from prior attempt,
+      // subsequent count calls (e.g., markJobCompleted) return 2
+      mockPayload.count.mockResolvedValueOnce({ totalDocs: 5 }).mockResolvedValue({ totalDocs: 2 });
+
+      // Add delete mock for cleaning up prior events
+      mockPayload.delete = vi.fn().mockResolvedValue({ docs: [] });
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1", title: "Event 1" }]]));
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValue({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      const result = await createEventsBatchJob.handler(mockContext);
+
+      // Verify prior events were deleted before streaming began
+      expect(mockPayload.delete).toHaveBeenCalledWith({
+        collection: "events",
+        where: { importJob: { equals: "import-123" } },
+      });
+
+      // Verify the handler continued normally and produced a result
+      expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 1, eventsSkipped: 0, errors: 0 } });
     });
   });
 

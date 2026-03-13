@@ -167,14 +167,14 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         { id: "3", title: "Event 3" },
       ];
 
-      // Setup mocks
+      // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job (4th findByID call)
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockImportFile)
+        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
 
-      // Mock getFileRowCount
-      mocks.getFileRowCount.mockReturnValueOnce(3);
+      // No getFileRowCount call when dedup is enabled — totalRows derived from streaming
 
       // Mock streaming - yields one batch then ends
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
@@ -194,6 +194,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       // Verify result
       expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
+
+      // Verify getFileRowCount was NOT called (dedup enabled skips pre-scan)
+      expect(mocks.getFileRowCount).not.toHaveBeenCalled();
 
       // Verify streaming was called
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith(
@@ -248,13 +251,14 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         { id: "1", title: "Event 1 Again" }, // Duplicate of first row
       ];
 
-      // Setup mocks
+      // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockImportFile)
+        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
 
-      mocks.getFileRowCount.mockReturnValueOnce(3);
+      // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
       mocks.generateUniqueId
@@ -310,13 +314,14 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Mock existing event (external duplicate)
       const mockExistingEvent = { id: "existing-event-123", uniqueId: "dataset-456:ext:1" };
 
-      // Setup mocks
+      // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockImportFile)
+        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
 
-      mocks.getFileRowCount.mockReturnValueOnce(2);
+      // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1").mockReturnValueOnce("dataset-456:ext:2");
@@ -395,7 +400,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.getFileRowCount.mockReturnValueOnce(3);
+      // No getFileRowCount call when dedup is enabled — totalRows derived from streaming
 
       // Mock streaming that throws
       mocks.streamBatchesFromFile.mockReturnValueOnce({
@@ -417,6 +422,62 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
     });
   });
 
+  describe("File Pre-scan Optimization", () => {
+    it("should not pre-scan file when deduplication is enabled", async () => {
+      // Mock import job
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        sheetIndex: 0,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      // Mock dataset with deduplication enabled
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id" },
+      };
+
+      // Mock import file
+      const mockImportFile = createMockImportFile();
+
+      // Mock file data - 3 rows
+      const mockFileData = [
+        { id: "1", title: "Event 1" },
+        { id: "2", title: "Event 2" },
+        { id: "3", title: "Event 3" },
+      ];
+
+      // Setup mocks
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile)
+        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+
+      mocks.generateUniqueId
+        .mockReturnValueOnce("dataset-456:ext:1")
+        .mockReturnValueOnce("dataset-456:ext:2")
+        .mockReturnValueOnce("dataset-456:ext:3");
+
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
+      mockPayload.update.mockResolvedValueOnce({});
+
+      // Execute job
+      const result = await analyzeDuplicatesJob.handler(mockContext);
+
+      // Verify getFileRowCount was NOT called (dedup enabled skips pre-scan)
+      expect(mocks.getFileRowCount).not.toHaveBeenCalled();
+
+      // Verify totalRows was derived from streaming (3 rows processed)
+      expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
+    });
+  });
+
   describe("Edge Cases", () => {
     it("should handle empty file", async () => {
       const mockImportJob = {
@@ -435,14 +496,14 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       const mockImportFile = createMockImportFile();
 
-      // Setup mocks
+      // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockImportFile)
+        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
 
-      // Mock empty file
-      mocks.getFileRowCount.mockReturnValueOnce(0);
+      // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
 
       mockPayload.update.mockResolvedValueOnce({});

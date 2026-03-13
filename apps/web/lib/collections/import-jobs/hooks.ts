@@ -3,7 +3,12 @@
  *
  * @module
  */
-import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
+import type {
+  CollectionAfterChangeHook,
+  CollectionAfterDeleteHook,
+  CollectionBeforeChangeHook,
+  PayloadRequest,
+} from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { USAGE_TYPES } from "@/lib/constants/quota-constants";
@@ -11,9 +16,11 @@ import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { StageTransitionService } from "@/lib/services/stage-transition";
+import { cleanupSidecarFiles } from "@/lib/utils/file-readers";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
 
+import { getImportFilePath } from "../../jobs/utils/upload-path";
 import { handleJobCompletion, isJobCompleted } from "./helpers";
 
 /**
@@ -257,3 +264,16 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     return doc;
   },
 ];
+
+export const importJobAfterDeleteHook: CollectionAfterDeleteHook = ({ doc }) => {
+  if (!doc?.importFile) return;
+  try {
+    const filename = typeof doc.importFile === "object" ? doc.importFile.filename : null;
+    if (filename) {
+      const filePath = getImportFilePath(filename);
+      cleanupSidecarFiles(filePath, doc.sheetIndex ?? 0);
+    }
+  } catch {
+    // Best-effort cleanup
+  }
+};

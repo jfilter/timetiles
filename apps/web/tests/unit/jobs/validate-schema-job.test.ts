@@ -27,6 +27,7 @@ import {
 const mocks = vi.hoisted(() => {
   return {
     readBatchFromFile: vi.fn(),
+    cleanupSidecarFiles: vi.fn(),
     ProgressiveSchemaBuilder: vi.fn(),
     createSchemaVersion: vi.fn(),
     linkImportToSchemaVersion: vi.fn(),
@@ -38,7 +39,14 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/utils/file-readers", () => ({ readBatchFromFile: mocks.readBatchFromFile }));
+vi.mock("@/lib/utils/file-readers", () => ({
+  readBatchFromFile: mocks.readBatchFromFile,
+  cleanupSidecarFiles: mocks.cleanupSidecarFiles,
+}));
+
+vi.mock("@/lib/jobs/utils/upload-path", () => ({
+  getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
+}));
 
 vi.mock("@/lib/services/schema-builder", () => ({ ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder }));
 
@@ -435,6 +443,44 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           stage: "failed",
           errors: [{ row: 0, error: "Schema builder state not found. Schema detection stage must run first." }],
         },
+      });
+    });
+
+    it("should clean up sidecar files on error", async () => {
+      const mockImportJob = createMockImportJob({ id: 123, sheetIndex: 2 });
+      const mockDataset = createMockDataset();
+      const mockImportFile = createMockImportFile("file-789", "test.xlsx");
+
+      // First loadJobResources call (in try block) — returns resources successfully
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      // Make getSchemaBuilderState throw to trigger the catch block
+      mocks.getSchemaBuilderState.mockImplementationOnce(() => {
+        throw new Error("Schema builder exploded");
+      });
+
+      // Second loadJobResources call (in catch block for cleanup)
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockImportFile);
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      // Verify the handler still throws the original error
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Schema builder exploded");
+
+      // Verify sidecar cleanup was called with the file path and sheetIndex
+      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/import-files/test.xlsx", 2);
+
+      // Verify the job was updated to FAILED stage
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        id: 123,
+        data: { stage: "failed", errors: [{ row: 0, error: "Schema builder exploded" }] },
       });
     });
   });

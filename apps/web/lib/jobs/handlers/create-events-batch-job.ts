@@ -134,7 +134,6 @@ const processEventBatch = async (
     } catch (error) {
       logger.error("Failed to create event", { rowNumber, error });
       errors.push({ row: rowNumber, error: error instanceof Error ? error.message : "Unknown error" });
-      eventsSkipped++;
     }
   }
 
@@ -310,6 +309,18 @@ export const createEventsBatchJob = {
       const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
       filePath = getImportFilePath(importFile.filename ?? "");
       sheetIndex = job.sheetIndex ?? 0;
+
+      // Clean slate: delete events from any prior failed attempt of this job.
+      // This is safe because the job is only marked COMPLETED after all events are created.
+      const existingEvents = await payload.count({
+        collection: COLLECTION_NAMES.EVENTS,
+        where: { importJob: { equals: importJobId } },
+      });
+
+      if (existingEvents.totalDocs > 0) {
+        logger.info("Cleaning up events from prior attempt", { importJobId, existingEvents: existingEvents.totalDocs });
+        await payload.delete({ collection: COLLECTION_NAMES.EVENTS, where: { importJob: { equals: importJobId } } });
+      }
 
       // Start CREATE_EVENTS stage with total file rows (stream iterates all rows, including duplicates)
       const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;

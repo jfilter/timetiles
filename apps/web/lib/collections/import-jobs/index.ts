@@ -24,7 +24,7 @@ import type { CollectionConfig } from "payload";
 import { createCommonConfig } from "../shared-fields";
 import { importJobsAccess } from "./access-control";
 import { importJobFields } from "./fields";
-import { afterChangeHooks, beforeChangeHooks } from "./hooks";
+import { afterChangeHooks, beforeChangeHooks, importJobAfterDeleteHook } from "./hooks";
 
 const ImportJobs: CollectionConfig = {
   slug: "import-jobs",
@@ -37,7 +37,7 @@ const ImportJobs: CollectionConfig = {
   },
   access: importJobsAccess,
   fields: importJobFields,
-  hooks: { beforeChange: beforeChangeHooks, afterChange: afterChangeHooks },
+  hooks: { beforeChange: beforeChangeHooks, afterChange: afterChangeHooks, afterDelete: [importJobAfterDeleteHook] },
 };
 
 export default ImportJobs;

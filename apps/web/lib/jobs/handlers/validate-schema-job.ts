@@ -26,11 +26,13 @@ import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { cleanupSidecarFiles } from "@/lib/utils/file-readers";
 import type { ImportJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { loadJobResources } from "../utils/resource-loading";
+import { getImportFilePath } from "../utils/upload-path";
 
 // Helper function to get schema from cached builder state
 const getSchemaFromCache = async (job: {
@@ -357,6 +359,17 @@ const applyValidationResult = async (
   };
 };
 
+/** Best-effort sidecar CSV cleanup for error paths. */
+const cleanupSidecarsOnError = async (payload: Payload, jobId: number): Promise<void> => {
+  try {
+    const { job: failedJob, importFile: failedFile } = await loadJobResources(payload, jobId);
+    const failedFilePath = getImportFilePath(failedFile.filename ?? "");
+    cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
+  } catch {
+    // Best-effort cleanup — don't mask the original error
+  }
+};
+
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
   handler: async (context: JobHandlerContext) => {
@@ -453,6 +466,8 @@ export const validateSchemaJob = {
       return { output: result.output };
     } catch (error) {
       logError(error, "Schema validation failed", { importJobId });
+
+      await cleanupSidecarsOnError(payload, jobIdTyped);
 
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,

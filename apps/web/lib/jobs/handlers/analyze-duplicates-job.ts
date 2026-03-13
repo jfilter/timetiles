@@ -207,6 +207,47 @@ const updateJobWithDuplicates = async (
   });
 };
 
+/** Initialize progress tracking if stages don't exist yet. */
+const initializeProgressIfNeeded = async (
+  payload: Payload,
+  importJobId: string | number,
+  job: ImportJob,
+  totalRows: number
+): Promise<void> => {
+  const stagesExist = job.progress?.stages && Object.keys(job.progress.stages).length > 0;
+  if (!stagesExist) {
+    await ProgressTrackingService.initializeStageProgress(payload, importJobId, totalRows);
+    const updatedJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
+    Object.assign(job, updatedJob);
+  }
+};
+
+/** Handle the disabled-dedup path: pre-scan for totalRows, skip analysis. Returns result or null. */
+const handleDisabledDedup = async (
+  payload: Payload,
+  importJobId: string | number,
+  filePath: string,
+  job: ImportJob,
+  dataset: Dataset,
+  logger: ReturnType<typeof createJobLogger>
+): Promise<{ output: { skipped: boolean } } | null> => {
+  if (dataset?.deduplicationConfig?.enabled) {
+    return null;
+  }
+
+  // Only pre-scan the file when dedup is disabled (need totalRows for summary)
+  const fileTotalRows = getFileRowCount(filePath, job.sheetIndex ?? 0);
+  await initializeProgressIfNeeded(payload, importJobId, job, fileTotalRows);
+
+  const shouldSkip = await skipDeduplication(payload, importJobId, fileTotalRows, dataset, logger);
+  if (shouldSkip) {
+    await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
+    return { output: { skipped: true } };
+  }
+
+  return null;
+};
+
 export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
   handler: async (context: JobHandlerContext) => {
@@ -223,27 +264,17 @@ export const analyzeDuplicatesJob = {
       const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
       const filePath = getImportFilePath(importFile.filename ?? "");
 
-      // Count total rows (single read, used for progress initialization)
-      const fileTotalRows = getFileRowCount(filePath, job.sheetIndex ?? 0);
-
-      // Initialize progress tracking if needed (check if stages is empty or doesn't exist)
-      const stagesExist = job.progress?.stages && Object.keys(job.progress.stages).length > 0;
-      if (!stagesExist) {
-        await ProgressTrackingService.initializeStageProgress(payload, importJobId, fileTotalRows);
-        // Refetch job to get updated progress structure
-        const updatedJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
-        Object.assign(job, updatedJob);
+      // When dedup is disabled, skip analysis early (uses pre-scan for totalRows summary)
+      const skipResult = await handleDisabledDedup(payload, importJobId, filePath, job, dataset, logger);
+      if (skipResult) {
+        return skipResult;
       }
 
-      // Check if deduplication should be skipped
-      const shouldSkip = await skipDeduplication(payload, importJobId, fileTotalRows, dataset, logger);
-      if (shouldSkip) {
-        await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
-        return { output: { skipped: true } };
-      }
+      // Initialize progress tracking if needed (use 0 — streaming will update it)
+      await initializeProgressIfNeeded(payload, importJobId, job, 0);
 
-      // Perform duplicate analysis
-      const results = await performDuplicateAnalysis(payload, importJobId, filePath, dataset, job, fileTotalRows);
+      // Perform duplicate analysis — totalRows derived from streaming, no pre-scan needed
+      const results = await performDuplicateAnalysis(payload, importJobId, filePath, dataset, job, 0);
 
       // Update job with results
       await updateJobWithDuplicates(payload, importJobId, dataset, results);
