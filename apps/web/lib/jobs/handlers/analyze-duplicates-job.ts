@@ -17,8 +17,7 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
-import { getFileRowCount } from "@/lib/utils/file-readers";
-import { streamBatchesFromFile } from "@/lib/utils/file-readers";
+import { cleanupSidecarFiles, getFileRowCount, streamBatchesFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
@@ -267,6 +266,15 @@ export const analyzeDuplicatesJob = {
       };
     } catch (error) {
       logError(error, "Duplicate analysis failed", { importJobId });
+
+      // Clean up sidecar CSV files on error (Excel → CSV conversions)
+      try {
+        const { job: failedJob, importFile: failedFile } = await loadJobResources(payload, importJobId);
+        const failedFilePath = getImportFilePath(failedFile.filename ?? "");
+        cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
+      } catch {
+        // Best-effort cleanup — don't mask the original error
+      }
 
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,

@@ -51,6 +51,18 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
 }));
 
+vi.mock("@/lib/services/quota-service", () => ({
+  getQuotaService: vi.fn(() => ({
+    checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 10000, remaining: 10000 }),
+    incrementUsage: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+vi.mock("@/lib/constants/quota-constants", () => ({
+  QUOTA_TYPES: { EVENTS_PER_IMPORT: "maxEventsPerImport" },
+  USAGE_TYPES: { TOTAL_EVENTS_CREATED: "totalEventsCreated" },
+}));
+
 /** Helper to create a mock async iterable from arrays of batches. */
 const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
   [Symbol.asyncIterator]: () => {
@@ -477,6 +489,66 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         .mockResolvedValueOnce(null); // Import file not found
 
       await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Import file not found");
+    });
+  });
+
+  describe("Quota Check", () => {
+    it("should check quota against uniqueRows, not totalRows, when duplicates exist", async () => {
+      // totalRows=1000, uniqueRows=50 (950 internal duplicates)
+      // Quota limit is 100 — uniqueRows (50) is within limit
+      const mockCheckQuota = vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 50 });
+
+      // Must mock quota-service BEFORE handler reads it; use dynamic import override
+      const { getQuotaService } = await import("@/lib/services/quota-service");
+      vi.mocked(getQuotaService).mockReturnValue({ checkQuota: mockCheckQuota } as any);
+
+      const mockImportJob: any = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        sheetIndex: 0,
+        duplicates: {
+          internal: Array.from({ length: 950 }, (_, i) => ({ rowNumber: i + 50, uniqueId: `dup-${i}` })),
+          external: [],
+          summary: { totalRows: 1000, uniqueRows: 50, internalDuplicates: 950, externalDuplicates: 0 },
+        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
+      const mockImportFile = createMockImportFile();
+      // Add user for quota check path
+      (mockImportFile as any).user = { id: "user-1", role: "user" };
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "users") return Promise.resolve({ id: "user-1", role: "user" });
+        return Promise.resolve(null);
+      });
+
+      // Stream with a single row for simplicity (actual row count doesn't matter for quota test)
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1", title: "Event 1" }]]));
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValue({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      // Should succeed — quota checks uniqueRows (50), not totalRows (1000)
+      await createEventsBatchJob.handler(mockContext);
+
+      // Verify startStage was called with totalRows (1000) for progress tracking
+      expect(mocks.startStage).toHaveBeenCalledWith(mockPayload, "import-123", "create-events", 1000);
+
+      // Verify quota was checked with uniqueRows (50), not totalRows (1000)
+      expect(mockCheckQuota).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "user-1" }),
+        expect.any(String), // QUOTA_TYPES.EVENTS_PER_IMPORT
+        50
+      );
     });
   });
 

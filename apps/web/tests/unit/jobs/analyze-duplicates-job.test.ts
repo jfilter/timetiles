@@ -12,7 +12,12 @@ import { createMockImportFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
-  return { getFileRowCount: vi.fn(), streamBatchesFromFile: vi.fn(), generateUniqueId: vi.fn() };
+  return {
+    getFileRowCount: vi.fn(),
+    streamBatchesFromFile: vi.fn(),
+    cleanupSidecarFiles: vi.fn(),
+    generateUniqueId: vi.fn(),
+  };
 });
 
 // Mock external dependencies
@@ -31,6 +36,7 @@ vi.mock("@/lib/services/progress-tracking", () => ({
 vi.mock("@/lib/utils/file-readers", () => ({
   getFileRowCount: mocks.getFileRowCount,
   streamBatchesFromFile: mocks.streamBatchesFromFile,
+  cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
@@ -362,6 +368,52 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(null); // Import file not found
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Import file not found");
+    });
+
+    it("should clean up sidecar files on error", async () => {
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        sheetIndex: 1,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id" },
+      };
+
+      const mockImportFile = createMockImportFile();
+
+      // Use mockImplementation to handle all findByID calls (initial + progress refetch + error-path reload)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
+
+      mocks.getFileRowCount.mockReturnValueOnce(3);
+
+      // Mock streaming that throws
+      mocks.streamBatchesFromFile.mockReturnValueOnce({
+        [Symbol.asyncIterator]: () => ({
+          next: async () => {
+            await Promise.resolve();
+            throw new Error("Corrupt Excel file");
+          },
+        }),
+      });
+
+      await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Corrupt Excel file");
+
+      // Verify sidecar cleanup was called
+      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith(
+        expect.stringContaining("test.csv"),
+        1 // sheetIndex from mockImportJob
+      );
     });
   });
 

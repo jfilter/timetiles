@@ -276,17 +276,16 @@ const checkEventQuotaBeforeProcessing = async (
 
   const quotaService = getQuotaService(payload);
 
-  // Get total rows from CREATE_EVENTS stage
-  const stages = (job.progress?.stages as Record<string, { rowsTotal?: number }> | undefined) ?? {};
-  const createEventsStage = stages[PROCESSING_STAGE.CREATE_EVENTS];
-  const totalRows = createEventsStage?.rowsTotal ?? 0;
+  // Use uniqueRows from deduplication summary — this is the actual number of events
+  // that will be created, not the total file rows (which includes duplicates).
+  const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
 
   // Check if this import would exceed the per-import limit
-  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, totalRows);
+  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, uniqueRows);
 
   if (!quotaCheck.allowed) {
     throw new Error(
-      `Import exceeds maximum events per import (${totalRows} > ${quotaCheck.limit}). ` +
+      `Import exceeds maximum events per import (${uniqueRows} > ${quotaCheck.limit}). ` +
         `Please split your data into smaller files.`
     );
   }

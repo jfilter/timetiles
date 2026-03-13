@@ -23,8 +23,8 @@ import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { detectFieldMappings } from "@/lib/services/schema-builder/field-mapping-detection";
 import type { ImportTransform } from "@/lib/types/import-transforms";
-import { type FieldStatistics, getSchemaBuilderState } from "@/lib/types/schema-detection";
-import { streamBatchesFromFile } from "@/lib/utils/file-readers";
+import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
@@ -149,7 +149,7 @@ const finalizeSchemaDetection = async (
 // Helper to process batch and update schema
 const processBatchSchema = async (
   rows: Record<string, unknown>[],
-  previousState: ReturnType<typeof getSchemaBuilderState>,
+  previousState: SchemaBuilderState | null,
   globalRowOffset: number,
   duplicateRows: Set<number>,
   transforms: ImportTransform[]
@@ -236,7 +236,9 @@ export const schemaDetectionJob = {
       let batchNumber = 0;
       let totalRowsProcessed = 0;
       let lastSchemaBuilder: ProgressiveSchemaBuilder | null = null;
-      let previousState = getSchemaBuilderState(job);
+      // Single-job pattern always processes all rows from scratch.
+      // Persisted schemaBuilderState is saved for observability but never used to seed.
+      let previousState: SchemaBuilderState | null = null;
 
       for await (const rows of streamBatchesFromFile(filePath, {
         sheetIndex: job.sheetIndex ?? undefined,
@@ -284,6 +286,14 @@ export const schemaDetectionJob = {
       return { output: { totalBatches: batchNumber, totalRowsProcessed } };
     } catch (error) {
       logError(error, "Schema detection failed", { importJobId });
+
+      // Clean up sidecar CSV files on error (Excel → CSV conversions)
+      try {
+        const { filePath: failedFilePath, job: failedJob } = await loadJobAndFilePath(payload, importJobId);
+        cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
+      } catch {
+        // Best-effort cleanup — don't mask the original error
+      }
 
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
