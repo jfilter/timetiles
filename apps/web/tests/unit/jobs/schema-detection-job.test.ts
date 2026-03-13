@@ -173,7 +173,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         mockPayload,
         "import-123",
         "detect-schema",
-        expect.any(Number) // uniqueRows from duplicates.summary
+        expect.any(Number) // totalRows from duplicates.summary
       );
       expect(mocks.updateStageProgress).toHaveBeenCalled();
       expect(mocks.completeBatch).toHaveBeenCalled();
@@ -408,6 +408,48 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       expect(mocks.startStage).toHaveBeenCalled();
       expect(mocks.updateStageProgress).toHaveBeenCalled();
       expect(mocks.completeBatch).toHaveBeenCalled();
+    });
+  });
+
+  describe("Progress Tracking", () => {
+    it("should pass totalRows (not uniqueRows) to startStage when duplicates exist", async () => {
+      // When hasDuplicates=true, factory sets totalRows=3, uniqueRows=1
+      const mockImportJob = createMockImportJob({ hasDuplicates: true });
+      const mockImportFile = createMockImportFile();
+
+      const mockFileData = [
+        { id: "1", title: "Event 1" },
+        { id: "2", title: "Event 2" },
+        { id: "3", title: "Event 3" },
+      ];
+
+      const mockSchema = { type: "object", properties: { id: { type: "string" } } };
+      const mockState = {
+        fieldStats: { id: { occurrences: 1, uniqueValues: 1, typeDistribution: { string: 1 } } },
+        recordCount: 1,
+      };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+      mocks.getSchemaBuilderState.mockReturnValueOnce(null);
+
+      mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
+      mockSchemaBuilderInstance.getSchema.mockResolvedValue(mockSchema);
+      mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
+
+      mocks.startStage.mockResolvedValueOnce(undefined);
+      mocks.updateStageProgress.mockResolvedValueOnce(undefined);
+      mocks.completeBatch.mockResolvedValueOnce(undefined);
+
+      await schemaDetectionJob.handler(mockContext);
+
+      // Must use totalRows (3), not uniqueRows (1), because the stream iterates all rows
+      expect(mocks.startStage).toHaveBeenCalledWith(
+        mockPayload,
+        TEST_IDS.IMPORT_JOB,
+        "detect-schema",
+        3 // totalRows from duplicates.summary, NOT uniqueRows
+      );
     });
   });
 

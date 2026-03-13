@@ -224,9 +224,9 @@ export const schemaDetectionJob = {
       // Load resources
       const { job, filePath } = await loadJobAndFilePath(payload, importJobId);
 
-      // Initialize stage
-      const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
-      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA, uniqueRows);
+      // Initialize stage with total file rows (stream iterates all rows, including duplicates)
+      const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;
+      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA, totalFileRows);
 
       // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);

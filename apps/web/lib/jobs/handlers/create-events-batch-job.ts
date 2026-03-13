@@ -312,9 +312,9 @@ export const createEventsBatchJob = {
       filePath = getImportFilePath(importFile.filename ?? "");
       sheetIndex = job.sheetIndex ?? 0;
 
-      // Start CREATE_EVENTS stage
-      const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
-      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS, uniqueRows);
+      // Start CREATE_EVENTS stage with total file rows (stream iterates all rows, including duplicates)
+      const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;
+      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS, totalFileRows);
 
       // Check EVENTS_PER_IMPORT quota before processing
       await checkEventQuotaBeforeProcessing(payload, importFile, job);

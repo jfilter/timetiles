@@ -392,6 +392,55 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
   });
 
+  describe("Progress Tracking", () => {
+    it("should pass totalRows (not uniqueRows) to startStage when duplicates exist", async () => {
+      const mockImportJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        importFile: "file-789",
+        sheetIndex: 0,
+        duplicates: {
+          internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
+          external: [],
+          // totalRows=5, uniqueRows=4 — stream iterates all 5 rows
+          summary: { totalRows: 5, uniqueRows: 4, internalDuplicates: 1, externalDuplicates: 0 },
+        },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
+      const mockImportFile = createMockImportFile();
+
+      const mockFileData = Array.from({ length: 5 }, (_, i) => ({ id: `${i + 1}`, title: `Event ${i + 1}` }));
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        return Promise.resolve(null);
+      });
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+      mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
+      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.create.mockResolvedValue({ id: "event-1" });
+      mockPayload.update.mockResolvedValue({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      // Must use totalRows (5), not uniqueRows (4), because the stream iterates all rows
+      expect(mocks.startStage).toHaveBeenCalledWith(
+        mockPayload,
+        "import-123",
+        "create-events",
+        5 // totalRows from duplicates.summary, NOT uniqueRows
+      );
+    });
+  });
+
   describe("Error Handling", () => {
     it("should throw error when import job not found", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
