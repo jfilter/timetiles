@@ -12,7 +12,7 @@ import { createMockImportFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
-  return { readBatchFromFile: vi.fn(), generateUniqueId: vi.fn() };
+  return { getFileRowCount: vi.fn(), streamBatchesFromFile: vi.fn(), generateUniqueId: vi.fn() };
 });
 
 // Mock external dependencies
@@ -28,13 +28,32 @@ vi.mock("@/lib/services/progress-tracking", () => ({
   },
 }));
 
-vi.mock("@/lib/utils/file-readers", () => ({ readBatchFromFile: mocks.readBatchFromFile }));
+vi.mock("@/lib/utils/file-readers", () => ({
+  getFileRowCount: mocks.getFileRowCount,
+  streamBatchesFromFile: mocks.streamBatchesFromFile,
+}));
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
 }));
+
+/** Helper to create a mock async iterable from arrays of batches. */
+const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
+  [Symbol.asyncIterator]: () => {
+    let index = 0;
+    return {
+      next: async () => {
+        await Promise.resolve();
+        if (index < batches.length) {
+          return { value: batches[index++], done: false as const };
+        }
+        return { value: undefined, done: true as const };
+      },
+    };
+  },
+});
 
 describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   let mockPayload: any;
@@ -79,11 +98,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockImportFile) // Third call returns import file
         .mockResolvedValueOnce(mockImportJob); // Fourth call refetches import job after progress init
 
-      // Mock file reading for countTotalRows - simulate 100 rows in file
-      const mockRows = Array.from({ length: 100 }, () => ({ id: "1", title: "Event 1" }));
-      mocks.readBatchFromFile
-        .mockReturnValueOnce(mockRows) // First batch returns 100 rows
-        .mockReturnValueOnce([]); // Second batch returns empty to signal end
+      // Mock getFileRowCount for total rows
+      mocks.getFileRowCount.mockReturnValueOnce(100);
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -151,12 +167,11 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      // Mock file reading - countTotalRows is called first, then analyzeInternalDuplicates
-      mocks.readBatchFromFile
-        .mockReturnValueOnce(mockFileData) // countTotalRows: First batch
-        .mockReturnValueOnce([]) // countTotalRows: End of file
-        .mockReturnValueOnce(mockFileData) // analyzeInternalDuplicates: First batch
-        .mockReturnValueOnce([]); // analyzeInternalDuplicates: End of file
+      // Mock getFileRowCount
+      mocks.getFileRowCount.mockReturnValueOnce(3);
+
+      // Mock streaming - yields one batch then ends
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
       mocks.generateUniqueId
         .mockReturnValueOnce("dataset-456:ext:1")
@@ -174,20 +189,11 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify result
       expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
 
-      // Verify file reading (called 4 times: 2 for countTotalRows, 2 for analyzeInternalDuplicates)
-      expect(mocks.readBatchFromFile).toHaveBeenCalledTimes(4);
-      // First call from countTotalRows
-      expect(mocks.readBatchFromFile).toHaveBeenNthCalledWith(1, expect.stringContaining("test.csv"), {
-        sheetIndex: 0,
-        startRow: 0,
-        limit: 5000, // BATCH_SIZES.DUPLICATE_ANALYSIS
-      });
-      // Third call from analyzeInternalDuplicates (first batch)
-      expect(mocks.readBatchFromFile).toHaveBeenNthCalledWith(3, expect.stringContaining("test.csv"), {
-        sheetIndex: 0,
-        startRow: 0,
-        limit: 5000, // BATCH_SIZES.DUPLICATE_ANALYSIS
-      });
+      // Verify streaming was called
+      expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith(
+        expect.stringContaining("test.csv"),
+        expect.objectContaining({ batchSize: expect.any(Number) })
+      );
 
       // Verify unique ID generation
       expect(mocks.generateUniqueId).toHaveBeenCalledTimes(3);
@@ -242,12 +248,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      // Mock file reading - countTotalRows is called first, then analyzeInternalDuplicates
-      mocks.readBatchFromFile
-        .mockReturnValueOnce(mockFileData) // countTotalRows: First batch
-        .mockReturnValueOnce([]) // countTotalRows: End of file
-        .mockReturnValueOnce(mockFileData) // analyzeInternalDuplicates: First batch
-        .mockReturnValueOnce([]); // analyzeInternalDuplicates: End of file
+      mocks.getFileRowCount.mockReturnValueOnce(3);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
       mocks.generateUniqueId
         .mockReturnValueOnce("dataset-456:ext:1")
@@ -308,12 +310,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      // Mock file reading - countTotalRows is called first, then analyzeInternalDuplicates
-      mocks.readBatchFromFile
-        .mockReturnValueOnce(mockFileData) // countTotalRows: First batch
-        .mockReturnValueOnce([]) // countTotalRows: End of file
-        .mockReturnValueOnce(mockFileData) // analyzeInternalDuplicates: First batch
-        .mockReturnValueOnce([]); // analyzeInternalDuplicates: End of file
+      mocks.getFileRowCount.mockReturnValueOnce(2);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1").mockReturnValueOnce("dataset-456:ext:2");
 
@@ -391,10 +389,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockImportFile);
 
-      // Mock empty file - countTotalRows is called first, then analyzeInternalDuplicates
-      mocks.readBatchFromFile
-        .mockReturnValueOnce([]) // countTotalRows: Empty file
-        .mockReturnValueOnce([]); // analyzeInternalDuplicates: Empty file
+      // Mock empty file
+      mocks.getFileRowCount.mockReturnValueOnce(0);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
 
       mockPayload.update.mockResolvedValueOnce({});
 

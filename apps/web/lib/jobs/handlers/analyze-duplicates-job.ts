@@ -17,7 +17,8 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
-import { readBatchFromFile } from "@/lib/utils/file-readers";
+import { getFileRowCount } from "@/lib/utils/file-readers";
+import { streamBatchesFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
@@ -75,21 +76,16 @@ const analyzeInternalDuplicates = async (
   const internalDuplicates: DuplicateAnalysisResult["internalDuplicates"] = [];
   const uniqueIdMap = new Map<string, number>();
   let totalRows = 0;
-
-  const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
   let batchNumber = 0;
 
-  while (true) {
-    const rows = readBatchFromFile(filePath, {
-      sheetIndex: job.sheetIndex ?? undefined,
-      startRow: batchNumber * ANALYSIS_BATCH_SIZE,
-      limit: ANALYSIS_BATCH_SIZE,
-    });
+  const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
 
-    if (rows.length === 0) break;
-
+  for await (const rows of streamBatchesFromFile(filePath, {
+    sheetIndex: job.sheetIndex ?? undefined,
+    batchSize: ANALYSIS_BATCH_SIZE,
+  })) {
     for (const [index, row] of rows.entries()) {
-      const rowNumber = batchNumber * ANALYSIS_BATCH_SIZE + index;
+      const rowNumber = totalRows + index;
       const uniqueId = generateUniqueId(row, dataset.idStrategy);
 
       if (uniqueIdMap.has(uniqueId)) {
@@ -97,9 +93,9 @@ const analyzeInternalDuplicates = async (
       } else {
         uniqueIdMap.set(uniqueId, rowNumber);
       }
-      totalRows++;
     }
 
+    totalRows += rows.length;
     batchNumber++;
 
     // Update progress after each batch
@@ -144,26 +140,6 @@ const analyzeExternalDuplicates = async (
   }
 
   return externalDuplicates;
-};
-
-// Helper to count total rows in file
-const countTotalRows = (filePath: string, sheetIndex: number | null | undefined): number => {
-  const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
-  let fileTotalRows = 0;
-  let countBatch = 0;
-
-  while (true) {
-    const rows = readBatchFromFile(filePath, {
-      sheetIndex: sheetIndex ?? undefined,
-      startRow: countBatch * ANALYSIS_BATCH_SIZE,
-      limit: ANALYSIS_BATCH_SIZE,
-    });
-    if (rows.length === 0) break;
-    fileTotalRows += rows.length;
-    countBatch++;
-  }
-
-  return fileTotalRows;
 };
 
 // Helper to perform full duplicate analysis
@@ -248,8 +224,8 @@ export const analyzeDuplicatesJob = {
       const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
       const filePath = getImportFilePath(importFile.filename ?? "");
 
-      // Count total rows
-      const fileTotalRows = countTotalRows(filePath, job.sheetIndex);
+      // Count total rows (single read, used for progress initialization)
+      const fileTotalRows = getFileRowCount(filePath, job.sheetIndex ?? 0);
 
       // Initialize progress tracking if needed (check if stages is empty or doesn't exist)
       const stagesExist = job.progress?.stages && Object.keys(job.progress.stages).length > 0;

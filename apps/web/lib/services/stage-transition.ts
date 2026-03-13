@@ -150,7 +150,7 @@ export class StageTransitionService {
         return { queued: true, jobType: JOB_TYPES.ANALYZE_DUPLICATES };
 
       case PROCESSING_STAGE.DETECT_SCHEMA:
-        await payload.jobs.queue({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId: job.id, batchNumber: 0 } });
+        await payload.jobs.queue({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId: job.id } });
         return { queued: true, jobType: JOB_TYPES.DETECT_SCHEMA };
 
       case PROCESSING_STAGE.VALIDATE_SCHEMA:
@@ -172,7 +172,7 @@ export class StageTransitionService {
         return { queued: true, jobType: JOB_TYPES.GEOCODE_BATCH };
 
       case PROCESSING_STAGE.CREATE_EVENTS:
-        await payload.jobs.queue({ task: JOB_TYPES.CREATE_EVENTS, input: { importJobId: job.id, batchNumber: 0 } });
+        await payload.jobs.queue({ task: JOB_TYPES.CREATE_EVENTS, input: { importJobId: job.id } });
         return { queued: true, jobType: JOB_TYPES.CREATE_EVENTS };
 
       case PROCESSING_STAGE.COMPLETED:

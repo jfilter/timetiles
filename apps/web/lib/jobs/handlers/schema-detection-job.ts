@@ -1,7 +1,7 @@
 /**
- * Defines the job handler for detecting the schema from a batch of imported data.
+ * Defines the job handler for detecting the schema from imported data.
  *
- * This job processes a batch of rows from the import file to progressively build a schema.
+ * This single job streams all batches from the import file to progressively build a schema.
  * It skips rows that were identified as duplicates to ensure the schema is based on unique data.
  *
  * Key responsibilities include:
@@ -24,7 +24,7 @@ import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { detectFieldMappings } from "@/lib/services/schema-builder/field-mapping-detection";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import { type FieldStatistics, getSchemaBuilderState } from "@/lib/types/schema-detection";
-import { readBatchFromFile } from "@/lib/utils/file-readers";
+import { streamBatchesFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
@@ -146,58 +146,17 @@ const finalizeSchemaDetection = async (
   });
 };
 
-// Helper to handle batch completion (when reading 0 rows - file was exact multiple of batch size)
-const handleBatchCompletion = async (
-  payload: Payload,
-  importJobId: number | string,
-  job: ImportJob,
-  dataset: Dataset | null,
-  logger: ReturnType<typeof createJobLogger>,
-  batchNumber: number
-): Promise<{ output: { completed: true; batchNumber: number; rowsProcessed: number; hasMore: false } }> => {
-  const previousState = getSchemaBuilderState(job);
-  const schemaBuilder = previousState ? new ProgressiveSchemaBuilder(previousState) : null;
-  await finalizeSchemaDetection(payload, importJobId, schemaBuilder, dataset, logger);
-  return { output: { completed: true, batchNumber, rowsProcessed: 0, hasMore: false } };
-};
-
-// Helper to queue next batch
-const queueNextBatch = async (
-  payload: Payload,
-  importJobId: number | string,
-  batchNumber: number,
-  logger: ReturnType<typeof createJobLogger>
-): Promise<void> => {
-  logger.debug("Queueing next batch", { nextBatch: batchNumber + 1 });
-  await payload.jobs.queue({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId, batchNumber: batchNumber + 1 } });
-};
-
-// Helper to complete last batch with field mapping detection
-const completeLastBatch = async (
-  payload: Payload,
-  importJobId: number | string,
-  schemaBuilder: ProgressiveSchemaBuilder,
-  dataset: Dataset | null,
-  logger: ReturnType<typeof createJobLogger>
-): Promise<void> => {
-  logger.info("Last batch - finalizing schema detection", { datasetLanguage: dataset?.language ?? "eng" });
-
-  await finalizeSchemaDetection(payload, importJobId, schemaBuilder, dataset, logger);
-};
-
 // Helper to process batch and update schema
 const processBatchSchema = async (
   rows: Record<string, unknown>[],
-  job: ImportJob,
-  batchNumber: number,
+  previousState: ReturnType<typeof getSchemaBuilderState>,
+  globalRowOffset: number,
   duplicateRows: Set<number>,
   transforms: ImportTransform[]
 ) => {
-  const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
-
   // Filter out duplicate rows
   const nonDuplicateRows = rows.filter((_row, index) => {
-    const rowNumber = batchNumber * BATCH_SIZE + index;
+    const rowNumber = globalRowOffset + index;
     return !duplicateRows.has(rowNumber);
   });
 
@@ -205,7 +164,6 @@ const processBatchSchema = async (
   const transformedRows = transforms.length > 0 ? applyTransformsBatch(nonDuplicateRows, transforms) : nonDuplicateRows;
 
   // Build schema progressively
-  const previousState = getSchemaBuilderState(job);
   const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined);
 
   if (transformedRows.length > 0) {
@@ -217,30 +175,14 @@ const processBatchSchema = async (
   return { nonDuplicateRows: transformedRows, schemaBuilder, updatedSchema };
 };
 
-// Helper to initialize stage on first batch
-const initializeStageIfNeeded = async (
-  payload: Payload,
-  importJobId: number | string,
-  job: ImportJob,
-  batchNumber: number
-): Promise<void> => {
-  if (batchNumber === 0) {
-    const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
-    await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA, uniqueRows);
-  }
-};
-
 // Helper to update progress after batch processing
 const updateBatchProgress = async (
   payload: Payload,
   importJobId: number | string,
+  rowsProcessedSoFar: number,
   batchNumber: number,
-  rowsInBatch: number,
   nonDuplicateRows: number
 ): Promise<void> => {
-  const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
-  const rowsProcessedSoFar = (batchNumber + 1) * BATCH_SIZE - (rowsInBatch < BATCH_SIZE ? BATCH_SIZE - rowsInBatch : 0);
-
   await ProgressTrackingService.updateStageProgress(
     payload,
     importJobId,
@@ -266,118 +208,89 @@ const updateSchemaState = async (
   });
 };
 
-// Helper to handle next batch
-const handleNextBatch = async (
-  payload: Payload,
-  importJobId: number | string,
-  batchNumber: number,
-  logger: ReturnType<typeof createJobLogger>
-): Promise<void> => {
-  await queueNextBatch(payload, importJobId, batchNumber, logger);
-};
-
-// Helper to handle completion after last batch
-const handleCompletion = async (
-  payload: Payload,
-  importJobId: number | string,
-  schemaBuilder: ProgressiveSchemaBuilder,
-  dataset: Dataset | null,
-  logger: ReturnType<typeof createJobLogger>
-): Promise<void> => {
-  await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA);
-  await completeLastBatch(payload, importJobId, schemaBuilder, dataset, logger);
-};
-
 export const schemaDetectionJob = {
   slug: JOB_TYPES.DETECT_SCHEMA,
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as SchemaDetectionJobInput["input"];
-    const { importJobId, batchNumber } = input;
+    const { importJobId } = input;
 
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "schema-detection");
-    logger.info("Starting schema detection batch", { importJobId, batchNumber });
+    logger.info("Starting schema detection", { importJobId });
     const startTime = Date.now();
 
     try {
       // Load resources
       const { job, filePath } = await loadJobAndFilePath(payload, importJobId);
-      await initializeStageIfNeeded(payload, importJobId, job, batchNumber);
+
+      // Initialize stage
+      const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA, uniqueRows);
 
       // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);
       const duplicateRows = extractDuplicateRows(job);
 
-      // Read batch from file
       const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
-      const rows = readBatchFromFile(filePath, {
+      let batchNumber = 0;
+      let totalRowsProcessed = 0;
+      let lastSchemaBuilder: ProgressiveSchemaBuilder | null = null;
+      let previousState = getSchemaBuilderState(job);
+
+      for await (const rows of streamBatchesFromFile(filePath, {
         sheetIndex: job.sheetIndex ?? undefined,
-        startRow: batchNumber * BATCH_SIZE,
-        limit: BATCH_SIZE,
-      });
+        batchSize: BATCH_SIZE,
+      })) {
+        // Process batch and build schema
+        const { nonDuplicateRows, schemaBuilder, updatedSchema } = await processBatchSchema(
+          rows,
+          previousState,
+          totalRowsProcessed,
+          duplicateRows,
+          transforms
+        );
 
-      // Check if we're done
-      if (rows.length === 0) {
-        return await handleBatchCompletion(payload, importJobId, job, dataset, logger, batchNumber);
-      }
+        totalRowsProcessed += rows.length;
+        lastSchemaBuilder = schemaBuilder;
 
-      // Process batch and build schema
-      const { nonDuplicateRows, schemaBuilder, updatedSchema } = await processBatchSchema(
-        rows,
-        job,
-        batchNumber,
-        duplicateRows,
-        transforms
-      );
+        logger.debug("Schema detection batch processed", {
+          batchNumber,
+          rowsProcessed: nonDuplicateRows.length,
+          totalRows: rows.length,
+        });
 
-      logger.debug("Schema detection batch processed", {
-        batchNumber,
-        rowsProcessed: nonDuplicateRows.length,
-        totalRows: rows.length,
-      });
+        // Update progress
+        await updateBatchProgress(payload, importJobId, totalRowsProcessed, batchNumber, nonDuplicateRows.length);
 
-      // Check if this is the last batch
-      const hasMore = rows.length === BATCH_SIZE;
-
-      // Update progress
-      await updateBatchProgress(payload, importJobId, batchNumber, rows.length, nonDuplicateRows.length);
-
-      // Handle next batch or completion
-      if (hasMore) {
-        // Save intermediate state for next batch
+        // Save intermediate state for observability
         const currentState = schemaBuilder.getState();
         await updateSchemaState(payload, importJobId, updatedSchema, currentState);
-        await handleNextBatch(payload, importJobId, batchNumber, logger);
-      } else {
-        // Final state (with enum detection) saved by finalizeSchemaDetection
-        await handleCompletion(payload, importJobId, schemaBuilder, dataset, logger);
+        previousState = currentState;
+
+        batchNumber++;
       }
 
-      logPerformance("Schema detection batch", Date.now() - startTime, {
+      // Complete stage and finalize
+      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA);
+      await finalizeSchemaDetection(payload, importJobId, lastSchemaBuilder, dataset, logger);
+
+      logPerformance("Schema detection", Date.now() - startTime, {
         importJobId,
-        batchNumber,
-        rowsProcessed: nonDuplicateRows.length,
-        totalRowsInBatch: rows.length,
-        duplicatesSkipped: rows.length - nonDuplicateRows.length,
-        hasMore,
+        totalBatches: batchNumber,
+        totalRowsProcessed,
       });
 
-      return { output: { batchNumber, rowsProcessed: rows.length, hasMore } };
+      return { output: { totalBatches: batchNumber, totalRowsProcessed } };
     } catch (error) {
-      logError(error, "Batch processing failed", { importJobId, batchNumber });
+      logError(error, "Schema detection failed", { importJobId });
 
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_JOBS,
         id: importJobId,
         data: {
           stage: PROCESSING_STAGE.FAILED,
-          errors: [
-            {
-              row: batchNumber * BATCH_SIZES.SCHEMA_DETECTION,
-              error: error instanceof Error ? error.message : "Unknown error",
-            },
-          ],
+          errors: [{ row: 0, error: error instanceof Error ? error.message : "Unknown error" }],
         },
       });
 

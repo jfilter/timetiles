@@ -196,10 +196,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.DETECT_SCHEMA);
 
-      expect(mockQueue).toHaveBeenCalledWith({
-        task: JOB_TYPES.DETECT_SCHEMA,
-        input: { importJobId: newJob.id, batchNumber: 0 },
-      });
+      expect(mockQueue).toHaveBeenCalledWith({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId: newJob.id } });
 
       expect(mocks.logger.info).toHaveBeenCalledWith("Processing stage transition", {
         importJobId: "123",
@@ -247,10 +244,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.CREATE_EVENTS);
 
-      expect(mockQueue).toHaveBeenCalledWith({
-        task: JOB_TYPES.CREATE_EVENTS,
-        input: { importJobId: newJob.id, batchNumber: 0 },
-      });
+      expect(mockQueue).toHaveBeenCalledWith({ task: JOB_TYPES.CREATE_EVENTS, input: { importJobId: newJob.id } });
     });
 
     it("should handle await-approval stage without queuing jobs", async () => {
@@ -318,10 +312,7 @@ describe.sequential("StageTransitionService", () => {
       expect(result.jobQueued).toBe(true);
       expect(result.queuedJobType).toBe(JOB_TYPES.DETECT_SCHEMA);
 
-      expect(mockQueue).toHaveBeenCalledWith({
-        task: JOB_TYPES.DETECT_SCHEMA,
-        input: { importJobId: newJob.id, batchNumber: 0 },
-      });
+      expect(mockQueue).toHaveBeenCalledWith({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId: newJob.id } });
     });
   });
 
@@ -582,10 +573,7 @@ describe.sequential("StageTransitionService", () => {
       const result = await StageTransitionService.processStageTransition(mockPayload, newJob, previousJob);
 
       expect(result.success).toBe(true);
-      expect(mockQueue).toHaveBeenCalledWith({
-        task: JOB_TYPES.DETECT_SCHEMA,
-        input: { importJobId: 123, batchNumber: 0 },
-      });
+      expect(mockQueue).toHaveBeenCalledWith({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId: 123 } });
     });
 
     it("should handle concurrent different transitions for same job", async () => {

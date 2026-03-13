@@ -13,7 +13,8 @@ import { createMockContext, createMockImportFile } from "@/tests/setup/factories
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   return {
-    readBatchFromFile: vi.fn(),
+    streamBatchesFromFile: vi.fn(),
+    cleanupSidecarFiles: vi.fn(),
     generateUniqueId: vi.fn(),
     getGeocodingResults: vi.fn(),
     getGeocodingResultForRow: vi.fn(),
@@ -25,7 +26,10 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/utils/file-readers", () => ({ readBatchFromFile: mocks.readBatchFromFile }));
+vi.mock("@/lib/utils/file-readers", () => ({
+  streamBatchesFromFile: mocks.streamBatchesFromFile,
+  cleanupSidecarFiles: mocks.cleanupSidecarFiles,
+}));
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
@@ -46,6 +50,22 @@ vi.mock("@/lib/services/progress-tracking", () => ({
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
 }));
+
+/** Helper to create a mock async iterable from arrays of batches. */
+const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
+  [Symbol.asyncIterator]: () => {
+    let index = 0;
+    return {
+      next: async () => {
+        await Promise.resolve();
+        if (index < batches.length) {
+          return { value: batches[index++], done: false as const };
+        }
+        return { value: undefined, done: true as const };
+      },
+    };
+  },
+});
 
 describe.sequential("CreateEventsBatchJob Handler", () => {
   let mockPayload: any;
@@ -71,12 +91,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       jobs: { queue: vi.fn().mockResolvedValue({}) },
     };
 
-    // Mock context
-    mockContext = createMockContext(mockPayload, { importJobId: "import-123", batchNumber: 0 });
+    // Mock context — no batchNumber needed
+    mockContext = createMockContext(mockPayload, { importJobId: "import-123" });
   });
 
   describe("Success Cases", () => {
-    it("should create events successfully from batch data", async () => {
+    it("should create events successfully from streamed data", async () => {
       // Mock import job - needs to be mutable to track updates (using const with Object.assign)
       const mockImportJob: any = {
         id: "import-123",
@@ -115,7 +135,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1").mockReturnValueOnce("dataset-456:ext:2");
 
@@ -131,16 +151,13 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Execute job
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // Verify result
-      expect(result).toEqual({
-        output: { batchNumber: 0, eventsCreated: 2, eventsSkipped: 0, errors: 0, hasMore: false },
-      });
+      // Verify result — new output format
+      expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 2, eventsSkipped: 0, errors: 0 } });
 
-      // Verify file reading
-      expect(mocks.readBatchFromFile).toHaveBeenCalledWith("/mock/import-files/test.csv", {
+      // Verify streaming was used
+      expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith("/mock/import-files/test.csv", {
         sheetIndex: 0,
-        startRow: 0,
-        limit: expect.any(Number),
+        batchSize: expect.any(Number),
       });
 
       // Verify events were created
@@ -156,6 +173,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Verify progress tracking service was called (updates happen via ProgressTrackingService)
       expect(mockPayload.update).toHaveBeenCalled();
+
+      // Verify no batch queuing (single job)
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
     });
 
     it("preserves string import file IDs when marking the file complete", async () => {
@@ -179,7 +199,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce([{ id: "1", title: "Event 1" }]);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1", title: "Event 1" }]]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
       mocks.getGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
@@ -228,7 +248,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId
         .mockReturnValueOnce("dataset-456:ext:1")
         .mockReturnValueOnce("dataset-456:ext:2")
@@ -247,11 +267,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       expect(result).toEqual({
         output: {
-          batchNumber: 0,
+          totalBatches: 1,
           eventsCreated: 1, // Only first row created
           eventsSkipped: 2, // Second and third rows skipped
           errors: 0,
-          hasMore: false,
         },
       });
 
@@ -262,12 +281,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalled();
     });
 
-    it("should queue next batch when more data exists", async () => {
+    it("should process multiple batches in single job", async () => {
       const mockImportJob = {
         id: "import-123",
         dataset: "dataset-456",
         importFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1000 } },
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 4 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
@@ -281,39 +300,39 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      // Mock a full batch (1000 rows) to trigger hasMore = true
-      const fullBatch = Array.from({ length: 1000 }, (_, i) => ({ id: `${i + 1}`, title: `Event ${i + 1}` }));
-      mocks.readBatchFromFile.mockReturnValueOnce(fullBatch);
+      // Two batches of data
+      const batch1 = [
+        { id: "1", title: "Event 1" },
+        { id: "2", title: "Event 2" },
+      ];
+      const batch2 = [
+        { id: "3", title: "Event 3" },
+        { id: "4", title: "Event 4" },
+      ];
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([batch1, batch2]));
 
-      // Mock unique ID generation for all 1000 rows
+      // Mock unique ID generation for all rows
       mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
       mocks.getGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
-      mockPayload.update.mockResolvedValueOnce({});
-
-      // Mock find for updateImportFileStatusIfAllJobsComplete - no pending jobs
+      mockPayload.update.mockResolvedValue({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // Should indicate more data available
-      expect(result).toEqual({
-        output: { batchNumber: 0, eventsCreated: 1000, eventsSkipped: 0, errors: 0, hasMore: true },
-      });
+      // Should indicate all batches processed
+      expect(result).toEqual({ output: { totalBatches: 2, eventsCreated: 4, eventsSkipped: 0, errors: 0 } });
 
-      // Should create 1000 events
-      expect(mockPayload.create).toHaveBeenCalledTimes(1000);
+      // Should create 4 events
+      expect(mockPayload.create).toHaveBeenCalledTimes(4);
 
-      // Should queue next batch
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-        task: "create-events",
-        input: { importJobId: "import-123", batchNumber: 1 },
-      });
+      // Should NOT queue any follow-up jobs (single job handles everything)
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
     });
 
-    it("should mark import as completed when processing last batch", async () => {
+    it("should mark import as completed after processing all batches", async () => {
       const mockImportJob = {
         id: "import-123",
         dataset: "dataset-456",
@@ -343,11 +362,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Mock find for updateImportFileStatusIfAllJobsComplete - no pending jobs
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      // Mock empty batch (no more data)
-      mocks.readBatchFromFile.mockReturnValueOnce([]);
+      // Mock empty stream (no rows to process)
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
 
-      // Set up geocoding results properly - the job handler uses getGeocodingResults(job)
-      // which looks at job.geocodingResults and returns a GeocodingResultsMap (object)
+      // Set up geocoding results properly
       const geocodingResultsMap = {
         "0": { rowNumber: 0, coordinates: { lat: 1, lng: 1 }, confidence: 0.9 },
         "1": { rowNumber: 1, coordinates: { lat: 2, lng: 2 }, confidence: 0.8 },
@@ -414,7 +432,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
   });
 
   describe("Edge Cases", () => {
-    it("should handle empty batch gracefully", async () => {
+    it("should handle empty stream gracefully", async () => {
       const mockImportJob = {
         id: "import-123",
         dataset: "dataset-456",
@@ -436,13 +454,13 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Mock find for updateImportFileStatusIfAllJobsComplete
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      // Mock empty file
-      mocks.readBatchFromFile.mockReturnValueOnce([]);
+      // Mock empty stream
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
       mocks.getGeocodingResults.mockReturnValue(new Map());
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      expect(result).toEqual({ output: { completed: true } });
+      expect(result).toEqual({ output: { totalBatches: 0, eventsCreated: 0, eventsSkipped: 0, errors: 0 } });
 
       // Should mark as completed
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -499,7 +517,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
       mocks.getGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
@@ -558,7 +576,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
       mocks.getGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
@@ -609,7 +627,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
       mocks.getGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
@@ -673,7 +691,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
       mocks.getGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
@@ -733,7 +751,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
       mocks.getGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
@@ -791,7 +809,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      mocks.readBatchFromFile.mockReturnValueOnce(mockFileData);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
       mocks.getGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);

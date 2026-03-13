@@ -101,12 +101,12 @@ describe.sequential("Pipeline Workflow Transitions", () => {
 
     await analyzeDuplicatesJob.handler({
       req: { payload },
-      job: { id: "duplicate-job-1", input: { importJobId: importJob.id, batchNumber: 0 } },
+      job: { id: "duplicate-job-1", input: { importJobId: importJob.id } },
     });
 
     await schemaDetectionJob.handler({
       req: { payload },
-      job: { id: "schema-job-1", input: { importJobId: importJob.id, batchNumber: 0 } },
+      job: { id: "schema-job-1", input: { importJobId: importJob.id } },
     });
 
     await validateSchemaJob.handler({
@@ -138,12 +138,12 @@ describe.sequential("Pipeline Workflow Transitions", () => {
 
     await analyzeDuplicatesJob.handler({
       req: { payload },
-      job: { id: "duplicate-job-2", input: { importJobId: importJob2.id, batchNumber: 0 } },
+      job: { id: "duplicate-job-2", input: { importJobId: importJob2.id } },
     });
 
     await schemaDetectionJob.handler({
       req: { payload },
-      job: { id: "schema-job-2", input: { importJobId: importJob2.id, batchNumber: 0 } },
+      job: { id: "schema-job-2", input: { importJobId: importJob2.id } },
     });
 
     await validateSchemaJob.handler({
@@ -308,12 +308,12 @@ Event 1,2024-01-01,Location 1`;
 
       await analyzeDuplicatesJob.handler({
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "duplicate-job", input: { importJobId: importJob.id } },
       });
 
       await schemaDetectionJob.handler({
         req: { payload },
-        job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "schema-job", input: { importJobId: importJob.id } },
       });
 
       await validateSchemaJob.handler({
@@ -353,12 +353,12 @@ Event 2,2024-01-02`;
 
       await analyzeDuplicatesJob.handler({
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "duplicate-job", input: { importJobId: importJob.id } },
       });
 
       await schemaDetectionJob.handler({
         req: { payload },
-        job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "schema-job", input: { importJobId: importJob.id } },
       });
 
       const beforeValidation = await payload.findByID({ collection: "import-jobs", id: importJob.id });
@@ -409,12 +409,12 @@ Event 2,2024-01-02,Location 2`;
 
       await analyzeDuplicatesJob.handler({
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "duplicate-job", input: { importJobId: importJob.id } },
       });
 
       await schemaDetectionJob.handler({
         req: { payload },
-        job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "schema-job", input: { importJobId: importJob.id } },
       });
 
       await validateSchemaJob.handler({
@@ -434,7 +434,7 @@ Event 2,2024-01-02,Location 2`;
 
       await createEventsBatchJob.handler({
         req: { payload },
-        job: { id: "event-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "event-job", input: { importJobId: importJob.id } },
       });
 
       const completedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });

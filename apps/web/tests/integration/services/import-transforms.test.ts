@@ -94,9 +94,9 @@ describe("Import Transforms - Integration", () => {
       const { schemaDetectionJob } = await import("@/lib/jobs/handlers/schema-detection-job");
 
       await schemaDetectionJob.handler({
-        job: { id: "test-schema-detection-1", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "test-schema-detection-1", input: { importJobId: importJob.id } },
         req: { payload },
-        input: { importJobId: importJob.id, batchNumber: 0 },
+        input: { importJobId: importJob.id },
       });
 
       // Verify the schema was detected with transformed field names
@@ -151,9 +151,9 @@ Item 2,200`;
       const { schemaDetectionJob } = await import("@/lib/jobs/handlers/schema-detection-job");
 
       await schemaDetectionJob.handler({
-        job: { id: "test-schema-detection-2", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "test-schema-detection-2", input: { importJobId: importJob.id } },
         req: { payload },
-        input: { importJobId: importJob.id, batchNumber: 0 },
+        input: { importJobId: importJob.id },
       });
 
       const updatedJob = (await payload.findByID({
@@ -196,9 +196,9 @@ Item 2,200`;
       // Run first import to establish baseline schema
       const { schemaDetectionJob } = await import("@/lib/jobs/handlers/schema-detection-job");
       await schemaDetectionJob.handler({
-        job: { id: "test-detection-1", input: { importJobId: importJob1.id, batchNumber: 0 } },
+        job: { id: "test-detection-1", input: { importJobId: importJob1.id } },
         req: { payload },
-        input: { importJobId: importJob1.id, batchNumber: 0 },
+        input: { importJobId: importJob1.id },
       });
 
       const completedJob1 = (await payload.findByID({
@@ -234,9 +234,9 @@ Item 2,200`;
 
       // Run schema detection for second import
       await schemaDetectionJob.handler({
-        job: { id: "test-detection-2", input: { importJobId: importJob2.id, batchNumber: 0 } },
+        job: { id: "test-detection-2", input: { importJobId: importJob2.id } },
         req: { payload },
-        input: { importJobId: importJob2.id, batchNumber: 0 },
+        input: { importJobId: importJob2.id },
       });
 
       // Run schema validation to detect transforms

@@ -29,6 +29,23 @@ const getEventData = (event: Event): Record<string, unknown> => {
     : {};
 };
 
+/** Create a mock async iterable that yields a single batch of rows. */
+const mockStreamBatch = (rows: Record<string, unknown>[]) => ({
+  [Symbol.asyncIterator]: () => {
+    let yielded = false;
+    return {
+      next: async () => {
+        await Promise.resolve();
+        if (!yielded) {
+          yielded = true;
+          return { value: rows, done: false as const };
+        }
+        return { value: undefined, done: true as const };
+      },
+    };
+  },
+});
+
 describe.sequential("Type Transformations Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
@@ -64,7 +81,7 @@ describe.sequential("Type Transformations Integration", () => {
       { id: "2", name: "Bob", age: "30", temperature: "68.3" },
     ];
 
-    vi.spyOn(fileReaders, "readBatchFromFile").mockReturnValue(mockData);
+    vi.spyOn(fileReaders, "streamBatchesFromFile").mockReturnValue(mockStreamBatch(mockData) as any);
 
     const dataset: Dataset = await payload.create({
       collection: "datasets",
@@ -120,7 +137,7 @@ describe.sequential("Type Transformations Integration", () => {
     await createEventsBatchJob.handler({
       job: { id: "test-job-1" },
       req: { payload },
-      input: { importJobId: importJob.id, batchNumber: 0 },
+      input: { importJobId: importJob.id },
     });
 
     const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } }, limit: 10 });
@@ -138,7 +155,7 @@ describe.sequential("Type Transformations Integration", () => {
 
   it("should not transform when allowTransformations is false", async () => {
     const mockData = [{ id: "1", name: "Alice", age: "25" }];
-    vi.spyOn(fileReaders, "readBatchFromFile").mockReturnValue(mockData);
+    vi.spyOn(fileReaders, "streamBatchesFromFile").mockReturnValue(mockStreamBatch(mockData) as any);
 
     const dataset: Dataset = await payload.create({
       collection: "datasets",
@@ -185,7 +202,7 @@ describe.sequential("Type Transformations Integration", () => {
     await createEventsBatchJob.handler({
       job: { id: "test-job-2" },
       req: { payload },
-      input: { importJobId: importJob.id, batchNumber: 0 },
+      input: { importJobId: importJob.id },
     });
 
     const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } } });

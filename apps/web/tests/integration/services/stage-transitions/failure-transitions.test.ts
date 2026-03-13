@@ -117,7 +117,7 @@ describe.sequential("Failure Transitions Integration", () => {
 
       const duplicateContext = {
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: nonExistentJobId, batchNumber: 0 } },
+        job: { id: "duplicate-job", input: { importJobId: nonExistentJobId } },
       };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
@@ -136,10 +136,7 @@ describe.sequential("Failure Transitions Integration", () => {
     it("should transition to FAILED when import job not found", async () => {
       const nonExistentJobId = "non-existent-job-id";
 
-      const schemaContext = {
-        req: { payload },
-        job: { id: "schema-job", input: { importJobId: nonExistentJobId, batchNumber: 0 } },
-      };
+      const schemaContext = { req: { payload }, job: { id: "schema-job", input: { importJobId: nonExistentJobId } } };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
       await expect(schemaDetectionJob.handler(schemaContext)).rejects.toThrow("Not Found");
@@ -174,12 +171,12 @@ Event 2,2024-01-02,San Francisco CA`;
 
       await analyzeDuplicatesJob.handler({
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "duplicate-job", input: { importJobId: importJob.id } },
       });
 
       await schemaDetectionJob.handler({
         req: { payload },
-        job: { id: "schema-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "schema-job", input: { importJobId: importJob.id } },
       });
 
       await expect(
@@ -193,10 +190,7 @@ Event 2,2024-01-02,San Francisco CA`;
 
   describe("Event Creation Failures", () => {
     it("should handle event creation errors when import job not found", async () => {
-      const eventContext = {
-        req: { payload },
-        job: { id: "event-job", input: { importJobId: "non-existent", batchNumber: 0 } },
-      };
+      const eventContext = { req: { payload }, job: { id: "event-job", input: { importJobId: "non-existent" } } };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
       await expect(createEventsBatchJob.handler(eventContext)).rejects.toThrow("Not Found");

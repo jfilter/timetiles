@@ -1,14 +1,13 @@
 /**
- * Defines the job handler for creating events from a batch of imported data.
+ * Defines the job handler for creating events from imported data.
  *
- * This job processes a specific batch of rows from an import file. For each row, it performs the following:
+ * This single job streams all batches from an import file. For each row, it performs the following:
  * - Skips rows that have been identified as duplicates in the `analyze-duplicates-job`.
  * - Generates a unique ID for the event.
  * - Associates any available geocoding results with the event.
  * - Creates a new document in the `events` collection.
  *
  * The job updates the import job's progress and handles errors for individual rows.
- * If more data is available in the file, it queues another `CREATE_EVENTS_BATCH` job for the next batch.
  * Once all batches are processed, it marks the import job as `COMPLETED`.
  *
  * @module
@@ -24,7 +23,7 @@ import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { getGeocodingResults } from "@/lib/types/geocoding";
 import type { ImportTransform } from "@/lib/types/import-transforms";
-import { readBatchFromFile } from "@/lib/utils/file-readers";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
@@ -75,10 +74,9 @@ const processEventBatch = async (
   job: ImportJob,
   dataset: Dataset,
   importJobId: string | number,
-  batchNumber: number,
+  globalRowOffset: number,
   logger: ReturnType<typeof createJobLogger>
 ) => {
-  const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
   const duplicateRows = extractDuplicateRows(job);
   const geocodingResults = getGeocodingResults(job);
 
@@ -87,7 +85,7 @@ const processEventBatch = async (
   const errors: Array<{ row: number; error: string }> = [];
 
   for (const [index, row] of rows.entries()) {
-    const rowNumber = batchNumber * BATCH_SIZE + index;
+    const rowNumber = globalRowOffset + index;
 
     if (duplicateRows.has(rowNumber)) {
       eventsSkipped++;
@@ -143,7 +141,12 @@ const processEventBatch = async (
   return { eventsCreated, eventsSkipped, errors };
 };
 
-const markJobCompleted = async (payload: Payload, importJobId: string | number) => {
+const markJobCompleted = async (
+  payload: Payload,
+  importJobId: string | number,
+  filePath: string,
+  sheetIndex: number
+) => {
   // Re-query job for current state (errors may have accumulated across batches)
   const currentJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
@@ -172,6 +175,9 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number) 
     },
   });
 
+  // Clean up sidecar CSV files
+  cleanupSidecarFiles(filePath, sheetIndex);
+
   // Track total events created for the user's quota
   try {
     const importJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
@@ -197,102 +203,66 @@ const markJobCompleted = async (payload: Payload, importJobId: string | number) 
   }
 };
 
-const processBatchData = async (
-  payload: Payload,
-  job: ImportJob,
-  dataset: Dataset,
-  importFile: ImportFile,
-  batchNumber: number,
-  logger: ReturnType<typeof createJobLogger>
-) => {
-  const filePath = getImportFilePath(importFile.filename ?? "");
-  const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
-
-  const rows = readBatchFromFile(filePath, {
-    sheetIndex: job.sheetIndex ?? undefined,
-    startRow: batchNumber * BATCH_SIZE,
-    limit: BATCH_SIZE,
-  });
-
-  if (rows.length === 0) {
-    return { rows, eventsCreated: 0, eventsSkipped: 0, errors: [] };
-  }
-
-  const result = await processEventBatch(payload, rows, job, dataset, job.id, batchNumber, logger);
-
-  return { rows, ...result };
-};
-
 /** Maximum number of individual errors stored on an import job. */
 const MAX_STORED_ERRORS = 500;
 
 const updateJobErrors = async (
   payload: Payload,
   importJobId: string | number,
-  job: ImportJob,
+  storedErrorCount: number,
   errors: Array<{ row: number; error: string }>
-) => {
-  if (errors.length === 0) return;
+): Promise<number> => {
+  if (errors.length === 0) return storedErrorCount;
 
-  const existingErrors = job.errors ?? [];
-  if (existingErrors.length >= MAX_STORED_ERRORS) {
+  if (storedErrorCount >= MAX_STORED_ERRORS) {
     logger.debug({ importJobId, skipped: errors.length }, "Error details cap reached, skipping storage");
-    return;
+    return storedErrorCount;
   }
 
-  const remaining = MAX_STORED_ERRORS - existingErrors.length;
+  const remaining = MAX_STORED_ERRORS - storedErrorCount;
   const errorsToStore = errors.slice(0, remaining);
+
+  // Re-read current errors from DB to merge correctly
+  const currentJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
+  const existingErrors = currentJob.errors ?? [];
 
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     id: importJobId,
     data: { errors: [...existingErrors, ...errorsToStore] },
   });
+
+  return storedErrorCount + errorsToStore.length;
 };
 
-const handleBatchCompletion = async (
+const handleJobError = async (
   payload: Payload,
-  job: ImportJob,
   importJobId: string | number,
-  batchNumber: number,
-  hasMore: boolean
+  error: unknown,
+  filePath: string,
+  sheetIndex: number
 ) => {
-  if (!hasMore) {
-    await markJobCompleted(payload, importJobId);
-    const importFileId = extractRelationId(job.importFile);
-    await updateImportFileStatusIfAllJobsComplete(payload, importFileId!);
-    return;
-  }
+  logError(error, "Event creation failed", { importJobId });
 
-  await payload.jobs.queue({ task: JOB_TYPES.CREATE_EVENTS, input: { importJobId, batchNumber: batchNumber + 1 } });
-};
-
-const handleJobError = async (payload: Payload, importJobId: string | number, batchNumber: number, error: unknown) => {
-  logError(error, "Event creation batch failed", { importJobId, batchNumber });
+  // Clean up sidecar CSV files on error
+  cleanupSidecarFiles(filePath, sheetIndex);
 
   await payload.update({
     collection: COLLECTION_NAMES.IMPORT_JOBS,
     id: importJobId,
     data: {
       stage: PROCESSING_STAGE.FAILED,
-      errors: [
-        {
-          row: batchNumber * BATCH_SIZES.EVENT_CREATION,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-      ],
+      errors: [{ row: 0, error: error instanceof Error ? error.message : "Unknown error" }],
     },
   });
 };
 
-const checkEventQuotaForFirstBatch = async (
+const checkEventQuotaBeforeProcessing = async (
   payload: Payload,
   importFile: ImportFile,
-  job: ImportJob,
-  batchNumber: number
+  job: ImportJob
 ): Promise<void> => {
-  // Only check quota on first batch
-  if (batchNumber !== 0 || !importFile?.user) {
+  if (!importFile?.user) {
     return;
   }
 
@@ -327,86 +297,107 @@ export const createEventsBatchJob = {
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CreateEventsBatchJobInput["input"];
-    const { importJobId, batchNumber } = input;
+    const { importJobId } = input;
 
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "create-events-batch");
-    logger.info("Starting event creation batch", { importJobId, batchNumber });
+    logger.info("Starting event creation", { importJobId });
     const startTime = Date.now();
+
+    let filePath = "";
+    let sheetIndex = 0;
 
     try {
       const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
+      filePath = getImportFilePath(importFile.filename ?? "");
+      sheetIndex = job.sheetIndex ?? 0;
 
-      // Start CREATE_EVENTS stage on first batch
-      if (batchNumber === 0) {
-        const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
-        await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS, uniqueRows);
-      }
+      // Start CREATE_EVENTS stage
+      const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS, uniqueRows);
 
       // Check EVENTS_PER_IMPORT quota before processing
-      await checkEventQuotaForFirstBatch(payload, importFile, job, batchNumber);
+      await checkEventQuotaBeforeProcessing(payload, importFile, job);
 
-      const { rows, eventsCreated, eventsSkipped, errors } = await processBatchData(
-        payload,
-        job,
-        dataset,
-        importFile,
-        batchNumber,
-        logger
-      );
+      const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
+      let batchNumber = 0;
+      let totalRowsProcessed = 0;
+      let totalEventsCreated = 0;
+      let totalEventsSkipped = 0;
+      let totalErrors = 0;
+      let storedErrorCount = 0;
 
-      // Handle empty batch (end of file)
-      if (rows.length === 0) {
-        await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);
-        await markJobCompleted(payload, importJobId);
-        const importFileId = extractRelationId(job.importFile)!;
-        await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
-        return { output: { completed: true } };
+      for await (const rows of streamBatchesFromFile(filePath, {
+        sheetIndex: job.sheetIndex ?? undefined,
+        batchSize: BATCH_SIZE,
+      })) {
+        const { eventsCreated, eventsSkipped, errors } = await processEventBatch(
+          payload,
+          rows,
+          job,
+          dataset,
+          importJobId,
+          totalRowsProcessed,
+          logger
+        );
+
+        totalRowsProcessed += rows.length;
+        totalEventsCreated += eventsCreated;
+        totalEventsSkipped += eventsSkipped;
+        totalErrors += errors.length;
+
+        // Calculate cumulative rows processed (created + skipped + errored)
+        const batchRowsProcessed = eventsCreated + eventsSkipped + errors.length;
+
+        // Update stage progress
+        await ProgressTrackingService.updateStageProgress(
+          payload,
+          importJobId,
+          PROCESSING_STAGE.CREATE_EVENTS,
+          totalRowsProcessed,
+          batchRowsProcessed
+        );
+
+        // Complete this batch
+        await ProgressTrackingService.completeBatch(
+          payload,
+          importJobId,
+          PROCESSING_STAGE.CREATE_EVENTS,
+          batchNumber + 1
+        );
+
+        // Update job errors (tracks count to enforce MAX_STORED_ERRORS across batches)
+        storedErrorCount = await updateJobErrors(payload, importJobId, storedErrorCount, errors);
+
+        batchNumber++;
       }
 
-      // Calculate cumulative rows processed (created + skipped + errored)
-      const batchRowsProcessed = eventsCreated + eventsSkipped + errors.length;
-      const rowsProcessedSoFar = batchNumber * BATCH_SIZES.EVENT_CREATION + batchRowsProcessed;
+      // Complete the stage
+      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
-      // Update stage progress
-      await ProgressTrackingService.updateStageProgress(
-        payload,
+      // Mark job completed and update import file status
+      await markJobCompleted(payload, importJobId, filePath, sheetIndex);
+      const importFileId = extractRelationId(job.importFile);
+      await updateImportFileStatusIfAllJobsComplete(payload, importFileId!);
+
+      logPerformance("Event creation", Date.now() - startTime, {
         importJobId,
-        PROCESSING_STAGE.CREATE_EVENTS,
-        rowsProcessedSoFar,
-        batchRowsProcessed
-      );
-
-      // Complete this batch
-      await ProgressTrackingService.completeBatch(
-        payload,
-        importJobId,
-        PROCESSING_STAGE.CREATE_EVENTS,
-        batchNumber + 1
-      );
-
-      // Update job errors
-      await updateJobErrors(payload, importJobId, job, errors);
-      const hasMore = rows.length === BATCH_SIZES.EVENT_CREATION;
-
-      // If no more batches, complete the stage
-      if (!hasMore) {
-        await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);
-      }
-
-      await handleBatchCompletion(payload, job, importJobId, batchNumber, hasMore);
-
-      logPerformance("Event creation batch", Date.now() - startTime, {
-        importJobId,
-        batchNumber,
-        eventsCreated,
-        eventsSkipped,
-        errors: errors.length,
+        totalBatches: batchNumber,
+        totalEventsCreated,
+        totalEventsSkipped,
+        totalErrors,
       });
 
-      return { output: { batchNumber, eventsCreated, eventsSkipped, errors: errors.length, hasMore } };
+      return {
+        output: {
+          totalBatches: batchNumber,
+          eventsCreated: totalEventsCreated,
+          eventsSkipped: totalEventsSkipped,
+          errors: totalErrors,
+        },
+      };
     } catch (error) {
-      await handleJobError(payload, importJobId, batchNumber, error);
+      await handleJobError(payload, importJobId, error, filePath, sheetIndex);
 
       try {
         const failedJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });

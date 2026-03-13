@@ -33,7 +33,7 @@ export type DatasetDetectionJobInput = FileJobInput;
 
 export type AnalyzeDuplicatesJobInput = ImportJobInput;
 
-export type SchemaDetectionJobInput = BatchJobInput;
+export type SchemaDetectionJobInput = ImportJobInput;
 
 export type ValidateSchemaJobInput = ImportJobInput;
 
@@ -41,4 +41,4 @@ export type CreateSchemaVersionJobInput = ImportJobInput;
 
 export type GeocodingBatchJobInput = BatchJobInput;
 
-export type CreateEventsBatchJobInput = BatchJobInput;
+export type CreateEventsBatchJobInput = ImportJobInput;
