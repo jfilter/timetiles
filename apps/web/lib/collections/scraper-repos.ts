@@ -12,6 +12,7 @@ import type { CollectionConfig, Where } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 
 const logger = createLogger("scraper-repos");
 
@@ -121,7 +122,16 @@ const ScraperRepos: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeChange: [setCreatedByHook],
+    beforeChange: [
+      setCreatedByHook,
+      async ({ data, req, operation }) => {
+        if (operation === "create" && req.user) {
+          const quotaService = createQuotaService(req.payload);
+          await quotaService.checkAndIncrementUsage(req.user, "SCRAPER_REPOS", 1, req);
+        }
+        return data;
+      },
+    ],
     afterChange: [
       async ({ doc, previousDoc, operation, req }) => {
         // Auto-trigger repo sync on create, or on update when source fields change
@@ -142,6 +152,19 @@ const ScraperRepos: CollectionConfig = {
         }
 
         return doc;
+      },
+    ],
+    afterDelete: [
+      async ({ doc, req }) => {
+        const createdById = typeof doc.createdBy === "object" ? doc.createdBy?.id : doc.createdBy;
+        if (createdById && req.payload) {
+          try {
+            const quotaService = createQuotaService(req.payload);
+            await quotaService.decrementUsage(createdById, "SCRAPER_REPOS", 1, req);
+          } catch (error) {
+            logger.error({ repoId: doc.id, error }, "Failed to decrement scraper repo quota");
+          }
+        }
       },
     ],
   },

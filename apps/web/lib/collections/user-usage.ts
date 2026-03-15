@@ -93,6 +93,21 @@ const UserUsage: CollectionConfig = {
       min: 0,
       admin: { description: "Current number of catalogs owned by this user" },
     },
+    {
+      name: "currentScraperRepos",
+      type: "number",
+      defaultValue: 0,
+      min: 0,
+      admin: { description: "Current number of scraper repos owned by this user" },
+    },
+    // Daily scraper counters
+    {
+      name: "scraperRunsToday",
+      type: "number",
+      defaultValue: 0,
+      min: 0,
+      admin: { description: "Scraper runs triggered today (resets at midnight UTC)" },
+    },
     // Reset tracking
     {
       name: "lastResetDate",

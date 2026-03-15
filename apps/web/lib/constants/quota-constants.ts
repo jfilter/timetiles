@@ -31,6 +31,8 @@ export interface UserQuotas {
   maxImportJobsPerDay: number;
   maxFileSizeMB: number;
   maxCatalogsPerUser: number;
+  maxScraperRepos: number;
+  maxScraperRunsPerDay: number;
 }
 
 /**
@@ -43,6 +45,8 @@ export interface UserUsage {
   importJobsToday: number;
   totalEventsCreated: number;
   currentCatalogs: number;
+  currentScraperRepos: number;
+  scraperRunsToday: number;
   lastResetDate: string;
 }
 
@@ -60,6 +64,8 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxImportJobsPerDay: 1,
     maxFileSizeMB: 1,
     maxCatalogsPerUser: 1,
+    maxScraperRepos: 0,
+    maxScraperRunsPerDay: 0,
   },
   [TRUST_LEVELS.BASIC]: {
     maxActiveSchedules: 1,
@@ -70,6 +76,8 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxImportJobsPerDay: 5,
     maxFileSizeMB: 10,
     maxCatalogsPerUser: 2,
+    maxScraperRepos: 0,
+    maxScraperRunsPerDay: 0,
   },
   [TRUST_LEVELS.REGULAR]: {
     maxActiveSchedules: 5,
@@ -80,6 +88,8 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxImportJobsPerDay: 20,
     maxFileSizeMB: 50,
     maxCatalogsPerUser: 5,
+    maxScraperRepos: 0,
+    maxScraperRunsPerDay: 0,
   },
   [TRUST_LEVELS.TRUSTED]: {
     maxActiveSchedules: 20,
@@ -90,6 +100,8 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxImportJobsPerDay: 100,
     maxFileSizeMB: 100,
     maxCatalogsPerUser: 20,
+    maxScraperRepos: 3,
+    maxScraperRunsPerDay: 10,
   },
   [TRUST_LEVELS.POWER_USER]: {
     maxActiveSchedules: 100,
@@ -100,6 +112,8 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxImportJobsPerDay: 500,
     maxFileSizeMB: 500,
     maxCatalogsPerUser: 100,
+    maxScraperRepos: 10,
+    maxScraperRunsPerDay: 50,
   },
   [TRUST_LEVELS.UNLIMITED]: {
     maxActiveSchedules: -1,
@@ -110,6 +124,8 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxImportJobsPerDay: -1,
     maxFileSizeMB: 1000,
     maxCatalogsPerUser: -1,
+    maxScraperRepos: -1,
+    maxScraperRunsPerDay: -1,
   },
 };
 
@@ -212,6 +228,20 @@ export const QUOTAS = {
     daily: false,
     errorMessage: (current: number, limit: number) =>
       `Maximum catalogs reached (${current}/${limit}). Delete an existing catalog to create more.`,
+  },
+  SCRAPER_REPOS: {
+    limitField: "maxScraperRepos",
+    usageField: "currentScraperRepos",
+    daily: false,
+    errorMessage: (current: number, limit: number) =>
+      `Maximum scraper repos reached (${current}/${limit}). Delete an existing repo to create more.`,
+  },
+  SCRAPER_RUNS_PER_DAY: {
+    limitField: "maxScraperRunsPerDay",
+    usageField: "scraperRunsToday",
+    daily: true,
+    errorMessage: (current: number, limit: number) =>
+      `Daily scraper run limit reached (${current}/${limit}). Resets at midnight UTC.`,
   },
 } as const satisfies Record<string, QuotaDescriptor>;
 

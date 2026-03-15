@@ -427,6 +427,18 @@ export const scraperExecutionJob = {
     }
 
     const { scraper, repo } = await loadScraperWithRepo(payload, scraperId);
+
+    // Quota check: daily scraper runs
+    const repoOwnerId = extractRelationId(repo.createdBy);
+    if (repoOwnerId) {
+      const { createQuotaService } = await import("@/lib/services/quota-service");
+      const quotaService = createQuotaService(payload);
+      const owner = await payload.findByID({ collection: "users", id: repoOwnerId, overrideAccess: true });
+      if (owner) {
+        await quotaService.checkAndIncrementUsage(owner, "SCRAPER_RUNS_PER_DAY", 1);
+      }
+    }
+
     const run = await createRunRecord(payload, scraperId, repo, triggeredBy);
 
     try {

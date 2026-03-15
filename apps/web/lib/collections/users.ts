@@ -255,6 +255,18 @@ const Users: CollectionConfig = {
           min: -1,
           admin: { description: "Maximum number of catalogs per user (-1 for unlimited)" },
         },
+        {
+          name: "maxScraperRepos",
+          type: "number",
+          min: -1,
+          admin: { description: "Maximum number of scraper repos (-1 for unlimited)" },
+        },
+        {
+          name: "maxScraperRunsPerDay",
+          type: "number",
+          min: -1,
+          admin: { description: "Maximum scraper runs per day (-1 for unlimited)" },
+        },
       ],
     },
     // Note: usage tracking has been moved to the separate 'user-usage' collection

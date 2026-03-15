@@ -289,6 +289,14 @@ export interface User {
      * Maximum number of catalogs per user (-1 for unlimited)
      */
     maxCatalogsPerUser?: number | null;
+    /**
+     * Maximum number of scraper repos (-1 for unlimited)
+     */
+    maxScraperRepos?: number | null;
+    /**
+     * Maximum scraper runs per day (-1 for unlimited)
+     */
+    maxScraperRunsPerDay?: number | null;
   };
   /**
    * Custom quota overrides (JSON format) - overrides trust level defaults
@@ -2031,6 +2039,14 @@ export interface UserUsage {
    * Current number of catalogs owned by this user
    */
   currentCatalogs?: number | null;
+  /**
+   * Current number of scraper repos owned by this user
+   */
+  currentScraperRepos?: number | null;
+  /**
+   * Scraper runs triggered today (resets at midnight UTC)
+   */
+  scraperRunsToday?: number | null;
   /**
    * Last time daily counters were reset
    */
@@ -4382,6 +4398,8 @@ export interface UsersSelect<T extends boolean = true> {
         maxImportJobsPerDay?: T;
         maxFileSizeMB?: T;
         maxCatalogsPerUser?: T;
+        maxScraperRepos?: T;
+        maxScraperRunsPerDay?: T;
       };
   customQuotas?: T;
   deletionStatus?: T;
@@ -4419,6 +4437,8 @@ export interface UserUsageSelect<T extends boolean = true> {
   currentActiveSchedules?: T;
   totalEventsCreated?: T;
   currentCatalogs?: T;
+  currentScraperRepos?: T;
+  scraperRunsToday?: T;
   lastResetDate?: T;
   updatedAt?: T;
   createdAt?: T;

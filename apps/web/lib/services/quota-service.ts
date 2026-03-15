@@ -223,6 +223,8 @@ export class QuotaService {
           currentActiveSchedules: 0,
           totalEventsCreated: 0,
           currentCatalogs: 0,
+          currentScraperRepos: 0,
+          scraperRunsToday: 0,
           lastResetDate: new Date().toISOString(),
         },
         overrideAccess: true,
@@ -259,6 +261,8 @@ export class QuotaService {
       maxImportJobsPerDay: userQuotas.maxImportJobsPerDay ?? defaultQuotas.maxImportJobsPerDay,
       maxFileSizeMB: userQuotas.maxFileSizeMB ?? defaultQuotas.maxFileSizeMB,
       maxCatalogsPerUser: userQuotas.maxCatalogsPerUser ?? defaultQuotas.maxCatalogsPerUser,
+      maxScraperRepos: userQuotas.maxScraperRepos ?? defaultQuotas.maxScraperRepos,
+      maxScraperRunsPerDay: userQuotas.maxScraperRunsPerDay ?? defaultQuotas.maxScraperRunsPerDay,
     };
 
     // If user has custom quotas JSON field, merge those too (with runtime validation)
@@ -304,6 +308,8 @@ export class QuotaService {
         importJobsToday: doc.importJobsToday ?? 0,
         totalEventsCreated: doc.totalEventsCreated ?? 0,
         currentCatalogs: doc.currentCatalogs ?? 0,
+        currentScraperRepos: doc.currentScraperRepos ?? 0,
+        scraperRunsToday: doc.scraperRunsToday ?? 0,
         lastResetDate: doc.lastResetDate ?? new Date().toISOString(),
       };
     } catch (error) {
@@ -422,7 +428,7 @@ export class QuotaService {
 
         const setClauses: Record<string, unknown> = {};
         for (const field of DAILY_USAGE_FIELDS) {
-          const col = user_usage[field];
+          const col = (user_usage as unknown as Record<string, unknown>)[field];
           const increment = field === usageField ? amount : 0;
           setClauses[field] = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${col}, 0) END + ${increment}`;
         }
@@ -432,7 +438,7 @@ export class QuotaService {
         await drizzle.update(user_usage).set(setClauses).where(eq(user_usage.user, normalizedUserId));
       } else {
         // For non-daily types, simple atomic increment
-        const col = user_usage[usageField];
+        const col = (user_usage as unknown as Record<string, unknown>)[usageField];
         await drizzle
           .update(user_usage)
           .set({ [usageField]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
@@ -472,7 +478,7 @@ export class QuotaService {
       await this.getOrCreateUsageRecord(normalizedUserId, req);
 
       const drizzle = await this.getDrizzle(req);
-      const col = user_usage[usageField];
+      const col = (user_usage as unknown as Record<string, unknown>)[usageField];
       await drizzle
         .update(user_usage)
         .set({ [usageField]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`, updatedAt: sql`NOW()` })
@@ -635,7 +641,7 @@ export class QuotaService {
     await this.getOrCreateUsageRecord(normalizedUserId, req);
 
     const drizzle = await this.getDrizzle(req);
-    const col = user_usage[usageField];
+    const col = (user_usage as unknown as Record<string, unknown>)[usageField];
 
     // Atomic: increment only if current value + amount <= limit
     const result = await drizzle
