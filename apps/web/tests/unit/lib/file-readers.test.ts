@@ -11,14 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import {
-  cleanupSidecarFiles,
-  getFileRowCount,
-  getSidecarPath,
-  readAllRowsFromFile,
-  readBatchFromFile,
-  streamBatchesFromFile,
-} from "@/lib/utils/file-readers";
+import { cleanupSidecarFiles, getFileRowCount, getSidecarPath, streamBatchesFromFile } from "@/lib/utils/file-readers";
 
 import { getFixturePath } from "../../setup/paths";
 
@@ -154,15 +147,6 @@ describe.sequential("File Readers", () => {
 
       expect(rows).toHaveLength(6);
       expect(rows[0]).toMatchObject({ title: "Tech Conference 2024", category: "technology" });
-    });
-
-    it("should produce same data as readAllRowsFromFile", async () => {
-      const fixturePath = getFixturePath("valid-events.csv");
-
-      const streamedRows = await flattenBatches(streamBatchesFromFile(fixturePath, { batchSize: 2 }));
-      const batchRows = readAllRowsFromFile(fixturePath);
-
-      expect(streamedRows).toEqual(batchRows);
     });
 
     it("should handle batchSize of 1", async () => {
@@ -345,78 +329,31 @@ describe.sequential("File Readers", () => {
     });
   });
 
-  describe("readAllRowsFromFile", () => {
-    it("should read all CSV rows in a single pass", () => {
-      const csvPath = writeTempCSV("all.csv", "id,name\n1,Alice\n2,Bob\n3,Charlie\n");
-
-      const rows = readAllRowsFromFile(csvPath);
-
-      expect(rows).toHaveLength(3);
-      expect(rows[0]).toEqual({ id: 1, name: "Alice" });
-    });
-
-    it("should read all Excel rows", () => {
-      const fixturePath = getFixturePath("events.xlsx");
-
-      const rows = readAllRowsFromFile(fixturePath);
-
-      expect(rows.length).toBeGreaterThan(0);
-      expect(rows[0]).toHaveProperty("title");
-    });
-
-    it("should throw for unsupported file type", () => {
-      const filePath = writeTempCSV("data.txt", "hello");
-
-      expect(() => readAllRowsFromFile(filePath)).toThrow("Unsupported file type: txt");
-    });
-  });
-
-  describe("readBatchFromFile", () => {
-    it("should read a specific batch from CSV", () => {
-      const rows = Array.from({ length: 10 }, (_, i) => `${i + 1},Item ${i + 1}`);
-      const csvPath = writeTempCSV("batch.csv", `id,name\n${rows.join("\n")}\n`);
-
-      const batch = readBatchFromFile(csvPath, { startRow: 3, limit: 4 });
-
-      expect(batch).toHaveLength(4);
-      expect(batch[0]).toEqual({ id: 4, name: "Item 4" });
-      expect(batch[3]).toEqual({ id: 7, name: "Item 7" });
-    });
-
-    it("should return empty for startRow beyond file", () => {
-      const csvPath = writeTempCSV("short.csv", "id\n1\n2\n");
-
-      const batch = readBatchFromFile(csvPath, { startRow: 100, limit: 10 });
-
-      expect(batch).toHaveLength(0);
-    });
-  });
-
   describe("getFileRowCount", () => {
-    it("should count CSV rows (excluding header)", () => {
+    it("should count CSV rows (excluding header)", async () => {
       const csvPath = writeTempCSV("count.csv", "id,name\n1,A\n2,B\n3,C\n");
 
-      expect(getFileRowCount(csvPath)).toBe(3);
+      expect(await getFileRowCount(csvPath)).toBe(3);
     });
 
-    it("should return 0 for header-only CSV", () => {
+    it("should return 0 for header-only CSV", async () => {
       const csvPath = writeTempCSV("header-only.csv", "id,name\n");
 
-      expect(getFileRowCount(csvPath)).toBe(0);
+      expect(await getFileRowCount(csvPath)).toBe(0);
     });
 
-    it("should count Excel rows", () => {
+    it("should count Excel rows", async () => {
       const fixturePath = getFixturePath("events.xlsx");
 
-      const count = getFileRowCount(fixturePath);
+      const count = await getFileRowCount(fixturePath);
 
       expect(count).toBeGreaterThan(0);
     });
 
-    it("should return 0 for unsupported file type", () => {
+    it("should return 0 for unsupported file type", async () => {
       const filePath = writeTempCSV("data.json", '{"a":1}');
 
-      expect(getFileRowCount(filePath)).toBe(0);
+      expect(await getFileRowCount(filePath)).toBe(0);
     });
   });
 });

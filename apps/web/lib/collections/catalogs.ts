@@ -15,6 +15,7 @@
 import type { CollectionConfig, PayloadRequest } from "payload";
 
 import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -30,6 +31,8 @@ import {
   isEditorOrAdmin,
   setCreatedByHook,
 } from "./shared-fields";
+
+const logger = createLogger("catalogs");
 
 /** Validates that private catalogs are allowed if isPublic is false. */
 const validatePrivateVisibility = async (data: Record<string, unknown>, req: PayloadRequest): Promise<void> => {
@@ -94,48 +97,80 @@ const syncDatasetsWithCatalog = async (
   }
 };
 
-/** Sync catalog changes to dataset-schemas in a dataset */
-const syncDatasetSchemasWithCatalog = async (
-  req: PayloadRequest,
-  datasetId: number,
-  datasetIsPublic: boolean,
-  changes: { createdByChanged: boolean; isPublicChanged: boolean; newCreatedBy: unknown; newIsPublic: boolean }
-): Promise<void> => {
-  const schemaUpdates: Record<string, unknown> = {};
-  if (changes.createdByChanged) schemaUpdates.catalogOwnerId = changes.newCreatedBy;
-  if (changes.isPublicChanged) schemaUpdates.datasetIsPublic = datasetIsPublic && changes.newIsPublic;
+type CatalogChanges = {
+  createdByChanged: boolean;
+  isPublicChanged: boolean;
+  newCreatedBy: unknown;
+  newIsPublic: boolean;
+};
 
-  if (Object.keys(schemaUpdates).length > 0) {
+/** Bulk update a single collection for catalog sync */
+const bulkSyncCollection = async (
+  req: PayloadRequest,
+  collection: "events" | "dataset-schemas",
+  datasets: Array<{ id: number; isPublic: boolean }>,
+  changes: CatalogChanges
+): Promise<void> => {
+  const allIds = datasets.map((d) => d.id);
+  const ownerId = changes.createdByChanged ? (changes.newCreatedBy as number) : undefined;
+
+  if (!changes.isPublicChanged) {
+    // Only ownership changed — same update for all datasets
     await req.payload.update({
-      collection: "dataset-schemas",
-      where: { dataset: { equals: datasetId } },
-      data: schemaUpdates,
+      collection,
+      where: { dataset: { in: allIds } },
+      data: { catalogOwnerId: ownerId },
       overrideAccess: true,
       req,
     });
+  } else if (!changes.newIsPublic) {
+    // Catalog became private — all children become non-public
+    await req.payload.update({
+      collection,
+      where: { dataset: { in: allIds } },
+      data: { datasetIsPublic: false, ...(ownerId != null && { catalogOwnerId: ownerId }) },
+      overrideAccess: true,
+      req,
+    });
+  } else {
+    // Catalog became public — visibility depends on each dataset's own isPublic
+    const ownerData = ownerId != null ? { catalogOwnerId: ownerId } : {};
+    const publicIds = datasets.filter((d) => d.isPublic).map((d) => d.id);
+    const privateIds = datasets.filter((d) => !d.isPublic).map((d) => d.id);
+
+    if (publicIds.length > 0) {
+      await req.payload.update({
+        collection,
+        where: { dataset: { in: publicIds } },
+        data: { datasetIsPublic: true, ...ownerData },
+        overrideAccess: true,
+        req,
+      });
+    }
+    if (privateIds.length > 0) {
+      await req.payload.update({
+        collection,
+        where: { dataset: { in: privateIds } },
+        data: { datasetIsPublic: false, ...ownerData },
+        overrideAccess: true,
+        req,
+      });
+    }
   }
 };
 
-/** Sync catalog changes to events in a dataset */
-const syncEventsWithCatalog = async (
+/** Batch sync catalog changes to events and dataset-schemas across all datasets.
+ * Groups updates by dataset visibility to minimize DB calls (max 4 instead of 2N). */
+const batchSyncChildRecords = async (
   req: PayloadRequest,
-  datasetId: number,
-  datasetIsPublic: boolean,
-  changes: { createdByChanged: boolean; isPublicChanged: boolean; newCreatedBy: unknown; newIsPublic: boolean }
+  datasets: Array<{ id: number; isPublic: boolean }>,
+  changes: CatalogChanges
 ): Promise<void> => {
-  const eventUpdates: Record<string, unknown> = {};
-  if (changes.createdByChanged) eventUpdates.catalogOwnerId = changes.newCreatedBy;
-  if (changes.isPublicChanged) eventUpdates.datasetIsPublic = datasetIsPublic && changes.newIsPublic;
+  if (datasets.length === 0) return;
+  if (!changes.createdByChanged && !changes.isPublicChanged) return;
 
-  if (Object.keys(eventUpdates).length > 0) {
-    await req.payload.update({
-      collection: "events",
-      where: { dataset: { equals: datasetId } },
-      data: eventUpdates,
-      overrideAccess: true,
-      req,
-    });
-  }
+  await bulkSyncCollection(req, "events", datasets, changes);
+  await bulkSyncCollection(req, "dataset-schemas", datasets, changes);
 };
 
 /** Validates slug uniqueness for catalogs. */
@@ -278,8 +313,8 @@ const Catalogs: CollectionConfig = {
                 },
               });
             }
-          } catch {
-            /* audit is best-effort */
+          } catch (error) {
+            logger.warn("Audit log failed for catalog change", { catalogId: doc.id, error });
           }
         }
 
@@ -296,11 +331,12 @@ const Catalogs: CollectionConfig = {
         // Sync changes to datasets
         await syncDatasetsWithCatalog(req, doc.id, changes);
 
-        // Sync changes to events and dataset-schemas in all datasets
-        for (const dataset of datasets.docs) {
-          await syncEventsWithCatalog(req, dataset.id, dataset.isPublic ?? false, changes);
-          await syncDatasetSchemasWithCatalog(req, dataset.id, dataset.isPublic ?? false, changes);
-        }
+        // Sync changes to events and dataset-schemas (batched to avoid N+1)
+        await batchSyncChildRecords(
+          req,
+          datasets.docs.map((d) => ({ id: d.id, isPublic: d.isPublic ?? false })),
+          changes
+        );
 
         return doc;
       },

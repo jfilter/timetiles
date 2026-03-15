@@ -105,7 +105,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockImportJob); // Fourth call refetches import job after progress init
 
       // Mock getFileRowCount for total rows
-      mocks.getFileRowCount.mockReturnValueOnce(100);
+      mocks.getFileRowCount.mockResolvedValueOnce(100);
 
       mockPayload.update.mockResolvedValueOnce({});
 

@@ -60,6 +60,7 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
     <button
       type="button"
       onClick={handleClick}
+      aria-label={`${isSelected ? "Deselect" : "Select"} catalog ${catalog.name}`}
       className={cn(
         "relative w-full break-inside-avoid rounded-sm border p-2 text-left transition-all",
         "hover:bg-cartographic-cream/50 dark:hover:bg-white/10",
@@ -117,6 +118,7 @@ const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipPro
     <button
       type="button"
       onClick={handleClick}
+      aria-label={`${isActive ? "Disable" : "Enable"} dataset ${dataset.name}`}
       className={cn(
         "rounded-sm border px-2 py-1 text-left transition-all",
         isActive

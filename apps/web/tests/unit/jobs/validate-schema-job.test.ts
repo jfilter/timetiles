@@ -26,7 +26,6 @@ import {
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   return {
-    readBatchFromFile: vi.fn(),
     cleanupSidecarFiles: vi.fn(),
     ProgressiveSchemaBuilder: vi.fn(),
     createSchemaVersion: vi.fn(),
@@ -39,10 +38,7 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/utils/file-readers", () => ({
-  readBatchFromFile: mocks.readBatchFromFile,
-  cleanupSidecarFiles: mocks.cleanupSidecarFiles,
-}));
+vi.mock("@/lib/utils/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),

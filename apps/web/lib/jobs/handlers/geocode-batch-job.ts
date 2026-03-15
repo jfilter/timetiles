@@ -14,14 +14,14 @@
 /* eslint-disable sonarjs/max-lines-per-function -- Batch geocoding requires sequential processing steps */
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService } from "@/lib/services/geocoding";
 import type { GeocodingService } from "@/lib/services/geocoding/geocoding-service";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import type { GeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
-import { readAllRowsFromFile } from "@/lib/utils/file-readers";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
@@ -29,29 +29,32 @@ import { loadJobResources } from "../utils/resource-loading";
 import { getImportFilePath } from "../utils/upload-path";
 
 /**
- * Extract unique location values from rows.
+ * Stream through file batches to extract unique location values without loading all rows into memory.
  */
-const extractUniqueLocations = (
-  rows: Record<string, unknown>[],
+const extractUniqueLocations = async (
+  filePath: string,
+  sheetIndex: number,
   locationField: string,
   logger: ReturnType<typeof createJobLogger>
-): Set<string> => {
+): Promise<{ uniqueLocations: Set<string>; totalRows: number }> => {
   const uniqueLocations = new Set<string>();
+  let totalRows = 0;
 
-  for (const row of rows) {
-    const location = row[locationField];
-
-    if (location && typeof location === "string") {
-      const trimmed = location.trim();
-      if (trimmed) {
-        uniqueLocations.add(trimmed);
+  for await (const rows of streamBatchesFromFile(filePath, { sheetIndex, batchSize: BATCH_SIZES.DUPLICATE_ANALYSIS })) {
+    for (const row of rows) {
+      const location = row[locationField];
+      if (location && typeof location === "string") {
+        const trimmed = location.trim();
+        if (trimmed) {
+          uniqueLocations.add(trimmed);
+        }
       }
     }
+    totalRows += rows.length;
   }
 
-  logger.info("Extracted unique locations", { totalRows: rows.length, uniqueLocations: uniqueLocations.size });
-
-  return uniqueLocations;
+  logger.info("Extracted unique locations", { totalRows, uniqueLocations: uniqueLocations.size });
+  return { uniqueLocations, totalRows };
 };
 
 /**
@@ -154,16 +157,15 @@ export const geocodeBatchJob = {
       }
 
       const filePath = getImportFilePath(importFile.filename ?? "");
+      const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
 
-      // Read ALL rows from file (not batched)
-      const rows = readAllRowsFromFile(filePath, {
-        sheetIndex: typeof job.sheetIndex === "number" ? job.sheetIndex : 0,
-      });
-
-      logger.info("Read rows from file", { totalRows: rows.length });
-
-      // Extract unique locations
-      const uniqueLocations = extractUniqueLocations(rows, geocodingCandidate.locationField, logger);
+      // Stream file to extract unique locations (memory-efficient)
+      const { uniqueLocations, totalRows } = await extractUniqueLocations(
+        filePath,
+        sheetIndex,
+        geocodingCandidate.locationField,
+        logger
+      );
 
       // Start tracking with unique locations count as total
       await ProgressTrackingService.startStage(
@@ -240,7 +242,7 @@ export const geocodeBatchJob = {
 
       logPerformance("Unique location geocoding", Date.now() - startTime, {
         importJobId,
-        totalRows: rows.length,
+        totalRows,
         uniqueLocations: uniqueLocations.size,
         successCount,
         failureCount,
@@ -248,7 +250,7 @@ export const geocodeBatchJob = {
 
       return {
         output: {
-          totalRows: rows.length,
+          totalRows,
           uniqueLocations: uniqueLocations.size,
           geocodedCount: successCount,
           failedCount: failureCount,
@@ -256,6 +258,15 @@ export const geocodeBatchJob = {
       };
     } catch (error) {
       logError(error, "Unique location geocoding failed", { importJobId });
+
+      // Clean up sidecar CSV files on error (best-effort)
+      try {
+        const { job: failedJob, importFile: failedFile } = await loadJobResources(payload, importJobId);
+        const failedFilePath = getImportFilePath(failedFile.filename ?? "");
+        cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
+      } catch {
+        // Best-effort cleanup
+      }
 
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
 

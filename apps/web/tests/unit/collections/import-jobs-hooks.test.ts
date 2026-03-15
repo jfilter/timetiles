@@ -38,44 +38,44 @@ describe.sequential("importJobAfterDeleteHook", () => {
     mocks.getImportFilePath.mockImplementation((filename: string) => `/mock/import-files/${filename}`);
   });
 
-  it("should clean up sidecar files when import job with populated importFile is deleted", async () => {
+  it("should clean up sidecar files when import job with populated importFile is deleted", () => {
     const doc = { importFile: { id: "file-1", filename: "data.xlsx" }, sheetIndex: 2 };
 
-    await importJobAfterDeleteHook({ doc, req: {} } as any);
+    importJobAfterDeleteHook({ doc, req: {} } as any);
 
     expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/import-files/data.xlsx", 2);
   });
 
-  it("should not clean up when importFile is missing", async () => {
+  it("should not clean up when importFile is missing", () => {
     const doc = { sheetIndex: 0 };
 
-    await importJobAfterDeleteHook({ doc, req: {} } as any);
+    importJobAfterDeleteHook({ doc, req: {} } as any);
 
     expect(mocks.cleanupSidecarFiles).not.toHaveBeenCalled();
   });
 
-  it("should not clean up when importFile is a plain ID (not populated)", async () => {
+  it("should not clean up when importFile is a plain ID (not populated)", () => {
     const doc = { importFile: 123, sheetIndex: 0 };
 
-    await importJobAfterDeleteHook({ doc, req: {} } as any);
+    importJobAfterDeleteHook({ doc, req: {} } as any);
 
     expect(mocks.cleanupSidecarFiles).not.toHaveBeenCalled();
   });
 
-  it("should use sheetIndex 0 as default", async () => {
+  it("should use sheetIndex 0 as default", () => {
     const doc = { importFile: { id: "file-1", filename: "data.xlsx" } };
 
-    await importJobAfterDeleteHook({ doc, req: {} } as any);
+    importJobAfterDeleteHook({ doc, req: {} } as any);
 
     expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/import-files/data.xlsx", 0);
   });
 
-  it("should not throw when cleanup fails", async () => {
+  it("should not throw when cleanup fails", () => {
     mocks.cleanupSidecarFiles.mockImplementation(() => {
       throw new Error("disk error");
     });
     const doc = { importFile: { id: "file-1", filename: "data.xlsx" }, sheetIndex: 0 };
 
-    await expect(importJobAfterDeleteHook({ doc, req: {} } as any)).resolves.not.toThrow();
+    expect(() => importJobAfterDeleteHook({ doc, req: {} } as any)).not.toThrow();
   });
 });

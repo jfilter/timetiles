@@ -236,7 +236,7 @@ const handleDisabledDedup = async (
   }
 
   // Only pre-scan the file when dedup is disabled (need totalRows for summary)
-  const fileTotalRows = getFileRowCount(filePath, job.sheetIndex ?? 0);
+  const fileTotalRows = await getFileRowCount(filePath, job.sheetIndex ?? 0);
   await initializeProgressIfNeeded(payload, importJobId, job, fileTotalRows);
 
   const shouldSkip = await skipDeduplication(payload, importJobId, fileTotalRows, dataset, logger);

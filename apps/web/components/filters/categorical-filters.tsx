@@ -25,7 +25,7 @@ const EMPTY_ARRAY: string[] = [];
  * Loading skeleton for categorical filters.
  */
 const CategoricalFiltersSkeleton = () => (
-  <div className="space-y-3">
+  <div className="space-y-3" role="status" aria-label="Loading filters">
     {[1, 2, 3].map((i) => (
       <div key={i} className="space-y-1">
         <div className="bg-muted h-3 w-20 animate-pulse rounded" />

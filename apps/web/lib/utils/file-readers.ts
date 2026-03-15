@@ -1,8 +1,7 @@
 /**
  * Provides utility functions for reading data from files in batches.
  *
- * This module supports both random-access batch reading (`readBatchFromFile`) and
- * streaming batch iteration (`streamBatchesFromFile`). For CSV files, streaming uses
+ * This module provides streaming batch iteration (`streamBatchesFromFile`). For CSV files, streaming uses
  * Papa.parse's step-based parser with pause/resume backpressure, keeping memory at
  * one batch buffer (~3MB for 1000 rows). For Excel/ODS files, the selected sheet is
  * converted to a CSV sidecar on first access, then streamed identically.
@@ -10,21 +9,12 @@
  * @module
  */
 import fs from "node:fs";
+import readline from "node:readline";
 
 import Papa from "papaparse";
 import { read, utils } from "xlsx";
 
 import { logger } from "@/lib/logger";
-
-interface ReadBatchOptions {
-  sheetIndex?: number;
-  startRow: number;
-  limit: number;
-}
-
-interface ReadAllOptions {
-  sheetIndex?: number;
-}
 
 interface StreamBatchOptions {
   sheetIndex?: number;
@@ -36,58 +26,6 @@ const EXCEL_EXTENSIONS = new Set(["xlsx", "xls", "ods"]);
 const getFileExtension = (filePath: string): string | undefined => filePath.toLowerCase().split(".").pop();
 
 const isExcelExtension = (ext: string | undefined): boolean => ext !== undefined && EXCEL_EXTENSIONS.has(ext);
-
-/**
- * Read a batch of rows from a file (CSV or Excel).
- */
-export const readBatchFromFile = (filePath: string, options: ReadBatchOptions): Record<string, unknown>[] => {
-  const { sheetIndex = 0, startRow, limit } = options;
-  const fileExtension = getFileExtension(filePath);
-
-  try {
-    if (fileExtension === "csv") {
-      return readBatchFromCSV(filePath, startRow, limit);
-    } else if (isExcelExtension(fileExtension)) {
-      // xlsx library handles .xls, .xlsx, and .ods files
-      return readBatchFromExcel(filePath, sheetIndex, startRow, limit);
-    } else {
-      throw new Error(`Unsupported file type: ${fileExtension}`);
-    }
-  } catch (error) {
-    logger.error("Failed to read batch from file", {
-      filePath,
-      startRow,
-      limit,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-};
-
-/**
- * Read all rows from a file (CSV or Excel) in a single parse pass.
- */
-export const readAllRowsFromFile = (filePath: string, options: ReadAllOptions = {}): Record<string, unknown>[] => {
-  const { sheetIndex = 0 } = options;
-  const fileExtension = getFileExtension(filePath);
-
-  try {
-    if (fileExtension === "csv") {
-      return readBatchFromCSV(filePath, 0, Infinity);
-    } else if (isExcelExtension(fileExtension)) {
-      return readBatchFromExcel(filePath, sheetIndex, 0, Infinity);
-    } else {
-      throw new Error(`Unsupported file type: ${fileExtension}`);
-    }
-  } catch (error) {
-    logger.error("Failed to read all rows from file", {
-      filePath,
-      sheetIndex,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-};
 
 /**
  * Async generator that yields batches of rows from a file using streaming.
@@ -298,92 +236,16 @@ const convertSheetToCSV = (filePath: string, sheetIndex: number, csvPath: string
 };
 
 /**
- * Read a batch of rows from a CSV file.
- */
-const readBatchFromCSV = (filePath: string, startRow: number, limit: number): Record<string, unknown>[] => {
-  const fileContent = fs.readFileSync(filePath, "utf-8");
-
-  // Parse CSV with headers using PapaParse
-  const result = Papa.parse(fileContent, {
-    header: true,
-    skipEmptyLines: true,
-    dynamicTyping: true, // Keep enabled - useful for production
-    transformHeader: (header) => header.trim(),
-  });
-
-  if (result.errors.length > 0) {
-    logger.warn("CSV parsing warnings", { errors: result.errors });
-  }
-
-  // Return the requested batch
-  return (result.data as Record<string, unknown>[]).slice(startRow, startRow + limit);
-};
-
-/**
- * Read a batch of rows from an Excel file.
- */
-const readBatchFromExcel = (
-  filePath: string,
-  sheetIndex: number,
-  startRow: number,
-  limit: number
-): Record<string, unknown>[] => {
-  // Use buffer approach instead of direct file path for better compatibility
-  const fileBuffer = fs.readFileSync(filePath);
-  const workbook = read(fileBuffer, { type: "buffer" });
-  const sheetName = workbook.SheetNames[sheetIndex];
-
-  if (!sheetName) {
-    throw new Error(`Sheet index ${sheetIndex} not found in workbook`);
-  }
-
-  const worksheet = workbook.Sheets[sheetName];
-  if (!worksheet) {
-    throw new Error(`Worksheet ${sheetName} not found`);
-  }
-
-  // Convert to JSON with headers
-  const jsonData = utils.sheet_to_json(worksheet, { header: 1, defval: null });
-
-  if (jsonData.length === 0) {
-    return [];
-  }
-
-  // Extract headers from first row
-  const headers = jsonData[0] as string[];
-
-  // Convert to objects, accounting for header row
-  const dataStartRow = startRow + 1; // +1 to skip header
-  const dataEndRow = Math.min(dataStartRow + limit, jsonData.length);
-
-  const rows: Record<string, unknown>[] = [];
-  for (let i = dataStartRow; i < dataEndRow; i++) {
-    const row = jsonData[i];
-    if (!row || !Array.isArray(row)) continue;
-
-    const obj: Record<string, unknown> = {};
-    headers.forEach((header, index) => {
-      if (header && !Object.hasOwn(Object.prototype, header)) {
-        obj[header] = row[index] ?? null;
-      }
-    });
-
-    rows.push(obj);
-  }
-
-  return rows;
-};
-
-/**
  * Get total row count from a file.
+ *
+ * For CSV files, uses streaming line count to avoid loading the entire file into memory.
+ * For Excel/ODS files, loads the workbook (xlsx library requires this).
  */
-export const getFileRowCount = (filePath: string, sheetIndex = 0): number => {
+export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise<number> => {
   const fileExtension = getFileExtension(filePath);
 
   if (fileExtension === "csv") {
-    const fileContent = fs.readFileSync(filePath, "utf-8");
-    const result = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
-    return result.data.length;
+    return countCsvRows(filePath);
   } else if (isExcelExtension(fileExtension)) {
     // xlsx library handles .xls, .xlsx, and .ods files
     const fileBuffer = fs.readFileSync(filePath);
@@ -405,3 +267,22 @@ export const getFileRowCount = (filePath: string, sheetIndex = 0): number => {
 
   return 0;
 };
+
+/** Stream-count CSV data rows (excludes header, skips empty lines). */
+const countCsvRows = (filePath: string): Promise<number> =>
+  new Promise((resolve, reject) => {
+    let count = 0;
+    let isHeader = true;
+    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+    rl.on("line", (line) => {
+      if (isHeader) {
+        isHeader = false;
+        return;
+      }
+      if (line.trim().length > 0) count++;
+    });
+    rl.on("close", () => resolve(count));
+    rl.on("error", reject);
+  });

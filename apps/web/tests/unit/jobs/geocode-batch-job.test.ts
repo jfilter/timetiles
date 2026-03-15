@@ -20,10 +20,10 @@ import { createMockDataset, createMockImportJob, createMockPayload } from "@/tes
 const mocks = vi.hoisted(() => {
   const geocode = vi.fn();
   return {
-    readAllRowsFromFile: vi.fn(),
+    streamBatchesFromFile: vi.fn(),
+    cleanupSidecarFiles: vi.fn(),
     geocode,
     createGeocodingService: vi.fn(() => ({ geocode })),
-    getFileRowCount: vi.fn(),
   };
 });
 
@@ -31,11 +31,18 @@ const mocks = vi.hoisted(() => {
 vi.mock("@/lib/services/geocoding", () => ({ createGeocodingService: mocks.createGeocodingService }));
 
 vi.mock("@/lib/utils/file-readers", () => ({
-  readAllRowsFromFile: mocks.readAllRowsFromFile,
-  getFileRowCount: mocks.getFileRowCount,
+  streamBatchesFromFile: mocks.streamBatchesFromFile,
+  cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
 
 // Don't mock @/lib/types/geocoding - use real implementation
+
+/** Helper to mock streamBatchesFromFile as an async generator yielding one batch. */
+const mockStreamBatches = (rows: Record<string, unknown>[]) => {
+  mocks.streamBatchesFromFile.mockImplementation(function* () {
+    if (rows.length > 0) yield rows;
+  });
+};
 
 describe.sequential("GeocodeBatchJob Handler", () => {
   let mockPayload: ReturnType<typeof createMockPayload>;
@@ -44,10 +51,10 @@ describe.sequential("GeocodeBatchJob Handler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Explicitly reset hoisted mocks to clear both call history AND implementations
-    mocks.readAllRowsFromFile.mockReset();
+    mocks.streamBatchesFromFile.mockReset();
+    mocks.cleanupSidecarFiles.mockReset();
     mocks.geocode.mockReset();
     mocks.createGeocodingService.mockReset().mockReturnValue({ geocode: mocks.geocode });
-    mocks.getFileRowCount.mockReset();
     mockPayload = createMockPayload();
     mockContext = { req: { payload: mockPayload }, input: { importJobId: 123 } } as unknown as JobHandlerContext;
   });
@@ -68,7 +75,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       };
 
       // Mock file with duplicate locations
-      mocks.readAllRowsFromFile.mockReturnValue([
+      mockStreamBatches([
         { id: "1", title: "Event 1", address: "123 Main St" },
         { id: "2", title: "Event 2", address: "456 Oak Ave" },
         { id: "3", title: "Event 3", address: "123 Main St" }, // Duplicate
@@ -127,7 +134,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       // Mock file with missing/empty locations
-      mocks.readAllRowsFromFile.mockReturnValue([
+      mockStreamBatches([
         { id: "1", title: "Event 1", address: "123 Main St" },
         { id: "2", title: "Event 2" }, // No address field
         { id: "3", title: "Event 3", address: "" }, // Empty address
@@ -156,7 +163,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should handle geocoding failures gracefully", async () => {
       const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
-      mocks.readAllRowsFromFile.mockReturnValue([
+      mockStreamBatches([
         { id: "1", title: "Event 1", address: "123 Main St" },
         { id: "2", title: "Event 2", address: "Invalid Address XYZ" },
       ]);
@@ -206,8 +213,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       const result = await geocodeBatchJob.handler(mockContext);
 
-      // Should not read file or geocode anything
-      expect(mocks.readAllRowsFromFile).not.toHaveBeenCalled();
+      // Should not stream file or geocode anything
+      expect(mocks.streamBatchesFromFile).not.toHaveBeenCalled();
       expect(mocks.geocode).not.toHaveBeenCalled();
 
       // Should transition directly to CREATE_EVENTS
@@ -223,7 +230,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should handle empty file gracefully", async () => {
       const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
-      mocks.readAllRowsFromFile.mockReturnValue([]);
+      mockStreamBatches([]);
 
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
@@ -246,7 +253,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should trim whitespace from locations", async () => {
       const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
-      mocks.readAllRowsFromFile.mockReturnValue([
+      mockStreamBatches([
         { id: "1", address: "  123 Main St  " },
         { id: "2", address: "123 Main St" }, // Should be treated as same location
       ]);
@@ -299,8 +306,9 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
 
-      // Make readAllRowsFromFile throw an error
-      mocks.readAllRowsFromFile.mockImplementation(() => {
+      // Make streamBatchesFromFile throw an error
+      mocks.streamBatchesFromFile.mockImplementation(function* () {
+        yield []; // eslint requires at least one yield in generators
         throw new Error("File read error");
       });
 
@@ -313,13 +321,36 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         data: { stage: "failed", errorLog: { error: "File read error", context: "geocode-batch" } },
       });
     });
+
+    it("should clean up sidecar files on error", async () => {
+      const mockImportJob = {
+        ...createMockImportJob(),
+        id: 123,
+        sheetIndex: 2,
+        detectedFieldMappings: { locationPath: "address" },
+      };
+
+      // Mock findByID to return the job for all calls (including error cleanup re-load)
+      mockPayload.findByID.mockResolvedValue(mockImportJob);
+
+      // Make streamBatchesFromFile throw an error
+      mocks.streamBatchesFromFile.mockImplementation(function* () {
+        yield []; // eslint requires at least one yield in generators
+        throw new Error("File read error");
+      });
+
+      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("File read error");
+
+      // Should clean up sidecar files (best-effort)
+      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("Edge Cases", () => {
     it("should handle non-string location values", async () => {
       const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
-      mocks.readAllRowsFromFile.mockReturnValue([
+      mockStreamBatches([
         { id: "1", address: "123 Main St" },
         { id: "2", address: 123 }, // Number
         { id: "3", address: null }, // Null
@@ -353,7 +384,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         detectedFieldMappings: { locationPath: "address" },
       };
 
-      mocks.readAllRowsFromFile.mockReturnValue([
+      mockStreamBatches([
         { id: "1", address: "Invalid 1" },
         { id: "2", address: "Invalid 2" },
       ]);
@@ -410,7 +441,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       for (let i = 0; i < 50; i++) {
         rows.push({ id: `${i * 2}`, address: `Address ${i}` }, { id: `${i * 2 + 1}`, address: `Address ${i}` });
       }
-      mocks.readAllRowsFromFile.mockReturnValue(rows);
+      mockStreamBatches(rows);
 
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockImportJob);
