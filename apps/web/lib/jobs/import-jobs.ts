@@ -44,6 +44,10 @@ export { auditLogIpCleanupJob } from "./handlers/audit-log-ip-cleanup-job";
 // Account management job handlers
 export { executeAccountDeletionJob } from "./handlers/execute-account-deletion-job";
 
+// Scraper job handlers
+export { scraperExecutionJob } from "./handlers/scraper-execution-job";
+export { scraperRepoSyncJob } from "./handlers/scraper-repo-sync-job";
+
 // Re-export utility types
 export type {
   AnalyzeDuplicatesJobInput,

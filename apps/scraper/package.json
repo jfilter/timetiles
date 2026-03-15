@@ -1,0 +1,33 @@
+{
+  "name": "@timetiles/scraper",
+  "version": "0.0.1",
+  "private": true,
+  "description": "TimeScrape runner — executes user-defined scrapers in isolated Podman containers.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts",
+    "start": "node dist/index.js",
+    "lint": "oxlint --config ../../.oxlintrc.json . && eslint src tests --ext .ts --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:ai": "vitest run --reporter=json"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.1",
+    "hono": "^4.7.6",
+    "pino": "^9.6.0",
+    "simple-git": "^3.27.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@timetiles/eslint-config": "workspace:*",
+    "@timetiles/typescript-config": "workspace:*",
+    "@types/node": "^22.14.0",
+    "pino-pretty": "^13.0.0",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.1.1"
+  }
+}

@@ -231,6 +231,13 @@ export const Settings: GlobalConfig = {
           defaultValue: true,
           admin: { description: "When enabled, URL fetches for scheduled imports are cached to reduce requests" },
         },
+        {
+          name: "enableScrapers",
+          type: "checkbox",
+          label: "Enable Scrapers",
+          defaultValue: false,
+          admin: { description: "When enabled, users with trust level 3+ can create scraper repos and run scrapers" },
+        },
       ],
     },
   ],

@@ -1,0 +1,6 @@
+scrapers:
+  - name: "Node Example Events"
+    slug: node-example-events
+    runtime: node
+    entrypoint: scraper.js
+    output: data.csv

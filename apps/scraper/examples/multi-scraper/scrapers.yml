@@ -1,0 +1,20 @@
+scrapers:
+  - name: "German Holidays"
+    slug: german-holidays
+    runtime: python
+    entrypoint: scrapers/germany.py
+    output: output/germany.csv
+    schedule: "0 6 * * 1"
+
+  - name: "Austrian Holidays"
+    slug: austrian-holidays
+    runtime: python
+    entrypoint: scrapers/austria.py
+    output: output/austria.csv
+    schedule: "0 6 * * 1"
+
+defaults:
+  runtime: python
+  limits:
+    timeout: 120
+    memory: 256

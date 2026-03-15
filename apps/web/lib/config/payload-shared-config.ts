@@ -24,6 +24,9 @@ import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
 import ScheduledImports from "@/lib/collections/scheduled-imports/index";
+import ScraperRepos from "@/lib/collections/scraper-repos";
+import ScraperRuns from "@/lib/collections/scraper-runs";
+import Scrapers from "@/lib/collections/scrapers";
 import Sites from "@/lib/collections/sites";
 import { Themes } from "@/lib/collections/themes";
 import UserUsage from "@/lib/collections/user-usage";
@@ -53,6 +56,8 @@ import {
   scheduleManagerJob,
   schemaDetectionJob,
   schemaMaintenanceJob,
+  scraperExecutionJob,
+  scraperRepoSyncJob,
   urlFetchJob,
   validateSchemaJob,
 } from "@/lib/jobs/import-jobs";
@@ -69,6 +74,9 @@ export const COLLECTIONS = {
   "import-files": ImportFiles,
   "import-jobs": ImportJobs,
   "scheduled-imports": ScheduledImports,
+  "scraper-repos": ScraperRepos,
+  scrapers: Scrapers,
+  "scraper-runs": ScraperRuns,
   events: Events,
   users: Users,
   "user-usage": UserUsage,
@@ -96,6 +104,10 @@ export const ALL_COLLECTIONS = [
   ImportFiles,
   ImportJobs,
   ScheduledImports,
+  // Scrapers
+  ScraperRepos,
+  Scrapers,
+  ScraperRuns,
   // Content
   Pages,
   Media,
@@ -137,6 +149,8 @@ export const ALL_JOBS = [
   dataExportCleanupJob,
   auditLogIpCleanupJob,
   executeAccountDeletionJob,
+  scraperExecutionJob,
+  scraperRepoSyncJob,
 ];
 
 // Common upload configuration

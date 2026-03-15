@@ -20,6 +20,7 @@ export interface FeatureFlags {
   enableImportCreation: boolean;
   enableScheduledJobExecution: boolean;
   enableUrlFetchCaching: boolean;
+  enableScrapers: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
@@ -31,6 +32,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   enableImportCreation: true,
   enableScheduledJobExecution: true,
   enableUrlFetchCaching: true,
+  enableScrapers: false,
 };
 
 /** Fail-closed defaults returned when the database is unavailable. */
@@ -43,6 +45,7 @@ export const DISABLED_FLAGS: FeatureFlags = {
   enableImportCreation: false,
   enableScheduledJobExecution: false,
   enableUrlFetchCaching: false,
+  enableScrapers: false,
 };
 
 const CACHE_TTL_MS = 60_000; // 1 minute
@@ -82,6 +85,7 @@ class FeatureFlagService {
         enableImportCreation: flags?.enableImportCreation ?? DEFAULT_FLAGS.enableImportCreation,
         enableScheduledJobExecution: flags?.enableScheduledJobExecution ?? DEFAULT_FLAGS.enableScheduledJobExecution,
         enableUrlFetchCaching: flags?.enableUrlFetchCaching ?? DEFAULT_FLAGS.enableUrlFetchCaching,
+        enableScrapers: flags?.enableScrapers ?? DEFAULT_FLAGS.enableScrapers,
       };
 
       this.cachedFlags = newFlags;

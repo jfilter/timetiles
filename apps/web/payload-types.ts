@@ -75,6 +75,9 @@ export interface Config {
     'import-files': ImportFile;
     'import-jobs': ImportJob;
     'scheduled-imports': ScheduledImport;
+    'scraper-repos': ScraperRepo;
+    scrapers: Scraper;
+    'scraper-runs': ScraperRun;
     events: Event;
     users: User;
     'user-usage': UserUsage;
@@ -103,6 +106,9 @@ export interface Config {
     'import-files': ImportFilesSelect<false> | ImportFilesSelect<true>;
     'import-jobs': ImportJobsSelect<false> | ImportJobsSelect<true>;
     'scheduled-imports': ScheduledImportsSelect<false> | ScheduledImportsSelect<true>;
+    'scraper-repos': ScraperReposSelect<false> | ScraperReposSelect<true>;
+    scrapers: ScrapersSelect<false> | ScrapersSelect<true>;
+    'scraper-runs': ScraperRunsSelect<false> | ScraperRunsSelect<true>;
     events: EventsSelect<false> | EventsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'user-usage': UserUsageSelect<false> | UserUsageSelect<true>;
@@ -164,6 +170,8 @@ export interface Config {
       'data-export-cleanup': TaskDataExportCleanup;
       'audit-log-ip-cleanup': TaskAuditLogIpCleanup;
       'execute-account-deletion': TaskExecuteAccountDeletion;
+      'scraper-execution': TaskScraperExecution;
+      'scraper-repo-sync': TaskScraperRepoSync;
       inline: {
         input: unknown;
         output: unknown;
@@ -1640,6 +1648,189 @@ export interface AuditLog {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scraper-repos".
+ */
+export interface ScraperRepo {
+  id: number;
+  name: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * URL-friendly identifier (auto-generated from name if not provided)
+   */
+  slug?: string | null;
+  /**
+   * User who created this scraper repo
+   */
+  createdBy?: (number | null) | User;
+  sourceType: 'git' | 'upload';
+  /**
+   * Git repository URL (e.g., https://github.com/user/repo.git)
+   */
+  gitUrl?: string | null;
+  /**
+   * Branch to clone (default: main)
+   */
+  gitBranch?: string | null;
+  /**
+   * Inline scraper code as {"filename": "content"} map
+   */
+  code?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Catalog for scraped data
+   */
+  catalog?: (number | null) | Catalog;
+  /**
+   * Last manifest sync time
+   */
+  lastSyncAt?: string | null;
+  lastSyncStatus?: ('success' | 'failed') | null;
+  lastSyncError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scrapers".
+ */
+export interface Scraper {
+  id: number;
+  name: string;
+  slug: string;
+  /**
+   * Source code repository containing this scraper
+   */
+  repo: number | ScraperRepo;
+  /**
+   * Denormalized from repo.createdBy for access control
+   */
+  repoCreatedBy?: number | null;
+  runtime: 'python' | 'node';
+  /**
+   * Script path relative to repo root (e.g., scraper.py)
+   */
+  entrypoint: string;
+  /**
+   * Output CSV filename
+   */
+  outputFile?: string | null;
+  /**
+   * Cron expression (e.g., 0 6 * * *). Leave empty for manual-only.
+   */
+  schedule?: string | null;
+  enabled?: boolean | null;
+  /**
+   * Max execution time in seconds
+   */
+  timeoutSecs?: number | null;
+  /**
+   * Memory limit in MB
+   */
+  memoryMb?: number | null;
+  /**
+   * Environment variables passed to the scraper
+   */
+  envVars?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Dataset to import scraped data into
+   */
+  targetDataset?: (number | null) | Dataset;
+  /**
+   * Automatically import CSV into target dataset after successful scrape
+   */
+  autoImport?: boolean | null;
+  lastRunAt?: string | null;
+  lastRunStatus?: ('success' | 'failed' | 'timeout' | 'running') | null;
+  statistics?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  nextRunAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scraper-runs".
+ */
+export interface ScraperRun {
+  id: number;
+  scraper: number | Scraper;
+  /**
+   * Denormalized from scraper.repo.createdBy for access control
+   */
+  scraperOwner?: number | null;
+  status: 'queued' | 'running' | 'success' | 'failed' | 'timeout';
+  triggeredBy?: ('schedule' | 'manual' | 'webhook') | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  durationMs?: number | null;
+  exitCode?: number | null;
+  /**
+   * Standard output from the scraper process
+   */
+  stdout?: string | null;
+  /**
+   * Standard error from the scraper process
+   */
+  stderr?: string | null;
+  /**
+   * Error message if the run failed
+   */
+  error?: string | null;
+  /**
+   * Number of CSV rows produced
+   */
+  outputRows?: number | null;
+  /**
+   * Size of the output CSV in bytes
+   */
+  outputBytes?: number | null;
+  /**
+   * Import file created from scraper output (when autoImport is enabled)
+   */
+  resultFile?: (number | null) | ImportFile;
   updatedAt: string;
   createdAt: string;
 }
@@ -3381,7 +3572,9 @@ export interface PayloadJob {
           | 'data-export'
           | 'data-export-cleanup'
           | 'audit-log-ip-cleanup'
-          | 'execute-account-deletion';
+          | 'execute-account-deletion'
+          | 'scraper-execution'
+          | 'scraper-repo-sync';
         taskID: string;
         input?:
           | {
@@ -3436,6 +3629,8 @@ export interface PayloadJob {
         | 'data-export-cleanup'
         | 'audit-log-ip-cleanup'
         | 'execute-account-deletion'
+        | 'scraper-execution'
+        | 'scraper-repo-sync'
       )
     | null;
   queue?: string | null;
@@ -3491,6 +3686,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'scheduled-imports';
         value: number | ScheduledImport;
+      } | null)
+    | ({
+        relationTo: 'scraper-repos';
+        value: number | ScraperRepo;
+      } | null)
+    | ({
+        relationTo: 'scrapers';
+        value: number | Scraper;
+      } | null)
+    | ({
+        relationTo: 'scraper-runs';
+        value: number | ScraperRun;
       } | null)
     | ({
         relationTo: 'events';
@@ -4013,6 +4220,76 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   createdAt?: T;
   deletedAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scraper-repos_select".
+ */
+export interface ScraperReposSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  slug?: T;
+  createdBy?: T;
+  sourceType?: T;
+  gitUrl?: T;
+  gitBranch?: T;
+  code?: T;
+  catalog?: T;
+  lastSyncAt?: T;
+  lastSyncStatus?: T;
+  lastSyncError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scrapers_select".
+ */
+export interface ScrapersSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  repo?: T;
+  repoCreatedBy?: T;
+  runtime?: T;
+  entrypoint?: T;
+  outputFile?: T;
+  schedule?: T;
+  enabled?: T;
+  timeoutSecs?: T;
+  memoryMb?: T;
+  envVars?: T;
+  targetDataset?: T;
+  autoImport?: T;
+  lastRunAt?: T;
+  lastRunStatus?: T;
+  statistics?: T;
+  nextRunAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scraper-runs_select".
+ */
+export interface ScraperRunsSelect<T extends boolean = true> {
+  scraper?: T;
+  scraperOwner?: T;
+  status?: T;
+  triggeredBy?: T;
+  startedAt?: T;
+  finishedAt?: T;
+  durationMs?: T;
+  exitCode?: T;
+  stdout?: T;
+  stderr?: T;
+  error?: T;
+  outputRows?: T;
+  outputBytes?: T;
+  resultFile?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5063,6 +5340,10 @@ export interface Setting {
      * When enabled, URL fetches for scheduled imports are cached to reduce requests
      */
     enableUrlFetchCaching?: boolean | null;
+    /**
+     * When enabled, users with trust level 3+ can create scraper repos and run scrapers
+     */
+    enableScrapers?: boolean | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -5198,6 +5479,7 @@ export interface SettingsSelect<T extends boolean = true> {
         enableImportCreation?: T;
         enableScheduledJobExecution?: T;
         enableUrlFetchCaching?: T;
+        enableScrapers?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -5362,6 +5644,22 @@ export interface TaskAuditLogIpCleanup {
  * via the `definition` "TaskExecute-account-deletion".
  */
 export interface TaskExecuteAccountDeletion {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskScraper-execution".
+ */
+export interface TaskScraperExecution {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskScraper-repo-sync".
+ */
+export interface TaskScraperRepoSync {
   input?: unknown;
   output?: unknown;
 }

@@ -1,0 +1,6 @@
+scrapers:
+  - name: "Example Events"
+    slug: example-events
+    runtime: python
+    entrypoint: scraper.py
+    output: data.csv
