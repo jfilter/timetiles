@@ -8,7 +8,7 @@
  * @module
  * @category API
  */
-import { randomBytes, randomInt } from "node:crypto";
+import { randomBytes } from "node:crypto";
 
 import type { Payload } from "payload";
 import { z } from "zod";
@@ -99,30 +99,37 @@ export const POST = apiRoute({
     const verifyError = await verifyPasswordWithAudit(payload, user, password, clientId, "email_change");
     if (verifyError) return verifyError;
 
+    // Constant-time response: both paths return after the same elapsed time
+    // to prevent timing side-channel attacks from distinguishing "email exists"
+    // vs "email changed". The minimum floor ensures the fake path isn't instant.
+    const RESPONSE_FLOOR_MS = 1000;
+    const startTime = Date.now();
+
+    const successResponse = {
+      success: true,
+      message: "Email changed successfully. Please check your new email address for a verification link.",
+      verificationRequired: true,
+    };
+
     // Check if new email is already in use
     const existingUser = await payload.find({ collection: "users", where: { email: { equals: newEmail } }, limit: 1 });
 
     if (existingUser.docs.length > 0) {
-      // Anti-enumeration: return identical response to prevent email discovery
-      // Add random delay to mitigate timing side-channel (real path does DB + email ops)
-      await new Promise((resolve) => setTimeout(resolve, randomInt(200, 800)));
+      // Anti-enumeration: log and pad response time to match the real path
       logger.info(
         { userId: user.id, attemptedEmailHash: hashEmail(newEmail) },
         "Email change blocked - email already in use"
       );
-      return Response.json({
-        success: true,
-        message: "Email changed successfully. Please check your new email address for a verification link.",
-        verificationRequired: true,
-      });
+    } else {
+      await updateEmailAndNotify(payload, user, newEmail, clientId);
     }
 
-    await updateEmailAndNotify(payload, user, newEmail, clientId);
+    // Pad both paths to the same minimum duration
+    const elapsed = Date.now() - startTime;
+    if (elapsed < RESPONSE_FLOOR_MS) {
+      await new Promise((resolve) => setTimeout(resolve, RESPONSE_FLOOR_MS - elapsed));
+    }
 
-    return Response.json({
-      success: true,
-      message: "Email changed successfully. Please check your new email address for a verification link.",
-      verificationRequired: true,
-    });
+    return Response.json(successResponse);
   },
 });

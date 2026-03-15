@@ -320,7 +320,12 @@ export class QuotaService {
    * Check if a user can perform an action based on quota limits.
    * Now async since it reads from the separate user-usage collection.
    */
-  async checkQuota(user: User | null | undefined, quotaType: QuotaType, amount: number = 1): Promise<QuotaCheckResult> {
+  async checkQuota(
+    user: User | null | undefined,
+    quotaType: QuotaType,
+    amount: number = 1,
+    req?: { context?: Record<string, unknown> }
+  ): Promise<QuotaCheckResult> {
     // Get effective quotas
     const quotas = this.getEffectiveQuotas(user);
     const limit = quotas[quotaType];
@@ -344,8 +349,19 @@ export class QuotaService {
       return { allowed: amount <= limit, current: 0, limit, remaining: limit, quotaType };
     }
 
-    // Get current usage from user-usage collection
-    const usage = await this.getCurrentUsage(user.id);
+    // Per-request cache: reuse usage record if already fetched this request
+    const cacheKey = `_quotaUsage_${user.id}`;
+    const context = req?.context as Record<string, unknown> | undefined;
+    let usage: UserUsage | null;
+
+    if (context && cacheKey in context) {
+      usage = context[cacheKey] as UserUsage | null;
+    } else {
+      usage = await this.getCurrentUsage(user.id);
+      if (context) {
+        context[cacheKey] = usage;
+      }
+    }
 
     if (!usage) {
       // No usage record yet - will be created on first increment

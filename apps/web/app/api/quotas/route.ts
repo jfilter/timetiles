@@ -25,14 +25,17 @@ export const GET = apiRoute({
   handler: async ({ user, payload }) => {
     const quotaService = getQuotaService(payload);
 
+    // Per-request cache: all 6 checks share one DB lookup for usage record
+    const cache = { context: {} as Record<string, unknown> };
+
     // Get all quota statuses in parallel
     const [fileUploads, urlFetches, importJobs, activeSchedules, totalEvents, eventsPerImport] = await Promise.all([
-      quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
-      quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY),
-      quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
-      quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES),
-      quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS),
-      quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT),
+      quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1, cache),
+      quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1, cache),
+      quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1, cache),
+      quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, cache),
+      quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, 1, cache),
+      quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, 1, cache),
     ]);
 
     // Get effective quotas for additional info

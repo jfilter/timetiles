@@ -4,12 +4,12 @@ services:
     # Use kartoza/postgis for consistency with production
     container_name: timetiles-postgres
     environment:
-      # Standard postgres image variables
-      POSTGRES_DB: timetiles
-      POSTGRES_USER: timetiles_user
+      # Standard postgres image variables (sourced from DB_* for consistency with prod)
+      POSTGRES_DB: ${DB_NAME:-timetiles}
+      POSTGRES_USER: ${DB_USER:-timetiles_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-timetiles_password}
       # Kartoza image variables
-      POSTGRES_DBNAME: timetiles
+      POSTGRES_DBNAME: ${DB_NAME:-timetiles}
       POSTGRES_PASS: ${DB_PASSWORD:-timetiles_password}
       # Kartoza networking - allow connections from Docker network
       ALLOW_IP_RANGE: "0.0.0.0/0"
