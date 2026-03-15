@@ -351,7 +351,7 @@ export class QuotaService {
 
     // Per-request cache: reuse usage record if already fetched this request
     const cacheKey = `_quotaUsage_${user.id}`;
-    const context = req?.context as Record<string, unknown> | undefined;
+    const context = req?.context;
     let usage: UserUsage | null;
 
     if (context && cacheKey in context) {
