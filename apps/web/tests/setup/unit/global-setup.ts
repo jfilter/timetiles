@@ -28,6 +28,7 @@ Object.defineProperty(globalThis, "matchMedia", {
 });
 
 // Import centralized mocks
+import "../../mocks/external/next-intl";
 import "../../mocks/external/next-navigation";
 
 // Mock maplibre-gl

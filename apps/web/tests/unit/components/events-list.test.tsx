@@ -1,7 +1,7 @@
 /**
  * @module
  */
-import { EventsList } from "@/app/(frontend)/explore/_components/events-list";
+import { EventsList } from "@/app/[locale]/(frontend)/explore/_components/events-list";
 import type { EventListItem } from "@/lib/schemas/events";
 
 import { renderWithProviders, screen } from "../../setup/unit/react-render";

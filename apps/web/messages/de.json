@@ -1,0 +1,25 @@
+{
+  "Common": {
+    "loading": "Laden...",
+    "error": "Etwas ist schiefgelaufen",
+    "tryAgain": "Erneut versuchen",
+    "returnHome": "Zur Startseite",
+    "signIn": "Anmelden",
+    "dashboard": "Dashboard",
+    "theme": "Design"
+  },
+  "Explore": {
+    "map": "Karte",
+    "list": "Liste",
+    "siteNotConfigured": "Seite nicht konfiguriert",
+    "siteNotConfiguredDescription": "Diese Seite benötigt eine Standardansicht, um den Explorer anzuzeigen. Bitte konfigurieren Sie eine im Admin-Dashboard.",
+    "goToDashboard": "Zum Dashboard"
+  },
+  "NotFound": {
+    "title": "Jenseits der Karte",
+    "heading": "404",
+    "description": "Dieser Ort erscheint auf keiner unserer Karten. Die Seite, die Sie suchen, hat sich in unbekanntes Gebiet vorgewagt.",
+    "returnHome": "Zur Startseite",
+    "exploreEvents": "Ereignisse erkunden"
+  }
+}

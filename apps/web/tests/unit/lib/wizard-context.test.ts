@@ -15,7 +15,7 @@ import {
   wizardReducer,
   type WizardState,
   type WizardStep,
-} from "../../../app/(frontend)/import/_components/wizard-reducer";
+} from "../../../app/[locale]/(frontend)/import/_components/wizard-reducer";
 
 describe("Wizard Reducer", () => {
   describe("Navigation", () => {

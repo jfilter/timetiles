@@ -11,8 +11,8 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import Link from "next/link";
 
+import { Link } from "@/i18n/navigation";
 import { loginRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";

@@ -14,8 +14,8 @@
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, ExternalLink, MapPin, X } from "lucide-react";
-import Link from "next/link";
 
+import { Link } from "@/i18n/navigation";
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import { formatDate } from "@/lib/utils/date";
 import {

@@ -24,10 +24,10 @@ import {
   MobileNavDrawerTrigger,
 } from "@timetiles/ui";
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import React from "react";
 
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { Link, usePathname } from "@/i18n/navigation";
 import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
@@ -108,9 +108,12 @@ export const AdaptiveHeader = ({
       </HeaderNav>
 
       <HeaderActions>
-        {/* Desktop only: auth and theme toggle */}
+        {/* Desktop only: auth, locale switcher, and theme toggle */}
         <div className="hidden md:block">
           <HeaderAuth user={user} />
+        </div>
+        <div className="hidden md:block">
+          <LocaleSwitcher />
         </div>
         <div className="hidden md:block">
           <ThemeToggle />

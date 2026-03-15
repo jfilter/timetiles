@@ -19,9 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@timetiles/ui";
 import { LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 
+import { Link, useRouter } from "@/i18n/navigation";
 import { useLogoutMutation } from "@/lib/hooks/use-auth-mutations";
 import type { User } from "@/payload-types";
 

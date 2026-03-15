@@ -7,16 +7,15 @@
 "use client";
 
 import { ArrowLeft, Filter } from "lucide-react";
-import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
+import { ViewToggle } from "@/app/[locale]/(frontend)/explore/_components/view-toggle";
+import { Link } from "@/i18n/navigation";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useUIStore } from "@/lib/store";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/utils/coordinates";
 import { buildDynamicTitle } from "@/lib/utils/header-utils";
 import type { Catalog, Dataset } from "@/payload-types";
-
-import { ViewToggle } from "../(frontend)/explore/_components/view-toggle";
 
 export interface ExploreNavigationProps {
   catalogs: Catalog[];

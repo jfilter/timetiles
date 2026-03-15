@@ -9,13 +9,18 @@
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, type RenderOptions, type RenderResult } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import React from "react";
 
 import { ThemeProvider } from "@/components/theme-provider";
 
+import en from "../../../messages/en.json";
+
 interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   searchParams?: URLSearchParams;
+  locale?: string;
+  messages?: Record<string, unknown>;
 }
 
 const defaultSearchParams = new URLSearchParams();
@@ -23,9 +28,13 @@ const defaultSearchParams = new URLSearchParams();
 const AllTheProviders = ({
   children,
   searchParams = defaultSearchParams,
+  locale = "en",
+  messages = en,
 }: {
   children: React.ReactNode;
   searchParams?: URLSearchParams;
+  locale?: string;
+  messages?: Record<string, unknown>;
 }) => {
   // Create a new QueryClient for each test to avoid cross-test pollution
   const [queryClient] = React.useState(
@@ -41,19 +50,25 @@ const AllTheProviders = ({
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <NuqsTestingAdapter searchParams={searchParams}>
-        <ThemeProvider>{children}</ThemeProvider>
-      </NuqsTestingAdapter>
-    </QueryClientProvider>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <QueryClientProvider client={queryClient}>
+        <NuqsTestingAdapter searchParams={searchParams}>
+          <ThemeProvider>{children}</ThemeProvider>
+        </NuqsTestingAdapter>
+      </QueryClientProvider>
+    </NextIntlClientProvider>
   );
 };
 
 export const renderWithProviders = (ui: React.ReactElement, options?: CustomRenderOptions): RenderResult => {
-  const { searchParams, ...renderOptions } = options ?? {};
+  const { searchParams, locale, messages, ...renderOptions } = options ?? {};
 
   return render(ui, {
-    wrapper: ({ children }) => <AllTheProviders searchParams={searchParams}>{children}</AllTheProviders>,
+    wrapper: ({ children }) => (
+      <AllTheProviders searchParams={searchParams} locale={locale} messages={messages}>
+        {children}
+      </AllTheProviders>
+    ),
     ...renderOptions,
   });
 };

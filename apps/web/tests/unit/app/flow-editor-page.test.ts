@@ -9,11 +9,11 @@ import { describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ FlowEditorWrapper: vi.fn(() => null) }));
 
-vi.mock("@/app/(frontend)/import/flow-editor/_components/flow-editor-wrapper", () => ({
+vi.mock("@/app/[locale]/(frontend)/import/flow-editor/_components/flow-editor-wrapper", () => ({
   FlowEditorWrapper: mocks.FlowEditorWrapper,
 }));
 
-import FlowEditorPage from "@/app/(frontend)/import/flow-editor/page";
+import FlowEditorPage from "@/app/[locale]/(frontend)/import/flow-editor/page";
 
 describe("FlowEditorPage", () => {
   it("ignores partially numeric search params", async () => {

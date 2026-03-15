@@ -15,6 +15,8 @@ import { join } from "node:path";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { nodemailerAdapter } from "@payloadcms/email-nodemailer";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { de } from "@payloadcms/translations/languages/de";
+import { en } from "@payloadcms/translations/languages/en";
 import { schemaDetectionPlugin } from "@timetiles/payload-schema-detection";
 import nodemailer from "nodemailer";
 import type { Config, Plugin } from "payload";
@@ -180,6 +182,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   // Build configuration
   const config: Config = {
     secret: secret ?? "default-secret-key",
+    i18n: { supportedLanguages: { en, de } },
     routes: { admin: "/dashboard" },
     admin: {
       user: collections?.includes("users") ? Users.slug : undefined,

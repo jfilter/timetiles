@@ -1,0 +1,25 @@
+{
+  "Common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "tryAgain": "Try again",
+    "returnHome": "Return home",
+    "signIn": "Sign In",
+    "dashboard": "Dashboard",
+    "theme": "Theme"
+  },
+  "Explore": {
+    "map": "Map",
+    "list": "List",
+    "siteNotConfigured": "Site not configured",
+    "siteNotConfiguredDescription": "This site needs a default view to display the explorer. Please configure one in the admin dashboard.",
+    "goToDashboard": "Go to Dashboard"
+  },
+  "NotFound": {
+    "title": "Off the Map",
+    "heading": "404",
+    "description": "This location doesn't appear on any of our charts. The page you're looking for has ventured into uncharted territory.",
+    "returnHome": "Return Home",
+    "exploreEvents": "Explore Events"
+  }
+}

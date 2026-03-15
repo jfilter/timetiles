@@ -7,6 +7,9 @@
  * @module
  */
 import { withPayload } from "@payloadcms/next/withPayload";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 /* eslint-disable no-undef */
 const isProduction = process.env.NODE_ENV === "production";
@@ -40,4 +43,4 @@ const nextConfig = {
   output: isProduction ? "standalone" : undefined,
 };
 
-export default withPayload(nextConfig);
+export default withPayload(withNextIntl(nextConfig));

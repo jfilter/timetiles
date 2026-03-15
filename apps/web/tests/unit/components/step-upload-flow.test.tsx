@@ -8,8 +8,8 @@
  * @module
  */
 /* eslint-disable @typescript-eslint/require-await -- act(async () => ...) is the standard React 19 pattern for flushing state updates */
-import { StepUpload } from "@/app/(frontend)/import/_components/steps/step-upload";
-import type { WizardState } from "@/app/(frontend)/import/_components/wizard-context";
+import { StepUpload } from "@/app/[locale]/(frontend)/import/_components/steps/step-upload";
+import type { WizardState } from "@/app/[locale]/(frontend)/import/_components/wizard-context";
 
 import { act, fireEvent, renderWithProviders, screen, waitFor } from "../../setup/unit/react-render";
 
@@ -46,7 +46,7 @@ const baseWizardState: WizardState = {
 
 let wizardState = { ...baseWizardState };
 
-vi.mock("@/app/(frontend)/import/_components/wizard-context", () => ({
+vi.mock("@/app/[locale]/(frontend)/import/_components/wizard-context", () => ({
   useWizard: () => ({
     state: wizardState,
     setFile: mockSetFile,
