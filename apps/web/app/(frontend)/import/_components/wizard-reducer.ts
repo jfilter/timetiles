@@ -30,10 +30,6 @@ export interface WizardState {
   // Navigation
   currentStep: WizardStep;
 
-  // Step 1: Auth
-  isAuthenticated: boolean;
-  isEmailVerified: boolean;
-  userId: number | null;
   /** Whether user was already authenticated when wizard started (used to hide auth step in UI) */
   startedAuthenticated: boolean;
 
@@ -75,9 +71,6 @@ export interface WizardState {
 // Initial state
 export const initialState: WizardState = {
   currentStep: 1,
-  isAuthenticated: false,
-  isEmailVerified: false,
-  userId: null,
   startedAuthenticated: false,
   previewId: null,
   file: null,
@@ -104,7 +97,6 @@ export type WizardAction =
   | { type: "SET_STEP"; step: WizardStep }
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
-  | { type: "SET_AUTH"; isAuthenticated: boolean; isEmailVerified: boolean; userId: number | null }
   | { type: "SET_FILE"; file: WizardState["file"]; sheets: SheetInfo[]; previewId: string; sourceUrl?: string }
   | { type: "SET_SOURCE_URL"; sourceUrl: string | null; authConfig?: UrlAuthConfig | null }
   | { type: "SET_SCHEDULE_CONFIG"; scheduleConfig: ScheduleConfig | null }
@@ -154,14 +146,6 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
 
       case "PREV_STEP":
         return { ...state, currentStep: Math.max(state.currentStep - 1, 1) as WizardStep };
-
-      case "SET_AUTH":
-        return {
-          ...state,
-          isAuthenticated: action.isAuthenticated,
-          isEmailVerified: action.isEmailVerified,
-          userId: action.userId,
-        };
 
       case "SET_FILE": {
         // For single-sheet files (like CSV), use the file name instead of "Sheet1"

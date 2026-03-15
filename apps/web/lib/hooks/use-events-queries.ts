@@ -18,7 +18,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
-import type { AggregateResponse, ClusterStatsResponse, HistogramResponse } from "@/lib/schemas/events";
+import type { AggregateResponse, ClusterStatsResponse, EventListItem, HistogramResponse } from "@/lib/schemas/events";
 import type { Event } from "@/payload-types";
 
 import { fetchJson, HttpError } from "../api/http-error";
@@ -37,7 +37,7 @@ const logger = createLogger("EventsQueries");
  * Client-side events list response (flattened from API pagination shape).
  */
 export interface EventsListResponse {
-  events: Event[];
+  events: EventListItem[];
   total: number;
   page: number;
   limit: number;
@@ -62,7 +62,7 @@ interface EventsApiPagination {
 }
 
 interface EventsApiResponse {
-  events: Event[];
+  events: EventListItem[];
   pagination: EventsApiPagination;
 }
 

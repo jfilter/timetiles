@@ -55,7 +55,7 @@ const enrichEventData = (
   return { ...eventData, title, description, id };
 };
 
-const transformEvent = (event: Event) => {
+export const transformEvent = (event: Event) => {
   // Extract field mappings from dataset
   const fieldMappings =
     typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;

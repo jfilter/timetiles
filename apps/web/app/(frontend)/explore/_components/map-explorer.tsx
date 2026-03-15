@@ -10,20 +10,18 @@
  */
 "use client";
 
-import { cn } from "@timetiles/ui/lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ClusteredMap } from "@/components/maps/clustered-map";
-import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
 import { useEventsListQuery, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import { useMapPosition } from "@/lib/hooks/use-filters";
+import type { EventListItem } from "@/lib/schemas/events";
 import { useUIStore } from "@/lib/store";
-import type { Event } from "@/payload-types";
 
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsList } from "./events-list";
 import { FilterDrawer } from "./filter-drawer";
+import { FilterPanel } from "./filter-panel";
 import {
   buildEventsDescription,
   getFilterLabels,
@@ -32,11 +30,12 @@ import {
   isDataBoundsOutsideViewport,
   shouldShowZoomToData,
 } from "./map-explorer-helpers";
+import { MapPanel } from "./map-panel";
 import { MobileFilterSheet } from "./mobile-filter-sheet";
 import { useExplorerState } from "./use-explorer-state";
 
 /** Stable empty array to avoid creating a new reference when eventsData is null. */
-const EMPTY_EVENTS: Event[] = [];
+const EMPTY_EVENTS: EventListItem[] = [];
 
 export const MapExplorer = () => {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -81,15 +80,12 @@ export const MapExplorer = () => {
   } = map;
 
   // Close filter drawer on mobile on first mount for better UX
-  const hasClosedOnMobile = useRef(false);
   useEffect(() => {
-    if (hasClosedOnMobile.current) return;
-    hasClosedOnMobile.current = true;
-    const isMobile = globalThis.matchMedia("(max-width: 768px)").matches;
-    if (isMobile && isFilterDrawerOpen) {
+    if (globalThis.matchMedia("(max-width: 768px)").matches) {
       setFilterDrawerOpen(false);
     }
-  }, [isFilterDrawerOpen, setFilterDrawerOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
+  }, []);
 
   // Convert URL map position to initial view state for ClusteredMap
   const initialViewState = useMemo(
@@ -114,12 +110,7 @@ export const MapExplorer = () => {
   const isLoading = eventsLoading || clustersLoading;
 
   // Track loading states
-  const { isInitialLoad, isUpdating, shouldMarkLoaded } = getLoadingStates(
-    isLoading,
-    hasLoadedOnce,
-    events.length,
-    clusters.length
-  );
+  const { isInitialLoad, isUpdating, shouldMarkLoaded } = getLoadingStates(isLoading, hasLoadedOnce);
 
   // Mark as loaded once we have data
   useEffect(() => {
@@ -178,21 +169,18 @@ export const MapExplorer = () => {
       {/* Desktop: Flex layout - both map and list shrink proportionally when filters open */}
       <div ref={gridRef} className="hidden flex-1 overflow-hidden md:flex">
         {/* Map Panel - takes half of available space */}
-        <div className="relative h-full min-w-0 flex-1 transition-all duration-500 ease-in-out">
-          <ClusteredMap
-            ref={mapRef}
-            clusters={clusters}
-            clusterStats={clusterStats}
-            onBoundsChange={handleBoundsChange}
-            initialBounds={boundsData?.bounds}
-            initialViewState={initialViewState}
-            isLoadingBounds={isLoadingInitialBounds}
-          />
-          {/* Zoom to data button - positioned above theme control */}
-          <div className="absolute bottom-12 left-2 z-10">
-            <ZoomToDataButton visible={showZoomToData} onClick={handleZoomToData} />
-          </div>
-        </div>
+        <MapPanel
+          mapRef={mapRef}
+          clusters={clusters}
+          clusterStats={clusterStats}
+          onBoundsChange={handleBoundsChange}
+          initialBounds={boundsData?.bounds}
+          initialViewState={initialViewState}
+          isLoadingBounds={isLoadingInitialBounds}
+          showZoomToData={showZoomToData}
+          onZoomToData={handleZoomToData}
+          className="relative h-full min-w-0 flex-1 transition-all duration-500 ease-in-out"
+        />
 
         {/* Content Panel - takes half of available space */}
         <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out [scrollbar-gutter:stable]">
@@ -218,33 +206,25 @@ export const MapExplorer = () => {
         </div>
 
         {/* Filter Panel - fixed width with slide animation */}
-        <div
-          className={cn(
-            "bg-background h-full overflow-hidden border-l transition-all duration-500 ease-in-out",
-            isFilterDrawerOpen ? "w-80" : "w-0"
-          )}
-        >
+        <FilterPanel isOpen={isFilterDrawerOpen} className="bg-background h-full overflow-hidden">
           <FilterDrawer />
-        </div>
+        </FilterPanel>
       </div>
 
       {/* Mobile: Stacked layout with overlay filter drawer */}
       <div className="flex flex-1 flex-col overflow-hidden md:hidden">
         {/* Map takes top half */}
-        <div className="relative h-1/2 min-h-0">
-          <ClusteredMap
-            clusters={clusters}
-            clusterStats={clusterStats}
-            onBoundsChange={handleBoundsChange}
-            initialBounds={boundsData?.bounds}
-            initialViewState={initialViewState}
-            isLoadingBounds={isLoadingInitialBounds}
-          />
-          {/* Zoom to data button - positioned above theme control */}
-          <div className="absolute bottom-12 left-2 z-10">
-            <ZoomToDataButton visible={showZoomToData} onClick={handleZoomToData} />
-          </div>
-        </div>
+        <MapPanel
+          clusters={clusters}
+          clusterStats={clusterStats}
+          onBoundsChange={handleBoundsChange}
+          initialBounds={boundsData?.bounds}
+          initialViewState={initialViewState}
+          isLoadingBounds={isLoadingInitialBounds}
+          showZoomToData={showZoomToData}
+          onZoomToData={handleZoomToData}
+          className="relative h-1/2 min-h-0"
+        />
 
         {/* Content takes bottom half */}
         <div className="h-1/2 min-h-0 overflow-y-auto border-t">

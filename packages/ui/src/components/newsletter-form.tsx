@@ -24,6 +24,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import * as React from "react";
 
 import { useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
+import { NewsletterButtonContent, NewsletterStatusIndicator } from "./newsletter-shared";
 
 export interface NewsletterFormProps {
   /** Optional headline text */
@@ -113,37 +114,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
                 )}
                 required
               />
-
-              {/* Animated status indicator (map pin) */}
-              {status !== "idle" && (
-                <div
-                  className={cn(
-                    "absolute top-1/2 right-3 -translate-y-1/2",
-                    "transition-all duration-300",
-                    status === "loading" && "animate-pulse",
-                    status === "success" && "animate-[plot-point_0.6s_ease-out]"
-                  )}
-                >
-                  {status === "loading" && (
-                    <div className="border-navy h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
-                  )}
-                  {status === "success" && (
-                    <svg className="text-forest h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                    </svg>
-                  )}
-                  {status === "error" && (
-                    <svg className="text-destructive h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  )}
-                </div>
-              )}
+              <NewsletterStatusIndicator status={status} size="sm" />
             </div>
 
             <button
@@ -162,9 +133,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
               )}
             >
               <span className="relative z-10">
-                {status === "loading" && "Subscribing..."}
-                {status === "success" && "Subscribed ✓"}
-                {(status === "idle" || status === "error") && buttonText}
+                <NewsletterButtonContent status={status} buttonText={buttonText} />
               </span>
 
               {/* Hover effect - coordinate line sweep */}

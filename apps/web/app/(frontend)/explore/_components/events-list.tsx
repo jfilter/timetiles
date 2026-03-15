@@ -13,6 +13,7 @@ import { Calendar, MapPin } from "lucide-react";
 import { useCallback } from "react";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
+import type { EventListItem } from "@/lib/schemas/events";
 import {
   formatDateRange,
   getDatasetInfo,
@@ -21,12 +22,11 @@ import {
   getLocationDisplay,
   safeToString,
 } from "@/lib/utils/event-detail";
-import type { Event } from "@/payload-types";
 
 import { EventsListSkeleton } from "./events-list-skeleton";
 
 interface EventsListProps {
-  events: Event[];
+  events: EventListItem[];
   isInitialLoad?: boolean;
   isUpdating?: boolean;
   /** Error from data fetch */
@@ -38,7 +38,7 @@ interface EventsListProps {
 }
 
 interface EventItemProps {
-  event: Event;
+  event: EventListItem;
   eventId: number;
   onEventClick?: (eventId: number) => void;
 }

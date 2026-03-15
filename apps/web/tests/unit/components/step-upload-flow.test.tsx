@@ -23,9 +23,6 @@ const mockNextStep = vi.fn();
 
 const baseWizardState: WizardState = {
   currentStep: 2,
-  isAuthenticated: true,
-  isEmailVerified: true,
-  userId: 1,
   startedAuthenticated: true,
   previewId: null,
   file: null,

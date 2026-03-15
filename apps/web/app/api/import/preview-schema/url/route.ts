@@ -17,7 +17,7 @@ import { z } from "zod";
 
 import { apiRoute, ValidationError } from "@/lib/api";
 import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
-import { detectFileTypeFromResponse, fetchUrlData } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
+import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { createLogger } from "@/lib/logger";
 
 import {
@@ -82,16 +82,16 @@ export const POST = apiRoute({
     let fileExtension: string;
 
     try {
-      const fetchResult = await fetchUrlData(sourceUrl, {
-        headers: authHeaders,
+      const fetchResult = await fetchWithRetry(sourceUrl, {
+        authHeaders,
         timeout: 60000, // 60 second timeout for preview
         maxSize: MAX_FILE_SIZE,
+        retryConfig: { maxRetries: 0 }, // No retries for preview
+        cacheOptions: { bypassCache: true },
       });
 
-      // Detect file type from response
-      const detectedType = detectFileTypeFromResponse(fetchResult.contentType, fetchResult.data, sourceUrl);
-      fileExtension = detectedType.fileExtension;
-      mimeType = detectedType.mimeType;
+      fileExtension = fetchResult.fileExtension ?? ".bin";
+      mimeType = fetchResult.contentType;
 
       // Validate detected file type
       if (!SUPPORTED_EXTENSIONS.includes(fileExtension)) {
@@ -157,6 +157,9 @@ export const POST = apiRoute({
       previewId,
       sheets,
       sourceUrl, // Return source URL so UI knows this was a URL-based preview
+      fileName: originalName,
+      contentLength: fileSize,
+      contentType: mimeType,
     });
   },
 });

@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => {
     mockPapaParse: vi.fn(),
     mockXlsxRead: vi.fn(),
     mockSheetToJson: vi.fn(),
-    mockFetchUrlData: vi.fn(),
+    mockFetchWithRetry: vi.fn(),
     mockDetectFileTypeFromResponse: vi.fn(),
     mockBuildAuthHeaders: vi.fn(),
     mockDetectLanguageFromSamples: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock("uuid", () => ({ v4: vi.fn().mockReturnValue("test-uuid") }));
 vi.mock("@/lib/jobs/handlers/url-fetch-job/auth", () => ({ buildAuthHeaders: mocks.mockBuildAuthHeaders }));
 
 vi.mock("@/lib/jobs/handlers/url-fetch-job/fetch-utils", () => ({
-  fetchUrlData: mocks.mockFetchUrlData,
+  fetchWithRetry: mocks.mockFetchWithRetry,
   detectFileTypeFromResponse: mocks.mockDetectFileTypeFromResponse,
 }));
 
@@ -381,8 +381,12 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
     });
 
     it("should return 400 for unsupported file type from URL", async () => {
-      mocks.mockFetchUrlData.mockResolvedValue({ data: Buffer.from("some data"), contentType: "application/json" });
-      mocks.mockDetectFileTypeFromResponse.mockReturnValue({ fileExtension: ".json", mimeType: "application/json" });
+      mocks.mockFetchWithRetry.mockResolvedValue({
+        data: Buffer.from("some data"),
+        contentType: "application/json",
+        fileExtension: ".json",
+        attempts: 1,
+      });
 
       const request = createUrlRequest({ sourceUrl: "https://example.com/data.json" });
 
@@ -394,7 +398,7 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
     });
 
     it("should return 400 when URL fetch fails", async () => {
-      mocks.mockFetchUrlData.mockRejectedValue(new Error("Connection refused"));
+      mocks.mockFetchWithRetry.mockRejectedValue(new Error("Connection refused"));
 
       const request = createUrlRequest({ sourceUrl: "https://example.com/data.csv" });
 
@@ -412,8 +416,12 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
       const csvContent = "title,date\nEvent 1,2024-01-01";
       const fetchedData = Buffer.from(csvContent);
 
-      mocks.mockFetchUrlData.mockResolvedValue({ data: fetchedData, contentType: "text/csv" });
-      mocks.mockDetectFileTypeFromResponse.mockReturnValue({ fileExtension: ".csv", mimeType: "text/csv" });
+      mocks.mockFetchWithRetry.mockResolvedValue({
+        data: fetchedData,
+        contentType: "text/csv",
+        fileExtension: ".csv",
+        attempts: 1,
+      });
 
       mocks.mockReadFileSync.mockReturnValue(csvContent);
       mocks.mockPapaParse
@@ -445,8 +453,12 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
       const csvContent = "title,date\nEvent 1,2024-01-01";
       const fetchedData = Buffer.from(csvContent);
 
-      mocks.mockFetchUrlData.mockResolvedValue({ data: fetchedData, contentType: "text/csv" });
-      mocks.mockDetectFileTypeFromResponse.mockReturnValue({ fileExtension: ".csv", mimeType: "text/csv" });
+      mocks.mockFetchWithRetry.mockResolvedValue({
+        data: fetchedData,
+        contentType: "text/csv",
+        fileExtension: ".csv",
+        attempts: 1,
+      });
 
       mocks.mockReadFileSync.mockReturnValue(csvContent);
       mocks.mockPapaParse

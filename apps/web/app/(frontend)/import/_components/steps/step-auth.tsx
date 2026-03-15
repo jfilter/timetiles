@@ -10,13 +10,14 @@
  */
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircle2Icon, Loader2Icon, MailIcon } from "lucide-react";
 import { useCallback, useEffect } from "react";
 
 import { AuthTabs } from "@/components/auth";
-import { useCurrentUserQuery } from "@/lib/hooks/use-auth-mutations";
+import { useAuthState } from "@/lib/hooks/use-auth-mutations";
 
 import { useWizard } from "../wizard-context";
 
@@ -25,24 +26,9 @@ export interface StepAuthProps {
 }
 
 export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
-  const { state, nextStep, setAuth } = useWizard();
-  const { isAuthenticated, isEmailVerified } = state;
-
-  // Check auth status on mount via API (workaround for SSR auth issues)
-  // Skip the query if we already know the user is authenticated
-  const {
-    data: currentUserData,
-    isLoading: isCheckingAuth,
-    refetch,
-  } = useCurrentUserQuery({ enabled: !isAuthenticated });
-
-  // Sync query result into wizard state
-  useEffect(() => {
-    if (currentUserData?.user) {
-      const verified = currentUserData.user._verified === true;
-      setAuth(true, verified, currentUserData.user.id);
-    }
-  }, [currentUserData, setAuth]);
+  const { nextStep } = useWizard();
+  const { isAuthenticated, isEmailVerified, isLoading: isCheckingAuth } = useAuthState();
+  const queryClient = useQueryClient();
 
   // Auto-advance when authenticated and verified
   useEffect(() => {
@@ -51,22 +37,10 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
     }
   }, [isCheckingAuth, isAuthenticated, isEmailVerified, nextStep]);
 
-  // Handle successful auth - instead of page reload, check auth status
+  // Handle successful auth - invalidate the auth query to trigger re-fetch
   const handleAuthSuccess = useCallback(() => {
-    void (async () => {
-      try {
-        await refetch();
-      } catch {
-        // Fallback to page reload
-        globalThis.location.reload();
-      }
-    })();
-  }, [refetch]);
-
-  // Handle switching to different account
-  const handleSwitchAccount = useCallback(() => {
-    setAuth(false, false, null);
-  }, [setAuth]);
+    void queryClient.invalidateQueries({ queryKey: ["auth", "current-user"] });
+  }, [queryClient]);
 
   // Show loading while checking auth status
   if (isCheckingAuth) {
@@ -96,11 +70,6 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
             <p className="text-muted-foreground text-center text-sm">
               Haven&apos;t received the email? Check your spam folder or request a new verification link.
             </p>
-            <div className="flex justify-center">
-              <button type="button" className="text-primary text-sm hover:underline" onClick={handleSwitchAccount}>
-                Sign in with a different account
-              </button>
-            </div>
           </CardContent>
         </Card>
       </div>

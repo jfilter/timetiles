@@ -7,7 +7,7 @@
  * @module
  */
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
+import { devtools } from "zustand/middleware";
 
 import type { MapBounds } from "@/lib/geospatial/types";
 
@@ -36,26 +36,17 @@ const createUIStateSetter =
     set((state: UIStore) => ({ ...state, ui: { ...state.ui, [key]: value } }));
 
 export const useUIStore = create<UIStore>()(
-  devtools(
-    persist(
-      (set) => ({
-        // Initial state
-        ui: { isFilterDrawerOpen: true, mapBounds: null, mapStats: null },
+  devtools((set) => ({
+    // Initial state
+    ui: { isFilterDrawerOpen: true, mapBounds: null, mapStats: null },
 
-        // UI actions
-        setFilterDrawerOpen: createUIStateSetter(set, "isFilterDrawerOpen"),
+    // UI actions
+    setFilterDrawerOpen: createUIStateSetter(set, "isFilterDrawerOpen"),
 
-        toggleFilterDrawer: () =>
-          set((state) => ({ ...state, ui: { ...state.ui, isFilterDrawerOpen: !state.ui.isFilterDrawerOpen } })),
+    toggleFilterDrawer: () =>
+      set((state) => ({ ...state, ui: { ...state.ui, isFilterDrawerOpen: !state.ui.isFilterDrawerOpen } })),
 
-        setMapBounds: createUIStateSetter(set, "mapBounds"),
-        setMapStats: createUIStateSetter(set, "mapStats"),
-      }),
-      {
-        name: "timetiles-ui-store",
-        // Only persist UI state
-        partialize: (state) => ({ ui: { isFilterDrawerOpen: state.ui.isFilterDrawerOpen } }),
-      }
-    )
-  )
+    setMapBounds: createUIStateSetter(set, "mapBounds"),
+    setMapStats: createUIStateSetter(set, "mapStats"),
+  }))
 );

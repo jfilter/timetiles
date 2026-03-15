@@ -11,7 +11,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 export type FormStatus = "idle" | "loading" | "success" | "error";
 
@@ -33,41 +33,24 @@ interface UseFormMutationReturn<TData, TVariables> {
 export const useFormMutation = <TData = void, TVariables = void>(
   options: UseFormMutationOptions<TData, TVariables>
 ): UseFormMutationReturn<TData, TVariables> => {
-  const [formStatus, setFormStatus] = useState<FormStatus>("idle");
-  const [formError, setFormError] = useState<string | null>(null);
-
   const mutation = useMutation<TData, Error, TVariables>({
     mutationFn: options.mutationFn,
-    onSuccess: (data, variables) => {
-      setFormStatus("success");
-      options.onSuccess?.(data, variables);
-    },
-    onError: (error, variables) => {
-      setFormError(error.message || "An unexpected error occurred");
-      setFormStatus("error");
-      options.onError?.(error, variables);
-    },
+    onSuccess: options.onSuccess,
+    onError: options.onError,
   });
 
-  // Sync loading state from mutation
-  useEffect(() => {
-    if (mutation.isPending) {
-      setFormStatus("loading");
-      setFormError(null);
-    }
-  }, [mutation.isPending]);
+  const status: FormStatus = mutation.status === "pending" ? "loading" : mutation.status;
+  const error: string | null = mutation.error ? mutation.error.message || "An unexpected error occurred" : null;
 
   const { reset: mutationReset } = mutation;
   const reset = useCallback(() => {
-    setFormStatus("idle");
-    setFormError(null);
     mutationReset();
   }, [mutationReset]);
 
   return {
-    status: formStatus,
-    error: formError,
-    isLoading: formStatus === "loading",
+    status,
+    error,
+    isLoading: status === "loading",
     mutate: mutation.mutate,
     mutateAsync: mutation.mutateAsync,
     reset,

@@ -7,7 +7,6 @@
  * @module
  * @category Utils
  */
-import type { Event } from "@/payload-types";
 
 /** Type for event data object */
 export interface EventData {
@@ -31,7 +30,7 @@ export const safeToString = (value: unknown): string => {
 };
 
 /** Extract the data object from an event, handling non-object or array cases */
-export const getEventData = (event: Event): EventData => {
+export const getEventData = (event: { data: unknown }): EventData => {
   return typeof event.data === "object" && event.data != null && !Array.isArray(event.data)
     ? (event.data as EventData)
     : {};
@@ -79,14 +78,17 @@ export const formatDateRange = (startDate: unknown, endDate: unknown): string | 
 };
 
 /** Build a location display string from event and data fields */
-export const getLocationDisplay = (event: Event, eventData: EventData): string | null => {
+export const getLocationDisplay = (event: Record<string, unknown> | object, eventData: EventData): string | null => {
+  const eventRecord = event as Record<string, unknown>;
   // Prefer location name (venue, place name) if available
-  if (event.locationName) {
-    return event.locationName;
+  const locationName = typeof eventRecord.locationName === "string" ? eventRecord.locationName : null;
+  if (locationName) {
+    return locationName;
   }
   // Fall back to geocoded/normalized address
-  if (event.geocodingInfo?.normalizedAddress) {
-    return event.geocodingInfo.normalizedAddress;
+  const geocodingInfo = eventRecord.geocodingInfo as { normalizedAddress?: string | null } | null | undefined;
+  if (geocodingInfo?.normalizedAddress) {
+    return geocodingInfo.normalizedAddress;
   }
   // Final fallback to city/country from data
   const cityCountry = [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean);
@@ -94,7 +96,9 @@ export const getLocationDisplay = (event: Event, eventData: EventData): string |
 };
 
 /** Check whether an event has valid (non-zero) coordinates */
-export const hasValidCoordinates = (location: Event["location"]): boolean => {
+export const hasValidCoordinates = (
+  location: { latitude?: number | null; longitude?: number | null } | null | undefined
+): boolean => {
   return (
     location?.latitude != null && location.latitude !== 0 && location?.longitude != null && location.longitude !== 0
   );

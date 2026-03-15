@@ -11,17 +11,16 @@
  */
 "use client";
 
-import { cn } from "@timetiles/ui/lib/utils";
 import { useState } from "react";
-
-import { ClusteredMap } from "@/components/maps/clustered-map";
-import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
 
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsListPaginated } from "./events-list-paginated";
 import { FilterDrawer } from "./filter-drawer";
+import { FilterPanel } from "./filter-panel";
 import { formatDateRange, getDatasetName } from "./map-explorer-helpers";
+import { MapPanel } from "./map-panel";
+import { MobileFilterSheet } from "./mobile-filter-sheet";
 import { MobileTabs } from "./mobile-tabs";
 import { useExplorerState } from "./use-explorer-state";
 
@@ -33,7 +32,7 @@ export const ListExplorer = () => {
   // Shared explorer state
   const explorer = useExplorerState();
   const { map, filters: filterState, selection, data, ui } = explorer;
-  const { filters } = filterState;
+  const { filters, activeFilterCount } = filterState;
   const { selectedEventId, openEvent, closeEvent } = selection;
   const { datasets, clusters, clusterStats, boundsData, boundsLoading, isLoadingInitialBounds } = data;
   const { isFilterDrawerOpen, toggleFilterDrawer } = ui;
@@ -48,20 +47,16 @@ export const ListExplorer = () => {
 
   // Content for mobile tabs
   const mobileMapContent = (
-    <div className="relative h-full">
-      <ClusteredMap
-        ref={mapRef}
-        clusters={clusters}
-        clusterStats={clusterStats}
-        onBoundsChange={handleBoundsChange}
-        initialBounds={boundsData?.bounds}
-        isLoadingBounds={isLoadingInitialBounds}
-      />
-      {/* Zoom to data button - positioned above theme control */}
-      <div className="absolute bottom-12 left-2 z-10">
-        <ZoomToDataButton visible={showZoomToData} onClick={handleZoomToData} />
-      </div>
-    </div>
+    <MapPanel
+      mapRef={mapRef}
+      clusters={clusters}
+      clusterStats={clusterStats}
+      onBoundsChange={handleBoundsChange}
+      initialBounds={boundsData?.bounds}
+      isLoadingBounds={isLoadingInitialBounds}
+      showZoomToData={showZoomToData}
+      onZoomToData={handleZoomToData}
+    />
   );
 
   const mobileChartContent = (
@@ -92,20 +87,17 @@ export const ListExplorer = () => {
             {/* Top Section - 2 Column Layout (Map | Chart) */}
             <div className="grid h-[50vh] min-h-[300px] grid-cols-2 gap-0 border-b">
               {/* Map Column */}
-              <div className="relative overflow-hidden">
-                <ClusteredMap
-                  ref={mapRef}
-                  clusters={clusters}
-                  clusterStats={clusterStats}
-                  onBoundsChange={handleBoundsChange}
-                  initialBounds={boundsData?.bounds}
-                  isLoadingBounds={isLoadingInitialBounds}
-                />
-                {/* Zoom to data button - positioned above theme control */}
-                <div className="absolute bottom-12 left-2 z-10">
-                  <ZoomToDataButton visible={showZoomToData} onClick={handleZoomToData} />
-                </div>
-              </div>
+              <MapPanel
+                mapRef={mapRef}
+                clusters={clusters}
+                clusterStats={clusterStats}
+                onBoundsChange={handleBoundsChange}
+                initialBounds={boundsData?.bounds}
+                isLoadingBounds={isLoadingInitialBounds}
+                showZoomToData={showZoomToData}
+                onZoomToData={handleZoomToData}
+                className="relative overflow-hidden"
+              />
 
               {/* Chart Column */}
               <div className="overflow-hidden border-l">
@@ -128,14 +120,9 @@ export const ListExplorer = () => {
           </div>
 
           {/* Filter Panel - slides in, scrolls with page, ends with content */}
-          <div
-            className={cn(
-              "shrink-0 self-start border-l transition-all duration-500 ease-in-out",
-              isFilterDrawerOpen ? "w-80" : "w-0 overflow-hidden"
-            )}
-          >
+          <FilterPanel isOpen={isFilterDrawerOpen} className="self-start">
             <FilterDrawer />
-          </div>
+          </FilterPanel>
         </div>
       </div>
 
@@ -150,31 +137,15 @@ export const ListExplorer = () => {
           listContent={mobileListContent}
         />
 
-        {/* Mobile: Full-screen overlay filter sheet */}
-        {isFilterDrawerOpen && (
-          <div className="bg-background fixed inset-0 z-50">
-            <div className="flex h-full flex-col">
-              {/* Header with close button */}
-              <div className="flex items-center justify-between border-b p-4">
-                <h2 className="text-lg font-semibold">Filters</h2>
-                <button
-                  onClick={toggleFilterDrawer}
-                  className="hover:bg-muted rounded-sm p-2"
-                  aria-label="Close filters"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Filter content - FilterDrawer handles its own scroll */}
-              <div className="min-h-0 flex-1">
-                <FilterDrawer />
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Mobile: Bottom sheet filter drawer */}
+        <MobileFilterSheet
+          isOpen={isFilterDrawerOpen}
+          onClose={toggleFilterDrawer}
+          onOpen={toggleFilterDrawer}
+          activeFilterCount={activeFilterCount}
+        >
+          <FilterDrawer />
+        </MobileFilterSheet>
       </div>
 
       {/* Event Detail Modal */}

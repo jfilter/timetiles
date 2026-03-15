@@ -152,13 +152,11 @@ export const buildEventsDescription = (
 /** Determine loading states */
 export const getLoadingStates = (
   isLoading: boolean,
-  hasLoadedOnce: boolean,
-  eventsCount: number,
-  clustersCount: number
+  hasLoadedOnce: boolean
 ): { isInitialLoad: boolean; isUpdating: boolean; shouldMarkLoaded: boolean } => ({
   isInitialLoad: isLoading && !hasLoadedOnce,
   isUpdating: isLoading && hasLoadedOnce,
-  shouldMarkLoaded: !isLoading && !hasLoadedOnce && (eventsCount > 0 || clustersCount > 0),
+  shouldMarkLoaded: !isLoading && !hasLoadedOnce,
 });
 
 /** Check if data bounds are outside the current viewport */

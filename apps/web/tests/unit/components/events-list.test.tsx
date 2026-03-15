@@ -2,14 +2,13 @@
  * @module
  */
 import { EventsList } from "@/app/(frontend)/explore/_components/events-list";
-import type { Event } from "@/payload-types";
+import type { EventListItem } from "@/lib/schemas/events";
 
 import { renderWithProviders, screen } from "../../setup/unit/react-render";
 
-// Create realistic event data that matches actual Payload structure
-const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
+// Create mock event matching the list API DTO shape
+const createMockEvent = (overrides: Partial<EventListItem> = {}): EventListItem => ({
   id: 1,
-  uniqueId: "test-event-1",
   data: {
     title: "Sample Event",
     description: "Event description",
@@ -19,9 +18,8 @@ const createMockEvent = (overrides: Partial<Event> = {}): Event => ({
   },
   location: { longitude: 13.405, latitude: 52.52 },
   eventTimestamp: "2024-06-15T10:00:00Z",
-  dataset: 1,
-  createdAt: "2024-01-01T00:00:00Z",
-  updatedAt: "2024-01-01T00:00:00Z",
+  dataset: { id: 1 },
+  isValid: true,
   ...overrides,
 });
 
@@ -115,11 +113,6 @@ describe("EventsList", () => {
       createMockEvent({
         id: 3,
         data: { title: "Event with venue", venue: "Madison Square Garden", city: "New York", country: "USA" },
-        geocodingInfo: {
-          normalizedAddress: "4 Pennsylvania Plaza, New York, NY 10001, USA",
-          confidence: 0.95,
-          provider: "google",
-        },
       }),
     ];
 
@@ -131,8 +124,8 @@ describe("EventsList", () => {
     // Event with no location fields should not display location
     expect(screen.getByText("Event with no location fields")).toBeInTheDocument();
 
-    // Should prioritize geocoded address when available
-    expect(screen.getByText("4 Pennsylvania Plaza, New York, NY 10001, USA")).toBeInTheDocument();
+    // Should display city/country for event with venue data
+    expect(screen.getByText("New York, USA")).toBeInTheDocument();
   });
 
   test("handles events with complex nested data", () => {
@@ -163,7 +156,7 @@ describe("EventsList", () => {
     const events = [
       createMockEvent({ id: 1, data: { title: "Later Event" }, eventTimestamp: "2024-06-20T10:00:00Z" }),
       createMockEvent({ id: 2, data: { title: "Earlier Event" }, eventTimestamp: "2024-06-10T10:00:00Z" }),
-      createMockEvent({ id: 3, data: { title: "No Timestamp Event" }, eventTimestamp: null }),
+      createMockEvent({ id: 3, data: { title: "No Timestamp Event" }, eventTimestamp: "" }),
     ];
 
     renderWithProviders(<EventsList events={events} />);

@@ -83,6 +83,9 @@ export const EventListResponseSchema = z
 
 export type EventListResponse = z.infer<typeof EventListResponseSchema>;
 
+/** Single event item as returned by the list API (trimmed DTO, not the full Payload Event). */
+export type EventListItem = z.infer<typeof EventItemSchema>;
+
 // =============================================================================
 // Aggregate Endpoint
 // =============================================================================

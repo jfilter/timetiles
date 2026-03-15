@@ -33,7 +33,6 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
     data: summaryData,
     isLoading: isSummaryLoading,
     error: summaryError,
-    refetch: refetchSummary,
   } = useDeletionSummaryQuery({ enabled: open && step === "summary" });
 
   const scheduleDeletionMutation = useScheduleDeletionMutation();
@@ -51,13 +50,6 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
     return null;
   };
   const summaryDisplayError = getSummaryDisplayError();
-
-  // Refetch summary when modal opens (ensures fresh data each time)
-  useEffect(() => {
-    if (open && step === "summary") {
-      void refetchSummary();
-    }
-  }, [open, step, refetchSummary]);
 
   // Reset state when modal closes
   useEffect(() => {

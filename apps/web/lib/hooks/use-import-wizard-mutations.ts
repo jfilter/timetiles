@@ -29,9 +29,10 @@ interface PreviewSchemaUrlRequest {
 interface PreviewSchemaUrlResponse {
   sheets: SheetInfo[];
   previewId: string;
-  fileName?: string;
-  contentLength?: number;
-  contentType?: string;
+  sourceUrl: string;
+  fileName: string;
+  contentLength: number;
+  contentType: string;
 }
 
 interface ImportConfigureRequest {

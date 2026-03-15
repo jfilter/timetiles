@@ -26,6 +26,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
+import { NewsletterButtonContent, NewsletterStatusIndicator } from "./newsletter-shared";
 
 const newsletterCtaVariants = cva("relative overflow-hidden", {
   variants: {
@@ -173,34 +174,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
                     )}
                     required
                   />
-
-                  {/* Animated status indicator */}
-                  {status !== "idle" && (
-                    <div className={cn("absolute top-1/2 right-4 -translate-y-1/2", "transition-all duration-300")}>
-                      {status === "loading" && (
-                        <div className="border-navy h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" />
-                      )}
-                      {status === "success" && (
-                        <svg
-                          className="text-forest h-6 w-6 animate-[plot-point_0.6s_ease-out]"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                        </svg>
-                      )}
-                      {status === "error" && (
-                        <svg className="text-destructive h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  )}
+                  <NewsletterStatusIndicator status={status} size="md" />
                 </div>
 
                 <button
@@ -219,20 +193,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
                   )}
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    {status === "loading" && "Subscribing..."}
-                    {status === "success" && (
-                      <>
-                        Subscribed
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </>
-                    )}
-                    {(status === "idle" || status === "error") && buttonText}
+                    <NewsletterButtonContent status={status} buttonText={buttonText} showCheckIcon />
                   </span>
 
                   {/* Hover effect - coordinate line sweep */}

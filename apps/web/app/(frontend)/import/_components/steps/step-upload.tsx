@@ -172,11 +172,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       setSourceUrl(urlInput.trim(), authConfig.type === "none" ? null : authConfig);
 
       setFile(
-        {
-          name: data.fileName ?? new URL(urlInput).pathname.split("/").pop() ?? "url-import",
-          size: data.contentLength ?? 0,
-          mimeType: data.contentType ?? "application/octet-stream",
-        },
+        { name: data.fileName, size: data.contentLength, mimeType: data.contentType },
         data.sheets,
         data.previewId,
         urlInput.trim()

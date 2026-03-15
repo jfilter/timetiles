@@ -48,31 +48,10 @@ describe("Wizard Reducer", () => {
   });
 
   describe("Authentication", () => {
-    it("SET_AUTH updates authentication state", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_AUTH",
-        isAuthenticated: true,
-        isEmailVerified: true,
-        userId: 123,
-      });
-
-      expect(result.isAuthenticated).toBe(true);
-      expect(result.isEmailVerified).toBe(true);
-      expect(result.userId).toBe(123);
-    });
-
-    it("SET_AUTH handles logout", () => {
-      const state = { ...initialState, isAuthenticated: true, isEmailVerified: true, userId: 123 };
-      const result = wizardReducer(state, {
-        type: "SET_AUTH",
-        isAuthenticated: false,
-        isEmailVerified: false,
-        userId: null,
-      });
-
-      expect(result.isAuthenticated).toBe(false);
-      expect(result.isEmailVerified).toBe(false);
-      expect(result.userId).toBeNull();
+    it("startedAuthenticated is preserved in state", () => {
+      const state = { ...initialState, startedAuthenticated: true };
+      const result = wizardReducer(state, { type: "SET_STEP", step: 2 as WizardStep });
+      expect(result.startedAuthenticated).toBe(true);
     });
   });
 
@@ -368,10 +347,14 @@ describe("Wizard Reducer", () => {
  */
 describe("canProceed Validation", () => {
   // Helper function to compute canProceed (mirrors wizard-context.tsx logic)
-  const computeCanProceed = (state: WizardState): boolean => {
+  // Auth state is now external (from useAuthState), so step 1 takes explicit booleans
+  const computeCanProceed = (
+    state: WizardState,
+    auth: { isAuthenticated: boolean; isEmailVerified: boolean } = { isAuthenticated: false, isEmailVerified: false }
+  ): boolean => {
     switch (state.currentStep) {
       case 1:
-        return state.isAuthenticated && state.isEmailVerified;
+        return auth.isAuthenticated && auth.isEmailVerified;
       case 2:
         return state.file !== null && state.sheets.length > 0;
       case 3:
@@ -399,24 +382,18 @@ describe("canProceed Validation", () => {
     });
 
     it("blocks if only authenticated but not verified", () => {
-      const state = { ...initialState, currentStep: 1 as WizardStep, isAuthenticated: true, isEmailVerified: false };
-      expect(computeCanProceed(state)).toBe(false);
+      const state = { ...initialState, currentStep: 1 as WizardStep };
+      expect(computeCanProceed(state, { isAuthenticated: true, isEmailVerified: false })).toBe(false);
     });
 
     it("blocks if only verified but not authenticated", () => {
-      const state = { ...initialState, currentStep: 1 as WizardStep, isAuthenticated: false, isEmailVerified: true };
-      expect(computeCanProceed(state)).toBe(false);
+      const state = { ...initialState, currentStep: 1 as WizardStep };
+      expect(computeCanProceed(state, { isAuthenticated: false, isEmailVerified: true })).toBe(false);
     });
 
     it("allows proceeding when both authenticated and verified", () => {
-      const state = {
-        ...initialState,
-        currentStep: 1 as WizardStep,
-        isAuthenticated: true,
-        isEmailVerified: true,
-        userId: 123,
-      };
-      expect(computeCanProceed(state)).toBe(true);
+      const state = { ...initialState, currentStep: 1 as WizardStep };
+      expect(computeCanProceed(state, { isAuthenticated: true, isEmailVerified: true })).toBe(true);
     });
   });
 

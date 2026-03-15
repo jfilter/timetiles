@@ -105,6 +105,9 @@ const DAILY_USAGE_FIELDS: Array<keyof Omit<UserUsage, "lastResetDate">> = Object
   .filter((d) => d.daily && d.usageField != null)
   .map((d) => d.usageField);
 
+/** Precomputed reset payload for daily counters (e.g. { urlFetchesToday: 0, ... }) */
+const DAILY_RESET_DATA = Object.fromEntries(DAILY_USAGE_FIELDS.map((f) => [f, 0]));
+
 type UserIdentifier = number | string | Pick<User, "id"> | null | undefined;
 
 const normalizeUserId = (userId: UserIdentifier): number => {
@@ -506,7 +509,7 @@ export class QuotaService {
       await this.payload.update({
         collection: USER_USAGE_COLLECTION,
         id: usageRecord.id,
-        data: { urlFetchesToday: 0, fileUploadsToday: 0, importJobsToday: 0, lastResetDate: new Date().toISOString() },
+        data: { ...DAILY_RESET_DATA, lastResetDate: new Date().toISOString() },
         overrideAccess: true,
       });
 
@@ -530,7 +533,7 @@ export class QuotaService {
       const result = await this.payload.update({
         collection: USER_USAGE_COLLECTION,
         where: {}, // Empty where = update all
-        data: { urlFetchesToday: 0, fileUploadsToday: 0, importJobsToday: 0, lastResetDate: now },
+        data: { ...DAILY_RESET_DATA, lastResetDate: now },
         overrideAccess: true,
       });
 

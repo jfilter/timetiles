@@ -44,6 +44,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
 
+import { useAuthState } from "@/lib/hooks/use-auth-mutations";
 import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
@@ -71,7 +72,6 @@ interface WizardContextValue {
   goToStep: (step: WizardStep) => void;
   nextStep: () => void;
   prevStep: () => void;
-  setAuth: (isAuthenticated: boolean, isEmailVerified: boolean, userId: number | null) => void;
   setFile: (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => void;
   setSourceUrl: (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => void;
   setScheduleConfig: (config: ScheduleConfig | null) => void;
@@ -127,14 +127,14 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
   const wasAuthenticatedOnStart = initialAuth?.isAuthenticated && initialAuth?.isEmailVerified;
   const [state, dispatch] = useReducer(wizardReducer, {
     ...initialState,
-    isAuthenticated: initialAuth?.isAuthenticated ?? false,
-    isEmailVerified: initialAuth?.isEmailVerified ?? false,
-    userId: initialAuth?.userId ?? null,
     // Track if user was already authenticated when wizard started
     startedAuthenticated: wasAuthenticatedOnStart ?? false,
     // Skip auth step if already authenticated and verified
     currentStep: wasAuthenticatedOnStart ? 2 : 1,
   });
+
+  // Single source of truth for client-side auth state
+  const { isAuthenticated, isEmailVerified } = useAuthState();
 
   // Navigation config state - steps can customize their navigation
   const [navigationConfig, setNavigationConfigState] = useState<NavigationConfig>(defaultNavigationConfig);
@@ -164,10 +164,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
 
       const restoredState = {
         ...saved,
-        // Always use current auth state from server
-        isAuthenticated: initialAuth?.isAuthenticated ?? false,
-        isEmailVerified: initialAuth?.isEmailVerified ?? false,
-        userId: initialAuth?.userId ?? null,
         // startedAuthenticated is based on initial page load, not restored state
         startedAuthenticated: wasAuthenticatedOnStart ?? false,
         // Adjust step based on current auth state
@@ -223,10 +219,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
 
   const prevStep = useCallback(() => {
     dispatch({ type: "PREV_STEP" });
-  }, []);
-
-  const setAuth = useCallback((isAuthenticated: boolean, isEmailVerified: boolean, userId: number | null) => {
-    dispatch({ type: "SET_AUTH", isAuthenticated, isEmailVerified, userId });
   }, []);
 
   const setFile = useCallback(
@@ -293,7 +285,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
   const canProceed = useMemo(() => {
     switch (state.currentStep) {
       case 1:
-        return state.isAuthenticated && state.isEmailVerified;
+        return isAuthenticated && isEmailVerified;
       case 2:
         return state.file !== null && state.sheets.length > 0;
       case 3:
@@ -313,7 +305,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       default:
         return false;
     }
-  }, [state]);
+  }, [state, isAuthenticated, isEmailVerified]);
 
   const stepTitle = STEP_TITLES[state.currentStep];
 
@@ -324,7 +316,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       goToStep,
       nextStep,
       prevStep,
-      setAuth,
       setFile,
       setSourceUrl,
       setScheduleConfig,
@@ -348,7 +339,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       goToStep,
       nextStep,
       prevStep,
-      setAuth,
       setFile,
       setSourceUrl,
       setScheduleConfig,

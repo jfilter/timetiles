@@ -87,6 +87,25 @@ export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
   });
 };
 
+/**
+ * Derive auth booleans from the current user query.
+ *
+ * Single source of truth for client-side auth state. Components should
+ * use this instead of maintaining their own auth state copies.
+ */
+export const useAuthState = () => {
+  const { data, isLoading } = useCurrentUserQuery();
+  const user = data?.user ?? null;
+
+  return {
+    isAuthenticated: user != null,
+    isEmailVerified: user?._verified === true,
+    userId: user?.id ?? null,
+    isLoading,
+    user,
+  };
+};
+
 // ---------------------------------------------------------------------------
 // Mutations
 // ---------------------------------------------------------------------------

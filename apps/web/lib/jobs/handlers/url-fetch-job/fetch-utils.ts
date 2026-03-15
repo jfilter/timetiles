@@ -14,14 +14,21 @@ import path from "node:path";
 import { logger } from "@/lib/logger";
 import { getUrlFetchCache, type UrlFetchCache, type UrlFetchCacheOptions } from "@/lib/services/cache";
 import { parseStrictInteger } from "@/lib/utils/event-params";
-import type { ScheduledImport } from "@/payload-types";
 
 export interface FetchResult {
   data: Buffer;
   contentType: string;
   contentLength?: number;
+  fileExtension?: string;
   attempts: number;
   cacheStatus?: string;
+}
+
+/** Retry configuration for URL fetches. */
+export interface RetryConfig {
+  maxRetries?: number | null;
+  exponentialBackoff?: boolean | null;
+  retryDelayMinutes?: number | null;
 }
 
 export interface FetchOptions {
@@ -254,7 +261,7 @@ const getCacheStatus = (headers: Record<string, string>): string | undefined =>
 /**
  * Fetches URL with retry logic and HTTP caching support.
  */
-const getRetryDelay = (retryConfig?: ScheduledImport["retryConfig"]) => {
+const getRetryDelay = (retryConfig?: RetryConfig) => {
   const retryDelayMinutes = retryConfig?.retryDelayMinutes ?? 0.1;
   const isTestEnv = process.env.NODE_ENV === "test";
   return isTestEnv ? 100 : retryDelayMinutes * 60 * 1000;
@@ -300,6 +307,7 @@ const processFetchResponse = async (
     data: cachedResponse.data,
     contentType: detectedType.mimeType,
     contentLength: cachedResponse.data.length,
+    fileExtension: detectedType.fileExtension,
     attempts: attempt,
     cacheStatus: cacheStatus,
   };
@@ -308,7 +316,7 @@ const processFetchResponse = async (
 export const fetchWithRetry = async (
   sourceUrl: string,
   options: FetchOptions & {
-    retryConfig?: ScheduledImport["retryConfig"];
+    retryConfig?: RetryConfig;
     authHeaders?: Record<string, string>;
     cacheOptions?: UrlFetchCacheOptions;
     userId?: string;
