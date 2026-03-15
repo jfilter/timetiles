@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import { logger } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import type { SchemaFreshnessResult } from "@/lib/services/schema-freshness";
 import { getSchemaFreshness } from "@/lib/services/schema-freshness";
 import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
@@ -199,7 +199,7 @@ export const schemaMaintenanceJob = {
       };
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error("Schema maintenance job failed", { error: error instanceof Error ? error.message : String(error) });
+      logError(error, "Schema maintenance job failed");
 
       return {
         output: {

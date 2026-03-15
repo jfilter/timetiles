@@ -131,7 +131,7 @@ const processEventBatch = async (
 
       eventsCreated++;
     } catch (error) {
-      logger.error("Failed to create event", { rowNumber, error });
+      logger.warn("Failed to create event", { rowNumber, error });
       errors.push({ row: rowNumber, error: error instanceof Error ? error.message : "Unknown error" });
     }
   }

@@ -7,7 +7,7 @@
  * @module
  */
 
-import { createLogger } from "@/lib/logger";
+import { createLogger, logError } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 
 import type { JobHandlerContext } from "../../utils/job-context";
@@ -40,7 +40,7 @@ export const quotaResetJobConfig = {
         },
       };
     } catch (error) {
-      logger.error("Failed to reset daily quotas", { error });
+      logError(error, "Failed to reset daily quotas");
       throw error; // Re-throw to trigger retry
     }
   },

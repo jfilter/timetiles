@@ -10,7 +10,7 @@
  */
 
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import { logger } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import { getUrlFetchCache } from "@/lib/services/cache";
 import { CacheManager } from "@/lib/services/cache/manager";
 
@@ -86,10 +86,9 @@ export const cacheCleanupJob = {
 
       return { output: { success: true, totalCleaned, totalEvicted, duration, results } };
     } catch (error) {
-      const errorObj = error as Error;
-      logger.error("Cache cleanup job failed", { error: errorObj.message, stack: errorObj.stack });
+      logError(error, "Cache cleanup job failed");
 
-      return { output: { success: false, error: errorObj.message } };
+      return { output: { success: false, error: error instanceof Error ? error.message : "Unknown error" } };
     }
   },
 };
