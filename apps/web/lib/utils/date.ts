@@ -117,3 +117,24 @@ export const formatDate = (date: string | Date | null | undefined, options?: { i
  */
 export const formatDateShort = (date: string | Date | null | undefined): string =>
   formatDate(date, { includeTime: false });
+
+/**
+ * Format a date in long format with weekday, suitable for emails and notifications.
+ *
+ * @param date - Date to format
+ * @param includeTime - Whether to include hour and minute (default: false)
+ * @returns Formatted date string like "Saturday, March 15, 2026" or "Unknown" if invalid
+ */
+export const formatLongDate = (date: string | Date | null | undefined, includeTime = false): string => {
+  const dateObj = parseDateInput(date);
+  if (!dateObj) return "Unknown";
+
+  const options: Intl.DateTimeFormatOptions = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+
+  if (includeTime) {
+    options.hour = "2-digit";
+    options.minute = "2-digit";
+  }
+
+  return dateObj.toLocaleDateString("en-US", options);
+};

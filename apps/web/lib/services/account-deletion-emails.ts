@@ -11,20 +11,11 @@
  */
 import type { Payload } from "payload";
 
-import { parseDateInput } from "@/lib/utils/date";
+import { formatLongDate } from "@/lib/utils/date";
 
 import { createLogger, logError } from "../logger";
 
 const logger = createLogger("account-deletion-emails");
-
-const formatDeletionDate = (deletionScheduledAt: string): string => {
-  const deletionDate = parseDateInput(deletionScheduledAt);
-  if (!deletionDate) {
-    return "Unknown";
-  }
-
-  return deletionDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-};
 
 /**
  * Send deletion scheduled email.
@@ -36,7 +27,7 @@ export const sendDeletionScheduledEmail = async (
   deletionScheduledAt: string,
   cancelUrl: string
 ): Promise<void> => {
-  const formattedDate = formatDeletionDate(deletionScheduledAt);
+  const formattedDate = formatLongDate(deletionScheduledAt);
 
   const html = `
     <!DOCTYPE html>

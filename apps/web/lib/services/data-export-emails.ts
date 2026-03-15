@@ -10,7 +10,7 @@
  */
 import type { Payload } from "payload";
 
-import { parseDateInput } from "@/lib/utils/date";
+import { formatLongDate } from "@/lib/utils/date";
 
 import { createLogger, logError } from "../logger";
 
@@ -27,17 +27,7 @@ export const sendExportReadyEmail = async (
   expiresAt: string,
   fileSizeMB: number
 ): Promise<void> => {
-  const expiryDate = parseDateInput(expiresAt);
-  const formattedDate = expiryDate
-    ? expiryDate.toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "Unknown";
+  const formattedDate = formatLongDate(expiresAt, true);
 
   const settingsUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
 
