@@ -16,7 +16,7 @@ import type { CollectionConfig, PayloadRequest } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import {
@@ -46,7 +46,7 @@ const validatePrivateVisibility = async (data: Record<string, unknown>, req: Pay
 const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
   if (!req.user) return;
 
-  const quotaService = getQuotaService(req.payload);
+  const quotaService = createQuotaService(req.payload);
   await quotaService.checkAndIncrementUsage(req.user, "CATALOGS_PER_USER", 1, req);
 };
 
@@ -337,7 +337,7 @@ const Catalogs: CollectionConfig = {
       async ({ doc, req }) => {
         // Decrement catalog count when catalog is deleted
         if (doc.createdBy && req.payload) {
-          const quotaService = getQuotaService(req.payload);
+          const quotaService = createQuotaService(req.payload);
           await quotaService.decrementUsage(doc.createdBy, "CATALOGS_PER_USER", 1, req);
         }
       },

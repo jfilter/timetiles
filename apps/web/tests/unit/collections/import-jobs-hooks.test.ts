@@ -16,7 +16,7 @@ vi.mock("@/lib/services/stage-transition", () => ({ StageTransitionService: { pr
 
 vi.mock("@/lib/services/audit-log-service", () => ({ AUDIT_ACTIONS: {}, auditLog: vi.fn() }));
 
-vi.mock("@/lib/services/quota-service", () => ({ getQuotaService: vi.fn() }));
+vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: vi.fn() }));
 
 vi.mock("@/lib/constants/import-constants", () => ({
   COLLECTION_NAMES: { IMPORT_FILES: "import-files", IMPORT_JOBS: "import-jobs" },

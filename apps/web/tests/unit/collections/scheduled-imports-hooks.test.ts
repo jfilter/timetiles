@@ -13,7 +13,7 @@ const quotaMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: vi.fn(() => ({
+  createQuotaService: vi.fn(() => ({
     checkQuota: quotaMocks.mockCheckQuota,
     incrementUsage: quotaMocks.mockIncrementUsage,
     decrementUsage: quotaMocks.mockDecrementUsage,

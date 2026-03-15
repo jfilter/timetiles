@@ -59,7 +59,7 @@ vi.mock("@/lib/services/progress-tracking", () => ({
 
 vi.mock("@/lib/types/schema-detection", () => ({ getSchemaBuilderState: mocks.getSchemaBuilderState }));
 
-vi.mock("@/lib/services/quota-service", () => ({ getQuotaService: () => ({ checkQuota: mocks.checkQuota }) }));
+vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: () => ({ checkQuota: mocks.checkQuota }) }));
 
 describe.sequential("ValidateSchemaJob Handler", () => {
   let mockPayload: any;

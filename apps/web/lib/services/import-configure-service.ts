@@ -16,7 +16,7 @@ import type { Payload } from "payload";
 
 import { AppError } from "@/lib/api";
 import { createLogger } from "@/lib/logger";
-import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
+import { createQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type {
   ConfigureImportRequest,
@@ -225,7 +225,7 @@ export const createScheduledImport = async (
   }
 
   // Bug 15 fix: enforce scheduled-import quota before creation
-  const quotaService = getQuotaService(payload);
+  const quotaService = createQuotaService(payload);
   await quotaService.validateQuota(user, "ACTIVE_SCHEDULES", 1);
 
   // Determine if single or multi-sheet

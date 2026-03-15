@@ -82,7 +82,7 @@ hooks: {
   afterChange: [
     async ({ doc, req }) => {
       if (req.user) {
-        const quotaService = getQuotaService(req.payload);
+        const quotaService = createQuotaService(req.payload);
         // Missing req parameter causes deadlock
         await quotaService.incrementUsage(req.user.id, "FILE_UPLOADS", 1);
       }
@@ -99,7 +99,7 @@ hooks: {
   afterChange: [
     async ({ doc, req }) => {
       if (req.user) {
-        const quotaService = getQuotaService(req.payload);
+        const quotaService = createQuotaService(req.payload);
         // Pass req to service method
         await quotaService.incrementUsage(req.user.id, 'FILE_UPLOADS', 1, req);
       }
@@ -133,7 +133,7 @@ hooks: {
   beforeChange: [
     async ({ req, operation }) => {
       if (operation === "create" && req.user) {
-        const quotaService = getQuotaService(req.payload);
+        const quotaService = createQuotaService(req.payload);
         // Reading user during transaction without overrideAccess
         const check = await quotaService.checkQuota(req.user, "FILE_UPLOADS", 1);
         if (!check.allowed) throw new Error("Quota exceeded");

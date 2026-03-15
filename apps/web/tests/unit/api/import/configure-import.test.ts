@@ -49,7 +49,7 @@ vi.mock("@/lib/services/quota-service", () => {
     }
   }
   return {
-    getQuotaService: () => ({ validateQuota: mocks.mockValidateQuota, checkQuota: mocks.mockCheckQuota }),
+    createQuotaService: () => ({ validateQuota: mocks.mockValidateQuota, checkQuota: mocks.mockCheckQuota }),
     QuotaExceededError,
   };
 });

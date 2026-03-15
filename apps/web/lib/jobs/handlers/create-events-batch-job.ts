@@ -19,7 +19,7 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { createJobLogger, logError, logger, logPerformance } from "@/lib/logger";
 import { applyTransforms } from "@/lib/services/import-transforms";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { getGeocodingResults } from "@/lib/types/geocoding";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
@@ -189,7 +189,7 @@ const markJobCompleted = async (
 
         const userId = extractRelationId(importFile.user);
 
-        const quotaService = getQuotaService(payload);
+        const quotaService = createQuotaService(payload);
         await quotaService.incrementUsage(userId, "TOTAL_EVENTS", totalEventsCreated);
 
         logger.info("Event creation tracked for quota", { userId, eventsCreated: totalEventsCreated, importJobId });
@@ -272,7 +272,7 @@ const checkEventQuotaBeforeProcessing = async (
     return;
   }
 
-  const quotaService = getQuotaService(payload);
+  const quotaService = createQuotaService(payload);
 
   // Use uniqueRows from deduplication summary — this is the actual number of events
   // that will be created, not the total file rows (which includes duplicates).

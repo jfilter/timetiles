@@ -19,7 +19,7 @@ import type { Payload } from "payload";
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
 import type { SchemaComparison } from "@/lib/types/schema-detection";
@@ -191,7 +191,7 @@ const getApprovalReason = (hasHighConfidenceTransforms: boolean, isBreaking: boo
  * Check quota limits for the import
  */
 const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, jobIdTyped: number): Promise<void> => {
-  const quotaService = getQuotaService(payload);
+  const quotaService = createQuotaService(payload);
 
   // Calculate total events to be imported (considering duplicates)
   const totalRows = job.duplicates?.summary?.totalRows ?? 0;

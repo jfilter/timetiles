@@ -28,7 +28,7 @@ vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/health", () => ({ runHealthChecks: mocks.mockRunHealthChecks }));
 
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: vi
+  createQuotaService: vi
     .fn()
     .mockReturnValue({
       checkQuota: mocks.mockCheckQuota,
@@ -54,7 +54,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET as healthGET } from "@/app/api/health/route";
 import { GET as quotasGET } from "@/app/api/quotas/route";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 
 const mockUser = { id: 1, email: "test@test.com", role: "user" };
 
@@ -76,7 +76,7 @@ beforeEach(() => {
   vi.mocked(getPayload).mockResolvedValue(mockPayload);
 
   // Re-apply mocks that clearAllMocks wiped
-  vi.mocked(getQuotaService).mockReturnValue({
+  vi.mocked(createQuotaService).mockReturnValue({
     checkQuota: mocks.mockCheckQuota,
     getEffectiveQuotas: mocks.mockGetEffectiveQuotas,
     getQuotaHeaders: mocks.mockGetQuotaHeaders,

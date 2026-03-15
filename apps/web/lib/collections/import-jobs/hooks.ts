@@ -13,8 +13,9 @@ import type {
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { StageTransitionService } from "@/lib/services/stage-transition";
+import { validateCatalogOwnership } from "@/lib/utils/catalog-ownership";
 import { cleanupSidecarFiles } from "@/lib/utils/file-readers";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
@@ -142,15 +143,10 @@ const validateDatasetCatalogAccess = async (
   if (!datasetId) return;
 
   const ds = await req.payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
-  const catalogId = extractRelationId(ds?.catalog);
-  if (!catalogId) return;
+  const catalogRef = extractRelationId(ds?.catalog);
+  if (!catalogRef) return;
 
-  const catalog = await req.payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
-  const catalogOwnerId = extractRelationId(catalog?.createdBy);
-  const isPublicCatalog = catalog?.isPublic ?? false;
-  if (catalogOwnerId !== userId && !isPublicCatalog) {
-    throw new Error("You can only create import jobs for datasets in your own or public catalogs");
-  }
+  await validateCatalogOwnership(req.payload, catalogRef, { id: userId });
 };
 
 /**
@@ -220,7 +216,7 @@ const trackImportJobQuota = async (req: PayloadRequest, doc: ImportJob): Promise
   if (!importFile?.user) return;
 
   const userId = extractRelationId(importFile.user)!;
-  const quotaService = getQuotaService(req.payload);
+  const quotaService = createQuotaService(req.payload);
   await quotaService.incrementUsage(userId, "IMPORT_JOBS_PER_DAY", 1, req);
   logger.info("Import job creation tracked for quota", { userId, importJobId: doc.id });
 };

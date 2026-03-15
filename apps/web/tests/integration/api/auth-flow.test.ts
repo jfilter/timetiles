@@ -137,8 +137,8 @@ describe.sequential("Authentication Flow", () => {
       expect(initialResult.docs).toHaveLength(0);
 
       // Trigger lazy creation via quota service
-      const { getQuotaService } = await import("../../../lib/services/quota-service.js");
-      const quotaService = getQuotaService(payload);
+      const { createQuotaService } = await import("../../../lib/services/quota-service.js");
+      const quotaService = createQuotaService(payload);
       const usageRecord = await quotaService.getOrCreateUsageRecord(user.id);
 
       expect(usageRecord).toBeDefined();

@@ -22,7 +22,7 @@
 import type { CollectionConfig, Payload, PayloadRequest } from "payload";
 
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 
@@ -46,7 +46,7 @@ const shouldSkipQuotaChecks = (
 // Helper to check active schedules quota
 const checkActiveSchedulesQuota = async (
   user: User,
-  quotaService: ReturnType<typeof getQuotaService>
+  quotaService: ReturnType<typeof createQuotaService>
 ): Promise<void> => {
   const quotaCheck = await quotaService.checkQuota(user, "ACTIVE_SCHEDULES", 1);
   if (!quotaCheck.allowed) {
@@ -86,7 +86,7 @@ const handleScheduleQuotaTracking = async ({
 
   if (!isCreate && !isUpdate) return data;
 
-  const quotaService = getQuotaService(req.payload);
+  const quotaService = createQuotaService(req.payload);
 
   // Handle update operations (enabling a disabled schedule)
   if (isUpdate && isEnablingSchedule(originalDoc, data)) {
@@ -172,7 +172,7 @@ const trackScheduleQuotaUsage = async (
   doc: Record<string, unknown>,
   previousDoc?: Record<string, unknown>
 ): Promise<void> => {
-  const quotaService = getQuotaService(req.payload);
+  const quotaService = createQuotaService(req.payload);
 
   if (operation === "create" && doc.enabled !== false) {
     await quotaService.incrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
@@ -288,7 +288,7 @@ const ScheduledImports: CollectionConfig = {
         // Decrement usage for the schedule owner when deleted
         const ownerId = extractRelationId(doc.createdBy);
         if (ownerId && doc.enabled) {
-          const quotaService = getQuotaService(req.payload);
+          const quotaService = createQuotaService(req.payload);
           await quotaService.decrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
         }
 

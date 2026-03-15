@@ -17,7 +17,7 @@ const mockPayload = { findByID: vi.fn(), update: vi.fn(), find: vi.fn(), jobs: {
 
 // Mock quota service
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: () => ({ checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 5 }) }),
+  createQuotaService: () => ({ checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 5 }) }),
 }));
 
 describe.sequential("ErrorRecoveryService", () => {

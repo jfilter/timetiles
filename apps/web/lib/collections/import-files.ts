@@ -27,7 +27,7 @@ import { validateCatalogOwnership } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { createRequestLogger } from "../logger";
-import { getQuotaService } from "../services/quota-service";
+import { createQuotaService } from "../services/quota-service";
 import { getClientIdentifier, getRateLimitService } from "../services/rate-limit-service";
 import { createCommonConfig, createOwnershipAccess, isAuthenticated, isEditorOrAdmin } from "./shared-fields";
 
@@ -214,7 +214,7 @@ const ImportFiles: CollectionConfig = {
             if (!req.user) return null;
 
             try {
-              const quotaService = getQuotaService(req.payload);
+              const quotaService = createQuotaService(req.payload);
 
               // Get multiple quota checks for comprehensive info
               const [fileUploads, importJobs, totalEvents] = await Promise.all([
@@ -304,7 +304,7 @@ const ImportFiles: CollectionConfig = {
           throw new Error("Authentication required to upload files");
         }
 
-        const quotaService = getQuotaService(req.payload);
+        const quotaService = createQuotaService(req.payload);
 
         // Check daily file upload quota
         const uploadQuotaCheck = await quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1);
@@ -428,7 +428,7 @@ const ImportFiles: CollectionConfig = {
         }
 
         // Track file upload usage (authentication is required)
-        const quotaService = getQuotaService(req.payload);
+        const quotaService = createQuotaService(req.payload);
         await quotaService.incrementUsage(req.user!.id, "FILE_UPLOADS_PER_DAY", 1, req);
 
         // Skip processing for duplicate imports (they're already marked as completed)

@@ -16,7 +16,7 @@ import { apiRoute, safeFindByID } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { badRequest, forbidden } from "@/lib/utils/api-response";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
@@ -57,7 +57,7 @@ export const POST = apiRoute({
       const userId = extractRelationId(importFile.user)!;
       const fileUser = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
-      const quotaService = getQuotaService(payload);
+      const quotaService = createQuotaService(payload);
       const quotaCheck = await quotaService.checkQuota(fileUser, "IMPORT_JOBS_PER_DAY", 1);
 
       if (!quotaCheck.allowed) {

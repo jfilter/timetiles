@@ -23,7 +23,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: vi.fn(),
+  createQuotaService: vi.fn(),
   QuotaExceededError: class QuotaExceededError extends Error {},
 }));
 

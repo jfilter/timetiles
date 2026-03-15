@@ -49,7 +49,7 @@ vi.mock("uuid", () => ({ v4: () => "test-uuid-1234" }));
 
 // Mock quota service for unit tests
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: () => ({
+  createQuotaService: () => ({
     checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 }),
     incrementUsage: vi.fn().mockResolvedValue(undefined),
   }),

@@ -10,7 +10,7 @@
  */
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
 
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, Event } from "@/payload-types";
@@ -19,7 +19,7 @@ import type { Dataset, Event } from "@/payload-types";
 const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
   if (!req.user) return;
 
-  const quotaService = getQuotaService(req.payload);
+  const quotaService = createQuotaService(req.payload);
   const totalEventsCheck = await quotaService.checkQuota(req.user, "TOTAL_EVENTS", 1);
 
   if (!totalEventsCheck.allowed) {
@@ -67,7 +67,7 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
  */
 export const eventsAfterChangeHook: CollectionAfterChangeHook<Event> = async ({ doc, operation, req }) => {
   if (operation === "create" && req.user && req.user.role !== "admin") {
-    const quotaService = getQuotaService(req.payload);
+    const quotaService = createQuotaService(req.payload);
     await quotaService.incrementUsage(req.user.id, "TOTAL_EVENTS", 1, req);
   }
 

@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from "uuid";
 import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledImport, User } from "@/payload-types";
 
@@ -265,7 +265,7 @@ const checkAndTrackQuota = async (
   const user = await loadUser(payload, userId);
   if (!user) return;
 
-  const quotaService = getQuotaService(payload);
+  const quotaService = createQuotaService(payload);
   const quotaCheck = await quotaService.checkQuota(user, "URL_FETCHES_PER_DAY", 1);
 
   if (!quotaCheck.allowed) {

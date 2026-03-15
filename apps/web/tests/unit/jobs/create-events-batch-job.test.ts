@@ -52,7 +52,7 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({
 }));
 
 vi.mock("@/lib/services/quota-service", () => ({
-  getQuotaService: vi.fn(() => ({
+  createQuotaService: vi.fn(() => ({
     checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 10000, remaining: 10000 }),
     incrementUsage: vi.fn().mockResolvedValue(undefined),
   })),
@@ -606,8 +606,8 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const mockCheckQuota = vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 50 });
 
       // Must mock quota-service BEFORE handler reads it; use dynamic import override
-      const { getQuotaService } = await import("@/lib/services/quota-service");
-      vi.mocked(getQuotaService).mockReturnValue({ checkQuota: mockCheckQuota } as any);
+      const { createQuotaService } = await import("@/lib/services/quota-service");
+      vi.mocked(createQuotaService).mockReturnValue({ checkQuota: mockCheckQuota } as any);
 
       const mockImportJob: any = {
         id: "import-123",
