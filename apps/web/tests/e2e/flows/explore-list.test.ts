@@ -10,7 +10,7 @@
 import { expect, test } from "../fixtures";
 
 test.describe("Explore Page - List View", () => {
-  test("should load the list view and display events", async ({ page, baseURL }) => {
+  test("should load the list view and display events", async ({ page }) => {
     await page.goto("/explore/list", { timeout: 15000 });
 
     // Wait for the page to render content
