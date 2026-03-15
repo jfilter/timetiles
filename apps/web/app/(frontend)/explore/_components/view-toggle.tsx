@@ -2,8 +2,8 @@
  * Toggle button to switch between map and list explore views.
  *
  * Provides navigation between /explore (map view) and /explore/list (list view)
- * while preserving filter state via URL parameters. Uses animated navigation
- * for smooth fade transitions.
+ * while preserving filter state via URL parameters. Uses the native View
+ * Transitions API (enabled via next.config.mjs) for smooth fade transitions.
  *
  * @module
  * @category Components
@@ -13,10 +13,8 @@
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { LayoutList, Map } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
-
-import { useAnimatedNavigation } from "./animated-view";
 
 interface ViewToggleProps {
   currentView: "map" | "list";
@@ -24,7 +22,7 @@ interface ViewToggleProps {
 
 export const ViewToggle = ({ currentView }: ViewToggleProps) => {
   const searchParams = useSearchParams();
-  const { navigateTo } = useAnimatedNavigation();
+  const router = useRouter();
 
   // Preserve current filter params when switching views
   const queryString = searchParams.toString();
@@ -34,15 +32,15 @@ export const ViewToggle = ({ currentView }: ViewToggleProps) => {
 
   const handleMapClick = useCallback(() => {
     if (currentView !== "map") {
-      navigateTo(mapUrl);
+      router.push(mapUrl);
     }
-  }, [currentView, mapUrl, navigateTo]);
+  }, [currentView, mapUrl, router]);
 
   const handleListClick = useCallback(() => {
     if (currentView !== "list") {
-      navigateTo(listUrl);
+      router.push(listUrl);
     }
-  }, [currentView, listUrl, navigateTo]);
+  }, [currentView, listUrl, router]);
 
   return (
     // Hidden on mobile since both /explore and /explore/list show the same tabbed interface

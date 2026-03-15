@@ -1,19 +1,18 @@
 /**
  * Layout for the explore page that hides the footer and fills full viewport.
  *
- * Includes a subtle fade animation when switching between map and list views.
+ * View transitions between map and list are handled natively by the
+ * View Transitions API (enabled in next.config.mjs).
  *
  * @module
  */
-import { AnimatedView } from "./_components/animated-view";
-
 export default function ExploreLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
       <style>{`
         footer { display: none !important; }
       `}</style>
-      <AnimatedView>{children}</AnimatedView>
+      {children}
     </>
   );
 }
