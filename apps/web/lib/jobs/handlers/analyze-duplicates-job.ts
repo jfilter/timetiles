@@ -63,7 +63,6 @@ const skipDeduplication = async (
 
 const analyzeInternalDuplicates = async (
   payload: Payload,
-  importJobId: string | number,
   filePath: string,
   dataset: Dataset,
   job: ImportJob
@@ -100,13 +99,13 @@ const analyzeInternalDuplicates = async (
     // Update progress after each batch
     await ProgressTrackingService.updateStageProgress(
       payload,
-      importJobId,
+      job,
       PROCESSING_STAGE.ANALYZE_DUPLICATES,
       totalRows,
       rows.length
     );
 
-    await ProgressTrackingService.completeBatch(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES, batchNumber);
+    await ProgressTrackingService.completeBatch(payload, job, PROCESSING_STAGE.ANALYZE_DUPLICATES, batchNumber);
   }
 
   return { internalDuplicates, uniqueIdMap, totalRows };
@@ -159,7 +158,6 @@ const performDuplicateAnalysis = async (
 
   const { internalDuplicates, uniqueIdMap, totalRows } = await analyzeInternalDuplicates(
     payload,
-    importJobId,
     filePath,
     dataset,
     job

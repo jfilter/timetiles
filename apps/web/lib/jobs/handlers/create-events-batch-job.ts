@@ -361,19 +361,14 @@ export const createEventsBatchJob = {
         // Update stage progress
         await ProgressTrackingService.updateStageProgress(
           payload,
-          importJobId,
+          job,
           PROCESSING_STAGE.CREATE_EVENTS,
           totalRowsProcessed,
           batchRowsProcessed
         );
 
         // Complete this batch
-        await ProgressTrackingService.completeBatch(
-          payload,
-          importJobId,
-          PROCESSING_STAGE.CREATE_EVENTS,
-          batchNumber + 1
-        );
+        await ProgressTrackingService.completeBatch(payload, job, PROCESSING_STAGE.CREATE_EVENTS, batchNumber + 1);
 
         // Update job errors (tracks count to enforce MAX_STORED_ERRORS across batches)
         storedErrorCount = await updateJobErrors(payload, importJobId, storedErrorCount, errors);

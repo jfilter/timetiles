@@ -178,20 +178,20 @@ const processBatchSchema = async (
 // Helper to update progress after batch processing
 const updateBatchProgress = async (
   payload: Payload,
-  importJobId: number | string,
+  job: ImportJob,
   rowsProcessedSoFar: number,
   batchNumber: number,
   nonDuplicateRows: number
 ): Promise<void> => {
   await ProgressTrackingService.updateStageProgress(
     payload,
-    importJobId,
+    job,
     PROCESSING_STAGE.DETECT_SCHEMA,
     rowsProcessedSoFar,
     nonDuplicateRows
   );
 
-  await ProgressTrackingService.completeBatch(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA, batchNumber + 1);
+  await ProgressTrackingService.completeBatch(payload, job, PROCESSING_STAGE.DETECT_SCHEMA, batchNumber + 1);
 };
 
 // Helper to update schema state in database
@@ -263,7 +263,7 @@ export const schemaDetectionJob = {
         });
 
         // Update progress
-        await updateBatchProgress(payload, importJobId, totalRowsProcessed, batchNumber, nonDuplicateRows.length);
+        await updateBatchProgress(payload, job, totalRowsProcessed, batchNumber, nonDuplicateRows.length);
 
         // Save intermediate state for observability
         const currentState = schemaBuilder.getState();

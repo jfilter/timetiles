@@ -28,6 +28,7 @@ import { STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
 import type { StageProgress } from "@/lib/types/progress-tracking";
 import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
 import { requireStrictInteger } from "@/lib/utils/event-params";
+import type { ImportJob } from "@/payload-types";
 
 /**
  * Centralized progress tracking service for detailed per-stage tracking.
@@ -227,19 +228,24 @@ export class ProgressTrackingService {
    */
   static async updateStageProgress(
     payload: Payload,
-    jobId: string | number,
+    job: ImportJob,
     stage: ProcessingStage,
     rowsProcessed: number,
     currentBatchRows: number
   ): Promise<void> {
-    const normalizedJobId = this.normalizeJobId(jobId);
-    const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
+    const normalizedJobId = this.normalizeJobId(job.id);
 
-    const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
-    const stageData = stages[stage];
+    let stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
+    let stageData = stages[stage];
 
+    // If the passed job has stale progress (e.g., loaded before initializeStageProgress), re-fetch
     if (!stageData) {
-      throw new Error(`Stage ${stage} not initialized`);
+      const freshJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
+      stages = freshJob.progress?.stages ? this.deserializeStages(freshJob.progress.stages) : {};
+      stageData = stages[stage];
+      if (!stageData) {
+        throw new Error(`Stage ${stage} not initialized`);
+      }
     }
 
     // Calculate processing rate
@@ -279,18 +285,23 @@ export class ProgressTrackingService {
    */
   static async completeBatch(
     payload: Payload,
-    jobId: string | number,
+    job: ImportJob,
     stage: ProcessingStage,
     batchNumber: number
   ): Promise<void> {
-    const normalizedJobId = this.normalizeJobId(jobId);
-    const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
+    const normalizedJobId = this.normalizeJobId(job.id);
 
-    const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
-    const stageData = stages[stage];
+    let stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
+    let stageData = stages[stage];
 
+    // If the passed job has stale progress, re-fetch
     if (!stageData) {
-      throw new Error(`Stage ${stage} not initialized`);
+      const freshJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
+      stages = freshJob.progress?.stages ? this.deserializeStages(freshJob.progress.stages) : {};
+      stageData = stages[stage];
+      if (!stageData) {
+        throw new Error(`Stage ${stage} not initialized`);
+      }
     }
 
     stages[stage] = { ...stageData, batchesProcessed: batchNumber, currentBatchRows: 0 };

@@ -502,7 +502,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Before the fix, eventsSkipped was incremented in the catch block too, giving 6
       expect(mocks.updateStageProgress).toHaveBeenCalledWith(
         mockPayload,
-        "import-123",
+        expect.objectContaining({ id: "import-123" }),
         "create-events",
         5, // totalRowsProcessed (rows.length)
         5 // batchRowsProcessed (4 created + 0 skipped + 1 error = 5, not 6)

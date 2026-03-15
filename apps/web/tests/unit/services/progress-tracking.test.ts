@@ -121,6 +121,7 @@ describe.sequential("ProgressTrackingService", () => {
     it("should update progress metrics and calculate processing rate", async () => {
       const startTime = new Date(Date.now() - 10000).toISOString(); // 10 seconds ago as ISO string
       const mockJob = {
+        id: 123,
         progress: {
           stages: {
             [PROCESSING_STAGE.GEOCODE_BATCH]: {
@@ -140,9 +141,7 @@ describe.sequential("ProgressTrackingService", () => {
         },
       } as unknown as ImportJob;
 
-      mockPayload.findByID.mockResolvedValue(mockJob);
-
-      await ProgressTrackingService.updateStageProgress(mockPayload, 123, PROCESSING_STAGE.GEOCODE_BATCH, 50, 10);
+      await ProgressTrackingService.updateStageProgress(mockPayload, mockJob, PROCESSING_STAGE.GEOCODE_BATCH, 50, 10);
 
       expect(mockPayload.update).toHaveBeenCalled();
 
@@ -159,6 +158,7 @@ describe.sequential("ProgressTrackingService", () => {
   describe("completeBatch", () => {
     it("should increment batch counter and reset current batch rows", async () => {
       const mockJob = {
+        id: 123,
         progress: {
           stages: {
             [PROCESSING_STAGE.CREATE_EVENTS]: {
@@ -178,9 +178,7 @@ describe.sequential("ProgressTrackingService", () => {
         },
       } as unknown as ImportJob;
 
-      mockPayload.findByID.mockResolvedValue(mockJob);
-
-      await ProgressTrackingService.completeBatch(mockPayload, 123, PROCESSING_STAGE.CREATE_EVENTS, 5);
+      await ProgressTrackingService.completeBatch(mockPayload, mockJob, PROCESSING_STAGE.CREATE_EVENTS, 5);
 
       const updateCall = mockPayload.update.mock.calls[0][0];
       const stage = updateCall.data.progress.stages[PROCESSING_STAGE.CREATE_EVENTS];

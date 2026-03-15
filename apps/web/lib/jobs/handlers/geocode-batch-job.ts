@@ -22,6 +22,7 @@ import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import type { GeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
+import type { ImportJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
@@ -71,7 +72,7 @@ interface GeocodingFailure {
 const geocodeUniqueLocations = async (
   geocodingService: GeocodingService,
   payload: Payload,
-  importJobId: string | number,
+  job: ImportJob,
   locations: Set<string>,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{
@@ -109,7 +110,7 @@ const geocodeUniqueLocations = async (
     if (processed % 10 === 0 || processed === locations.size) {
       await ProgressTrackingService.updateStageProgress(
         payload,
-        importJobId,
+        job,
         PROCESSING_STAGE.GEOCODE_BATCH,
         processed,
         Math.min(10, locations.size - processed + 10)
@@ -179,7 +180,7 @@ export const geocodeBatchJob = {
       const { results, successCount, failureCount, failures } = await geocodeUniqueLocations(
         geocodingService,
         payload,
-        importJobId,
+        job,
         uniqueLocations,
         logger
       );
