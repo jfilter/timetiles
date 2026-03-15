@@ -11,14 +11,14 @@
 
 import { useMemo } from "react";
 
-import { useSiteOptional } from "@/lib/context/site-context";
+import { useSite } from "@/lib/context/site-context";
 
 /**
  * Client component that injects site branding CSS custom properties.
  * Renders nothing visible — only sets CSS variables via inline style.
  */
 export const SiteBranding = () => {
-  const siteContext = useSiteOptional();
+  const siteContext = useSite();
   const colors = siteContext?.branding.colors;
 
   const style = useMemo((): (React.CSSProperties & Record<string, string>) | undefined => {

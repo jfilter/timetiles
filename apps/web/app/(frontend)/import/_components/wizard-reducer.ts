@@ -103,9 +103,7 @@ export type WizardAction =
   | { type: "CLEAR_FILE" }
   | { type: "SET_CATALOG"; catalogId: number | "new" | null; newCatalogName?: string }
   | { type: "SET_SHEET_MAPPING"; sheetIndex: number; mapping: Partial<SheetMapping> }
-  | { type: "SET_SHEET_MAPPINGS"; mappings: SheetMapping[] }
   | { type: "SET_FIELD_MAPPING"; sheetIndex: number; mapping: Partial<FieldMapping> }
-  | { type: "SET_FIELD_MAPPINGS"; mappings: FieldMapping[] }
   | { type: "SET_TRANSFORMS"; sheetIndex: number; transforms: ImportTransform[] }
   | {
       type: "SET_IMPORT_OPTIONS";
@@ -226,9 +224,6 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
         return { ...state, sheetMappings: mappings };
       }
 
-      case "SET_SHEET_MAPPINGS":
-        return { ...state, sheetMappings: action.mappings };
-
       case "SET_FIELD_MAPPING": {
         const mappings = [...state.fieldMappings];
         const index = mappings.findIndex((m) => m.sheetIndex === action.sheetIndex);
@@ -238,9 +233,6 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
         }
         return { ...state, fieldMappings: mappings };
       }
-
-      case "SET_FIELD_MAPPINGS":
-        return { ...state, fieldMappings: action.mappings };
 
       case "SET_TRANSFORMS":
         return { ...state, transforms: { ...state.transforms, [action.sheetIndex]: action.transforms } };

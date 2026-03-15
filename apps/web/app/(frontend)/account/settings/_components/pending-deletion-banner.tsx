@@ -11,21 +11,22 @@
 
 import { Button } from "@timetiles/ui";
 import { AlertTriangle, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 import { useCancelDeletionMutation } from "@/lib/hooks/use-account-mutations";
 
 interface PendingDeletionBannerProps {
   deletionScheduledAt: string;
-  onCancelled: () => void;
 }
 
-export const PendingDeletionBanner = ({ deletionScheduledAt, onCancelled }: PendingDeletionBannerProps) => {
+export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBannerProps) => {
+  const router = useRouter();
   const cancelMutation = useCancelDeletionMutation();
 
   const handleCancel = useCallback(() => {
-    cancelMutation.mutate(undefined, { onSuccess: () => onCancelled() });
-  }, [cancelMutation, onCancelled]);
+    cancelMutation.mutate(undefined, { onSuccess: () => router.refresh() });
+  }, [cancelMutation, router]);
 
   const loading = cancelMutation.isPending;
   const error = cancelMutation.error?.message ?? null;

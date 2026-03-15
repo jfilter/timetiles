@@ -25,6 +25,19 @@ vi.mock("@/lib/hooks/use-data-sources-query", () => ({
   useDataSourcesQuery: () => ({ data: mockDataSources, isLoading: false, error: null }),
 }));
 
+// Mock the view context (no view active by default)
+const mockViewContext = {
+  view: null,
+  hasView: false,
+  dataScope: { mode: "all" },
+  filterConfig: { mode: "auto", maxFilters: 5 },
+  mapSettings: { baseMapStyle: "default" },
+};
+vi.mock("@/lib/context/view-context", () => ({
+  useView: () => mockViewContext,
+  useViewOptional: () => mockViewContext,
+}));
+
 describe("EventFilters", () => {
   test("renders catalog cards when no catalog is selected", () => {
     const { container } = renderWithProviders(<EventFilters />);

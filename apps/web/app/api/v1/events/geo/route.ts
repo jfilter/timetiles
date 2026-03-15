@@ -8,7 +8,7 @@
  * The endpoint returns a GeoJSON FeatureCollection that can be directly consumed by map libraries.
  *
  * **Architecture note:** Uses raw SQL with PostGIS functions instead of Payload's
- * query API for performance. Access control is enforced via `getAllAccessibleCatalogIds()`
+ * query API for performance. Access control is enforced via `resolveEventQueryContext()`
  * which filters by catalog visibility and user ownership, ensuring equivalent
  * security to Payload's built-in access control.
  *
@@ -18,12 +18,11 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { apiRoute, ValidationError } from "@/lib/api";
-import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toClusteringJsonb } from "@/lib/filters/to-jsonb-payload";
 import type { MapBounds } from "@/lib/geospatial";
 import { MapClustersQuerySchema } from "@/lib/schemas/events";
-import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 
 export const GET = apiRoute({
   auth: "optional",
@@ -36,22 +35,12 @@ export const GET = apiRoute({
 
     const bounds: MapBounds = query.bounds;
 
-    // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
-
-    // If no accessible catalogs and no catalog filter specified, return empty result
-    if (accessibleCatalogIds.length === 0 && query.catalog == null) {
+    const ctx = await resolveEventQueryContext({ payload, user, query, requireLocation: true });
+    if (ctx.denied) {
       return { type: "FeatureCollection", features: [], clusters: [], totalCount: 0 };
     }
 
-    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
-
-    // If user doesn't have access to the requested catalog, return empty result
-    if (filters.denyResults) {
-      return { type: "FeatureCollection", features: [], clusters: [], totalCount: 0 };
-    }
-
-    const result = await executeClusteringQuery(payload, bounds, query.zoom, filters);
+    const result = await executeClusteringQuery(payload, bounds, query.zoom, ctx.filters);
     const clusters = transformResultToClusters(result.rows);
 
     return { type: "FeatureCollection", features: clusters };

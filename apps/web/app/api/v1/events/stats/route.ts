@@ -9,10 +9,8 @@
  * @category API
  */
 import { apiRoute } from "@/lib/api";
-import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
-import { logger } from "@/lib/logger";
+import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { AggregateQuerySchema } from "@/lib/schemas/events";
-import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import { executeAggregationQuery } from "@/lib/services/aggregation-service";
 
 /**
@@ -32,20 +30,11 @@ export const GET = apiRoute({
   handler: async ({ query, user, payload }) => {
     const { groupBy } = query;
 
-    // Get accessible catalog IDs for access control
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user ?? null);
-
-    // If no accessible catalogs, return empty result
-    if (accessibleCatalogIds.length === 0 && query.catalog == null) {
-      logger.info({ user: user?.email ?? "anonymous" }, "No accessible catalogs for user");
+    const ctx = await resolveEventQueryContext({ payload, user, query });
+    if (ctx.denied) {
       return { items: [], total: 0, groupedBy: groupBy };
     }
 
-    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds });
-
-    // Execute aggregation query
-    const result = await executeAggregationQuery(payload, groupBy, filters, accessibleCatalogIds);
-
-    return result;
+    return executeAggregationQuery(payload, groupBy, ctx.filters, ctx.accessibleCatalogIds);
   },
 });

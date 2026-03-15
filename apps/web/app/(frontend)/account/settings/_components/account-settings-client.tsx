@@ -10,6 +10,7 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import type { User } from "@/payload-types";
@@ -25,29 +26,17 @@ interface AccountSettingsClientProps {
 }
 
 export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
+  const router = useRouter();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [emailOverride, setEmailOverride] = useState<string | null>(null);
-  const [deletionOverride, setDeletionOverride] = useState<{
-    status: "active" | "pending_deletion";
-    scheduledAt: string | null;
-  } | null>(null);
 
-  const displayEmail = emailOverride ?? user.email;
-  const displayDeletionStatus = deletionOverride?.status ?? user.deletionStatus;
-  const displayDeletionScheduledAt = deletionOverride ? deletionOverride.scheduledAt : user.deletionScheduledAt;
-
-  const handleDeletionScheduled = useCallback((deletionScheduledAt: string) => {
-    setDeletionOverride({ status: "pending_deletion", scheduledAt: deletionScheduledAt });
+  const handleDeletionScheduled = useCallback(() => {
     setShowDeleteModal(false);
-  }, []);
+    router.refresh();
+  }, [router]);
 
-  const handleDeletionCancelled = useCallback(() => {
-    setDeletionOverride({ status: "active", scheduledAt: null });
-  }, []);
-
-  const handleEmailChanged = useCallback((newEmail: string) => {
-    setEmailOverride(newEmail);
-  }, []);
+  const handleEmailChanged = useCallback(() => {
+    router.refresh();
+  }, [router]);
 
   const handleOpenDeleteModal = useCallback(() => {
     setShowDeleteModal(true);
@@ -60,8 +49,8 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
   return (
     <div className="space-y-6">
       {/* Pending Deletion Banner */}
-      {displayDeletionStatus === "pending_deletion" && displayDeletionScheduledAt && (
-        <PendingDeletionBanner deletionScheduledAt={displayDeletionScheduledAt} onCancelled={handleDeletionCancelled} />
+      {user.deletionStatus === "pending_deletion" && user.deletionScheduledAt && (
+        <PendingDeletionBanner deletionScheduledAt={user.deletionScheduledAt} />
       )}
 
       {/* Profile Information */}
@@ -73,7 +62,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
         <CardContent className="space-y-4">
           <div>
             <span className="text-muted-foreground text-sm font-medium">Email</span>
-            <p className="text-sm">{displayEmail}</p>
+            <p className="text-sm">{user.email}</p>
           </div>
           {(user.firstName ?? user.lastName) && (
             <div>
@@ -89,7 +78,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
       </Card>
 
       {/* Change Email */}
-      <ChangeEmailForm currentEmail={displayEmail} onEmailChanged={handleEmailChanged} />
+      <ChangeEmailForm currentEmail={user.email} onSuccess={handleEmailChanged} />
 
       {/* Change Password */}
       <ChangePasswordForm />
@@ -127,9 +116,9 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
           <Button
             variant="destructive"
             onClick={handleOpenDeleteModal}
-            disabled={displayDeletionStatus === "pending_deletion"}
+            disabled={user.deletionStatus === "pending_deletion"}
           >
-            {displayDeletionStatus === "pending_deletion" ? "Deletion Scheduled" : "Delete Account"}
+            {user.deletionStatus === "pending_deletion" ? "Deletion Scheduled" : "Delete Account"}
           </Button>
         </CardContent>
       </Card>

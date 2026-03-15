@@ -1,28 +1,29 @@
 /**
  * Shared explore content component used by the explore page.
  *
- * Renders MapExplorer on desktop and ListExplorer on mobile,
- * wrapped in a Suspense boundary.
+ * Conditionally renders MapExplorer on desktop and ListExplorer on mobile
+ * based on viewport width, avoiding mounting both simultaneously and
+ * eliminating duplicate queries.
  *
  * @module
  * @category Components
  */
+"use client";
+
 import { Suspense } from "react";
 
-import { ListExplorer } from "@/app/(frontend)/explore/_components/list-explorer";
-import { MapExplorer } from "@/app/(frontend)/explore/_components/map-explorer";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+
+import { ListExplorer } from "./list-explorer";
+import { MapExplorer } from "./map-explorer";
 
 const LOADING_ELEMENT = <div>Loading explorer...</div>;
 
-export const ExploreContent = () => (
-  <Suspense fallback={LOADING_ELEMENT}>
-    {/* Desktop: MapExplorer with split view */}
-    <div className="hidden md:block">
-      <MapExplorer />
-    </div>
-    {/* Mobile: ListExplorer with tabbed navigation */}
-    <div className="md:hidden">
-      <ListExplorer />
-    </div>
-  </Suspense>
-);
+export const ExploreContent = () => {
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+
+  // Before media query resolves (SSR / first frame), show loading
+  if (isDesktop === null) return LOADING_ELEMENT;
+
+  return <Suspense fallback={LOADING_ELEMENT}>{isDesktop ? <MapExplorer /> : <ListExplorer />}</Suspense>;
+};

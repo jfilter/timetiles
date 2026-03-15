@@ -15,7 +15,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { getDatasetColors } from "@/lib/constants/dataset-colors";
-import { useViewOptional } from "@/lib/context/view-context";
+import { useView } from "@/lib/context/view-context";
 import {
   type DataSourceCatalog,
   type DataSourceDataset,
@@ -169,7 +169,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
   const [datasetsExpanded, setDatasetsExpanded] = useState(false);
 
   // View scope for filtering displayed catalogs/datasets
-  const viewContext = useViewOptional();
+  const viewContext = useView();
   const scopeCatalogIds = viewContext?.dataScope.catalogIds;
   const scopeDatasetIds = viewContext?.dataScope.datasetIds;
 

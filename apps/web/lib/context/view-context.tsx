@@ -72,15 +72,9 @@ export const ViewProvider = ({ view, children }: ViewProviderProps): React.React
     const catalogIds = view?.dataScope?.catalogs?.map((c) => (typeof c === "number" ? c : c.id));
     const datasetIds = view?.dataScope?.datasets?.map((d) => (typeof d === "number" ? d : d.id));
 
-    // Parse defaultFilters from JSON
-    let defaultFilters: Record<string, string[]> | undefined;
-    if (view?.filterConfig?.defaultFilters) {
-      try {
-        defaultFilters = view.filterConfig.defaultFilters as Record<string, string[]>;
-      } catch {
-        // Invalid JSON, ignore
-      }
-    }
+    const defaultFilters = view?.filterConfig?.defaultFilters
+      ? (view.filterConfig.defaultFilters as Record<string, string[]>)
+      : undefined;
 
     // Check if bounds are complete
     const bounds = view?.mapSettings?.defaultBounds;

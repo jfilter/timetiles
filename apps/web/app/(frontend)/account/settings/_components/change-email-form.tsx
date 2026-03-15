@@ -17,10 +17,10 @@ import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 
 interface ChangeEmailFormProps {
   currentEmail: string;
-  onEmailChanged: (newEmail: string) => void;
+  onSuccess?: () => void;
 }
 
-export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFormProps) => {
+export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProps) => {
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
   const { status, error, isLoading, mutate, reset } = useFormMutation({
@@ -32,10 +32,10 @@ export const ChangeEmailForm = ({ currentEmail, onEmailChanged }: ChangeEmailFor
 
       return changeEmailRequest({ newEmail: emailLower, password: input.password });
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       setNewEmail("");
       setPassword("");
-      onEmailChanged(variables.newEmail.trim().toLowerCase());
+      onSuccess?.();
     },
   });
 

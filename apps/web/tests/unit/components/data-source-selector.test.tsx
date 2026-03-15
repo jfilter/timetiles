@@ -22,7 +22,17 @@ vi.mock("@/lib/hooks/use-data-sources-query", () => ({
 }));
 
 // Mock the view context (no view active by default)
-vi.mock("@/lib/context/view-context", () => ({ useViewOptional: () => null }));
+const mockViewContext = {
+  view: null,
+  hasView: false,
+  dataScope: { mode: "all" },
+  filterConfig: { mode: "auto", maxFilters: 5 },
+  mapSettings: { baseMapStyle: "default" },
+};
+vi.mock("@/lib/context/view-context", () => ({
+  useView: () => mockViewContext,
+  useViewOptional: () => mockViewContext,
+}));
 
 describe("DataSourceSelector", () => {
   beforeEach(() => {

@@ -10,7 +10,7 @@
  * performance-optimized way to visualize the distribution of events over time.
  *
  * **Architecture note:** Uses raw SQL with PostGIS functions instead of Payload's
- * query API for performance. Access control is enforced via `getAllAccessibleCatalogIds()`
+ * query API for performance. Access control is enforced via `resolveEventQueryContext()`
  * which filters by catalog visibility and user ownership, ensuring equivalent
  * security to Payload's built-in access control.
  *
@@ -20,38 +20,27 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
-import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toHistogramJsonb } from "@/lib/filters/to-jsonb-payload";
 import type { HistogramQuery } from "@/lib/schemas/events";
 import { HistogramQuerySchema } from "@/lib/schemas/events";
-import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 
 export const GET = apiRoute({
   auth: "optional",
   query: HistogramQuerySchema,
   handler: async ({ query, user, payload }) => {
-    // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
-
-    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds });
-
-    // If user doesn't have access to the requested catalog, return empty result
-    if (filters.denyResults) {
+    const ctx = await resolveEventQueryContext({ payload, user, query });
+    if (ctx.denied) {
       return buildEmptyHistogramResponse();
     }
 
-    const histogramResult = await executeHistogramQuery(payload, query, filters);
-    const response = buildHistogramResponse(histogramResult.rows);
-
-    return response;
+    const histogramResult = await executeHistogramQuery(payload, query, ctx.filters);
+    return buildHistogramResponse(histogramResult.rows);
   },
 });
 
-const executeHistogramQuery = async (
-  payload: Payload,
-  query: HistogramQuery,
-  filters: ReturnType<typeof buildCanonicalFilters>
-) =>
+const executeHistogramQuery = async (payload: Payload, query: HistogramQuery, filters: CanonicalEventFilters) =>
   (await payload.db.drizzle.execute(sql`
     SELECT * FROM calculate_event_histogram(
       ${toHistogramJsonb(filters)}::jsonb,

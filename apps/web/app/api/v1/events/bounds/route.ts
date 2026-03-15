@@ -6,7 +6,7 @@
  * events on initial load or after filter changes.
  *
  * **Architecture note:** Uses raw SQL with PostGIS functions instead of Payload's
- * query API for performance. Access control is enforced via `getAllAccessibleCatalogIds()`
+ * query API for performance. Access control is enforced via `resolveEventQueryContext()`
  * which filters by catalog visibility and user ownership, ensuring equivalent
  * security to Payload's built-in access control.
  *
@@ -16,11 +16,10 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { apiRoute } from "@/lib/api";
-import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toSqlConditions } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import { EventFiltersSchema } from "@/lib/schemas/events";
-import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import type { BoundsResponse } from "@/lib/types/event-bounds";
 
 export type { BoundsResponse } from "@/lib/types/event-bounds";
@@ -44,19 +43,12 @@ export const GET = apiRoute({
   auth: "optional",
   query: EventFiltersSchema,
   handler: async ({ query, user, payload }) => {
-    // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
-
-    // If no accessible catalogs and no catalog filter specified, return empty result
-    if (accessibleCatalogIds.length === 0 && query.catalog == null) {
+    const ctx = await resolveEventQueryContext({ payload, user, query });
+    if (ctx.denied) {
       return { bounds: null, count: 0 } satisfies BoundsResponse;
     }
 
-    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds });
-
-    if (filters.denyResults) {
-      return { bounds: null, count: 0 } satisfies BoundsResponse;
-    }
+    const { filters } = ctx;
 
     // Build SQL conditions from canonical filters
     const filterConditions = toSqlConditions(filters);

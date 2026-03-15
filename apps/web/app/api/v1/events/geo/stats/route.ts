@@ -6,7 +6,7 @@
  * consistent cluster visualization across all zoom levels and viewports.
  *
  * **Architecture note:** Uses raw SQL with PostGIS functions instead of Payload's
- * query API for performance. Access control is enforced via `getAllAccessibleCatalogIds()`
+ * query API for performance. Access control is enforced via `resolveEventQueryContext()`
  * which filters by catalog visibility and user ownership, ensuring equivalent
  * security to Payload's built-in access control.
  *
@@ -18,35 +18,22 @@ import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
 import { DEFAULT_CLUSTER_STATS } from "@/lib/constants/map";
-import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toSqlConditions } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import { ClusterStatsQuerySchema } from "@/lib/schemas/events";
-import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 
 export const GET = apiRoute({
   auth: "optional",
   query: ClusterStatsQuerySchema,
   handler: async ({ query, user, payload }) => {
-    // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
-
-    // If no accessible catalogs and no catalog filter specified, return empty result
-    if (accessibleCatalogIds.length === 0 && query.catalog == null) {
+    const ctx = await resolveEventQueryContext({ payload, user, query, requireLocation: true });
+    if (ctx.denied) {
       return { ...DEFAULT_CLUSTER_STATS };
     }
 
-    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
-
-    // If user doesn't have access to the requested catalog, return default stats
-    if (filters.denyResults) {
-      return { ...DEFAULT_CLUSTER_STATS };
-    }
-
-    const stats = await calculateGlobalStats(payload, filters);
-
-    return stats;
+    return calculateGlobalStats(payload, ctx.filters);
   },
 });
 
