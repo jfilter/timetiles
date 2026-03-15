@@ -23,7 +23,7 @@ interface FeatureDisabledBannerProps {
   description: string;
 }
 
-// Styles defined outside component to satisfy react-perf/jsx-no-new-object-as-prop
+// Styles defined outside component (Tailwind unavailable in Payload admin panel)
 const styles = {
   container: {
     background: "#fef3c7",

@@ -17,7 +17,7 @@ import React, { useState } from "react";
 import type { TestResult } from "@/lib/hooks/use-geocoding-test";
 import { useGeocodingTest } from "@/lib/hooks/use-geocoding-test";
 
-// Styles defined outside component to satisfy react-perf/jsx-no-new-object-as-prop
+// Styles defined outside component (Tailwind unavailable in Payload admin panel)
 const styles = {
   container: {
     background: "#f8fafc",

@@ -11,7 +11,6 @@ import eslintReact from "@eslint-react/eslint-plugin";
 import react from "eslint-plugin-react";
 import reactCompiler from "eslint-plugin-react-compiler";
 import reactHooks from "eslint-plugin-react-hooks";
-import reactPerf from "eslint-plugin-react-perf";
 
 import baseConfig from "./base.js";
 
@@ -22,13 +21,7 @@ export default [
   ...baseConfig,
   {
     files: ["**/*.ts", "**/*.tsx"],
-    plugins: {
-      react: react,
-      "react-hooks": reactHooks,
-      "@eslint-react": eslintReact,
-      "react-compiler": reactCompiler,
-      "react-perf": reactPerf,
-    },
+    plugins: { react: react, "react-hooks": reactHooks, "@eslint-react": eslintReact, "react-compiler": reactCompiler },
     settings: { react: { version: "detect" } },
     rules: {
       // React Compiler rules
@@ -64,11 +57,6 @@ export default [
       "react/require-render-return": "error",
       "react/no-unescaped-entities": "error",
       "react/no-children-prop": "error",
-
-      // React performance rules — disabled; React Compiler handles memoization automatically
-      "react-perf/jsx-no-new-object-as-prop": "off",
-      "react-perf/jsx-no-new-array-as-prop": "off",
-      "react-perf/jsx-no-new-function-as-prop": "off",
 
       // @eslint-react rules for modern React patterns (v2)
       "@eslint-react/no-useless-forward-ref": "error",

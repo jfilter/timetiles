@@ -22,7 +22,7 @@ import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "timetiles-theme";
 
-// Styles defined outside component to satisfy react-perf/jsx-no-new-object-as-prop
+// Styles defined outside component (Tailwind unavailable in Payload admin panel)
 const styles = {
   header: {
     display: "flex",

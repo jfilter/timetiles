@@ -295,9 +295,6 @@
         "react/no-unsafe": "warn",
         "react/no-unescaped-entities": "error",
         "react/no-children-prop": "error",
-        "react-perf/jsx-no-new-object-as-prop": "off",
-        "react-perf/jsx-no-new-array-as-prop": "off",
-        "react-perf/jsx-no-new-function-as-prop": "off",
         "react/forward-ref-uses-ref": "error",
         "react/jsx-key": "error",
         "react/jsx-props-no-spread-multi": "error",
@@ -341,7 +338,7 @@
         "jsx-a11y/scope": "error",
         "jsx-a11y/tabindex-no-positive": "error"
       },
-      "plugins": ["react", "react-perf", "jsx-a11y"]
+      "plugins": ["react", "jsx-a11y"]
     },
     {
       "files": [
@@ -352,14 +349,8 @@
         "**/tests/setup/**/*.{ts,tsx}",
         "**/tests/e2e/utils/**/*.{ts,tsx}"
       ],
-      "rules": {
-        "react-perf/jsx-no-new-object-as-prop": "off",
-        "react-perf/jsx-no-new-array-as-prop": "off",
-        "react-perf/jsx-no-new-function-as-prop": "off",
-        "react/display-name": "off",
-        "react-hooks/exhaustive-deps": "off"
-      },
-      "plugins": ["react-perf", "react"]
+      "rules": { "react/display-name": "off", "react-hooks/exhaustive-deps": "off" },
+      "plugins": ["react"]
     },
     {
       "files": ["**/*.ts", "**/*.tsx"],
@@ -457,7 +448,6 @@
         "max-nested-callbacks": ["error", 6],
         "@typescript-eslint/no-explicit-any": "off",
         "no-restricted-imports": "off",
-        "react-perf/jsx-no-new-array-as-prop": "off",
         "vitest/expect-expect": "error",
         "vitest/no-conditional-expect": "off",
         "vitest/no-conditional-in-test": "off",
@@ -495,8 +485,7 @@
             ]
           }
         ]
-      },
-      "plugins": ["react-perf"]
+      }
     },
     {
       "files": ["**/*.spec.{ts,tsx,js,jsx}"],

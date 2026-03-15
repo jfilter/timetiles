@@ -16,7 +16,7 @@ import React from "react";
 
 import { useAdminFeatureFlag } from "@/lib/hooks/use-admin-feature-flag";
 
-// Styles defined outside component to satisfy react-perf/jsx-no-new-object-as-prop
+// Styles defined outside component (Tailwind unavailable in Payload admin panel)
 const styles = {
   notice: {
     background: "#f0f9ff",
