@@ -14,9 +14,9 @@
 import { X } from "lucide-react";
 import { useCallback } from "react";
 
+import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
-import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useFilters } from "@/lib/hooks/use-filters";
 
 import { CategoricalFilters } from "./categorical-filters";

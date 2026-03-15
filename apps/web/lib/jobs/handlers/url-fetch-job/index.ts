@@ -161,7 +161,7 @@ const handleFetchSuccess = async (
   const importFileData = buildImportFileData(sourceUrl, dataHash, context);
   const importFile = await payload.create({
     collection: COLLECTION_NAMES.IMPORT_FILES,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Payload can't infer data shape from string-typed collection slug
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Payload can't infer data shape from string-typed collection slug
     data: importFileData as any,
     file: { data, mimetype: mimeType, name: filename, size: data.length },
     user,

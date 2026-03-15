@@ -15,9 +15,9 @@
 
 import { TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 
+import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useChartFilters } from "@/lib/hooks/use-chart-filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
-import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";

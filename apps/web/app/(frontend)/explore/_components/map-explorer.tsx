@@ -12,9 +12,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useEventsListQuery, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import { useMapPosition } from "@/lib/hooks/use-filters";
-
 import { useUIStore } from "@/lib/store";
 
 import { ChartSection } from "./chart-section";
@@ -30,8 +30,6 @@ import {
   isDataBoundsOutsideViewport,
   shouldShowZoomToData,
 } from "./map-explorer-helpers";
-import { EMPTY_ARRAY } from "@/lib/constants/empty";
-
 import { MapPanel } from "./map-panel";
 import { MobileFilterSheet } from "./mobile-filter-sheet";
 import { useExplorerState } from "./use-explorer-state";
