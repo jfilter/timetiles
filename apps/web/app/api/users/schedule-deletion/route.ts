@@ -13,7 +13,7 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
-import { DELETION_GRACE_PERIOD_DAYS, createAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import { badRequest, rateLimited } from "@/lib/utils/api-response";
