@@ -32,8 +32,8 @@ import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutati
 import { formatFileSize } from "@/lib/utils/format";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
-import type { ScheduleConfig } from "../wizard-context";
 import { useNavigationConfig } from "../navigation-config-context";
+import type { ScheduleConfig } from "../wizard-context";
 import { useWizard } from "../wizard-context";
 
 export interface StepReviewProps {
