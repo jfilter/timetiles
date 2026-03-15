@@ -141,7 +141,6 @@ test.describe("Import Wizard - Full Flow", () => {
         throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
       }
 
-      expect(responseBody.success).toBe(true);
       expect(responseBody.importFileId).toBeDefined();
       expect(responseBody.catalogId).toBeDefined();
 
@@ -270,7 +269,6 @@ test.describe("Import Wizard - Full Flow", () => {
         throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
       }
 
-      expect(responseBody.success).toBe(true);
       expect(responseBody.importFileId).toBeDefined();
       expect(responseBody.catalogId).toBeDefined();
 

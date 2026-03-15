@@ -119,7 +119,12 @@ export default defineConfig({
           { name: "setup", testMatch: /auth\.setup\.ts/ },
           {
             name: "chromium",
-            use: { ...devices["Desktop Chrome"], storageState: "test-results/.auth/admin.json" },
+            use: {
+              ...devices["Desktop Chrome"],
+              storageState: "test-results/.auth/admin.json",
+              // Enable GPU/WebGL in headless mode for MapLibre GL JS
+              launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader"] },
+            },
             dependencies: ["setup"],
           },
         ],

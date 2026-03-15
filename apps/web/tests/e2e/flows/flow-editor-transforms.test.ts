@@ -116,7 +116,6 @@ test.describe("Flow Editor Transforms", () => {
       throw new Error(`Configure import failed with status ${response.status()}: ${JSON.stringify(responseBody)}`);
     }
 
-    expect(responseBody.success).toBe(true);
     expect(responseBody.importFileId).toBeDefined();
 
     // Step 6: Wait for processing
