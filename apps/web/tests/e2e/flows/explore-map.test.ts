@@ -60,7 +60,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Verify the map canvas is rendering (WebGL active) and clusters are on the map
     const mapState = await page.evaluate(() => {
-      const canvas = document.querySelector(".maplibregl-canvas") as HTMLCanvasElement | null;
+      const canvas = document.querySelector<HTMLCanvasElement>(".maplibregl-canvas");
       // Check for MapLibre map instance via the container's internal reference
       const container = document.querySelector(".maplibregl-map");
       // Look for cluster/point elements rendered as circles or SVG markers
