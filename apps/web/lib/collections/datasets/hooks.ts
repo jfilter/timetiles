@@ -33,13 +33,12 @@ const getCatalogCreatorId = (catalog: Catalog): number | null => {
 };
 
 /** Validate user can create dataset in this catalog */
-const validateCreatePermission = (user: User, catalog: Catalog, catalogCreatorId: number | null): void => {
+const validateCreatePermission = (user: User, _catalog: Catalog, catalogCreatorId: number | null): void => {
   const isAdminOrEditor = user.role === "admin" || user.role === "editor";
   const isOwner = catalogCreatorId === user.id;
-  const isPublicCatalog = catalog.isPublic ?? false;
 
-  if (!isAdminOrEditor && !isOwner && !isPublicCatalog) {
-    throw new Error("You can only create datasets in public catalogs or your own catalogs");
+  if (!isAdminOrEditor && !isOwner) {
+    throw new Error("You can only create datasets in your own catalogs");
   }
 };
 

@@ -47,9 +47,8 @@ export const read: Access = ({ req: { user } }): boolean | Where => {
 
 /**
  * Create access: Any authenticated user can create datasets.
- * The beforeChange hook validates that users can only create in:
- * - Public catalogs (anyone can contribute)
- * - Their own catalogs
+ * The beforeChange hook validates that users can only create in their own catalogs
+ * (admins/editors can create in any catalog).
  */
 export const create: Access = async ({ req: { user, payload } }) => {
   if (!user) return false;

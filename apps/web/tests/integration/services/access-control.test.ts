@@ -494,28 +494,15 @@ describe.sequential("Hierarchical Access Control", () => {
       ).rejects.toThrow();
     });
 
-    it("should allow user to create dataset in public catalog", async () => {
-      const dataset = await payload.create({
-        collection: "datasets",
-        data: {
-          name: "Dataset by Other User",
-          catalog: publicCatalog.id,
-          language: "eng",
-          isPublic: true, // Make it public so otherUser can read it back
-        },
-        user: otherUser,
-        overrideAccess: false,
-      });
-      expect(dataset.name).toBe("Dataset by Other User");
-
-      // Verify otherUser can read the public dataset they created
-      const datasetCheck = await payload.findByID({
-        collection: "datasets",
-        id: dataset.id,
-        user: otherUser,
-        overrideAccess: false,
-      });
-      expect(datasetCheck.id).toBe(dataset.id);
+    it("should reject non-owner creating dataset in public catalog", async () => {
+      await expect(
+        payload.create({
+          collection: "datasets",
+          data: { name: "Dataset by Other User", catalog: publicCatalog.id, language: "eng", isPublic: true },
+          user: otherUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow("You can only create datasets in your own catalogs");
     });
   });
 
