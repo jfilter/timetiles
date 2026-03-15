@@ -144,9 +144,8 @@ const CallToActionWithContext = React.forwardRef<
   React.HTMLAttributes<HTMLElement> & VariantProps<typeof callToActionVariants>
 >(({ variant = "centered", children, ...props }, ref) => {
   const resolvedVariant = variant ?? "centered";
-  const memoizedContext = React.useMemo(() => ({ variant: resolvedVariant }), [resolvedVariant]);
   return (
-    <CallToActionContext.Provider value={memoizedContext}>
+    <CallToActionContext.Provider value={{ variant: resolvedVariant }}>
       <CallToAction ref={ref} variant={resolvedVariant} {...props}>
         {children}
       </CallToAction>

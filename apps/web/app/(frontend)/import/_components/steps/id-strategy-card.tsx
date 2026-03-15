@@ -9,7 +9,6 @@
 import { Card, CardContent, Label } from "@timetiles/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { HashIcon } from "lucide-react";
-import { useCallback } from "react";
 
 import type { FieldMapping } from "@/lib/types/import-wizard";
 
@@ -45,12 +44,9 @@ export const IdStrategyCard = ({
 }: Readonly<IdStrategyCardProps>) => {
   const showIdField = idStrategy === "external" || idStrategy === "hybrid";
 
-  const handleStrategyChange = useCallback((val: string) => onFieldChange("idStrategy", val), [onFieldChange]);
+  const handleStrategyChange = (val: string) => onFieldChange("idStrategy", val);
 
-  const handleIdFieldChange = useCallback(
-    (val: string) => onFieldChange("idField", val === "__none__" ? null : val),
-    [onFieldChange]
-  );
+  const handleIdFieldChange = (val: string) => onFieldChange("idField", val === "__none__" ? null : val);
 
   return (
     <Card className="overflow-hidden">

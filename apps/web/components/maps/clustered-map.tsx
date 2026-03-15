@@ -16,7 +16,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import type { LngLatBounds } from "maplibre-gl";
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import Map, {
   Layer,
   type MapLayerMouseEvent,
@@ -112,7 +112,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const [popupInfo, setPopupInfo] = useState<{ longitude: number; latitude: number; title: string } | null>(null);
     const mapRef = useRef<MapRef | null>(null);
     const mapStyleUrl = MAP_STYLES[resolvedTheme];
-    const closePopup = useCallback(() => setPopupInfo(null), []);
+    const closePopup = () => setPopupInfo(null);
 
     useImperativeHandle(ref, () => ({
       resize: () => mapRef.current?.resize(),
@@ -121,54 +121,48 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       },
     }));
 
-    const globalStats = useMemo(() => computeGlobalStats(clusterStats), [clusterStats]);
-    const viewportStats = useMemo(() => computeViewportStats(clusters), [clusters]);
+    const globalStats = computeGlobalStats(clusterStats);
+    const viewportStats = computeViewportStats(clusters);
 
-    const handleLoad = useCallback(
-      (evt: {
-        target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
-      }) => {
-        const map = evt.target as MapRef;
-        (globalThis as { _mapRef?: unknown })._mapRef = map;
+    const handleLoad = (evt: {
+      target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
+    }) => {
+      const map = evt.target as MapRef;
+      (globalThis as { _mapRef?: unknown })._mapRef = map;
 
-        // Use initialViewState if provided (URL position), otherwise fall back to initialBounds
-        if (initialViewState) {
-          map.flyTo({
-            center: [initialViewState.longitude, initialViewState.latitude],
-            zoom: initialViewState.zoom,
-            animate: false,
-          });
-        } else if (initialBounds) {
-          fitMapToBounds(map, initialBounds, { animate: false });
-        }
+      // Use initialViewState if provided (URL position), otherwise fall back to initialBounds
+      if (initialViewState) {
+        map.flyTo({
+          center: [initialViewState.longitude, initialViewState.latitude],
+          zoom: initialViewState.zoom,
+          animate: false,
+        });
+      } else if (initialBounds) {
+        fitMapToBounds(map, initialBounds, { animate: false });
+      }
 
-        const { bounds, zoom } = logMapInitialized(map, !!initialBounds || !!initialViewState);
-        const center = map.getCenter();
-        onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
-      },
-      [onBoundsChange, initialBounds, initialViewState]
-    );
+      const { bounds, zoom } = logMapInitialized(map, !!initialBounds || !!initialViewState);
+      const center = map.getCenter();
+      onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
+    };
 
-    const handleMoveEnd = useCallback(
-      (evt: {
-        target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
-      }) => {
-        const map = evt.target as MapRef;
-        const { bounds, zoom } = logMapViewportChanged(map);
-        const center = map.getCenter();
-        onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
-      },
-      [onBoundsChange]
-    );
+    const handleMoveEnd = (evt: {
+      target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
+    }) => {
+      const map = evt.target as MapRef;
+      const { bounds, zoom } = logMapViewportChanged(map);
+      const center = map.getCenter();
+      onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
+    };
 
-    const handleClusterClick = useCallback((event: MapLayerMouseEvent, feature: GeoJSON.Feature) => {
+    const handleClusterClick = (event: MapLayerMouseEvent, feature: GeoJSON.Feature) => {
       const coordinates = getValidCoordinates(feature);
       if (coordinates) {
         event.target.flyTo({ center: coordinates, zoom: event.target.getZoom() + 2 });
       }
-    }, []);
+    };
 
-    const handleEventPointClick = useCallback((feature: GeoJSON.Feature) => {
+    const handleEventPointClick = (feature: GeoJSON.Feature) => {
       const coordinates = getValidCoordinates(feature);
       if (coordinates) {
         const { title } = feature.properties ?? {};
@@ -178,27 +172,21 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
           title: typeof title === "string" ? title : `Event ${String(feature.id ?? "Unknown")}`,
         });
       }
-    }, []);
+    };
 
-    const handleClick = useCallback(
-      (event: MapLayerMouseEvent) => {
-        const feature = event.features?.[0];
-        if (!feature) return;
-        const { type } = feature.properties ?? {};
-        if (type === "event-cluster") handleClusterClick(event, feature);
-        else if (type === "event-point") handleEventPointClick(feature);
-      },
-      [handleClusterClick, handleEventPointClick]
-    );
+    const handleClick = (event: MapLayerMouseEvent) => {
+      const feature = event.features?.[0];
+      if (!feature) return;
+      const { type } = feature.properties ?? {};
+      if (type === "event-cluster") handleClusterClick(event, feature);
+      else if (type === "event-point") handleEventPointClick(feature);
+    };
 
-    const geojsonData = useMemo(() => ({ type: "FeatureCollection" as const, features: clusters }), [clusters]);
-    const eventPointFilter: ["==", ["get", string], string] = useMemo(() => ["==", ["get", "type"], "event-point"], []);
-    const clusterFilter: ["==", ["get", string], string] = useMemo(() => ["==", ["get", "type"], "event-cluster"], []);
-    const eventPointLayer = useMemo(() => ({ ...eventPointLayerConfig, filter: eventPointFilter }), [eventPointFilter]);
-    const clusterLayer = useMemo(
-      () => buildClusterLayerConfig(globalStats, viewportStats, clusterFilter),
-      [globalStats, viewportStats, clusterFilter]
-    );
+    const geojsonData = { type: "FeatureCollection" as const, features: clusters };
+    const eventPointFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-point"];
+    const clusterFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-cluster"];
+    const eventPointLayer = { ...eventPointLayerConfig, filter: eventPointFilter };
+    const clusterLayer = buildClusterLayerConfig(globalStats, viewportStats, clusterFilter);
 
     return (
       <div className="relative h-full w-full">

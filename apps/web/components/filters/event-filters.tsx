@@ -12,7 +12,6 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useCallback } from "react";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
@@ -35,10 +34,10 @@ export const EventFilters = () => {
   const { data: enumFields, isLoading: isEnumFieldsLoading } = useDatasetEnumFieldsQuery(singleDatasetId);
   const hasEnumFields = enumFields != null && enumFields.length > 0;
 
-  const handleClearDateFilters = useCallback(() => {
+  const handleClearDateFilters = () => {
     setStartDate(null);
     setEndDate(null);
-  }, [setStartDate, setEndDate]);
+  };
 
   // Calculate active filter counts per section
   const dataSourcesActiveCount = (filters.catalog == null ? 0 : 1) + filters.datasets.length;

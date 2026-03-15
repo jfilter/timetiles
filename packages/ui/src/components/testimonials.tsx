@@ -113,8 +113,7 @@ export interface TestimonialCardProps extends React.HTMLAttributes<HTMLDivElemen
 export const TestimonialCard = React.forwardRef<HTMLDivElement, TestimonialCardProps>(
   ({ className, index = 0, children, ...props }, ref) => {
     // Stagger animation delays for visual interest
-    const delay = `${index * 200}ms`;
-    const style = React.useMemo(() => ({ animationDelay: delay }), [delay]);
+    const style = { animationDelay: `${index * 200}ms` };
     // Format index as two-digit number (01, 02, 03...)
     const displayNumber = String(index + 1).padStart(2, "0");
 

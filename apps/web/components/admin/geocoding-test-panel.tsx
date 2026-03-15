@@ -12,7 +12,7 @@
  */
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 
 import type { TestResult } from "@/lib/hooks/use-geocoding-test";
 import { useGeocodingTest } from "@/lib/hooks/use-geocoding-test";
@@ -101,13 +101,13 @@ export const GeocodingTestPanel = () => {
   const [testAddress, setTestAddress] = useState("1600 Amphitheatre Parkway, Mountain View, CA");
   const { mutate, isPending, data: results, error } = useGeocodingTest();
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTestAddress(e.target.value);
-  }, []);
+  };
 
-  const handleButtonClick = useCallback(() => {
+  const handleButtonClick = () => {
     void mutate(testAddress);
-  }, [mutate, testAddress]);
+  };
 
   const buttonStyle = isPending ? styles.buttonDisabled : styles.buttonEnabled;
 

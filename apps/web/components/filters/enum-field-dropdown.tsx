@@ -20,7 +20,6 @@ import {
 } from "@timetiles/ui/components/dropdown-menu";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ChevronDown, X } from "lucide-react";
-import { memo, useCallback } from "react";
 
 interface EnumValue {
   value: string;
@@ -49,27 +48,24 @@ interface EnumCheckboxItemProps {
 }
 
 /**
- * Memoized checkbox item for enum value selection.
+ * Checkbox item for enum value selection.
  */
-const EnumCheckboxItem = memo(
-  ({ value, count, percent, checked, onToggle, onPreventSelect }: EnumCheckboxItemProps) => {
-    const handleCheckedChange = useCallback(() => {
-      onToggle(value);
-    }, [onToggle, value]);
+const EnumCheckboxItem = ({ value, count, percent, checked, onToggle, onPreventSelect }: EnumCheckboxItemProps) => {
+  const handleCheckedChange = () => {
+    onToggle(value);
+  };
 
-    return (
-      <DropdownMenuCheckboxItem checked={checked} onCheckedChange={handleCheckedChange} onSelect={onPreventSelect}>
-        <div className="flex w-full items-center justify-between gap-2">
-          <span className="truncate">{value}</span>
-          <span className="text-muted-foreground shrink-0 font-mono text-xs">
-            {count.toLocaleString()} ({Math.round(percent)}%)
-          </span>
-        </div>
-      </DropdownMenuCheckboxItem>
-    );
-  }
-);
-EnumCheckboxItem.displayName = "EnumCheckboxItem";
+  return (
+    <DropdownMenuCheckboxItem checked={checked} onCheckedChange={handleCheckedChange} onSelect={onPreventSelect}>
+      <div className="flex w-full items-center justify-between gap-2">
+        <span className="truncate">{value}</span>
+        <span className="text-muted-foreground shrink-0 font-mono text-xs">
+          {count.toLocaleString()} ({Math.round(percent)}%)
+        </span>
+      </div>
+    </DropdownMenuCheckboxItem>
+  );
+};
 
 /**
  * Multi-select dropdown for a single enum field.
@@ -80,29 +76,23 @@ EnumCheckboxItem.displayName = "EnumCheckboxItem";
 export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionChange }: EnumFieldDropdownProps) => {
   const hasSelection = selectedValues.length > 0;
 
-  const handleToggle = useCallback(
-    (value: string) => {
-      if (selectedValues.includes(value)) {
-        onSelectionChange(selectedValues.filter((v) => v !== value));
-      } else {
-        onSelectionChange([...selectedValues, value]);
-      }
-    },
-    [selectedValues, onSelectionChange]
-  );
+  const handleToggle = (value: string) => {
+    if (selectedValues.includes(value)) {
+      onSelectionChange(selectedValues.filter((v) => v !== value));
+    } else {
+      onSelectionChange([...selectedValues, value]);
+    }
+  };
 
-  const handleClear = useCallback(
-    (e?: React.MouseEvent) => {
-      e?.preventDefault();
-      e?.stopPropagation();
-      onSelectionChange([]);
-    },
-    [onSelectionChange]
-  );
+  const handleClear = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    onSelectionChange([]);
+  };
 
-  const handlePreventSelect = useCallback((e: Event) => {
+  const handlePreventSelect = (e: Event) => {
     e.preventDefault();
-  }, []);
+  };
 
   // Limit display to top 15 values by count
   const displayValues = values.slice(0, 15);

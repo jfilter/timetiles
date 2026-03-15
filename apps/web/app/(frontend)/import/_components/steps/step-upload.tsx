@@ -22,7 +22,7 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/lib/hooks/use-import-wizard-mutations";
 import type { UrlAuthConfig } from "@/lib/types/import-wizard";
@@ -74,51 +74,51 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   });
 
   // Auth config handlers
-  const handleAuthTypeChange = useCallback((value: string) => {
+  const handleAuthTypeChange = (value: string) => {
     setAuthConfig((prev) => ({ ...prev, type: value as UrlAuthConfig["type"] }));
-  }, []);
+  };
 
-  const handleApiKeyChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAuthConfig((prev) => ({ ...prev, apiKey: e.target.value }));
-  }, []);
+  };
 
-  const handleApiKeyHeaderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleApiKeyHeaderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAuthConfig((prev) => ({ ...prev, apiKeyHeader: e.target.value }));
-  }, []);
+  };
 
-  const handleBearerTokenChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBearerTokenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAuthConfig((prev) => ({ ...prev, bearerToken: e.target.value }));
-  }, []);
+  };
 
-  const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAuthConfig((prev) => ({ ...prev, username: e.target.value }));
-  }, []);
+  };
 
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAuthConfig((prev) => ({ ...prev, password: e.target.value }));
-  }, []);
+  };
 
-  const handleUrlInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUrlInput(e.target.value);
-  }, []);
+  };
 
-  const toggleAuthConfig = useCallback(() => {
+  const toggleAuthConfig = () => {
     setShowAuthConfig((prev) => !prev);
-  }, []);
+  };
 
-  const handleInputModeChange = useCallback((value: string) => {
+  const handleInputModeChange = (value: string) => {
     setInputMode(value as InputMode);
-  }, []);
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
-  }, []);
+  };
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-  }, []);
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -182,11 +182,11 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     }
   };
 
-  const handleRemoveFile = useCallback(() => {
+  const handleRemoveFile = () => {
     clearFile();
     setError(null);
     setUrlInput("");
-  }, [clearFile]);
+  };
 
   // Render the file upload area
   const renderFileUpload = () => (

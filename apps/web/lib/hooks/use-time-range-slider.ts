@@ -10,7 +10,7 @@
  */
 /* eslint-disable sonarjs/max-lines-per-function -- Hook consolidates all slider state/handlers from the component */
 import type React from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { useFullHistogramQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -99,11 +99,10 @@ export const useTimeRangeSlider = ({
   const scope = useViewScope();
   const { data: histogramData, isLoading } = useFullHistogramQuery(filters, scope);
 
-  // Memoize histogram to prevent useMemo dependencies from changing on every render
-  const histogram = useMemo(() => histogramData?.histogram ?? [], [histogramData?.histogram]);
+  const histogram = histogramData?.histogram ?? [];
 
   // Calculate the data range and normalize histogram
-  const { minTimestamp, maxTimestamp, normalizedBars } = useMemo(() => {
+  const { minTimestamp, maxTimestamp, normalizedBars } = (() => {
     if (histogram.length === 0) {
       return { minTimestamp: 0, maxTimestamp: 0, normalizedBars: [] };
     }
@@ -124,172 +123,133 @@ export const useTimeRangeSlider = ({
     }));
 
     return { minTimestamp: min, maxTimestamp: max, normalizedBars: bars };
-  }, [histogram]);
+  })();
 
   // Convert current filter dates to slider positions (0-1)
-  const startPosition = useMemo(() => {
+  const startPosition = (() => {
     if (startDate == null || minTimestamp === maxTimestamp) return 0;
     const ts = parseISODate(startDate);
     return Math.max(0, Math.min(1, (ts - minTimestamp) / (maxTimestamp - minTimestamp)));
-  }, [startDate, minTimestamp, maxTimestamp]);
+  })();
 
-  const endPosition = useMemo(() => {
+  const endPosition = (() => {
     if (endDate == null || minTimestamp === maxTimestamp) return 1;
     const ts = parseISODate(endDate);
     return Math.max(0, Math.min(1, (ts - minTimestamp) / (maxTimestamp - minTimestamp)));
-  }, [endDate, minTimestamp, maxTimestamp]);
+  })();
 
-  // Memoize style objects to avoid creating new objects on each render
-  const rangeStyle = useMemo(
-    () => ({ left: `${startPosition * 100}%`, right: `${(1 - endPosition) * 100}%` }),
-    [startPosition, endPosition]
-  );
-
-  const startHandleStyle = useMemo(() => ({ left: `${startPosition * 100}%` }), [startPosition]);
-
-  const endHandleStyle = useMemo(() => ({ left: `${endPosition * 100}%` }), [endPosition]);
+  const rangeStyle = { left: `${startPosition * 100}%`, right: `${(1 - endPosition) * 100}%` };
+  const startHandleStyle = { left: `${startPosition * 100}%` };
+  const endHandleStyle = { left: `${endPosition * 100}%` };
 
   // Convert position (0-1) to timestamp
-  const positionToTimestamp = useCallback(
-    (position: number): number => {
-      return minTimestamp + position * (maxTimestamp - minTimestamp);
-    },
-    [minTimestamp, maxTimestamp]
-  );
+  const positionToTimestamp = (position: number): number => {
+    return minTimestamp + position * (maxTimestamp - minTimestamp);
+  };
 
   // Handle mouse/touch events for dragging
-  const handlePointerDown = useCallback(
-    (handle: "start" | "end") => (e: React.PointerEvent) => {
-      e.preventDefault();
-      setIsDragging(handle);
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    },
-    []
-  );
+  const handlePointerDown = (handle: "start" | "end") => (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDragging(handle);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
 
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (isDragging == null || trackRef.current == null) return;
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (isDragging == null || trackRef.current == null) return;
 
-      const rect = trackRef.current.getBoundingClientRect();
-      const position = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const timestamp = positionToTimestamp(position);
-      const dateStr = formatISODate(timestamp);
+    const rect = trackRef.current.getBoundingClientRect();
+    const position = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const timestamp = positionToTimestamp(position);
+    const dateStr = formatISODate(timestamp);
 
-      if (isDragging === "start") {
-        // Don't let start go past end
-        const endTs = endDate != null ? parseISODate(endDate) : maxTimestamp;
-        if (timestamp <= endTs) {
-          onStartDateChange(dateStr);
-        }
-      } else {
-        // Don't let end go before start
-        const startTs = startDate != null ? parseISODate(startDate) : minTimestamp;
-        if (timestamp >= startTs) {
-          onEndDateChange(dateStr);
-        }
+    if (isDragging === "start") {
+      // Don't let start go past end
+      const endTs = endDate != null ? parseISODate(endDate) : maxTimestamp;
+      if (timestamp <= endTs) {
+        onStartDateChange(dateStr);
       }
-    },
-    [
-      isDragging,
-      positionToTimestamp,
-      startDate,
-      endDate,
-      minTimestamp,
-      maxTimestamp,
-      onStartDateChange,
-      onEndDateChange,
-    ]
-  );
+    } else {
+      // Don't let end go before start
+      const startTs = startDate != null ? parseISODate(startDate) : minTimestamp;
+      if (timestamp >= startTs) {
+        onEndDateChange(dateStr);
+      }
+    }
+  };
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = () => {
     setIsDragging(null);
-  }, []);
+  };
 
   // Check if a bar is within the selected range
-  const isBarInRange = useCallback(
-    (barStart: number, barEnd: number): boolean => {
-      const rangeStart = startDate != null ? parseISODate(startDate) : minTimestamp;
-      const rangeEnd = endDate != null ? parseISODate(endDate) : maxTimestamp;
-      return barEnd >= rangeStart && barStart <= rangeEnd;
-    },
-    [startDate, endDate, minTimestamp, maxTimestamp]
-  );
+  const isBarInRange = (barStart: number, barEnd: number): boolean => {
+    const rangeStart = startDate != null ? parseISODate(startDate) : minTimestamp;
+    const rangeEnd = endDate != null ? parseISODate(endDate) : maxTimestamp;
+    return barEnd >= rangeStart && barStart <= rangeEnd;
+  };
 
   // Date input handlers
-  const handleStartDateInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onStartDateChange(e.target.value || null);
-    },
-    [onStartDateChange]
-  );
+  const handleStartDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onStartDateChange(e.target.value || null);
+  };
 
-  const handleEndDateInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onEndDateChange(e.target.value || null);
-    },
-    [onEndDateChange]
-  );
+  const handleEndDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onEndDateChange(e.target.value || null);
+  };
 
-  const handleOpenEditMode = useCallback(() => {
+  const handleOpenEditMode = () => {
     setIsEditingDates(true);
-  }, []);
+  };
 
-  const handleCloseEditMode = useCallback(() => {
+  const handleCloseEditMode = () => {
     setIsEditingDates(false);
-  }, []);
+  };
 
   // Keyboard handler: ArrowLeft narrows start inward, ArrowRight extends end outward
-  const handleHistogramKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (minTimestamp === maxTimestamp) return;
-      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  const handleHistogramKeyDown = (e: React.KeyboardEvent) => {
+    if (minTimestamp === maxTimestamp) return;
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
 
-      e.preventDefault();
-      const step = (maxTimestamp - minTimestamp) * 0.01; // 1% of range per keystroke
+    e.preventDefault();
+    const step = (maxTimestamp - minTimestamp) * 0.01; // 1% of range per keystroke
 
-      if (e.key === "ArrowLeft") {
-        const currentStart = startDate != null ? parseISODate(startDate) : minTimestamp;
-        const newTs = Math.max(minTimestamp, currentStart - step);
-        onStartDateChange(formatISODate(newTs));
-      } else {
-        const currentEnd = endDate != null ? parseISODate(endDate) : maxTimestamp;
-        const newTs = Math.min(maxTimestamp, currentEnd + step);
-        onEndDateChange(formatISODate(newTs));
-      }
-    },
-    [minTimestamp, maxTimestamp, startDate, endDate, onStartDateChange, onEndDateChange]
-  );
+    if (e.key === "ArrowLeft") {
+      const currentStart = startDate != null ? parseISODate(startDate) : minTimestamp;
+      const newTs = Math.max(minTimestamp, currentStart - step);
+      onStartDateChange(formatISODate(newTs));
+    } else {
+      const currentEnd = endDate != null ? parseISODate(endDate) : maxTimestamp;
+      const newTs = Math.min(maxTimestamp, currentEnd + step);
+      onEndDateChange(formatISODate(newTs));
+    }
+  };
 
-  const handleHistogramClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (histogramRef.current == null) return;
+  const handleHistogramClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (histogramRef.current == null) return;
 
-      const rect = histogramRef.current.getBoundingClientRect();
-      const clickPosition = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const timestamp = positionToTimestamp(clickPosition);
-      const dateStr = formatISODate(timestamp);
+    const rect = histogramRef.current.getBoundingClientRect();
+    const clickPosition = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const timestamp = positionToTimestamp(clickPosition);
+    const dateStr = formatISODate(timestamp);
 
-      // Determine which handle to move based on click position
-      if (clickPosition < startPosition) {
-        // Clicked left of start handle - move start
+    // Determine which handle to move based on click position
+    if (clickPosition < startPosition) {
+      // Clicked left of start handle - move start
+      onStartDateChange(dateStr);
+    } else if (clickPosition > endPosition) {
+      // Clicked right of end handle - move end
+      onEndDateChange(dateStr);
+    } else {
+      // Clicked between handles - move the closest one
+      const distToStart = Math.abs(clickPosition - startPosition);
+      const distToEnd = Math.abs(clickPosition - endPosition);
+      if (distToStart <= distToEnd) {
         onStartDateChange(dateStr);
-      } else if (clickPosition > endPosition) {
-        // Clicked right of end handle - move end
-        onEndDateChange(dateStr);
       } else {
-        // Clicked between handles - move the closest one
-        const distToStart = Math.abs(clickPosition - startPosition);
-        const distToEnd = Math.abs(clickPosition - endPosition);
-        if (distToStart <= distToEnd) {
-          onStartDateChange(dateStr);
-        } else {
-          onEndDateChange(dateStr);
-        }
+        onEndDateChange(dateStr);
       }
-    },
-    [positionToTimestamp, startPosition, endPosition, onStartDateChange, onEndDateChange]
-  );
+    }
+  };
 
   return {
     trackRef,

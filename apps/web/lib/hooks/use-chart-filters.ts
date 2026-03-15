@@ -10,7 +10,6 @@
 "use client";
 
 import { useQueryState } from "nuqs";
-import { useCallback } from "react";
 
 interface ChartFilterHandlers {
   /** Callback for date-based chart clicks */
@@ -40,21 +39,18 @@ export const useChartFilters = (): ChartFilterHandlers => {
   const [, setStartDate] = useQueryState("startDate");
   const [, setEndDate] = useQueryState("endDate");
 
-  const formatDate = useCallback((d: Date) => {
+  const formatDate = (d: Date) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
-  }, []);
+  };
 
-  const handleDateClick = useCallback(
-    (date: Date) => {
-      const formattedDate = formatDate(date);
-      void setStartDate(formattedDate);
-      void setEndDate(formattedDate);
-    },
-    [setStartDate, setEndDate, formatDate]
-  );
+  const handleDateClick = (date: Date) => {
+    const formattedDate = formatDate(date);
+    void setStartDate(formattedDate);
+    void setEndDate(formattedDate);
+  };
 
   return { handleDateClick };
 };

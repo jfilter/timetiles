@@ -12,7 +12,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { BarChart3, LayoutList, Map } from "lucide-react";
-import { type ReactNode, useCallback } from "react";
+import type { ReactNode } from "react";
 
 type TabType = "map" | "chart" | "list";
 
@@ -42,9 +42,9 @@ interface TabButtonProps {
 }
 
 const TabButton = ({ id, label, icon: Icon, isActive, onTabChange }: TabButtonProps) => {
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     onTabChange(id);
-  }, [id, onTabChange]);
+  };
 
   return (
     <button
@@ -66,31 +66,28 @@ const TabButton = ({ id, label, icon: Icon, isActive, onTabChange }: TabButtonPr
 };
 
 export const MobileTabs = ({ activeTab, onTabChange, mapContent, chartContent, listContent }: MobileTabsProps) => {
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      const currentIndex = TABS.indexOf(activeTab);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const currentIndex = TABS.indexOf(activeTab);
 
-      switch (e.key) {
-        case "ArrowLeft": {
-          const prevTab = TABS[Math.max(0, currentIndex - 1)];
-          if (prevTab) onTabChange(prevTab);
-          break;
-        }
-        case "ArrowRight": {
-          const nextTab = TABS[Math.min(TABS.length - 1, currentIndex + 1)];
-          if (nextTab) onTabChange(nextTab);
-          break;
-        }
-        case "Home":
-          onTabChange("map");
-          break;
-        case "End":
-          onTabChange("list");
-          break;
+    switch (e.key) {
+      case "ArrowLeft": {
+        const prevTab = TABS[Math.max(0, currentIndex - 1)];
+        if (prevTab) onTabChange(prevTab);
+        break;
       }
-    },
-    [activeTab, onTabChange]
-  );
+      case "ArrowRight": {
+        const nextTab = TABS[Math.min(TABS.length - 1, currentIndex + 1)];
+        if (nextTab) onTabChange(nextTab);
+        break;
+      }
+      case "Home":
+        onTabChange("map");
+        break;
+      case "End":
+        onTabChange("list");
+        break;
+    }
+  };
 
   const contentMap: Record<TabType, ReactNode> = { map: mapContent, chart: chartContent, list: listContent };
 

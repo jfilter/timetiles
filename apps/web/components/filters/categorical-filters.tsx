@@ -11,8 +11,6 @@
  */
 "use client";
 
-import { useCallback } from "react";
-
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -57,12 +55,9 @@ const EnumFieldItem = ({
   selectedValues: string[];
   onFieldFilterChange: (path: string, values: string[]) => void;
 }) => {
-  const handleSelectionChange = useCallback(
-    (newValues: string[]) => {
-      onFieldFilterChange(field.path, newValues);
-    },
-    [onFieldFilterChange, field.path]
-  );
+  const handleSelectionChange = (newValues: string[]) => {
+    onFieldFilterChange(field.path, newValues);
+  };
 
   return (
     <EnumFieldDropdown

@@ -10,7 +10,6 @@ import { Label } from "@timetiles/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircleIcon } from "lucide-react";
-import { useCallback } from "react";
 
 import type { ConfidenceLevel, FieldMapping } from "@/lib/types/import-wizard";
 
@@ -72,10 +71,7 @@ export const FieldSelect = ({
   confidenceLevel,
   isAutoDetected = false,
 }: Readonly<FieldSelectProps>) => {
-  const handleValueChange = useCallback(
-    (val: string) => onFieldChange(field, val === "__none__" ? null : val),
-    [field, onFieldChange]
-  );
+  const handleValueChange = (val: string) => onFieldChange(field, val === "__none__" ? null : val);
 
   return (
     <div className="space-y-2" data-testid={`field-mapping-row-${field}`}>

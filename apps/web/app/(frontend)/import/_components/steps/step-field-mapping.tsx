@@ -34,7 +34,7 @@ import {
   WorkflowIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { ConfidenceLevel, FieldMapping, SuggestedMappings } from "@/lib/types/import-wizard";
 
@@ -111,55 +111,37 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   const activeMapping = fieldMappings.find((m) => m.sheetIndex === activeSheetIndex);
   const suggestedMappings = activeSheet?.suggestedMappings;
 
-  const headers = useMemo(() => activeSheet?.headers ?? [], [activeSheet]);
+  const headers = activeSheet?.headers ?? [];
 
   // Helper to check if current value matches auto-detected suggestion
-  const getFieldSuggestion = useCallback(
-    (fieldName: keyof SuggestedMappings["mappings"]) => {
-      const suggestion = suggestedMappings?.mappings[fieldName];
-      return {
-        suggestedPath: suggestion?.path ?? null,
-        confidenceLevel: suggestion?.confidenceLevel ?? ("none" as ConfidenceLevel),
-      };
-    },
-    [suggestedMappings]
-  );
+  const getFieldSuggestion = (fieldName: keyof SuggestedMappings["mappings"]) => {
+    const suggestion = suggestedMappings?.mappings[fieldName];
+    return {
+      suggestedPath: suggestion?.path ?? null,
+      confidenceLevel: suggestion?.confidenceLevel ?? ("none" as ConfidenceLevel),
+    };
+  };
 
-  const isAutoDetected = useCallback(
-    (fieldName: keyof SuggestedMappings["mappings"], currentValue: string | null) => {
-      const { suggestedPath } = getFieldSuggestion(fieldName);
-      return currentValue !== null && currentValue === suggestedPath;
-    },
-    [getFieldSuggestion]
-  );
+  const isAutoDetected = (fieldName: keyof SuggestedMappings["mappings"], currentValue: string | null) => {
+    const { suggestedPath } = getFieldSuggestion(fieldName);
+    return currentValue !== null && currentValue === suggestedPath;
+  };
 
-  const handleFieldChange = useCallback(
-    (field: keyof FieldMapping, value: string | null) => {
-      setFieldMapping(activeSheetIndex, { [field]: value === "" ? null : value });
-    },
-    [activeSheetIndex, setFieldMapping]
-  );
+  const handleFieldChange = (field: keyof FieldMapping, value: string | null) => {
+    setFieldMapping(activeSheetIndex, { [field]: value === "" ? null : value });
+  };
 
-  const handleDeduplicationChange = useCallback(
-    (value: string) => {
-      setImportOptions({ deduplicationStrategy: value as "skip" | "update" | "version" });
-    },
-    [setImportOptions]
-  );
+  const handleDeduplicationChange = (value: string) => {
+    setImportOptions({ deduplicationStrategy: value as "skip" | "update" | "version" });
+  };
 
-  const handleGeocodingChange = useCallback(
-    (enabled: boolean) => {
-      setImportOptions({ geocodingEnabled: enabled });
-    },
-    [setImportOptions]
-  );
+  const handleGeocodingChange = (enabled: boolean) => {
+    setImportOptions({ geocodingEnabled: enabled });
+  };
 
-  const handleGeocodingCheckedChange = useCallback(
-    (checked: boolean | "indeterminate") => {
-      handleGeocodingChange(checked === true);
-    },
-    [handleGeocodingChange]
-  );
+  const handleGeocodingCheckedChange = (checked: boolean | "indeterminate") => {
+    handleGeocodingChange(checked === true);
+  };
 
   if (!activeSheet || !activeMapping) {
     return (

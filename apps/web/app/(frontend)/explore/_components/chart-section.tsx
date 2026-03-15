@@ -11,7 +11,7 @@
 "use client";
 
 import { cn } from "@timetiles/ui/lib/utils";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { EventHistogram } from "@/components/charts/event-histogram";
@@ -61,7 +61,7 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
   const { filters } = useFilters();
 
   // Determine which chart types should be available based on filters
-  const availableChartTypes = useMemo((): ChartType[] => {
+  const availableChartTypes: ChartType[] = (() => {
     const types: ChartType[] = ["histogram"]; // Always available
 
     // Show "By Dataset" when no datasets are selected (show all) or multiple are selected
@@ -77,7 +77,7 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
     }
 
     return types;
-  }, [filters.catalog, filters.datasets.length]);
+  })();
 
   // If current chart type becomes unavailable, switch to histogram
   useEffect(() => {
@@ -86,31 +86,25 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
     }
   }, [availableChartTypes, chartType]);
 
-  const handleChartTypeChange = useCallback(
-    (newType: ChartType) => {
-      if (newType === chartType) return;
+  const handleChartTypeChange = (newType: ChartType) => {
+    if (newType === chartType) return;
 
-      // Start fade out
-      setIsTransitioning(true);
+    // Start fade out
+    setIsTransitioning(true);
 
-      // After fade out, swap chart type
-      setTimeout(() => {
-        setChartType(newType);
-        // Small delay then fade in
-        requestAnimationFrame(() => {
-          setIsTransitioning(false);
-        });
-      }, 150); // Match CSS transition duration
-    },
-    [chartType]
-  );
+    // After fade out, swap chart type
+    setTimeout(() => {
+      setChartType(newType);
+      // Small delay then fade in
+      requestAnimationFrame(() => {
+        setIsTransitioning(false);
+      });
+    }, 150); // Match CSS transition duration
+  };
 
-  const chartMeta = useMemo(() => getChartMeta(chartType), [chartType]);
-  const chartHeight = useMemo(() => getChartHeight(chartType), [chartType]);
-  const containerStyle = useMemo(
-    () => (fillHeight ? undefined : { minHeight: chartHeight }),
-    [chartHeight, fillHeight]
-  );
+  const chartMeta = getChartMeta(chartType);
+  const chartHeight = getChartHeight(chartType);
+  const containerStyle = fillHeight ? undefined : { minHeight: chartHeight };
 
   return (
     <VisualizationPanel

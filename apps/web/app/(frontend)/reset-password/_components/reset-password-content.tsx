@@ -13,7 +13,7 @@
 import { AlertCircle, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { ResetPasswordForm } from "@/components/auth";
 
@@ -24,9 +24,9 @@ const ResetPasswordInner = () => {
 
   const token = searchParams.get("token");
 
-  const handleSuccess = useCallback(() => {
+  const handleSuccess = () => {
     setSuccess(true);
-  }, []);
+  };
 
   useEffect(() => {
     if (success) {

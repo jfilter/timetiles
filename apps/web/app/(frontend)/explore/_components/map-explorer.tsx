@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useEventsListQuery, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
@@ -43,12 +43,9 @@ export const MapExplorer = () => {
   // Get map position from URL (nuqs)
   const { mapPosition, hasMapPosition, setMapPosition } = useMapPosition();
 
-  const handleMapPositionChange = useCallback(
-    (center: { lng: number; lat: number }, zoom: number) => {
-      setMapPosition({ latitude: center.lat, longitude: center.lng, zoom });
-    },
-    [setMapPosition]
-  );
+  const handleMapPositionChange = (center: { lng: number; lat: number }, zoom: number) => {
+    setMapPosition({ latitude: center.lat, longitude: center.lng, zoom });
+  };
 
   // Shared explorer state
   const explorer = useExplorerState({ onMapPositionChange: handleMapPositionChange });
@@ -81,14 +78,10 @@ export const MapExplorer = () => {
     if (globalThis.matchMedia("(max-width: 768px)").matches) {
       setFilterDrawerOpen(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
-  }, []);
+  }, [setFilterDrawerOpen]);
 
   // Convert URL map position to initial view state for ClusteredMap
-  const initialViewState = useMemo(
-    () => getInitialViewState(hasMapPosition, mapPosition),
-    [hasMapPosition, mapPosition]
-  );
+  const initialViewState = getInitialViewState(hasMapPosition, mapPosition);
 
   // React Query hooks for data fetching - use simple bounds directly for better cache key comparison
   const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(
@@ -146,10 +139,7 @@ export const MapExplorer = () => {
   // Show "zoom to data" button when:
   // 1. User has panned away from data, OR
   // 2. Data bounds exist and map viewport doesn't fully contain them (e.g., after filter change)
-  const dataBoundsOutsideViewport = useMemo(
-    () => isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds),
-    [boundsData, mapBounds]
-  );
+  const dataBoundsOutsideViewport = isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds);
 
   const showZoomToData = shouldShowZoomToData(
     hasUserPanned,
@@ -159,7 +149,7 @@ export const MapExplorer = () => {
   );
 
   // Get human-readable filter labels (uses helper function)
-  const filterLabels = useMemo(() => getFilterLabels(filters, catalogs, datasets), [filters, catalogs, datasets]);
+  const filterLabels = getFilterLabels(filters, catalogs, datasets);
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] flex-col">

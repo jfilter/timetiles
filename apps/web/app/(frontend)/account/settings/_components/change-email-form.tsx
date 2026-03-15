@@ -10,7 +10,7 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Loader2, Mail } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { changeEmailRequest } from "@/lib/hooks/use-account-mutations";
 import { useFormMutation } from "@/lib/hooks/use-form-mutation";
@@ -39,32 +39,23 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
     },
   });
 
-  const handleNewEmailChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setNewEmail(e.target.value);
-      reset();
-    },
-    [reset]
-  );
+  const handleNewEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewEmail(e.target.value);
+    reset();
+  };
 
-  const handlePasswordChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setPassword(e.target.value);
-      reset();
-    },
-    [reset]
-  );
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    reset();
+  };
 
-  const handleSubmit = useCallback(
-    (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-      if (!newEmail || !password) return;
+    if (!newEmail || !password) return;
 
-      mutate({ newEmail, password, currentEmail });
-    },
-    [newEmail, password, currentEmail, mutate]
-  );
+    mutate({ newEmail, password, currentEmail });
+  };
 
   return (
     <Card>

@@ -11,7 +11,6 @@
 "use client";
 
 import { BarChart, type BarChartDataItem, useChartTheme } from "@timetiles/ui/charts";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import { useEventsAggregationQuery } from "@/lib/hooks/use-events-queries";
@@ -47,42 +46,30 @@ const AggregationBarChartComponent = ({
   const aggregationQuery = useEventsAggregationQuery(filters, bounds ?? null, type, true, scope);
   const { data, isInitialLoad, isUpdating, isError } = useChartQuery(aggregationQuery);
 
-  // Store latest data in ref for stable click handler
-  const dataRef = useRef(data);
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
+  // Transform API data to chart format
+  const chartData: BarChartDataItem[] = data?.items
+    ? data.items.map((item) => ({ label: item.name, value: item.count }))
+    : [];
 
-  // Transform API data to chart format (without metadata for stable references)
-  const chartData: BarChartDataItem[] = useMemo(() => {
-    if (!data?.items) return [];
-
-    return data.items.map((item) => ({ label: item.name, value: item.count }));
-  }, [data]);
-
-  // Click handler based on aggregation type (stable - uses ref for data access)
+  // Click handler based on aggregation type
   // Routes through useFilters() to ensure dependent filters are cleared
-  const handleBarClick = useCallback(
-    (_item: BarChartDataItem, index: number) => {
-      // Access latest data from ref without coupling callback to data
-      const items = dataRef.current?.items;
-      if (!items?.[index]) return;
+  const handleBarClick = (_item: BarChartDataItem, index: number) => {
+    const items = data?.items;
+    if (!items?.[index]) return;
 
-      const itemId = String(items[index].id);
+    const itemId = String(items[index].id);
 
-      if (type === "catalog") {
-        setCatalog(itemId);
+    if (type === "catalog") {
+      setCatalog(itemId);
+    } else {
+      const current = filters.datasets;
+      if (current.includes(itemId)) {
+        setDatasets(current.filter((id) => id !== itemId));
       } else {
-        const current = filters.datasets;
-        if (current.includes(itemId)) {
-          setDatasets(current.filter((id) => id !== itemId));
-        } else {
-          setDatasets([...current, itemId]);
-        }
+        setDatasets([...current, itemId]);
       }
-    },
-    [type, setCatalog, setDatasets, filters.datasets]
-  );
+    }
+  };
 
   return (
     <BarChart
@@ -98,4 +85,4 @@ const AggregationBarChartComponent = ({
   );
 };
 
-export const AggregationBarChart = memo(AggregationBarChartComponent);
+export const AggregationBarChart = AggregationBarChartComponent;

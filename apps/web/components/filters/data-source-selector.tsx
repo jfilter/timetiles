@@ -12,7 +12,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import { getDatasetColors } from "@/lib/constants/dataset-colors";
 import { useView } from "@/lib/context/view-context";
@@ -52,9 +52,9 @@ interface CatalogCardProps {
 }
 
 const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }: CatalogCardProps) => {
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     onSelect(String(catalog.id));
-  }, [catalog.id, onSelect]);
+  };
 
   return (
     <button
@@ -108,9 +108,9 @@ interface DatasetChipProps {
 }
 
 const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipProps) => {
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     onToggle(String(dataset.id));
-  }, [dataset.id, onToggle]);
+  };
 
   const colors = getDatasetColors(dataset.id);
 
@@ -163,6 +163,7 @@ const ExpandCollapseButton = ({
   </button>
 );
 
+/* oxlint-disable-next-line eslint(complexity) -- Inline handlers after React Compiler migration increase reported complexity */
 export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset }: DataSourceSelectorProps) => {
   const { filters, setCatalog, setDatasets } = useFilters();
   const [catalogsExpanded, setCatalogsExpanded] = useState(false);
@@ -178,65 +179,55 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
 
   // Sort catalogs by event count (descending), then by name
   // Filter by view scope if active
-  const sortedCatalogs = useMemo(
-    () => filterAndSortCatalogs(dataSources?.catalogs ?? [], scopeCatalogIds, eventCountsByCatalog),
-    [dataSources?.catalogs, eventCountsByCatalog, scopeCatalogIds]
-  );
+  const sortedCatalogs = filterAndSortCatalogs(dataSources?.catalogs ?? [], scopeCatalogIds, eventCountsByCatalog);
 
   // Get datasets for selected catalog, sorted by event count
   // Filter by view scope if active
-  const filteredDatasets = useMemo(
-    () => filterAndSortDatasets(dataSources?.datasets ?? [], filters.catalog, scopeDatasetIds, eventCountsByDataset),
-    [dataSources?.datasets, filters.catalog, eventCountsByDataset, scopeDatasetIds]
+  const filteredDatasets = filterAndSortDatasets(
+    dataSources?.datasets ?? [],
+    filters.catalog,
+    scopeDatasetIds,
+    eventCountsByDataset
   );
 
   // Count datasets per catalog
-  const datasetCountByCatalog = useMemo(
-    () => countDatasetsByCatalog(dataSources?.datasets ?? []),
-    [dataSources?.datasets]
-  );
+  const datasetCountByCatalog = countDatasetsByCatalog(dataSources?.datasets ?? []);
 
   // Handle catalog selection - auto-select all datasets in that catalog
-  const handleCatalogSelect = useCallback(
-    (catalogId: string) => {
-      if (catalogId === filters.catalog) {
-        // Toggle off: show all data
-        setCatalog(null);
-        setDatasets([]);
-      } else {
-        // Select catalog and auto-select all its datasets
-        setCatalog(catalogId);
-        const datasets = dataSources?.datasets ?? [];
-        const catalogDatasets = datasets
-          .filter((d) => d.catalogId != null && String(d.catalogId) === catalogId)
-          .map((d) => String(d.id));
-        setDatasets(catalogDatasets);
-      }
-    },
-    [dataSources?.datasets, filters.catalog, setCatalog, setDatasets]
-  );
+  const handleCatalogSelect = (catalogId: string) => {
+    if (catalogId === filters.catalog) {
+      // Toggle off: show all data
+      setCatalog(null);
+      setDatasets([]);
+    } else {
+      // Select catalog and auto-select all its datasets
+      setCatalog(catalogId);
+      const datasets = dataSources?.datasets ?? [];
+      const catalogDatasets = datasets
+        .filter((d) => d.catalogId != null && String(d.catalogId) === catalogId)
+        .map((d) => String(d.id));
+      setDatasets(catalogDatasets);
+    }
+  };
 
   // Handle dataset toggle
-  const handleDatasetToggle = useCallback(
-    (datasetId: string) => {
-      const current = filters.datasets;
-      const newDatasets = current.includes(datasetId)
-        ? current.filter((id) => id !== datasetId)
-        : [...current, datasetId];
-      setDatasets(newDatasets);
-    },
-    [filters.datasets, setDatasets]
-  );
+  const handleDatasetToggle = (datasetId: string) => {
+    const current = filters.datasets;
+    const newDatasets = current.includes(datasetId)
+      ? current.filter((id) => id !== datasetId)
+      : [...current, datasetId];
+    setDatasets(newDatasets);
+  };
 
   // Catalog expand/collapse handler
-  const handleToggleCatalogsExpanded = useCallback(() => {
+  const handleToggleCatalogsExpanded = () => {
     setCatalogsExpanded((prev) => !prev);
-  }, []);
+  };
 
   // Dataset expand/collapse handler
-  const handleToggleDatasetsExpanded = useCallback(() => {
+  const handleToggleDatasetsExpanded = () => {
     setDatasetsExpanded((prev) => !prev);
-  }, []);
+  };
 
   // Catalog visibility - use CSS overflow instead of slicing to maintain stable positions
   const useCatalogCollapse = sortedCatalogs.length > CATALOG_COLLAPSE_THRESHOLD;

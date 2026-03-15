@@ -11,7 +11,7 @@
 import { Input } from "@timetiles/ui/components/input";
 import { Label } from "@timetiles/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
-import { memo, useCallback } from "react";
+import type React from "react";
 
 import {
   CAST_STRATEGY_LABELS,
@@ -125,12 +125,9 @@ interface RenameEditorProps {
   onChange: (updates: Partial<ImportTransform>) => void;
 }
 
-const RenameEditor = memo(({ from, to, sourceColumns, onChange }: Readonly<RenameEditorProps>) => {
-  const handleFromChange = useCallback((value: string) => onChange({ from: value }), [onChange]);
-  const handleToChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => onChange({ to: e.target.value }),
-    [onChange]
-  );
+const RenameEditor = ({ from, to, sourceColumns, onChange }: Readonly<RenameEditorProps>) => {
+  const handleFromChange = (value: string) => onChange({ from: value });
+  const handleToChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ to: e.target.value });
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -147,8 +144,7 @@ const RenameEditor = memo(({ from, to, sourceColumns, onChange }: Readonly<Renam
       </div>
     </div>
   );
-});
-RenameEditor.displayName = "RenameEditor";
+};
 
 interface DateParseEditorProps {
   from: string;
@@ -159,69 +155,71 @@ interface DateParseEditorProps {
   onChange: (updates: Partial<ImportTransform>) => void;
 }
 
-const DateParseEditor = memo(
-  ({ from, inputFormat, outputFormat, timezone, sourceColumns, onChange }: Readonly<DateParseEditorProps>) => {
-    const handleFromChange = useCallback((value: string) => onChange({ from: value }), [onChange]);
-    const handleInputFormatChange = useCallback((value: string) => onChange({ inputFormat: value }), [onChange]);
-    const handleOutputFormatChange = useCallback((value: string) => onChange({ outputFormat: value }), [onChange]);
-    const handleTimezoneChange = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => onChange({ timezone: e.target.value || undefined }),
-      [onChange]
-    );
+const DateParseEditor = ({
+  from,
+  inputFormat,
+  outputFormat,
+  timezone,
+  sourceColumns,
+  onChange,
+}: Readonly<DateParseEditorProps>) => {
+  const handleFromChange = (value: string) => onChange({ from: value });
+  const handleInputFormatChange = (value: string) => onChange({ inputFormat: value });
+  const handleOutputFormatChange = (value: string) => onChange({ outputFormat: value });
+  const handleTimezoneChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange({ timezone: e.target.value || undefined });
 
-    return (
-      <div className="grid gap-4 sm:grid-cols-2">
-        <ColumnSelect
-          id="from"
-          label="Source Field"
-          value={from}
-          sourceColumns={sourceColumns}
-          onValueChange={handleFromChange}
-        />
-        <div className="space-y-2">
-          <Label htmlFor="inputFormat">Input Format</Label>
-          <Select value={inputFormat} onValueChange={handleInputFormatChange}>
-            <SelectTrigger id="inputFormat">
-              <SelectValue placeholder="Select format" />
-            </SelectTrigger>
-            <SelectContent>
-              {DATE_FORMAT_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="outputFormat">Output Format</Label>
-          <Select value={outputFormat} onValueChange={handleOutputFormatChange}>
-            <SelectTrigger id="outputFormat">
-              <SelectValue placeholder="Select format" />
-            </SelectTrigger>
-            <SelectContent>
-              {DATE_FORMAT_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="timezone">Timezone (optional)</Label>
-          <Input
-            id="timezone"
-            value={timezone ?? ""}
-            onChange={handleTimezoneChange}
-            placeholder="e.g., America/New_York"
-          />
-        </div>
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <ColumnSelect
+        id="from"
+        label="Source Field"
+        value={from}
+        sourceColumns={sourceColumns}
+        onValueChange={handleFromChange}
+      />
+      <div className="space-y-2">
+        <Label htmlFor="inputFormat">Input Format</Label>
+        <Select value={inputFormat} onValueChange={handleInputFormatChange}>
+          <SelectTrigger id="inputFormat">
+            <SelectValue placeholder="Select format" />
+          </SelectTrigger>
+          <SelectContent>
+            {DATE_FORMAT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-    );
-  }
-);
-DateParseEditor.displayName = "DateParseEditor";
+      <div className="space-y-2">
+        <Label htmlFor="outputFormat">Output Format</Label>
+        <Select value={outputFormat} onValueChange={handleOutputFormatChange}>
+          <SelectTrigger id="outputFormat">
+            <SelectValue placeholder="Select format" />
+          </SelectTrigger>
+          <SelectContent>
+            {DATE_FORMAT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="timezone">Timezone (optional)</Label>
+        <Input
+          id="timezone"
+          value={timezone ?? ""}
+          onChange={handleTimezoneChange}
+          placeholder="e.g., America/New_York"
+        />
+      </div>
+    </div>
+  );
+};
 
 interface StringOpEditorProps {
   from: string;
@@ -232,69 +230,64 @@ interface StringOpEditorProps {
   onChange: (updates: Partial<ImportTransform>) => void;
 }
 
-const StringOpEditor = memo(
-  ({ from, operation, pattern, replacement, sourceColumns, onChange }: Readonly<StringOpEditorProps>) => {
-    const handleFromChange = useCallback((value: string) => onChange({ from: value }), [onChange]);
-    const handleOperationChange = useCallback(
-      (value: string) => onChange({ operation: value as StringOpEditorProps["operation"] }),
-      [onChange]
-    );
-    const handlePatternChange = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => onChange({ pattern: e.target.value }),
-      [onChange]
-    );
-    const handleReplacementChange = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => onChange({ replacement: e.target.value }),
-      [onChange]
-    );
+const StringOpEditor = ({
+  from,
+  operation,
+  pattern,
+  replacement,
+  sourceColumns,
+  onChange,
+}: Readonly<StringOpEditorProps>) => {
+  const handleFromChange = (value: string) => onChange({ from: value });
+  const handleOperationChange = (value: string) => onChange({ operation: value as StringOpEditorProps["operation"] });
+  const handlePatternChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ pattern: e.target.value });
+  const handleReplacementChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ replacement: e.target.value });
 
-    return (
-      <div className="space-y-4">
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ColumnSelect
+          id="from"
+          label="Source Field"
+          value={from}
+          sourceColumns={sourceColumns}
+          onValueChange={handleFromChange}
+        />
+        <div className="space-y-2">
+          <Label htmlFor="operation">Operation</Label>
+          <Select value={operation} onValueChange={handleOperationChange}>
+            <SelectTrigger id="operation">
+              <SelectValue placeholder="Select operation" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="uppercase">Uppercase</SelectItem>
+              <SelectItem value="lowercase">Lowercase</SelectItem>
+              <SelectItem value="trim">Trim Whitespace</SelectItem>
+              <SelectItem value="replace">Replace</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {operation === "replace" && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <ColumnSelect
-            id="from"
-            label="Source Field"
-            value={from}
-            sourceColumns={sourceColumns}
-            onValueChange={handleFromChange}
-          />
           <div className="space-y-2">
-            <Label htmlFor="operation">Operation</Label>
-            <Select value={operation} onValueChange={handleOperationChange}>
-              <SelectTrigger id="operation">
-                <SelectValue placeholder="Select operation" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="uppercase">Uppercase</SelectItem>
-                <SelectItem value="lowercase">Lowercase</SelectItem>
-                <SelectItem value="trim">Trim Whitespace</SelectItem>
-                <SelectItem value="replace">Replace</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="pattern">Find Pattern</Label>
+            <Input id="pattern" value={pattern ?? ""} onChange={handlePatternChange} placeholder="Text to find" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="replacement">Replace With</Label>
+            <Input
+              id="replacement"
+              value={replacement ?? ""}
+              onChange={handleReplacementChange}
+              placeholder="Replacement text"
+            />
           </div>
         </div>
-        {operation === "replace" && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="pattern">Find Pattern</Label>
-              <Input id="pattern" value={pattern ?? ""} onChange={handlePatternChange} placeholder="Text to find" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="replacement">Replace With</Label>
-              <Input
-                id="replacement"
-                value={replacement ?? ""}
-                onChange={handleReplacementChange}
-                placeholder="Replacement text"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-);
-StringOpEditor.displayName = "StringOpEditor";
+      )}
+    </div>
+  );
+};
 
 interface FieldToggleButtonProps {
   column: string;
@@ -303,11 +296,11 @@ interface FieldToggleButtonProps {
   onChange: (updates: Partial<ImportTransform>) => void;
 }
 
-const FieldToggleButton = memo(({ column, isSelected, fromFields, onChange }: Readonly<FieldToggleButtonProps>) => {
-  const handleClick = useCallback(() => {
+const FieldToggleButton = ({ column, isSelected, fromFields, onChange }: Readonly<FieldToggleButtonProps>) => {
+  const handleClick = () => {
     const newFields = isSelected ? fromFields.filter((f) => f !== column) : [...fromFields, column];
     onChange({ fromFields: newFields });
-  }, [isSelected, fromFields, column, onChange]);
+  };
 
   return (
     <button
@@ -322,8 +315,7 @@ const FieldToggleButton = memo(({ column, isSelected, fromFields, onChange }: Re
       {column}
     </button>
   );
-});
-FieldToggleButton.displayName = "FieldToggleButton";
+};
 
 interface ConcatenateEditorProps {
   fromFields: string[];
@@ -333,49 +325,46 @@ interface ConcatenateEditorProps {
   onChange: (updates: Partial<ImportTransform>) => void;
 }
 
-const ConcatenateEditor = memo(
-  ({ fromFields, separator, to, sourceColumns, onChange }: Readonly<ConcatenateEditorProps>) => {
-    const handleSeparatorChange = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => onChange({ separator: e.target.value }),
-      [onChange]
-    );
-    const handleToChange = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => onChange({ to: e.target.value }),
-      [onChange]
-    );
+const ConcatenateEditor = ({
+  fromFields,
+  separator,
+  to,
+  sourceColumns,
+  onChange,
+}: Readonly<ConcatenateEditorProps>) => {
+  const handleSeparatorChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ separator: e.target.value });
+  const handleToChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ to: e.target.value });
 
-    return (
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label>Source Fields (select multiple)</Label>
-          <div className="flex flex-wrap gap-2">
-            {sourceColumns.map((col) => (
-              <FieldToggleButton
-                key={col}
-                column={col}
-                isSelected={fromFields.includes(col)}
-                fromFields={fromFields}
-                onChange={onChange}
-              />
-            ))}
-          </div>
-          <p className="text-muted-foreground text-xs">Selected: {fromFields.join(", ") || "None"}</p>
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Source Fields (select multiple)</Label>
+        <div className="flex flex-wrap gap-2">
+          {sourceColumns.map((col) => (
+            <FieldToggleButton
+              key={col}
+              column={col}
+              isSelected={fromFields.includes(col)}
+              fromFields={fromFields}
+              onChange={onChange}
+            />
+          ))}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="separator">Separator</Label>
-            <Input id="separator" value={separator} onChange={handleSeparatorChange} placeholder="e.g., ' ' or ', '" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="to">Target Field Name</Label>
-            <Input id="to" value={to} onChange={handleToChange} placeholder="Name for combined field" />
-          </div>
+        <p className="text-muted-foreground text-xs">Selected: {fromFields.join(", ") || "None"}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="separator">Separator</Label>
+          <Input id="separator" value={separator} onChange={handleSeparatorChange} placeholder="e.g., ' ' or ', '" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="to">Target Field Name</Label>
+          <Input id="to" value={to} onChange={handleToChange} placeholder="Name for combined field" />
         </div>
       </div>
-    );
-  }
-);
-ConcatenateEditor.displayName = "ConcatenateEditor";
+    </div>
+  );
+};
 
 interface SplitEditorProps {
   from: string;
@@ -385,22 +374,16 @@ interface SplitEditorProps {
   onChange: (updates: Partial<ImportTransform>) => void;
 }
 
-const SplitEditor = memo(({ from, delimiter, toFields, sourceColumns, onChange }: Readonly<SplitEditorProps>) => {
-  const handleFromChange = useCallback((value: string) => onChange({ from: value }), [onChange]);
-  const handleDelimiterChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => onChange({ delimiter: e.target.value }),
-    [onChange]
-  );
-  const handleToFieldsChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) =>
-      onChange({
-        toFields: e.target.value
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      }),
-    [onChange]
-  );
+const SplitEditor = ({ from, delimiter, toFields, sourceColumns, onChange }: Readonly<SplitEditorProps>) => {
+  const handleFromChange = (value: string) => onChange({ from: value });
+  const handleDelimiterChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ delimiter: e.target.value });
+  const handleToFieldsChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange({
+      toFields: e.target.value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    });
 
   return (
     <div className="space-y-4">
@@ -429,8 +412,7 @@ const SplitEditor = memo(({ from, delimiter, toFields, sourceColumns, onChange }
       </div>
     </div>
   );
-});
-SplitEditor.displayName = "SplitEditor";
+};
 
 interface TypeCastEditorProps {
   from: string;
@@ -442,97 +424,94 @@ interface TypeCastEditorProps {
   onChange: (updates: Partial<ImportTransform>) => void;
 }
 
-const TypeCastEditor = memo(
-  ({ from, fromType, toType, strategy, customFunction, sourceColumns, onChange }: Readonly<TypeCastEditorProps>) => {
-    const handleFromChange = useCallback((value: string) => onChange({ from: value }), [onChange]);
-    const handleStrategyChange = useCallback(
-      (value: string) => onChange({ strategy: value as CastStrategy }),
-      [onChange]
-    );
-    const handleFromTypeChange = useCallback(
-      (value: string) => onChange({ fromType: value as CastableType }),
-      [onChange]
-    );
-    const handleToTypeChange = useCallback((value: string) => onChange({ toType: value as CastableType }), [onChange]);
-    const handleCustomFunctionChange = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => onChange({ customFunction: e.target.value || undefined }),
-      [onChange]
-    );
+const TypeCastEditor = ({
+  from,
+  fromType,
+  toType,
+  strategy,
+  customFunction,
+  sourceColumns,
+  onChange,
+}: Readonly<TypeCastEditorProps>) => {
+  const handleFromChange = (value: string) => onChange({ from: value });
+  const handleStrategyChange = (value: string) => onChange({ strategy: value as CastStrategy });
+  const handleFromTypeChange = (value: string) => onChange({ fromType: value as CastableType });
+  const handleToTypeChange = (value: string) => onChange({ toType: value as CastableType });
+  const handleCustomFunctionChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange({ customFunction: e.target.value || undefined });
 
-    return (
-      <div className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ColumnSelect
-            id="from"
-            label="Source Field"
-            value={from}
-            sourceColumns={sourceColumns}
-            onValueChange={handleFromChange}
-          />
-          <div className="space-y-2">
-            <Label htmlFor="strategy">Conversion Strategy</Label>
-            <Select value={strategy} onValueChange={handleStrategyChange}>
-              <SelectTrigger id="strategy">
-                <SelectValue placeholder="Select strategy" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(CAST_STRATEGY_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ColumnSelect
+          id="from"
+          label="Source Field"
+          value={from}
+          sourceColumns={sourceColumns}
+          onValueChange={handleFromChange}
+        />
+        <div className="space-y-2">
+          <Label htmlFor="strategy">Conversion Strategy</Label>
+          <Select value={strategy} onValueChange={handleStrategyChange}>
+            <SelectTrigger id="strategy">
+              <SelectValue placeholder="Select strategy" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(CAST_STRATEGY_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="fromType">From Type</Label>
-            <Select value={fromType} onValueChange={handleFromTypeChange}>
-              <SelectTrigger id="fromType">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(CASTABLE_TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="toType">To Type</Label>
-            <Select value={toType} onValueChange={handleToTypeChange}>
-              <SelectTrigger id="toType">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(CASTABLE_TYPE_LABELS)
-                  .filter(([value]) => value !== "null")
-                  .map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        {strategy === "custom" && (
-          <div className="space-y-2">
-            <Label htmlFor="customFunction">Custom Function</Label>
-            <Input
-              id="customFunction"
-              value={customFunction ?? ""}
-              onChange={handleCustomFunctionChange}
-              placeholder="return value.toString();"
-            />
-            <p className="text-muted-foreground text-xs">JavaScript code: (value, context) =&gt; transformedValue</p>
-          </div>
-        )}
       </div>
-    );
-  }
-);
-TypeCastEditor.displayName = "TypeCastEditor";
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="fromType">From Type</Label>
+          <Select value={fromType} onValueChange={handleFromTypeChange}>
+            <SelectTrigger id="fromType">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(CASTABLE_TYPE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="toType">To Type</Label>
+          <Select value={toType} onValueChange={handleToTypeChange}>
+            <SelectTrigger id="toType">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(CASTABLE_TYPE_LABELS)
+                .filter(([value]) => value !== "null")
+                .map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {strategy === "custom" && (
+        <div className="space-y-2">
+          <Label htmlFor="customFunction">Custom Function</Label>
+          <Input
+            id="customFunction"
+            value={customFunction ?? ""}
+            onChange={handleCustomFunctionChange}
+            placeholder="return value.toString();"
+          />
+          <p className="text-muted-foreground text-xs">JavaScript code: (value, context) =&gt; transformedValue</p>
+        </div>
+      )}
+    </div>
+  );
+};

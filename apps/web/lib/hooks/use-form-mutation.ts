@@ -11,7 +11,6 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { useCallback } from "react";
 
 export type FormStatus = "idle" | "loading" | "success" | "error";
 
@@ -42,10 +41,9 @@ export const useFormMutation = <TData = void, TVariables = void>(
   const status: FormStatus = mutation.status === "pending" ? "loading" : mutation.status;
   const error: string | null = mutation.error ? mutation.error.message || "An unexpected error occurred" : null;
 
-  const { reset: mutationReset } = mutation;
-  const reset = useCallback(() => {
-    mutationReset();
-  }, [mutationReset]);
+  const reset = () => {
+    mutation.reset();
+  };
 
   return {
     status,

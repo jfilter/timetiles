@@ -11,7 +11,6 @@
 
 import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
-import { useCallback, useMemo } from "react";
 
 import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -48,20 +47,17 @@ export const EventsListPaginated = ({
   // Get global total (without bounds filter) to show "X of Y" when map limits results
   const { data: globalTotalData } = useEventsTotalQuery(filters, true, scope);
 
-  const handleLoadMore = useCallback(() => {
+  const handleLoadMore = () => {
     void fetchNextPage();
-  }, [fetchNextPage]);
+  };
 
-  // Build filter labels for the description (memoized to avoid recreating on each render)
-  const filterLabels: FilterLabels = useMemo(
-    () => ({
-      datasets: datasetNames.map((name, idx) => ({ id: String(idx), name })),
-      dateRange: dateRangeLabel,
-      fieldFilters:
-        filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
-    }),
-    [datasetNames, dateRangeLabel, filters.fieldFilters]
-  );
+  // Build filter labels for the description
+  const filterLabels: FilterLabels = {
+    datasets: datasetNames.map((name, idx) => ({ id: String(idx), name })),
+    dateRange: dateRangeLabel,
+    fieldFilters:
+      filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
+  };
 
   // Initial loading state
   if (isLoading) {

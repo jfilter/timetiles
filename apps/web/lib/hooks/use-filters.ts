@@ -12,7 +12,6 @@
  * @module
  */
 import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState } from "nuqs";
-import { useCallback, useMemo } from "react";
 
 import type { FilterState } from "../types/filter-state";
 import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../types/filter-state";
@@ -34,26 +33,23 @@ export const useFilters = () => {
   const [fieldFiltersParam, setFieldFiltersParam] = useQueryState("ff", parseAsStringOrNull);
 
   // Parse field filters from JSON string
-  const fieldFilters = useMemo((): Record<string, string[]> => {
+  const fieldFilters: Record<string, string[]> = (() => {
     if (!fieldFiltersParam) return {};
     try {
       return JSON.parse(fieldFiltersParam) as Record<string, string[]>;
     } catch {
       return {};
     }
-  }, [fieldFiltersParam]);
+  })();
 
   // Create filter state object
-  const filters: FilterState = useMemo(
-    () => ({
-      catalog: catalog || null,
-      datasets,
-      startDate: startDate || null,
-      endDate: endDate || null,
-      fieldFilters,
-    }),
-    [catalog, datasets, startDate, endDate, fieldFilters]
-  );
+  const filters: FilterState = {
+    catalog: catalog || null,
+    datasets,
+    startDate: startDate || null,
+    endDate: endDate || null,
+    fieldFilters,
+  };
 
   // Enhanced setCatalog that also clears datasets and field filters when catalog changes
   const handleSetCatalog = (newCatalog: string | null) => {
@@ -67,38 +63,29 @@ export const useFilters = () => {
   };
 
   // Enhanced setDatasets that clears field filters when datasets change
-  const handleSetDatasets = useCallback(
-    (newDatasets: string[]) => {
-      void setDatasetsRaw(newDatasets);
-      // Clear field filters when datasets change (they are dataset-specific)
-      void setFieldFiltersParam("");
-    },
-    [setDatasetsRaw, setFieldFiltersParam]
-  );
+  const handleSetDatasets = (newDatasets: string[]) => {
+    void setDatasetsRaw(newDatasets);
+    // Clear field filters when datasets change (they are dataset-specific)
+    void setFieldFiltersParam("");
+  };
 
   // Set field filters (full replace)
-  const setFieldFilters = useCallback(
-    (newFieldFilters: Record<string, string[]>) => {
-      const serialized = Object.keys(newFieldFilters).length > 0 ? JSON.stringify(newFieldFilters) : "";
-      void setFieldFiltersParam(serialized);
-    },
-    [setFieldFiltersParam]
-  );
+  const setFieldFilters = (newFieldFilters: Record<string, string[]>) => {
+    const serialized = Object.keys(newFieldFilters).length > 0 ? JSON.stringify(newFieldFilters) : "";
+    void setFieldFiltersParam(serialized);
+  };
 
   // Set a single field filter (merge with existing)
-  const setFieldFilter = useCallback(
-    (fieldPath: string, values: string[]) => {
-      const updated = { ...fieldFilters };
-      if (values.length > 0) {
-        updated[fieldPath] = values;
-      } else {
-        delete updated[fieldPath];
-      }
-      const serialized = Object.keys(updated).length > 0 ? JSON.stringify(updated) : "";
-      void setFieldFiltersParam(serialized);
-    },
-    [fieldFilters, setFieldFiltersParam]
-  );
+  const setFieldFilter = (fieldPath: string, values: string[]) => {
+    const updated = { ...fieldFilters };
+    if (values.length > 0) {
+      updated[fieldPath] = values;
+    } else {
+      delete updated[fieldPath];
+    }
+    const serialized = Object.keys(updated).length > 0 ? JSON.stringify(updated) : "";
+    void setFieldFiltersParam(serialized);
+  };
 
   // Helper function to remove a specific filter
   const handleRemoveFilter = (filterType: keyof FilterState, value?: string) => {
@@ -127,8 +114,8 @@ export const useFilters = () => {
   };
 
   // Computed values
-  const activeFilterCount = useMemo(() => getActiveFilterCount(filters), [filters]);
-  const hasActiveFiltersValue = useMemo(() => hasActiveFilters(filters), [filters]);
+  const activeFilterCount = getActiveFilterCount(filters);
+  const hasActiveFiltersValue = hasActiveFilters(filters);
 
   return {
     // Filter state
@@ -167,16 +154,13 @@ export const useSelectedEvent = () => {
     parseAsInteger.withOptions({ history: "push", shallow: true })
   );
 
-  const openEvent = useCallback(
-    (eventId: number) => {
-      void setSelectedEventId(eventId);
-    },
-    [setSelectedEventId]
-  );
+  const openEvent = (eventId: number) => {
+    void setSelectedEventId(eventId);
+  };
 
-  const closeEvent = useCallback(() => {
+  const closeEvent = () => {
     void setSelectedEventId(null);
-  }, [setSelectedEventId]);
+  };
 
   return { selectedEventId, isOpen: selectedEventId !== null, openEvent, closeEvent };
 };
@@ -211,25 +195,22 @@ export const useMapPosition = () => {
 
   const [zoom, setZoom] = useQueryState("zoom", parseAsFloat.withOptions({ history: "replace", shallow: true }));
 
-  const mapPosition: MapPosition = useMemo(() => ({ latitude, longitude, zoom }), [latitude, longitude, zoom]);
+  const mapPosition: MapPosition = { latitude, longitude, zoom };
 
   const hasMapPosition = latitude !== null && longitude !== null && zoom !== null;
 
-  const setMapPosition = useCallback(
-    (position: { latitude: number; longitude: number; zoom: number }) => {
-      // Round to 4 decimal places for cleaner URLs (~11m precision)
-      void setLatitude(Math.round(position.latitude * 10000) / 10000);
-      void setLongitude(Math.round(position.longitude * 10000) / 10000);
-      void setZoom(Math.round(position.zoom * 10) / 10);
-    },
-    [setLatitude, setLongitude, setZoom]
-  );
+  const setMapPosition = (position: { latitude: number; longitude: number; zoom: number }) => {
+    // Round to 4 decimal places for cleaner URLs (~11m precision)
+    void setLatitude(Math.round(position.latitude * 10000) / 10000);
+    void setLongitude(Math.round(position.longitude * 10000) / 10000);
+    void setZoom(Math.round(position.zoom * 10) / 10);
+  };
 
-  const clearMapPosition = useCallback(() => {
+  const clearMapPosition = () => {
     void setLatitude(null);
     void setLongitude(null);
     void setZoom(null);
-  }, [setLatitude, setLongitude, setZoom]);
+  };
 
   return { mapPosition, hasMapPosition, setMapPosition, clearMapPosition };
 };

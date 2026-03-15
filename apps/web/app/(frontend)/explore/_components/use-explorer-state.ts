@@ -12,7 +12,7 @@
 "use client";
 
 import type { LngLatBounds } from "maplibre-gl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ClusteredMapHandle } from "@/components/maps/clustered-map";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
@@ -59,7 +59,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const setFilterDrawerOpen = useUIStore((state) => state.setFilterDrawerOpen);
 
   // Bounds
-  const simpleBounds = useMemo(() => simplifyBounds(mapBounds), [mapBounds]);
+  const simpleBounds = simplifyBounds(mapBounds);
   const debouncedSimpleBounds = useDebounce(simpleBounds, 300);
 
   // Data fetching (with view scope)
@@ -87,42 +87,39 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
   const isLoadingInitialBounds = boundsLoading && !isInitialBoundsApplied;
 
-  const handleZoomToData = useCallback(() => {
+  const handleZoomToData = () => {
     if (boundsData?.bounds && mapRef.current) {
       mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
       setHasUserPanned(false);
     }
-  }, [boundsData]);
+  };
 
-  const handleBoundsChange = useCallback(
-    (newBounds: LngLatBounds | null, zoom?: number, center?: { lng: number; lat: number }) => {
-      if (newBounds) {
-        setMapBounds({
-          north: newBounds.getNorth(),
-          south: newBounds.getSouth(),
-          east: newBounds.getEast(),
-          west: newBounds.getWest(),
-        });
-        if (zoom != undefined) {
-          setMapZoom(Math.round(zoom));
-        }
-
-        // Notify caller about position change for URL persistence
-        if (center && zoom != undefined && onMapPositionChangeRef.current) {
-          onMapPositionChangeRef.current(center, zoom);
-        }
-
-        if (isInitialBoundsApplied) {
-          setHasUserPanned(true);
-        } else {
-          setIsInitialBoundsApplied(true);
-        }
-      } else {
-        setMapBounds(null);
+  const handleBoundsChange = (newBounds: LngLatBounds | null, zoom?: number, center?: { lng: number; lat: number }) => {
+    if (newBounds) {
+      setMapBounds({
+        north: newBounds.getNorth(),
+        south: newBounds.getSouth(),
+        east: newBounds.getEast(),
+        west: newBounds.getWest(),
+      });
+      if (zoom != undefined) {
+        setMapZoom(Math.round(zoom));
       }
-    },
-    [setMapBounds, isInitialBoundsApplied]
-  );
+
+      // Notify caller about position change for URL persistence
+      if (center && zoom != undefined && onMapPositionChangeRef.current) {
+        onMapPositionChangeRef.current(center, zoom);
+      }
+
+      if (isInitialBoundsApplied) {
+        setHasUserPanned(true);
+      } else {
+        setIsInitialBoundsApplied(true);
+      }
+    } else {
+      setMapBounds(null);
+    }
+  };
 
   return {
     map: {

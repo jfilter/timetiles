@@ -20,7 +20,7 @@ import {
   Label,
 } from "@timetiles/ui";
 import { AlertTriangle, Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useDeletionSummaryQuery, useScheduleDeletionMutation } from "@/lib/hooks/use-account-mutations";
 
@@ -74,33 +74,30 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- only reset on open change
 
   // When closing from success step, notify parent to refresh user data
-  const handleOpenChange = useCallback(
-    (newOpen: boolean) => {
-      if (!newOpen && step === "success") {
-        onDeletionScheduled();
-      }
-      onOpenChange(newOpen);
-    },
-    [step, onDeletionScheduled, onOpenChange]
-  );
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && step === "success") {
+      onDeletionScheduled();
+    }
+    onOpenChange(newOpen);
+  };
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     handleOpenChange(false);
-  }, [handleOpenChange]);
+  };
 
-  const handleSetStepConfirm = useCallback(() => {
+  const handleSetStepConfirm = () => {
     setStep("confirm");
-  }, []);
+  };
 
-  const handleSetStepSummary = useCallback(() => {
+  const handleSetStepSummary = () => {
     setStep("summary");
-  }, []);
+  };
 
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
-  }, []);
+  };
 
-  const handleScheduleDeletion = useCallback(() => {
+  const handleScheduleDeletion = () => {
     if (!password) {
       setDeletionError("Password is required");
       return;
@@ -117,7 +114,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
         setDeletionError(err instanceof Error ? err.message : "Failed to schedule deletion");
       }
     })();
-  }, [password, scheduleDeletionMutation]);
+  };
 
   const loading = step === "summary" ? isSummaryLoading : scheduleDeletionMutation.isPending;
   const error = step === "summary" ? summaryDisplayError : deletionError;

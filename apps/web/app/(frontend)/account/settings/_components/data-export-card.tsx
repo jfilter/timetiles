@@ -10,7 +10,6 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { AlertTriangle, Check, Clock, Download, Loader2 } from "lucide-react";
-import { useCallback, useMemo } from "react";
 
 import type { DataExport } from "@/lib/hooks/use-data-export";
 import {
@@ -164,24 +163,21 @@ export const DataExportCard = () => {
   const { latestExport, isLoading } = useLatestExportQuery();
   const requestExport = useRequestDataExportMutation();
 
-  const handleRequestExport = useCallback(() => {
+  const handleRequestExport = () => {
     requestExport.mutate();
-  }, [requestExport]);
+  };
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = () => {
     if (latestExport?.id) {
       globalThis.location.href = getExportDownloadUrl(latestExport.id);
     }
-  }, [latestExport?.id]);
+  };
 
-  const status: ExportStatus = useMemo(
-    () => ({
-      isPending: latestExport?.status === "pending" || latestExport?.status === "processing",
-      isReady: latestExport?.status === "ready",
-      isFailed: latestExport?.status === "failed",
-    }),
-    [latestExport?.status]
-  );
+  const status: ExportStatus = {
+    isPending: latestExport?.status === "pending" || latestExport?.status === "processing",
+    isReady: latestExport?.status === "ready",
+    isFailed: latestExport?.status === "failed",
+  };
 
   const showInfoBox = !status.isPending && !status.isReady && !status.isFailed;
 

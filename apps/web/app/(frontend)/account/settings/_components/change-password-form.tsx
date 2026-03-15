@@ -10,7 +10,7 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Key, Loader2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
@@ -33,40 +33,28 @@ export const ChangePasswordForm = () => {
     },
   });
 
-  const handleCurrentPasswordChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCurrentPassword(e.target.value);
-      reset();
-    },
-    [reset]
-  );
+  const handleCurrentPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentPassword(e.target.value);
+    reset();
+  };
 
-  const handleNewPasswordChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setNewPassword(e.target.value);
-      reset();
-    },
-    [reset]
-  );
+  const handleNewPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPassword(e.target.value);
+    reset();
+  };
 
-  const handleConfirmPasswordChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setConfirmPassword(e.target.value);
-      reset();
-    },
-    [reset]
-  );
+  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setConfirmPassword(e.target.value);
+    reset();
+  };
 
-  const handleSubmit = useCallback(
-    (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-      if (!currentPassword || !newPassword || !confirmPassword) return;
+    if (!currentPassword || !newPassword || !confirmPassword) return;
 
-      mutate({ currentPassword, newPassword, confirmPassword });
-    },
-    [currentPassword, newPassword, confirmPassword, mutate]
-  );
+    mutate({ currentPassword, newPassword, confirmPassword });
+  };
 
   return (
     <Card>

@@ -15,7 +15,6 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
 import type { AggregateResponse, ClusterStatsResponse, EventListItem, HistogramResponse } from "@/lib/schemas/events";
@@ -335,10 +334,7 @@ export const useEventsInfiniteFlattened = (
   const query = useEventsInfiniteQuery(filters, bounds, limit, enabled, scope);
 
   // Flatten all pages into a single array
-  const events = useMemo(() => {
-    if (!query.data?.pages) return [];
-    return query.data.pages.flatMap((page) => page.events);
-  }, [query.data?.pages]);
+  const events = query.data?.pages ? query.data.pages.flatMap((page) => page.events) : [];
 
   // Get total from first page (all pages have same total)
   const total = query.data?.pages[0]?.total ?? 0;

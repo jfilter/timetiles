@@ -163,10 +163,9 @@ const FeatureWithContext = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof featureVariants>
 >(({ accent = "none", children, ...props }, ref) => {
   const resolvedAccent = accent ?? "none";
-  const memoizedContext = React.useMemo(() => ({ accent: resolvedAccent }), [resolvedAccent]);
 
   return (
-    <FeatureContext.Provider value={memoizedContext}>
+    <FeatureContext.Provider value={{ accent: resolvedAccent }}>
       <Feature ref={ref} accent={resolvedAccent} {...props}>
         {children}
       </Feature>

@@ -10,7 +10,6 @@
  * @module
  * @category Components
  */
-/* eslint-disable react-perf/jsx-no-new-object-as-prop -- inline styles required; Tailwind CSS unavailable in global error boundary */
 "use client";
 
 import { useEffect } from "react";

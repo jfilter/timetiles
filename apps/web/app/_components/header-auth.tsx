@@ -21,7 +21,6 @@ import {
 import { LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
 
 import { useLogoutMutation } from "@/lib/hooks/use-auth-mutations";
 import type { User } from "@/payload-types";
@@ -34,14 +33,14 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
   const router = useRouter();
   const logoutMutation = useLogoutMutation();
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = () => {
     logoutMutation.mutate(undefined, {
       onSettled: () => {
         router.refresh();
         router.push("/");
       },
     });
-  }, [logoutMutation, router]);
+  };
 
   // Not logged in - show sign in button
   if (!user) {

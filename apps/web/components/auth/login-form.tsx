@@ -12,7 +12,6 @@
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import Link from "next/link";
-import { useCallback } from "react";
 
 import { loginRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFormMutation } from "@/lib/hooks/use-form-mutation";
@@ -36,16 +35,13 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
     onError: (err) => onError?.(err.message),
   });
 
-  const handleSubmit = useCallback(
-    (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-      if (!email || !password) return;
+    if (!email || !password) return;
 
-      mutate({ email, password });
-    },
-    [email, password, mutate]
-  );
+    mutate({ email, password });
+  };
 
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>

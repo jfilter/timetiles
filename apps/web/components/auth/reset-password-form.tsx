@@ -11,7 +11,6 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { useCallback } from "react";
 
 import { validatePasswords } from "@/lib/constants/validation";
 import { resetPasswordRequest } from "@/lib/hooks/use-auth-mutations";
@@ -39,16 +38,13 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
     onSuccess: () => onSuccess?.(),
   });
 
-  const handleSubmit = useCallback(
-    (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-      if (!password || !confirmPassword) return;
+    if (!password || !confirmPassword) return;
 
-      mutate({ token, password, confirmPassword });
-    },
-    [password, confirmPassword, token, mutate]
-  );
+    mutate({ token, password, confirmPassword });
+  };
 
   if (status === "success") {
     return null;

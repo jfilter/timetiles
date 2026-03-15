@@ -14,7 +14,6 @@ import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { AlertCircleIcon, CheckCircle2Icon, ExternalLinkIcon, Loader2Icon, MapIcon, RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo } from "react";
 
 import { type ProgressApiResponse, useImportProgressQuery } from "@/lib/hooks/use-import-progress-query";
 
@@ -142,29 +141,29 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
   const { importFileId, error: wizardError } = state;
 
   const { data: progressData, error: progressError } = useImportProgressQuery(importFileId ?? null);
-  const progress = useMemo(() => (progressData ? transformProgressResponse(progressData) : null), [progressData]);
+  const progress = progressData ? transformProgressResponse(progressData) : null;
   const pollError = progressError instanceof Error ? progressError.message : null;
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = () => {
     complete();
-  }, [complete]);
+  };
 
-  const handleRetry = useCallback(() => {
+  const handleRetry = () => {
     reset();
-  }, [reset]);
+  };
 
   const isCompleted = progress?.status === "completed";
   const isFailed = progress?.status === "failed" || !!wizardError;
-  const status: ProcessingStatus = useMemo(() => {
+  const status: ProcessingStatus = (() => {
     if (isCompleted) return "completed";
     if (isFailed) return "failed";
     return "processing";
-  }, [isCompleted, isFailed]);
+  })();
 
   const errorMessage = progress?.error ?? wizardError ?? pollError;
   const progressPercent = calculateProgressPercent(progress);
   const stageLabel = STAGE_LABELS[progress?.currentStage ?? ""] ?? progress?.currentStage ?? "Processing";
-  const progressBarStyle = useMemo(() => ({ width: `${progressPercent}%` }), [progressPercent]);
+  const progressBarStyle = { width: `${progressPercent}%` };
 
   return (
     <div className={cn("space-y-8", className)}>

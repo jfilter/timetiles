@@ -22,7 +22,7 @@ const nextConfig = {
     { source: "/dashboard/forgot-password", destination: "/login", permanent: false },
     { source: "/dashboard/reset-password", destination: "/login", permanent: false },
   ],
-  reactCompiler: false,
+  reactCompiler: true,
   experimental: {
     // Optimize barrel file imports for faster builds and smaller bundles
     // See: https://vercel.com/blog/how-we-optimized-package-imports-in-next-js

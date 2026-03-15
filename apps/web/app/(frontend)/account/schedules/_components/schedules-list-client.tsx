@@ -23,7 +23,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   useDeleteScheduledImportMutation,
@@ -199,53 +199,40 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
   const deleteMutation = useDeleteScheduledImportMutation();
   const triggerMutation = useTriggerScheduledImportMutation();
 
-  const clearLoading = useCallback((id: number) => {
+  const clearLoading = (id: number) => {
     setLoadingStates((prev) => {
       const newState = { ...prev };
       delete newState[id];
       return newState;
     });
-  }, []);
+  };
 
-  const handleToggleEnabled = useCallback(
-    (id: number, currentEnabled: boolean) => {
-      setLoadingStates((prev) => ({ ...prev, [id]: "toggling" }));
-      toggleMutation.mutate({ id, enabled: !currentEnabled }, { onSettled: () => clearLoading(id) });
-    },
-    [toggleMutation, clearLoading]
-  );
+  const handleToggleEnabled = (id: number, currentEnabled: boolean) => {
+    setLoadingStates((prev) => ({ ...prev, [id]: "toggling" }));
+    toggleMutation.mutate({ id, enabled: !currentEnabled }, { onSettled: () => clearLoading(id) });
+  };
 
-  const handleManualRun = useCallback(
-    (id: number) => {
-      setLoadingStates((prev) => ({ ...prev, [id]: "running" }));
-      triggerMutation.mutate(id, { onSettled: () => clearLoading(id) });
-    },
-    [triggerMutation, clearLoading]
-  );
+  const handleManualRun = (id: number) => {
+    setLoadingStates((prev) => ({ ...prev, [id]: "running" }));
+    triggerMutation.mutate(id, { onSettled: () => clearLoading(id) });
+  };
 
-  const handleDelete = useCallback(
-    (id: number) => {
-      if (!confirm("Are you sure you want to delete this scheduled import?")) return;
-      setLoadingStates((prev) => ({ ...prev, [id]: "deleting" }));
-      deleteMutation.mutate(id, { onSettled: () => clearLoading(id) });
-    },
-    [deleteMutation, clearLoading]
-  );
+  const handleDelete = (id: number) => {
+    if (!confirm("Are you sure you want to delete this scheduled import?")) return;
+    setLoadingStates((prev) => ({ ...prev, [id]: "deleting" }));
+    deleteMutation.mutate(id, { onSettled: () => clearLoading(id) });
+  };
 
-  const scheduleCallbacks = useMemo(
-    () =>
-      Object.fromEntries(
-        schedules.map((s) => [
-          s.id,
-          {
-            onToggle: () => handleToggleEnabled(s.id, s.enabled ?? false),
-            onRun: () => handleManualRun(s.id),
-            onDelete: () => handleDelete(s.id),
-          },
-        ])
-      ) as Record<number, { onToggle: () => void; onRun: () => void; onDelete: () => void }>,
-    [schedules, handleToggleEnabled, handleManualRun, handleDelete]
-  );
+  const scheduleCallbacks = Object.fromEntries(
+    schedules.map((s) => [
+      s.id,
+      {
+        onToggle: () => handleToggleEnabled(s.id, s.enabled ?? false),
+        onRun: () => handleManualRun(s.id),
+        onDelete: () => handleDelete(s.id),
+      },
+    ])
+  ) as Record<number, { onToggle: () => void; onRun: () => void; onDelete: () => void }>;
 
   if (schedules.length === 0) {
     return (

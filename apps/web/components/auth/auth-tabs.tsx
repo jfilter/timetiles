@@ -11,7 +11,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { LoginForm } from "./login-form";
 import { RegisterForm } from "./register-form";
@@ -28,17 +28,17 @@ export interface AuthTabsProps {
 export const AuthTabs = ({ defaultTab = "signin", onSuccess, className }: Readonly<AuthTabsProps>) => {
   const [activeTab, setActiveTab] = useState(defaultTab);
 
-  const handleTabChange = useCallback((value: string) => {
+  const handleTabChange = (value: string) => {
     setActiveTab(value as "signin" | "signup");
-  }, []);
+  };
 
-  const handleSwitchToSignup = useCallback(() => {
+  const handleSwitchToSignup = () => {
     setActiveTab("signup");
-  }, []);
+  };
 
-  const handleSwitchToSignin = useCallback(() => {
+  const handleSwitchToSignin = () => {
     setActiveTab("signin");
-  }, []);
+  };
 
   return (
     <div className={cn("w-full max-w-md", className)}>

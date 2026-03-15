@@ -29,7 +29,7 @@ import {
   Trash2,
   Type,
 } from "lucide-react";
-import { memo, useCallback, useState } from "react";
+import { useState } from "react";
 
 import {
   createTransform,
@@ -71,9 +71,9 @@ interface AddTransformMenuItemProps {
   onAdd: (type: TransformType) => void;
 }
 
-const AddTransformMenuItem = memo(({ type, onAdd }: Readonly<AddTransformMenuItemProps>) => {
+const AddTransformMenuItem = ({ type, onAdd }: Readonly<AddTransformMenuItemProps>) => {
   const Icon = TRANSFORM_ICONS[type];
-  const handleClick = useCallback(() => onAdd(type), [onAdd, type]);
+  const handleClick = () => onAdd(type);
 
   return (
     <DropdownMenuItem onClick={handleClick}>
@@ -81,8 +81,7 @@ const AddTransformMenuItem = memo(({ type, onAdd }: Readonly<AddTransformMenuIte
       {TRANSFORM_TYPE_LABELS[type]}
     </DropdownMenuItem>
   );
-});
-AddTransformMenuItem.displayName = "AddTransformMenuItem";
+};
 
 // Separate component for each transform item
 interface TransformItemProps {
@@ -95,126 +94,108 @@ interface TransformItemProps {
   onUpdate: (id: string, updates: Partial<ImportTransform>) => void;
 }
 
-const TransformItem = memo(
-  ({
-    transform,
-    isEditing,
-    sourceColumns,
-    onToggleEdit,
-    onToggleActive,
-    onDelete,
-    onUpdate,
-  }: Readonly<TransformItemProps>) => {
-    const Icon = TRANSFORM_ICONS[transform.type];
-    const isValid = isTransformValid(transform);
+const TransformItem = ({
+  transform,
+  isEditing,
+  sourceColumns,
+  onToggleEdit,
+  onToggleActive,
+  onDelete,
+  onUpdate,
+}: Readonly<TransformItemProps>) => {
+  const Icon = TRANSFORM_ICONS[transform.type];
+  const isValid = isTransformValid(transform);
 
-    const handleEditClick = useCallback(() => {
-      onToggleEdit(isEditing ? null : transform.id);
-    }, [isEditing, transform.id, onToggleEdit]);
+  const handleEditClick = () => {
+    onToggleEdit(isEditing ? null : transform.id);
+  };
 
-    const handleToggleActive = useCallback(() => {
-      onToggleActive(transform.id);
-    }, [transform.id, onToggleActive]);
+  const handleToggleActive = () => {
+    onToggleActive(transform.id);
+  };
 
-    const handleDelete = useCallback(() => {
-      onDelete(transform.id);
-    }, [transform.id, onDelete]);
+  const handleDelete = () => {
+    onDelete(transform.id);
+  };
 
-    const handleUpdate = useCallback(
-      (updates: Partial<ImportTransform>) => {
-        onUpdate(transform.id, updates);
-      },
-      [transform.id, onUpdate]
-    );
+  const handleUpdate = (updates: Partial<ImportTransform>) => {
+    onUpdate(transform.id, updates);
+  };
 
-    return (
-      <div
-        className={cn(
-          "rounded-lg border p-3 transition-colors",
-          !transform.active && "opacity-50",
-          isEditing && "ring-cartographic-blue ring-2"
-        )}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <button type="button" className="flex flex-1 items-start gap-3 text-left" onClick={handleEditClick}>
-            <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", TRANSFORM_COLORS[transform.type])} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-foreground font-medium">{TRANSFORM_TYPE_LABELS[transform.type]}</span>
-                {!isValid && (
-                  <span className="bg-cartographic-terracotta/10 text-cartographic-terracotta rounded px-1.5 py-0.5 text-[10px] font-medium">
-                    Incomplete
-                  </span>
-                )}
-              </div>
-              <TransformSummary transform={transform} />
+  return (
+    <div
+      className={cn(
+        "rounded-lg border p-3 transition-colors",
+        !transform.active && "opacity-50",
+        isEditing && "ring-cartographic-blue ring-2"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <button type="button" className="flex flex-1 items-start gap-3 text-left" onClick={handleEditClick}>
+          <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", TRANSFORM_COLORS[transform.type])} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-foreground font-medium">{TRANSFORM_TYPE_LABELS[transform.type]}</span>
+              {!isValid && (
+                <span className="bg-cartographic-terracotta/10 text-cartographic-terracotta rounded px-1.5 py-0.5 text-[10px] font-medium">
+                  Incomplete
+                </span>
+              )}
             </div>
-          </button>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={handleToggleActive}
-              title={transform.active ? "Disable" : "Enable"}
-            >
-              <span className={cn("h-2 w-2 rounded-full", transform.active ? "bg-cartographic-forest" : "bg-muted")} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <TransformSummary transform={transform} />
           </div>
+        </button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={handleToggleActive}
+            title={transform.active ? "Disable" : "Enable"}
+          >
+            <span className={cn("h-2 w-2 rounded-full", transform.active ? "bg-cartographic-forest" : "bg-muted")} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
-
-        {isEditing && (
-          <div className="mt-3 border-t pt-3">
-            <TransformEditor transform={transform} onChange={handleUpdate} sourceColumns={sourceColumns} />
-          </div>
-        )}
       </div>
-    );
-  }
-);
-TransformItem.displayName = "TransformItem";
+
+      {isEditing && (
+        <div className="mt-3 border-t pt-3">
+          <TransformEditor transform={transform} onChange={handleUpdate} sourceColumns={sourceColumns} />
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const TransformList = ({ transforms, onTransformsChange, sourceColumns }: Readonly<TransformListProps>) => {
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const addTransform = useCallback(
-    (type: TransformType) => {
-      const newTransform = createTransform(type);
-      onTransformsChange([...transforms, newTransform]);
-      setEditingId(newTransform.id);
-    },
-    [transforms, onTransformsChange]
-  );
+  const addTransform = (type: TransformType) => {
+    const newTransform = createTransform(type);
+    onTransformsChange([...transforms, newTransform]);
+    setEditingId(newTransform.id);
+  };
 
-  const updateTransform = useCallback(
-    (id: string, updates: Partial<ImportTransform>) => {
-      onTransformsChange(transforms.map((t) => (t.id === id ? ({ ...t, ...updates } as ImportTransform) : t)));
-    },
-    [transforms, onTransformsChange]
-  );
+  const updateTransform = (id: string, updates: Partial<ImportTransform>) => {
+    onTransformsChange(transforms.map((t) => (t.id === id ? ({ ...t, ...updates } as ImportTransform) : t)));
+  };
 
-  const deleteTransform = useCallback(
-    (id: string) => {
-      onTransformsChange(transforms.filter((t) => t.id !== id));
-      if (editingId === id) setEditingId(null);
-    },
-    [transforms, onTransformsChange, editingId]
-  );
+  const deleteTransform = (id: string) => {
+    onTransformsChange(transforms.filter((t) => t.id !== id));
+    if (editingId === id) setEditingId(null);
+  };
 
-  const toggleActive = useCallback(
-    (id: string) => {
-      onTransformsChange(transforms.map((t) => (t.id === id ? { ...t, active: !t.active } : t)));
-    },
-    [transforms, onTransformsChange]
-  );
+  const toggleActive = (id: string) => {
+    onTransformsChange(transforms.map((t) => (t.id === id ? { ...t, active: !t.active } : t)));
+  };
 
   return (
     <Card>

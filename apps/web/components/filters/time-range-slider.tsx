@@ -182,10 +182,7 @@ export const TimeRangeSlider = ({
                   ? "bg-cartographic-blue dark:bg-cartographic-blue/80"
                   : "bg-cartographic-navy/20 dark:bg-cartographic-charcoal/20"
               }`}
-              style={
-                // eslint-disable-next-line react-perf/jsx-no-new-object-as-prop -- Dynamic height per bar
-                { height: `${Math.max(4, bar.normalizedHeight * 100)}%` }
-              }
+              style={{ height: `${Math.max(4, bar.normalizedHeight * 100)}%` }}
               title={`${formatShortDate(bar.date)}: ${bar.count} events`}
             />
           ))}

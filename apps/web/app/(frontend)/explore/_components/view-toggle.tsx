@@ -14,7 +14,6 @@ import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { LayoutList, Map } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
 
 interface ViewToggleProps {
   currentView: "map" | "list";
@@ -30,17 +29,17 @@ export const ViewToggle = ({ currentView }: ViewToggleProps) => {
   const mapUrl = `/explore${queryPart}`;
   const listUrl = `/explore/list${queryPart}`;
 
-  const handleMapClick = useCallback(() => {
+  const handleMapClick = () => {
     if (currentView !== "map") {
       router.push(mapUrl);
     }
-  }, [currentView, mapUrl, router]);
+  };
 
-  const handleListClick = useCallback(() => {
+  const handleListClick = () => {
     if (currentView !== "list") {
       router.push(listUrl);
     }
-  }, [currentView, listUrl, router]);
+  };
 
   return (
     // Hidden on mobile since both /explore and /explore/list show the same tabbed interface

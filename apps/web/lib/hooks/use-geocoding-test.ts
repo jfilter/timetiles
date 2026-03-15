@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { fetchJson } from "@/lib/api/http-error";
 
@@ -30,7 +30,7 @@ export const useGeocodingTest = () => {
   const [data, setData] = useState<TestResults | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const mutate = useCallback(async (address: string) => {
+  const mutate = async (address: string) => {
     if (!address.trim()) return;
 
     setIsPending(true);
@@ -48,7 +48,7 @@ export const useGeocodingTest = () => {
     } finally {
       setIsPending(false);
     }
-  }, []);
+  };
 
   return { mutate, isPending, data, error };
 };

@@ -110,8 +110,7 @@ export interface TimelineItemProps extends React.HTMLAttributes<HTMLDivElement> 
 export const TimelineItem = React.forwardRef<HTMLDivElement, TimelineItemProps>(
   ({ className, index = 0, children, ...props }, ref) => {
     // Stagger animation delays for each item
-    const delay = `${index * 150}ms`;
-    const style = React.useMemo(() => ({ animationDelay: delay }), [delay]);
+    const style = { animationDelay: `${index * 150}ms` };
     return (
       <div ref={ref} className={cn(timelineItemVariants(), className)} style={style} {...props}>
         {children}

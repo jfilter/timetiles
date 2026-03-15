@@ -12,7 +12,7 @@
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import { useNavigationConfig } from "./navigation-config-context";
 import { STEP_NAV_CONFIGS } from "./step-nav-configs";
@@ -41,11 +41,11 @@ export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>)
   const isFirstVisibleStep = startedAuthenticated ? currentStep === 2 : currentStep === 1;
   const isLastStep = currentStep === 6;
 
-  const handleBack = useCallback(() => {
+  const handleBack = () => {
     prevStep();
-  }, [prevStep]);
+  };
 
-  const handleNext = useCallback(() => {
+  const handleNext = () => {
     if (configOnNext) {
       void (async () => {
         try {
@@ -57,35 +57,35 @@ export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>)
     } else {
       nextStep();
     }
-  }, [configOnNext, nextStep]);
+  };
 
   // Determine next button label
-  const buttonLabel = useMemo(() => {
+  const buttonLabel = (() => {
     if (configNextLabel) return configNextLabel;
     if (currentStep === 5) return "Start Import";
     if (currentStep === 6) return "Done";
     return "Continue";
-  }, [configNextLabel, currentStep]);
+  })();
 
   // Determine next button icon
-  const buttonIcon = useMemo(() => {
+  const buttonIcon = (() => {
     if (isLoading) return <Loader2Icon className="h-4 w-4 animate-spin" />;
     if (currentStep === 5) return <CheckIcon className="h-4 w-4" />;
     return <ArrowRightIcon className="h-4 w-4" />;
-  }, [isLoading, currentStep]);
+  })();
 
-  const handleReset = useCallback(() => {
+  const handleReset = () => {
     reset();
     setShowResetConfirm(false);
-  }, [reset]);
+  };
 
-  const showConfirmDialog = useCallback(() => {
+  const showConfirmDialog = () => {
     setShowResetConfirm(true);
-  }, []);
+  };
 
-  const hideConfirmDialog = useCallback(() => {
+  const hideConfirmDialog = () => {
     setShowResetConfirm(false);
-  }, []);
+  };
 
   return (
     <div className={cn("flex items-center justify-between border-t pt-6", className)} data-testid="wizard-navigation">

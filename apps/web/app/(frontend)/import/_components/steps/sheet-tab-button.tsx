@@ -8,7 +8,6 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircleIcon } from "lucide-react";
-import { memo, useCallback } from "react";
 
 export interface SheetTabButtonProps {
   sheetIndex: number;
@@ -19,30 +18,34 @@ export interface SheetTabButtonProps {
   onSelect: (index: number) => void;
 }
 
-export const SheetTabButton = memo(
-  ({ sheetIndex, displayName, rowCount, isComplete, isActive, onSelect }: Readonly<SheetTabButtonProps>) => {
-    const handleClick = useCallback(() => {
-      onSelect(sheetIndex);
-    }, [onSelect, sheetIndex]);
+export const SheetTabButton = ({
+  sheetIndex,
+  displayName,
+  rowCount,
+  isComplete,
+  isActive,
+  onSelect,
+}: Readonly<SheetTabButtonProps>) => {
+  const handleClick = () => {
+    onSelect(sheetIndex);
+  };
 
-    return (
-      <button
-        type="button"
-        onClick={handleClick}
-        data-testid={`sheet-tab-${sheetIndex}`}
-        className={cn(
-          "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
-          isActive
-            ? "border-cartographic-blue bg-cartographic-blue/10 text-cartographic-blue"
-            : "border-cartographic-navy/20 hover:border-cartographic-navy/40 text-cartographic-charcoal",
-          isComplete && !isActive && "border-cartographic-forest/40 bg-cartographic-forest/5"
-        )}
-      >
-        {isComplete && <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />}
-        <span>{displayName}</span>
-        <span className="text-cartographic-navy/50 font-mono text-xs">({rowCount})</span>
-      </button>
-    );
-  }
-);
-SheetTabButton.displayName = "SheetTabButton";
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      data-testid={`sheet-tab-${sheetIndex}`}
+      className={cn(
+        "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
+        isActive
+          ? "border-cartographic-blue bg-cartographic-blue/10 text-cartographic-blue"
+          : "border-cartographic-navy/20 hover:border-cartographic-navy/40 text-cartographic-charcoal",
+        isComplete && !isActive && "border-cartographic-forest/40 bg-cartographic-forest/5"
+      )}
+    >
+      {isComplete && <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />}
+      <span>{displayName}</span>
+      <span className="text-cartographic-navy/50 font-mono text-xs">({rowCount})</span>
+    </button>
+  );
+};

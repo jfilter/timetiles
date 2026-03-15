@@ -115,8 +115,7 @@ export interface DetailsItemProps extends React.HTMLAttributes<HTMLDivElement> {
 export const DetailsItem = React.forwardRef<HTMLDivElement, DetailsItemProps>(
   ({ className, index = 0, children, ...props }, ref) => {
     // Stagger animation delays
-    const delay = `${index * 150}ms`;
-    const style = React.useMemo(() => ({ animationDelay: delay }), [delay]);
+    const style = { animationDelay: `${index * 150}ms` };
 
     return (
       <div ref={ref} className={cn(detailsItemVariants(), className)} style={style} {...props}>

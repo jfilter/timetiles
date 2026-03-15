@@ -11,7 +11,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback } from "react";
+import { Suspense } from "react";
 
 import { AuthTabs } from "@/components/auth";
 
@@ -20,11 +20,11 @@ const LoginContent = () => {
 
   const redirectTo = searchParams.get("redirect") ?? "/";
 
-  const handleSuccess = useCallback(() => {
+  const handleSuccess = () => {
     // Use full page navigation to ensure server components re-render with new auth state
     // router.refresh() + router.push() has race condition where navigation happens before refresh
     globalThis.location.href = redirectTo;
-  }, [redirectTo]);
+  };
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">

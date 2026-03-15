@@ -11,7 +11,6 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { useCallback } from "react";
 
 import { forgotPasswordRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFormMutation } from "@/lib/hooks/use-form-mutation";
@@ -31,16 +30,13 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
     onSuccess: () => onSuccess?.(),
   });
 
-  const handleSubmit = useCallback(
-    (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-      if (!email) return;
+    if (!email) return;
 
-      mutate({ email });
-    },
-    [email, mutate]
-  );
+    mutate({ email });
+  };
 
   if (status === "success") {
     return (

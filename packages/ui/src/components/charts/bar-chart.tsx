@@ -10,7 +10,6 @@
 "use client";
 
 import type { EChartsOption } from "echarts";
-import { useMemo } from "react";
 
 import { cartographicColors } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
@@ -62,84 +61,78 @@ export const BarChart = ({
   onRetry,
   onBarClick,
 }: BarChartProps) => {
-  const chartOption: EChartsOption = useMemo(() => {
-    // Extract labels and values
-    const labels = data.map((item) => item.label);
-    const values = data.map((item) => item.value);
+  // Extract labels and values
+  const labels = data.map((item) => item.label);
+  const values = data.map((item) => item.value);
 
-    return {
-      // Animation config
-      animation: true,
-      animationDuration: 300,
-      animationDurationUpdate: 300,
-      animationEasing: "cubicOut",
-      animationEasingUpdate: "cubicOut",
+  const chartOption: EChartsOption = {
+    // Animation config
+    animation: true,
+    animationDuration: 300,
+    animationDurationUpdate: 300,
+    animationEasing: "cubicOut",
+    animationEasingUpdate: "cubicOut",
 
-      // Grid
-      grid: { left: "15%", right: "10%", bottom: "10%", top: "5%", containLabel: true },
+    // Grid
+    grid: { left: "15%", right: "10%", bottom: "10%", top: "5%", containLabel: true },
 
-      // Horizontal bar chart
-      xAxis: { type: "value", name: "Count" },
-      yAxis: {
-        type: "category",
-        data: labels, // Fixed category order
-        inverse: true,
-      },
+    // Horizontal bar chart
+    xAxis: { type: "value", name: "Count" },
+    yAxis: {
+      type: "category",
+      data: labels, // Fixed category order
+      inverse: true,
+    },
 
-      // Series
-      series: [
-        {
-          type: "bar",
-          data: values.map((value, index) => ({
-            value,
-            name: labels[index], // Track by name
-            itemStyle: {
-              color: Array.isArray(theme?.itemColor)
-                ? theme.itemColor[0]
-                : (theme?.itemColor ?? cartographicColors.blue),
-            },
-          })),
-          universalTransition: true,
-          animationDuration: 300,
-          animationDurationUpdate: 300,
-          label: {
-            show: true,
-            position: "right",
-            formatter: (params: unknown) => {
-              if (typeof params === "object" && params !== null && "value" in params) {
-                const value = (params as { value?: unknown }).value;
-                if (typeof value === "number" || typeof value === "string") {
-                  return value.toString();
-                }
+    // Series
+    series: [
+      {
+        type: "bar",
+        data: values.map((value, index) => ({
+          value,
+          name: labels[index], // Track by name
+          itemStyle: {
+            color: Array.isArray(theme?.itemColor) ? theme.itemColor[0] : (theme?.itemColor ?? cartographicColors.blue),
+          },
+        })),
+        universalTransition: true,
+        animationDuration: 300,
+        animationDurationUpdate: 300,
+        label: {
+          show: true,
+          position: "right",
+          formatter: (params: unknown) => {
+            if (typeof params === "object" && params !== null && "value" in params) {
+              const value = (params as { value?: unknown }).value;
+              if (typeof value === "number" || typeof value === "string") {
+                return value.toString();
               }
-              return "0";
-            },
+            }
+            return "0";
           },
         },
-      ],
-    };
-  }, [data, theme?.itemColor]);
+      },
+    ],
+  };
 
   // Create event handlers
   // Very important to depend on data to enable animation on data change.
   // Otherwise the chart will be re-rendered without animation on data updates.
-  const onEventsHandler = useMemo(() => {
-    if (!onBarClick) return undefined;
+  const onEventsHandler = onBarClick
+    ? {
+        click: (params: unknown) => {
+          if (!isValidClickParams(params)) return;
 
-    return {
-      click: (params: unknown) => {
-        if (!isValidClickParams(params)) return;
+          const dataIndex = params.dataIndex;
+          if (typeof dataIndex !== "number" || dataIndex < 0 || dataIndex >= data.length) return;
 
-        const dataIndex = params.dataIndex;
-        if (typeof dataIndex !== "number" || dataIndex < 0 || dataIndex >= data.length) return;
-
-        const item = data[dataIndex];
-        if (item) {
-          onBarClick(item, dataIndex);
-        }
-      },
-    };
-  }, [onBarClick, data]);
+          const item = data[dataIndex];
+          if (item) {
+            onBarClick(item, dataIndex);
+          }
+        },
+      }
+    : undefined;
 
   // Handle error state
   if (isError && !isInitialLoad) {

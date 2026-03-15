@@ -15,7 +15,6 @@ import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, ExternalLink, MapPin, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import { formatDate } from "@/lib/utils/date";
@@ -62,10 +61,7 @@ export const EventDetailContent = ({
   onRetry,
 }: EventDetailContentProps) => {
   // Get additional data fields (excluding known fields)
-  const knownFields = useMemo(
-    () => new Set(["title", "name", "description", "startDate", "endDate", "city", "country", "id"]),
-    []
-  );
+  const knownFields = new Set(["title", "name", "description", "startDate", "endDate", "city", "country", "id"]);
 
   // Show loading state
   if (isLoading) {

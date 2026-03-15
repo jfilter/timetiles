@@ -11,7 +11,6 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { useCallback, useMemo } from "react";
 
 import { EventDetailContent, EventDetailError, EventDetailSkeleton } from "@/components/events";
 import { useEventDetailQuery } from "@/lib/hooks/use-events-queries";
@@ -40,25 +39,22 @@ export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) =>
 
   const { data: event, isLoading, error, refetch } = useEventDetailQuery(eventId);
 
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        onClose();
-      }
-    },
-    [onClose]
-  );
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
 
-  const handleRetry = useCallback(() => {
+  const handleRetry = () => {
     void refetch();
-  }, [refetch]);
+  };
 
   // Compute dialog title without nested ternary
-  const dialogTitle = useMemo(() => {
+  const dialogTitle = (() => {
     if (isLoading) return "Loading event details";
     if (event) return `Event: ${getEventTitle(event)}`;
     return "Event details";
-  }, [isLoading, event]);
+  })();
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>

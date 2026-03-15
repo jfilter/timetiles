@@ -11,7 +11,6 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckIcon } from "lucide-react";
-import { useCallback, useMemo } from "react";
 
 import { useWizard } from "./wizard-context";
 import { WIZARD_STEPS, type WizardStep } from "./wizard-reducer";
@@ -37,11 +36,11 @@ const StepButton = ({
   isClickable,
   onNavigate,
 }: Readonly<StepButtonProps>) => {
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     if (isClickable) {
       onNavigate(step);
     }
-  }, [isClickable, onNavigate, step]);
+  };
 
   return (
     <button
@@ -70,26 +69,18 @@ export const WizardProgress = ({ className }: Readonly<WizardProgressProps>) => 
   // Hide auth step only if user was already authenticated when they started the wizard
   // (not if they logged in during the wizard flow)
   const skipAuthStep = startedAuthenticated;
-  const visibleSteps = useMemo(
-    () => (skipAuthStep ? WIZARD_STEPS.filter((s) => s.step !== 1) : WIZARD_STEPS),
-    [skipAuthStep]
-  );
+  const visibleSteps = skipAuthStep ? WIZARD_STEPS.filter((s) => s.step !== 1) : WIZARD_STEPS;
 
-  const canNavigateTo = useMemo(() => {
-    // Can navigate back to any completed step
-    // Cannot skip ahead
-    // Cannot navigate during processing (step 6)
-    // Cannot navigate to auth step if skipped
-    return (step: WizardStep) => step < currentStep && currentStep !== 6 && !(skipAuthStep && step === 1);
-  }, [currentStep, skipAuthStep]);
+  // Can navigate back to any completed step
+  // Cannot skip ahead
+  // Cannot navigate during processing (step 6)
+  // Cannot navigate to auth step if skipped
+  const canNavigateTo = (step: WizardStep) => step < currentStep && currentStep !== 6 && !(skipAuthStep && step === 1);
 
   // Calculate progress based on visible steps
   const currentStepIndex = visibleSteps.findIndex((s) => s.step === currentStep);
   const progressPercent = (currentStepIndex / (visibleSteps.length - 1)) * 100;
-  const progressLineStyle = useMemo(
-    () => ({ width: `calc(${progressPercent}% - 32px + ${progressPercent}% * 32px / 100%)` }),
-    [progressPercent]
-  );
+  const progressLineStyle = { width: `calc(${progressPercent}% - 32px + ${progressPercent}% * 32px / 100%)` };
 
   return (
     <nav aria-label="Progress" className={cn("w-full", className)}>

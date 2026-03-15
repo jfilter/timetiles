@@ -10,7 +10,6 @@
 import { Card, CardDescription, CardTitle, ContentState } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, MapPin } from "lucide-react";
-import { useCallback } from "react";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import type { EventListItem } from "@/lib/schemas/events";
@@ -51,21 +50,18 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
   const locationDisplay = getLocationDisplay(event, eventData);
   const dateRange = formatDateRange(eventData.startDate, eventData.endDate);
 
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     if (onEventClick) {
       onEventClick(eventId);
     }
-  }, [onEventClick, eventId]);
+  };
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if ((e.key === "Enter" || e.key === " ") && onEventClick) {
-        e.preventDefault();
-        onEventClick(eventId);
-      }
-    },
-    [onEventClick, eventId]
-  );
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((e.key === "Enter" || e.key === " ") && onEventClick) {
+      e.preventDefault();
+      onEventClick(eventId);
+    }
+  };
 
   const badgeClass = getDatasetBadgeClass(datasetInfo?.id ?? null);
 

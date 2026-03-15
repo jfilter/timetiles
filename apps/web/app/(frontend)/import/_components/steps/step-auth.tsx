@@ -14,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircle2Icon, Loader2Icon, MailIcon } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 
 import { AuthTabs } from "@/components/auth";
 import { useAuthState } from "@/lib/hooks/use-auth-mutations";
@@ -38,9 +38,9 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
   }, [isCheckingAuth, isAuthenticated, isEmailVerified, nextStep]);
 
   // Handle successful auth - invalidate the auth query to trigger re-fetch
-  const handleAuthSuccess = useCallback(() => {
+  const handleAuthSuccess = () => {
     void queryClient.invalidateQueries({ queryKey: ["auth", "current-user"] });
-  }, [queryClient]);
+  };
 
   // Show loading while checking auth status
   if (isCheckingAuth) {

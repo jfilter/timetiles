@@ -11,7 +11,6 @@
 "use client";
 
 import type { EChartsOption } from "echarts";
-import { useCallback, useMemo } from "react";
 
 import { cartographicColors, defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
@@ -186,123 +185,106 @@ export const TimeHistogram = ({
   onRetry,
 }: TimeHistogramProps) => {
   // Determine if dark theme based on theme prop
-  const isDark = useMemo(() => {
+  const isDark = (() => {
     if (!theme) return false;
     // Check axisLineColor which differs between light/dark themes
     // (textColor is the same in both themes, so can't be used for detection)
     return theme.axisLineColor === defaultDarkTheme.axisLineColor;
-  }, [theme]);
+  })();
 
   // Get the effective theme, falling back to defaults
-  const effectiveTheme = useMemo(() => {
-    if (theme) return theme;
-    return isDark ? defaultDarkTheme : defaultLightTheme;
-  }, [theme, isDark]);
+  const effectiveTheme = theme ?? (isDark ? defaultDarkTheme : defaultLightTheme);
 
   // Helper functions for chart configuration - now uses theme colors
-  const getAxisConfig = useCallback(
-    (chartTheme: ChartTheme) => ({
-      xAxis: {
-        type: "time",
-        boundaryGap: false,
-        axisLabel: { color: chartTheme.textColor, fontSize: 11 },
-        axisLine: { lineStyle: { color: chartTheme.axisLineColor } },
-        splitLine: { show: false },
-      },
-      yAxis: {
-        type: "value",
-        axisLabel: { color: chartTheme.textColor, fontSize: 11 },
-        axisLine: { show: false },
-        axisTick: { show: false },
-        splitLine: { lineStyle: { color: chartTheme.splitLineColor, type: "dashed" } },
-      },
-    }),
-    []
-  );
+  const getAxisConfig = (chartTheme: ChartTheme) => ({
+    xAxis: {
+      type: "time",
+      boundaryGap: false,
+      axisLabel: { color: chartTheme.textColor, fontSize: 11 },
+      axisLine: { lineStyle: { color: chartTheme.axisLineColor } },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: { color: chartTheme.textColor, fontSize: 11 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: chartTheme.splitLineColor, type: "dashed" } },
+    },
+  });
 
-  const getTooltipConfig = useCallback(
-    (chartTheme: ChartTheme, darkMode: boolean, bucketSeconds: number | null | undefined) => ({
-      trigger: "axis",
-      backgroundColor: darkMode ? cartographicColors.charcoal : cartographicColors.parchment,
-      borderColor: chartTheme.axisLineColor,
-      textStyle: {
-        // Use contrasting text color: light text on dark background, dark text on light background
-        color: darkMode ? cartographicColors.parchment : chartTheme.textColor,
-      },
-      formatter: (
-        params: Array<{
-          value: [number, number, number];
-          data: [number, number, number];
-          marker: string;
-          seriesName: string;
-        }>
-      ) => {
-        const point = params[0];
-        if (!point) return "";
-        const startDate = new Date(point.data[0]);
-        const endDate = new Date(point.data[2]);
-        const count = point.data[1];
+  const getTooltipConfig = (chartTheme: ChartTheme, darkMode: boolean, bucketSeconds: number | null | undefined) => ({
+    trigger: "axis",
+    backgroundColor: darkMode ? cartographicColors.charcoal : cartographicColors.parchment,
+    borderColor: chartTheme.axisLineColor,
+    textStyle: {
+      // Use contrasting text color: light text on dark background, dark text on light background
+      color: darkMode ? cartographicColors.parchment : chartTheme.textColor,
+    },
+    formatter: (
+      params: Array<{
+        value: [number, number, number];
+        data: [number, number, number];
+        marker: string;
+        seriesName: string;
+      }>
+    ) => {
+      const point = params[0];
+      if (!point) return "";
+      const startDate = new Date(point.data[0]);
+      const endDate = new Date(point.data[2]);
+      const count = point.data[1];
 
-        return `
+      return `
           <div style="padding: 4px 8px;">
             <div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div>
             <div>Events: ${count.toLocaleString()}</div>
           </div>
         `;
-      },
-    }),
-    []
-  );
+    },
+  });
 
-  const getSeriesConfig = useCallback(
-    (chartTheme: ChartTheme, histogramData: TimeHistogramDataItem[]) => [
-      {
-        type: "bar",
-        // Include dateEnd as third element for tooltip access: [date, count, dateEnd]
-        data: histogramData.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
-        itemStyle: {
-          color: Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor,
-          borderRadius: [2, 2, 0, 0],
-        },
-        emphasis: { itemStyle: { color: cartographicColors.navy } },
+  const getSeriesConfig = (chartTheme: ChartTheme, histogramData: TimeHistogramDataItem[]) => [
+    {
+      type: "bar",
+      // Include dateEnd as third element for tooltip access: [date, count, dateEnd]
+      data: histogramData.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
+      itemStyle: {
+        color: Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor,
+        borderRadius: [2, 2, 0, 0],
       },
-    ],
-    []
-  );
+      emphasis: { itemStyle: { color: cartographicColors.navy } },
+    },
+  ];
 
   // Create ECharts option for the histogram
-  const chartOption = useMemo(() => {
-    const axisConfig = getAxisConfig(effectiveTheme);
+  const axisConfig = getAxisConfig(effectiveTheme);
 
-    return {
-      backgroundColor: "transparent",
-      textStyle: { color: effectiveTheme.textColor },
-      grid: { left: "3%", right: "4%", bottom: "3%", top: "10%", containLabel: true },
-      ...axisConfig,
-      tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds),
-      series: getSeriesConfig(effectiveTheme, data),
-      animation: true,
-      animationDuration: 300,
-    };
-  }, [isDark, effectiveTheme, data, bucketSizeSeconds, getAxisConfig, getTooltipConfig, getSeriesConfig]);
+  const chartOption = {
+    backgroundColor: "transparent",
+    textStyle: { color: effectiveTheme.textColor },
+    grid: { left: "3%", right: "4%", bottom: "3%", top: "10%", containLabel: true },
+    ...axisConfig,
+    tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds),
+    series: getSeriesConfig(effectiveTheme, data),
+    animation: true,
+    animationDuration: 300,
+  };
 
-  const handleChartClick = useCallback(
-    (params: EChartsEventParams) => {
-      if (
-        onBarClick &&
-        params.data != null &&
-        Array.isArray(params.data) &&
-        params.data.length >= 2 &&
-        typeof params.data[0] === "number"
-      ) {
-        const date = new Date(params.data[0]);
-        onBarClick(date);
-      }
-    },
-    [onBarClick]
-  );
+  const handleChartClick = (params: EChartsEventParams) => {
+    if (
+      onBarClick &&
+      params.data != null &&
+      Array.isArray(params.data) &&
+      params.data.length >= 2 &&
+      typeof params.data[0] === "number"
+    ) {
+      const date = new Date(params.data[0]);
+      onBarClick(date);
+    }
+  };
 
-  const chartEvents = useMemo(() => ({ click: handleChartClick }), [handleChartClick]);
+  const chartEvents = { click: handleChartClick };
 
   // Handle error state
   if (isError && !isInitialLoad) {

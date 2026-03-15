@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 /**
  * Returns a [value, onChange, setValue] tuple for a text input field.
@@ -21,6 +21,6 @@ import { useCallback, useState } from "react";
  */
 export const useInputState = (initialValue = "") => {
   const [value, setValue] = useState(initialValue);
-  const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value), []);
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value);
   return [value, onChange, setValue] as const;
 };

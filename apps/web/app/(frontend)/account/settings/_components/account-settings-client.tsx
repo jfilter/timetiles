@@ -11,7 +11,7 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import type { User } from "@/payload-types";
 
@@ -29,22 +29,22 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
   const router = useRouter();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const handleDeletionScheduled = useCallback(() => {
+  const handleDeletionScheduled = () => {
     setShowDeleteModal(false);
     router.refresh();
-  }, [router]);
+  };
 
-  const handleEmailChanged = useCallback(() => {
+  const handleEmailChanged = () => {
     router.refresh();
-  }, [router]);
+  };
 
-  const handleOpenDeleteModal = useCallback(() => {
+  const handleOpenDeleteModal = () => {
     setShowDeleteModal(true);
-  }, []);
+  };
 
-  const handleModalOpenChange = useCallback((open: boolean) => {
+  const handleModalOpenChange = (open: boolean) => {
     setShowDeleteModal(open);
-  }, []);
+  };
 
   return (
     <div className="space-y-6">

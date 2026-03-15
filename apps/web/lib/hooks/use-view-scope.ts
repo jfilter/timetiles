@@ -9,8 +9,6 @@
  */
 "use client";
 
-import { useMemo } from "react";
-
 import { useView } from "@/lib/context/view-context";
 
 import type { ViewScope } from "../utils/event-params";
@@ -22,10 +20,8 @@ import type { ViewScope } from "../utils/event-params";
 export const useViewScope = (): ViewScope | undefined => {
   const viewContext = useView();
 
-  return useMemo(() => {
-    if (!viewContext?.dataScope) return undefined;
-    const { catalogIds, datasetIds } = viewContext.dataScope;
-    if (!catalogIds?.length && !datasetIds?.length) return undefined;
-    return { catalogIds, datasetIds };
-  }, [viewContext?.dataScope]);
+  if (!viewContext?.dataScope) return undefined;
+  const { catalogIds, datasetIds } = viewContext.dataScope;
+  if (!catalogIds?.length && !datasetIds?.length) return undefined;
+  return { catalogIds, datasetIds };
 };

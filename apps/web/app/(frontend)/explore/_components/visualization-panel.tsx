@@ -12,7 +12,6 @@
 
 import { Card, CardContent, CardHeader } from "@timetiles/ui/components/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
-import { useCallback } from "react";
 
 export type ChartType = "histogram" | "dataset-bar" | "catalog-bar";
 
@@ -64,7 +63,7 @@ export const VisualizationPanel = ({
   availableChartTypes = ALL_CHART_TYPES,
   fillHeight = false,
 }: Readonly<VisualizationPanelProps>) => {
-  const handleValueChange = useCallback((value: string) => onChartTypeChange(value as ChartType), [onChartTypeChange]);
+  const handleValueChange = (value: string) => onChartTypeChange(value as ChartType);
 
   // Only show dropdown if there are multiple options
   const showDropdown = availableChartTypes.length > 1;

@@ -61,11 +61,7 @@ const HeaderDecorative = React.forwardRef<HTMLDivElement, HeaderDecorativeProps>
       return () => window.removeEventListener("scroll", handleScroll);
     }, [variant]);
 
-    // Memoize compass style (always called, only used when variant is compass)
-    const compassStyle: React.CSSProperties = React.useMemo(
-      () => ({ transform: `translateY(-50%) rotate(${scrollY * 0.1}deg)` }),
-      [scrollY]
-    );
+    const compassStyle: React.CSSProperties = { transform: `translateY(-50%) rotate(${scrollY * 0.1}deg)` };
 
     if (variant === "grid") {
       return (

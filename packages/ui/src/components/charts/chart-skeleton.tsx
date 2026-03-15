@@ -9,8 +9,6 @@
  */
 "use client";
 
-import { useMemo } from "react";
-
 import { cn } from "../../lib/utils";
 
 export interface ChartSkeletonProps {
@@ -49,10 +47,8 @@ const BAR_CHART_STYLES = BAR_CHART_WIDTHS.map((width, index) => ({
  * ```
  */
 export const ChartSkeleton = ({ variant, height = 200, className }: ChartSkeletonProps) => {
-  const containerStyle = useMemo(() => {
-    const containerHeight = typeof height === "number" ? `${height}px` : height;
-    return { height: containerHeight };
-  }, [height]);
+  const containerHeight = typeof height === "number" ? `${height}px` : height;
+  const containerStyle = { height: containerHeight };
 
   if (variant === "histogram") {
     return (

@@ -11,7 +11,6 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useCallback } from "react";
 
 import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 
@@ -27,9 +26,9 @@ export const ThemeToggle = ({
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
 
-  const toggleTheme = useCallback(() => {
+  const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
-  }, [resolvedTheme, setTheme]);
+  };
 
   // Render placeholder during SSR/hydration to avoid mismatch
   if (!mounted) {

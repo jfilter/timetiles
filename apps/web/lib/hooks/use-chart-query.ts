@@ -11,7 +11,7 @@
 "use client";
 
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 export type ChartQueryResult<TData, TError> = UseQueryResult<TData, TError> & {
   /** True when loading for the first time (no data has been loaded yet) */
@@ -54,19 +54,12 @@ export const useChartQuery = <TData = unknown, TError = Error>(
     }
   }, [queryResult.data, hasLoadedOnce]);
 
-  // Memoize loading states to prevent unnecessary re-renders
   // Initial load: loading and no data available yet (no placeholder data either)
-  const isInitialLoad = useMemo(
-    () => queryResult.isLoading && queryResult.data == null && !hasLoadedOnce,
-    [queryResult.isLoading, queryResult.data, hasLoadedOnce]
-  );
+  const isInitialLoad = queryResult.isLoading && queryResult.data == null && !hasLoadedOnce;
 
   // Updating: loading but we have data available (either from placeholder or previous fetch)
   // AND we've loaded successfully at least once
-  const isUpdating = useMemo(
-    () => queryResult.isLoading && queryResult.data != null && hasLoadedOnce,
-    [queryResult.isLoading, queryResult.data, hasLoadedOnce]
-  );
+  const isUpdating = queryResult.isLoading && queryResult.data != null && hasLoadedOnce;
 
   return { ...queryResult, isInitialLoad, isUpdating };
 };

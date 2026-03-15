@@ -65,10 +65,10 @@ export default [
       "react/no-unescaped-entities": "error",
       "react/no-children-prop": "error",
 
-      // React performance rules
-      "react-perf/jsx-no-new-object-as-prop": "error",
-      "react-perf/jsx-no-new-array-as-prop": "error",
-      "react-perf/jsx-no-new-function-as-prop": "error",
+      // React performance rules — disabled; React Compiler handles memoization automatically
+      "react-perf/jsx-no-new-object-as-prop": "off",
+      "react-perf/jsx-no-new-array-as-prop": "off",
+      "react-perf/jsx-no-new-function-as-prop": "off",
 
       // @eslint-react rules for modern React patterns (v2)
       "@eslint-react/no-useless-forward-ref": "error",
@@ -104,9 +104,6 @@ export default [
     // Disable performance and strict rules in test files
     files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
     rules: {
-      "react-perf/jsx-no-new-object-as-prop": "off",
-      "react-perf/jsx-no-new-array-as-prop": "off",
-      "react-perf/jsx-no-new-function-as-prop": "off",
       "react/display-name": "off",
       "react-hooks/exhaustive-deps": "off",
       "@eslint-react/no-array-index-key": "off",

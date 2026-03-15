@@ -114,9 +114,8 @@ const StatsWithContext = React.forwardRef<
   React.HTMLAttributes<HTMLElement> & VariantProps<typeof statsVariants>
 >(({ variant = "bar", children, ...props }, ref) => {
   const resolvedVariant = variant ?? "bar";
-  const memoizedContext = React.useMemo(() => ({ variant: resolvedVariant }), [resolvedVariant]);
   return (
-    <StatsContext.Provider value={memoizedContext}>
+    <StatsContext.Provider value={{ variant: resolvedVariant }}>
       <Stats ref={ref} variant={resolvedVariant} {...props}>
         {children}
       </Stats>

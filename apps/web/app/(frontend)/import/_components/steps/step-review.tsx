@@ -80,63 +80,44 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   const defaultScheduleName = file?.name ? humanizeFileName(file.name) : "";
 
-  const getActiveScheduleConfig = useCallback(
-    (): ScheduleConfig => scheduleConfig ?? { ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName },
-    [scheduleConfig, defaultScheduleName]
-  );
+  const getActiveScheduleConfig = (): ScheduleConfig =>
+    scheduleConfig ?? { ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName };
 
   const activeScheduleConfig = getActiveScheduleConfig();
 
-  const updateScheduleField = useCallback(
-    (updates: Partial<ScheduleConfig>) => {
-      setScheduleConfig({ ...getActiveScheduleConfig(), ...updates });
-    },
-    [getActiveScheduleConfig, setScheduleConfig]
-  );
+  const updateScheduleField = (updates: Partial<ScheduleConfig>) => {
+    setScheduleConfig({ ...getActiveScheduleConfig(), ...updates });
+  };
 
-  const handleToggleScheduleEnabled = useCallback(() => {
+  const handleToggleScheduleEnabled = () => {
     if (scheduleConfig?.enabled) {
       setScheduleConfig(null);
     } else {
       setScheduleConfig({ ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName, enabled: true });
     }
-  }, [scheduleConfig?.enabled, defaultScheduleName, setScheduleConfig]);
+  };
 
-  const handleScheduleNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      updateScheduleField({ name: e.target.value });
-    },
-    [updateScheduleField]
-  );
+  const handleScheduleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateScheduleField({ name: e.target.value });
+  };
 
-  const handleScheduleTypeChange = useCallback(
-    (value: string) => {
-      updateScheduleField({ scheduleType: value as "frequency" | "cron" });
-    },
-    [updateScheduleField]
-  );
+  const handleScheduleTypeChange = (value: string) => {
+    updateScheduleField({ scheduleType: value as "frequency" | "cron" });
+  };
 
-  const handleFrequencyChange = useCallback(
-    (value: string) => {
-      updateScheduleField({ frequency: value as "hourly" | "daily" | "weekly" | "monthly" });
-    },
-    [updateScheduleField]
-  );
+  const handleFrequencyChange = (value: string) => {
+    updateScheduleField({ frequency: value as "hourly" | "daily" | "weekly" | "monthly" });
+  };
 
-  const handleCronExpressionChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      updateScheduleField({ cronExpression: e.target.value });
-    },
-    [updateScheduleField]
-  );
+  const handleCronExpressionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateScheduleField({ cronExpression: e.target.value });
+  };
 
-  const handleSchemaModeChange = useCallback(
-    (value: string) => {
-      updateScheduleField({ schemaMode: value as "strict" | "additive" | "flexible" });
-    },
-    [updateScheduleField]
-  );
+  const handleSchemaModeChange = (value: string) => {
+    updateScheduleField({ schemaMode: value as "strict" | "additive" | "flexible" });
+  };
 
+  // useCallback required: used in useEffect dependency array below
   const handleStartImport = useCallback(async () => {
     setError(null);
 
@@ -179,18 +160,18 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       setError(err instanceof Error ? err.message : "Failed to start import");
     }
   }, [
+    sourceUrl,
+    activeScheduleConfig,
+    authConfig,
+    state.transforms,
     state.previewId,
+    configureMutation,
     selectedCatalogId,
     newCatalogName,
     sheetMappings,
     fieldMappings,
     deduplicationStrategy,
     geocodingEnabled,
-    sourceUrl,
-    authConfig,
-    state.transforms,
-    activeScheduleConfig,
-    configureMutation,
     startProcessing,
     nextStep,
     setError,

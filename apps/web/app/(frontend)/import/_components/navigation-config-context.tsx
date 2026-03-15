@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useState } from "react";
 
 /**
  * Configuration for the wizard navigation buttons.
@@ -41,11 +41,11 @@ const NavigationConfigContext = createContext<NavigationConfigContextValue | nul
 export const NavigationConfigProvider = ({ children }: Readonly<{ children: React.ReactNode }>) => {
   const [navigationConfig, setNavigationConfigState] = useState<NavigationConfig>(defaultNavigationConfig);
 
-  const setNavigationConfig = useCallback((config: NavigationConfig) => {
+  const setNavigationConfig = (config: NavigationConfig) => {
     setNavigationConfigState({ ...defaultNavigationConfig, ...config });
-  }, []);
+  };
 
-  const value = useMemo(() => ({ navigationConfig, setNavigationConfig }), [navigationConfig, setNavigationConfig]);
+  const value = { navigationConfig, setNavigationConfig };
 
   return <NavigationConfigContext.Provider value={value}>{children}</NavigationConfigContext.Provider>;
 };

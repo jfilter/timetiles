@@ -12,7 +12,7 @@
 import { Card, CardContent, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "lucide-react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
@@ -34,12 +34,9 @@ interface DatasetSelectProps {
 }
 
 const DatasetSelect = ({ sheetIndex, value, datasets, onDatasetChange }: Readonly<DatasetSelectProps>) => {
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onDatasetChange(sheetIndex, e.target.value);
-    },
-    [sheetIndex, onDatasetChange]
-  );
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onDatasetChange(sheetIndex, e.target.value);
+  };
 
   return (
     <div className="space-y-2">
@@ -68,12 +65,9 @@ interface DatasetNameInputProps {
 }
 
 const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetNameInputProps>) => {
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      onNameChange(sheetIndex, e.target.value);
-    },
-    [sheetIndex, onNameChange]
-  );
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onNameChange(sheetIndex, e.target.value);
+  };
 
   return (
     <div className="space-y-2">
@@ -89,6 +83,7 @@ const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetN
   );
 };
 
+// oxlint-disable-next-line eslint(complexity) -- wizard step with many conditional UI branches
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
   const { state, setCatalog, setSheetMapping } = useWizard();
   const { sheets, selectedCatalogId, newCatalogName, sheetMappings } = state;
@@ -99,10 +94,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   const error = queryError ? errorMessage : null;
 
   // Derive a clean catalog name from the uploaded file name
-  const suggestedCatalogName = useMemo(() => {
-    if (!state.file?.name) return "";
-    return humanizeFileName(state.file.name);
-  }, [state.file?.name]);
+  const suggestedCatalogName = state.file?.name ? humanizeFileName(state.file.name) : "";
 
   // Auto-select "new catalog" if user has no existing catalogs
   useEffect(() => {
@@ -111,52 +103,27 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     }
   }, [catalogs.length, selectedCatalogId, isLoading, setCatalog, suggestedCatalogName]);
 
-  const handleCatalogChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const value = e.target.value;
-      if (value === "new") {
-        setCatalog("new");
-      } else if (value) {
-        setCatalog(Number(value));
-      } else {
-        setCatalog(null);
-      }
-    },
-    [setCatalog]
-  );
+  const handleCatalogChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setCatalog(value === "new" ? "new" : value ? Number(value) : null);
+  };
 
-  const handleNewCatalogNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCatalog("new", e.target.value);
-    },
-    [setCatalog]
-  );
+  const handleNewCatalogNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCatalog("new", e.target.value);
+  };
 
-  const handleDatasetChange = useCallback(
-    (sheetIndex: number, value: string) => {
-      if (value === "new") {
-        setSheetMapping(sheetIndex, { datasetId: "new" });
-      } else {
-        setSheetMapping(sheetIndex, { datasetId: Number(value) });
-      }
-    },
-    [setSheetMapping]
-  );
+  const handleDatasetChange = (sheetIndex: number, value: string) => {
+    setSheetMapping(sheetIndex, { datasetId: value === "new" ? "new" : Number(value) });
+  };
 
-  const handleNewDatasetNameChange = useCallback(
-    (sheetIndex: number, name: string) => {
-      setSheetMapping(sheetIndex, { newDatasetName: name });
-    },
-    [setSheetMapping]
-  );
+  const handleNewDatasetNameChange = (sheetIndex: number, name: string) => {
+    setSheetMapping(sheetIndex, { newDatasetName: name });
+  };
 
   // Callback for single sheet case (index 0) to avoid inline function in JSX
-  const handleSingleSheetNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      handleNewDatasetNameChange(0, e.target.value);
-    },
-    [handleNewDatasetNameChange]
-  );
+  const handleSingleSheetNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleNewDatasetNameChange(0, e.target.value);
+  };
 
   const selectedCatalog = catalogs.find((c) => c.id === selectedCatalogId);
 

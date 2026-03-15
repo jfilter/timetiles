@@ -11,7 +11,6 @@
 
 import { AlertTriangle, Filter, Inbox } from "lucide-react";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
 
 import { cn } from "../lib/utils";
 
@@ -55,11 +54,11 @@ const defaultIcons: Record<ContentStateProps["variant"], ReactNode> = {
  * ```
  */
 export const ContentState = ({ variant, icon, title, subtitle, onRetry, height, className }: ContentStateProps) => {
-  const containerStyle = useMemo(() => {
+  const containerStyle = (() => {
     if (height == null) return undefined;
     const containerHeight = typeof height === "number" ? `${height}px` : height;
     return { height: containerHeight };
-  }, [height]);
+  })();
 
   const variantDefaults = defaults[variant];
   const renderedIcon = icon ?? defaultIcons[variant];

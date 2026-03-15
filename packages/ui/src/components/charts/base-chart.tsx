@@ -6,7 +6,7 @@
 
 import type { EChartsReactProps } from "echarts-for-react";
 import ReactEChartsLib from "echarts-for-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as React from "react";
 
 // Type the ReactECharts component properly for strict TypeScript
@@ -49,24 +49,21 @@ export const BaseChart = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const themedOption = useMemo(() => applyThemeToOption(config, theme), [config, theme]);
+  const themedOption = applyThemeToOption(config, theme);
 
-  const containerDivStyle = useMemo(() => ({ height, width }), [height, width]);
+  const containerDivStyle = { height, width };
 
-  const handleChartReady = React.useCallback(
-    (chart: unknown) => {
-      if (
-        onChartReady != null &&
-        chart != null &&
-        typeof chart === "object" &&
-        "resize" in chart &&
-        typeof (chart as { resize?: unknown }).resize === "function"
-      ) {
-        onChartReady(chart as EChartsInstance);
-      }
-    },
-    [onChartReady]
-  );
+  const handleChartReady = (chart: unknown) => {
+    if (
+      onChartReady != null &&
+      chart != null &&
+      typeof chart === "object" &&
+      "resize" in chart &&
+      typeof (chart as { resize?: unknown }).resize === "function"
+    ) {
+      onChartReady(chart as EChartsInstance);
+    }
+  };
 
   return (
     <div className={cn("relative", className)} style={containerDivStyle}>

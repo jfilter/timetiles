@@ -42,7 +42,7 @@
  */
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
+import { createContext, useContext, useEffect, useReducer } from "react";
 
 import { useAuthState } from "@/lib/hooks/use-auth-mutations";
 import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
@@ -179,80 +179,77 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
   }, [state]);
 
   // Helper actions
-  const goToStep = useCallback((step: WizardStep) => {
+  const goToStep = (step: WizardStep) => {
     dispatch({ type: "SET_STEP", step });
-  }, []);
+  };
 
-  const nextStep = useCallback(() => {
+  const nextStep = () => {
     dispatch({ type: "NEXT_STEP" });
-  }, []);
+  };
 
-  const prevStep = useCallback(() => {
+  const prevStep = () => {
     dispatch({ type: "PREV_STEP" });
-  }, []);
+  };
 
-  const setFile = useCallback(
-    (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => {
-      dispatch({ type: "SET_FILE", file, sheets, previewId, sourceUrl });
-    },
-    []
-  );
+  const setFile = (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => {
+    dispatch({ type: "SET_FILE", file, sheets, previewId, sourceUrl });
+  };
 
-  const setSourceUrl = useCallback((sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => {
+  const setSourceUrl = (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => {
     dispatch({ type: "SET_SOURCE_URL", sourceUrl, authConfig });
-  }, []);
+  };
 
-  const setScheduleConfig = useCallback((config: ScheduleConfig | null) => {
+  const setScheduleConfig = (config: ScheduleConfig | null) => {
     dispatch({ type: "SET_SCHEDULE_CONFIG", scheduleConfig: config });
-  }, []);
+  };
 
-  const clearFile = useCallback(() => {
+  const clearFile = () => {
     dispatch({ type: "CLEAR_FILE" });
-  }, []);
+  };
 
-  const setCatalog = useCallback((catalogId: number | "new" | null, newCatalogName?: string) => {
+  const setCatalog = (catalogId: number | "new" | null, newCatalogName?: string) => {
     dispatch({ type: "SET_CATALOG", catalogId, newCatalogName });
-  }, []);
+  };
 
-  const setSheetMapping = useCallback((sheetIndex: number, mapping: Partial<SheetMapping>) => {
+  const setSheetMapping = (sheetIndex: number, mapping: Partial<SheetMapping>) => {
     dispatch({ type: "SET_SHEET_MAPPING", sheetIndex, mapping });
-  }, []);
+  };
 
-  const setFieldMapping = useCallback((sheetIndex: number, mapping: Partial<FieldMapping>) => {
+  const setFieldMapping = (sheetIndex: number, mapping: Partial<FieldMapping>) => {
     dispatch({ type: "SET_FIELD_MAPPING", sheetIndex, mapping });
-  }, []);
+  };
 
-  const setTransforms = useCallback((sheetIndex: number, transforms: ImportTransform[]) => {
+  const setTransforms = (sheetIndex: number, transforms: ImportTransform[]) => {
     dispatch({ type: "SET_TRANSFORMS", sheetIndex, transforms });
-  }, []);
+  };
 
-  const setImportOptions = useCallback(
-    (options: { deduplicationStrategy?: WizardState["deduplicationStrategy"]; geocodingEnabled?: boolean }) => {
-      dispatch({ type: "SET_IMPORT_OPTIONS", ...options });
-    },
-    []
-  );
+  const setImportOptions = (options: {
+    deduplicationStrategy?: WizardState["deduplicationStrategy"];
+    geocodingEnabled?: boolean;
+  }) => {
+    dispatch({ type: "SET_IMPORT_OPTIONS", ...options });
+  };
 
-  const startProcessing = useCallback((importFileId: number, scheduledImportId?: number) => {
+  const startProcessing = (importFileId: number, scheduledImportId?: number) => {
     dispatch({ type: "START_PROCESSING", importFileId, scheduledImportId });
-  }, []);
+  };
 
-  const setError = useCallback((error: string | null) => {
+  const setError = (error: string | null) => {
     dispatch({ type: "SET_ERROR", error });
-  }, []);
+  };
 
-  const complete = useCallback(() => {
+  const complete = () => {
     clearStorage();
     dispatch({ type: "COMPLETE" });
-  }, []);
+  };
 
-  const reset = useCallback(() => {
+  const reset = () => {
     clearStorage();
     dispatch({ type: "RESET" });
-  }, []);
+  };
 
   // Compute canProceed based on current step
-  const canProceed = useMemo(() => {
+  const canProceed = (() => {
     switch (state.currentStep) {
       case 1:
         return isAuthenticated && isEmailVerified;
@@ -275,55 +272,32 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       default:
         return false;
     }
-  }, [state, isAuthenticated, isEmailVerified]);
+  })();
 
   const stepTitle = STEP_TITLES[state.currentStep];
 
-  const value = useMemo(
-    () => ({
-      state,
-      dispatch,
-      goToStep,
-      nextStep,
-      prevStep,
-      setFile,
-      setSourceUrl,
-      setScheduleConfig,
-      clearFile,
-      setCatalog,
-      setSheetMapping,
-      setFieldMapping,
-      setTransforms,
-      setImportOptions,
-      startProcessing,
-      setError,
-      complete,
-      reset,
-      canProceed,
-      stepTitle,
-    }),
-    [
-      state,
-      goToStep,
-      nextStep,
-      prevStep,
-      setFile,
-      setSourceUrl,
-      setScheduleConfig,
-      clearFile,
-      setCatalog,
-      setSheetMapping,
-      setFieldMapping,
-      setTransforms,
-      setImportOptions,
-      startProcessing,
-      setError,
-      complete,
-      reset,
-      canProceed,
-      stepTitle,
-    ]
-  );
+  const value = {
+    state,
+    dispatch,
+    goToStep,
+    nextStep,
+    prevStep,
+    setFile,
+    setSourceUrl,
+    setScheduleConfig,
+    clearFile,
+    setCatalog,
+    setSheetMapping,
+    setFieldMapping,
+    setTransforms,
+    setImportOptions,
+    startProcessing,
+    setError,
+    complete,
+    reset,
+    canProceed,
+    stepTitle,
+  };
 
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;
 };

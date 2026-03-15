@@ -11,7 +11,7 @@
  * @module
  * @category Hooks
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type SubmitStatus = "idle" | "loading" | "success" | "error";
 
@@ -53,51 +53,48 @@ export const useNewsletterSubscription = ({
     };
   }, []);
 
-  const handleSubmit = useCallback(
-    async (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-      if (!email) return;
+    if (!email) return;
 
-      setStatus("loading");
-      setMessage("");
+    setStatus("loading");
+    setMessage("");
 
-      try {
-        if (onSubmit) {
-          await onSubmit(email, additionalData);
-        } else {
-          const response = await fetch("/api/newsletter/subscribe", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, ...additionalData }),
-          });
+    try {
+      if (onSubmit) {
+        await onSubmit(email, additionalData);
+      } else {
+        const response = await fetch("/api/newsletter/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, ...additionalData }),
+        });
 
-          const data = (await response.json()) as { error?: string };
+        const data = (await response.json()) as { error?: string };
 
-          if (!response.ok) {
-            throw new Error(data.error ?? "Subscription failed. Please try again.");
-          }
+        if (!response.ok) {
+          throw new Error(data.error ?? "Subscription failed. Please try again.");
         }
-
-        setStatus("success");
-        setMessage("Successfully subscribed!");
-        setEmail("");
-      } catch (error) {
-        setStatus("error");
-        const errorMessage = error instanceof Error ? error.message : "Network error. Please try again.";
-        setMessage(errorMessage);
       }
 
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = setTimeout(() => {
-        setStatus("idle");
-        setMessage("");
-      }, resetDelay);
-    },
-    [email, additionalData, resetDelay, onSubmit]
-  );
+      setStatus("success");
+      setMessage("Successfully subscribed!");
+      setEmail("");
+    } catch (error) {
+      setStatus("error");
+      const errorMessage = error instanceof Error ? error.message : "Network error. Please try again.";
+      setMessage(errorMessage);
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setStatus("idle");
+      setMessage("");
+    }, resetDelay);
+  };
 
   return { email, setEmail, status, message, handleSubmit };
 };

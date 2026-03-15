@@ -17,7 +17,6 @@
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Lock, Mail } from "lucide-react";
-import { useCallback } from "react";
 
 import { validatePasswords } from "@/lib/constants/validation";
 import { registerRequest } from "@/lib/hooks/use-auth-mutations";
@@ -49,16 +48,13 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
     onError: (err) => onError?.(err.message),
   });
 
-  const handleSubmit = useCallback(
-    (e: React.SyntheticEvent<HTMLFormElement>) => {
-      e.preventDefault();
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-      if (!email || !password || !confirmPassword) return;
+    if (!email || !password || !confirmPassword) return;
 
-      mutate({ email, password, confirmPassword });
-    },
-    [email, password, confirmPassword, mutate]
-  );
+    mutate({ email, password, confirmPassword });
+  };
 
   // Show loading state while checking feature flags
   if (flagsLoading) {

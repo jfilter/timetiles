@@ -8,13 +8,13 @@
 
 import { Button } from "@timetiles/ui";
 import { Check, Copy, Loader2, Share2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 /** Share button that copies current URL to clipboard or uses native share on mobile */
 export const ShareButton = ({ title }: { title: string }) => {
   const [shareState, setShareState] = useState<"idle" | "copying" | "copied" | "error">("idle");
 
-  const handleShare = useCallback(() => {
+  const handleShare = () => {
     const performShare = async () => {
       setShareState("copying");
       try {
@@ -40,7 +40,7 @@ export const ShareButton = ({ title }: { title: string }) => {
     };
 
     void performShare();
-  }, [title]);
+  };
 
   return (
     <Button

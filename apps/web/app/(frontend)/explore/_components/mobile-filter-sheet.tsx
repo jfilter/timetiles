@@ -12,7 +12,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { Filter, X } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 interface MobileFilterSheetProps {
   isOpen: boolean;
@@ -36,41 +36,38 @@ export const MobileFilterSheet = ({
   const currentY = useRef(0);
 
   // Handle touch start
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (touch) {
       startY.current = touch.clientY;
       currentY.current = touch.clientY;
       setIsDragging(true);
     }
-  }, []);
+  };
 
   // Handle touch move
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      if (!isDragging) return;
-      const touch = e.touches[0];
-      if (touch) {
-        currentY.current = touch.clientY;
-        const delta = currentY.current - startY.current;
-        // Only allow dragging down (positive delta)
-        if (delta > 0) {
-          setDragOffset(delta);
-        }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    if (touch) {
+      currentY.current = touch.clientY;
+      const delta = currentY.current - startY.current;
+      // Only allow dragging down (positive delta)
+      if (delta > 0) {
+        setDragOffset(delta);
       }
-    },
-    [isDragging]
-  );
+    }
+  };
 
   // Handle touch end
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = () => {
     setIsDragging(false);
     // If dragged more than 100px down, close the sheet
     if (dragOffset > 100) {
       onClose();
     }
     setDragOffset(0);
-  }, [dragOffset, onClose]);
+  };
 
   // Close on escape key
   useEffect(() => {
@@ -95,11 +92,7 @@ export const MobileFilterSheet = ({
     };
   }, [isOpen]);
 
-  // Memoize the sheet style to avoid creating new objects on each render
-  const sheetStyle = useMemo(
-    () => ({ height: "70dvh", transform: isOpen ? `translateY(${dragOffset}px)` : "translateY(100%)" }),
-    [isOpen, dragOffset]
-  );
+  const sheetStyle = { height: "70dvh", transform: isOpen ? `translateY(${dragOffset}px)` : "translateY(100%)" };
 
   return (
     <>

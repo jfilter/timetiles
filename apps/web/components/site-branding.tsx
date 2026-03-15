@@ -9,8 +9,6 @@
  */
 "use client";
 
-import { useMemo } from "react";
-
 import { useSite } from "@/lib/context/site-context";
 
 /**
@@ -21,7 +19,7 @@ export const SiteBranding = () => {
   const siteContext = useSite();
   const colors = siteContext?.branding.colors;
 
-  const style = useMemo((): (React.CSSProperties & Record<string, string>) | undefined => {
+  const style = ((): (React.CSSProperties & Record<string, string>) | undefined => {
     if (!colors) return undefined;
     const { primary, secondary, background } = colors;
     if (!primary && !secondary && !background) return undefined;
@@ -30,7 +28,7 @@ export const SiteBranding = () => {
     if (secondary) s["--site-color-secondary"] = secondary;
     if (background) s["--site-color-background"] = background;
     return s;
-  }, [colors]);
+  })();
 
   if (!style) {
     return null;

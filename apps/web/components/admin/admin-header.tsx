@@ -18,7 +18,7 @@ import LogoLight from "@timetiles/assets/logos/latest/light/no-grid/png/wordmark
 import { ArrowLeft, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "timetiles-theme";
 
@@ -66,12 +66,12 @@ const AdminHeader = () => {
     setMounted(true);
   }, []);
 
-  const toggleTheme = useCallback(() => {
+  const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
     // Sync to main app's localStorage
     localStorage.setItem(STORAGE_KEY, newTheme);
-  }, [theme, setTheme]);
+  };
 
   const logo = theme === "dark" ? LogoDark : LogoLight;
 
