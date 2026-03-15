@@ -7,25 +7,19 @@
  *
  * Key responsibilities:
  * - Atomic stage transition processing
- * - Prevention of duplicate job queuing
  * - Stage transition validation
  * - Centralized job queuing logic.
- *
- * **Deployment note:** The `transitioningJobs` Set uses in-memory state to prevent
- * duplicate transitions within a single process. This works correctly for the current
- * single-instance deployment model. A distributed lock (e.g., Redis or Postgres advisory
- * locks) would be needed for multi-instance or serverless deployments.
  *
  * @module
  */
 import type { Payload } from "payload";
 
-import { JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { JOB_TYPES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import type { ImportJob } from "@/payload-types";
 
 // Valid stage transitions map
-const VALID_STAGE_TRANSITIONS: Record<string, string[]> = {
+const VALID_STAGE_TRANSITIONS: Partial<Record<ProcessingStage, ProcessingStage[]>> = {
   [PROCESSING_STAGE.ANALYZE_DUPLICATES]: [PROCESSING_STAGE.DETECT_SCHEMA],
   [PROCESSING_STAGE.DETECT_SCHEMA]: [PROCESSING_STAGE.VALIDATE_SCHEMA],
   [PROCESSING_STAGE.VALIDATE_SCHEMA]: [
@@ -58,8 +52,6 @@ export interface StageTransitionResult {
  * Service to handle stage transitions atomically.
  */
 export class StageTransitionService {
-  private static readonly transitioningJobs = new Set<string>();
-
   /**
    * Validate stage transition.
    */
@@ -71,8 +63,8 @@ export class StageTransitionService {
     if (fromStage === toStage) return true;
 
     // Check if transition is valid
-    const validTransitions = VALID_STAGE_TRANSITIONS[fromStage] ?? [];
-    return validTransitions.includes(toStage);
+    const validTransitions = VALID_STAGE_TRANSITIONS[fromStage as ProcessingStage] ?? [];
+    return validTransitions.includes(toStage as ProcessingStage);
   }
 
   /**
@@ -84,17 +76,6 @@ export class StageTransitionService {
     previousJob: ImportJob | undefined
   ): Promise<StageTransitionResult> {
     const jobId = String(job.id);
-    const transitionKey = `${jobId}-${previousJob?.stage}-${job.stage}`;
-
-    // Check if this specific transition is already being processed
-    if (this.transitioningJobs.has(transitionKey)) {
-      logger.warn("Stage transition already in progress", {
-        importJobId: jobId,
-        fromStage: previousJob?.stage,
-        toStage: job.stage,
-      });
-      return { success: false, error: "Transition already in progress" };
-    }
 
     // Skip if no stage change
     if (job.stage === previousJob?.stage) {
@@ -108,9 +89,6 @@ export class StageTransitionService {
       return { success: false, error };
     }
 
-    // Lock this transition
-    this.transitioningJobs.add(transitionKey);
-
     try {
       logger.info("Processing stage transition", {
         importJobId: jobId,
@@ -121,9 +99,6 @@ export class StageTransitionService {
       // Queue appropriate job based on new stage
       const queueResult = await this.queueStageJob(payload, job);
 
-      // Clean up transition lock
-      this.transitioningJobs.delete(transitionKey);
-
       return { success: true, jobQueued: queueResult.queued, queuedJobType: queueResult.jobType };
     } catch (error) {
       logger.error("Stage transition failed", {
@@ -132,9 +107,6 @@ export class StageTransitionService {
         toStage: job.stage,
         error,
       });
-
-      // Clean up transition lock
-      this.transitioningJobs.delete(transitionKey);
 
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
@@ -187,59 +159,5 @@ export class StageTransitionService {
         logger.warn("Unknown stage for job queuing", { importJobId: job.id, stage: job.stage });
         return { queued: false };
     }
-  }
-
-  /**
-   * Check if a transition is currently being processed.
-   */
-  static isTransitioning(jobId: string, fromStage?: string, toStage?: string): boolean {
-    if (fromStage && toStage) {
-      return this.transitioningJobs.has(`${jobId}-${fromStage}-${toStage}`);
-    }
-    // Check if any transition for this job is happening
-    for (const key of this.transitioningJobs) {
-      if (key.startsWith(`${jobId}-`)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Get currently transitioning job count (for monitoring).
-   */
-  static getTransitioningCount(): number {
-    return this.transitioningJobs.size;
-  }
-
-  /**
-   * Force clear transition locks (for emergency situations).
-   */
-  static clearTransitionLocks(): void {
-    logger.warn("Clearing all stage transition locks");
-    this.transitioningJobs.clear();
-  }
-
-  /**
-   * Clean up old transition locks (for transitions completed over 5 minutes ago).
-   */
-  static cleanupOldLocks(): number {
-    // For now, just clear all locks as they should be transient
-    // In production, you might want to track timestamps
-    const count = this.transitioningJobs.size;
-    this.transitioningJobs.clear();
-    return count;
-  }
-
-  /**
-   * Cleanup task handler for Payload jobs
-   * This should be registered as a Payload task with a schedule.
-   */
-  static cleanupTask(): { output: { cleaned: number } } {
-    const cleaned = this.cleanupOldLocks();
-    if (cleaned > 0) {
-      logger.info("Cleaned up stage transition locks", { count: cleaned });
-    }
-    return { output: { cleaned } };
   }
 }

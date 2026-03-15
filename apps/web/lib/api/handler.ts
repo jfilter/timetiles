@@ -8,12 +8,15 @@ import type { NextRequest } from "next/server";
 import { getPayload, type Payload } from "payload";
 import type { z } from "zod";
 
+import { createLogger } from "@/lib/logger";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 import { checkRateLimit, type RateLimitOptions } from "@/lib/middleware/rate-limit";
 import config from "@/payload.config";
 import type { User } from "@/payload-types";
 
 import { handleError } from "./errors";
+
+const logger = createLogger("api-handler");
 
 type AuthMode = "required" | "optional" | "admin" | "none";
 type AuthenticatedModes = "required" | "admin";
@@ -81,8 +84,8 @@ export const apiRoute = <
         try {
           const { user } = await payload.auth({ headers: req.headers });
           authReq.user = user as User;
-        } catch {
-          // auth failed - user remains undefined
+        } catch (error) {
+          logger.debug("Auth check failed", { error });
         }
 
         if ((authMode === "required" || authMode === "admin") && !authReq.user) {

@@ -11,12 +11,8 @@ import config from "@payload-config";
 import { NextResponse } from "next/server";
 import { getPayload } from "payload";
 
-import {
-  getClientIdentifier,
-  getRateLimitService,
-  RATE_LIMITS,
-  type RateLimitConfig,
-} from "@/lib/services/rate-limit-service";
+import { RATE_LIMITS, type RateLimitConfig } from "@/lib/constants/rate-limits";
+import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import type { User } from "@/payload-types";
 
 export type RateLimitType = "API_GENERAL" | "FILE_UPLOAD";

@@ -11,8 +11,9 @@ import { sql } from "@payloadcms/db-postgres";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
+import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
-import { getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { getRateLimitService } from "@/lib/services/rate-limit-service";
 import { queueWebhookImport } from "@/lib/services/scheduled-import-trigger-service";
 import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";

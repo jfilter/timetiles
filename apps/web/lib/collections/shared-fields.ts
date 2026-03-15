@@ -28,7 +28,10 @@ export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
  * Returns true for editors/admins, or a WHERE clause filtering by ownership field.
  * Uses zero-query approach (WHERE clause) instead of per-document DB lookup.
  */
-export const createOwnershipAccess = (_collection: string, ownerField = "createdBy"): Access => {
+export const createOwnershipAccess = (
+  _collection: string,
+  ownerField: "createdBy" | "ownedBy" | "user" = "createdBy"
+): Access => {
   // Payload Access functions legitimately return boolean | Where
   // eslint-disable-next-line sonarjs/function-return-type
   return ({ req: { user } }): boolean | Where => {

@@ -11,10 +11,11 @@
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
+import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
 import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { getClientIdentifier, getRateLimitService, RATE_LIMITS } from "@/lib/services/rate-limit-service";
+import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import { badRequest, rateLimited } from "@/lib/utils/api-response";
 import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
