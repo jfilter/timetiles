@@ -30,17 +30,30 @@ export const ViewToggle = ({ currentView }: ViewToggleProps) => {
   const mapUrl = `/explore${queryPart}`;
   const listUrl = `/explore/list${queryPart}`;
 
+  const navigateWithTransition = useCallback(
+    (url: string) => {
+      if (document.startViewTransition) {
+        document.startViewTransition(() => {
+          router.push(url);
+        });
+      } else {
+        router.push(url);
+      }
+    },
+    [router]
+  );
+
   const handleMapClick = useCallback(() => {
     if (currentView !== "map") {
-      router.push(mapUrl);
+      navigateWithTransition(mapUrl);
     }
-  }, [currentView, mapUrl, router]);
+  }, [currentView, mapUrl, navigateWithTransition]);
 
   const handleListClick = useCallback(() => {
     if (currentView !== "list") {
-      router.push(listUrl);
+      navigateWithTransition(listUrl);
     }
-  }, [currentView, listUrl, router]);
+  }, [currentView, listUrl, navigateWithTransition]);
 
   return (
     // Hidden on mobile since both /explore and /explore/list show the same tabbed interface
