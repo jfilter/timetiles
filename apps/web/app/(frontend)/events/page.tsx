@@ -32,7 +32,7 @@ export default async function EventsListPage() {
       <h1 className="mb-8 text-3xl font-bold">Events</h1>
 
       {events.length === 0 ? (
-        <p className="text-gray-500">No events found.</p>
+        <p className="text-gray-500">No events found</p>
       ) : (
         <div className="grid gap-4">
           {events.map((event) => {

@@ -8,7 +8,6 @@
  * @module
  * @category Utils
  */
-import { NextResponse } from "next/server";
 
 /**
  * Standard error response format for all API routes.
@@ -29,18 +28,13 @@ export interface ErrorResponse {
  * @param status - HTTP status code
  * @param code - Optional error code for programmatic handling
  * @param details - Optional additional error context
- * @returns NextResponse with standardized error format
+ * @returns Response with standardized error format
  */
-export const apiError = (
-  message: string,
-  status: number,
-  code?: string,
-  details?: unknown
-): NextResponse<ErrorResponse> => {
+export const apiError = (message: string, status: number, code?: string, details?: unknown): Response => {
   const response: ErrorResponse = { error: message };
   if (code) response.code = code;
   if (details) response.details = details;
-  return NextResponse.json(response, { status });
+  return Response.json(response, { status });
 };
 
 /**
@@ -48,19 +42,18 @@ export const apiError = (
  *
  * @param message - Error message describing what was invalid
  * @param code - Optional error code
- * @returns NextResponse with 400 status
+ * @returns Response with 400 status
  */
-export const badRequest = (message: string, code?: string): NextResponse<ErrorResponse> =>
-  apiError(message, 400, code ?? "BAD_REQUEST");
+export const badRequest = (message: string, code?: string): Response => apiError(message, 400, code ?? "BAD_REQUEST");
 
 /**
  * Create a 401 Unauthorized error response.
  *
  * @param message - Error message describing the authorization failure
  * @param code - Optional error code
- * @returns NextResponse with 401 status
+ * @returns Response with 401 status
  */
-export const unauthorized = (message: string = "Unauthorized", code?: string): NextResponse<ErrorResponse> =>
+export const unauthorized = (message: string = "Unauthorized", code?: string): Response =>
   apiError(message, 401, code ?? "UNAUTHORIZED");
 
 /**
@@ -68,9 +61,9 @@ export const unauthorized = (message: string = "Unauthorized", code?: string): N
  *
  * @param message - Error message describing the authorization failure
  * @param code - Optional error code
- * @returns NextResponse with 403 status
+ * @returns Response with 403 status
  */
-export const forbidden = (message: string = "Forbidden", code?: string): NextResponse<ErrorResponse> =>
+export const forbidden = (message: string = "Forbidden", code?: string): Response =>
   apiError(message, 403, code ?? "FORBIDDEN");
 
 /**
@@ -78,9 +71,9 @@ export const forbidden = (message: string = "Forbidden", code?: string): NextRes
  *
  * @param message - Error message describing what was not found
  * @param code - Optional error code
- * @returns NextResponse with 404 status
+ * @returns Response with 404 status
  */
-export const notFound = (message: string = "Resource not found", code?: string): NextResponse<ErrorResponse> =>
+export const notFound = (message: string = "Resource not found", code?: string): Response =>
   apiError(message, 404, code ?? "NOT_FOUND");
 
 /**
@@ -88,9 +81,9 @@ export const notFound = (message: string = "Resource not found", code?: string):
  *
  * @param message - Error message describing allowed methods
  * @param code - Optional error code
- * @returns NextResponse with 405 status
+ * @returns Response with 405 status
  */
-export const methodNotAllowed = (message: string, code?: string): NextResponse<ErrorResponse> =>
+export const methodNotAllowed = (message: string, code?: string): Response =>
   apiError(message, 405, code ?? "METHOD_NOT_ALLOWED");
 
 /**
@@ -99,9 +92,9 @@ export const methodNotAllowed = (message: string, code?: string): NextResponse<E
  * @param message - Error message describing the conflict
  * @param code - Optional error code
  * @param details - Optional conflict context (e.g., existing resource ID)
- * @returns NextResponse with 409 status
+ * @returns Response with 409 status
  */
-export const conflict = (message: string, code?: string, details?: unknown): NextResponse<ErrorResponse> =>
+export const conflict = (message: string, code?: string, details?: unknown): Response =>
   apiError(message, 409, code ?? "CONFLICT", details);
 
 /**
@@ -109,9 +102,9 @@ export const conflict = (message: string, code?: string, details?: unknown): Nex
  *
  * @param message - Error message describing the rate limit
  * @param code - Optional error code
- * @returns NextResponse with 429 status
+ * @returns Response with 429 status
  */
-export const rateLimited = (message: string = "Too many requests", code?: string): NextResponse<ErrorResponse> =>
+export const rateLimited = (message: string = "Too many requests", code?: string): Response =>
   apiError(message, 429, code ?? "RATE_LIMITED");
 
 /**
@@ -119,10 +112,9 @@ export const rateLimited = (message: string = "Too many requests", code?: string
  *
  * @param message - Error message describing the expired resource
  * @param code - Optional error code
- * @returns NextResponse with 410 status
+ * @returns Response with 410 status
  */
-export const gone = (message: string, code?: string): NextResponse<ErrorResponse> =>
-  apiError(message, 410, code ?? "GONE");
+export const gone = (message: string, code?: string): Response => apiError(message, 410, code ?? "GONE");
 
 /**
  * Create a 500 Internal Server Error response.
@@ -130,39 +122,7 @@ export const gone = (message: string, code?: string): NextResponse<ErrorResponse
  * @param message - Error message (should be generic, not expose internal details)
  * @param code - Optional error code
  * @param details - Optional error details (use cautiously, may expose internals)
- * @returns NextResponse with 500 status
+ * @returns Response with 500 status
  */
-export const internalError = (
-  message: string = "Internal server error",
-  code?: string,
-  details?: unknown
-): NextResponse<ErrorResponse> => apiError(message, 500, code ?? "INTERNAL_ERROR", details);
-
-/**
- * Create an error handler function for API routes.
- *
- * This factory function creates a consistent error handler that logs errors
- * and returns a standardized 500 response. Use this to eliminate duplicate
- * error handling logic across API routes.
- *
- * @param context - Verb phrase describing the failed action (e.g., "fetch map clusters")
- * @param logger - Logger instance with error method
- * @returns Error handler function
- *
- * @example
- * ```typescript
- * const handleError = createErrorHandler("fetch events", logger);
- * // In catch block:
- * return handleError(error);
- * ```
- */
-export const createErrorHandler =
-  (context: string, logger: { error: (message: string, meta?: unknown) => void }) =>
-  (error: unknown): NextResponse<ErrorResponse> => {
-    logger.error(`Error ${context}:`, {
-      error: error as Error,
-      message: (error as Error).message,
-      stack: (error as Error).stack,
-    });
-    return NextResponse.json({ error: `Failed to ${context}` }, { status: 500 });
-  };
+export const internalError = (message: string = "Internal server error", code?: string, details?: unknown): Response =>
+  apiError(message, 500, code ?? "INTERNAL_ERROR", details);

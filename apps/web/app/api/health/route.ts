@@ -64,10 +64,7 @@ export const GET = apiRoute({
       logger.debug({ results }, "Health check results");
 
       const overallStatus = determineHealthStatus(results);
-      return new Response(JSON.stringify(results), {
-        status: overallStatus,
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json(results, { status: overallStatus });
     } catch (error) {
       logger.error(
         {
@@ -78,9 +75,9 @@ export const GET = apiRoute({
       );
 
       const errorResponse = createErrorResponse(error);
-      return new Response(
-        JSON.stringify({ error: "Health check failed", code: "HEALTH_CHECK_FAILED", details: errorResponse }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+      return Response.json(
+        { error: "Health check failed", code: "HEALTH_CHECK_FAILED", details: errorResponse },
+        { status: 500 }
       );
     }
   },

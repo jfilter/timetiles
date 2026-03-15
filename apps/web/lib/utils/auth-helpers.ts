@@ -4,14 +4,13 @@
  * @module
  * @category Utils
  */
-import type { NextResponse } from "next/server";
 import type { Payload } from "payload";
 
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import type { User } from "@/payload-types";
 
-import { type ErrorResponse, unauthorized } from "./api-response";
+import { unauthorized } from "./api-response";
 
 /**
  * Verify a user's password by attempting a login.
@@ -39,7 +38,7 @@ export const verifyPasswordWithAudit = async (
   clientId: string,
   context: string,
   errorMessage: string = "Password is incorrect"
-): Promise<NextResponse<ErrorResponse> | null> => {
+): Promise<Response | null> => {
   try {
     await verifyPassword(payload, user, password);
     return null;

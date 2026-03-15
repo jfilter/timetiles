@@ -7,7 +7,7 @@
  */
 
 import { apiRoute } from "@/lib/api";
-import { getQuotaService } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 
 /**
  * Get current user's quota status.
@@ -22,7 +22,7 @@ export const GET = apiRoute({
   auth: "required",
   rateLimit: { type: "API_GENERAL" },
   handler: async ({ user, payload }) => {
-    const quotaService = getQuotaService(payload);
+    const quotaService = createQuotaService(payload);
 
     // Per-request cache: all 6 checks share one DB lookup for usage record
     const cache = { context: {} as Record<string, unknown> };
@@ -93,9 +93,6 @@ export const GET = apiRoute({
     // Add quota headers
     const headers = await quotaService.getQuotaHeaders(user);
 
-    return new Response(JSON.stringify(response), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...headers },
-    });
+    return Response.json(response, { status: 200, headers });
   },
 });

@@ -40,12 +40,9 @@ const createRateLimitResponse = (rateLimitCheck: { failedWindow?: string; resetT
     retryAfter: new Date(rateLimitCheck.resetTime ?? Date.now()).toISOString(),
   };
 
-  return new Response(JSON.stringify(body), {
+  return Response.json(body, {
     status: 429,
-    headers: {
-      "Content-Type": "application/json",
-      "Retry-After": Math.ceil(((rateLimitCheck.resetTime ?? Date.now()) - Date.now()) / 1000).toString(),
-    },
+    headers: { "Retry-After": Math.ceil(((rateLimitCheck.resetTime ?? Date.now()) - Date.now()) / 1000).toString() },
   });
 };
 

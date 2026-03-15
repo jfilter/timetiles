@@ -4,12 +4,11 @@
  * @module
  * @category Tests
  */
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   apiError,
   badRequest,
-  createErrorHandler,
   forbidden,
   internalError,
   methodNotAllowed,
@@ -63,21 +62,6 @@ describe("api-response", () => {
     it("should create 500 response", () => {
       const res = internalError();
       expect(res.status).toBe(500);
-    });
-  });
-
-  describe("createErrorHandler", () => {
-    it("should log error and return 500 response", async () => {
-      const mockLogger = { error: vi.fn() };
-      const handler = createErrorHandler("fetch events", mockLogger);
-      const error = new Error("DB connection failed");
-
-      const res = handler(error);
-      const body = await res.json();
-
-      expect(res.status).toBe(500);
-      expect(body.error).toBe("Failed to fetch events");
-      expect(mockLogger.error).toHaveBeenCalled();
     });
   });
 });

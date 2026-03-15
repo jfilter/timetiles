@@ -35,49 +35,6 @@ const CategoricalFiltersSkeleton = () => (
   </div>
 );
 
-/** Enum value with count and percentage */
-interface EnumValue {
-  value: string;
-  count: number;
-  percent: number;
-}
-
-/** Props for the memoized enum field dropdown wrapper */
-interface MemoizedEnumFieldProps {
-  fieldPath: string;
-  label: string;
-  values: EnumValue[];
-  selectedValues: string[];
-  onFieldFilterChange: (path: string, values: string[]) => void;
-}
-
-/**
- * Memoized wrapper for EnumFieldDropdown that creates a stable callback.
- */
-const MemoizedEnumField = ({
-  fieldPath,
-  label,
-  values,
-  selectedValues,
-  onFieldFilterChange,
-}: MemoizedEnumFieldProps) => {
-  const handleSelectionChange = useCallback(
-    (newValues: string[]) => {
-      onFieldFilterChange(fieldPath, newValues);
-    },
-    [onFieldFilterChange, fieldPath]
-  );
-
-  return (
-    <EnumFieldDropdown
-      label={label}
-      values={values}
-      selectedValues={selectedValues}
-      onSelectionChange={handleSelectionChange}
-    />
-  );
-};
-
 /** Props for the CategoricalFilters component */
 export interface CategoricalFiltersProps {
   /** Enum fields to display as filter dropdowns */
@@ -92,6 +49,33 @@ export interface CategoricalFiltersProps {
  * Renders enum field dropdowns when a single dataset is selected.
  * Enum field data is fetched by the parent and passed as props.
  */
+/** Renders a single enum field with a stable callback */
+const EnumFieldItem = ({
+  field,
+  selectedValues,
+  onFieldFilterChange,
+}: {
+  field: EnumField;
+  selectedValues: string[];
+  onFieldFilterChange: (path: string, values: string[]) => void;
+}) => {
+  const handleSelectionChange = useCallback(
+    (newValues: string[]) => {
+      onFieldFilterChange(field.path, newValues);
+    },
+    [onFieldFilterChange, field.path]
+  );
+
+  return (
+    <EnumFieldDropdown
+      label={field.label}
+      values={field.values}
+      selectedValues={selectedValues}
+      onSelectionChange={handleSelectionChange}
+    />
+  );
+};
+
 export const CategoricalFilters = ({ enumFields, isLoading }: CategoricalFiltersProps) => {
   const { filters, setFieldFilter } = useFilters();
 
@@ -104,11 +88,9 @@ export const CategoricalFilters = ({ enumFields, isLoading }: CategoricalFilters
   return (
     <div className="space-y-3">
       {enumFields.map((field) => (
-        <MemoizedEnumField
+        <EnumFieldItem
           key={field.path}
-          fieldPath={field.path}
-          label={field.label}
-          values={field.values}
+          field={field}
           selectedValues={filters.fieldFilters[field.path] ?? EMPTY_ARRAY}
           onFieldFilterChange={setFieldFilter}
         />
