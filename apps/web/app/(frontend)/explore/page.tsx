@@ -10,8 +10,8 @@
  *
  * @module
  */
-import Link from "next/link";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { getPayload } from "payload";
 
 import { ViewProvider } from "@/lib/context/view-context";
