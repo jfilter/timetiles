@@ -24,7 +24,7 @@ import type {
   ScheduleDeletionResult,
 } from "./account-deletion-types";
 import { AUDIT_ACTIONS, auditLog } from "./audit-log-service";
-import { getSystemUserService, SYSTEM_USER_EMAIL } from "./system-user-service";
+import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user-service";
 
 export type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult };
 
@@ -265,7 +265,7 @@ export class AccountDeletionService {
     }
 
     // Get system user for public data transfer
-    const systemUserService = getSystemUserService(this.payload);
+    const systemUserService = createSystemUserService(this.payload);
     const systemUser = await systemUserService.getOrCreateSystemUser();
 
     logger.info({ userId, systemUserId: systemUser.id, deletionType }, "Starting account deletion execution");
@@ -539,5 +539,5 @@ export class AccountDeletionService {
  * Returns a fresh instance each call. The service is stateless (all data
  * lives in the database), so there is no benefit to caching the instance.
  */
-export const getAccountDeletionService = (payload: Payload): AccountDeletionService =>
+export const createAccountDeletionService = (payload: Payload): AccountDeletionService =>
   new AccountDeletionService(payload);

@@ -9,14 +9,14 @@
  */
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { createAccountDeletionService } from "@/lib/services/account-deletion-service";
 
 export const GET = apiRoute({
   auth: "required",
   handler: async ({ user, payload }) => {
     logger.debug({ userId: user.id }, "Fetching deletion summary");
 
-    const deletionService = getAccountDeletionService(payload);
+    const deletionService = createAccountDeletionService(payload);
     const summary = await deletionService.getDeletionSummary(user.id);
 
     // Also check if user can be deleted

@@ -18,7 +18,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { DataExportService } from "@/lib/services/data-export-service";
-import { getDataExportService } from "@/lib/services/data-export-service";
+import { createDataExportService } from "@/lib/services/data-export-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
@@ -52,7 +52,7 @@ describe.sequential("Data Export Service", () => {
 
   beforeEach(async () => {
     await truncate();
-    exportService = getDataExportService(payload);
+    exportService = createDataExportService(payload);
   });
 
   describe("getExportSummary", () => {

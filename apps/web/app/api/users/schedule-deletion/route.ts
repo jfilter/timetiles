@@ -13,7 +13,7 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
-import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { DELETION_GRACE_PERIOD_DAYS, createAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import { badRequest, rateLimited } from "@/lib/utils/api-response";
@@ -61,7 +61,7 @@ export const POST = apiRoute({
     if (verifyError) return verifyError;
 
     // Check if user can be deleted
-    const deletionService = getAccountDeletionService(payload);
+    const deletionService = createAccountDeletionService(payload);
     const canDelete = await deletionService.canDeleteUser(user.id);
 
     if (!canDelete.allowed) {

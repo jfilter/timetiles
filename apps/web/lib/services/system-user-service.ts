@@ -151,4 +151,4 @@ export class SystemUserService {
  * Returns a fresh instance each call. The service is stateless apart from
  * a trivial in-class cache that works within a single usage flow.
  */
-export const getSystemUserService = (payload: Payload): SystemUserService => new SystemUserService(payload);
+export const createSystemUserService = (payload: Payload): SystemUserService => new SystemUserService(payload);

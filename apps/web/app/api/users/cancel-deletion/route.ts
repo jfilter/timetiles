@@ -9,7 +9,7 @@
  */
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { createAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { badRequest } from "@/lib/utils/api-response";
 
@@ -22,7 +22,7 @@ export const POST = apiRoute({
     }
 
     // Cancel deletion
-    const deletionService = getAccountDeletionService(payload);
+    const deletionService = createAccountDeletionService(payload);
     await deletionService.cancelDeletion(user.id);
 
     await auditLog(payload, { action: AUDIT_ACTIONS.DELETION_CANCELLED, userId: user.id, userEmail: user.email });

@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const { mockGetService } = vi.hoisted(() => ({ mockGetService: vi.fn() }));
 
-vi.mock("@/lib/services/account-deletion-service", () => ({ getAccountDeletionService: mockGetService }));
+vi.mock("@/lib/services/account-deletion-service", () => ({ createAccountDeletionService: mockGetService }));
 
 import { executeAccountDeletionJob } from "@/lib/jobs/handlers/execute-account-deletion-job";
 

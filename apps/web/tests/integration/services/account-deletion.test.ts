@@ -16,8 +16,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { AccountDeletionService } from "@/lib/services/account-deletion-service";
-import { DELETION_GRACE_PERIOD_DAYS, getAccountDeletionService } from "@/lib/services/account-deletion-service";
-import { getSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/services/system-user-service";
+import { DELETION_GRACE_PERIOD_DAYS, createAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { createSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/services/system-user-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
@@ -41,12 +41,12 @@ describe.sequential("Account Deletion Service", () => {
 
   beforeEach(async () => {
     await truncate();
-    deletionService = getAccountDeletionService(payload);
+    deletionService = createAccountDeletionService(payload);
   });
 
   describe("System User Service", () => {
     it("should create system user on first call", async () => {
-      const systemUserService = getSystemUserService(payload);
+      const systemUserService = createSystemUserService(payload);
       const systemUser = await systemUserService.getOrCreateSystemUser();
 
       expect(systemUser).toBeDefined();
@@ -56,7 +56,7 @@ describe.sequential("Account Deletion Service", () => {
     });
 
     it("should return same system user on subsequent calls", async () => {
-      const systemUserService = getSystemUserService(payload);
+      const systemUserService = createSystemUserService(payload);
       const first = await systemUserService.getOrCreateSystemUser();
       const second = await systemUserService.getOrCreateSystemUser();
 
@@ -64,7 +64,7 @@ describe.sequential("Account Deletion Service", () => {
     });
 
     it("should identify system user correctly", async () => {
-      const systemUserService = getSystemUserService(payload);
+      const systemUserService = createSystemUserService(payload);
       const systemUser = await systemUserService.getOrCreateSystemUser();
 
       const isSystem = await systemUserService.isSystemUser(systemUser.id);
@@ -89,7 +89,7 @@ describe.sequential("Account Deletion Service", () => {
     });
 
     it("should prevent deleting system user", async () => {
-      const systemUserService = getSystemUserService(payload);
+      const systemUserService = createSystemUserService(payload);
       const systemUser = await systemUserService.getOrCreateSystemUser();
 
       const result = await deletionService.canDeleteUser(systemUser.id);
@@ -186,7 +186,7 @@ describe.sequential("Account Deletion Service", () => {
     });
 
     it("should throw if user cannot be deleted", async () => {
-      const systemUserService = getSystemUserService(payload);
+      const systemUserService = createSystemUserService(payload);
       const systemUser = await systemUserService.getOrCreateSystemUser();
 
       await expect(deletionService.scheduleDeletion(systemUser.id)).rejects.toThrow();

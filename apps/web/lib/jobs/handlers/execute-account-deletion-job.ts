@@ -11,7 +11,7 @@
 import type { Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
-import { getAccountDeletionService } from "@/lib/services/account-deletion-service";
+import { createAccountDeletionService } from "@/lib/services/account-deletion-service";
 
 /**
  * Job handler for executing scheduled account deletions.
@@ -28,7 +28,7 @@ export const executeAccountDeletionJob = {
     try {
       logger.info({ jobId: job?.id }, "Starting account deletion execution job");
 
-      const deletionService = getAccountDeletionService(payload);
+      const deletionService = createAccountDeletionService(payload);
       const dueDeletions = await deletionService.findDueDeletions();
 
       logger.info({ count: dueDeletions.length, jobId: job?.id }, "Found users with due deletions");

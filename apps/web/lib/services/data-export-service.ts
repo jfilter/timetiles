@@ -462,4 +462,4 @@ export class DataExportService {
  * Returns a fresh instance each call. The service is stateless (all data
  * lives in the database), so there is no benefit to caching the instance.
  */
-export const getDataExportService = (payload: Payload): DataExportService => new DataExportService(payload);
+export const createDataExportService = (payload: Payload): DataExportService => new DataExportService(payload);

@@ -12,7 +12,7 @@ import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { getDataExportService } from "@/lib/services/data-export-service";
+import { createDataExportService } from "@/lib/services/data-export-service";
 import type { RequestExportResponse } from "@/lib/types/data-export-api";
 import { conflict } from "@/lib/utils/api-response";
 
@@ -46,7 +46,7 @@ export const POST = apiRoute({
     }
 
     // Get export summary
-    const exportService = getDataExportService(payload);
+    const exportService = createDataExportService(payload);
     const summary = await exportService.getExportSummary(user.id);
 
     // Create export record (re-check for duplicates to handle race condition)

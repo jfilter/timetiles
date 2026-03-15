@@ -12,7 +12,7 @@ import type { Payload } from "payload";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/services/data-export-emails";
-import { getDataExportService } from "@/lib/services/data-export-service";
+import { createDataExportService } from "@/lib/services/data-export-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 /** Expiry time in milliseconds (7 days) */
@@ -106,7 +106,7 @@ export const dataExportJob = {
       }
 
       // Execute export
-      const exportService = getDataExportService(payload);
+      const exportService = createDataExportService(payload);
       const result = await exportService.executeExport(exportId);
 
       // Calculate expiry (7 days from now)
