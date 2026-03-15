@@ -265,9 +265,18 @@ export class QuotaService {
       maxCatalogsPerUser: userQuotas.maxCatalogsPerUser ?? defaultQuotas.maxCatalogsPerUser,
     };
 
-    // If user has custom quotas JSON field, merge those too
+    // If user has custom quotas JSON field, merge those too (with runtime validation)
     if (user.customQuotas && typeof user.customQuotas === "object") {
-      return { ...effectiveQuotas, ...(user.customQuotas as Partial<UserQuotas>) };
+      const validKeys: Set<string> = new Set(Object.keys(DEFAULT_QUOTAS[TRUST_LEVELS.REGULAR]));
+      const validated: Partial<UserQuotas> = {};
+      for (const [key, value] of Object.entries(user.customQuotas as Record<string, unknown>)) {
+        if (validKeys.has(key) && typeof value === "number") {
+          (validated as Record<string, number>)[key] = value;
+        }
+      }
+      if (Object.keys(validated).length > 0) {
+        return { ...effectiveQuotas, ...validated };
+      }
     }
 
     return effectiveQuotas;

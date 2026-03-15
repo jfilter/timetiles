@@ -31,7 +31,7 @@ export const EventFilters = () => {
   const { filters, setStartDate, setEndDate, clearAllFilters, hasActiveFilters, activeFilterCount } = useFilters();
 
   // Fetch event counts for catalogs and datasets
-  const { data: statsData } = useDataSourceStatsQuery();
+  const { data: statsData, isError: isStatsError } = useDataSourceStatsQuery();
 
   // Fetch enum fields for categorical filters (only when single dataset selected)
   const singleDatasetId = filters.datasets.length === 1 ? (filters.datasets[0] ?? null) : null;
@@ -65,6 +65,7 @@ export const EventFilters = () => {
 
       {/* Data Sources Section */}
       <FilterSection title="Data Sources" defaultOpen activeCount={dataSourcesActiveCount}>
+        {isStatsError && <p className="text-cartographic-terracotta mb-2 text-xs">Failed to load event counts.</p>}
         <DataSourceSelector
           eventCountsByCatalog={statsData?.catalogCounts}
           eventCountsByDataset={statsData?.datasetCounts}

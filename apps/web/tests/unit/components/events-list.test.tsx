@@ -168,10 +168,14 @@ describe("EventsList", () => {
 
     renderWithProviders(<EventsList events={events} />);
 
-    // All events should be displayed (order testing would require more complex DOM traversal)
-    expect(screen.getByText("Later Event")).toBeInTheDocument();
-    expect(screen.getByText("Earlier Event")).toBeInTheDocument();
-    expect(screen.getByText("No Timestamp Event")).toBeInTheDocument();
+    // Verify reverse-chronological order (newest first) via DOM position
+    const titles = screen.getAllByRole("heading").map((el) => el.textContent);
+    const laterIdx = titles.indexOf("Later Event");
+    const earlierIdx = titles.indexOf("Earlier Event");
+    const noTimestampIdx = titles.indexOf("No Timestamp Event");
+    expect(laterIdx).toBeLessThan(earlierIdx);
+    // Events without timestamps sort to the end
+    expect(noTimestampIdx).toBeGreaterThan(earlierIdx);
   });
 
   test("handles large numbers of events efficiently", () => {
