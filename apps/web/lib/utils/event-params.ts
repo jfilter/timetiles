@@ -40,6 +40,9 @@ export const requireStrictInteger = (value: string | number, label: string): num
   return result;
 };
 
+/** Normalize a job ID to a strict integer, throwing if invalid. */
+export const normalizeJobId = (jobId: string | number): number => requireStrictInteger(jobId, "import job");
+
 /** Parse an optional value as a strict integer, passing through null/undefined. */
 export const optionalStrictInteger = (
   value: string | number | null | undefined,

@@ -39,7 +39,7 @@
  * ```typescript
  * // Typical usage pattern: check both rate limits and quotas
  * import { getRateLimitService } from '@/lib/services/rate-limit-service';
- * import { getQuotaService } from '@/lib/services/quota-service';
+ * import { createQuotaService } from '@/lib/services/quota-service';
  *
  * // 1. Rate limit check (fast, prevents abuse)
  * const rateLimitService = getRateLimitService(payload);
@@ -53,7 +53,7 @@
  * }
  *
  * // 2. Quota check (accurate, tracks long-term usage)
- * const quotaService = getQuotaService(payload);
+ * const quotaService = createQuotaService(payload);
  * const quotaCheck = await quotaService.checkQuota(
  *   user,
  *   "FILE_UPLOADS_PER_DAY"
@@ -82,10 +82,10 @@ import type { Payload, PayloadRequest } from "payload";
 
 import {
   DEFAULT_QUOTAS,
+  normalizeTrustLevel,
   type QuotaKey,
   QUOTAS,
   TRUST_LEVELS,
-  type TrustLevel,
   type UserQuotas,
   type UserUsage,
 } from "@/lib/constants/quota-constants";
@@ -106,16 +106,6 @@ const DAILY_USAGE_FIELDS: Array<keyof Omit<UserUsage, "lastResetDate">> = Object
   .map((d) => d.usageField);
 
 type UserIdentifier = number | string | Pick<User, "id"> | null | undefined;
-
-const normalizeTrustLevel = (trustLevel: User["trustLevel"] | null | undefined): TrustLevel => {
-  const parsedTrustLevel = parseStrictInteger(trustLevel ?? TRUST_LEVELS.REGULAR);
-
-  if (parsedTrustLevel != null && parsedTrustLevel in DEFAULT_QUOTAS) {
-    return parsedTrustLevel as TrustLevel;
-  }
-
-  return TRUST_LEVELS.REGULAR;
-};
 
 const normalizeUserId = (userId: UserIdentifier): number => {
   const rawUserId = typeof userId === "object" && userId !== null ? userId.id : userId;
@@ -704,4 +694,4 @@ export class QuotaService {
  * Returns a fresh instance each call. The service is stateless (all data
  * lives in the database), so there is no benefit to caching the instance.
  */
-export const getQuotaService = (payload: Payload): QuotaService => new QuotaService(payload);
+export const createQuotaService = (payload: Payload): QuotaService => new QuotaService(payload);

@@ -10,6 +10,7 @@
  *
  * @module
  */
+import { parseStrictInteger } from "@/lib/utils/event-params";
 
 /**
  * Trust levels for users, determining their access and resource limits.
@@ -213,6 +214,22 @@ export const QUOTAS = {
       `Maximum catalogs reached (${current}/${limit}). Delete an existing catalog to create more.`,
   },
 } as const satisfies Record<string, QuotaDescriptor>;
+
+/**
+ * Normalize a trust level value to a valid {@link TrustLevel}.
+ *
+ * Parses the input as a strict integer and validates it against known trust levels.
+ * Falls back to {@link TRUST_LEVELS.REGULAR} for invalid or missing values.
+ */
+export const normalizeTrustLevel = (trustLevel: string | number | null | undefined): TrustLevel => {
+  const parsedTrustLevel = parseStrictInteger(trustLevel ?? TRUST_LEVELS.REGULAR);
+
+  if (parsedTrustLevel != null && parsedTrustLevel in DEFAULT_QUOTAS) {
+    return parsedTrustLevel as TrustLevel;
+  }
+
+  return TRUST_LEVELS.REGULAR;
+};
 
 /** Key identifying a quota in the {@link QUOTAS} registry. */
 export type QuotaKey = keyof typeof QUOTAS;

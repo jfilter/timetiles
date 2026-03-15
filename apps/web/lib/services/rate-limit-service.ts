@@ -30,7 +30,7 @@
  * ```typescript
  * // Typical usage pattern: check both rate limits and quotas
  * import { getRateLimitService } from '@/lib/services/rate-limit-service';
- * import { getQuotaService } from '@/lib/services/quota-service';
+ * import { createQuotaService } from '@/lib/services/quota-service';
  *
  * // 1. Rate limit check (fast, prevents abuse)
  * const rateLimitService = getRateLimitService(payload);
@@ -44,7 +44,7 @@
  * }
  *
  * // 2. Quota check (accurate, tracks long-term usage)
- * const quotaService = getQuotaService(payload);
+ * const quotaService = createQuotaService(payload);
  * const quotaCheck = await quotaService.checkQuota(
  *   user,
  *   "FILE_UPLOADS_PER_DAY"
@@ -74,14 +74,13 @@
  */
 import type { Payload } from "payload";
 
-import { RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS, type TrustLevel } from "@/lib/constants/quota-constants";
+import { normalizeTrustLevel, RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import {
   RATE_LIMITS,
   type RateLimitConfig,
   type RateLimitName,
   type RateLimitWindow,
 } from "@/lib/constants/rate-limits";
-import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { User } from "@/payload-types";
 
 import { createLogger } from "../logger";
@@ -91,16 +90,6 @@ export { RATE_LIMITS };
 export type { RateLimitConfig, RateLimitName, RateLimitWindow };
 
 const logger = createLogger("rate-limit-service");
-
-const normalizeTrustLevel = (trustLevel: User["trustLevel"] | null | undefined): TrustLevel => {
-  const parsedTrustLevel = parseStrictInteger(trustLevel ?? TRUST_LEVELS.REGULAR);
-
-  if (parsedTrustLevel != null && parsedTrustLevel in RATE_LIMITS_BY_TRUST_LEVEL) {
-    return parsedTrustLevel as TrustLevel;
-  }
-
-  return TRUST_LEVELS.REGULAR;
-};
 
 interface RateLimitEntry {
   count: number;

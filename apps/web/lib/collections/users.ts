@@ -16,24 +16,14 @@ import type { CollectionConfig } from "payload";
 
 import {
   DEFAULT_QUOTAS,
+  normalizeTrustLevel,
   TRUST_LEVEL_DESCRIPTIONS,
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
 } from "@/lib/constants/quota-constants";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
-import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { createCommonConfig } from "./shared-fields";
-
-const normalizeTrustLevel = (trustLevel: string | number | null | undefined) => {
-  const parsedTrustLevel = parseStrictInteger(trustLevel ?? TRUST_LEVELS.REGULAR);
-
-  if (parsedTrustLevel != null && parsedTrustLevel in DEFAULT_QUOTAS) {
-    return parsedTrustLevel as keyof typeof DEFAULT_QUOTAS;
-  }
-
-  return TRUST_LEVELS.REGULAR;
-};
 
 const filterDefinedQuotas = (quotas: Record<string, unknown> | undefined): Record<string, number> => {
   const filtered: Record<string, number> = {};

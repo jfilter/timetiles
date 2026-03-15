@@ -24,8 +24,8 @@ import {
   type ProcessingStage,
 } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
-import { getQuotaService } from "@/lib/services/quota-service";
-import { requireStrictInteger } from "@/lib/utils/event-params";
+import { createQuotaService } from "@/lib/services/quota-service";
+import { normalizeJobId } from "@/lib/utils/event-params";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob, User } from "@/payload-types";
 
@@ -158,10 +158,6 @@ export interface RecoveryResult {
  * ```
  */
 export class ErrorRecoveryService {
-  private static normalizeJobId(jobId: string | number): number {
-    return requireStrictInteger(jobId, "import job");
-  }
-
   /**
    * Default retry configuration.
    * - 3 max retries
@@ -248,7 +244,7 @@ export class ErrorRecoveryService {
     const userId = extractRelationId(importFile.user)!;
     const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
-    const quotaService = getQuotaService(payload);
+    const quotaService = createQuotaService(payload);
     const quotaCheck = await quotaService.checkQuota(user, "IMPORT_JOBS_PER_DAY", 1);
 
     if (!quotaCheck.allowed) {
@@ -310,7 +306,7 @@ export class ErrorRecoveryService {
     const config = { ...this.DEFAULT_RETRY_CONFIG, ...retryConfig };
 
     try {
-      const normalizedJobId = this.normalizeJobId(jobId);
+      const normalizedJobId = normalizeJobId(jobId);
 
       // Get the failed job
       const job = await payload.findByID({ collection: IMPORT_JOBS_COLLECTION, id: normalizedJobId });
@@ -648,7 +644,7 @@ export class ErrorRecoveryService {
     clearRetries = true
   ): Promise<RecoveryResult> {
     try {
-      const normalizedJobId = this.normalizeJobId(jobId);
+      const normalizedJobId = normalizeJobId(jobId);
 
       const job = await payload.findByID({ collection: IMPORT_JOBS_COLLECTION, id: normalizedJobId });
 
