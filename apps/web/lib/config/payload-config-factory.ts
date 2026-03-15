@@ -205,8 +205,9 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     typescript: DEFAULT_TYPESCRIPT_CONFIG,
     db: createDbAdapter(databaseUrl, environment, poolConfig, runMigrations),
     graphQL: { disable: disableGraphQL },
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-    sharp: sharp as any,
+    // Sharp's default export type doesn't match Payload's expected sharp type.
+    // This is a known Payload CMS issue — both expect the same runtime value.
+    sharp: sharp as unknown as Config["sharp"],
   };
 
   // Configure email adapter

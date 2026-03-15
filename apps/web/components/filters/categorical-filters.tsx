@@ -13,13 +13,11 @@
 
 import { useCallback } from "react";
 
+import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
 import { useFilters } from "@/lib/hooks/use-filters";
 
 import { EnumFieldDropdown } from "./enum-field-dropdown";
-
-/** Stable empty array to avoid creating new references on each render */
-const EMPTY_ARRAY: string[] = [];
 
 /**
  * Loading skeleton for categorical filters.

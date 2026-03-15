@@ -22,10 +22,17 @@ import { parseStrictInteger } from "@/lib/utils/event-params";
 
 export type { SchemaInferenceOptions, SchemaInferenceResponse } from "@/lib/types/schema-inference";
 
+const schemaInferBody = z.object({
+  sampleSize: z.number().int().positive().optional(),
+  batchSize: z.number().int().positive().optional(),
+  forceRegenerate: z.boolean().optional(),
+});
+
 export const POST = apiRoute({
   auth: "required",
   params: z.object({ id: z.string() }),
-  handler: async ({ req, user, payload, params }) => {
+  body: schemaInferBody,
+  handler: async ({ user, payload, params, body }) => {
     const datasetId = parseStrictInteger(params.id);
 
     if (datasetId == null) {
@@ -46,18 +53,7 @@ export const POST = apiRoute({
       throw new NotFoundError("Dataset not found");
     }
 
-    // Parse options from request body (optional)
-    let options: { sampleSize?: number; batchSize?: number; forceRegenerate?: boolean } = {};
-    try {
-      const body = await req.json().catch(() => ({}));
-      options = {
-        sampleSize: typeof body.sampleSize === "number" ? body.sampleSize : undefined,
-        batchSize: typeof body.batchSize === "number" ? body.batchSize : undefined,
-        forceRegenerate: typeof body.forceRegenerate === "boolean" ? body.forceRegenerate : undefined,
-      };
-    } catch {
-      // No body or invalid JSON - use defaults
-    }
+    const options = body;
 
     logger.info({ datasetId, userId: user.id, options }, "Schema inference requested");
 

@@ -209,9 +209,6 @@ export class RateLimitService {
     // Check if limit exceeded
     if (entry.count > limit) {
       entry.blocked = true;
-      logger.info({ identifier, count: entry.count, limit }, "Rate limit exceeded - blocking identifier");
-
-      // Log rate limit violation
       this.logRateLimitViolation(identifier, entry.count, limit);
 
       return { allowed: false, remaining: 0, resetTime: entry.resetTime, blocked: true };

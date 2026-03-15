@@ -15,6 +15,33 @@ import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
 import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date-slider";
 
+const DATE_INPUT_CLASS =
+  "border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none";
+
+const DateInput = ({
+  value,
+  onChange,
+  min,
+  max,
+  label,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  min: string;
+  max: string;
+  label: string;
+}) => (
+  <input
+    type="date"
+    value={value}
+    onChange={onChange}
+    min={min}
+    max={max}
+    aria-label={label}
+    className={DATE_INPUT_CLASS}
+  />
+);
+
 interface TimeRangeSliderProps {
   filters: FilterState;
   startDate: string | null;
@@ -170,26 +197,22 @@ export const TimeRangeSlider = ({
         {isEditingDates ? (
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <input
-                type="date"
+              <DateInput
                 value={startDate ?? formatISODate(minTimestamp)}
                 onChange={handleStartDateInputChange}
                 min={formatISODate(minTimestamp)}
                 max={endDate ?? formatISODate(maxTimestamp)}
-                aria-label="Start date"
-                className="border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none"
+                label="Start date"
               />
               <span className="text-cartographic-navy/40 dark:text-cartographic-charcoal/40 text-xs" aria-hidden="true">
                 →
               </span>
-              <input
-                type="date"
+              <DateInput
                 value={endDate ?? formatISODate(maxTimestamp)}
                 onChange={handleEndDateInputChange}
                 min={startDate ?? formatISODate(minTimestamp)}
                 max={formatISODate(maxTimestamp)}
-                aria-label="End date"
-                className="border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none"
+                label="End date"
               />
             </div>
             <button

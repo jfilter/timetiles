@@ -368,8 +368,9 @@ export class SeedingOperations {
         },
       });
     } else if (collectionName === "users") {
-      // Disable verification email for seeded users (they're already pre-verified)
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Dynamic seeding requires type flexibility
+      // Disable verification email for seeded users (they're already pre-verified).
+      // Payload's create() types don't include disableVerificationEmail, but it's supported at runtime.
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- disableVerificationEmail is an undocumented Payload option
       await (payload.create as any)({ collection: "users", data: resolvedItem, disableVerificationEmail: true });
     } else {
       await payload.create({ collection: collectionName as keyof Config["collections"], data: resolvedItem });

@@ -15,17 +15,14 @@ import { X } from "lucide-react";
 import { useCallback } from "react";
 
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
-import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
+import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useFilters } from "@/lib/hooks/use-filters";
 
 import { CategoricalFilters } from "./categorical-filters";
 import { DataSourceSelector } from "./data-source-selector";
 import { FilterSection } from "./filter-section";
 import { TimeRangeSlider } from "./time-range-slider";
-
-/** Stable empty array to avoid creating new references on each render */
-const EMPTY_ENUM_FIELDS: EnumField[] = [];
 
 export const EventFilters = () => {
   const { filters, setStartDate, setEndDate, clearAllFilters, hasActiveFilters, activeFilterCount } = useFilters();
@@ -79,7 +76,7 @@ export const EventFilters = () => {
           defaultOpen
           activeCount={Object.values(filters.fieldFilters ?? {}).reduce((sum, vals) => sum + vals.length, 0)}
         >
-          <CategoricalFilters enumFields={enumFields ?? EMPTY_ENUM_FIELDS} isLoading={isEnumFieldsLoading} />
+          <CategoricalFilters enumFields={enumFields ?? EMPTY_ARRAY} isLoading={isEnumFieldsLoading} />
         </FilterSection>
       )}
 
