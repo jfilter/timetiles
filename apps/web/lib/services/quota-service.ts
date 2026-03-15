@@ -82,8 +82,8 @@ import type { Payload, PayloadRequest } from "payload";
 
 import {
   DEFAULT_QUOTAS,
-  QUOTAS,
   type QuotaKey,
+  QUOTAS,
   TRUST_LEVELS,
   type TrustLevel,
   type UserQuotas,
@@ -103,7 +103,7 @@ const USER_USAGE_COLLECTION = "user-usage";
 /** All daily usage field names, derived from the QUOTAS registry at module load. */
 const DAILY_USAGE_FIELDS: Array<keyof Omit<UserUsage, "lastResetDate">> = Object.values(QUOTAS)
   .filter((d) => d.daily && d.usageField != null)
-  .map((d) => d.usageField!);
+  .map((d) => d.usageField);
 
 type UserIdentifier = number | string | Pick<User, "id"> | null | undefined;
 
