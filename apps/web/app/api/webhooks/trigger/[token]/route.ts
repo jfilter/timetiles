@@ -1,22 +1,25 @@
 /**
- * Webhook trigger endpoint for scheduled imports.
+ * Generic webhook trigger endpoint.
  *
- * Allows external systems to trigger scheduled imports via POST request.
- * Implements dual-window rate limiting and concurrency prevention.
+ * Resolves a webhook token to either a scheduled import or a scraper,
+ * then dispatches to the appropriate job handler. Implements dual-window
+ * rate limiting and concurrency prevention.
  *
  * @module
  * @category API
  */
 import { sql } from "@payloadcms/db-postgres";
-import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
 import { queueWebhookImport } from "@/lib/services/scheduled-import-trigger-service";
+import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
 import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";
+
+import { z } from "zod";
 
 interface RateLimitResponse {
   success: false;
@@ -60,56 +63,76 @@ export const POST = apiRoute({
       return createRateLimitResponse(rateLimitCheck);
     }
 
-    // Find scheduled import by token
-    const scheduledImports = await payload.find({
-      collection: "scheduled-imports",
-      where: { webhookToken: { equals: token } },
-      limit: 1,
-    });
+    // Resolve token to a target (scheduled-import or scraper)
+    const target = await resolveWebhookToken(payload, token);
 
-    // Security: Return same error message for invalid token and disabled webhook
-    // to prevent token enumeration attacks
-    if (scheduledImports.docs.length === 0) {
-      logger.warn({ token: token.substring(0, 8) + "..." }, "Webhook trigger failed - invalid token");
+    if (!target) {
+      logger.warn({ token: token.substring(0, 8) + "..." }, "Webhook trigger failed - invalid or disabled token");
       return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
-    const scheduledImport = scheduledImports.docs[0] as ScheduledImport;
-
-    if (!scheduledImport.webhookEnabled) {
-      logger.warn(
-        { scheduledImportId: scheduledImport.id, name: scheduledImport.name },
-        "Webhook trigger failed - webhook disabled"
-      );
-      return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
+    // Dispatch based on target type
+    if (target.type === "scheduled-import") {
+      return handleScheduledImportTrigger(payload, target);
     }
 
-    // Atomically claim "running" status via raw SQL to prevent concurrent executions.
-    // Payload's bulk update uses SELECT-then-UPDATE which has a TOCTOU race;
-    // a single UPDATE ... WHERE ... RETURNING is truly atomic.
-    const claimResult = (await payload.db.drizzle.execute(sql`
-      UPDATE payload.scheduled_imports
-      SET last_status = 'running'
-      WHERE id = ${scheduledImport.id}
-        AND (last_status IS NULL OR last_status != 'running')
-      RETURNING id
-    `)) as { rows: Array<{ id: number }> };
-
-    if (claimResult.rows.length === 0) {
-      logger.info(
-        { scheduledImportId: scheduledImport.id, name: scheduledImport.name },
-        "Webhook trigger skipped - import already running"
-      );
-      return { message: "Import already running, skipped", status: "skipped" };
-    }
-
-    try {
-      const { jobId } = await queueWebhookImport(payload, scheduledImport);
-      return { message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() };
-    } catch {
-      return internalError("Failed to queue import job");
-    }
+    return handleScraperTrigger(payload, target);
   },
 });
 
-export const GET = () => methodNotAllowed("Method not allowed. Use POST to trigger imports.");
+/** Handle webhook trigger for a scheduled import. */
+async function handleScheduledImportTrigger(
+  payload: Parameters<typeof queueWebhookImport>[0],
+  target: { id: number; name: string; record: Record<string, unknown> }
+): Promise<Response | Record<string, unknown>> {
+  // Atomically claim "running" status to prevent concurrent executions
+  const claimResult = (await payload.db.drizzle.execute(sql`
+    UPDATE payload.scheduled_imports
+    SET last_status = 'running'
+    WHERE id = ${target.id}
+      AND (last_status IS NULL OR last_status != 'running')
+    RETURNING id
+  `)) as { rows: Array<{ id: number }> };
+
+  if (claimResult.rows.length === 0) {
+    logger.info(
+      { scheduledImportId: target.id, name: target.name },
+      "Webhook trigger skipped - import already running"
+    );
+    return { message: "Import already running, skipped", status: "skipped" };
+  }
+
+  try {
+    const { jobId } = await queueWebhookImport(payload, target.record as unknown as ScheduledImport);
+    return { message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() };
+  } catch {
+    return internalError("Failed to queue import job");
+  }
+}
+
+/** Handle webhook trigger for a scraper. */
+async function handleScraperTrigger(
+  payload: Parameters<typeof queueWebhookImport>[0],
+  target: { id: number; name: string }
+): Promise<Response | Record<string, unknown>> {
+  // Atomically claim "running" to prevent concurrent executions
+  const claimed = await claimScraperRunning(payload, target.id);
+
+  if (!claimed) {
+    logger.info({ scraperId: target.id, name: target.name }, "Webhook trigger skipped - scraper already running");
+    return { message: "Scraper already running, skipped", status: "skipped" };
+  }
+
+  try {
+    const job = await payload.jobs.queue({
+      task: "scraper-execution",
+      input: { scraperId: target.id, triggeredBy: "webhook" },
+    });
+    logger.info({ scraperId: target.id, jobId: job.id }, "Scraper triggered via webhook");
+    return { message: "Scraper triggered successfully", status: "triggered", jobId: String(job.id) };
+  } catch {
+    return internalError("Failed to queue scraper execution job");
+  }
+}
+
+export const GET = () => methodNotAllowed("Method not allowed. Use POST to trigger webhooks.");

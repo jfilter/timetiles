@@ -10,6 +10,8 @@
  */
 import type { CollectionConfig, Where } from "payload";
 
+import { computeWebhookUrl, handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
+
 import { createCommonConfig, createOwnershipAccess, isAuthenticated, isEditorOrAdmin } from "./shared-fields";
 
 const Scrapers: CollectionConfig = {
@@ -133,7 +135,33 @@ const Scrapers: CollectionConfig = {
     },
     // Next scheduled run
     { name: "nextRunAt", type: "date", admin: { readOnly: true, position: "sidebar" } },
+    // Webhook trigger
+    {
+      name: "webhookEnabled",
+      type: "checkbox",
+      defaultValue: false,
+      admin: { description: "Enable webhook trigger for this scraper" },
+    },
+    { name: "webhookToken", type: "text", maxLength: 64, index: true, admin: { hidden: true } },
+    {
+      name: "webhookUrl",
+      type: "text",
+      admin: {
+        readOnly: true,
+        description: "POST to this URL to trigger the scraper",
+        condition: (data) => Boolean(data?.webhookEnabled && data?.webhookToken),
+      },
+      hooks: { afterRead: [({ data }) => computeWebhookUrl(data)] },
+    },
   ],
+  hooks: {
+    beforeChange: [
+      ({ data, originalDoc }) => {
+        if (data) handleWebhookTokenLifecycle(data, originalDoc);
+        return data;
+      },
+    ],
+  },
 };
 
 export default Scrapers;

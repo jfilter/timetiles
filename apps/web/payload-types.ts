@@ -1786,6 +1786,15 @@ export interface Scraper {
     | boolean
     | null;
   nextRunAt?: string | null;
+  /**
+   * Enable webhook trigger for this scraper
+   */
+  webhookEnabled?: boolean | null;
+  webhookToken?: string | null;
+  /**
+   * POST to this URL to trigger the scraper
+   */
+  webhookUrl?: string | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -4265,6 +4274,9 @@ export interface ScrapersSelect<T extends boolean = true> {
   lastRunStatus?: T;
   statistics?: T;
   nextRunAt?: T;
+  webhookEnabled?: T;
+  webhookToken?: T;
+  webhookUrl?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
