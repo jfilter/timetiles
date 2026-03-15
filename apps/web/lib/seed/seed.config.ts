@@ -180,6 +180,13 @@ export const SEED_CONFIG: SeedConfiguration = {
       options: { staticContent: true },
     },
 
+    // Views - UI configuration per site
+    views: {
+      count: 1, // Default view per site
+      dependencies: ["sites"],
+      options: { staticContent: true },
+    },
+
     // Pages - static content (home, about, contact)
     pages: {
       count: 3, // Static: home, about, contact pages
@@ -292,7 +299,7 @@ export const SEED_CONFIG: SeedConfiguration = {
   presets: {
     testing: {
       description: "Fast, deterministic data for unit/integration tests",
-      enabled: ["users", "catalogs", "datasets", "events", "sites", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
+      enabled: ["users", "catalogs", "datasets", "events", "sites", "views", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
       volume: "small",
       realism: "simple",
       performance: "fast",
@@ -310,7 +317,7 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     e2e: {
       description: "Moderate, realistic data for E2E UI testing",
-      enabled: ["users", "catalogs", "datasets", "events", "sites", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
+      enabled: ["users", "catalogs", "datasets", "events", "sites", "views", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
       volume: "medium",
       realism: "realistic",
       performance: "balanced",
@@ -331,6 +338,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         "datasets",
         "events",
         "sites",
+        "views",
         "pages",
         MAIN_MENU_SLUG,
         FOOTER_SLUG,

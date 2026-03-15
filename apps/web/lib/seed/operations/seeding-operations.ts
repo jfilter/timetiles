@@ -27,6 +27,7 @@ import { mainMenuSeed } from "../seeds/main-menu";
 import { pagesSeed } from "../seeds/pages";
 import { siteSeeds } from "../seeds/sites";
 import { userSeeds } from "../seeds/users";
+import { viewSeeds } from "../seeds/views";
 import type { SeedData } from "../types";
 import { DataProcessing } from "./data-processing";
 import { QueryBuilders } from "./query-builders";
@@ -422,6 +423,8 @@ export class SeedingOperations {
         return [footerSeed];
       case "sites":
         return siteSeeds;
+      case "views":
+        return viewSeeds;
       case "pages":
         return pagesSeed;
       default:

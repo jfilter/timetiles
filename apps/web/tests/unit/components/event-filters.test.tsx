@@ -33,10 +33,7 @@ const mockViewContext = {
   filterConfig: { mode: "auto", maxFilters: 5 },
   mapSettings: { baseMapStyle: "default" },
 };
-vi.mock("@/lib/context/view-context", () => ({
-  useView: () => mockViewContext,
-  useViewOptional: () => mockViewContext,
-}));
+vi.mock("@/lib/context/view-context", () => ({ useView: () => mockViewContext }));
 
 describe("EventFilters", () => {
   test("renders catalog cards when no catalog is selected", () => {

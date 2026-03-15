@@ -21,18 +21,15 @@ vi.mock("@/lib/hooks/use-data-sources-query", () => ({
   useDataSourcesQuery: () => ({ data: mockDataSources, isLoading: false, error: null }),
 }));
 
-// Mock the view context (no view active by default)
+// Mock the view context (no view active, but provider is present)
 const mockViewContext = {
   view: null,
   hasView: false,
-  dataScope: { mode: "all" },
-  filterConfig: { mode: "auto", maxFilters: 5 },
-  mapSettings: { baseMapStyle: "default" },
+  dataScope: { mode: "all" as const },
+  filterConfig: { mode: "auto" as const, maxFilters: 5 },
+  mapSettings: { baseMapStyle: "default" as const },
 };
-vi.mock("@/lib/context/view-context", () => ({
-  useView: () => mockViewContext,
-  useViewOptional: () => mockViewContext,
-}));
+vi.mock("@/lib/context/view-context", () => ({ useView: () => mockViewContext }));
 
 describe("DataSourceSelector", () => {
   beforeEach(() => {

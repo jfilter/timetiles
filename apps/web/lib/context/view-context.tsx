@@ -131,11 +131,3 @@ export const useView = (): ViewContextValue => {
   }
   return context;
 };
-
-/**
- * Hook to optionally access the current view context.
- * Returns null if used outside of ViewProvider.
- */
-export const useViewOptional = (): ViewContextValue | null => {
-  return useContext(ViewContext);
-};

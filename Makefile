@@ -30,10 +30,11 @@ db-reset:
 	@echo "🔄 Database reset complete!"
 
 # Wait for database to be ready (requires pg_isready - see README for prerequisites)
+# Checks both local (5433) and Docker (5432) ports
 wait-db:
 	@echo "⏳ Waiting for database to be ready..."
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do \
-		if pg_isready -h localhost -p 5432 -U timetiles_user >/dev/null 2>&1; then \
+		if pg_isready -h localhost -p 5433 >/dev/null 2>&1 || pg_isready -h localhost -p 5432 >/dev/null 2>&1; then \
 			echo "✅ Database is ready!"; \
 			exit 0; \
 		fi; \
@@ -110,10 +111,21 @@ reset: kill-dev db-reset wait-db
 	@exec $(MAKE) dev
 
 # Ensure infrastructure is running
+# Tries: local macOS PostgreSQL (port 5433) → Docker PostgreSQL (port 5432)
 ensure-infra:
-	@if ! docker compose -f docker-compose.dev.yml ps --services --filter status=running | grep -q postgres; then \
-		echo "❌ PostgreSQL not running. Starting infrastructure..."; \
+	@if pg_isready -h localhost -p 5433 >/dev/null 2>&1; then \
+		true; \
+	elif pg_isready -h localhost -p 5432 >/dev/null 2>&1; then \
+		true; \
+	elif LC_ALL=en_US.UTF-8 pg_ctl start -D /opt/homebrew/var/postgresql@17 -l /tmp/pg.log 2>/dev/null; then \
+		echo "🐘 Started local PostgreSQL (port 5433)"; \
+		$(MAKE) wait-db; \
+	elif command -v docker >/dev/null 2>&1; then \
+		echo "🐳 Starting Docker PostgreSQL (port 5432)..."; \
 		$(MAKE) up && $(MAKE) wait-db; \
+	else \
+		echo "❌ No PostgreSQL available. Install PostgreSQL or Docker."; \
+		exit 1; \
 	fi
 
 # Check development environment status

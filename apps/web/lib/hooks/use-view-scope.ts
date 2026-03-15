@@ -11,7 +11,7 @@
 
 import { useMemo } from "react";
 
-import { useViewOptional } from "@/lib/context/view-context";
+import { useView } from "@/lib/context/view-context";
 
 import type { ViewScope } from "../utils/event-params";
 
@@ -20,7 +20,7 @@ import type { ViewScope } from "../utils/event-params";
  * Returns undefined if no view is active or scope is "all".
  */
 export const useViewScope = (): ViewScope | undefined => {
-  const viewContext = useViewOptional();
+  const viewContext = useView();
 
   return useMemo(() => {
     if (!viewContext?.dataScope) return undefined;

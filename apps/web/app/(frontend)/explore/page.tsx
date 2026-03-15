@@ -10,6 +10,7 @@
  *
  * @module
  */
+import Link from "next/link";
 import { headers } from "next/headers";
 import { getPayload } from "payload";
 
@@ -40,6 +41,23 @@ export default async function ExplorePage({ searchParams }: Readonly<ExplorePage
   const params = await searchParams;
   const viewSlug = typeof params.view === "string" ? params.view : undefined;
   const view = await resolveView(payload, siteId, viewSlug);
+
+  if (!view) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
+        <h1 className="text-2xl font-semibold">Site not configured</h1>
+        <p className="text-muted-foreground max-w-md">
+          This site needs a default view to display the explorer. Please configure one in the admin dashboard.
+        </p>
+        <Link
+          href="/dashboard/collections/views"
+          className="text-primary underline underline-offset-4 hover:opacity-80"
+        >
+          Go to Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <ViewProvider view={view}>

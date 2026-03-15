@@ -15,6 +15,17 @@ vi.mock("nuqs", () => ({
   useQueryState: () => [null, vi.fn()],
 }));
 
+// Mock view context
+vi.mock("@/lib/context/view-context", () => ({
+  useView: () => ({
+    view: null,
+    hasView: false,
+    dataScope: { mode: "all" },
+    filterConfig: { mode: "auto", maxFilters: 5 },
+    mapSettings: { baseMapStyle: "default" },
+  }),
+}));
+
 // Mock filters hook
 vi.mock("../../../lib/hooks/use-filters", () => ({
   useFilters: () => ({ filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} } }),
