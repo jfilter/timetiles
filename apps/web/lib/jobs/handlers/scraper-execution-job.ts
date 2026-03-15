@@ -212,6 +212,200 @@ const triggerAutoImport = async (
 };
 
 // ---------------------------------------------------------------------------
+// Extracted handler steps
+// ---------------------------------------------------------------------------
+
+/**
+ * Load a scraper by ID with depth:1 and validate that the repo relation is populated.
+ */
+const loadScraperWithRepo = async (
+  payload: JobHandlerContext["req"]["payload"],
+  scraperId: number
+): Promise<{ scraper: Scraper; repo: ScraperRepo }> => {
+  const scraper = await payload.findByID({ collection: "scrapers", id: scraperId, depth: 1, overrideAccess: true });
+
+  if (!scraper) {
+    throw new Error(`Scraper not found: ${scraperId}`);
+  }
+
+  const repo = scraper.repo as ScraperRepo;
+  if (!repo || typeof repo !== "object") {
+    throw new Error(`Scraper repo not populated for scraper ${scraperId}`);
+  }
+
+  return { scraper, repo };
+};
+
+/**
+ * Create a scraper-runs record with status "running" and mark the scraper as running.
+ */
+const createRunRecord = async (
+  payload: JobHandlerContext["req"]["payload"],
+  scraperId: number,
+  repo: ScraperRepo,
+  triggeredBy: ScraperExecutionJobInput["triggeredBy"]
+): Promise<{ id: number }> => {
+  const scraperOwner = extractRelationId(repo.createdBy) ?? null;
+  const run = await payload.create({
+    collection: "scraper-runs",
+    overrideAccess: true,
+    data: {
+      scraper: scraperId,
+      scraperOwner: scraperOwner as number,
+      status: "running",
+      triggeredBy,
+      startedAt: new Date().toISOString(),
+    },
+  });
+
+  await payload.update({
+    collection: "scrapers",
+    id: scraperId,
+    overrideAccess: true,
+    data: { lastRunStatus: "running" },
+  });
+
+  return run;
+};
+
+/**
+ * Build the request object for the runner API (pure function).
+ */
+const buildRunnerRequest = (scraper: Scraper, repo: ScraperRepo, runUuid: string): RunnerRequest => {
+  const request: RunnerRequest = {
+    run_id: runUuid,
+    runtime: scraper.runtime,
+    entrypoint: scraper.entrypoint,
+    output_file: scraper.outputFile ?? "data.csv",
+    env: parseEnvVars(scraper.envVars),
+    limits: { timeout_secs: scraper.timeoutSecs ?? 300, memory_mb: scraper.memoryMb ?? 512 },
+  };
+
+  const codeUrl = buildCodeUrl(repo);
+  if (codeUrl) {
+    request.code_url = codeUrl;
+  }
+
+  const inlineCode = buildInlineCode(repo);
+  if (inlineCode) {
+    request.code = inlineCode;
+  }
+
+  return request;
+};
+
+/** Helper to extract existing statistics as a Record or null. */
+const extractExistingStats = (scraper: Scraper): Record<string, unknown> | null =>
+  scraper.statistics && typeof scraper.statistics === "object" && !Array.isArray(scraper.statistics)
+    ? (scraper.statistics as Record<string, unknown>)
+    : null;
+
+/**
+ * Update the scraper-run with results, update scraper statistics, and return output info.
+ */
+const handleRunSuccess = async (
+  context: JobHandlerContext,
+  scraper: Scraper,
+  repo: ScraperRepo,
+  runId: number,
+  result: RunnerResponse
+): Promise<{ importFileId?: number | string }> => {
+  const { payload } = context.req;
+  const finishedAt = new Date().toISOString();
+
+  await payload.update({
+    collection: "scraper-runs",
+    id: runId,
+    overrideAccess: true,
+    data: {
+      status: result.status,
+      finishedAt,
+      durationMs: result.duration_ms,
+      exitCode: result.exit_code,
+      stdout: result.stdout ?? null,
+      stderr: result.stderr ?? null,
+      ...(result.output ? { outputRows: result.output.rows, outputBytes: result.output.bytes } : {}),
+    },
+  });
+
+  const updatedStats = updateScraperStatistics(extractExistingStats(scraper), result.status);
+  await payload.update({
+    collection: "scrapers",
+    id: scraper.id,
+    overrideAccess: true,
+    data: { lastRunAt: finishedAt, lastRunStatus: result.status, statistics: updatedStats },
+  });
+
+  log.info(
+    {
+      scraperId: scraper.id,
+      runId,
+      status: result.status,
+      durationMs: result.duration_ms,
+      outputRows: result.output?.rows,
+    },
+    "Scraper execution completed"
+  );
+
+  // Auto-import if enabled and run succeeded
+  let importFileId: number | string | undefined;
+  if (scraper.autoImport && result.status === "success" && result.output?.content_base64) {
+    try {
+      importFileId = await triggerAutoImport(
+        context,
+        scraper,
+        repo,
+        runId,
+        result.output.content_base64,
+        result.output.bytes
+      );
+    } catch (importError) {
+      logError(importError, "Auto-import failed after successful scrape", { scraperId: scraper.id, runId });
+      // Don't fail the whole job if auto-import fails
+    }
+  }
+
+  return { importFileId };
+};
+
+/**
+ * Update the scraper-run and scraper with failed status on error.
+ * Individual update failures are logged but do not propagate.
+ */
+const handleRunFailure = async (
+  payload: JobHandlerContext["req"]["payload"],
+  scraper: Scraper,
+  runId: number,
+  error: unknown
+): Promise<void> => {
+  const finishedAt = new Date().toISOString();
+  const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+  try {
+    await payload.update({
+      collection: "scraper-runs",
+      id: runId,
+      overrideAccess: true,
+      data: { status: "failed", finishedAt, error: errorMessage },
+    });
+  } catch (updateError) {
+    logError(updateError, "Failed to update scraper run on error", { runId });
+  }
+
+  try {
+    const updatedStats = updateScraperStatistics(extractExistingStats(scraper), "failed");
+    await payload.update({
+      collection: "scrapers",
+      id: scraper.id,
+      overrideAccess: true,
+      data: { lastRunAt: finishedAt, lastRunStatus: "failed", statistics: updatedStats },
+    });
+  } catch (updateError) {
+    logError(updateError, "Failed to update scraper status on error", { scraperId: scraper.id });
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Job handler
 // ---------------------------------------------------------------------------
 
@@ -232,126 +426,17 @@ export const scraperExecutionJob = {
       return { output: { success: false, skipped: true, reason: "Feature flag enableScrapers is disabled" } };
     }
 
-    // Step 1: Load scraper with populated repo
-    const scraper = await payload.findByID({ collection: "scrapers", id: scraperId, depth: 1, overrideAccess: true });
-
-    if (!scraper) {
-      throw new Error(`Scraper not found: ${scraperId}`);
-    }
-
-    const repo = scraper.repo as ScraperRepo;
-    if (!repo || typeof repo !== "object") {
-      throw new Error(`Scraper repo not populated for scraper ${scraperId}`);
-    }
-
-    // Step 2: Create scraper-run record
-    const scraperOwner = extractRelationId(repo.createdBy) ?? null;
-    const run = await payload.create({
-      collection: "scraper-runs",
-      overrideAccess: true,
-      data: {
-        scraper: scraperId,
-        scraperOwner: scraperOwner as number,
-        status: "running",
-        triggeredBy,
-        startedAt: new Date().toISOString(),
-      },
-    });
-
-    // Step 3: Update scraper to "running"
-    await payload.update({
-      collection: "scrapers",
-      id: scraperId,
-      overrideAccess: true,
-      data: { lastRunStatus: "running" },
-    });
-
-    const runUuid = uuidv4();
+    const { scraper, repo } = await loadScraperWithRepo(payload, scraperId);
+    const run = await createRunRecord(payload, scraperId, repo, triggeredBy);
 
     try {
-      // Step 4: Build and send runner request
-      const request: RunnerRequest = {
-        run_id: runUuid,
-        runtime: scraper.runtime,
-        entrypoint: scraper.entrypoint,
-        output_file: scraper.outputFile ?? "data.csv",
-        env: parseEnvVars(scraper.envVars),
-        limits: { timeout_secs: scraper.timeoutSecs ?? 300, memory_mb: scraper.memoryMb ?? 512 },
-      };
-
-      const codeUrl = buildCodeUrl(repo);
-      if (codeUrl) {
-        request.code_url = codeUrl;
-      }
-
-      const inlineCode = buildInlineCode(repo);
-      if (inlineCode) {
-        request.code = inlineCode;
-      }
+      const runUuid = uuidv4();
+      const request = buildRunnerRequest(scraper, repo, runUuid);
 
       log.info({ scraperId, runId: run.id, runUuid, runtime: scraper.runtime }, "Calling runner API");
 
       const result = await callRunner(request);
-
-      // Step 5: Update scraper-run with result
-      const finishedAt = new Date().toISOString();
-      await payload.update({
-        collection: "scraper-runs",
-        id: run.id,
-        overrideAccess: true,
-        data: {
-          status: result.status,
-          finishedAt,
-          durationMs: result.duration_ms,
-          exitCode: result.exit_code,
-          stdout: result.stdout ?? null,
-          stderr: result.stderr ?? null,
-          ...(result.output ? { outputRows: result.output.rows, outputBytes: result.output.bytes } : {}),
-        },
-      });
-
-      // Step 6: Update scraper with run result and statistics
-      const existingStats =
-        scraper.statistics && typeof scraper.statistics === "object" && !Array.isArray(scraper.statistics)
-          ? (scraper.statistics as Record<string, unknown>)
-          : null;
-      const updatedStats = updateScraperStatistics(existingStats, result.status);
-
-      await payload.update({
-        collection: "scrapers",
-        id: scraperId,
-        overrideAccess: true,
-        data: { lastRunAt: finishedAt, lastRunStatus: result.status, statistics: updatedStats },
-      });
-
-      log.info(
-        {
-          scraperId,
-          runId: run.id,
-          status: result.status,
-          durationMs: result.duration_ms,
-          outputRows: result.output?.rows,
-        },
-        "Scraper execution completed"
-      );
-
-      // Step 7: Auto-import if enabled and run succeeded
-      let importFileId: number | string | undefined;
-      if (scraper.autoImport && result.status === "success" && result.output?.content_base64) {
-        try {
-          importFileId = await triggerAutoImport(
-            context,
-            scraper,
-            repo,
-            run.id,
-            result.output.content_base64,
-            result.output.bytes
-          );
-        } catch (importError) {
-          logError(importError, "Auto-import failed after successful scrape", { scraperId, runId: run.id });
-          // Don't fail the whole job if auto-import fails
-        }
-      }
+      const { importFileId } = await handleRunSuccess(context, scraper, repo, run.id, result);
 
       return {
         output: {
@@ -364,38 +449,7 @@ export const scraperExecutionJob = {
         },
       };
     } catch (error) {
-      // Update run and scraper on failure
-      const finishedAt = new Date().toISOString();
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-      try {
-        await payload.update({
-          collection: "scraper-runs",
-          id: run.id,
-          overrideAccess: true,
-          data: { status: "failed", finishedAt, error: errorMessage },
-        });
-      } catch (updateError) {
-        logError(updateError, "Failed to update scraper run on error", { runId: run.id });
-      }
-
-      try {
-        const existingStats =
-          scraper.statistics && typeof scraper.statistics === "object" && !Array.isArray(scraper.statistics)
-            ? (scraper.statistics as Record<string, unknown>)
-            : null;
-        const updatedStats = updateScraperStatistics(existingStats, "failed");
-
-        await payload.update({
-          collection: "scrapers",
-          id: scraperId,
-          overrideAccess: true,
-          data: { lastRunAt: finishedAt, lastRunStatus: "failed", statistics: updatedStats },
-        });
-      } catch (updateError) {
-        logError(updateError, "Failed to update scraper status on error", { scraperId });
-      }
-
+      await handleRunFailure(payload, scraper, run.id, error);
       logError(error, "Scraper execution failed", { jobId, scraperId, runId: run.id });
       throw error;
     }

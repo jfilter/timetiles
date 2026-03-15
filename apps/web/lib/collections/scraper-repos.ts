@@ -10,7 +10,10 @@
  */
 import type { CollectionConfig, Where } from "payload";
 
+import { createLogger } from "@/lib/logger";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+
+const logger = createLogger("scraper-repos");
 
 import {
   basicMetadataFields,
@@ -117,7 +120,31 @@ const ScraperRepos: CollectionConfig = {
       admin: { readOnly: true, condition: (data) => data?.lastSyncStatus === "failed" },
     },
   ],
-  hooks: { beforeChange: [setCreatedByHook] },
+  hooks: {
+    beforeChange: [setCreatedByHook],
+    afterChange: [
+      async ({ doc, previousDoc, operation, req }) => {
+        // Auto-trigger repo sync on create, or on update when source fields change
+        const shouldSync =
+          operation === "create" ||
+          (operation === "update" &&
+            (doc.gitUrl !== previousDoc?.gitUrl ||
+              doc.gitBranch !== previousDoc?.gitBranch ||
+              JSON.stringify(doc.code) !== JSON.stringify(previousDoc?.code)));
+
+        if (shouldSync) {
+          try {
+            await req.payload.jobs.queue({ task: "scraper-repo-sync", input: { scraperRepoId: doc.id } });
+            logger.info({ repoId: doc.id, operation }, "Queued scraper repo sync");
+          } catch (error) {
+            logger.error({ repoId: doc.id, error }, "Failed to queue scraper repo sync");
+          }
+        }
+
+        return doc;
+      },
+    ],
+  },
 };
 
 export default ScraperRepos;
