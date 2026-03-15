@@ -168,7 +168,7 @@ Examples:
     }
   } catch (error) {
     logError(error, "Seed operation failed", { command, args });
-    logger.error("❌ Seed operation failed"); // User-facing error
+    logger.info("❌ Seed operation failed");
     process.exit(1);
   } finally {
     await seedManager.cleanup();

@@ -42,6 +42,42 @@ export const createOwnershipAccess = (
 };
 
 /**
+ * Access control bundle for collections with public visibility + ownership.
+ *
+ * Provides all five access functions for collections where:
+ * - Documents have an `isPublic` field controlling anonymous visibility
+ * - Documents have an owner field (default: `createdBy`) for per-user access
+ * - Editors/admins have full access
+ *
+ * Used by Sites and Views collections to eliminate duplicated access logic.
+ */
+export const createPublicOwnershipAccess = (
+  ownerField: "createdBy" | "ownedBy" | "user" = "createdBy"
+): { read: Access; create: Access; update: Access; deleteAccess: Access; readVersions: Access } => {
+  // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+  const update: Access = ({ req: { user } }): boolean | Where => {
+    if (!user) return false;
+    if (user.role === "admin" || user.role === "editor") return true;
+    return { [ownerField]: { equals: user.id } } as Where;
+  };
+
+  return {
+    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+    read: ({ req: { user } }): boolean | Where => {
+      if (user?.role === "admin" || user?.role === "editor") return true;
+      if (user) {
+        return { or: [{ isPublic: { equals: true } }, { [ownerField]: { equals: user.id } }] } as Where;
+      }
+      return { isPublic: { equals: true } } as Where;
+    },
+    create: isAuthenticated,
+    update,
+    deleteAccess: update,
+    readVersions: isEditorOrAdmin,
+  };
+};
+
+/**
  * Hook that sets the createdBy field to the current user on document creation.
  * Use in beforeChange hooks for collections with a createdBy relationship field.
  */

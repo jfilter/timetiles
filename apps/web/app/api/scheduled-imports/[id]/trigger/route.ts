@@ -13,7 +13,7 @@
 import { z } from "zod";
 
 import { apiRoute, safeFindByID } from "@/lib/api";
-import { logError, logger } from "@/lib/logger";
+import { logError } from "@/lib/logger";
 import { conflict, internalError } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";
 
@@ -61,8 +61,7 @@ export const POST = apiRoute({
 
       return Response.json({ success: true, message: "Import triggered" });
     } catch (error) {
-      logError(error, "Error triggering scheduled import");
-      logger.error({ error, scheduleId: numericId, userId: user.id }, "Error triggering scheduled import");
+      logError(error, "Error triggering scheduled import", { scheduleId: numericId, userId: user.id });
       return internalError();
     }
   },

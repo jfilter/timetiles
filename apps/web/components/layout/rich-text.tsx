@@ -63,35 +63,26 @@ export const RichText = ({ content }: RichTextProps) => {
   return <div />;
 };
 
+// Generate a stable key for a rich text node
+const nodeKey = (node: RichTextNode, index: number, prefix = "node"): string =>
+  node.text != null && node.text !== "" ? `text-${node.text.slice(0, 20)}-${index}` : `${node.type ?? prefix}-${index}`;
+
 // Helper function to render child nodes
 const renderChildren = (children: RichTextNode[] | undefined): React.ReactNode[] => {
   if (!children) return [];
-  return children.map((child: RichTextNode, j: number) => {
-    const key =
-      child.text != null && child.text !== "" ? `text-${child.text.slice(0, 20)}-${j}` : `${child.type ?? "node"}-${j}`;
-    return <span key={key}>{child.text}</span>;
-  });
+  return children.map((child: RichTextNode, j: number) => <span key={nodeKey(child, j)}>{child.text}</span>);
 };
 
 // Helper function to render list items
 const renderListItems = (children: RichTextNode[] | undefined): React.ReactElement[] => {
   if (!children) return [];
-  return children.map((listItem: RichTextNode, j: number) => {
-    const itemKey = `listitem-${listItem.type ?? "item"}-${j}`;
-    return (
-      <li key={itemKey}>
-        {listItem.children
-          ? listItem.children.map((child: RichTextNode, k: number) => {
-              const childKey =
-                child.text != null && child.text !== ""
-                  ? `child-text-${child.text.slice(0, 20)}-${k}`
-                  : `${child.type ?? "child"}-${k}`;
-              return <span key={childKey}>{child.text}</span>;
-            })
-          : null}
-      </li>
-    );
-  });
+  return children.map((listItem: RichTextNode, j: number) => (
+    <li key={nodeKey(listItem, j, "listitem")}>
+      {listItem.children?.map((child: RichTextNode, k: number) => (
+        <span key={nodeKey(child, k)}>{child.text}</span>
+      ))}
+    </li>
+  ));
 };
 
 // Helper function to create heading elements

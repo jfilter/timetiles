@@ -92,17 +92,13 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
   );
 
   const handleClear = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+    (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      e?.stopPropagation();
       onSelectionChange([]);
     },
     [onSelectionChange]
   );
-
-  const handleClearAll = useCallback(() => {
-    onSelectionChange([]);
-  }, [onSelectionChange]);
 
   const handlePreventSelect = useCallback((e: Event) => {
     e.preventDefault();
@@ -151,7 +147,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
             {hasSelection && (
               <button
                 type="button"
-                onClick={handleClearAll}
+                onClick={handleClear}
                 className="text-cartographic-terracotta text-xs hover:underline"
               >
                 Clear

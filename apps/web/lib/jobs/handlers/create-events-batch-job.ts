@@ -20,7 +20,7 @@ import { createJobLogger, logError, logger, logPerformance } from "@/lib/logger"
 import { applyTransforms } from "@/lib/services/import-transforms";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { createQuotaService } from "@/lib/services/quota-service";
-import { getGeocodingResults } from "@/lib/types/geocoding";
+import { getImportGeocodingResults } from "@/lib/types/geocoding";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -77,7 +77,7 @@ const processEventBatch = async (
   logger: ReturnType<typeof createJobLogger>
 ) => {
   const duplicateRows = extractDuplicateRows(job);
-  const geocodingResults = getGeocodingResults(job);
+  const geocodingResults = getImportGeocodingResults(job);
 
   let eventsCreated = 0;
   let eventsSkipped = 0;
@@ -167,7 +167,7 @@ const markJobCompleted = async (
       results: {
         totalEvents: totalEventsCreated,
         duplicatesSkipped,
-        geocoded: Object.keys(getGeocodingResults(currentJob)).length,
+        geocoded: Object.keys(getImportGeocodingResults(currentJob)).length,
         errors: currentJob.errors?.length ?? 0,
       },
     },

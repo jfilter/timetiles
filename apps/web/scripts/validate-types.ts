@@ -72,7 +72,7 @@ const validateTypes = () => {
     if (fs.existsSync(schemaBackupFile)) fs.unlinkSync(schemaBackupFile);
   } catch (error) {
     logError(error, "Validation failed");
-    logger.error("❌ Validation failed");
+    logger.info("❌ Validation failed");
 
     // Restore backups
     if (fs.existsSync(typesBackupFile)) {

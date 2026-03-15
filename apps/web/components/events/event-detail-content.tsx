@@ -37,7 +37,6 @@ import { FieldBox } from "./field-box";
 import { ShareButton } from "./share-button";
 
 export type { EventDetailContentProps };
-export { EventDetailError, EventDetailSkeleton };
 
 interface EventDetailContentProps {
   /** The event data to display */

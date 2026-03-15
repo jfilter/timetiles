@@ -12,7 +12,7 @@ export interface GeocodingCandidate {
   locationField?: string;
 }
 
-export interface GeocodingResult {
+export interface ImportGeocodingResult {
   /** Geographic coordinates */
   coordinates: { lat: number; lng: number };
   /** Confidence score (0-1) */
@@ -22,14 +22,14 @@ export interface GeocodingResult {
 }
 
 /** Map of location string to geocoding result */
-export interface GeocodingResultsMap {
-  [location: string]: GeocodingResult;
+export interface ImportGeocodingResultsMap {
+  [location: string]: ImportGeocodingResult;
 }
 
 /**
  * Type guard to check if geocoding results is a valid map.
  */
-export const isValidGeocodingResultsMap = (results: unknown): results is GeocodingResultsMap => {
+export const isValidImportGeocodingResultsMap = (results: unknown): results is ImportGeocodingResultsMap => {
   if (!results || typeof results !== "object" || Array.isArray(results)) {
     return false;
   }
@@ -52,8 +52,8 @@ export const isValidGeocodingResultsMap = (results: unknown): results is Geocodi
 /**
  * Safe getter for geocoding results from import job.
  */
-export const getGeocodingResults = (job: { geocodingResults?: unknown }): GeocodingResultsMap => {
-  if (isValidGeocodingResultsMap(job.geocodingResults)) {
+export const getImportGeocodingResults = (job: { geocodingResults?: unknown }): ImportGeocodingResultsMap => {
+  if (isValidImportGeocodingResultsMap(job.geocodingResults)) {
     return job.geocodingResults;
   }
   return {};
@@ -83,10 +83,10 @@ export const getGeocodingCandidate = (job: { detectedFieldMappings?: unknown }):
 /**
  * Safely get geocoding result for a specific location.
  */
-export const getGeocodingResultForLocation = (
-  geocodingResults: GeocodingResultsMap,
+export const getImportGeocodingResultForLocation = (
+  geocodingResults: ImportGeocodingResultsMap,
   location: string
-): GeocodingResult | null => {
+): ImportGeocodingResult | null => {
   const result = geocodingResults[location];
   return result ?? null;
 };

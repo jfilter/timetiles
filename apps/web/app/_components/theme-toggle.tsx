@@ -15,7 +15,15 @@ import { useCallback } from "react";
 
 import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 
-export const ThemeToggle = () => {
+interface ThemeToggleProps {
+  className?: string;
+  iconClassName?: string;
+}
+
+export const ThemeToggle = ({
+  className = "hover:bg-accent/50 flex items-center justify-center rounded p-2",
+  iconClassName = "h-4 w-4",
+}: ThemeToggleProps = {}) => {
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
 
@@ -26,12 +34,8 @@ export const ThemeToggle = () => {
   // Render placeholder during SSR/hydration to avoid mismatch
   if (!mounted) {
     return (
-      <button
-        type="button"
-        className="hover:bg-accent/50 flex items-center justify-center rounded p-2"
-        aria-label="Toggle theme"
-      >
-        <Sun className="h-4 w-4" />
+      <button type="button" className={className} aria-label="Toggle theme">
+        <Sun className={iconClassName} />
       </button>
     );
   }
@@ -40,14 +44,8 @@ export const ThemeToggle = () => {
   const label = resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
   return (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      title={label}
-      aria-label={label}
-      className="hover:bg-accent/50 flex items-center justify-center rounded p-2"
-    >
-      <Icon className="h-4 w-4" />
+    <button type="button" onClick={toggleTheme} title={label} aria-label={label} className={className}>
+      <Icon className={iconClassName} />
     </button>
   );
 };

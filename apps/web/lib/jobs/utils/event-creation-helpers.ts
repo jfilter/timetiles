@@ -9,7 +9,7 @@
  */
 import { createLogger } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
-import type { getGeocodingResults } from "@/lib/types/geocoding";
+import type { getImportGeocodingResults } from "@/lib/types/geocoding";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { Dataset } from "@/payload-types";
@@ -23,7 +23,7 @@ const logger = createLogger("event-creation-helpers");
 export const extractCoordinates = (
   row: Record<string, unknown>,
   fieldMappings: { latitudePath?: string | null; longitudePath?: string | null; locationPath?: string | null },
-  geocodingResults: ReturnType<typeof getGeocodingResults>
+  geocodingResults: ReturnType<typeof getImportGeocodingResults>
 ): {
   location?: { latitude: number; longitude: number };
   coordinateSource: { type: "import" | "geocoded" | "none"; confidence?: number; normalizedAddress?: string };
@@ -123,7 +123,7 @@ export const createEventData = (
       timestampPath?: string | null;
     };
   },
-  geocodingResults: ReturnType<typeof getGeocodingResults>,
+  geocodingResults: ReturnType<typeof getImportGeocodingResults>,
   transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null
 ) => {
   const uniqueId = generateUniqueId(row, dataset.idStrategy);

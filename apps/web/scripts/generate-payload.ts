@@ -94,7 +94,7 @@ const generate = () => {
     logger.info("Files updated: payload-types.ts, payload-generated-schema.ts");
   } catch (error) {
     logError(error, "Failed to generate Payload files");
-    logger.error("❌ Generation failed. Please check the error above.");
+    logger.info("❌ Generation failed. Please check the error above.");
     process.exit(1);
   }
 };

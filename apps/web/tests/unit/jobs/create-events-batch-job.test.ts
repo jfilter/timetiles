@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => {
     streamBatchesFromFile: vi.fn(),
     cleanupSidecarFiles: vi.fn(),
     generateUniqueId: vi.fn(),
-    getGeocodingResults: vi.fn(),
+    getImportGeocodingResults: vi.fn(),
     getGeocodingResultForRow: vi.fn(),
     startStage: vi.fn(),
     updateStageProgress: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock("@/lib/utils/file-readers", () => ({
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
 vi.mock("@/lib/types/geocoding", () => ({
-  getGeocodingResults: mocks.getGeocodingResults,
+  getImportGeocodingResults: mocks.getImportGeocodingResults,
   getGeocodingResultForRow: mocks.getGeocodingResultForRow,
 }));
 
@@ -147,7 +147,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1").mockReturnValueOnce("dataset-456:ext:2");
 
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -209,7 +209,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1", title: "Event 1" }]]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -262,7 +262,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         .mockReturnValueOnce("dataset-456:ext:2")
         .mockReturnValueOnce("dataset-456:ext:3");
 
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -321,7 +321,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Mock unique ID generation for all rows
       mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -379,7 +379,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         "1": { rowNumber: 1, coordinates: { lat: 2, lng: 2 }, confidence: 0.8 },
       };
 
-      mocks.getGeocodingResults.mockReturnValue(geocodingResultsMap);
+      mocks.getImportGeocodingResults.mockReturnValue(geocodingResultsMap);
 
       await createEventsBatchJob.handler(mockContext);
 
@@ -430,7 +430,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -479,7 +479,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       // 3rd call throws, rest succeed
@@ -540,7 +540,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1", title: "Event 1" }]]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -637,7 +637,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Stream with a single row for simplicity (actual row count doesn't matter for quota test)
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1", title: "Event 1" }]]));
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -684,7 +684,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Mock empty stream
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
 
       const result = await createEventsBatchJob.handler(mockContext);
 
@@ -747,7 +747,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -806,7 +806,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -857,7 +857,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -921,7 +921,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -981,7 +981,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });
@@ -1039,7 +1039,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
-      mocks.getGeocodingResults.mockReturnValue(new Map());
+      mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
       mockPayload.create.mockResolvedValue({ id: "event-1" });

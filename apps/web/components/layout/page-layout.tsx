@@ -13,17 +13,7 @@ import React from "react";
 const getMaxWidthClass = (
   maxWidth: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full",
   maxWidthClasses: Record<string, string>
-): string => {
-  // Safe property access to avoid object injection with enhanced validation
-  if (
-    typeof maxWidth === "string" &&
-    !Object.hasOwn(Object.prototype, maxWidth) &&
-    Object.hasOwn(maxWidthClasses, maxWidth)
-  ) {
-    return maxWidthClasses[maxWidth] ?? "";
-  }
-  return "";
-};
+): string => maxWidthClasses[maxWidth] ?? "";
 
 interface PageLayoutProps {
   children: React.ReactNode;

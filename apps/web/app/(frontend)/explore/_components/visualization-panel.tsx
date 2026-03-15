@@ -35,7 +35,7 @@ interface VisualizationPanelProps {
   onChartTypeChange: (type: ChartType) => void;
   chartMeta: ChartMeta;
   /** Which chart types are available based on current filters */
-  availableChartTypes?: ChartType[];
+  availableChartTypes?: readonly ChartType[];
   /** When true, the panel will fill available height */
   fillHeight?: boolean;
 }
@@ -54,7 +54,7 @@ interface VisualizationPanelProps {
  * </VisualizationPanel>
  * ```
  */
-const ALL_CHART_TYPES: ChartType[] = ["histogram", "dataset-bar", "catalog-bar"];
+const ALL_CHART_TYPES = ["histogram", "dataset-bar", "catalog-bar"] as const satisfies readonly ChartType[];
 
 export const VisualizationPanel = ({
   children,

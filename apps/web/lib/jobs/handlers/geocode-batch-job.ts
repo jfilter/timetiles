@@ -19,7 +19,7 @@ import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService } from "@/lib/services/geocoding";
 import type { GeocodingService } from "@/lib/services/geocoding/geocoding-service";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
-import type { GeocodingResultsMap } from "@/lib/types/geocoding";
+import type { ImportGeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
 import type { ImportJob } from "@/payload-types";
@@ -76,12 +76,12 @@ const geocodeUniqueLocations = async (
   locations: Set<string>,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{
-  results: GeocodingResultsMap;
+  results: ImportGeocodingResultsMap;
   successCount: number;
   failureCount: number;
   failures: GeocodingFailure[];
 }> => {
-  const results: GeocodingResultsMap = {};
+  const results: ImportGeocodingResultsMap = {};
   const failures: GeocodingFailure[] = [];
   let successCount = 0;
   let failureCount = 0;
