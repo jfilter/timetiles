@@ -13,7 +13,6 @@ import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
@@ -267,7 +266,7 @@ const checkAndTrackQuota = async (
   if (!user) return;
 
   const quotaService = getQuotaService(payload);
-  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
+  const quotaCheck = await quotaService.checkQuota(user, "URL_FETCHES_PER_DAY", 1);
 
   if (!quotaCheck.allowed) {
     const errorMessage = `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`;
@@ -280,7 +279,7 @@ const checkAndTrackQuota = async (
   }
 
   // Track URL fetch usage
-  await quotaService.incrementUsage(user.id, USAGE_TYPES.URL_FETCHES_TODAY, 1);
+  await quotaService.incrementUsage(user.id, "URL_FETCHES_PER_DAY", 1);
 
   logger.info("URL fetch quota checked and tracked", { userId: user.id, remaining: quotaCheck.remaining });
 };

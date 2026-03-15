@@ -14,7 +14,6 @@
  */
 import type { CollectionConfig, PayloadRequest } from "payload";
 
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
@@ -48,13 +47,7 @@ const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
   if (!req.user) return;
 
   const quotaService = getQuotaService(req.payload);
-  await quotaService.checkAndIncrementUsage(
-    req.user,
-    QUOTA_TYPES.CATALOGS_PER_USER,
-    USAGE_TYPES.CURRENT_CATALOGS,
-    1,
-    req
-  );
+  await quotaService.checkAndIncrementUsage(req.user, "CATALOGS_PER_USER", 1, req);
 };
 
 /** Detect what changed between previous and new catalog doc */
@@ -345,7 +338,7 @@ const Catalogs: CollectionConfig = {
         // Decrement catalog count when catalog is deleted
         if (doc.createdBy && req.payload) {
           const quotaService = getQuotaService(req.payload);
-          await quotaService.decrementUsage(doc.createdBy, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
+          await quotaService.decrementUsage(doc.createdBy, "CATALOGS_PER_USER", 1, req);
         }
       },
     ],

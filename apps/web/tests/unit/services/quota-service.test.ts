@@ -98,7 +98,7 @@ describe("QuotaService", () => {
       const { payload, updateMock, setMock, whereMock } = createMockPayload();
       const service = new QuotaService(payload);
 
-      await service.incrementUsage(42, "totalEventsCreated", 1);
+      await service.incrementUsage(42, "TOTAL_EVENTS", 1);
 
       expect(updateMock).toHaveBeenCalled();
       expect(setMock).toHaveBeenCalled();
@@ -110,7 +110,7 @@ describe("QuotaService", () => {
       const { payload } = createMockPayload({ drizzleShouldReject: true, drizzleError: dbError });
       const service = new QuotaService(payload);
 
-      await expect(service.incrementUsage(42, "totalEventsCreated", 1)).rejects.toThrow("Database connection lost");
+      await expect(service.incrementUsage(42, "TOTAL_EVENTS", 1)).rejects.toThrow("Database connection lost");
     });
 
     it("should re-throw when getOrCreateUsageRecord fails", async () => {
@@ -118,14 +118,14 @@ describe("QuotaService", () => {
       (payload.find as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Find failed"));
       const service = new QuotaService(payload);
 
-      await expect(service.incrementUsage(42, "totalEventsCreated", 1)).rejects.toThrow("Find failed");
+      await expect(service.incrementUsage(42, "TOTAL_EVENTS", 1)).rejects.toThrow("Find failed");
     });
 
     it("should handle daily usage types", async () => {
       const { payload, updateMock, setMock, whereMock } = createMockPayload();
       const service = new QuotaService(payload);
 
-      await service.incrementUsage(42, "fileUploadsToday", 1);
+      await service.incrementUsage(42, "FILE_UPLOADS_PER_DAY", 1);
 
       expect(updateMock).toHaveBeenCalled();
       expect(setMock).toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe("QuotaService", () => {
       const { payload, updateMock, setMock, whereMock } = createMockPayload();
       const service = new QuotaService(payload);
 
-      await service.decrementUsage(42, "totalEventsCreated", 1);
+      await service.decrementUsage(42, "TOTAL_EVENTS", 1);
 
       expect(updateMock).toHaveBeenCalled();
       expect(setMock).toHaveBeenCalled();
@@ -150,7 +150,7 @@ describe("QuotaService", () => {
       const { payload } = createMockPayload({ drizzleShouldReject: true, drizzleError: dbError });
       const service = new QuotaService(payload);
 
-      await expect(service.decrementUsage(42, "totalEventsCreated", 1)).rejects.toThrow("Database timeout");
+      await expect(service.decrementUsage(42, "TOTAL_EVENTS", 1)).rejects.toThrow("Database timeout");
     });
   });
 });

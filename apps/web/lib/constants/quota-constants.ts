@@ -1,13 +1,12 @@
 /**
  * Constants for the quota system.
  *
- * This file defines trust levels, default quotas, and quota-related constants
+ * This file defines trust levels, default quotas, and quota descriptors
  * used throughout the application to control resource usage and enforce limits.
  *
- * **Design note:** `QUOTA_TYPES` and `USAGE_TYPES` are intentionally separate constants.
- * `QUOTA_TYPES` maps to limit fields (e.g., `maxFileUploadsPerDay`) while `USAGE_TYPES`
- * maps to consumption tracking fields (e.g., `fileUploadsToday`). This distinction
- * reflects the domain model: quotas define ceilings, usage tracks current consumption.
+ * Each quota is defined as a single {@link QuotaDescriptor} in the {@link QUOTAS}
+ * registry, linking the limit field, usage field, daily flag, and error message
+ * in one place.
  *
  * @module
  */
@@ -138,34 +137,85 @@ export const TRUST_LEVEL_DESCRIPTIONS: Record<TrustLevel, string> = {
 };
 
 /**
- * Quota type identifiers for tracking and error messages.
+ * A quota descriptor links the limit field, usage tracking field, daily flag,
+ * and error message for a single quota type.
  */
-export const QUOTA_TYPES = {
-  ACTIVE_SCHEDULES: "maxActiveSchedules",
-  URL_FETCHES_PER_DAY: "maxUrlFetchesPerDay",
-  FILE_UPLOADS_PER_DAY: "maxFileUploadsPerDay",
-  EVENTS_PER_IMPORT: "maxEventsPerImport",
-  TOTAL_EVENTS: "maxTotalEvents",
-  IMPORT_JOBS_PER_DAY: "maxImportJobsPerDay",
-  FILE_SIZE_MB: "maxFileSizeMB",
-  CATALOGS_PER_USER: "maxCatalogsPerUser",
-} as const;
-
-export type QuotaType = (typeof QUOTA_TYPES)[keyof typeof QUOTA_TYPES];
+export interface QuotaDescriptor {
+  /** Field name on {@link UserQuotas} (the ceiling). */
+  limitField: keyof UserQuotas;
+  /** Field name on {@link UserUsage} (the counter), or null for check-only quotas (e.g. file size). */
+  usageField: keyof Omit<UserUsage, "lastResetDate"> | null;
+  /** Whether this quota resets daily at midnight UTC. */
+  daily: boolean;
+  /** Human-readable error message when quota is exceeded. */
+  errorMessage: (current: number, limit: number) => string;
+}
 
 /**
- * Usage type identifiers for tracking.
+ * Registry of all quota types. Each key is used as the sole identifier
+ * when checking, incrementing, or decrementing quotas.
  */
-export const USAGE_TYPES = {
-  CURRENT_ACTIVE_SCHEDULES: "currentActiveSchedules",
-  URL_FETCHES_TODAY: "urlFetchesToday",
-  FILE_UPLOADS_TODAY: "fileUploadsToday",
-  IMPORT_JOBS_TODAY: "importJobsToday",
-  TOTAL_EVENTS_CREATED: "totalEventsCreated",
-  CURRENT_CATALOGS: "currentCatalogs",
-} as const;
+export const QUOTAS = {
+  ACTIVE_SCHEDULES: {
+    limitField: "maxActiveSchedules",
+    usageField: "currentActiveSchedules",
+    daily: false,
+    errorMessage: (current: number, limit: number) =>
+      `Maximum active schedules reached (${current}/${limit}). Disable an existing schedule to add more.`,
+  },
+  URL_FETCHES_PER_DAY: {
+    limitField: "maxUrlFetchesPerDay",
+    usageField: "urlFetchesToday",
+    daily: true,
+    errorMessage: (current: number, limit: number) =>
+      `Daily URL fetch limit reached (${current}/${limit}). Resets at midnight UTC.`,
+  },
+  FILE_UPLOADS_PER_DAY: {
+    limitField: "maxFileUploadsPerDay",
+    usageField: "fileUploadsToday",
+    daily: true,
+    errorMessage: (current: number, limit: number) =>
+      `Daily file upload limit reached (${current}/${limit}). Resets at midnight UTC.`,
+  },
+  EVENTS_PER_IMPORT: {
+    limitField: "maxEventsPerImport",
+    usageField: null,
+    daily: false,
+    errorMessage: (_current: number, limit: number) =>
+      `This import would exceed the maximum events per import (${limit}). Please reduce the import size.`,
+  },
+  TOTAL_EVENTS: {
+    limitField: "maxTotalEvents",
+    usageField: "totalEventsCreated",
+    daily: false,
+    errorMessage: (current: number, limit: number) =>
+      `Total events limit reached (${current}/${limit}). Contact admin for increased quota.`,
+  },
+  IMPORT_JOBS_PER_DAY: {
+    limitField: "maxImportJobsPerDay",
+    usageField: "importJobsToday",
+    daily: true,
+    errorMessage: (current: number, limit: number) =>
+      `Daily import job limit reached (${current}/${limit}). Resets at midnight UTC.`,
+  },
+  FILE_SIZE_MB: {
+    limitField: "maxFileSizeMB",
+    usageField: null,
+    daily: false,
+    errorMessage: (_current: number, limit: number) =>
+      `File size exceeds your limit (${limit}MB). Contact admin for increased quota.`,
+  },
+  CATALOGS_PER_USER: {
+    limitField: "maxCatalogsPerUser",
+    usageField: "currentCatalogs",
+    daily: false,
+    errorMessage: (current: number, limit: number) =>
+      `Maximum catalogs reached (${current}/${limit}). Delete an existing catalog to create more.`,
+  },
+} as const satisfies Record<string, QuotaDescriptor>;
 
-export type UsageType = (typeof USAGE_TYPES)[keyof typeof USAGE_TYPES];
+/** Key identifying a quota in the {@link QUOTAS} registry. */
+export type QuotaKey = keyof typeof QUOTAS;
 
 /**
  * Rate limit configurations by trust level.
@@ -262,25 +312,3 @@ export const RATE_LIMITS_BY_TRUST_LEVEL = {
     },
   },
 } as const;
-
-/**
- * Error messages for quota exceeded scenarios.
- */
-export const QUOTA_ERROR_MESSAGES: Record<QuotaType, (current: number, limit: number) => string> = {
-  [QUOTA_TYPES.ACTIVE_SCHEDULES]: (current, limit) =>
-    `Maximum active schedules reached (${current}/${limit}). Disable an existing schedule to add more.`,
-  [QUOTA_TYPES.URL_FETCHES_PER_DAY]: (current, limit) =>
-    `Daily URL fetch limit reached (${current}/${limit}). Resets at midnight UTC.`,
-  [QUOTA_TYPES.FILE_UPLOADS_PER_DAY]: (current, limit) =>
-    `Daily file upload limit reached (${current}/${limit}). Resets at midnight UTC.`,
-  [QUOTA_TYPES.EVENTS_PER_IMPORT]: (_current, limit) =>
-    `This import would exceed the maximum events per import (${limit}). Please reduce the import size.`,
-  [QUOTA_TYPES.TOTAL_EVENTS]: (current, limit) =>
-    `Total events limit reached (${current}/${limit}). Contact admin for increased quota.`,
-  [QUOTA_TYPES.IMPORT_JOBS_PER_DAY]: (current, limit) =>
-    `Daily import job limit reached (${current}/${limit}). Resets at midnight UTC.`,
-  [QUOTA_TYPES.FILE_SIZE_MB]: (_current, limit) =>
-    `File size exceeds your limit (${limit}MB). Contact admin for increased quota.`,
-  [QUOTA_TYPES.CATALOGS_PER_USER]: (current, limit) =>
-    `Maximum catalogs reached (${current}/${limit}). Delete an existing catalog to create more.`,
-};

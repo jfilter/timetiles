@@ -23,7 +23,6 @@ import {
   PROCESSING_STAGE,
   type ProcessingStage,
 } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { logError, logger } from "@/lib/logger";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { requireStrictInteger } from "@/lib/utils/event-params";
@@ -250,7 +249,7 @@ export class ErrorRecoveryService {
     const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     const quotaService = getQuotaService(payload);
-    const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1);
+    const quotaCheck = await quotaService.checkQuota(user, "IMPORT_JOBS_PER_DAY", 1);
 
     if (!quotaCheck.allowed) {
       logger.warn("Retry blocked due to quota limit", {

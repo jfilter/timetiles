@@ -58,11 +58,6 @@ vi.mock("@/lib/services/quota-service", () => ({
   })),
 }));
 
-vi.mock("@/lib/constants/quota-constants", () => ({
-  QUOTA_TYPES: { EVENTS_PER_IMPORT: "maxEventsPerImport" },
-  USAGE_TYPES: { TOTAL_EVENTS_CREATED: "totalEventsCreated" },
-}));
-
 /** Helper to create a mock async iterable from arrays of batches. */
 const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
   [Symbol.asyncIterator]: () => {
@@ -658,7 +653,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Verify quota was checked with uniqueRows (50), not totalRows (1000)
       expect(mockCheckQuota).toHaveBeenCalledWith(
         expect.objectContaining({ id: "user-1" }),
-        expect.any(String), // QUOTA_TYPES.EVENTS_PER_IMPORT
+        expect.any(String), // "EVENTS_PER_IMPORT"
         50
       );
     });

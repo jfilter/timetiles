@@ -55,11 +55,6 @@ vi.mock("@/lib/services/quota-service", () => ({
   }),
 }));
 
-vi.mock("@/lib/constants/quota-constants", () => ({
-  QUOTA_TYPES: { URL_FETCHES_PER_DAY: "urlFetchesPerDay" },
-  USAGE_TYPES: { URL_FETCHES_TODAY: "urlFetchesToday" },
-}));
-
 // Mock fetch globally
 globalThis.fetch = vi.fn();
 

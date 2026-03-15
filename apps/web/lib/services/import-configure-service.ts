@@ -15,7 +15,6 @@ import type { NextRequest } from "next/server";
 import type { Payload } from "payload";
 
 import { AppError } from "@/lib/api";
-import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
 import type { ImportTransform } from "@/lib/types/import-transforms";
@@ -227,7 +226,7 @@ export const createScheduledImport = async (
 
   // Bug 15 fix: enforce scheduled-import quota before creation
   const quotaService = getQuotaService(payload);
-  await quotaService.validateQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
+  await quotaService.validateQuota(user, "ACTIVE_SCHEDULES", 1);
 
   // Determine if single or multi-sheet
   const isSingleSheet = datasetMappingEntries.length === 1;

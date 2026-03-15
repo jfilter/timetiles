@@ -17,7 +17,6 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { getQuotaService } from "@/lib/services/quota-service";
@@ -201,7 +200,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   const eventsToImport = totalRows - internalDuplicates - externalDuplicates;
 
   // Check maxEventsPerImport quota
-  const eventQuotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, eventsToImport);
+  const eventQuotaCheck = await quotaService.checkQuota(user, "EVENTS_PER_IMPORT", eventsToImport);
 
   if (!eventQuotaCheck.allowed) {
     const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
@@ -216,7 +215,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   }
 
   // Check total events quota
-  const totalEventsCheck = await quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, eventsToImport);
+  const totalEventsCheck = await quotaService.checkQuota(user, "TOTAL_EVENTS", eventsToImport);
 
   if (!totalEventsCheck.allowed) {
     const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;

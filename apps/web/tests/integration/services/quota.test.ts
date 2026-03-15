@@ -9,7 +9,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { QUOTA_TYPES, TRUST_LEVELS, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { getQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
 import type { User, UserUsage } from "@/payload-types";
 
@@ -92,7 +92,7 @@ describe.sequential("Quota System", () => {
       // Get fresh user after reset
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+      const result = await quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1);
 
       expect(result.allowed).toBe(true);
       expect(result.current).toBe(0);
@@ -108,7 +108,7 @@ describe.sequential("Quota System", () => {
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // Try to use 3 uploads when limit is 2
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 3);
+      const result = await quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 3);
 
       expect(result.allowed).toBe(false);
       expect(result.limit).toBe(2);
@@ -122,7 +122,7 @@ describe.sequential("Quota System", () => {
       const admin = await payload.findByID({ collection: "users", id: adminUser.id });
 
       // Admin user created with trust level 5 should have unlimited quotas
-      const result = await quotaService.checkQuota(admin, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1000000);
+      const result = await quotaService.checkQuota(admin, "FILE_UPLOADS_PER_DAY", 1000000);
 
       expect(result.allowed).toBe(true);
       expect(result.limit).toBe(-1); // Unlimited
@@ -138,7 +138,7 @@ describe.sequential("Quota System", () => {
       await resetUserUsage(payload, testUser.id);
 
       // Track a file upload
-      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+      await quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 1);
 
       // Check the usage was recorded in user-usage collection
       const usage = await getUserUsage(payload, testUser.id);
@@ -156,7 +156,7 @@ describe.sequential("Quota System", () => {
       // Use up the quota (increment to reach limit of 2)
       await quotaService.incrementUsage(
         testUser.id,
-        USAGE_TYPES.FILE_UPLOADS_TODAY,
+        "FILE_UPLOADS_PER_DAY",
         2 // Increment by 2 to reach the limit
       );
 
@@ -164,7 +164,7 @@ describe.sequential("Quota System", () => {
       const updatedUser = await payload.findByID({ collection: "users", id: testUser.id });
 
       // Now check if further uploads are blocked
-      const result = await quotaService.checkQuota(updatedUser, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+      const result = await quotaService.checkQuota(updatedUser, "FILE_UPLOADS_PER_DAY", 1);
 
       expect(result.allowed).toBe(false);
       expect(result.current).toBe(2);
@@ -182,7 +182,7 @@ describe.sequential("Quota System", () => {
       // Max out the quota
       await quotaService.incrementUsage(
         testUser.id,
-        USAGE_TYPES.FILE_UPLOADS_TODAY,
+        "FILE_UPLOADS_PER_DAY",
         2 // Max out the limit of 2
       );
 
@@ -190,9 +190,7 @@ describe.sequential("Quota System", () => {
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // This should throw since we're at the limit
-      await expect(quotaService.validateQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1)).rejects.toThrow(
-        QuotaExceededError
-      );
+      await expect(quotaService.validateQuota(user, "FILE_UPLOADS_PER_DAY", 1)).rejects.toThrow(QuotaExceededError);
     });
   });
 
@@ -202,8 +200,8 @@ describe.sequential("Quota System", () => {
       const quotaService = getQuotaService(payload);
 
       // First add some usage to reset
-      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 3);
-      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.URL_FETCHES_TODAY, 5);
+      await quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 3);
+      await quotaService.incrementUsage(testUser.id, "URL_FETCHES_PER_DAY", 5);
 
       // Reset the daily counters
       await quotaService.resetDailyCounters(testUser.id);
@@ -225,7 +223,7 @@ describe.sequential("Quota System", () => {
       // Get fresh user after reset
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+      const result = await quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1);
 
       expect(result.allowed).toBe(true);
       expect(result.current).toBe(0);
@@ -246,11 +244,11 @@ describe.sequential("Quota System", () => {
       const user3 = extraUsers.user3;
 
       // Add usage to all users
-      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 5);
-      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.URL_FETCHES_TODAY, 3);
-      await quotaService.incrementUsage(user2.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 2);
-      await quotaService.incrementUsage(user2.id, USAGE_TYPES.IMPORT_JOBS_TODAY, 1);
-      await quotaService.incrementUsage(user3.id, USAGE_TYPES.URL_FETCHES_TODAY, 7);
+      await quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 5);
+      await quotaService.incrementUsage(testUser.id, "URL_FETCHES_PER_DAY", 3);
+      await quotaService.incrementUsage(user2.id, "FILE_UPLOADS_PER_DAY", 2);
+      await quotaService.incrementUsage(user2.id, "IMPORT_JOBS_PER_DAY", 1);
+      await quotaService.incrementUsage(user3.id, "URL_FETCHES_PER_DAY", 7);
 
       // Verify users have usage in user-usage collection
       const beforeReset1 = await getUserUsage(payload, testUser.id);
@@ -307,13 +305,13 @@ describe.sequential("Quota System", () => {
       const { payload } = testEnv;
       // Max out the file upload quota for testUser
       const quotaService = getQuotaService(payload);
-      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 2);
+      await quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 2);
 
       // Get fresh user
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // Check if another upload would be blocked
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+      const result = await quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1);
 
       expect(result.allowed).toBe(false);
       expect(result.current).toBe(2);
@@ -328,7 +326,7 @@ describe.sequential("Quota System", () => {
       const admin = await payload.findByID({ collection: "users", id: adminUser.id });
 
       // Admin should have unlimited uploads
-      const result = await quotaService.checkQuota(admin, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 100);
+      const result = await quotaService.checkQuota(admin, "FILE_UPLOADS_PER_DAY", 100);
 
       expect(result.allowed).toBe(true);
       expect(result.limit).toBe(-1); // Unlimited
@@ -344,18 +342,18 @@ describe.sequential("Quota System", () => {
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // Check if user can create a schedule (limit is 1)
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
+      const result = await quotaService.checkQuota(user, "ACTIVE_SCHEDULES", 1);
 
       expect(result.allowed).toBe(true);
       expect(result.limit).toBe(1);
 
       // Simulate having an active schedule
-      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1);
+      await quotaService.incrementUsage(testUser.id, "ACTIVE_SCHEDULES", 1);
 
       // Check if another schedule would be blocked
       const updatedUser = await payload.findByID({ collection: "users", id: testUser.id });
 
-      const result2 = await quotaService.checkQuota(updatedUser, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
+      const result2 = await quotaService.checkQuota(updatedUser, "ACTIVE_SCHEDULES", 1);
 
       expect(result2.allowed).toBe(false);
       expect(result2.current).toBe(1);
@@ -373,14 +371,14 @@ describe.sequential("Quota System", () => {
 
       // Track URL fetches
       for (let i = 0; i < 3; i++) {
-        await quotaService.incrementUsage(testUser.id, USAGE_TYPES.URL_FETCHES_TODAY, 1);
+        await quotaService.incrementUsage(testUser.id, "URL_FETCHES_PER_DAY", 1);
       }
 
       // Get updated user
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // Check if next fetch would be blocked (limit is 3)
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1);
+      const result = await quotaService.checkQuota(user, "URL_FETCHES_PER_DAY", 1);
 
       expect(result.allowed).toBe(false);
       expect(result.current).toBe(3);
@@ -399,7 +397,7 @@ describe.sequential("Quota System", () => {
 
       // Fire 10 concurrent increments
       const promises = Array.from({ length: 10 }, () =>
-        quotaService.incrementUsage(testUser.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1)
+        quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 1)
       );
       await Promise.all(promises);
 
@@ -414,12 +412,10 @@ describe.sequential("Quota System", () => {
 
       // Set initial value to 3
       await resetUserUsage(payload, testUser.id);
-      await quotaService.incrementUsage(testUser.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 3);
+      await quotaService.incrementUsage(testUser.id, "ACTIVE_SCHEDULES", 3);
 
       // Fire 5 concurrent decrements (more than current value)
-      const promises = Array.from({ length: 5 }, () =>
-        quotaService.decrementUsage(testUser.id, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1)
-      );
+      const promises = Array.from({ length: 5 }, () => quotaService.decrementUsage(testUser.id, "ACTIVE_SCHEDULES", 1));
       await Promise.all(promises);
 
       // Should be 0 (not negative)
@@ -449,7 +445,7 @@ describe.sequential("Quota System", () => {
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // Check if creating 2 events would exceed limit
-      const result = await quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, 2);
+      const result = await quotaService.checkQuota(user, "TOTAL_EVENTS", 2);
 
       expect(result.allowed).toBe(false);
       expect(result.current).toBe(499);

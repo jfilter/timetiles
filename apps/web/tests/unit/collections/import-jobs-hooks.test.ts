@@ -24,8 +24,6 @@ vi.mock("@/lib/constants/import-constants", () => ({
   PROCESSING_STAGE: { COMPLETED: "completed", FAILED: "failed" },
 }));
 
-vi.mock("@/lib/constants/quota-constants", () => ({ USAGE_TYPES: {} }));
-
 vi.mock("@/lib/collections/import-jobs/helpers", () => ({ handleJobCompletion: vi.fn(), isJobCompleted: vi.fn() }));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";

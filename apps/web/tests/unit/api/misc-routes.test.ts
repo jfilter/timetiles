@@ -37,17 +37,6 @@ vi.mock("@/lib/services/quota-service", () => ({
     }),
 }));
 
-vi.mock("@/lib/constants/quota-constants", () => ({
-  QUOTA_TYPES: {
-    FILE_UPLOADS_PER_DAY: "file_uploads_per_day",
-    URL_FETCHES_PER_DAY: "url_fetches_per_day",
-    IMPORT_JOBS_PER_DAY: "import_jobs_per_day",
-    ACTIVE_SCHEDULES: "active_schedules",
-    TOTAL_EVENTS: "total_events",
-    EVENTS_PER_IMPORT: "events_per_import",
-  },
-}));
-
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
 vi.mock("@/lib/middleware/auth", () => ({}));

@@ -56,11 +56,11 @@
  * const quotaService = getQuotaService(payload);
  * const quotaCheck = await quotaService.checkQuota(
  *   user,
- *   QUOTA_TYPES.FILE_UPLOADS_PER_DAY
+ *   "FILE_UPLOADS_PER_DAY"
  * );
  * if (!quotaCheck.allowed) {
  *   throw new QuotaExceededError(
- *     quotaCheck.quotaType,
+ *     quotaCheck.quotaKey,
  *     quotaCheck.current,
  *     quotaCheck.limit,
  *     quotaCheck.resetTime
@@ -69,7 +69,7 @@
  *
  * // 3. Process the request and track usage
  * await processFileUpload();
- * await quotaService.incrementUsage(user.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1);
+ * await quotaService.incrementUsage(user.id, "FILE_UPLOADS_PER_DAY", 1);
  * ```
  *
  * @see {@link RateLimitService} for short-term abuse prevention
@@ -82,13 +82,10 @@ import type { Payload, PayloadRequest } from "payload";
 
 import {
   DEFAULT_QUOTAS,
-  QUOTA_ERROR_MESSAGES,
-  QUOTA_TYPES,
-  type QuotaType,
+  QUOTAS,
+  type QuotaKey,
   TRUST_LEVELS,
   type TrustLevel,
-  USAGE_TYPES,
-  type UsageType,
   type UserQuotas,
   type UserUsage,
 } from "@/lib/constants/quota-constants";
@@ -102,6 +99,12 @@ const logger = createLogger("quota-service");
 
 /** Collection slug for user usage tracking */
 const USER_USAGE_COLLECTION = "user-usage";
+
+/** All daily usage field names, derived from the QUOTAS registry at module load. */
+const DAILY_USAGE_FIELDS: Array<keyof Omit<UserUsage, "lastResetDate">> = Object.values(QUOTAS)
+  .filter((d) => d.daily && d.usageField != null)
+  .map((d) => d.usageField!);
+
 type UserIdentifier = number | string | Pick<User, "id"> | null | undefined;
 
 const normalizeTrustLevel = (trustLevel: User["trustLevel"] | null | undefined): TrustLevel => {
@@ -135,16 +138,16 @@ const normalizeUserId = (userId: UserIdentifier): number => {
  */
 export class QuotaExceededError extends Error {
   public statusCode = 429;
-  public quotaType: QuotaType;
+  public quotaKey: QuotaKey;
   public current: number;
   public limit: number;
   public resetTime?: Date;
 
-  constructor(quotaType: QuotaType, current: number, limit: number, resetTime?: Date) {
-    const message = QUOTA_ERROR_MESSAGES[quotaType](current, limit);
+  constructor(quotaKey: QuotaKey, current: number, limit: number, resetTime?: Date) {
+    const message = QUOTAS[quotaKey].errorMessage(current, limit);
     super(message);
     this.name = "QuotaExceededError";
-    this.quotaType = quotaType;
+    this.quotaKey = quotaKey;
     this.current = current;
     this.limit = limit;
     this.resetTime = resetTime;
@@ -160,7 +163,7 @@ export interface QuotaCheckResult {
   limit: number;
   remaining: number;
   resetTime?: Date;
-  quotaType: QuotaType;
+  quotaKey: QuotaKey;
 }
 
 /**
@@ -322,31 +325,30 @@ export class QuotaService {
    */
   async checkQuota(
     user: User | null | undefined,
-    quotaType: QuotaType,
+    quotaKey: QuotaKey,
     amount: number = 1,
     req?: { context?: Record<string, unknown> }
   ): Promise<QuotaCheckResult> {
+    const desc = QUOTAS[quotaKey];
+
     // Get effective quotas
     const quotas = this.getEffectiveQuotas(user);
-    const limit = quotas[quotaType];
+    const limit = quotas[desc.limitField];
 
     // Check if unlimited (-1)
     if (limit === -1) {
-      return { allowed: true, current: 0, limit: -1, remaining: -1, quotaType };
+      return { allowed: true, current: 0, limit: -1, remaining: -1, quotaKey };
     }
 
     // For unauthenticated users, only check the limit
     if (!user) {
       const allowed = amount <= limit;
-      return { allowed, current: 0, limit, remaining: allowed ? limit - amount : 0, quotaType };
+      return { allowed, current: 0, limit, remaining: allowed ? limit - amount : 0, quotaKey };
     }
 
-    // Map quota type to usage type
-    const usageKey = this.getUsageKeyForQuota(quotaType);
-
-    if (!usageKey) {
+    if (!desc.usageField) {
       // For quotas without usage tracking (like file size)
-      return { allowed: amount <= limit, current: 0, limit, remaining: limit, quotaType };
+      return { allowed: amount <= limit, current: 0, limit, remaining: limit, quotaKey };
     }
 
     // Per-request cache: reuse usage record if already fetched this request
@@ -366,28 +368,28 @@ export class QuotaService {
     if (!usage) {
       // No usage record yet - will be created on first increment
       logger.debug("User has no usage record, using defaults", { userId: user.id });
-      return { allowed: amount <= limit, current: 0, limit, remaining: limit, quotaType };
+      return { allowed: amount <= limit, current: 0, limit, remaining: limit, quotaKey };
     }
 
-    const current = usage[usageKey] || 0;
+    const current = usage[desc.usageField] || 0;
     const wouldExceed = current + amount > limit;
 
     // Check if daily limit and needs reset
     let resetTime: Date | undefined;
-    if (this.isDailyQuota(quotaType)) {
+    if (desc.daily) {
       resetTime = this.getNextResetTime();
 
       // Check if usage should be reset
       if (this.shouldResetDailyUsage(usage.lastResetDate)) {
         // Assume reset and return current=0
         // The actual reset will happen on next increment
-        logger.debug("Daily quota needs reset, assuming current=0 for check", { userId: user.id, quotaType });
-        return { allowed: amount <= limit, current: 0, limit, remaining: limit, resetTime, quotaType };
+        logger.debug("Daily quota needs reset, assuming current=0 for check", { userId: user.id, quotaKey });
+        return { allowed: amount <= limit, current: 0, limit, remaining: limit, resetTime, quotaKey };
       }
     }
 
     logger.debug("checkQuota: Returning final result", { wouldExceed, current, limit });
-    return { allowed: !wouldExceed, current, limit, remaining: Math.max(0, limit - current), resetTime, quotaType };
+    return { allowed: !wouldExceed, current, limit, remaining: Math.max(0, limit - current), resetTime, quotaKey };
   }
 
   /**
@@ -399,46 +401,54 @@ export class QuotaService {
    */
   async incrementUsage(
     userId: UserIdentifier,
-    usageType: UsageType,
+    quotaKey: QuotaKey,
     amount: number = 1,
     req?: Partial<PayloadRequest>
   ): Promise<void> {
+    const desc = QUOTAS[quotaKey];
+
+    if (!desc.usageField) {
+      throw new Error(`Quota "${quotaKey}" has no usage field and cannot be incremented`);
+    }
+
+    const usageField = desc.usageField;
     const normalizedUserId = normalizeUserId(userId);
 
     try {
-      logger.debug("incrementUsage: Entry", { userId: normalizedUserId, usageType, amount });
+      logger.debug("incrementUsage: Entry", { userId: normalizedUserId, quotaKey, amount });
 
       // Ensure usage record exists before atomic update
       await this.getOrCreateUsageRecord(normalizedUserId, req);
 
       const drizzle = await this.getDrizzle(req);
 
-      if (this.isDailyUsageType(usageType)) {
-        // For daily types, atomically reset stale counters and increment the target
+      if (desc.daily) {
+        // For daily types, atomically reset stale counters and increment the target.
+        // All daily columns are reset in a single UPDATE to prevent stale data.
         const needsReset = sql`${user_usage.lastResetDate} IS NULL OR ${user_usage.lastResetDate}::date < CURRENT_DATE`;
 
-        await drizzle
-          .update(user_usage)
-          .set({
-            urlFetchesToday: sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${user_usage.urlFetchesToday}, 0) END + ${usageType === "urlFetchesToday" ? amount : 0}`,
-            fileUploadsToday: sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${user_usage.fileUploadsToday}, 0) END + ${usageType === "fileUploadsToday" ? amount : 0}`,
-            importJobsToday: sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${user_usage.importJobsToday}, 0) END + ${usageType === "importJobsToday" ? amount : 0}`,
-            lastResetDate: sql`CASE WHEN ${needsReset} THEN NOW() ELSE ${user_usage.lastResetDate} END`,
-            updatedAt: sql`NOW()`,
-          })
-          .where(eq(user_usage.user, normalizedUserId));
+        const setClauses: Record<string, unknown> = {};
+        for (const field of DAILY_USAGE_FIELDS) {
+          const col = user_usage[field];
+          const increment = field === usageField ? amount : 0;
+          setClauses[field] = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${col}, 0) END + ${increment}`;
+        }
+        setClauses.lastResetDate = sql`CASE WHEN ${needsReset} THEN NOW() ELSE ${user_usage.lastResetDate} END`;
+        setClauses.updatedAt = sql`NOW()`;
+
+        await drizzle.update(user_usage).set(setClauses).where(eq(user_usage.user, normalizedUserId));
       } else {
         // For non-daily types, simple atomic increment
-        const col = user_usage[usageType];
+        const col = user_usage[usageField];
         await drizzle
           .update(user_usage)
-          .set({ [usageType]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
+          .set({ [usageField]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
           .where(eq(user_usage.user, normalizedUserId));
       }
 
-      logger.debug("Usage incremented", { userId: normalizedUserId, usageType, amount });
+      logger.debug("Usage incremented", { userId: normalizedUserId, quotaKey, amount });
     } catch (error) {
-      logger.error("Failed to increment usage", { error, userId: normalizedUserId, usageType, amount });
+      logger.error("Failed to increment usage", { error, userId: normalizedUserId, quotaKey, amount });
       throw error;
     }
   }
@@ -451,10 +461,17 @@ export class QuotaService {
    */
   async decrementUsage(
     userId: UserIdentifier,
-    usageType: UsageType,
+    quotaKey: QuotaKey,
     amount: number = 1,
     req?: Partial<PayloadRequest>
   ): Promise<void> {
+    const desc = QUOTAS[quotaKey];
+
+    if (!desc.usageField) {
+      throw new Error(`Quota "${quotaKey}" has no usage field and cannot be decremented`);
+    }
+
+    const usageField = desc.usageField;
     const normalizedUserId = normalizeUserId(userId);
 
     try {
@@ -462,15 +479,15 @@ export class QuotaService {
       await this.getOrCreateUsageRecord(normalizedUserId, req);
 
       const drizzle = await this.getDrizzle(req);
-      const col = user_usage[usageType];
+      const col = user_usage[usageField];
       await drizzle
         .update(user_usage)
-        .set({ [usageType]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`, updatedAt: sql`NOW()` })
+        .set({ [usageField]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`, updatedAt: sql`NOW()` })
         .where(eq(user_usage.user, normalizedUserId));
 
-      logger.debug("Usage decremented", { userId: normalizedUserId, usageType, amount });
+      logger.debug("Usage decremented", { userId: normalizedUserId, quotaKey, amount });
     } catch (error) {
-      logger.error("Failed to decrement usage", { error, userId: normalizedUserId, usageType, amount });
+      logger.error("Failed to decrement usage", { error, userId: normalizedUserId, quotaKey, amount });
       throw error;
     }
   }
@@ -544,51 +561,6 @@ export class QuotaService {
   }
 
   /**
-   * Get empty usage object.
-   */
-  private getEmptyUsage(): UserUsage {
-    return {
-      currentActiveSchedules: 0,
-      urlFetchesToday: 0,
-      fileUploadsToday: 0,
-      importJobsToday: 0,
-      totalEventsCreated: 0,
-      currentCatalogs: 0,
-      lastResetDate: new Date().toISOString(),
-    };
-  }
-
-  /**
-   * Map quota type to usage type for tracking.
-   */
-  private getUsageKeyForQuota(quotaType: QuotaType): UsageType | null {
-    const mapping: Partial<Record<QuotaType, UsageType>> = {
-      [QUOTA_TYPES.ACTIVE_SCHEDULES]: USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES,
-      [QUOTA_TYPES.URL_FETCHES_PER_DAY]: USAGE_TYPES.URL_FETCHES_TODAY,
-      [QUOTA_TYPES.FILE_UPLOADS_PER_DAY]: USAGE_TYPES.FILE_UPLOADS_TODAY,
-      [QUOTA_TYPES.IMPORT_JOBS_PER_DAY]: USAGE_TYPES.IMPORT_JOBS_TODAY,
-      [QUOTA_TYPES.TOTAL_EVENTS]: USAGE_TYPES.TOTAL_EVENTS_CREATED,
-      [QUOTA_TYPES.CATALOGS_PER_USER]: USAGE_TYPES.CURRENT_CATALOGS,
-    };
-
-    return mapping[quotaType] ?? null;
-  }
-
-  /**
-   * Check if a quota type is daily-based.
-   */
-  private isDailyQuota(quotaType: QuotaType): boolean {
-    return quotaType.includes("PerDay");
-  }
-
-  /**
-   * Check if a usage type is daily-based.
-   */
-  private isDailyUsageType(usageType: UsageType): boolean {
-    return usageType.includes("Today");
-  }
-
-  /**
    * Check if daily usage should be reset.
    */
   private shouldResetDailyUsage(lastResetDate: string): boolean {
@@ -624,11 +596,11 @@ export class QuotaService {
    * Validate a quota check and throw if exceeded.
    * Now async since checkQuota is async.
    */
-  async validateQuota(user: User | null | undefined, quotaType: QuotaType, amount: number = 1): Promise<void> {
-    const result = await this.checkQuota(user, quotaType, amount);
+  async validateQuota(user: User | null | undefined, quotaKey: QuotaKey, amount: number = 1): Promise<void> {
+    const result = await this.checkQuota(user, quotaKey, amount);
 
     if (!result.allowed) {
-      throw new QuotaExceededError(quotaType, result.current, result.limit, result.resetTime);
+      throw new QuotaExceededError(quotaKey, result.current, result.limit, result.resetTime);
     }
   }
 
@@ -644,19 +616,25 @@ export class QuotaService {
    */
   async checkAndIncrementUsage(
     user: User,
-    quotaType: QuotaType,
-    usageType: UsageType,
+    quotaKey: QuotaKey,
     amount: number = 1,
     req?: Partial<PayloadRequest>,
     throwOnExceeded: boolean = true
   ): Promise<boolean> {
+    const desc = QUOTAS[quotaKey];
+
+    if (!desc.usageField) {
+      throw new Error(`Quota "${quotaKey}" has no usage field and cannot be incremented`);
+    }
+
+    const usageField = desc.usageField;
     const normalizedUserId = normalizeUserId(user.id);
     const quotas = this.getEffectiveQuotas(user);
-    const limit = quotas[quotaType];
+    const limit = quotas[desc.limitField];
 
     // Unlimited quota — just increment
     if (limit === -1) {
-      await this.incrementUsage(normalizedUserId, usageType, amount, req);
+      await this.incrementUsage(normalizedUserId, quotaKey, amount, req);
       return true;
     }
 
@@ -664,12 +642,12 @@ export class QuotaService {
     await this.getOrCreateUsageRecord(normalizedUserId, req);
 
     const drizzle = await this.getDrizzle(req);
-    const col = user_usage[usageType];
+    const col = user_usage[usageField];
 
     // Atomic: increment only if current value + amount <= limit
     const result = await drizzle
       .update(user_usage)
-      .set({ [usageType]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
+      .set({ [usageField]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
       .where(sql`${user_usage.user} = ${normalizedUserId} AND COALESCE(${col}, 0) + ${amount} <= ${limit}`)
       .returning({ id: user_usage.id });
 
@@ -677,8 +655,8 @@ export class QuotaService {
       // Quota exceeded — no rows updated
       if (throwOnExceeded) {
         const usage = await this.getCurrentUsage(normalizedUserId);
-        const current = usage?.[usageType] ?? 0;
-        throw new QuotaExceededError(quotaType, current, limit);
+        const current = usage?.[usageField] ?? 0;
+        throw new QuotaExceededError(quotaKey, current, limit);
       }
       return false;
     }
@@ -695,7 +673,7 @@ export class QuotaService {
    * - Detailed quotas across all types (system architecture)
    * - Exact reset times (rate limiting strategy)
    */
-  async getQuotaHeaders(user: User | null | undefined, quotaType?: QuotaType): Promise<Record<string, string>> {
+  async getQuotaHeaders(user: User | null | undefined, quotaKey?: QuotaKey): Promise<Record<string, string>> {
     const headers: Record<string, string> = {};
 
     if (!user) {
@@ -703,19 +681,15 @@ export class QuotaService {
     }
 
     // Only add specific quota information if requested for a specific operation
-    if (quotaType) {
-      const result = await this.checkQuota(user, quotaType);
+    if (quotaKey) {
+      const result = await this.checkQuota(user, quotaKey);
 
       // Return only minimal rate-limit information for the current operation
       // Do not expose exact limits for admin users (would reveal privileged status)
       headers["X-RateLimit-Remaining"] = String(result.remaining);
 
       // Indicate if quotas reset daily (but not exact time to prevent attack timing)
-      const isDailyQuota =
-        quotaType === QUOTA_TYPES.FILE_UPLOADS_PER_DAY ||
-        quotaType === QUOTA_TYPES.URL_FETCHES_PER_DAY ||
-        quotaType === QUOTA_TYPES.IMPORT_JOBS_PER_DAY;
-      if (isDailyQuota) {
+      if (QUOTAS[quotaKey].daily) {
         headers["X-RateLimit-Reset-Period"] = "daily";
       }
     }

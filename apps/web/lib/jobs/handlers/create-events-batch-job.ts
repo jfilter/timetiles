@@ -16,7 +16,6 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { createJobLogger, logError, logger, logPerformance } from "@/lib/logger";
 import { applyTransforms } from "@/lib/services/import-transforms";
 import { ProgressTrackingService } from "@/lib/services/progress-tracking";
@@ -191,7 +190,7 @@ const markJobCompleted = async (
         const userId = extractRelationId(importFile.user);
 
         const quotaService = getQuotaService(payload);
-        await quotaService.incrementUsage(userId, USAGE_TYPES.TOTAL_EVENTS_CREATED, totalEventsCreated);
+        await quotaService.incrementUsage(userId, "TOTAL_EVENTS", totalEventsCreated);
 
         logger.info("Event creation tracked for quota", { userId, eventsCreated: totalEventsCreated, importJobId });
       }
@@ -280,7 +279,7 @@ const checkEventQuotaBeforeProcessing = async (
   const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
 
   // Check if this import would exceed the per-import limit
-  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, uniqueRows);
+  const quotaCheck = await quotaService.checkQuota(user, "EVENTS_PER_IMPORT", uniqueRows);
 
   if (!quotaCheck.allowed) {
     throw new Error(

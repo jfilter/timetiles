@@ -11,7 +11,6 @@ import type {
 } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
@@ -222,7 +221,7 @@ const trackImportJobQuota = async (req: PayloadRequest, doc: ImportJob): Promise
 
   const userId = extractRelationId(importFile.user)!;
   const quotaService = getQuotaService(req.payload);
-  await quotaService.incrementUsage(userId, USAGE_TYPES.IMPORT_JOBS_TODAY, 1, req);
+  await quotaService.incrementUsage(userId, "IMPORT_JOBS_PER_DAY", 1, req);
   logger.info("Import job creation tracked for quota", { userId, importJobId: doc.id });
 };
 

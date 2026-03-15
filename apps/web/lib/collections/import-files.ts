@@ -23,7 +23,6 @@ import type { CollectionConfig, Where } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { validateCatalogOwnership } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
@@ -219,9 +218,9 @@ const ImportFiles: CollectionConfig = {
 
               // Get multiple quota checks for comprehensive info
               const [fileUploads, importJobs, totalEvents] = await Promise.all([
-                quotaService.checkQuota(req.user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY),
-                quotaService.checkQuota(req.user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY),
-                quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS),
+                quotaService.checkQuota(req.user, "FILE_UPLOADS_PER_DAY"),
+                quotaService.checkQuota(req.user, "IMPORT_JOBS_PER_DAY"),
+                quotaService.checkQuota(req.user, "TOTAL_EVENTS"),
               ]);
 
               return {
@@ -308,7 +307,7 @@ const ImportFiles: CollectionConfig = {
         const quotaService = getQuotaService(req.payload);
 
         // Check daily file upload quota
-        const uploadQuotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1);
+        const uploadQuotaCheck = await quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1);
 
         if (!uploadQuotaCheck.allowed) {
           throw new Error(
@@ -430,7 +429,7 @@ const ImportFiles: CollectionConfig = {
 
         // Track file upload usage (authentication is required)
         const quotaService = getQuotaService(req.payload);
-        await quotaService.incrementUsage(req.user!.id, USAGE_TYPES.FILE_UPLOADS_TODAY, 1, req);
+        await quotaService.incrementUsage(req.user!.id, "FILE_UPLOADS_PER_DAY", 1, req);
 
         // Skip processing for duplicate imports (they're already marked as completed)
         if (doc.metadata?.urlFetch?.isDuplicate === true) {

@@ -47,7 +47,7 @@
  * const quotaService = getQuotaService(payload);
  * const quotaCheck = await quotaService.checkQuota(
  *   user,
- *   QUOTA_TYPES.FILE_UPLOADS_PER_DAY
+ *   "FILE_UPLOADS_PER_DAY"
  * );
  * if (!quotaCheck.allowed) {
  *   throw new QuotaExceededError(...);

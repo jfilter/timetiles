@@ -21,7 +21,6 @@
 
 import type { CollectionConfig, Payload, PayloadRequest } from "payload";
 
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -49,7 +48,7 @@ const checkActiveSchedulesQuota = async (
   user: User,
   quotaService: ReturnType<typeof getQuotaService>
 ): Promise<void> => {
-  const quotaCheck = await quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1);
+  const quotaCheck = await quotaService.checkQuota(user, "ACTIVE_SCHEDULES", 1);
   if (!quotaCheck.allowed) {
     const message =
       quotaCheck.remaining === 0
@@ -176,7 +175,7 @@ const trackScheduleQuotaUsage = async (
   const quotaService = getQuotaService(req.payload);
 
   if (operation === "create" && doc.enabled !== false) {
-    await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+    await quotaService.incrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
     return;
   }
 
@@ -186,9 +185,9 @@ const trackScheduleQuotaUsage = async (
   const isEnabled = doc.enabled;
 
   if (!wasEnabled && isEnabled) {
-    await quotaService.incrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+    await quotaService.incrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
   } else if (wasEnabled && !isEnabled) {
-    await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+    await quotaService.decrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
   }
 };
 
@@ -290,7 +289,7 @@ const ScheduledImports: CollectionConfig = {
         const ownerId = extractRelationId(doc.createdBy);
         if (ownerId && doc.enabled) {
           const quotaService = getQuotaService(req.payload);
-          await quotaService.decrementUsage(ownerId, USAGE_TYPES.CURRENT_ACTIVE_SCHEDULES, 1, req);
+          await quotaService.decrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
         }
 
         return doc;

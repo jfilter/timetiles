@@ -10,7 +10,6 @@
  */
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
 
-import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
 import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -21,7 +20,7 @@ const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
   if (!req.user) return;
 
   const quotaService = getQuotaService(req.payload);
-  const totalEventsCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.TOTAL_EVENTS, 1);
+  const totalEventsCheck = await quotaService.checkQuota(req.user, "TOTAL_EVENTS", 1);
 
   if (!totalEventsCheck.allowed) {
     throw new Error(
@@ -69,7 +68,7 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
 export const eventsAfterChangeHook: CollectionAfterChangeHook<Event> = async ({ doc, operation, req }) => {
   if (operation === "create" && req.user && req.user.role !== "admin") {
     const quotaService = getQuotaService(req.payload);
-    await quotaService.incrementUsage(req.user.id, USAGE_TYPES.TOTAL_EVENTS_CREATED, 1, req);
+    await quotaService.incrementUsage(req.user.id, "TOTAL_EVENTS", 1, req);
   }
 
   return doc;

@@ -14,7 +14,6 @@ import { z } from "zod";
 
 import { apiRoute, safeFindByID } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { getQuotaService } from "@/lib/services/quota-service";
@@ -59,7 +58,7 @@ export const POST = apiRoute({
       const fileUser = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
       const quotaService = getQuotaService(payload);
-      const quotaCheck = await quotaService.checkQuota(fileUser, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1);
+      const quotaCheck = await quotaService.checkQuota(fileUser, "IMPORT_JOBS_PER_DAY", 1);
 
       if (!quotaCheck.allowed) {
         return forbidden(

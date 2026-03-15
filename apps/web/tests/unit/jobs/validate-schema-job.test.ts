@@ -61,10 +61,6 @@ vi.mock("@/lib/types/schema-detection", () => ({ getSchemaBuilderState: mocks.ge
 
 vi.mock("@/lib/services/quota-service", () => ({ getQuotaService: () => ({ checkQuota: mocks.checkQuota }) }));
 
-vi.mock("@/lib/constants/quota-constants", () => ({
-  QUOTA_TYPES: { EVENTS_PER_IMPORT: "maxEventsPerImport", TOTAL_EVENTS: "maxTotalEvents" },
-}));
-
 describe.sequential("ValidateSchemaJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;

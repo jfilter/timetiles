@@ -7,7 +7,6 @@
  */
 
 import { apiRoute } from "@/lib/api";
-import { QUOTA_TYPES } from "@/lib/constants/quota-constants";
 import { getQuotaService } from "@/lib/services/quota-service";
 
 /**
@@ -30,12 +29,12 @@ export const GET = apiRoute({
 
     // Get all quota statuses in parallel
     const [fileUploads, urlFetches, importJobs, activeSchedules, totalEvents, eventsPerImport] = await Promise.all([
-      quotaService.checkQuota(user, QUOTA_TYPES.FILE_UPLOADS_PER_DAY, 1, cache),
-      quotaService.checkQuota(user, QUOTA_TYPES.URL_FETCHES_PER_DAY, 1, cache),
-      quotaService.checkQuota(user, QUOTA_TYPES.IMPORT_JOBS_PER_DAY, 1, cache),
-      quotaService.checkQuota(user, QUOTA_TYPES.ACTIVE_SCHEDULES, 1, cache),
-      quotaService.checkQuota(user, QUOTA_TYPES.TOTAL_EVENTS, 1, cache),
-      quotaService.checkQuota(user, QUOTA_TYPES.EVENTS_PER_IMPORT, 1, cache),
+      quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1, cache),
+      quotaService.checkQuota(user, "URL_FETCHES_PER_DAY", 1, cache),
+      quotaService.checkQuota(user, "IMPORT_JOBS_PER_DAY", 1, cache),
+      quotaService.checkQuota(user, "ACTIVE_SCHEDULES", 1, cache),
+      quotaService.checkQuota(user, "TOTAL_EVENTS", 1, cache),
+      quotaService.checkQuota(user, "EVENTS_PER_IMPORT", 1, cache),
     ]);
 
     // Get effective quotas for additional info
