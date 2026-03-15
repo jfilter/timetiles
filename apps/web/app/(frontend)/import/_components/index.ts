@@ -8,9 +8,6 @@ export { ImportWizard, type ImportWizardProps } from "./import-wizard";
 export { type NavigationConfig, useNavigationConfig } from "./navigation-config-context";
 export {
   useWizard,
-  useWizardMapping,
-  useWizardProcessing,
-  useWizardSource,
   WizardProvider,
   type WizardProviderProps,
   type WizardState,

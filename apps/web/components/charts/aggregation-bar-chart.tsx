@@ -11,7 +11,6 @@
 "use client";
 
 import { BarChart, type BarChartDataItem, useChartTheme } from "@timetiles/ui/charts";
-import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
@@ -41,7 +40,7 @@ const AggregationBarChartComponent = ({
   type,
 }: Readonly<AggregationBarChartProps>) => {
   const chartTheme = useChartTheme();
-  const { filters } = useFilters();
+  const { filters, setCatalog, setDatasets } = useFilters();
   const scope = useViewScope();
 
   // Fetch aggregation data using unified endpoint (viewport-filtered)
@@ -54,10 +53,6 @@ const AggregationBarChartComponent = ({
     dataRef.current = data;
   }, [data]);
 
-  // URL state management based on type
-  const [, setSelectedCatalog] = useQueryState("catalog");
-  const [, setSelectedDatasets] = useQueryState("datasets", parseAsArrayOf(parseAsString).withDefault([]));
-
   // Transform API data to chart format (without metadata for stable references)
   const chartData: BarChartDataItem[] = useMemo(() => {
     if (!data?.items) return [];
@@ -66,6 +61,7 @@ const AggregationBarChartComponent = ({
   }, [data]);
 
   // Click handler based on aggregation type (stable - uses ref for data access)
+  // Routes through useFilters() to ensure dependent filters are cleared
   const handleBarClick = useCallback(
     (_item: BarChartDataItem, index: number) => {
       // Access latest data from ref without coupling callback to data
@@ -75,18 +71,17 @@ const AggregationBarChartComponent = ({
       const itemId = String(items[index].id);
 
       if (type === "catalog") {
-        void setSelectedCatalog(itemId);
+        setCatalog(itemId);
       } else {
-        void setSelectedDatasets((current) => {
-          if (current.includes(itemId)) {
-            return current.filter((id) => id !== itemId);
-          } else {
-            return [...current, itemId];
-          }
-        });
+        const current = filters.datasets;
+        if (current.includes(itemId)) {
+          setDatasets(current.filter((id) => id !== itemId));
+        } else {
+          setDatasets([...current, itemId]);
+        }
       }
     },
-    [type, setSelectedCatalog, setSelectedDatasets]
+    [type, setCatalog, setDatasets, filters.datasets]
   );
 
   return (

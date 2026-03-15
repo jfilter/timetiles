@@ -77,7 +77,23 @@ vi.mock("@timetiles/payload-schema-detection", () => ({
   LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
 }));
 
-vi.mock("@/lib/utils/url-validation", () => ({ isPrivateUrl: mocks.mockIsPrivateUrl }));
+vi.mock("@/lib/utils/url-validation", () => ({
+  isPrivateUrl: mocks.mockIsPrivateUrl,
+  validateExternalHttpUrl: (urlString: string) => {
+    try {
+      const url = new URL(urlString);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
+      }
+      if (mocks.mockIsPrivateUrl(urlString)) {
+        return { error: "URLs pointing to private or internal networks are not allowed." };
+      }
+      return { url };
+    } catch {
+      return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
+    }
+  },
+}));
 
 vi.mock("@/lib/middleware/auth", () => ({}));
 

@@ -17,7 +17,6 @@ import { read, utils } from "xlsx";
 
 import { detectLanguageFromSamples } from "@/lib/services/schema-builder/language-detection";
 import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
-import { isPrivateUrl } from "@/lib/utils/url-validation";
 
 export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
 
@@ -218,24 +217,8 @@ export const parseExcelPreview = (filePath: string): SheetInfo[] => {
   return sheets;
 };
 
-/**
- * Validates and parses a URL string.
- * Rejects non-HTTP(S) protocols and private/internal URLs (SSRF protection).
- */
-export const validateUrl = (urlString: string): { url: URL } | { error: string } => {
-  try {
-    const url = new URL(urlString);
-    if (!["http:", "https:"].includes(url.protocol)) {
-      return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
-    }
-    if (isPrivateUrl(urlString)) {
-      return { error: "URLs pointing to private or internal networks are not allowed." };
-    }
-    return { url };
-  } catch {
-    return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
-  }
-};
+// Re-export centralized URL validation for use by preview-schema routes
+export { validateExternalHttpUrl as validateUrl } from "@/lib/utils/url-validation";
 
 /**
  * Parse file sheets based on file extension.

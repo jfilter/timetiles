@@ -88,7 +88,9 @@ export const parseDateInput = (date: string | number | Date | null | undefined):
  *
  * By default includes time. Pass `{ includeTime: false }` for date-only format.
  */
-export const formatDate = (date: string | Date | null | undefined, options?: { includeTime?: boolean }): string => {
+type DateInput = string | Date | null | undefined;
+
+export const formatDate = (date: DateInput, options?: { includeTime?: boolean }): string => {
   if (!date) return "N/A";
 
   try {

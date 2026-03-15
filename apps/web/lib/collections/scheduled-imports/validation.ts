@@ -10,18 +10,17 @@
  */
 
 import { parseCronExpression } from "@/lib/utils/cron-parser";
-import { isPrivateUrl } from "@/lib/utils/url-validation";
+import { validateExternalHttpUrl } from "@/lib/utils/url-validation";
 
 /**
- * Validates a URL string.
+ * Validates a URL string for Payload field validation.
+ * Wraps the centralized URL validator with Payload's `string | true` return convention.
  */
 export const validateUrl = (val: string | null | undefined): string | true => {
   if (!val) return "The following field is invalid: Source URL - URL is required";
-  if (!/^https?:\/\/.+/.exec(val)) {
-    return "The following field is invalid: Source URL - must start with http:// or https://";
-  }
-  if (isPrivateUrl(val)) {
-    return "The following field is invalid: Source URL - URLs pointing to private or internal addresses are not allowed";
+  const result = validateExternalHttpUrl(val);
+  if ("error" in result) {
+    return `The following field is invalid: Source URL - ${result.error}`;
   }
   return true;
 };

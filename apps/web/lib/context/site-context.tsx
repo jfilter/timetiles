@@ -101,11 +101,3 @@ export const useSite = (): SiteContextValue => {
   }
   return context;
 };
-
-/**
- * Hook to optionally access the current site context.
- * Returns null if used outside of SiteProvider.
- */
-export const useSiteOptional = (): SiteContextValue | null => {
-  return useContext(SiteContext);
-};

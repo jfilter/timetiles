@@ -96,3 +96,24 @@ export const isPrivateUrl = (url: string): boolean => {
 
   return false;
 };
+
+/**
+ * Validates that a string is a valid external HTTP(S) URL.
+ *
+ * Rejects non-HTTP protocols and private/internal addresses (SSRF protection).
+ * Returns the parsed URL on success or an error message on failure.
+ */
+export const validateExternalHttpUrl = (urlString: string): { url: URL } | { error: string } => {
+  try {
+    const url = new URL(urlString);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
+    }
+    if (isPrivateUrl(urlString)) {
+      return { error: "URLs pointing to private or internal networks are not allowed." };
+    }
+    return { url };
+  } catch {
+    return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
+  }
+};
