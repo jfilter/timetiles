@@ -77,8 +77,8 @@ interface UseTimeRangeSliderReturn {
   handleOpenEditMode: () => void;
   /** Close date editing mode */
   handleCloseEditMode: () => void;
-  /** No-op keyboard handler for histogram accessibility */
-  handleHistogramKeyDown: () => void;
+  /** Keyboard handler for histogram accessibility (arrow keys move handles) */
+  handleHistogramKeyDown: (e: React.KeyboardEvent) => void;
   /** Click handler for histogram area */
   handleHistogramClick: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -239,11 +239,27 @@ export const useTimeRangeSlider = ({
     setIsEditingDates(false);
   }, []);
 
-  // Keyboard handler for histogram (no-op, users should use the handles)
-  const handleHistogramKeyDown = useCallback(() => {
-    // Keyboard navigation is handled by the individual slider handles
-    // This handler exists to satisfy accessibility requirements
-  }, []);
+  // Keyboard handler: ArrowLeft narrows start inward, ArrowRight extends end outward
+  const handleHistogramKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (minTimestamp === maxTimestamp) return;
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+
+      e.preventDefault();
+      const step = (maxTimestamp - minTimestamp) * 0.01; // 1% of range per keystroke
+
+      if (e.key === "ArrowLeft") {
+        const currentStart = startDate != null ? parseISODate(startDate) : minTimestamp;
+        const newTs = Math.max(minTimestamp, currentStart - step);
+        onStartDateChange(formatISODate(newTs));
+      } else {
+        const currentEnd = endDate != null ? parseISODate(endDate) : maxTimestamp;
+        const newTs = Math.min(maxTimestamp, currentEnd + step);
+        onEndDateChange(formatISODate(newTs));
+      }
+    },
+    [minTimestamp, maxTimestamp, startDate, endDate, onStartDateChange, onEndDateChange]
+  );
 
   const handleHistogramClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

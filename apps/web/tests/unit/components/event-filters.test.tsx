@@ -5,7 +5,7 @@ import { EventFilters } from "@/components/filters/event-filters";
 import type { DataSourcesResponse } from "@/lib/hooks/use-data-sources-query";
 
 import { createCatalogs, createDatasets } from "../../mocks";
-import { renderWithProviders } from "../../setup/unit/react-render";
+import { fireEvent, renderWithProviders, waitFor, within } from "../../setup/unit/react-render";
 
 // Convert mock data to lightweight format
 const mockCatalogs = createCatalogs(2);
@@ -56,21 +56,20 @@ describe("EventFilters", () => {
     expect(container).not.toHaveTextContent("Water Quality Data");
   });
 
-  test("catalog cards are clickable buttons", () => {
+  test("catalog cards are clickable and toggle selection", async () => {
     const { container } = renderWithProviders(<EventFilters />);
 
-    // Find all catalog card buttons
-    const catalogButtons = container.querySelectorAll('button[type="button"]');
+    // Find catalog button by its aria-label (unselected state)
+    const catalogButton = within(container).getByRole("button", { name: "Select catalog Test Catalog 1" });
+    expect(catalogButton).not.toBeDisabled();
 
-    // Should have at least 2 catalog buttons (one for each catalog)
-    expect(catalogButtons.length).toBeGreaterThanOrEqual(2);
+    // Click the catalog button to select it
+    fireEvent.click(catalogButton);
 
-    // Buttons should be enabled
-    const firstCatalogButton = Array.from(catalogButtons).find(
-      (btn) => btn.textContent?.includes("Test Catalog 1") ?? btn.textContent?.includes("Test Catalog 2")
-    );
-    expect(firstCatalogButton).toBeTruthy();
-    expect(firstCatalogButton).not.toBeDisabled();
+    // After click, the aria-label should change to "Deselect" (selected state)
+    await waitFor(() => {
+      within(container).getByRole("button", { name: "Deselect catalog Test Catalog 1" });
+    });
   });
 
   test("catalog cards have appropriate styling classes", () => {

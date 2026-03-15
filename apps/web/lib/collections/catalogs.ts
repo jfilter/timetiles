@@ -14,7 +14,7 @@
  */
 import type { CollectionConfig, PayloadRequest } from "payload";
 
-import { QUOTA_ERROR_MESSAGES, QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
+import { QUOTA_TYPES, USAGE_TYPES } from "@/lib/constants/quota-constants";
 import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getQuotaService } from "@/lib/services/quota-service";
@@ -43,19 +43,18 @@ const validatePrivateVisibility = async (data: Record<string, unknown>, req: Pay
   }
 };
 
-/** Checks quota and increments usage for new catalogs. */
+/** Atomically checks quota and increments usage for new catalogs. */
 const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
   if (!req.user) return;
 
   const quotaService = getQuotaService(req.payload);
-  const quotaCheck = await quotaService.checkQuota(req.user, QUOTA_TYPES.CATALOGS_PER_USER, 1);
-
-  if (!quotaCheck.allowed) {
-    const errorMessage = QUOTA_ERROR_MESSAGES[QUOTA_TYPES.CATALOGS_PER_USER](quotaCheck.current, quotaCheck.limit);
-    throw new Error(errorMessage);
-  }
-
-  await quotaService.incrementUsage(req.user.id, USAGE_TYPES.CURRENT_CATALOGS, 1, req);
+  await quotaService.checkAndIncrementUsage(
+    req.user,
+    QUOTA_TYPES.CATALOGS_PER_USER,
+    USAGE_TYPES.CURRENT_CATALOGS,
+    1,
+    req
+  );
 };
 
 /** Detect what changed between previous and new catalog doc */

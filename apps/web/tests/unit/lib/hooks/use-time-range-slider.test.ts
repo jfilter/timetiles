@@ -144,6 +144,21 @@ describe("useTimeRangeSlider", () => {
       expect(result.current.startPosition).toBe(0);
       expect(result.current.endPosition).toBe(1);
     });
+
+    it("handles zero-width range (single instant)", () => {
+      // Histogram where first bucket date === last bucket dateEnd
+      const histogram = makeHistogram([{ date: "2024-06-15", dateEnd: "2024-06-15", count: 5 }]);
+
+      mockHistogramQuery.mockReturnValue({ data: histogram, isLoading: false } as unknown as ReturnType<
+        typeof useFullHistogramQuery
+      >);
+
+      const { result } = renderHook(() => useTimeRangeSlider(defaultProps()));
+
+      // When minTimestamp === maxTimestamp, positions default to 0 and 1
+      expect(result.current.startPosition).toBe(0);
+      expect(result.current.endPosition).toBe(1);
+    });
   });
 
   describe("isBarInRange", () => {
@@ -209,6 +224,30 @@ describe("useTimeRangeSlider", () => {
       const bars = result.current.normalizedBars;
       expect(result.current.isBarInRange(bars[0]!.date, bars[0]!.dateEnd)).toBe(true);
       expect(result.current.isBarInRange(bars[1]!.date, bars[1]!.dateEnd)).toBe(true);
+    });
+
+    it("handles equal start and end dates", () => {
+      const histogram = makeHistogram([
+        { date: "2024-01-01", dateEnd: "2024-04-01", count: 10 },
+        { date: "2024-04-01", dateEnd: "2024-07-01", count: 20 },
+        { date: "2024-07-01", dateEnd: "2024-10-01", count: 15 },
+      ]);
+
+      mockHistogramQuery.mockReturnValue({ data: histogram, isLoading: false } as unknown as ReturnType<
+        typeof useFullHistogramQuery
+      >);
+
+      // startDate === endDate → only bars containing that exact point are in range
+      const props = { ...defaultProps(), startDate: "2024-05-01", endDate: "2024-05-01" };
+      const { result } = renderHook(() => useTimeRangeSlider(props));
+
+      const bars = result.current.normalizedBars;
+      // First bar (Jan-Apr) ends before May 1 → out of range
+      expect(result.current.isBarInRange(bars[0]!.date, bars[0]!.dateEnd)).toBe(false);
+      // Second bar (Apr-Jul) contains May 1 → in range
+      expect(result.current.isBarInRange(bars[1]!.date, bars[1]!.dateEnd)).toBe(true);
+      // Third bar (Jul-Oct) starts after May 1 → out of range
+      expect(result.current.isBarInRange(bars[2]!.date, bars[2]!.dateEnd)).toBe(false);
     });
   });
 

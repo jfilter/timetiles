@@ -617,6 +617,60 @@ export class QuotaService {
   }
 
   /**
+   * Atomically check quota and increment usage in a single SQL statement.
+   *
+   * Eliminates the TOCTOU race between separate checkQuota() + incrementUsage() calls.
+   * The UPDATE only succeeds if the current value is below the limit, so concurrent
+   * requests cannot both slip through.
+   *
+   * @returns true if increment succeeded, false if quota would be exceeded
+   * @throws QuotaExceededError if quota exceeded and throwOnExceeded is true
+   */
+  async checkAndIncrementUsage(
+    user: User,
+    quotaType: QuotaType,
+    usageType: UsageType,
+    amount: number = 1,
+    req?: Partial<PayloadRequest>,
+    throwOnExceeded: boolean = true
+  ): Promise<boolean> {
+    const normalizedUserId = normalizeUserId(user.id);
+    const quotas = this.getEffectiveQuotas(user);
+    const limit = quotas[quotaType];
+
+    // Unlimited quota — just increment
+    if (limit === -1) {
+      await this.incrementUsage(normalizedUserId, usageType, amount, req);
+      return true;
+    }
+
+    // Ensure usage record exists
+    await this.getOrCreateUsageRecord(normalizedUserId, req);
+
+    const drizzle = await this.getDrizzle(req);
+    const col = user_usage[usageType];
+
+    // Atomic: increment only if current value + amount <= limit
+    const result = await drizzle
+      .update(user_usage)
+      .set({ [usageType]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
+      .where(sql`${user_usage.user} = ${normalizedUserId} AND COALESCE(${col}, 0) + ${amount} <= ${limit}`)
+      .returning({ id: user_usage.id });
+
+    if (result.length === 0) {
+      // Quota exceeded — no rows updated
+      if (throwOnExceeded) {
+        const usage = await this.getCurrentUsage(normalizedUserId);
+        const current = usage?.[usageType] ?? 0;
+        throw new QuotaExceededError(quotaType, current, limit);
+      }
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Get minimal quota headers for HTTP responses.
    * Now async since checkQuota is async.
    *
