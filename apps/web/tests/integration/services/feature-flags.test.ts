@@ -5,9 +5,14 @@
  *
  * @module
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { getDefaultFeatureFlags, getFeatureFlags, isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import {
+  getDefaultFeatureFlags,
+  getFeatureFlags,
+  isFeatureEnabled,
+  resetFeatureFlagService,
+} from "@/lib/services/feature-flag-service";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
@@ -16,7 +21,6 @@ describe.sequential("Feature Flag Service", () => {
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
 
   beforeAll(async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
   });
@@ -40,12 +44,11 @@ describe.sequential("Feature Flag Service", () => {
           },
         },
       });
-      vi.advanceTimersByTime(60_001);
     } catch {
       // Ignore errors during cleanup
     }
 
-    vi.useRealTimers();
+    resetFeatureFlagService();
 
     if (testEnv?.cleanup) {
       await testEnv.cleanup();
@@ -53,8 +56,7 @@ describe.sequential("Feature Flag Service", () => {
   });
 
   beforeEach(() => {
-    // Clear cache before each test to ensure fresh state
-    vi.advanceTimersByTime(60_001);
+    resetFeatureFlagService();
   });
 
   describe("Default Values", () => {
@@ -111,12 +113,12 @@ describe.sequential("Feature Flag Service", () => {
         slug: "settings",
         data: { featureFlags: { allowPrivateImports: true, enableScheduledImports: true, enableRegistration: true } },
       });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
     });
 
     it("should update allowPrivateImports flag", async () => {
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
 
       const flags = await getFeatureFlags(payload);
       expect(flags.allowPrivateImports).toBe(false);
@@ -124,7 +126,7 @@ describe.sequential("Feature Flag Service", () => {
 
     it("should update enableScheduledImports flag", async () => {
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: false } } });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
 
       const flags = await getFeatureFlags(payload);
       expect(flags.enableScheduledImports).toBe(false);
@@ -132,7 +134,7 @@ describe.sequential("Feature Flag Service", () => {
 
     it("should update enableRegistration flag", async () => {
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableRegistration: false } } });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
 
       const flags = await getFeatureFlags(payload);
       expect(flags.enableRegistration).toBe(false);
@@ -145,7 +147,7 @@ describe.sequential("Feature Flag Service", () => {
           featureFlags: { allowPrivateImports: false, enableScheduledImports: false, enableRegistration: false },
         },
       });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
 
       const flags = await getFeatureFlags(payload);
       expect(flags.allowPrivateImports).toBe(false);
@@ -160,7 +162,7 @@ describe.sequential("Feature Flag Service", () => {
           featureFlags: { enableEventCreation: false, enableDatasetCreation: false, enableImportCreation: false },
         },
       });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
 
       const flags = await getFeatureFlags(payload);
       expect(flags.enableEventCreation).toBe(false);
@@ -173,7 +175,7 @@ describe.sequential("Feature Flag Service", () => {
         slug: "settings",
         data: { featureFlags: { enableScheduledJobExecution: false, enableUrlFetchCaching: false } },
       });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
 
       const flags = await getFeatureFlags(payload);
       expect(flags.enableScheduledJobExecution).toBe(false);
@@ -187,7 +189,7 @@ describe.sequential("Feature Flag Service", () => {
         slug: "settings",
         data: { featureFlags: { allowPrivateImports: true, enableScheduledImports: false, enableRegistration: true } },
       });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
     });
 
     it("should return true for enabled flags", async () => {
@@ -203,7 +205,7 @@ describe.sequential("Feature Flag Service", () => {
   describe("Caching Behavior", () => {
     beforeEach(async () => {
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: true } } });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
     });
 
     it("should return cached values on subsequent calls", async () => {
@@ -211,7 +213,7 @@ describe.sequential("Feature Flag Service", () => {
       const flags1 = await getFeatureFlags(payload);
       expect(flags1.allowPrivateImports).toBe(true);
 
-      // Update directly in DB without clearing cache
+      // Update directly in DB without resetting service
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
 
       // Second call should return cached (stale) value
@@ -219,14 +221,14 @@ describe.sequential("Feature Flag Service", () => {
       expect(flags2.allowPrivateImports).toBe(true);
     });
 
-    it("should return fresh data after cache is cleared", async () => {
+    it("should return fresh data after service is reset", async () => {
       // First call loads from DB
       const flags1 = await getFeatureFlags(payload);
       expect(flags1.allowPrivateImports).toBe(true);
 
-      // Update and clear cache
+      // Update and reset service
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
 
       // Should get fresh value
       const flags2 = await getFeatureFlags(payload);
@@ -287,7 +289,7 @@ describe.sequential("Feature Flag Service", () => {
           },
         },
       });
-      vi.advanceTimersByTime(60_001);
+      resetFeatureFlagService();
     });
 
     describe("allowPrivateImports", () => {
@@ -296,7 +298,7 @@ describe.sequential("Feature Flag Service", () => {
 
         // Disable private imports
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
-        vi.advanceTimersByTime(60_001);
+        resetFeatureFlagService();
 
         // Attempt to create a private catalog
         await expect(
@@ -314,7 +316,7 @@ describe.sequential("Feature Flag Service", () => {
 
         // Disable private imports
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
-        vi.advanceTimersByTime(60_001);
+        resetFeatureFlagService();
 
         // Public catalogs should still work
         const catalog = await payload.create({
@@ -341,7 +343,7 @@ describe.sequential("Feature Flag Service", () => {
 
         // Disable private imports
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
-        vi.advanceTimersByTime(60_001);
+        resetFeatureFlagService();
 
         // Attempt to create a private dataset in public catalog
         // Access control should pass (user can create in public catalogs)
@@ -375,7 +377,7 @@ describe.sequential("Feature Flag Service", () => {
 
         // Disable scheduled imports
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: false } } });
-        vi.advanceTimersByTime(60_001);
+        resetFeatureFlagService();
 
         // Attempt to create scheduled import - should fail access control
         await expect(
@@ -414,7 +416,7 @@ describe.sequential("Feature Flag Service", () => {
 
         // Ensure scheduled imports are enabled
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: true } } });
-        vi.advanceTimersByTime(60_001);
+        resetFeatureFlagService();
 
         // Should succeed
         // @ts-expect-error -- `user` is a valid runtime option for access control testing

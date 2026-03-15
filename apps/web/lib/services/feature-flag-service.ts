@@ -45,63 +45,91 @@ export const DISABLED_FLAGS: FeatureFlags = {
   enableUrlFetchCaching: false,
 };
 
-// In-memory cache with TTL
-let cachedFlags: FeatureFlags | null = null;
-let cacheTimestamp = 0;
 const CACHE_TTL_MS = 60_000; // 1 minute
 
-/**
- * Retrieves all feature flags with caching.
- *
- * Caches the flags for 1 minute to reduce database queries.
- * Falls back to disabled flags if the Settings global cannot be read.
- */
-export const getFeatureFlags = async (payload: Payload): Promise<FeatureFlags> => {
-  const now = Date.now();
+class FeatureFlagService {
+  private readonly payload: Payload;
+  private cachedFlags: FeatureFlags | null = null;
+  private cacheTimestamp = 0;
 
-  // Return cached if valid
-  if (cachedFlags && now - cacheTimestamp < CACHE_TTL_MS) {
-    return cachedFlags;
+  constructor(payload: Payload) {
+    this.payload = payload;
   }
 
-  try {
-    const settings = await payload.findGlobal({ slug: "settings" });
-    const flags = settings.featureFlags;
+  /**
+   * Retrieves all feature flags with caching.
+   *
+   * Caches the flags for 1 minute to reduce database queries.
+   * Falls back to disabled flags if the Settings global cannot be read.
+   */
+  async getAll(): Promise<FeatureFlags> {
+    const now = Date.now();
 
-    // Build new flags object first, then assign to cache atomically
-    const newFlags: FeatureFlags = {
-      allowPrivateImports: flags?.allowPrivateImports ?? DEFAULT_FLAGS.allowPrivateImports,
-      enableScheduledImports: flags?.enableScheduledImports ?? DEFAULT_FLAGS.enableScheduledImports,
-      enableRegistration: flags?.enableRegistration ?? DEFAULT_FLAGS.enableRegistration,
-      enableEventCreation: flags?.enableEventCreation ?? DEFAULT_FLAGS.enableEventCreation,
-      enableDatasetCreation: flags?.enableDatasetCreation ?? DEFAULT_FLAGS.enableDatasetCreation,
-      enableImportCreation: flags?.enableImportCreation ?? DEFAULT_FLAGS.enableImportCreation,
-      enableScheduledJobExecution: flags?.enableScheduledJobExecution ?? DEFAULT_FLAGS.enableScheduledJobExecution,
-      enableUrlFetchCaching: flags?.enableUrlFetchCaching ?? DEFAULT_FLAGS.enableUrlFetchCaching,
-    };
+    if (this.cachedFlags && now - this.cacheTimestamp < CACHE_TTL_MS) {
+      return this.cachedFlags;
+    }
 
-    // Update cache atomically - acceptable race (worst case: double-fetch, not corruption)
-    // eslint-disable-next-line require-atomic-updates
-    cachedFlags = newFlags;
-    // eslint-disable-next-line require-atomic-updates
-    cacheTimestamp = Date.now();
+    try {
+      const settings = await this.payload.findGlobal({ slug: "settings" });
+      const flags = settings.featureFlags;
 
-    return newFlags;
-  } catch (error) {
-    logger.warn({ error }, "Failed to load feature flags, disabling all flags");
-    return DISABLED_FLAGS;
+      const newFlags: FeatureFlags = {
+        allowPrivateImports: flags?.allowPrivateImports ?? DEFAULT_FLAGS.allowPrivateImports,
+        enableScheduledImports: flags?.enableScheduledImports ?? DEFAULT_FLAGS.enableScheduledImports,
+        enableRegistration: flags?.enableRegistration ?? DEFAULT_FLAGS.enableRegistration,
+        enableEventCreation: flags?.enableEventCreation ?? DEFAULT_FLAGS.enableEventCreation,
+        enableDatasetCreation: flags?.enableDatasetCreation ?? DEFAULT_FLAGS.enableDatasetCreation,
+        enableImportCreation: flags?.enableImportCreation ?? DEFAULT_FLAGS.enableImportCreation,
+        enableScheduledJobExecution: flags?.enableScheduledJobExecution ?? DEFAULT_FLAGS.enableScheduledJobExecution,
+        enableUrlFetchCaching: flags?.enableUrlFetchCaching ?? DEFAULT_FLAGS.enableUrlFetchCaching,
+      };
+
+      this.cachedFlags = newFlags;
+      this.cacheTimestamp = Date.now();
+
+      return newFlags;
+    } catch (error) {
+      logger.warn({ error }, "Failed to load feature flags, disabling all flags");
+      return DISABLED_FLAGS;
+    }
   }
+
+  /**
+   * Checks if a specific feature flag is enabled.
+   */
+  async isEnabled(flag: keyof FeatureFlags): Promise<boolean> {
+    const flags = await this.getAll();
+    return flags[flag];
+  }
+}
+
+// Singleton: must be shared across requests because the in-memory flag cache
+// is process-level state. Creating a fresh instance per request would cause
+// redundant database queries on every call.
+let featureFlagService: FeatureFlagService | null = null;
+
+export const getFeatureFlagService = (payload: Payload): FeatureFlagService => {
+  featureFlagService ??= new FeatureFlagService(payload);
+  return featureFlagService;
 };
 
 /**
- * Checks if a specific feature flag is enabled.
- *
- * Convenience helper for checking individual flags.
+ * Reset the feature flag service singleton (for testing).
+ * Call this in beforeEach to ensure clean state between tests.
  */
-export const isFeatureEnabled = async (payload: Payload, flag: keyof FeatureFlags): Promise<boolean> => {
-  const flags = await getFeatureFlags(payload);
-  return flags[flag];
+export const resetFeatureFlagService = (): void => {
+  featureFlagService = null;
 };
+
+// Convenience wrappers — preserve existing API, no call site changes needed.
+
+/** Retrieves all feature flags with caching. */
+export const getFeatureFlags = async (payload: Payload): Promise<FeatureFlags> =>
+  getFeatureFlagService(payload).getAll();
+
+/** Checks if a specific feature flag is enabled. */
+export const isFeatureEnabled = async (payload: Payload, flag: keyof FeatureFlags): Promise<boolean> =>
+  getFeatureFlagService(payload).isEnabled(flag);
 
 /**
  * Returns the default feature flags.

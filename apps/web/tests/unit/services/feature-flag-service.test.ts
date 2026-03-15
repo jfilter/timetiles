@@ -9,23 +9,14 @@
  */
 import "@/tests/mocks/services/logger";
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type FeatureFlags, getFeatureFlags } from "@/lib/services/feature-flag-service";
+import { type FeatureFlags, getFeatureFlags, resetFeatureFlagService } from "@/lib/services/feature-flag-service";
 
-describe("getFeatureFlags", () => {
-  beforeAll(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-  });
-
-  afterAll(() => {
-    vi.useRealTimers();
-  });
-
+describe.sequential("getFeatureFlags", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Advance past the 60s cache TTL to ensure a fresh state
-    vi.advanceTimersByTime(60_001);
+    resetFeatureFlagService();
   });
 
   it("should return all flags as false when payload.findGlobal throws", async () => {
@@ -82,9 +73,9 @@ describe("getFeatureFlags", () => {
     const errorFlags = await getFeatureFlags(mockPayload as any);
     expect(errorFlags.allowPrivateImports).toBe(false);
 
-    // Advance past the cache TTL to simulate expiry (error results should not be cached,
-    // but advancing ensures the second call hits findGlobal)
-    vi.advanceTimersByTime(60_001);
+    // Reset singleton to clear state after error (errors are not cached,
+    // but the singleton instance persists)
+    resetFeatureFlagService();
 
     const successFlags = await getFeatureFlags(mockPayload as any);
     expect(successFlags.allowPrivateImports).toBe(true);
