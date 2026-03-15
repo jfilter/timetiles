@@ -55,6 +55,6 @@ export const GET = apiRoute({
 
     catalogLogger.info("Catalogs fetched with datasets", { userId: user.id, catalogCount: catalogs.length });
 
-    return Response.json({ catalogs });
+    return { catalogs };
   },
 });

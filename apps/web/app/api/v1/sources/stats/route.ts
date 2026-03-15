@@ -13,7 +13,6 @@ import { sql } from "@payloadcms/db-postgres";
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
 
 export type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
 
@@ -33,7 +32,7 @@ export const GET = apiRoute({
     // If no accessible catalogs, return empty result
     if (accessibleCatalogIds.length === 0) {
       logger.info({ user: user?.email ?? "anonymous" }, "No accessible catalogs for user");
-      return Response.json({ catalogCounts: {}, datasetCounts: {}, totalEvents: 0 });
+      return { catalogCounts: {}, datasetCounts: {}, totalEvents: 0 };
     }
 
     // Build access control condition
@@ -81,8 +80,6 @@ export const GET = apiRoute({
       "Data source stats fetched"
     );
 
-    const response: DataSourceStatsResponse = { catalogCounts, datasetCounts, totalEvents };
-
-    return Response.json(response);
+    return { catalogCounts, datasetCounts, totalEvents };
   },
 });

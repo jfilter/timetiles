@@ -101,7 +101,7 @@ export const GET = apiRoute({
     const result = await executeEventsQuery(payload, where, query, user);
     const response = buildListResponse(result);
 
-    return Response.json(response);
+    return response;
   },
 });
 

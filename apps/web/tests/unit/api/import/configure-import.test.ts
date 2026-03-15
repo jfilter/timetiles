@@ -272,10 +272,8 @@ describe.sequential("POST /api/import/configure", () => {
       const req = createRequest({ ...baseBody, catalogId: "new", newCatalogName: "My Catalog" });
 
       const response = await POST(req, {} as never);
-      const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body.success).toBe(true);
 
       // Verify catalog was created
       expect(mocks.mockPayload.create).toHaveBeenCalledWith(
@@ -319,10 +317,8 @@ describe.sequential("POST /api/import/configure", () => {
       const req = createRequest({ ...baseBody, catalogId: 999 }, mockAdminUser);
 
       const response = await POST(req, {} as never);
-      const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body.success).toBe(true);
 
       // Verify find was NOT called for admin (ownership check bypassed)
       const findCalls = mocks.mockPayload.find.mock.calls.filter(
@@ -337,10 +333,8 @@ describe.sequential("POST /api/import/configure", () => {
       const req = createRequest(baseBody);
 
       const response = await POST(req, {} as never);
-      const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body.success).toBe(true);
 
       // First create call is for the new dataset, second is for the import file
       expect(mocks.mockPayload.create).toHaveBeenCalledWith(
@@ -391,10 +385,8 @@ describe.sequential("POST /api/import/configure", () => {
       const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
 
       const response = await POST(req, {} as never);
-      const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body.success).toBe(true);
 
       // Should update existing dataset instead of creating
       expect(mocks.mockPayload.update).toHaveBeenCalledWith(
@@ -415,7 +407,7 @@ describe.sequential("POST /api/import/configure", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body.success).toBe(true);
+
       expect(body.importFileId).toBeDefined();
       expect(body.catalogId).toBe(1);
       expect(body.datasets).toBeDefined();
@@ -486,7 +478,7 @@ describe.sequential("POST /api/import/configure", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body.success).toBe(true);
+
       expect(body.scheduledImportId).toBeDefined();
 
       // Verify scheduled import was created

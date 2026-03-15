@@ -15,3 +15,4 @@ export {
 } from "./errors";
 export { apiRoute } from "./handler";
 export { fetchJson, HttpError } from "./http-error";
+export { apiSuccess } from "../utils/api-response";

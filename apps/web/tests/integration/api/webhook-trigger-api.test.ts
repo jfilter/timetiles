@@ -91,7 +91,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
       const data = await response.json();
 
       expect(data).toMatchObject({
-        success: true,
         message: "Import triggered successfully",
         status: "triggered",
         jobId: expect.any(String),
@@ -170,7 +169,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       // Verify the job was created successfully
       expect(data.jobId).toBeDefined();
-      expect(data.success).toBe(true);
     });
   });
 
@@ -228,7 +226,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data).toMatchObject({ success: true, message: "Import already running, skipped", status: "skipped" });
+      expect(data).toMatchObject({ message: "Import already running, skipped", status: "skipped" });
 
       // Cannot verify job creation directly as jobs are internal to Payload
       // The skipped status confirms no job was created
@@ -339,7 +337,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       // Jobs are internal to Payload and not accessible as a collection
       // We can only verify the job was created successfully
-      expect(data.success).toBe(true);
       expect(data.jobId).toBeDefined();
     });
 
@@ -362,7 +359,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       // Jobs are internal to Payload and not accessible as a collection
       // We can only verify the job was created successfully
-      expect(data.success).toBe(true);
       expect(data.jobId).toBeDefined();
     });
   });
@@ -421,7 +417,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // The webhook endpoint should still return success (it queued the job)
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.success).toBe(true);
       expect(data.jobId).toBeDefined();
 
       // Execution history is NOT recorded at trigger time - it's managed by the

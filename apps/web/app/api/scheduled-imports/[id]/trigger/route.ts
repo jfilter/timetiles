@@ -59,7 +59,7 @@ export const POST = apiRoute({
         },
       });
 
-      return Response.json({ success: true, message: "Import triggered" });
+      return { message: "Import triggered" };
     } catch (error) {
       logError(error, "Error triggering scheduled import", { scheduleId: numericId, userId: user.id });
       return internalError();

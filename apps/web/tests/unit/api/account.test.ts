@@ -222,7 +222,6 @@ describe.sequential("POST /api/users/change-email", () => {
     // Anti-enumeration: returns 200 success even when email is taken
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.success).toBe(true);
     expect(data.verificationRequired).toBe(true);
     // Should NOT actually update the user's email
     expect(mockPayload.update).not.toHaveBeenCalled();
@@ -238,7 +237,6 @@ describe.sequential("POST /api/users/change-email", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.success).toBe(true);
     expect(data.verificationRequired).toBe(true);
     // newEmail is intentionally omitted from response to prevent information leakage
     expect(data.newEmail).toBeUndefined();
@@ -323,7 +321,6 @@ describe.sequential("POST /api/users/change-password", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.success).toBe(true);
     expect(data.message).toBe("Password changed successfully");
     expect(mockPayload.update).toHaveBeenCalledWith({
       collection: "users",
@@ -392,7 +389,6 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.success).toBe(true);
     expect(data.message).toContain("7 days");
     expect(data.deletionScheduledAt).toBe(scheduledAt);
     expect(mockScheduleDeletion).toHaveBeenCalledWith(mockUser.id);
@@ -436,7 +432,6 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.success).toBe(true);
     expect(data.message).toContain("cancelled");
     expect(mockCancelDeletion).toHaveBeenCalledWith(pendingUser.id);
   });

@@ -89,11 +89,10 @@ export const POST = apiRoute({
       "Account deletion scheduled"
     );
 
-    return Response.json({
-      success: true,
+    return {
       message: `Your account will be deleted in ${DELETION_GRACE_PERIOD_DAYS} days. You can cancel anytime before then.`,
       deletionScheduledAt: result.deletionScheduledAt,
       summary: result.summary,
-    });
+    };
   },
 });

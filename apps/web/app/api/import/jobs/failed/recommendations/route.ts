@@ -33,7 +33,7 @@ export const GET = apiRoute({
       noActionNeeded: recommendations.filter((r) => r.recommendedAction === "No action recommended"),
     };
 
-    return Response.json({
+    return {
       total: recommendations.length,
       summary: {
         autoRetryAvailable: grouped.autoRetryAvailable.length,
@@ -43,6 +43,6 @@ export const GET = apiRoute({
       },
       recommendations,
       grouped,
-    });
+    };
   },
 });

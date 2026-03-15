@@ -64,7 +64,10 @@ export const GET = apiRoute({
       logger.debug({ results }, "Health check results");
 
       const overallStatus = determineHealthStatus(results);
-      return Response.json(results, { status: overallStatus });
+      if (overallStatus === 503) {
+        return Response.json(results, { status: 503 });
+      }
+      return { ...results };
     } catch (error) {
       logger.error(
         {

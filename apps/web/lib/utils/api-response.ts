@@ -126,3 +126,10 @@ export const gone = (message: string, code?: string): Response => apiError(messa
  */
 export const internalError = (message: string = "Internal server error", code?: string, details?: unknown): Response =>
   apiError(message, 500, code ?? "INTERNAL_ERROR", details);
+
+/**
+ * Create a success JSON response with a non-200 status code (e.g., 202 Accepted).
+ *
+ * For standard 200 responses, return a plain object from apiRoute handlers instead.
+ */
+export const apiSuccess = (data: Record<string, unknown>, status = 200): Response => Response.json(data, { status });

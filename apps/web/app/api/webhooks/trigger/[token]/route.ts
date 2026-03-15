@@ -100,18 +100,12 @@ export const POST = apiRoute({
         { scheduledImportId: scheduledImport.id, name: scheduledImport.name },
         "Webhook trigger skipped - import already running"
       );
-      return Response.json(
-        { success: true, message: "Import already running, skipped", status: "skipped" },
-        { status: 200 }
-      );
+      return { message: "Import already running, skipped", status: "skipped" };
     }
 
     try {
       const { jobId } = await queueWebhookImport(payload, scheduledImport);
-      return Response.json(
-        { success: true, message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() },
-        { status: 200 }
-      );
+      return { message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() };
     } catch {
       return internalError("Failed to queue import job");
     }

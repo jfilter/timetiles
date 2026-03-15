@@ -14,7 +14,7 @@ import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { createDataExportService } from "@/lib/services/data-export-service";
 import type { RequestExportResponse } from "@/lib/types/data-export-api";
-import { conflict } from "@/lib/utils/api-response";
+import { apiSuccess, conflict } from "@/lib/utils/api-response";
 
 export type { RequestExportError, RequestExportResponse } from "@/lib/types/data-export-api";
 
@@ -86,14 +86,13 @@ export const POST = apiRoute({
 
     logger.info({ userId: user.id, exportId: exportRecord.id }, "Data export requested");
 
-    return Response.json(
+    return apiSuccess(
       {
-        success: true,
         message: "Export started. You will receive an email when ready.",
         exportId: exportRecord.id,
         summary,
       } satisfies RequestExportResponse,
-      { status: 202 }
+      202
     );
   },
 });

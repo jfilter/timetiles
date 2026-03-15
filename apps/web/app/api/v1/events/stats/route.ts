@@ -38,7 +38,7 @@ export const GET = apiRoute({
     // If no accessible catalogs, return empty result
     if (accessibleCatalogIds.length === 0 && query.catalog == null) {
       logger.info({ user: user?.email ?? "anonymous" }, "No accessible catalogs for user");
-      return Response.json({ items: [], total: 0, groupedBy: groupBy });
+      return { items: [], total: 0, groupedBy: groupBy };
     }
 
     const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds });
@@ -46,6 +46,6 @@ export const GET = apiRoute({
     // Execute aggregation query
     const result = await executeAggregationQuery(payload, groupBy, filters, accessibleCatalogIds);
 
-    return Response.json(result);
+    return result;
   },
 });

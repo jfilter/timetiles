@@ -153,13 +153,13 @@ export const POST = apiRoute({
       "Preview schema generated"
     );
 
-    return Response.json({
+    return {
       previewId,
       sheets,
       sourceUrl, // Return source URL so UI knows this was a URL-based preview
       fileName: originalName,
       contentLength: fileSize,
       contentType: mimeType,
-    });
+    };
   },
 });

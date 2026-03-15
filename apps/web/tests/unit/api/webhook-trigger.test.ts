@@ -114,8 +114,6 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 
     expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.success).toBe(true);
 
     // The statistics update should NOT contain executionHistory with "success" status
     const updateCalls = mockPayload.update.mock.calls;
@@ -150,7 +148,6 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.success).toBe(true);
     expect(data.status).toBe("triggered");
     expect(data.jobId).toBe("job-456");
     expect(mockPayload.jobs.queue).toHaveBeenCalled();

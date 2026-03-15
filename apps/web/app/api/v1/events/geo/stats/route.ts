@@ -34,19 +34,19 @@ export const GET = apiRoute({
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && query.catalog == null) {
-      return Response.json(DEFAULT_CLUSTER_STATS);
+      return { ...DEFAULT_CLUSTER_STATS };
     }
 
     const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return default stats
     if (filters.denyResults) {
-      return Response.json(DEFAULT_CLUSTER_STATS);
+      return { ...DEFAULT_CLUSTER_STATS };
     }
 
     const stats = await calculateGlobalStats(payload, filters);
 
-    return Response.json(stats);
+    return stats;
   },
 });
 

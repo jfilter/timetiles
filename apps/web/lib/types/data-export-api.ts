@@ -39,7 +39,6 @@ export interface ExportListResponse {
  * Response format for requesting a new data export.
  */
 export interface RequestExportResponse {
-  success: boolean;
   message: string;
   exportId: number;
   summary: ExportSummary;

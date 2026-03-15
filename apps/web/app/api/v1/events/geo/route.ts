@@ -41,20 +41,20 @@ export const GET = apiRoute({
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && query.catalog == null) {
-      return Response.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
+      return { type: "FeatureCollection", features: [], clusters: [], totalCount: 0 };
     }
 
     const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyResults) {
-      return Response.json({ type: "FeatureCollection", features: [], clusters: [], totalCount: 0 });
+      return { type: "FeatureCollection", features: [], clusters: [], totalCount: 0 };
     }
 
     const result = await executeClusteringQuery(payload, bounds, query.zoom, filters);
     const clusters = transformResultToClusters(result.rows);
 
-    return Response.json({ type: "FeatureCollection", features: clusters });
+    return { type: "FeatureCollection", features: clusters };
   },
 });
 

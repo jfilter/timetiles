@@ -89,7 +89,6 @@ describe.sequential("/api/newsletter/subscribe", () => {
 
     // Verify API response
     expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
     expect(data.message).toContain("subscribed");
 
     // Verify HTTP call was made to external service
@@ -159,7 +158,6 @@ describe.sequential("/api/newsletter/subscribe", () => {
 
     // First request should succeed
     expect(results[0]?.status).toBe(200);
-    expect(results[0]?.data.success).toBe(true);
 
     // Second and third requests should be rate limited (burst limit: 1 per 10 seconds)
     expect(results[1]?.status).toBe(429);

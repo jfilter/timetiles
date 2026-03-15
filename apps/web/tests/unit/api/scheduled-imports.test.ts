@@ -139,7 +139,6 @@ describe.sequential("POST /api/scheduled-imports/[id]/trigger", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.success).toBe(true);
     expect(data.message).toBe("Import triggered");
 
     expect(mockPayload.update).toHaveBeenCalledWith(

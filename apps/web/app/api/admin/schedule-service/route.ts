@@ -30,15 +30,14 @@ export const GET = apiRoute({
       sort: "-createdAt",
     });
 
-    return Response.json({
-      success: true,
+    return {
       status: {
         schedulingMethod: "payload-native-cron",
         cron: "* * * * *",
         featureFlagEnabled: enabled,
         lastJobCreatedAt: recentJobs.docs[0]?.createdAt ?? null,
       },
-    });
+    };
   },
 });
 
@@ -54,6 +53,6 @@ export const POST = apiRoute({
 
     logger.info({ jobId: job.id }, "Schedule manager job manually queued");
 
-    return Response.json({ success: true, message: "Schedule manager job queued", jobId: job.id });
+    return { message: "Schedule manager job queued", jobId: job.id };
   },
 });

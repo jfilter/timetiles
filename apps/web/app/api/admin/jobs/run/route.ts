@@ -85,8 +85,7 @@ export const POST = apiRoute({
       "Jobs run completed"
     );
 
-    return Response.json({
-      success: true,
+    return {
       iterationsRun,
       debug: {
         payloadJobs: { initial: initial.payloadJobs.totalDocs, final: final.payloadJobs.totalDocs },
@@ -101,6 +100,6 @@ export const POST = apiRoute({
           statuses: mapFileStatuses(final.importFiles.docs),
         },
       },
-    });
+    };
   },
 });

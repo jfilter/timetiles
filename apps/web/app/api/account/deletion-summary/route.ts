@@ -22,13 +22,13 @@ export const GET = apiRoute({
     // Also check if user can be deleted
     const canDelete = await deletionService.canDeleteUser(user.id);
 
-    return Response.json({
+    return {
       summary,
       canDelete: canDelete.allowed,
       reason: canDelete.reason,
       // Include current deletion status if pending
       deletionStatus: user.deletionStatus,
       deletionScheduledAt: user.deletionScheduledAt,
-    });
+    };
   },
 });

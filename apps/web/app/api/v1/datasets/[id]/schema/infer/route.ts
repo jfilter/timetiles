@@ -65,8 +65,7 @@ export const POST = apiRoute({
       "Schema inference completed"
     );
 
-    return Response.json({
-      success: true,
+    return {
       generated: result.generated,
       message: result.message,
       eventsSampled: result.eventsSampled,
@@ -78,6 +77,6 @@ export const POST = apiRoute({
             eventCountAtCreation: result.schema.eventCountAtCreation ?? undefined,
           }
         : null,
-    } satisfies SchemaInferenceResponse);
+    } satisfies SchemaInferenceResponse;
   },
 });

@@ -211,6 +211,6 @@ export const GET = apiRoute({
       createdAt: importFile.createdAt,
     };
 
-    return Response.json(response);
+    return response;
   },
 });

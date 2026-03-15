@@ -29,9 +29,6 @@ export const POST = apiRoute({
 
     logger.info({ userId: user.id }, "Account deletion cancelled");
 
-    return Response.json({
-      success: true,
-      message: "Account deletion has been cancelled. Your account is now active.",
-    });
+    return { message: "Account deletion has been cancelled. Your account is now active." };
   },
 });

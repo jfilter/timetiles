@@ -46,6 +46,6 @@ export const POST = apiRoute({
 
     logger.info({ userId: user.id, clientId }, "Password changed successfully");
 
-    return Response.json({ success: true, message: "Password changed successfully" });
+    return { message: "Password changed successfully" };
   },
 });

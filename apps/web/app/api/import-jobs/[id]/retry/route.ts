@@ -82,11 +82,10 @@ export const POST = apiRoute({
       "Manual retry initiated"
     );
 
-    return Response.json({
-      success: true,
+    return {
       message: "Import retry scheduled successfully",
       nextRetryAt: result.nextRetryAt?.toISOString(),
       retryScheduled: result.retryScheduled,
-    });
+    };
   },
 });

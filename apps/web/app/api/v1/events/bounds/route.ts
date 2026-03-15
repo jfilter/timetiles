@@ -49,13 +49,13 @@ export const GET = apiRoute({
 
     // If no accessible catalogs and no catalog filter specified, return empty result
     if (accessibleCatalogIds.length === 0 && query.catalog == null) {
-      return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
+      return { bounds: null, count: 0 } satisfies BoundsResponse;
     }
 
     const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds });
 
     if (filters.denyResults) {
-      return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
+      return { bounds: null, count: 0 } satisfies BoundsResponse;
     }
 
     // Build SQL conditions from canonical filters
@@ -93,7 +93,7 @@ export const GET = apiRoute({
 
     // Check if we have any results with valid bounds
     if (!row || row.count === 0 || row.west == null || row.south == null || row.east == null || row.north == null) {
-      return Response.json({ bounds: null, count: 0 } satisfies BoundsResponse);
+      return { bounds: null, count: 0 } satisfies BoundsResponse;
     }
 
     logger.debug(
@@ -101,7 +101,7 @@ export const GET = apiRoute({
       "Computed event bounds"
     );
 
-    return Response.json({
+    return {
       bounds: {
         north: Number.parseFloat(row.north),
         south: Number.parseFloat(row.south),
@@ -109,6 +109,6 @@ export const GET = apiRoute({
         west: Number.parseFloat(row.west),
       },
       count: row.count,
-    } satisfies BoundsResponse);
+    } satisfies BoundsResponse;
   },
 });

@@ -37,13 +37,13 @@ export const GET = apiRoute({
 
     // If user doesn't have access to the requested catalog, return empty result
     if (filters.denyResults) {
-      return Response.json(buildEmptyHistogramResponse());
+      return buildEmptyHistogramResponse();
     }
 
     const histogramResult = await executeHistogramQuery(payload, query, filters);
     const response = buildHistogramResponse(histogramResult.rows);
 
-    return Response.json(response);
+    return response;
   },
 });
 

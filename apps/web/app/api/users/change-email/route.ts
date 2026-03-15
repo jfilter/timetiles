@@ -106,7 +106,6 @@ export const POST = apiRoute({
     const startTime = Date.now();
 
     const successResponse = {
-      success: true,
       message: "Email changed successfully. Please check your new email address for a verification link.",
       verificationRequired: true,
     };
@@ -130,6 +129,6 @@ export const POST = apiRoute({
       await new Promise((resolve) => setTimeout(resolve, RESPONSE_FLOOR_MS - elapsed));
     }
 
-    return Response.json(successResponse);
+    return successResponse;
   },
 });

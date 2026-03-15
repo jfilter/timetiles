@@ -72,7 +72,7 @@ export const POST = apiRoute({
       logger.info({ email: maskEmail(normalizedEmail) }, "Sent account exists notification");
 
       // Return same success response as new registration
-      return Response.json({ success: true, message: "Please check your email to verify your account." });
+      return { message: "Please check your email to verify your account." };
     }
 
     // Create new user - Payload will automatically send verification email
@@ -94,7 +94,7 @@ export const POST = apiRoute({
 
       logger.info({ email: maskEmail(normalizedEmail) }, "New user registered");
 
-      return Response.json({ success: true, message: "Please check your email to verify your account." });
+      return { message: "Please check your email to verify your account." };
     } catch (createError) {
       // Handle potential race condition where user was created between our check and create
       // This could happen under high concurrency
@@ -105,7 +105,7 @@ export const POST = apiRoute({
         // Return success to prevent enumeration
         logger.warn({ email: maskEmail(normalizedEmail) }, "Race condition during registration");
 
-        return Response.json({ success: true, message: "Please check your email to verify your account." });
+        return { message: "Please check your email to verify your account." };
       }
 
       // Re-throw other errors

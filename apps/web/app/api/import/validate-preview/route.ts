@@ -28,7 +28,7 @@ export const GET = apiRoute({
     const metaPath = path.join(previewDir, `${query.previewId}.meta.json`);
 
     if (!fs.existsSync(metaPath)) {
-      return Response.json({ valid: false });
+      return { valid: false };
     }
 
     try {
@@ -36,16 +36,16 @@ export const GET = apiRoute({
       const meta = JSON.parse(content);
 
       if (meta.expiresAt && new Date(meta.expiresAt) < new Date()) {
-        return Response.json({ valid: false });
+        return { valid: false };
       }
 
       if (!meta.filePath || !fs.existsSync(meta.filePath)) {
-        return Response.json({ valid: false });
+        return { valid: false };
       }
 
-      return Response.json({ valid: true });
+      return { valid: true };
     } catch {
-      return Response.json({ valid: false });
+      return { valid: false };
     }
   },
 });

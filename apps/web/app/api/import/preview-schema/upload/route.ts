@@ -99,6 +99,6 @@ export const POST = apiRoute({
       "Preview schema generated"
     );
 
-    return Response.json({ previewId, sheets });
+    return { previewId, sheets };
   },
 });

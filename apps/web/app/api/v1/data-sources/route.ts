@@ -46,6 +46,6 @@ export const GET = apiRoute({
       catalogId: typeof d.catalog === "object" && d.catalog != null ? d.catalog.id : null,
     }));
 
-    return Response.json({ catalogs, datasets });
+    return { catalogs, datasets };
   },
 });

@@ -90,9 +90,12 @@ export const GET = apiRoute({
       },
     };
 
-    // Add quota headers
+    // Add quota headers — requires explicit Response to set custom headers
     const headers = await quotaService.getQuotaHeaders(user);
 
-    return Response.json(response, { status: 200, headers });
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...headers },
+    });
   },
 });

@@ -41,8 +41,16 @@ interface RouteConfig<TBody = undefined, TQuery = undefined, TParams = undefined
   query?: z.ZodType<TQuery>;
   /** Zod schema for route params (e.g., { id: z.string() }) */
   params?: z.ZodType<TParams>;
-  /** The route handler function */
-  handler: (ctx: RouteContext<TBody, TQuery, TParams, TAuth>) => Promise<Response> | Response;
+  /**
+   * The route handler function.
+   *
+   * Return a plain object to auto-serialize as JSON (HTTP 200).
+   * Return a `Response` directly for non-JSON responses (streams, redirects)
+   * or when a non-200 status code is needed.
+   */
+  handler: (
+    ctx: RouteContext<TBody, TQuery, TParams, TAuth>
+  ) => Promise<Response | Record<string, unknown>> | Response | Record<string, unknown>;
 }
 
 /**
@@ -56,7 +64,7 @@ interface RouteConfig<TBody = undefined, TQuery = undefined, TParams = undefined
  *   body: z.object({ address: z.string().min(1) }),
  *   handler: async ({ body, payload }) => {
  *     const result = await SomeService.process(payload, body);
- *     return Response.json(result);
+ *     return result; // Auto-wrapped as { success: true, ...result }
  *   },
  * });
  * ```
@@ -116,7 +124,7 @@ export const apiRoute = <
       const params = routeConfig.params ? routeConfig.params.parse(resolvedParams) : (resolvedParams as TParams);
 
       // --- Call handler ---
-      return await routeConfig.handler({
+      const result = await routeConfig.handler({
         req: authReq,
         user: authReq.user,
         payload,
@@ -124,6 +132,12 @@ export const apiRoute = <
         query,
         params,
       } as RouteContext<TBody, TQuery, TParams, TAuth>);
+
+      // Auto-wrap plain objects as JSON; pass through Response objects (streams, redirects)
+      if (result instanceof Response) {
+        return result;
+      }
+      return Response.json(result);
     } catch (err) {
       return handleError(err);
     }

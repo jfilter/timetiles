@@ -17,14 +17,18 @@ export const GET = apiRoute({
     try {
       const flags = await getFeatureFlags(payload);
 
-      return Response.json(flags, {
+      // Custom Cache-Control header requires explicit Response
+      return new Response(JSON.stringify(flags), {
         status: 200,
-        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
       });
     } catch (error) {
       logError(error, "Failed to fetch feature flags");
       // Fail closed: return all-disabled flags when service is unavailable
-      return Response.json(DISABLED_FLAGS);
+      return { ...DISABLED_FLAGS };
     }
   },
 });

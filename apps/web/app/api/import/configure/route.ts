@@ -106,13 +106,12 @@ export const POST = apiRoute({
 
       cleanupPreview(body.previewId);
 
-      return Response.json({
-        success: true,
+      return {
         importFileId: importFile.id,
         catalogId: finalCatalogId,
         datasets: Object.fromEntries(datasetIdMap),
         scheduledImportId: scheduledImportId ?? undefined,
-      });
+      };
     } catch (error) {
       // Bug 15: surface quota-exceeded as 429 rather than 500
       return rethrowQuotaError(error);

@@ -26,7 +26,6 @@ export interface SchemaInferenceOptions {
  * Response format for the schema inference endpoint.
  */
 export interface SchemaInferenceResponse {
-  success: boolean;
   generated: boolean;
   message: string;
   eventsSampled?: number;

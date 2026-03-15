@@ -29,6 +29,6 @@ export const GET = apiRoute({
     const fileExtension = path.extname(meta!.filePath).toLowerCase();
     const sheets = parseFileSheets(meta!.filePath, fileExtension);
 
-    return Response.json({ sheets });
+    return { sheets };
   },
 });

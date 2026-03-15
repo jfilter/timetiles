@@ -26,7 +26,6 @@ export interface ChangeEmailInput {
 
 /** Response from `/api/users/change-email`. */
 interface ChangeEmailResponse {
-  success: boolean;
   message: string;
   verificationRequired?: boolean;
 }
@@ -39,7 +38,6 @@ export interface ChangePasswordInput {
 
 /** Response from `/api/users/change-password`. */
 interface ChangePasswordResponse {
-  success: boolean;
   message: string;
 }
 
@@ -59,7 +57,6 @@ export interface ScheduleDeletionInput {
 
 /** Response from `/api/users/schedule-deletion`. */
 export interface ScheduleDeletionResponse {
-  success: boolean;
   message: string;
   deletionScheduledAt: string;
   summary: DeletionSummary;

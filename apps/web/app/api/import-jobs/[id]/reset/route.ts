@@ -65,12 +65,11 @@ export const POST = apiRoute({
       "Admin manually reset import job stage"
     );
 
-    return Response.json({
-      success: true,
+    return {
       message: `Import job reset to ${targetStage}`,
       fromStage: importJob.stage,
       toStage: targetStage,
       retriesCleared: clearRetries,
-    });
+    };
   },
 });

@@ -31,7 +31,6 @@ interface LoginResponse {
 
 /** `/api/auth/register` response shape. */
 interface RegisterResponse {
-  success: boolean;
   message?: string;
   error?: string;
 }
@@ -151,7 +150,7 @@ export const registerRequest = async (input: RegisterInput): Promise<RegisterRes
 
   const data = (await response.json()) as RegisterResponse;
 
-  if (!response.ok || !data.success) {
+  if (!response.ok) {
     const message = data.error ?? "Registration failed. Please try again.";
     throw new Error(message);
   }
