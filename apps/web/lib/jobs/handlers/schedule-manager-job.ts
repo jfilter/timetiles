@@ -11,10 +11,10 @@
  */
 import type { Payload } from "payload";
 
-import { validateCronExpression } from "@/lib/collections/scheduled-imports/validation";
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { triggerScheduledImport } from "@/lib/services/scheduled-import-trigger-service";
+import { calculateNextCronRun } from "@/lib/utils/cron-parser";
 import type { ScheduledImport } from "@/payload-types";
 
 // Unused but kept for future expansion
@@ -84,121 +84,6 @@ const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => 
   return next;
 };
 
-const parseValidatedCronExpression = (cronExpression: string) => {
-  const validationResult = validateCronExpression(cronExpression);
-  if (validationResult !== true) {
-    throw new Error(validationResult);
-  }
-
-  const parts = cronExpression.trim().split(/\s+/);
-  if (parts.length !== 5) {
-    throw new Error(`Invalid cron expression: ${cronExpression}`);
-  }
-
-  const [minute = "*", hour = "*", dayOfMonth = "*", month = "*", dayOfWeek = "*"] = parts;
-  return { minute, hour, dayOfMonth, month, dayOfWeek };
-};
-
-const matchesCronPart = (field: string, value: number): boolean => {
-  if (field === "*") {
-    return true;
-  }
-
-  return field.split(",").some((part) => {
-    if (part.startsWith("*/")) {
-      const step = Number.parseInt(part.slice(2), 10);
-      return step > 0 && value % step === 0;
-    }
-
-    if (part.includes("-")) {
-      const [startRaw, endRaw] = part.split("-");
-      if (startRaw == null || endRaw == null) {
-        return false;
-      }
-
-      const start = Number.parseInt(startRaw, 10);
-      const end = Number.parseInt(endRaw, 10);
-      return !Number.isNaN(start) && !Number.isNaN(end) && value >= start && value <= end;
-    }
-
-    return Number.parseInt(part, 10) === value;
-  });
-};
-
-const matchesCronDayOfWeek = (field: string, date: Date): boolean => {
-  const dayOfWeek = date.getUTCDay();
-
-  if (field === "*") {
-    return true;
-  }
-
-  return matchesCronPart(field, dayOfWeek) || (dayOfWeek === 0 && matchesCronPart(field, 7));
-};
-
-const matchesCronDate = (
-  date: Date,
-  {
-    minute,
-    hour,
-    dayOfMonth,
-    month,
-    dayOfWeek,
-  }: { minute: string; hour: string; dayOfMonth: string; month: string; dayOfWeek: string }
-): boolean => {
-  if (!matchesCronPart(minute, date.getUTCMinutes())) {
-    return false;
-  }
-
-  if (!matchesCronPart(hour, date.getUTCHours())) {
-    return false;
-  }
-
-  if (!matchesCronPart(month, date.getUTCMonth() + 1)) {
-    return false;
-  }
-
-  const dayOfMonthMatches = matchesCronPart(dayOfMonth, date.getUTCDate());
-  const dayOfWeekMatches = matchesCronDayOfWeek(dayOfWeek, date);
-  const usesDayOfMonth = dayOfMonth !== "*";
-  const usesDayOfWeek = dayOfWeek !== "*";
-
-  if (usesDayOfMonth && usesDayOfWeek) {
-    return dayOfMonthMatches || dayOfWeekMatches;
-  }
-
-  if (usesDayOfMonth) {
-    return dayOfMonthMatches;
-  }
-
-  if (usesDayOfWeek) {
-    return dayOfWeekMatches;
-  }
-
-  return true;
-};
-
-/**
- * Parses a cron expression and returns the next execution time (UTC).
- */
-const getNextCronExecution = (cronExpression: string, fromDate?: Date): Date => {
-  const parts = parseValidatedCronExpression(cronExpression);
-  const next = new Date(fromDate ?? new Date());
-  next.setUTCSeconds(0);
-  next.setUTCMilliseconds(0);
-  next.setUTCMinutes(next.getUTCMinutes() + 1);
-
-  const maxIterations = 366 * 24 * 60;
-  for (let i = 0; i < maxIterations; i++) {
-    if (matchesCronDate(next, parts)) {
-      return next;
-    }
-
-    next.setUTCMinutes(next.getUTCMinutes() + 1);
-  }
-
-  throw new Error(`Unable to calculate next run for cron expression: ${cronExpression}`);
-};
-
 /**
  * Gets the next execution time based on schedule type (UTC).
  */
@@ -206,7 +91,11 @@ const getNextExecutionTime = (scheduledImport: ScheduledImport, fromDate?: Date)
   if (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) {
     return getNextFrequencyExecution(scheduledImport.frequency, fromDate);
   } else if (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression) {
-    return getNextCronExecution(scheduledImport.cronExpression, fromDate);
+    const nextRun = calculateNextCronRun(scheduledImport.cronExpression, fromDate);
+    if (!nextRun) {
+      throw new Error(`Unable to calculate next run for cron expression: ${scheduledImport.cronExpression}`);
+    }
+    return nextRun;
   }
 
   throw new Error("Invalid schedule configuration");

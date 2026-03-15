@@ -13,8 +13,8 @@ import { randomBytes } from "node:crypto";
 
 import type { CollectionBeforeChangeHook } from "payload";
 
-import { validateCronExpression } from "@/lib/collections/scheduled-imports/validation";
 import { logger } from "@/lib/logger";
+import { calculateNextCronRun } from "@/lib/utils/cron-parser";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 /**
@@ -71,79 +71,6 @@ const handleWebhookToken = (data: Record<string, unknown>, originalDoc?: Record<
 };
 
 /**
- * Parses a cron expression and matches it against a date.
- */
-const matchesCronPart = (field: string, value: number): boolean => {
-  if (field === "*") return true;
-
-  return field.split(",").some((part) => {
-    if (part.startsWith("*/")) {
-      const step = Number.parseInt(part.slice(2), 10);
-      return step > 0 && value % step === 0;
-    }
-    if (part.includes("-")) {
-      const [startRaw, endRaw] = part.split("-");
-      const start = Number.parseInt(startRaw ?? "", 10);
-      const end = Number.parseInt(endRaw ?? "", 10);
-      return !Number.isNaN(start) && !Number.isNaN(end) && value >= start && value <= end;
-    }
-    return Number.parseInt(part, 10) === value;
-  });
-};
-
-const matchesCronDate = (
-  date: Date,
-  parts: { minute: string; hour: string; dayOfMonth: string; month: string; dayOfWeek: string }
-): boolean => {
-  if (!matchesCronPart(parts.minute, date.getUTCMinutes())) return false;
-  if (!matchesCronPart(parts.hour, date.getUTCHours())) return false;
-  if (!matchesCronPart(parts.month, date.getUTCMonth() + 1)) return false;
-
-  const dayOfMonthMatches = matchesCronPart(parts.dayOfMonth, date.getUTCDate());
-  const dayOfWeek = date.getUTCDay();
-  const dayOfWeekMatches =
-    parts.dayOfWeek === "*" ||
-    matchesCronPart(parts.dayOfWeek, dayOfWeek) ||
-    (dayOfWeek === 0 && matchesCronPart(parts.dayOfWeek, 7));
-  const usesDayOfMonth = parts.dayOfMonth !== "*";
-  const usesDayOfWeek = parts.dayOfWeek !== "*";
-
-  if (usesDayOfMonth && usesDayOfWeek) return dayOfMonthMatches || dayOfWeekMatches;
-  if (usesDayOfMonth) return dayOfMonthMatches;
-  if (usesDayOfWeek) return dayOfWeekMatches;
-  return true;
-};
-
-/**
- * Calculate the next run time from a cron expression.
- */
-const calculateNextRunByCron = (cronExpression: string, fromDate?: Date): Date | null => {
-  const validationResult = validateCronExpression(cronExpression);
-  if (validationResult !== true) return null;
-
-  const rawParts = cronExpression.trim().split(/\s+/);
-  if (rawParts.length !== 5) return null;
-
-  const [minute = "*", hour = "*", dayOfMonth = "*", month = "*", dayOfWeek = "*"] = rawParts;
-  const parts = { minute, hour, dayOfMonth, month, dayOfWeek };
-
-  const next = new Date(fromDate ?? new Date());
-  next.setUTCSeconds(0);
-  next.setUTCMilliseconds(0);
-  next.setUTCMinutes(next.getUTCMinutes() + 1);
-
-  const maxIterations = 366 * 24 * 60;
-  for (let i = 0; i < maxIterations; i++) {
-    if (matchesCronDate(next, parts)) {
-      return next;
-    }
-    next.setUTCMinutes(next.getUTCMinutes() + 1);
-  }
-
-  return null;
-};
-
-/**
  * Handle schedule initialization and statistics.
  */
 const handleScheduleInitialization = (data: Record<string, unknown>, operation: string): void => {
@@ -154,7 +81,7 @@ const handleScheduleInitialization = (data: Record<string, unknown>, operation: 
     }
 
     if (!data.nextRun && data.cronExpression) {
-      const nextRun = calculateNextRunByCron(data.cronExpression as string);
+      const nextRun = calculateNextCronRun(data.cronExpression as string);
       if (nextRun) {
         data.nextRun = nextRun.toISOString();
       } else {

@@ -7,8 +7,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateNextCronRun,
   describeCronExpression,
   detectCronPattern,
+  matchesCronDate,
+  matchesCronField,
   parseCronExpression,
   validateCronParts,
 } from "../../../lib/utils/cron-parser";
@@ -265,6 +268,196 @@ describe("Cron Parser Utilities", () => {
     it("should format time with leading zeros", () => {
       expect(describeCronExpression("5 7 * * *")).toBe("Daily at 07:05");
       expect(describeCronExpression("0 0 * * *")).toBe("Daily at 00:00");
+    });
+  });
+
+  describe("matchesCronField", () => {
+    it("should match wildcard", () => {
+      expect(matchesCronField("*", 0)).toBe(true);
+      expect(matchesCronField("*", 59)).toBe(true);
+    });
+
+    it("should match exact value", () => {
+      expect(matchesCronField("5", 5)).toBe(true);
+      expect(matchesCronField("5", 6)).toBe(false);
+      expect(matchesCronField("0", 0)).toBe(true);
+    });
+
+    it("should match step values", () => {
+      expect(matchesCronField("*/5", 0)).toBe(true);
+      expect(matchesCronField("*/5", 5)).toBe(true);
+      expect(matchesCronField("*/5", 10)).toBe(true);
+      expect(matchesCronField("*/5", 3)).toBe(false);
+      expect(matchesCronField("*/15", 45)).toBe(true);
+      expect(matchesCronField("*/15", 46)).toBe(false);
+    });
+
+    it("should match ranges", () => {
+      expect(matchesCronField("1-5", 1)).toBe(true);
+      expect(matchesCronField("1-5", 3)).toBe(true);
+      expect(matchesCronField("1-5", 5)).toBe(true);
+      expect(matchesCronField("1-5", 0)).toBe(false);
+      expect(matchesCronField("1-5", 6)).toBe(false);
+    });
+
+    it("should match lists", () => {
+      expect(matchesCronField("1,3,5", 1)).toBe(true);
+      expect(matchesCronField("1,3,5", 3)).toBe(true);
+      expect(matchesCronField("1,3,5", 5)).toBe(true);
+      expect(matchesCronField("1,3,5", 2)).toBe(false);
+      expect(matchesCronField("1,3,5", 4)).toBe(false);
+    });
+
+    it("should reject malformed numeric values", () => {
+      expect(matchesCronField("30abc", 30)).toBe(false);
+      expect(matchesCronField("abc", 0)).toBe(false);
+    });
+
+    it("should reject invalid step values", () => {
+      expect(matchesCronField("*/0", 0)).toBe(false);
+      expect(matchesCronField("*/abc", 0)).toBe(false);
+    });
+
+    it("should reject malformed ranges", () => {
+      expect(matchesCronField("a-5", 3)).toBe(false);
+      expect(matchesCronField("1-b", 3)).toBe(false);
+    });
+  });
+
+  describe("matchesCronDate", () => {
+    it("should match a date against cron parts", () => {
+      // 2026-03-15 is a Sunday
+      const date = new Date("2026-03-15T12:30:00Z");
+      expect(matchesCronDate(date, { minute: "30", hour: "12", dayOfMonth: "*", month: "*", dayOfWeek: "*" })).toBe(
+        true
+      );
+      expect(matchesCronDate(date, { minute: "0", hour: "12", dayOfMonth: "*", month: "*", dayOfWeek: "*" })).toBe(
+        false
+      );
+    });
+
+    it("should match minute and hour correctly", () => {
+      const date = new Date("2026-03-15T08:45:00Z");
+      expect(matchesCronDate(date, { minute: "45", hour: "8", dayOfMonth: "*", month: "*", dayOfWeek: "*" })).toBe(
+        true
+      );
+      expect(matchesCronDate(date, { minute: "45", hour: "9", dayOfMonth: "*", month: "*", dayOfWeek: "*" })).toBe(
+        false
+      );
+    });
+
+    it("should match month correctly", () => {
+      const march = new Date("2026-03-15T12:00:00Z");
+      expect(matchesCronDate(march, { minute: "0", hour: "12", dayOfMonth: "*", month: "3", dayOfWeek: "*" })).toBe(
+        true
+      );
+      expect(matchesCronDate(march, { minute: "0", hour: "12", dayOfMonth: "*", month: "4", dayOfWeek: "*" })).toBe(
+        false
+      );
+    });
+
+    it("should match day of month", () => {
+      const date = new Date("2026-03-15T12:00:00Z");
+      expect(matchesCronDate(date, { minute: "0", hour: "12", dayOfMonth: "15", month: "*", dayOfWeek: "*" })).toBe(
+        true
+      );
+      expect(matchesCronDate(date, { minute: "0", hour: "12", dayOfMonth: "16", month: "*", dayOfWeek: "*" })).toBe(
+        false
+      );
+    });
+
+    it("should handle day-of-week Sunday as both 0 and 7", () => {
+      // 2026-03-08 is a Sunday (getUTCDay() === 0)
+      const sunday = new Date("2026-03-08T12:00:00Z");
+      expect(matchesCronDate(sunday, { minute: "0", hour: "12", dayOfMonth: "*", month: "*", dayOfWeek: "0" })).toBe(
+        true
+      );
+      expect(matchesCronDate(sunday, { minute: "0", hour: "12", dayOfMonth: "*", month: "*", dayOfWeek: "7" })).toBe(
+        true
+      );
+    });
+
+    it("should use OR logic when both dayOfMonth and dayOfWeek are specified", () => {
+      // 2026-03-15 is Sunday (day 15, dow 0)
+      const date = new Date("2026-03-15T12:00:00Z");
+      // dayOfMonth=15 matches, dayOfWeek=1 (Monday) does not
+      expect(matchesCronDate(date, { minute: "0", hour: "12", dayOfMonth: "15", month: "*", dayOfWeek: "1" })).toBe(
+        true
+      );
+      // dayOfMonth=16 does not match, dayOfWeek=0 (Sunday) matches
+      expect(matchesCronDate(date, { minute: "0", hour: "12", dayOfMonth: "16", month: "*", dayOfWeek: "0" })).toBe(
+        true
+      );
+      // Neither matches
+      expect(matchesCronDate(date, { minute: "0", hour: "12", dayOfMonth: "16", month: "*", dayOfWeek: "1" })).toBe(
+        false
+      );
+    });
+  });
+
+  describe("calculateNextCronRun", () => {
+    it("should calculate next run for daily cron", () => {
+      const from = new Date("2026-03-15T10:00:00Z");
+      const next = calculateNextCronRun("0 12 * * *", from);
+      expect(next).not.toBeNull();
+      expect(next!.getUTCHours()).toBe(12);
+      expect(next!.getUTCMinutes()).toBe(0);
+      expect(next!.getUTCDate()).toBe(15);
+    });
+
+    it("should advance to next day if past target time", () => {
+      const from = new Date("2026-03-15T13:00:00Z");
+      const next = calculateNextCronRun("0 12 * * *", from);
+      expect(next).not.toBeNull();
+      expect(next!.getUTCHours()).toBe(12);
+      expect(next!.getUTCDate()).toBe(16);
+    });
+
+    it("should calculate next run for weekly cron", () => {
+      // From Sunday, find next Monday at 08:30
+      const from = new Date("2026-03-15T10:00:00Z"); // Sunday
+      const next = calculateNextCronRun("30 8 * * 1", from);
+      expect(next).not.toBeNull();
+      expect(next!.getUTCDay()).toBe(1); // Monday
+      expect(next!.getUTCHours()).toBe(8);
+      expect(next!.getUTCMinutes()).toBe(30);
+    });
+
+    it("should calculate next run for step-based cron", () => {
+      const from = new Date("2026-03-15T10:03:00Z");
+      const next = calculateNextCronRun("*/5 * * * *", from);
+      expect(next).not.toBeNull();
+      expect(next!.getUTCMinutes() % 5).toBe(0);
+    });
+
+    it("should return null for impossible expressions", () => {
+      // Feb 31 never exists
+      const result = calculateNextCronRun("0 0 31 2 *");
+      expect(result).toBeNull();
+    });
+
+    it("should return null for malformed field values", () => {
+      // "30abc" is not a valid cron field, so no date will ever match
+      const result = calculateNextCronRun("30abc 14 * * *");
+      expect(result).toBeNull();
+    });
+
+    it("should skip to next minute from fromDate", () => {
+      const from = new Date("2026-03-15T12:00:00Z");
+      const next = calculateNextCronRun("* * * * *", from);
+      expect(next).not.toBeNull();
+      // Should be at least 1 minute after fromDate
+      expect(next!.getTime()).toBeGreaterThan(from.getTime());
+      expect(next!.getUTCMinutes()).toBe(1);
+    });
+
+    it("should calculate next run for monthly cron on specific day", () => {
+      const from = new Date("2026-03-20T10:00:00Z");
+      const next = calculateNextCronRun("0 9 1 * *", from);
+      expect(next).not.toBeNull();
+      expect(next!.getUTCDate()).toBe(1);
+      expect(next!.getUTCMonth()).toBe(3); // April (0-indexed)
+      expect(next!.getUTCHours()).toBe(9);
     });
   });
 });

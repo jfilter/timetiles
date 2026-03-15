@@ -9,7 +9,7 @@
  * @category Utilities
  */
 
-interface CronParts {
+export interface CronParts {
   minute: string;
   hour: string;
   dayOfMonth: string;
@@ -151,4 +151,77 @@ const getOrdinalSuffix = (n: number): string => {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
   return s[(v - 20) % 10] ?? s[v] ?? s[0] ?? "th";
+};
+
+const strictParseInt = (value: string): number | null => {
+  if (!/^\d+$/.test(value)) return null;
+  return Number.parseInt(value, 10);
+};
+
+/**
+ * Test if a cron field matches a specific value.
+ * Supports wildcards (*), steps (asterisk/N), ranges (A-B), and lists (A,B,C).
+ */
+export const matchesCronField = (field: string, value: number): boolean => {
+  if (field === "*") return true;
+
+  return field.split(",").some((part) => {
+    if (part.startsWith("*/")) {
+      const step = strictParseInt(part.slice(2));
+      return step != null && step > 0 && value % step === 0;
+    }
+    if (part.includes("-")) {
+      const [startRaw, endRaw] = part.split("-");
+      const start = strictParseInt(startRaw ?? "");
+      const end = strictParseInt(endRaw ?? "");
+      return start != null && end != null && value >= start && value <= end;
+    }
+    const parsed = strictParseInt(part);
+    return parsed != null && parsed === value;
+  });
+};
+
+/**
+ * Test if a date matches a cron expression's parts.
+ */
+export const matchesCronDate = (date: Date, parts: CronParts): boolean => {
+  if (!matchesCronField(parts.minute, date.getUTCMinutes())) return false;
+  if (!matchesCronField(parts.hour, date.getUTCHours())) return false;
+  if (!matchesCronField(parts.month, date.getUTCMonth() + 1)) return false;
+
+  const dayOfMonthMatches = matchesCronField(parts.dayOfMonth, date.getUTCDate());
+  const dayOfWeek = date.getUTCDay();
+  const dayOfWeekMatches =
+    parts.dayOfWeek === "*" ||
+    matchesCronField(parts.dayOfWeek, dayOfWeek) ||
+    (dayOfWeek === 0 && matchesCronField(parts.dayOfWeek, 7));
+  const usesDayOfMonth = parts.dayOfMonth !== "*";
+  const usesDayOfWeek = parts.dayOfWeek !== "*";
+
+  if (usesDayOfMonth && usesDayOfWeek) return dayOfMonthMatches || dayOfWeekMatches;
+  if (usesDayOfMonth) return dayOfMonthMatches;
+  if (usesDayOfWeek) return dayOfWeekMatches;
+  return true;
+};
+
+/**
+ * Calculate the next time a cron expression matches after fromDate.
+ * Returns null if no match found within ~1 year.
+ */
+export const calculateNextCronRun = (cronExpression: string, fromDate?: Date): Date | null => {
+  const parts = parseCronExpression(cronExpression);
+  const next = new Date(fromDate ?? new Date());
+  next.setUTCSeconds(0);
+  next.setUTCMilliseconds(0);
+  next.setUTCMinutes(next.getUTCMinutes() + 1);
+
+  const maxIterations = 366 * 24 * 60;
+  for (let i = 0; i < maxIterations; i++) {
+    if (matchesCronDate(next, parts)) {
+      return next;
+    }
+    next.setUTCMinutes(next.getUTCMinutes() + 1);
+  }
+
+  return null;
 };
