@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 import { apiRoute } from "@/lib/api";
 import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
-import type { EventListQuery } from "@/lib/schemas/events";
+import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import type { Event, User } from "@/payload-types";
@@ -55,7 +55,7 @@ const enrichEventData = (
   return { ...eventData, title, description, id };
 };
 
-export const transformEvent = (event: Event) => {
+export const transformEvent = (event: Event): EventListItem => {
   // Extract field mappings from dataset
   const fieldMappings =
     typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
@@ -79,8 +79,11 @@ export const transformEvent = (event: Event) => {
     id: event.id,
     dataset: getDatasetInfo(event.dataset),
     data: enrichedData,
-    location: event.location ? { longitude: event.location.longitude, latitude: event.location.latitude } : null,
-    eventTimestamp: event.eventTimestamp,
+    location:
+      event.location?.longitude != null && event.location?.latitude != null
+        ? { longitude: event.location.longitude, latitude: event.location.latitude }
+        : null,
+    eventTimestamp: event.eventTimestamp ?? "",
     isValid: event.validationStatus === "valid",
   };
 };
