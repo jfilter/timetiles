@@ -96,7 +96,7 @@ Full documentation at **[docs.timetiles.io](https://docs.timetiles.io)**
 
 - Git, Git LFS, Make, Bash
 - Node.js 24+, pnpm 10.12.4+
-- Docker & Docker Compose
+- Docker & Docker Compose **or** local PostgreSQL 17+ with PostGIS
 - PostgreSQL client, jq, curl
 
 ```bash
@@ -107,6 +107,18 @@ brew install git git-lfs node pnpm docker postgresql jq curl
 sudo apt install git git-lfs make nodejs npm docker.io docker-compose postgresql-client jq curl
 sudo npm install -g pnpm
 ```
+
+### Database Mode
+
+By default, `make dev` uses Docker for PostgreSQL. To use a local Homebrew PostgreSQL instead, set `PG_MODE=local` in your `.env`:
+
+```bash
+# .env
+PG_MODE=local
+DATABASE_URL=postgresql://timetiles_user:timetiles_password@localhost:5433/timetiles
+```
+
+All `make` commands (`dev`, `fresh`, `db-reset`, `db-shell`, etc.) respect `PG_MODE` automatically.
 
 ### Installation
 

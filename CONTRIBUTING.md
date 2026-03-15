@@ -5,10 +5,13 @@ Thank you for your interest in contributing to TimeTiles!
 ## Quick Start
 
 ```bash
-# Clone and initialize
+# Clone and initialize (uses Docker PostgreSQL by default)
 git clone https://github.com/jfilter/timetiles.git
 cd timetiles
 make init             # Complete setup + start dev server
+
+# Optional: use local PostgreSQL instead of Docker
+# Set PG_MODE=local in .env (see README for details)
 
 # Before committing
 make check-ai         # Linting & typecheck (AI-friendly)

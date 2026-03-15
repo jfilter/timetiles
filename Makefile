@@ -3,6 +3,11 @@
 
 .PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images worktree worktree-rm worktree-ls worktree-setup help
 
+# Load PG_MODE from .env (default: docker)
+-include .env
+PG_MODE ?= docker
+PG_PORT := $(if $(filter local,$(PG_MODE)),5433,5432)
+
 all: help
 
 # Validate environment prerequisites and setup completion
@@ -23,18 +28,25 @@ down:
 logs:
 	docker compose -f docker-compose.dev.yml logs
 
-# Reset database (remove volumes and restart)
+# Reset database
 db-reset:
-	docker compose -f docker-compose.dev.yml down -v
-	docker compose -f docker-compose.dev.yml up -d postgres
+	@if [ "$(PG_MODE)" = "local" ]; then \
+		echo "🔄 Resetting local database..."; \
+		psql -p 5433 -d postgres -c "DROP DATABASE IF EXISTS timetiles;" && \
+		psql -p 5433 -d postgres -c "CREATE DATABASE timetiles OWNER timetiles_user;" && \
+		psql -p 5433 -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;" && \
+		psql -p 5433 -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"; \
+	else \
+		docker compose -f docker-compose.dev.yml down -v; \
+		docker compose -f docker-compose.dev.yml up -d postgres; \
+	fi
 	@echo "🔄 Database reset complete!"
 
-# Wait for database to be ready (requires pg_isready - see README for prerequisites)
-# Checks both local (5433) and Docker (5432) ports
+# Wait for database to be ready (requires pg_isready)
 wait-db:
-	@echo "⏳ Waiting for database to be ready..."
+	@echo "⏳ Waiting for database to be ready (port $(PG_PORT))..."
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do \
-		if pg_isready -h localhost -p 5433 >/dev/null 2>&1 || pg_isready -h localhost -p 5432 >/dev/null 2>&1; then \
+		if pg_isready -h localhost -p $(PG_PORT) >/dev/null 2>&1; then \
 			echo "✅ Database is ready!"; \
 			exit 0; \
 		fi; \
@@ -44,9 +56,13 @@ wait-db:
 	echo "❌ Database failed to become ready"; \
 	exit 1
 
-# Open a shell in the PostgreSQL container
+# Open a PostgreSQL shell
 db-shell:
-	docker exec -it timetiles-postgres psql -U timetiles_user -d timetiles
+	@if [ "$(PG_MODE)" = "local" ]; then \
+		psql -p 5433 -U timetiles_user -d timetiles; \
+	else \
+		docker exec -it timetiles-postgres psql -U timetiles_user -d timetiles; \
+	fi
 
 # Execute SQL query non-interactively
 db-query:
@@ -56,11 +72,19 @@ db-query:
 		echo "Example: make db-query SQL='SELECT COUNT(*) FROM events' DB_NAME=timetiles_test"; \
 		exit 1; \
 	fi
-	@docker exec -e PGPASSWORD=timetiles_password timetiles-postgres psql -h localhost -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"
+	@if [ "$(PG_MODE)" = "local" ]; then \
+		PGPASSWORD=timetiles_password psql -h localhost -p 5433 -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"; \
+	else \
+		docker exec -e PGPASSWORD=timetiles_password timetiles-postgres psql -h localhost -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"; \
+	fi
 
 # View PostgreSQL logs
 db-logs:
-	docker compose -f docker-compose.dev.yml logs postgres -f --tail=100
+	@if [ "$(PG_MODE)" = "local" ]; then \
+		tail -f /tmp/pg.log; \
+	else \
+		docker compose -f docker-compose.dev.yml logs postgres -f --tail=100; \
+	fi
 
 # Reset all test databases (drop all + recreate e2e database)
 # Vitest databases are created on-demand when tests run
@@ -78,10 +102,15 @@ db-reset-tests:
 	@cd apps/web && pnpm exec tsx scripts/e2e-setup-database.ts
 	@echo "✅ Test databases reset complete"
 
-# Clean up everything (containers, volumes, networks)
+# Clean up everything
 clean:
-	docker compose -f docker-compose.dev.yml down -v --remove-orphans
-	docker system prune -f
+	@if [ "$(PG_MODE)" = "local" ]; then \
+		echo "🧹 Cleaning local database..."; \
+		psql -p 5433 -d postgres -c "DROP DATABASE IF EXISTS timetiles;" 2>/dev/null || true; \
+	else \
+		docker compose -f docker-compose.dev.yml down -v --remove-orphans; \
+		docker system prune -f; \
+	fi
 
 # Complete first-time development setup
 # Runs comprehensive setup: env files, dependencies, Git LFS, Git config
@@ -89,7 +118,16 @@ setup:
 	@./scripts/setup.sh
 
 # Complete fresh start (clean slate)
-fresh: clean up wait-db
+fresh: clean
+	@if [ "$(PG_MODE)" = "local" ]; then \
+		echo "🐘 Creating local database..."; \
+		psql -p 5433 -d postgres -c "CREATE DATABASE timetiles OWNER timetiles_user;"; \
+		psql -p 5433 -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"; \
+		psql -p 5433 -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"; \
+	else \
+		$(MAKE) up; \
+	fi
+	@$(MAKE) wait-db
 	@echo "🔄 Running migrations..."
 	@$(MAKE) migrate
 	@echo "🌱 Seeding database..."
@@ -110,22 +148,17 @@ reset: kill-dev db-reset wait-db
 	@echo ""
 	@exec $(MAKE) dev
 
-# Ensure infrastructure is running
-# Tries: local macOS PostgreSQL (port 5433) → Docker PostgreSQL (port 5432)
+# Ensure infrastructure is running (respects PG_MODE from .env)
 ensure-infra:
-	@if pg_isready -h localhost -p 5433 >/dev/null 2>&1; then \
+	@if pg_isready -h localhost -p $(PG_PORT) >/dev/null 2>&1; then \
 		true; \
-	elif pg_isready -h localhost -p 5432 >/dev/null 2>&1; then \
-		true; \
-	elif LC_ALL=en_US.UTF-8 pg_ctl start -D /opt/homebrew/var/postgresql@17 -l /tmp/pg.log 2>/dev/null; then \
-		echo "🐘 Started local PostgreSQL (port 5433)"; \
+	elif [ "$(PG_MODE)" = "local" ]; then \
+		echo "🐘 Starting local PostgreSQL (port 5433)..."; \
+		LC_ALL=en_US.UTF-8 pg_ctl start -D /opt/homebrew/var/postgresql@17 -l /tmp/pg.log; \
 		$(MAKE) wait-db; \
-	elif command -v docker >/dev/null 2>&1; then \
+	else \
 		echo "🐳 Starting Docker PostgreSQL (port 5432)..."; \
 		$(MAKE) up && $(MAKE) wait-db; \
-	else \
-		echo "❌ No PostgreSQL available. Install PostgreSQL or Docker."; \
-		exit 1; \
 	fi
 
 # Check development environment status
@@ -506,6 +539,9 @@ help:
 		'                     Default: timetiles' \
 		'  ARGS=args        - Arguments for command (use with seed)' \
 		'                     Example: ARGS='"'"'development users catalogs'"'"'' '' \
+		'🐘 Database Mode (PG_MODE in .env):' \
+		'  docker (default) - Uses Docker PostgreSQL on port 5432' \
+		'  local            - Uses Homebrew PostgreSQL on port 5433' '' \
 		'💡 Quick Start:' \
 		'  make selftest   # Validate environment readiness' \
 		'  make init       # Complete initialization + start dev' \
