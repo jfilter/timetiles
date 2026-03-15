@@ -8,7 +8,7 @@
  * @module
  * @category Components
  */
-import type { NavigationConfig } from "./wizard-context";
+import type { NavigationConfig } from "./navigation-config-context";
 import type { WizardStep } from "./wizard-context";
 
 /**

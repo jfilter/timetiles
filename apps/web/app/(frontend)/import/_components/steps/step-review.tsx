@@ -33,6 +33,7 @@ import { formatFileSize } from "@/lib/utils/format";
 import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
 import type { ScheduleConfig } from "../wizard-context";
+import { useNavigationConfig } from "../navigation-config-context";
 import { useWizard } from "../wizard-context";
 
 export interface StepReviewProps {
@@ -59,7 +60,8 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 };
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
-  const { state, startProcessing, nextStep, setError, setNavigationConfig, setScheduleConfig } = useWizard();
+  const { state, startProcessing, nextStep, setError, setScheduleConfig } = useWizard();
+  const { setNavigationConfig } = useNavigationConfig();
   const {
     file,
     sheets,

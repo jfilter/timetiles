@@ -14,6 +14,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { useNavigationConfig } from "./navigation-config-context";
 import { STEP_NAV_CONFIGS } from "./step-nav-configs";
 import { useWizard } from "./wizard-context";
 
@@ -22,7 +23,8 @@ export interface WizardNavigationProps {
 }
 
 export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>) => {
-  const { state, nextStep, prevStep, reset, canProceed, navigationConfig } = useWizard();
+  const { state, nextStep, prevStep, reset, canProceed } = useWizard();
+  const { navigationConfig } = useNavigationConfig();
   const { currentStep, startedAuthenticated } = state;
 
   // Merge static per-step config with any dynamic config set at runtime

@@ -42,7 +42,7 @@
  */
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 
 import { useAuthState } from "@/lib/hooks/use-auth-mutations";
 import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
@@ -88,34 +88,12 @@ interface WizardContextValue {
   setError: (error: string | null) => void;
   complete: () => void;
   reset: () => void;
-  // Navigation config (for layout to render navigation)
-  navigationConfig: NavigationConfig;
-  setNavigationConfig: (config: NavigationConfig) => void;
   // Computed
   canProceed: boolean;
   stepTitle: string;
 }
 
 const WizardContext = createContext<WizardContextValue | null>(null);
-
-/**
- * Configuration for the wizard navigation buttons.
- * Steps can customize their navigation behavior via context.
- */
-export interface NavigationConfig {
-  /** Custom handler for the next button */
-  onNext?: () => void | Promise<void>;
-  /** Custom label for the next button */
-  nextLabel?: string;
-  /** Whether the next action is loading */
-  isLoading?: boolean;
-  /** Whether to show the back button (default: true) */
-  showBack?: boolean;
-  /** Whether to show the next button (default: true) */
-  showNext?: boolean;
-}
-
-const defaultNavigationConfig: NavigationConfig = { showBack: true, showNext: true };
 
 // Provider
 export interface WizardProviderProps {
@@ -135,14 +113,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
 
   // Single source of truth for client-side auth state
   const { isAuthenticated, isEmailVerified } = useAuthState();
-
-  // Navigation config state - steps can customize their navigation
-  const [navigationConfig, setNavigationConfigState] = useState<NavigationConfig>(defaultNavigationConfig);
-
-  // Wrapper that merges with defaults
-  const setNavigationConfig = useCallback((config: NavigationConfig) => {
-    setNavigationConfigState({ ...defaultNavigationConfig, ...config });
-  }, []);
 
   // Restore from localStorage on mount
   useEffect(() => {
@@ -329,8 +299,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setError,
       complete,
       reset,
-      navigationConfig,
-      setNavigationConfig,
       canProceed,
       stepTitle,
     }),
@@ -352,8 +320,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setError,
       complete,
       reset,
-      navigationConfig,
-      setNavigationConfig,
       canProceed,
       stepTitle,
     ]
@@ -369,4 +335,57 @@ export const useWizard = () => {
     throw new Error("useWizard must be used within a WizardProvider");
   }
   return context;
+};
+
+// ---------------------------------------------------------------------------
+// Selector hooks — narrow slices of useWizard() for focused consumption
+// ---------------------------------------------------------------------------
+
+/** Source/upload state: file info, sheets, preview, and URL source. */
+export const useWizardSource = () => {
+  const { state, setFile, setSourceUrl, clearFile } = useWizard();
+  return {
+    file: state.file,
+    sheets: state.sheets,
+    previewId: state.previewId,
+    sourceUrl: state.sourceUrl,
+    authConfig: state.authConfig,
+    setFile,
+    setSourceUrl,
+    clearFile,
+  };
+};
+
+/** Mapping state: catalog, sheet mappings, field mappings, and transforms. */
+export const useWizardMapping = () => {
+  const { state, setCatalog, setSheetMapping, setFieldMapping, setTransforms, setImportOptions } = useWizard();
+  return {
+    selectedCatalogId: state.selectedCatalogId,
+    newCatalogName: state.newCatalogName,
+    sheetMappings: state.sheetMappings,
+    fieldMappings: state.fieldMappings,
+    transforms: state.transforms,
+    deduplicationStrategy: state.deduplicationStrategy,
+    geocodingEnabled: state.geocodingEnabled,
+    setCatalog,
+    setSheetMapping,
+    setFieldMapping,
+    setTransforms,
+    setImportOptions,
+  };
+};
+
+/** Processing state: import progress, errors, and completion. */
+export const useWizardProcessing = () => {
+  const { state, startProcessing, setError, complete, reset } = useWizard();
+  return {
+    importFileId: state.importFileId,
+    scheduledImportId: state.scheduledImportId,
+    isProcessing: state.isProcessing,
+    error: state.error,
+    startProcessing,
+    setError,
+    complete,
+    reset,
+  };
 };
