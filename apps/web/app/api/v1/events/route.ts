@@ -99,9 +99,7 @@ export const GET = apiRoute({
 
     const where = toPayloadWhere(filters);
     const result = await executeEventsQuery(payload, where, query, user);
-    const response = buildListResponse(result);
-
-    return response;
+    return buildListResponse(result);
   },
 });
 

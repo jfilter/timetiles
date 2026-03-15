@@ -484,6 +484,7 @@ interface HeroProps {
 <Hero variant="centered">
   <HeroHeadline>Custom headline</HeroHeadline>
   <HeroSubheadline>Custom subheadline</HeroSubheadline>
+  <HeroDescription>Optional supporting copy for the hero section.</HeroDescription>
   <HeroActions>
     <Button>Get Started</Button>
   </HeroActions>
@@ -545,6 +546,7 @@ export default function LandingPage() {
       <Hero variant="centered">
         <HeroHeadline>Explore Your Geodata</HeroHeadline>
         <HeroSubheadline>Visualize and analyze spatial data like never before</HeroSubheadline>
+        <HeroDescription>Turn location-rich data into clear spatial and temporal insights.</HeroDescription>
       </Hero>
 
       <Features variant="grid" columns={3}>

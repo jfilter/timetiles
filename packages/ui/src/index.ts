@@ -86,7 +86,7 @@ export { HeaderActions } from "./components/header-actions";
 export { HeaderBrand } from "./components/header-brand";
 export { HeaderDecorative } from "./components/header-decorative";
 export { HeaderNav, HeaderNavItem } from "./components/header-nav";
-export { Hero, HeroActions, HeroHeadline, HeroSubheadline } from "./components/hero";
+export { Hero, HeroActions, HeroDescription, HeroHeadline, HeroSubheadline } from "./components/hero";
 export { Input } from "./components/input";
 export { Label, labelVariants } from "./components/label";
 export {

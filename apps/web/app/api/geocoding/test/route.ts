@@ -18,7 +18,6 @@ export const POST = apiRoute({
   handler: async ({ body, payload }) => {
     const { createGeocodingService } = await import("@/lib/services/geocoding");
     const service = createGeocodingService(payload);
-    const results = await service.testConfiguration(body.address);
-    return results;
+    return service.testConfiguration(body.address);
   },
 });

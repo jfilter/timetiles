@@ -195,7 +195,7 @@ export const GET = apiRoute({
         : importFile.catalog;
 
     // Build comprehensive response
-    const response = {
+    return {
       type: "import-file",
       id: importFile.id,
       status: importFile.status,
@@ -210,7 +210,5 @@ export const GET = apiRoute({
       completedAt: importFile.completedAt,
       createdAt: importFile.createdAt,
     };
-
-    return response;
   },
 });

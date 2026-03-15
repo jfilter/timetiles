@@ -29,6 +29,7 @@ import {
   FeatureTitle,
   Hero,
   HeroActions,
+  HeroDescription,
   HeroHeadline,
   HeroSubheadline,
   NewsletterCTA,
@@ -83,7 +84,7 @@ const renderHero = (block: HeroBlock, key: string) => {
     <Hero key={key} background={heroBackground}>
       <HeroHeadline>{block.title}</HeroHeadline>
       {block.subtitle && <HeroSubheadline>{block.subtitle}</HeroSubheadline>}
-      {block.description && <p className="text-muted-foreground mt-4 text-center text-lg">{block.description}</p>}
+      {block.description && <HeroDescription>{block.description}</HeroDescription>}
       {block.buttons && block.buttons.length > 0 && (
         <HeroActions>
           {block.buttons.map((button, btnIndex) => (
