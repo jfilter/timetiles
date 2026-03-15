@@ -105,7 +105,11 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
   const handleCatalogChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    setCatalog(value === "new" ? "new" : value ? Number(value) : null);
+    if (value === "new") {
+      setCatalog("new");
+    } else {
+      setCatalog(value ? Number(value) : null);
+    }
   };
 
   const handleNewCatalogNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
