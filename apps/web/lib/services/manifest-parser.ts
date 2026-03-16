@@ -24,7 +24,11 @@ const slugSchema = z
   .string()
   .min(1, "Slug must not be empty")
   .max(128, "Slug must be 128 characters or fewer")
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be URL-safe (lowercase letters, numbers, and hyphens only)");
+  .regex(
+    /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/,
+    "Slug must be URL-safe (lowercase letters, numbers, and hyphens only)"
+  )
+  .refine((v) => !v.includes("--"), "Slug must not contain consecutive hyphens");
 
 const runtimeSchema = z.enum(["python", "node"]);
 
@@ -107,7 +111,7 @@ const DEFAULT_MEMORY = 512;
  * @param yamlContent - Raw YAML string from the manifest file
  * @returns Parsed scraper definitions or an error
  */
-export function parseManifest(yamlContent: string): ManifestParseResult | ManifestParseError {
+export const parseManifest = (yamlContent: string): ManifestParseResult | ManifestParseError => {
   try {
     const raw: unknown = parseYaml(yamlContent);
 
@@ -155,4 +159,4 @@ export function parseManifest(yamlContent: string): ManifestParseResult | Manife
     logger.warn("Failed to parse manifest YAML", { error: message });
     return { success: false, error: `YAML parse error: ${message}` };
   }
-}
+};

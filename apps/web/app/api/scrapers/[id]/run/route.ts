@@ -26,12 +26,7 @@ export const POST = apiRoute({
 
     let scraper: Scraper;
     try {
-      scraper = (await payload.findByID({
-        collection: "scrapers",
-        id: params!.id,
-        depth: 1,
-        overrideAccess: true,
-      })) as Scraper;
+      scraper = await payload.findByID({ collection: "scrapers", id: params.id, depth: 1, overrideAccess: true });
     } catch {
       return Response.json({ success: false, error: "Scraper not found" }, { status: 404 });
     }

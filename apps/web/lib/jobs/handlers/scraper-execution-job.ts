@@ -96,7 +96,8 @@ const callRunner = async (request: RunnerRequest): Promise<RunnerResponse> => {
     throw new Error("SCRAPER_RUNNER_URL environment variable is not configured");
   }
 
-  const url = `${runnerUrl.replace(/\/+$/, "")}/run`;
+  const baseUrl = runnerUrl.endsWith("/") ? runnerUrl.slice(0, -1) : runnerUrl;
+  const url = `${baseUrl}/run`;
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (apiKey) {

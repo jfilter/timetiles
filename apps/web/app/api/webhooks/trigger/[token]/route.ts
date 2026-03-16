@@ -9,6 +9,7 @@
  * @category API
  */
 import { sql } from "@payloadcms/db-postgres";
+import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
@@ -18,8 +19,6 @@ import { queueWebhookImport } from "@/lib/services/scheduled-import-trigger-serv
 import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
 import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";
-
-import { z } from "zod";
 
 interface RateLimitResponse {
   success: false;
@@ -81,10 +80,10 @@ export const POST = apiRoute({
 });
 
 /** Handle webhook trigger for a scheduled import. */
-async function handleScheduledImportTrigger(
+const handleScheduledImportTrigger = async (
   payload: Parameters<typeof queueWebhookImport>[0],
   target: { id: number; name: string; record: Record<string, unknown> }
-): Promise<Response | Record<string, unknown>> {
+): Promise<Response | Record<string, unknown>> => {
   // Atomically claim "running" status to prevent concurrent executions
   const claimResult = (await payload.db.drizzle.execute(sql`
     UPDATE payload.scheduled_imports
@@ -108,13 +107,13 @@ async function handleScheduledImportTrigger(
   } catch {
     return internalError("Failed to queue import job");
   }
-}
+};
 
 /** Handle webhook trigger for a scraper. */
-async function handleScraperTrigger(
+const handleScraperTrigger = async (
   payload: Parameters<typeof queueWebhookImport>[0],
   target: { id: number; name: string }
-): Promise<Response | Record<string, unknown>> {
+): Promise<Response | Record<string, unknown>> => {
   // Atomically claim "running" to prevent concurrent executions
   const claimed = await claimScraperRunning(payload, target.id);
 
@@ -144,6 +143,6 @@ async function handleScraperTrigger(
     }
     return internalError("Failed to queue scraper execution job");
   }
-}
+};
 
 export const GET = () => methodNotAllowed("Method not allowed. Use POST to trigger webhooks.");

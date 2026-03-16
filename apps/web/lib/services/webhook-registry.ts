@@ -35,9 +35,7 @@ export interface WebhookTarget {
  * Generate a cryptographically random webhook token.
  * 32 bytes = 64 hex characters.
  */
-export function generateWebhookToken(): string {
-  return randomBytes(32).toString("hex");
-}
+export const generateWebhookToken = (): string => randomBytes(32).toString("hex");
 
 /**
  * Handle webhook token generation/rotation for a document.
@@ -45,10 +43,10 @@ export function generateWebhookToken(): string {
  * Reusable across any collection with `webhookEnabled` and `webhookToken` fields.
  * Call from a collection's `beforeChange` hook.
  */
-export function handleWebhookTokenLifecycle(
+export const handleWebhookTokenLifecycle = (
   data: Record<string, unknown>,
   originalDoc?: Record<string, unknown>
-): void {
+): void => {
   if (data.webhookEnabled && !data.webhookToken) {
     data.webhookToken = generateWebhookToken();
   } else if (data.webhookEnabled && !originalDoc?.webhookEnabled) {
@@ -57,20 +55,21 @@ export function handleWebhookTokenLifecycle(
   } else if (data.webhookEnabled === false && originalDoc?.webhookEnabled) {
     data.webhookToken = null;
   }
-}
+};
 
 /**
  * Compute the webhook URL for display in the admin UI.
  *
  * Reusable across any collection with webhook fields.
  */
-export function computeWebhookUrl(data: Record<string, unknown> | undefined): string | null {
-  if (data?.webhookEnabled && data?.webhookToken) {
+export const computeWebhookUrl = (data: Record<string, unknown> | undefined): string | null => {
+  const token = data?.webhookToken;
+  if (data?.webhookEnabled && typeof token === "string") {
     const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
-    return `${baseUrl}/api/webhooks/trigger/${data.webhookToken}`;
+    return `${baseUrl}/api/webhooks/trigger/${token}`;
   }
   return null;
-}
+};
 
 /**
  * Resolve a webhook token to its target resource.
@@ -78,7 +77,7 @@ export function computeWebhookUrl(data: Record<string, unknown> | undefined): st
  * Checks scheduled-imports first, then scrapers. Returns null if the token
  * is not found or the webhook is disabled on the matching record.
  */
-export async function resolveWebhookToken(payload: Payload, token: string): Promise<WebhookTarget | null> {
+export const resolveWebhookToken = async (payload: Payload, token: string): Promise<WebhookTarget | null> => {
   // Check scheduled-imports
   const scheduledImports = await payload.find({
     collection: "scheduled-imports",
@@ -124,13 +123,13 @@ export async function resolveWebhookToken(payload: Payload, token: string): Prom
   }
 
   return null;
-}
+};
 
 /**
  * Atomically claim "running" status on a scraper to prevent concurrent webhook triggers.
  * Returns true if the claim succeeded, false if already running.
  */
-export async function claimScraperRunning(payload: Payload, scraperId: number): Promise<boolean> {
+export const claimScraperRunning = async (payload: Payload, scraperId: number): Promise<boolean> => {
   const result = (await payload.db.drizzle.execute(sql`
     UPDATE payload.scrapers
     SET last_run_status = 'running'
@@ -140,4 +139,4 @@ export async function claimScraperRunning(payload: Payload, scraperId: number): 
   `)) as { rows: Array<{ id: number }> };
 
   return result.rows.length > 0;
-}
+};

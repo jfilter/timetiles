@@ -25,11 +25,7 @@ export const POST = apiRoute({
 
     let repo: ScraperRepo;
     try {
-      repo = (await payload.findByID({
-        collection: "scraper-repos",
-        id: params!.id,
-        overrideAccess: true,
-      })) as ScraperRepo;
+      repo = await payload.findByID({ collection: "scraper-repos", id: params.id, overrideAccess: true });
     } catch {
       return Response.json({ success: false, error: "Scraper repo not found" }, { status: 404 });
     }

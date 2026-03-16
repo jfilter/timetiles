@@ -15,7 +15,7 @@ import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { triggerScheduledImport } from "@/lib/services/scheduled-import-trigger-service";
 import { calculateNextCronRun } from "@/lib/utils/cron-parser";
-import type { Scraper, ScheduledImport } from "@/payload-types";
+import type { ScheduledImport, Scraper } from "@/payload-types";
 
 // Unused but kept for future expansion
 // interface ScheduleManagerJobInput {

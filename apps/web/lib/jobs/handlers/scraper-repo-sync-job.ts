@@ -18,10 +18,10 @@ import { promisify } from "node:util";
 import type { Payload } from "payload";
 
 import { createLogger, logError } from "@/lib/logger";
-import { parseManifest } from "@/lib/services/manifest-parser";
 import type { ParsedScraper } from "@/lib/services/manifest-parser";
+import { parseManifest } from "@/lib/services/manifest-parser";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { Scraper, ScraperRepo } from "@/payload-types";
+import type { Scraper } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
 
@@ -37,7 +37,7 @@ const execFileAsync = promisify(execFile);
  * Shallow-clone a git repo into a temporary directory.
  * Returns the path to the cloned directory.
  */
-async function cloneRepo(gitUrl: string, branch: string): Promise<string> {
+const cloneRepo = async (gitUrl: string, branch: string): Promise<string> => {
   const tempDir = await mkdtemp(path.join(tmpdir(), "scraper-repo-"));
 
   logger.info("Cloning scraper repo", { gitUrl, branch, tempDir });
@@ -52,34 +52,32 @@ async function cloneRepo(gitUrl: string, branch: string): Promise<string> {
   });
 
   return tempDir;
-}
+};
 
 /**
  * Read the manifest YAML from a cloned repo directory.
  */
-async function readManifestFromDisk(repoDir: string): Promise<string> {
+const readManifestFromDisk = async (repoDir: string): Promise<string> => {
   const manifestPath = path.join(repoDir, "scrapers.yml");
   return readFile(manifestPath, "utf-8");
-}
+};
 
 /**
  * Read the manifest YAML from an upload-sourced repo's inline code field.
  */
-function readManifestFromCode(code: Record<string, string>): string | null {
-  return code["scrapers.yml"] ?? null;
-}
+const readManifestFromCode = (code: Record<string, string>): string | null => code["scrapers.yml"] ?? null;
 
 /**
  * Safely remove a temporary directory, logging but not throwing on failure.
  */
-async function cleanupTempDir(tempDir: string): Promise<void> {
+const cleanupTempDir = async (tempDir: string): Promise<void> => {
   try {
     await rm(tempDir, { recursive: true, force: true });
     logger.info("Cleaned up temp directory", { tempDir });
   } catch (error) {
     logError(error, "Failed to clean up temp directory", { tempDir });
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Scraper upsert / delete logic
@@ -98,12 +96,12 @@ interface UpsertResult {
  * - Updates existing scrapers whose properties have changed.
  * - Deletes scrapers in the DB that are no longer in the manifest.
  */
-async function syncScrapers(
+const syncScrapers = async (
   payload: Payload,
   repoId: number,
   repoCreatedBy: number | undefined,
   parsed: ParsedScraper[]
-): Promise<UpsertResult> {
+): Promise<UpsertResult> => {
   const result: UpsertResult = { created: 0, updated: 0, deleted: 0 };
 
   // Fetch existing scrapers for this repo
@@ -159,7 +157,7 @@ async function syncScrapers(
   }
 
   return result;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Job handler
@@ -179,11 +177,7 @@ export const scraperRepoSyncJob = {
 
     try {
       // 1. Load the scraper-repo record
-      const repo = (await payload.findByID({
-        collection: "scraper-repos",
-        id: scraperRepoId,
-        overrideAccess: true,
-      })) as ScraperRepo;
+      const repo = await payload.findByID({ collection: "scraper-repos", id: scraperRepoId, overrideAccess: true });
 
       if (!repo) {
         throw new Error(`Scraper repo not found: ${scraperRepoId}`);
@@ -223,7 +217,7 @@ export const scraperRepoSyncJob = {
       }
 
       // 4. Upsert scrapers
-      const repoCreatedBy = extractRelationId(repo.createdBy) as number | undefined;
+      const repoCreatedBy = extractRelationId(repo.createdBy);
       const syncResult = await syncScrapers(payload, scraperRepoId, repoCreatedBy, parseResult.scrapers);
 
       // 5. Update repo sync status
