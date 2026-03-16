@@ -58,8 +58,21 @@ export function buildPodmanArgs(config: ContainerConfig): string[] {
     "--dns=1.0.0.1",
   ];
 
-  // Environment variables
+  // Environment variables — validate key names and skip reserved keys
+  const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+  const RESERVED_ENV_KEYS = new Set([
+    "PATH",
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "HOME",
+    "USER",
+    "SHELL",
+    "TIMESCRAPE_OUTPUT_DIR",
+  ]);
+
   for (const [key, value] of Object.entries(env)) {
+    if (!ENV_KEY_PATTERN.test(key)) continue; // skip invalid keys
+    if (RESERVED_ENV_KEYS.has(key)) continue; // skip reserved keys
     args.push(`-e=${key}=${value}`);
   }
 

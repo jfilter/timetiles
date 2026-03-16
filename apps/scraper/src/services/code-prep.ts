@@ -48,9 +48,9 @@ async function cloneRepo(codeUrl: string, codeDir: string): Promise<void> {
     await git.clone(url, codeDir, cloneArgs);
 
     // Check repo size
-    const stdout = await git.cwd(codeDir).raw(["count-objects", "-vH"]);
+    const stdout = await git.cwd(codeDir).raw(["count-objects", "-v"]);
     const sizeMatch = stdout.match(/size-pack:\s+(\d+)/);
-    const sizeMb = sizeMatch ? Number(sizeMatch[1]) / (1024 * 1024) : 0;
+    const sizeMb = sizeMatch ? Number(sizeMatch[1]) / 1024 : 0;
 
     if (sizeMb > config.SCRAPER_MAX_REPO_SIZE_MB) {
       throw new RunnerError(

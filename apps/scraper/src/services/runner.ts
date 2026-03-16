@@ -7,11 +7,11 @@
 
 import { execFile } from "node:child_process";
 import { mkdir, readFile, rm, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { getConfig } from "../config.js";
-import { ConcurrencyError, TimeoutError } from "../lib/errors.js";
+import { ConcurrencyError, OutputValidationError, RunnerError, TimeoutError } from "../lib/errors.js";
 import { logger, logError } from "../lib/logger.js";
 import { buildPodmanArgs } from "../security/container-config.js";
 import type { RunRequest, RunResult } from "../types.js";
@@ -89,13 +89,25 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
 
     // Check for output file
     const outputFile = join(outputDir, request.output_file ?? "data.csv");
+    if (!resolve(outputFile).startsWith(resolve(outputDir) + "/")) {
+      throw new RunnerError("output_file escapes output directory", "INVALID_REQUEST", 400);
+    }
     let output: RunResult["output"] | undefined;
 
     try {
       const stats = await stat(outputFile);
+
+      // Check size before reading into memory to avoid OOM
+      const sizeMb = stats.size / (1024 * 1024);
+      if (sizeMb > config.SCRAPER_MAX_OUTPUT_SIZE_MB) {
+        throw new OutputValidationError(
+          `Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${config.SCRAPER_MAX_OUTPUT_SIZE_MB}MB)`
+        );
+      }
+
       const content = await readFile(outputFile);
 
-      // Validate output
+      // Validate output content
       await validateOutput(content, config.SCRAPER_MAX_OUTPUT_SIZE_MB);
 
       // Count rows (lines minus header)
@@ -129,11 +141,15 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
     const durationMs = Date.now() - startedAt;
 
     if (error instanceof TimeoutError) {
-      // Try to stop the container
+      // Try to stop the container, force-remove as fallback
       try {
         await execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 10_000 });
       } catch {
-        // Container may have already stopped
+        try {
+          await execFileAsync("podman", ["rm", "-f", `run-${runId}`], { timeout: 5_000 });
+        } catch {
+          // Container may have already been removed
+        }
       }
 
       return {

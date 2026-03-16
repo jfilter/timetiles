@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { claimScraperRunning } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
@@ -23,14 +24,15 @@ export const POST = apiRoute({
       return { success: false, error: "Scraper feature is not enabled" };
     }
 
-    const scraper = (await payload.findByID({
-      collection: "scrapers",
-      id: params!.id,
-      depth: 1,
-      overrideAccess: true,
-    })) as Scraper;
-
-    if (!scraper) {
+    let scraper: Scraper;
+    try {
+      scraper = (await payload.findByID({
+        collection: "scrapers",
+        id: params!.id,
+        depth: 1,
+        overrideAccess: true,
+      })) as Scraper;
+    } catch {
       return Response.json({ success: false, error: "Scraper not found" }, { status: 404 });
     }
 
@@ -41,8 +43,9 @@ export const POST = apiRoute({
       return Response.json({ success: false, error: "Not authorized" }, { status: 403 });
     }
 
-    // Check if already running
-    if (scraper.lastRunStatus === "running") {
+    // Atomically claim running status to prevent concurrent triggers
+    const claimed = await claimScraperRunning(payload, scraper.id);
+    if (!claimed) {
       return Response.json({ success: false, error: "Scraper is already running" }, { status: 409 });
     }
 

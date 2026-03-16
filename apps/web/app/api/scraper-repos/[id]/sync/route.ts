@@ -23,13 +23,14 @@ export const POST = apiRoute({
       return { success: false, error: "Scraper feature is not enabled" };
     }
 
-    const repo = (await payload.findByID({
-      collection: "scraper-repos",
-      id: params!.id,
-      overrideAccess: true,
-    })) as ScraperRepo;
-
-    if (!repo) {
+    let repo: ScraperRepo;
+    try {
+      repo = (await payload.findByID({
+        collection: "scraper-repos",
+        id: params!.id,
+        overrideAccess: true,
+      })) as ScraperRepo;
+    } catch {
       return Response.json({ success: false, error: "Scraper repo not found" }, { status: 404 });
     }
 

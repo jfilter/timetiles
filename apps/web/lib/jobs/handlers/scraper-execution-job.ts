@@ -462,6 +462,18 @@ export const scraperExecutionJob = {
       };
     } catch (error) {
       await handleRunFailure(payload, scraper, run.id, error);
+
+      // Rollback quota on failure (best-effort)
+      if (repoOwnerId) {
+        try {
+          const { createQuotaService } = await import("@/lib/services/quota-service");
+          const quotaService = createQuotaService(payload);
+          await quotaService.decrementUsage(repoOwnerId, "SCRAPER_RUNS_PER_DAY", 1);
+        } catch {
+          /* quota rollback is best-effort */
+        }
+      }
+
       logError(error, "Scraper execution failed", { jobId, scraperId, runId: run.id });
       throw error;
     }

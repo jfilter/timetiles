@@ -5,6 +5,8 @@
  * @category Main
  */
 
+import { timingSafeEqual } from "node:crypto";
+
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 
@@ -30,7 +32,9 @@ app.use("*", async (c, next) => {
   }
 
   const token = authHeader.slice(7);
-  if (token !== config.SCRAPER_API_KEY) {
+  const tokenBuf = Buffer.from(token);
+  const keyBuf = Buffer.from(config.SCRAPER_API_KEY);
+  if (tokenBuf.length !== keyBuf.length || !timingSafeEqual(tokenBuf, keyBuf)) {
     throw new AuthError();
   }
 

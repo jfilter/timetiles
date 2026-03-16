@@ -131,6 +131,17 @@ async function handleScraperTrigger(
     logger.info({ scraperId: target.id, jobId: job.id }, "Scraper triggered via webhook");
     return { message: "Scraper triggered successfully", status: "triggered", jobId: String(job.id) };
   } catch {
+    // Reset status so scraper isn't permanently stuck as "running"
+    try {
+      await payload.update({
+        collection: "scrapers",
+        id: target.id,
+        data: { lastRunStatus: null },
+        overrideAccess: true,
+      });
+    } catch {
+      logger.error({ scraperId: target.id }, "Failed to reset scraper status after queue failure");
+    }
     return internalError("Failed to queue scraper execution job");
   }
 }

@@ -16,9 +16,19 @@ import { executeRun, isRunActive, stopRun, getActiveRunCount } from "../services
 const runRequestSchema = z.object({
   run_id: z.string().uuid(),
   runtime: z.enum(["python", "node"]),
-  entrypoint: z.string().min(1),
-  output_file: z.string().optional(),
-  code_url: z.string().url().optional(),
+  entrypoint: z
+    .string()
+    .min(1)
+    .refine((v) => !v.includes("..") && !v.startsWith("/"), "Invalid entrypoint path"),
+  output_file: z
+    .string()
+    .refine((v) => !v.includes(".."), "output_file must not contain path traversal")
+    .optional(),
+  code_url: z
+    .string()
+    .url()
+    .refine((v) => v.startsWith("https://"), "Only HTTPS URLs are allowed")
+    .optional(),
   code: z.record(z.string()).optional(),
   env: z.record(z.string()).optional(),
   limits: z
@@ -32,7 +42,12 @@ const runRequestSchema = z.object({
 export const runRoutes = new Hono();
 
 runRoutes.post("/run", async (c) => {
-  const body = await c.req.json();
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
   const parsed = runRequestSchema.safeParse(body);
 
   if (!parsed.success) {
