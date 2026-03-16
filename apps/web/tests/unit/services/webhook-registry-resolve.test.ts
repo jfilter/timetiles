@@ -1,0 +1,166 @@
+/**
+ * Unit tests for webhook token resolution and scraper claim logic.
+ *
+ * Tests resolveWebhookToken (lookup across scheduled-imports and scrapers)
+ * and claimScraperRunning (atomic running-status claim via raw SQL).
+ *
+ * @module
+ * @category Tests
+ */
+import "@/tests/mocks/services/logger";
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
+
+const createMockPayload = () => ({ find: vi.fn(), db: { drizzle: { execute: vi.fn() } } });
+
+let mockPayload: ReturnType<typeof createMockPayload>;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockPayload = createMockPayload();
+});
+
+describe.sequential("resolveWebhookToken", () => {
+  it("returns scheduled-import target when token found in scheduled-imports", async () => {
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 1, name: "My Import", webhookEnabled: true, webhookToken: "tok-abc" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "tok-abc");
+
+    expect(result).toEqual({
+      type: "scheduled-import",
+      id: 1,
+      name: "My Import",
+      record: expect.objectContaining({ id: 1, webhookEnabled: true }),
+    });
+
+    expect(mockPayload.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "scheduled-imports",
+        where: { webhookToken: { equals: "tok-abc" } },
+        limit: 1,
+        overrideAccess: true,
+      })
+    );
+  });
+
+  it("returns scraper target when token found in scrapers (not in scheduled-imports)", async () => {
+    // scheduled-imports returns nothing
+    mockPayload.find.mockResolvedValueOnce({ docs: [] });
+    // scrapers returns a match
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 42, name: "My Scraper", webhookEnabled: true, webhookToken: "tok-xyz" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "tok-xyz");
+
+    expect(result).toEqual({
+      type: "scraper",
+      id: 42,
+      name: "My Scraper",
+      record: expect.objectContaining({ id: 42, webhookEnabled: true }),
+    });
+
+    // Verify scrapers collection was queried
+    expect(mockPayload.find).toHaveBeenCalledTimes(2);
+    expect(mockPayload.find).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ collection: "scrapers", where: { webhookToken: { equals: "tok-xyz" } } })
+    );
+  });
+
+  it("returns null when token not found in either collection", async () => {
+    mockPayload.find.mockResolvedValueOnce({ docs: [] });
+    mockPayload.find.mockResolvedValueOnce({ docs: [] });
+
+    const result = await resolveWebhookToken(mockPayload as any, "nonexistent-token");
+
+    expect(result).toBeNull();
+    expect(mockPayload.find).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns null when matched scheduled-import has webhookEnabled=false", async () => {
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 5, name: "Disabled Import", webhookEnabled: false, webhookToken: "tok-disabled" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "tok-disabled");
+
+    expect(result).toBeNull();
+    // Should not proceed to check scrapers since we found a doc (just disabled)
+    expect(mockPayload.find).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null when matched scraper has webhookEnabled=false", async () => {
+    mockPayload.find.mockResolvedValueOnce({ docs: [] });
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 10, name: "Disabled Scraper", webhookEnabled: false, webhookToken: "tok-off" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "tok-off");
+
+    expect(result).toBeNull();
+    expect(mockPayload.find).toHaveBeenCalledTimes(2);
+  });
+
+  it("checks scheduled-imports before scrapers (priority)", async () => {
+    // Both collections have a matching token - scheduled-imports should win
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 1, name: "SI Match", webhookEnabled: true, webhookToken: "shared-tok" }],
+    });
+    // This mock should never be reached
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 2, name: "Scraper Match", webhookEnabled: true, webhookToken: "shared-tok" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "shared-tok");
+
+    expect(result).toEqual(expect.objectContaining({ type: "scheduled-import", id: 1 }));
+    // Only one find call - scrapers never checked when scheduled-import matches
+    expect(mockPayload.find).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses fallback name when scheduled-import name is missing", async () => {
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 7, name: null, webhookEnabled: true, webhookToken: "tok-noname" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "tok-noname");
+
+    expect(result).toEqual(expect.objectContaining({ name: "scheduled-import-7" }));
+  });
+
+  it("uses fallback name when scraper name is missing", async () => {
+    mockPayload.find.mockResolvedValueOnce({ docs: [] });
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 3, name: undefined, webhookEnabled: true, webhookToken: "tok-noname2" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "tok-noname2");
+
+    expect(result).toEqual(expect.objectContaining({ name: "scraper-3" }));
+  });
+});
+
+describe.sequential("claimScraperRunning", () => {
+  it("returns true when claim succeeds (rows returned)", async () => {
+    mockPayload.db.drizzle.execute.mockResolvedValue({ rows: [{ id: 5 }] });
+
+    const result = await claimScraperRunning(mockPayload as any, 5);
+
+    expect(result).toBe(true);
+    expect(mockPayload.db.drizzle.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns false when already running (no rows)", async () => {
+    mockPayload.db.drizzle.execute.mockResolvedValue({ rows: [] });
+
+    const result = await claimScraperRunning(mockPayload as any, 5);
+
+    expect(result).toBe(false);
+    expect(mockPayload.db.drizzle.execute).toHaveBeenCalledTimes(1);
+  });
+});
