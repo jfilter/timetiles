@@ -187,4 +187,23 @@ describe("runner", () => {
       expect(isRunActive("nonexistent-run-id")).toBe(false);
     });
   });
+
+  describe("getMetrics", () => {
+    it("returns metrics with correct structure", async () => {
+      const { getMetrics } = await import("../src/services/runner.js");
+
+      const metrics = getMetrics();
+
+      expect(metrics).toHaveProperty("active_runs");
+      expect(metrics).toHaveProperty("total_runs");
+      expect(metrics).toHaveProperty("total_success");
+      expect(metrics).toHaveProperty("total_failed");
+      expect(metrics).toHaveProperty("total_timeout");
+      expect(metrics).toHaveProperty("uptime_seconds");
+      expect(metrics).toHaveProperty("queue_capacity");
+      expect(typeof metrics.active_runs).toBe("number");
+      expect(typeof metrics.uptime_seconds).toBe("number");
+      expect(metrics.queue_capacity).toBe(2); // from mockConfig
+    });
+  });
 });

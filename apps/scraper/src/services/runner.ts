@@ -22,6 +22,35 @@ const execFileAsync = promisify(execFile);
 
 const activeRuns = new Set<string>();
 
+const startedAt = Date.now();
+let totalRuns = 0;
+let totalSuccess = 0;
+let totalFailed = 0;
+let totalTimeout = 0;
+
+export interface RunnerMetrics {
+  active_runs: number;
+  total_runs: number;
+  total_success: number;
+  total_failed: number;
+  total_timeout: number;
+  uptime_seconds: number;
+  queue_capacity: number;
+}
+
+export function getMetrics(): RunnerMetrics {
+  const config = getConfig();
+  return {
+    active_runs: activeRuns.size,
+    total_runs: totalRuns,
+    total_success: totalSuccess,
+    total_failed: totalFailed,
+    total_timeout: totalTimeout,
+    uptime_seconds: Math.floor((Date.now() - startedAt) / 1000),
+    queue_capacity: config.SCRAPER_MAX_CONCURRENT,
+  };
+}
+
 async function runPodmanContainer(
   podmanArgs: string[],
   timeoutSecs: number
@@ -95,8 +124,9 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
   }
 
   const runId = request.run_id;
-  const startedAt = Date.now();
+  const runStartedAt = Date.now();
 
+  totalRuns++;
   activeRuns.add(runId);
 
   const workDir = join(config.SCRAPER_DATA_DIR, "runs", runId);
@@ -129,7 +159,7 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
     const timeoutSecs = request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT;
     const { stdout, stderr, exitCode } = await runPodmanContainer(podmanArgs, timeoutSecs);
 
-    const durationMs = Date.now() - startedAt;
+    const durationMs = Date.now() - runStartedAt;
 
     const {
       output,
@@ -145,6 +175,11 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
     );
 
     const status = finalExitCode === 0 ? "success" : "failed";
+    if (status === "success") {
+      totalSuccess++;
+    } else {
+      totalFailed++;
+    }
     logger.info({ runId, status, exitCode: finalExitCode, durationMs, rows: output?.rows }, "Scraper run completed");
 
     return {
@@ -156,9 +191,10 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
       output,
     };
   } catch (error) {
-    const durationMs = Date.now() - startedAt;
+    const durationMs = Date.now() - runStartedAt;
 
     if (error instanceof TimeoutError) {
+      totalTimeout++;
       // Try to stop the container, force-remove as fallback
       try {
         await execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 10_000 });

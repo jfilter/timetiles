@@ -333,6 +333,38 @@ const checkDatabaseSize = async (): Promise<HealthCheckResult> => {
   }
 };
 
+const checkScraperRunner = async (): Promise<HealthCheckResult> => {
+  logger.debug("Checking scraper runner connectivity");
+
+  const scraperRunnerUrl = getEnvValue("SCRAPER_RUNNER_URL");
+  if (!scraperRunnerUrl) {
+    logger.debug("SCRAPER_RUNNER_URL not configured");
+    return { status: "degraded", message: "Scraper runner not configured (SCRAPER_RUNNER_URL not set)" };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(`${scraperRunnerUrl}/health`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    const body = (await response.json()) as { status?: string };
+
+    if (body.status === "ok") {
+      logger.debug("Scraper runner is healthy", { url: scraperRunnerUrl });
+      return { status: "healthy", message: `Scraper runner is reachable (${scraperRunnerUrl})` };
+    }
+
+    logger.warn("Scraper runner returned unexpected status", { body });
+    return { status: "error", message: `Scraper runner returned unexpected status: ${JSON.stringify(body)}` };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("Scraper runner health check failed", { url: scraperRunnerUrl, error: message });
+    return { status: "error", message: `Scraper runner unreachable: ${message}` };
+  }
+};
+
 const wrapHealthCheck = async (
   checkFn: () => Promise<HealthCheckResult>,
   checkName: string
@@ -356,6 +388,7 @@ const createHealthSummary = (results: {
   postgis: HealthCheckResult;
   dbFunctions: HealthCheckResult;
   dbSize: HealthCheckResult;
+  scraperRunner: HealthCheckResult;
 }) => ({
   env: results.env.status,
   uploads: results.uploads.status,
@@ -366,25 +399,28 @@ const createHealthSummary = (results: {
   postgis: results.postgis.status,
   dbFunctions: results.dbFunctions.status,
   dbSize: results.dbSize.status,
+  scraperRunner: results.scraperRunner.status,
 });
 
 export const runHealthChecks = async () => {
   logger.info("Starting health checks");
   const startTime = Date.now();
 
-  const [env, uploads, geocoding, email, cms, migrations, postgis, dbFunctions, dbSize] = await Promise.all([
-    wrapHealthCheck(checkEnvironmentVariables, "Environment"),
-    wrapHealthCheck(checkUploadsDirectory, "Uploads directory"),
-    wrapHealthCheck(checkGeocodingService, "Geocoding service"),
-    wrapHealthCheck(checkEmailConfiguration, "Email"),
-    wrapHealthCheck(checkPayloadCMS, "Payload CMS"),
-    wrapHealthCheck(checkMigrations, "Migrations"),
-    wrapHealthCheck(checkPostGIS, "PostGIS"),
-    wrapHealthCheck(checkDatabaseFunctions, "Database functions"),
-    wrapHealthCheck(checkDatabaseSize, "Database size"),
-  ]);
+  const [env, uploads, geocoding, email, cms, migrations, postgis, dbFunctions, dbSize, scraperRunner] =
+    await Promise.all([
+      wrapHealthCheck(checkEnvironmentVariables, "Environment"),
+      wrapHealthCheck(checkUploadsDirectory, "Uploads directory"),
+      wrapHealthCheck(checkGeocodingService, "Geocoding service"),
+      wrapHealthCheck(checkEmailConfiguration, "Email"),
+      wrapHealthCheck(checkPayloadCMS, "Payload CMS"),
+      wrapHealthCheck(checkMigrations, "Migrations"),
+      wrapHealthCheck(checkPostGIS, "PostGIS"),
+      wrapHealthCheck(checkDatabaseFunctions, "Database functions"),
+      wrapHealthCheck(checkDatabaseSize, "Database size"),
+      wrapHealthCheck(checkScraperRunner, "Scraper runner"),
+    ]);
 
-  const results = { env, uploads, geocoding, email, cms, migrations, postgis, dbFunctions, dbSize };
+  const results = { env, uploads, geocoding, email, cms, migrations, postgis, dbFunctions, dbSize, scraperRunner };
   const duration = Date.now() - startTime;
 
   logger.info("Health checks completed", { duration, summary: createHealthSummary(results) });

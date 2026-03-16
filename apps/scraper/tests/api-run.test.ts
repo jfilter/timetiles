@@ -10,6 +10,17 @@ vi.mock("../src/services/runner.js", () => ({
   isRunActive: vi.fn().mockReturnValue(false),
   stopRun: vi.fn(),
   getActiveRunCount: vi.fn().mockReturnValue(0),
+  getMetrics: vi
+    .fn()
+    .mockReturnValue({
+      active_runs: 1,
+      total_runs: 42,
+      total_success: 35,
+      total_failed: 5,
+      total_timeout: 2,
+      uptime_seconds: 3600,
+      queue_capacity: 3,
+    }),
 }));
 
 // Mock logger to avoid side effects
@@ -46,7 +57,7 @@ function createTestApp(): Hono {
 
   // Replicate auth middleware from src/index.ts
   app.use("*", async (c, next) => {
-    if (c.req.path === "/health") {
+    if (c.req.path === "/health" || c.req.path === "/metrics") {
       return next();
     }
 
@@ -100,6 +111,25 @@ describe("POST /run endpoint", () => {
       expect(body.status).toBe("ok");
       expect(body).toHaveProperty("active_runs");
       expect(body).toHaveProperty("timestamp");
+    });
+  });
+
+  describe("GET /metrics", () => {
+    it("returns 200 with metrics without auth", async () => {
+      const res = await app.request("/metrics");
+
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body).toEqual({
+        active_runs: 1,
+        total_runs: 42,
+        total_success: 35,
+        total_failed: 5,
+        total_timeout: 2,
+        uptime_seconds: 3600,
+        queue_capacity: 3,
+      });
     });
   });
 

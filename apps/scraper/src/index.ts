@@ -21,8 +21,8 @@ const app = new Hono();
 
 // API key authentication middleware
 app.use("*", async (c, next) => {
-  // Skip auth for health check
-  if (c.req.path === "/health") {
+  // Skip auth for health check and metrics
+  if (c.req.path === "/health" || c.req.path === "/metrics") {
     return next();
   }
 

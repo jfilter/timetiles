@@ -2,6 +2,7 @@
  * POST /run — Execute a scraper in a Podman container.
  * GET /output/:runId/:filename — Download scraper output file.
  * DELETE /output/:runId — Clean up output files after download.
+ * GET /metrics — Return runner metrics (no auth required).
  *
  * @module
  * @category API
@@ -18,7 +19,7 @@ import { z } from "zod";
 import { getConfig } from "../config.js";
 import { RunnerError } from "../lib/errors.js";
 import { logError } from "../lib/logger.js";
-import { executeRun, isRunActive, stopRun, getActiveRunCount } from "../services/runner.js";
+import { executeRun, isRunActive, stopRun, getActiveRunCount, getMetrics } from "../services/runner.js";
 
 const runRequestSchema = z.object({
   run_id: z.string().uuid(),
@@ -142,4 +143,8 @@ runRoutes.delete("/output/:runId", async (c) => {
 
 runRoutes.get("/health", (c) => {
   return c.json({ status: "ok", active_runs: getActiveRunCount(), timestamp: new Date().toISOString() });
+});
+
+runRoutes.get("/metrics", (c) => {
+  return c.json(getMetrics());
 });
