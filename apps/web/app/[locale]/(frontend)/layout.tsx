@@ -189,10 +189,7 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
         className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} font-sans antialiased`}
         data-site={site?.slug ?? undefined}
       >
-        {bodyStartHtmlContent && (
-          // eslint-disable-next-line react/no-danger -- Admin-configured body start HTML
-          <div dangerouslySetInnerHTML={bodyStartHtmlContent} />
-        )}
+        {bodyStartHtmlContent && <div dangerouslySetInnerHTML={bodyStartHtmlContent} />}
         <NextIntlClientProvider messages={messages}>
           <Providers>
             <SiteProvider site={site}>
@@ -203,10 +200,7 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
             </SiteProvider>
           </Providers>
         </NextIntlClientProvider>
-        {bodyEndHtmlContent && (
-          // eslint-disable-next-line react/no-danger -- Admin-configured body end HTML
-          <div dangerouslySetInnerHTML={bodyEndHtmlContent} />
-        )}
+        {bodyEndHtmlContent && <div dangerouslySetInnerHTML={bodyEndHtmlContent} />}
       </body>
     </html>
   );

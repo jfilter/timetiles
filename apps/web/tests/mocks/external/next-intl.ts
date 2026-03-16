@@ -34,10 +34,11 @@ vi.mock("next-intl", async (importOriginal) => {
 
 // Mock next-intl/server for server component tests
 vi.mock("next-intl/server", () => ({
-  getLocale: vi.fn(() => Promise.resolve("en")),
-  getMessages: vi.fn(() => Promise.resolve(en)),
-  getTranslations: vi.fn((namespace?: string) => {
+  getLocale: vi.fn().mockResolvedValue("en"),
+  getMessages: vi.fn().mockResolvedValue(en),
+  getTranslations: vi.fn().mockImplementation(async (namespace?: string) => {
+    await Promise.resolve(); // satisfy require-await
     const messages = namespace ? (en as Record<string, unknown>)[namespace] : en;
-    return Promise.resolve((key: string) => (messages as Record<string, string>)?.[key] ?? key);
+    return (key: string) => (messages as Record<string, string>)?.[key] ?? key;
   }),
 }));
