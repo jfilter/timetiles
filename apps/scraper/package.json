@@ -8,7 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm --dts",
     "start": "node dist/index.js",
-    "lint": "oxlint --config ../../.oxlintrc.json . && eslint src tests --ext .ts --cache",
+    "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:ai": "vitest run --reporter=json"

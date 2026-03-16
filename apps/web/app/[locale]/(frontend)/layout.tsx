@@ -94,6 +94,83 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
+const SiteFooter = ({ footerData }: Readonly<{ footerData: FooterType }>) => {
+  return (
+    <Footer>
+      <FooterContent
+        className={`mb-12 grid grid-cols-1 gap-12 ${footerData.newsletter?.enabled ? "md:grid-cols-6" : "md:grid-cols-5"}`}
+      >
+        <FooterBrand className="md:col-span-2">
+          <FooterLogo>
+            <Link href="/">
+              <Image
+                src={LogoCompactLight}
+                alt="TimeTiles"
+                className="h-16 w-auto dark:hidden"
+                width={739}
+                height={334}
+              />
+              <Image
+                src={LogoCompactDark}
+                alt="TimeTiles"
+                className="hidden h-16 w-auto dark:block"
+                width={739}
+                height={334}
+              />
+            </Link>
+          </FooterLogo>
+          <FooterTagline>{footerData.tagline}</FooterTagline>
+          {footerData.socialLinks && footerData.socialLinks.length > 0 && (
+            <div className="mt-6 flex gap-4">
+              {footerData.socialLinks.map((social) => (
+                <Link
+                  key={social.id}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-charcoal/60 hover:text-navy dark:text-parchment/60 dark:hover:text-parchment transition-colors"
+                  aria-label={`Visit us on ${social.platform}`}
+                >
+                  <IconMapper name={social.platform} size={20} />
+                </Link>
+              ))}
+            </div>
+          )}
+        </FooterBrand>
+        {footerData.columns?.slice(0, footerData.newsletter?.enabled ? 2 : 3).map((column) => (
+          <FooterColumn key={column.id}>
+            <FooterSection>
+              <FooterSectionTitle>{column.title}</FooterSectionTitle>
+              <FooterLinks>
+                {column.links?.map((link) => (
+                  <FooterLink key={link.id}>
+                    <Link href={link.url}>{link.label}</Link>
+                  </FooterLink>
+                ))}
+              </FooterLinks>
+            </FooterSection>
+          </FooterColumn>
+        ))}
+        {footerData.newsletter?.enabled && (
+          <FooterColumn className="md:col-span-2">
+            <NewsletterForm
+              headline={footerData.newsletter.headline ?? "Stay Mapped In"}
+              placeholder={footerData.newsletter.placeholder ?? "your@email.address"}
+              buttonText={footerData.newsletter.buttonText ?? "Subscribe"}
+            />
+          </FooterColumn>
+        )}
+      </FooterContent>
+      <FooterBottom>
+        <FooterBottomContent>
+          <FooterCopyright>{footerData.copyright}</FooterCopyright>
+          {footerData.credits && <p className="text-muted-foreground text-sm">{footerData.credits}</p>}
+        </FooterBottomContent>
+      </FooterBottom>
+    </Footer>
+  );
+};
+
 export default async function FrontendLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [locale, messages] = await Promise.all([getLocale() as Promise<Locale>, getMessages()]);
   const footerData = await getFooterData(locale);
@@ -122,78 +199,7 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
               <SiteBranding />
               <ConditionalTopMenuBar />
               {children}
-              <Footer>
-                <FooterContent
-                  className={`mb-12 grid grid-cols-1 gap-12 ${footerData.newsletter?.enabled ? "md:grid-cols-6" : "md:grid-cols-5"}`}
-                >
-                  <FooterBrand className="md:col-span-2">
-                    <FooterLogo>
-                      <Link href="/">
-                        <Image
-                          src={LogoCompactLight}
-                          alt="TimeTiles"
-                          className="h-16 w-auto dark:hidden"
-                          width={739}
-                          height={334}
-                        />
-                        <Image
-                          src={LogoCompactDark}
-                          alt="TimeTiles"
-                          className="hidden h-16 w-auto dark:block"
-                          width={739}
-                          height={334}
-                        />
-                      </Link>
-                    </FooterLogo>
-                    <FooterTagline>{footerData.tagline}</FooterTagline>
-                    {footerData.socialLinks && footerData.socialLinks.length > 0 && (
-                      <div className="mt-6 flex gap-4">
-                        {footerData.socialLinks.map((social) => (
-                          <Link
-                            key={social.id}
-                            href={social.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-charcoal/60 hover:text-navy dark:text-parchment/60 dark:hover:text-parchment transition-colors"
-                            aria-label={`Visit us on ${social.platform}`}
-                          >
-                            <IconMapper name={social.platform} size={20} />
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </FooterBrand>
-                  {footerData.columns?.slice(0, footerData.newsletter?.enabled ? 2 : 3).map((column) => (
-                    <FooterColumn key={column.id}>
-                      <FooterSection>
-                        <FooterSectionTitle>{column.title}</FooterSectionTitle>
-                        <FooterLinks>
-                          {column.links?.map((link) => (
-                            <FooterLink key={link.id}>
-                              <Link href={link.url}>{link.label}</Link>
-                            </FooterLink>
-                          ))}
-                        </FooterLinks>
-                      </FooterSection>
-                    </FooterColumn>
-                  ))}
-                  {footerData.newsletter?.enabled && (
-                    <FooterColumn className="md:col-span-2">
-                      <NewsletterForm
-                        headline={footerData.newsletter.headline ?? "Stay Mapped In"}
-                        placeholder={footerData.newsletter.placeholder ?? "your@email.address"}
-                        buttonText={footerData.newsletter.buttonText ?? "Subscribe"}
-                      />
-                    </FooterColumn>
-                  )}
-                </FooterContent>
-                <FooterBottom>
-                  <FooterBottomContent>
-                    <FooterCopyright>{footerData.copyright}</FooterCopyright>
-                    {footerData.credits && <p className="text-muted-foreground text-sm">{footerData.credits}</p>}
-                  </FooterBottomContent>
-                </FooterBottom>
-              </Footer>
+              <SiteFooter footerData={footerData} />
             </SiteProvider>
           </Providers>
         </NextIntlClientProvider>

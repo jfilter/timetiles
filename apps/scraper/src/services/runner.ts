@@ -22,6 +22,60 @@ const execFileAsync = promisify(execFile);
 
 const activeRuns = new Set<string>();
 
+async function runPodmanContainer(
+  podmanArgs: string[],
+  timeoutSecs: number
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const timeoutMs = timeoutSecs * 1000 + 5000; // 5s grace
+  try {
+    const result = await execFileAsync("podman", podmanArgs, { timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024 });
+    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "killed" in error && error.killed) {
+      throw new TimeoutError(timeoutSecs);
+    }
+    const execError = error as { stdout?: string; stderr?: string; code?: number };
+    return { stdout: execError.stdout ?? "", stderr: execError.stderr ?? "", exitCode: execError.code ?? 1 };
+  }
+}
+
+async function collectOutput(
+  outputDir: string,
+  outputFileName: string,
+  maxSizeMb: number,
+  exitCode: number,
+  stderr: string
+): Promise<{ output: RunResult["output"] | undefined; exitCode: number; stderr: string }> {
+  const outputFile = join(outputDir, outputFileName);
+  if (!resolve(outputFile).startsWith(resolve(outputDir) + "/")) {
+    throw new RunnerError("output_file escapes output directory", "INVALID_REQUEST", 400);
+  }
+
+  try {
+    const stats = await stat(outputFile);
+    const sizeMb = stats.size / (1024 * 1024);
+    if (sizeMb > maxSizeMb) {
+      throw new OutputValidationError(`Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
+    }
+
+    const content = await readFile(outputFile);
+    await validateOutput(content, maxSizeMb);
+
+    const lines = content
+      .toString("utf-8")
+      .split("\n")
+      .filter((l) => l.trim().length > 0);
+    const rows = Math.max(0, lines.length - 1);
+
+    return { output: { rows, bytes: stats.size, content_base64: content.toString("base64") }, exitCode, stderr };
+  } catch {
+    if (exitCode === 0) {
+      return { output: undefined, exitCode: 1, stderr: stderr + "\nNo valid output file produced" };
+    }
+    return { output: undefined, exitCode, stderr };
+  }
+}
+
 export async function executeRun(request: RunRequest): Promise<RunResult> {
   const config = getConfig();
 
@@ -61,80 +115,32 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
 
     logger.info({ runId, runtime: request.runtime, entrypoint: request.entrypoint }, "Starting scraper container");
 
-    // Execute podman with timeout
-    const timeoutMs = (request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT) * 1000 + 5000; // 5s grace
-    let stdout = "";
-    let stderr = "";
-    let exitCode = 0;
-
-    try {
-      const result = await execFileAsync("podman", podmanArgs, {
-        timeout: timeoutMs,
-        maxBuffer: 10 * 1024 * 1024, // 10MB log buffer
-      });
-      stdout = result.stdout;
-      stderr = result.stderr;
-    } catch (error: unknown) {
-      if (error && typeof error === "object" && "killed" in error && error.killed) {
-        throw new TimeoutError(request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT);
-      }
-      // Process exited with non-zero code
-      const execError = error as { stdout?: string; stderr?: string; code?: number };
-      stdout = execError.stdout ?? "";
-      stderr = execError.stderr ?? "";
-      exitCode = execError.code ?? 1;
-    }
+    const timeoutSecs = request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT;
+    const { stdout, stderr, exitCode } = await runPodmanContainer(podmanArgs, timeoutSecs);
 
     const durationMs = Date.now() - startedAt;
 
-    // Check for output file
-    const outputFile = join(outputDir, request.output_file ?? "data.csv");
-    if (!resolve(outputFile).startsWith(resolve(outputDir) + "/")) {
-      throw new RunnerError("output_file escapes output directory", "INVALID_REQUEST", 400);
-    }
-    let output: RunResult["output"] | undefined;
+    const {
+      output,
+      exitCode: finalExitCode,
+      stderr: finalStderr,
+    } = await collectOutput(
+      outputDir,
+      request.output_file ?? "data.csv",
+      config.SCRAPER_MAX_OUTPUT_SIZE_MB,
+      exitCode,
+      stderr
+    );
 
-    try {
-      const stats = await stat(outputFile);
-
-      // Check size before reading into memory to avoid OOM
-      const sizeMb = stats.size / (1024 * 1024);
-      if (sizeMb > config.SCRAPER_MAX_OUTPUT_SIZE_MB) {
-        throw new OutputValidationError(
-          `Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${config.SCRAPER_MAX_OUTPUT_SIZE_MB}MB)`
-        );
-      }
-
-      const content = await readFile(outputFile);
-
-      // Validate output content
-      await validateOutput(content, config.SCRAPER_MAX_OUTPUT_SIZE_MB);
-
-      // Count rows (lines minus header)
-      const lines = content
-        .toString("utf-8")
-        .split("\n")
-        .filter((l) => l.trim().length > 0);
-      const rows = Math.max(0, lines.length - 1);
-
-      output = { rows, bytes: stats.size, content_base64: content.toString("base64") };
-    } catch {
-      // No output file or invalid — not an error if exit code is non-zero
-      if (exitCode === 0) {
-        exitCode = 1;
-        stderr += "\nNo valid output file produced";
-      }
-    }
-
-    const status = exitCode === 0 ? "success" : "failed";
-    logger.info({ runId, status, exitCode, durationMs, rows: output?.rows }, "Scraper run completed");
+    const status = finalExitCode === 0 ? "success" : "failed";
+    logger.info({ runId, status, exitCode: finalExitCode, durationMs, rows: output?.rows }, "Scraper run completed");
 
     return {
       status,
-      exit_code: exitCode,
+      exit_code: finalExitCode,
       duration_ms: durationMs,
       stdout: truncateLog(stdout),
-      stderr: truncateLog(stderr),
+      stderr: truncateLog(finalStderr),
       output,
     };
   } catch (error) {
@@ -175,15 +181,13 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
   }
 }
 
-export function stopRun(runId: string): Promise<void> {
-  return execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 15_000 }).then(
-    () => {
-      logger.info({ runId }, "Container stopped");
-    },
-    (error) => {
-      logError("Failed to stop container", error, { runId });
-    }
-  );
+export async function stopRun(runId: string): Promise<void> {
+  try {
+    await execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 15_000 });
+    logger.info({ runId }, "Container stopped");
+  } catch (error) {
+    logError("Failed to stop container", error, { runId });
+  }
 }
 
 export function isRunActive(runId: string): boolean {

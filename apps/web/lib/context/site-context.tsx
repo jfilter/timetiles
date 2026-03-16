@@ -89,6 +89,67 @@ interface SiteContextValue {
   customCode?: SiteCustomCode;
 }
 
+/** Extract branding colors from site configuration. */
+const extractColors = (colors: NonNullable<Site["branding"]>["colors"]): SiteBrandingColors | undefined => {
+  const hasColors = colors && Object.values(colors).some((v) => v != null && v !== "");
+  if (!hasColors) return undefined;
+
+  return {
+    primary: colors.primary ?? undefined,
+    primaryForeground: colors.primaryForeground ?? undefined,
+    secondary: colors.secondary ?? undefined,
+    secondaryForeground: colors.secondaryForeground ?? undefined,
+    background: colors.background ?? undefined,
+    foreground: colors.foreground ?? undefined,
+    card: colors.card ?? undefined,
+    cardForeground: colors.cardForeground ?? undefined,
+    muted: colors.muted ?? undefined,
+    mutedForeground: colors.mutedForeground ?? undefined,
+    accent: colors.accent ?? undefined,
+    accentForeground: colors.accentForeground ?? undefined,
+    destructive: colors.destructive ?? undefined,
+    border: colors.border ?? undefined,
+    ring: colors.ring ?? undefined,
+  };
+};
+
+/** Extract custom code injection fields from site configuration. */
+const extractCustomCode = (customCode: Site["customCode"]): SiteCustomCode | undefined => {
+  if (!customCode) return undefined;
+  return {
+    headHtml: customCode.headHtml ?? undefined,
+    customCSS: customCode.customCSS ?? undefined,
+    bodyStartHtml: customCode.bodyStartHtml ?? undefined,
+    bodyEndHtml: customCode.bodyEndHtml ?? undefined,
+  };
+};
+
+/** Extract typography settings from site branding. */
+const extractTypography = (branding: NonNullable<Site["branding"]>): SiteTypography | undefined => {
+  const fontPairing = branding.typography?.fontPairing;
+  return fontPairing ? { fontPairing: fontPairing as SiteTypography["fontPairing"] } : undefined;
+};
+
+/** Extract visual style settings from site branding. */
+const extractStyle = (branding: NonNullable<Site["branding"]>): SiteStyle => ({
+  borderRadius: (branding.style?.borderRadius as SiteStyle["borderRadius"]) ?? undefined,
+  density: (branding.style?.density as SiteStyle["density"]) ?? undefined,
+});
+
+/** Build branding object from site configuration. */
+const extractBranding = (site: Site | null): SiteContextValue["branding"] => {
+  const branding = site?.branding;
+  return {
+    title: branding?.title ?? undefined,
+    logoUrl: getMediaUrl(branding?.logo),
+    logoDarkUrl: getMediaUrl(branding?.logoDark),
+    faviconUrl: getMediaUrl(branding?.favicon),
+    colors: extractColors(branding?.colors),
+    typography: branding ? extractTypography(branding) : undefined,
+    style: branding ? extractStyle(branding) : {},
+  };
+};
+
 const SiteContext = createContext<SiteContextValue | null>(null);
 
 /**
@@ -107,52 +168,11 @@ interface SiteProviderProps {
  */
 export const SiteProvider = ({ site, children }: SiteProviderProps): React.ReactElement => {
   const value = useMemo((): SiteContextValue => {
-    const colors = site?.branding?.colors;
-    const hasColors = colors && Object.values(colors).some((v) => v != null && v !== "");
-
     return {
       site,
       hasSite: site != null,
-      branding: {
-        title: site?.branding?.title ?? undefined,
-        logoUrl: getMediaUrl(site?.branding?.logo),
-        logoDarkUrl: getMediaUrl(site?.branding?.logoDark),
-        faviconUrl: getMediaUrl(site?.branding?.favicon),
-        colors: hasColors
-          ? {
-              primary: colors.primary ?? undefined,
-              primaryForeground: colors.primaryForeground ?? undefined,
-              secondary: colors.secondary ?? undefined,
-              secondaryForeground: colors.secondaryForeground ?? undefined,
-              background: colors.background ?? undefined,
-              foreground: colors.foreground ?? undefined,
-              card: colors.card ?? undefined,
-              cardForeground: colors.cardForeground ?? undefined,
-              muted: colors.muted ?? undefined,
-              mutedForeground: colors.mutedForeground ?? undefined,
-              accent: colors.accent ?? undefined,
-              accentForeground: colors.accentForeground ?? undefined,
-              destructive: colors.destructive ?? undefined,
-              border: colors.border ?? undefined,
-              ring: colors.ring ?? undefined,
-            }
-          : undefined,
-        typography: site?.branding?.typography?.fontPairing
-          ? { fontPairing: site.branding.typography.fontPairing as SiteTypography["fontPairing"] }
-          : undefined,
-        style: {
-          borderRadius: (site?.branding?.style?.borderRadius as SiteStyle["borderRadius"]) ?? undefined,
-          density: (site?.branding?.style?.density as SiteStyle["density"]) ?? undefined,
-        },
-      },
-      customCode: site?.customCode
-        ? {
-            headHtml: site.customCode.headHtml ?? undefined,
-            customCSS: site.customCode.customCSS ?? undefined,
-            bodyStartHtml: site.customCode.bodyStartHtml ?? undefined,
-            bodyEndHtml: site.customCode.bodyEndHtml ?? undefined,
-          }
-        : undefined,
+      branding: extractBranding(site),
+      customCode: extractCustomCode(site?.customCode),
     };
   }, [site]);
 

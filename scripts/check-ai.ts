@@ -37,6 +37,7 @@ const PACKAGES = [
   { name: "apps/web", hasLint: true, hasTypecheck: true },
   { name: "apps/docs", hasLint: true, hasTypecheck: true },
   { name: "packages/ui", hasLint: true, hasTypecheck: true },
+  { name: "apps/scraper", hasLint: true, hasTypecheck: false },
   { name: "packages/eslint-config", hasLint: true, hasTypecheck: false },
   { name: "packages/typescript-config", hasLint: true, hasTypecheck: false },
 ];

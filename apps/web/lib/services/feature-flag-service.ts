@@ -76,17 +76,10 @@ class FeatureFlagService {
       const settings = await this.payload.findGlobal({ slug: "settings" });
       const flags = settings.featureFlags;
 
-      const newFlags: FeatureFlags = {
-        allowPrivateImports: flags?.allowPrivateImports ?? DEFAULT_FLAGS.allowPrivateImports,
-        enableScheduledImports: flags?.enableScheduledImports ?? DEFAULT_FLAGS.enableScheduledImports,
-        enableRegistration: flags?.enableRegistration ?? DEFAULT_FLAGS.enableRegistration,
-        enableEventCreation: flags?.enableEventCreation ?? DEFAULT_FLAGS.enableEventCreation,
-        enableDatasetCreation: flags?.enableDatasetCreation ?? DEFAULT_FLAGS.enableDatasetCreation,
-        enableImportCreation: flags?.enableImportCreation ?? DEFAULT_FLAGS.enableImportCreation,
-        enableScheduledJobExecution: flags?.enableScheduledJobExecution ?? DEFAULT_FLAGS.enableScheduledJobExecution,
-        enableUrlFetchCaching: flags?.enableUrlFetchCaching ?? DEFAULT_FLAGS.enableUrlFetchCaching,
-        enableScrapers: flags?.enableScrapers ?? DEFAULT_FLAGS.enableScrapers,
-      };
+      const newFlags = { ...DEFAULT_FLAGS };
+      for (const key of Object.keys(DEFAULT_FLAGS) as Array<keyof FeatureFlags>) {
+        newFlags[key] = flags?.[key] ?? DEFAULT_FLAGS[key];
+      }
 
       this.cachedFlags = newFlags;
       this.cacheTimestamp = Date.now();

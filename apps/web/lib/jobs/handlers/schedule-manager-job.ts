@@ -320,7 +320,7 @@ const processScheduledScrapers = async (
         collection: "scrapers",
         id: scraper.id,
         overrideAccess: true,
-        data: { ...(nextRun ? { nextRunAt: nextRun.toISOString() } : {}) },
+        data: nextRun ? { nextRunAt: nextRun.toISOString() } : {},
       });
 
       logger.info("Queued scraper execution", {

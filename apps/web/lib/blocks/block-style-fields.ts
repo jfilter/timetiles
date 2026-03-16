@@ -15,7 +15,6 @@ export const blockStyleFields: Field = {
   name: "blockStyle",
   type: "group",
   label: "Block Style",
-  dbName: "bs",
   admin: { description: "Visual styling overrides for this block instance", condition: () => true },
   fields: [
     {

@@ -14,7 +14,8 @@ import { createLogger } from "@/lib/logger";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 
-const logger = createLogger("scraper-repos");
+const COLLECTION_SLUG = "scraper-repos" as const;
+const logger = createLogger(COLLECTION_SLUG);
 
 import {
   basicMetadataFields,
@@ -27,7 +28,7 @@ import {
 } from "./shared-fields";
 
 const ScraperRepos: CollectionConfig = {
-  slug: "scraper-repos",
+  slug: COLLECTION_SLUG,
   ...createCommonConfig({ versions: false, drafts: false }),
   admin: { useAsTitle: "name", defaultColumns: ["name", "sourceType", "createdBy", "updatedAt"], group: "Scrapers" },
   access: {
@@ -45,13 +46,13 @@ const ScraperRepos: CollectionConfig = {
       const trustLevel = typeof user.trustLevel === "string" ? Number(user.trustLevel) : (user.trustLevel ?? 0);
       return trustLevel >= 3 || user.role === "admin";
     },
-    update: createOwnershipAccess("scraper-repos"),
-    delete: createOwnershipAccess("scraper-repos"),
+    update: createOwnershipAccess(COLLECTION_SLUG),
+    delete: createOwnershipAccess(COLLECTION_SLUG),
     readVersions: isEditorOrAdmin,
   },
   fields: [
     ...basicMetadataFields,
-    createSlugField("scraper-repos"),
+    createSlugField(COLLECTION_SLUG),
     createCreatedByField("User who created this scraper repo"),
     // Source type
     {
@@ -72,6 +73,7 @@ const ScraperRepos: CollectionConfig = {
         description: "Git repository URL (e.g., https://github.com/user/repo.git)",
         condition: (data) => data?.sourceType === "git",
       },
+      // eslint-disable-next-line sonarjs/function-return-type -- Payload validate returns string | true by design
       validate: (value: unknown, { data }: { data: Record<string, unknown> }) => {
         if (data?.sourceType === "git" && !value) return "Git URL is required for git source type";
         if (value && typeof value === "string" && !value.startsWith("https://")) return "Only HTTPS URLs are allowed";

@@ -245,6 +245,7 @@ check-ai:
 			web) PKG_DIR="apps/web" ;; \
 			docs) PKG_DIR="apps/docs" ;; \
 			ui) PKG_DIR="packages/ui" ;; \
+			scraper) PKG_DIR="apps/scraper" ;; \
 			*) echo "❌ Unknown package: $$PKG"; exit 1 ;; \
 		esac; \
 		pnpm exec tsx scripts/check-ai-files.ts "$$PKG_DIR" $(FILES); \
@@ -256,9 +257,11 @@ check-ai:
 		pnpm --filter docs lint && pnpm --filter docs typecheck; \
 	elif [ "$(PACKAGE)" = "ui" ]; then \
 		pnpm --filter ui lint && pnpm --filter ui typecheck; \
+	elif [ "$(PACKAGE)" = "scraper" ]; then \
+		pnpm --filter @timetiles/scraper lint && pnpm --filter @timetiles/scraper typecheck; \
 	else \
 		echo "❌ Unknown package: $(PACKAGE)"; \
-		echo "Available packages: web, docs, ui"; \
+		echo "Available packages: web, docs, ui, scraper"; \
 		exit 1; \
 	fi
 
@@ -474,7 +477,7 @@ help:
 		'  typecheck-full - Run tsc (thorough, for CI)' \
 		'  check       - Run lint + typecheck' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
-		'                Usage: make check-ai [PACKAGE=web|docs|ui] [FILES="..."]' \
+		'                Usage: make check-ai [PACKAGE=web|docs|ui|scraper] [FILES="..."]' \
 		'  format      - Format code with oxfmt' '' \
 		'🧪 Testing:' \
 		'  test        - Run tests (standard output)' \
@@ -529,7 +532,7 @@ help:
 		'  FILTER=pattern   - Filter tests by pattern (use with test-ai)' \
 		'                     Examples: FILTER=date.test, FILTER=tests/unit' \
 		'  PACKAGE=name     - Target specific package (use with check-ai)' \
-		'                     Options: web, docs, ui' \
+		'                     Options: web, docs, ui, scraper' \
 		'  FILES="..."      - Check specific files only (use with check-ai)' \
 		'                     Paths relative to package dir, defaults to PACKAGE=web' \
 		'                     Example: FILES="lib/foo.ts components/bar.tsx"' \
