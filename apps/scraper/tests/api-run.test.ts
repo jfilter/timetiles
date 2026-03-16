@@ -15,6 +15,12 @@ vi.mock("../src/services/runner.js", () => ({
 // Mock logger to avoid side effects
 vi.mock("../src/lib/logger.js", () => ({ logger: { info: vi.fn(), error: vi.fn() }, logError: vi.fn() }));
 
+// Mock config (needed by output download/delete endpoints)
+vi.mock("../src/config.js", () => ({
+  getConfig: vi.fn(() => ({ SCRAPER_DATA_DIR: "/tmp/timescrape-test" })),
+  loadConfig: vi.fn(() => ({ SCRAPER_DATA_DIR: "/tmp/timescrape-test" })),
+}));
+
 import { runRoutes } from "../src/api/run.js";
 import { executeRun } from "../src/services/runner.js";
 
@@ -215,7 +221,7 @@ describe("POST /run endpoint", () => {
         duration_ms: 1500,
         stdout: "output",
         stderr: "",
-        output: { rows: 10, bytes: 256, content_base64: "aGVsbG8=" },
+        output: { rows: 10, bytes: 256, download_url: "/output/test-run-id/data.csv" },
       };
       vi.mocked(executeRun).mockResolvedValue(mockResult);
 

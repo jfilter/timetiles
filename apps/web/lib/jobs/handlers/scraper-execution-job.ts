@@ -45,7 +45,7 @@ interface RunnerResponse {
   duration_ms: number;
   stdout: string;
   stderr: string;
-  output?: { rows: number; bytes: number; content_base64: string };
+  output?: { rows: number; bytes: number; download_url: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +155,7 @@ const triggerAutoImport = async (
   scraper: Scraper,
   repo: ScraperRepo,
   runId: number,
-  csvBase64: string,
+  downloadUrl: string,
   outputBytes: number
 ): Promise<number | string> => {
   const { payload } = context.req;
@@ -163,7 +163,28 @@ const triggerAutoImport = async (
   const originalName = `${scraper.name}-${timestamp}.csv`;
   const filename = `scraper-import-${timestamp}-${uuidv4()}.csv`;
 
-  const csvBuffer = Buffer.from(csvBase64, "base64");
+  // Download CSV from runner instead of decoding base64
+  const runnerUrl = process.env.SCRAPER_RUNNER_URL;
+  const apiKey = process.env.SCRAPER_API_KEY;
+
+  if (!runnerUrl) {
+    throw new Error("SCRAPER_RUNNER_URL environment variable is not configured");
+  }
+
+  const baseUrl = runnerUrl.endsWith("/") ? runnerUrl.slice(0, -1) : runnerUrl;
+  const fullDownloadUrl = `${baseUrl}${downloadUrl}`;
+
+  const headers: Record<string, string> = {};
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+
+  const fileResponse = await fetch(fullDownloadUrl, { headers });
+  if (!fileResponse.ok) {
+    throw new Error(`Failed to download output: ${fileResponse.status}`);
+  }
+
+  const csvBuffer = Buffer.from(await fileResponse.arrayBuffer());
 
   const catalogId = extractRelationId(repo.catalog);
   const userId = extractRelationId(repo.createdBy);
@@ -356,16 +377,35 @@ const handleRunSuccess = async (
 
   // Auto-import if enabled and run succeeded
   let importFileId: number | string | undefined;
-  if (scraper.autoImport && result.status === "success" && result.output?.content_base64) {
+  if (scraper.autoImport && result.status === "success" && result.output?.download_url) {
     try {
       importFileId = await triggerAutoImport(
         context,
         scraper,
         repo,
         runId,
-        result.output.content_base64,
+        result.output.download_url,
         result.output.bytes
       );
+
+      // Clean up output on runner (best-effort)
+      try {
+        const runnerUrl = process.env.SCRAPER_RUNNER_URL;
+        const apiKey = process.env.SCRAPER_API_KEY;
+        if (runnerUrl) {
+          const baseUrl = runnerUrl.endsWith("/") ? runnerUrl.slice(0, -1) : runnerUrl;
+          // Extract runId from download_url: /output/{runId}/{filename}
+          const urlParts = result.output.download_url.split("/");
+          const runUuid = urlParts[2];
+          const cleanupHeaders: Record<string, string> = {};
+          if (apiKey) {
+            cleanupHeaders["Authorization"] = `Bearer ${apiKey}`;
+          }
+          await fetch(`${baseUrl}/output/${runUuid}`, { method: "DELETE", headers: cleanupHeaders });
+        }
+      } catch {
+        /* best-effort cleanup */
+      }
     } catch (importError) {
       logError(importError, "Auto-import failed after successful scrape", { scraperId: scraper.id, runId });
       // Don't fail the whole job if auto-import fails

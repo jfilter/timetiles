@@ -22,5 +22,5 @@ export interface RunResult {
   duration_ms: number;
   stdout: string;
   stderr: string;
-  output?: { rows: number; bytes: number; content_base64: string };
+  output?: { rows: number; bytes: number; download_url: string };
 }

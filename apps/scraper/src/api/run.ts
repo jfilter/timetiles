@@ -1,14 +1,21 @@
 /**
  * POST /run — Execute a scraper in a Podman container.
+ * GET /output/:runId/:filename — Download scraper output file.
+ * DELETE /output/:runId — Clean up output files after download.
  *
  * @module
  * @category API
  */
 
+import { createReadStream } from "node:fs";
+import { rm, stat } from "node:fs/promises";
+import { join } from "node:path";
+
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
 
+import { getConfig } from "../config.js";
 import { RunnerError } from "../lib/errors.js";
 import { logError } from "../lib/logger.js";
 import { executeRun, isRunActive, stopRun, getActiveRunCount } from "../services/runner.js";
@@ -86,6 +93,51 @@ runRoutes.post("/stop/:runId", async (c) => {
 runRoutes.get("/status/:runId", (c) => {
   const runId = c.req.param("runId");
   return c.json({ active: isRunActive(runId) });
+});
+
+runRoutes.get("/output/:runId/:filename", async (c) => {
+  const { runId, filename } = c.req.param();
+
+  if (!runId || !filename || filename.includes("..") || filename.includes("/")) {
+    return c.json({ error: "Invalid parameters" }, 400);
+  }
+
+  const config = getConfig();
+  const filePath = join(config.SCRAPER_DATA_DIR, "outputs", runId, filename);
+
+  try {
+    const stats = await stat(filePath);
+    const fileStream = createReadStream(filePath);
+
+    return new Response(fileStream as unknown as ReadableStream, {
+      headers: {
+        "Content-Type": "text/csv",
+        "Content-Length": stats.size.toString(),
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  } catch {
+    return c.json({ error: "Output not found" }, 404);
+  }
+});
+
+runRoutes.delete("/output/:runId", async (c) => {
+  const { runId } = c.req.param();
+
+  if (!runId || runId.includes("..") || runId.includes("/")) {
+    return c.json({ error: "Invalid parameters" }, 400);
+  }
+
+  const config = getConfig();
+  const outputDir = join(config.SCRAPER_DATA_DIR, "outputs", runId);
+
+  try {
+    await rm(outputDir, { recursive: true, force: true });
+  } catch {
+    /* already cleaned */
+  }
+
+  return c.json({ status: "deleted" });
 });
 
 runRoutes.get("/health", (c) => {

@@ -65,7 +65,7 @@ describe.sequential("scraperExecutionJob", () => {
     duration_ms: 1500,
     stdout: "Scraping complete",
     stderr: "",
-    output: { rows: 42, bytes: 2048, content_base64: "aWQsdGl0bGUKMSxUZXN0" },
+    output: { rows: 42, bytes: 2048, download_url: "/output/test-uuid-1234/data.csv" },
     ...overrides,
   });
 

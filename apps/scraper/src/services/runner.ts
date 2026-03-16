@@ -6,7 +6,7 @@
  */
 
 import { execFile } from "node:child_process";
-import { mkdir, readFile, rm, stat } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -44,7 +44,8 @@ async function collectOutput(
   outputFileName: string,
   maxSizeMb: number,
   exitCode: number,
-  stderr: string
+  stderr: string,
+  runId: string
 ): Promise<{ output: RunResult["output"] | undefined; exitCode: number; stderr: string }> {
   const outputFile = join(outputDir, outputFileName);
   if (!resolve(outputFile).startsWith(resolve(outputDir) + "/")) {
@@ -58,6 +59,7 @@ async function collectOutput(
       throw new OutputValidationError(`Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
     }
 
+    // Read content for validation and row counting, then discard
     const content = await readFile(outputFile);
     await validateOutput(content, maxSizeMb);
 
@@ -67,7 +69,15 @@ async function collectOutput(
       .filter((l) => l.trim().length > 0);
     const rows = Math.max(0, lines.length - 1);
 
-    return { output: { rows, bytes: stats.size, content_base64: content.toString("base64") }, exitCode, stderr };
+    // Copy output file to persistent location for download
+    const config = getConfig();
+    const persistentDir = join(config.SCRAPER_DATA_DIR, "outputs", runId);
+    await mkdir(persistentDir, { recursive: true });
+    await copyFile(outputFile, join(persistentDir, outputFileName));
+
+    const downloadUrl = `/output/${runId}/${outputFileName}`;
+
+    return { output: { rows, bytes: stats.size, download_url: downloadUrl }, exitCode, stderr };
   } catch (error) {
     if (error instanceof RunnerError) throw error;
     if (exitCode === 0) {
@@ -130,7 +140,8 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
       request.output_file ?? "data.csv",
       config.SCRAPER_MAX_OUTPUT_SIZE_MB,
       exitCode,
-      stderr
+      stderr,
+      runId
     );
 
     const status = finalExitCode === 0 ? "success" : "failed";

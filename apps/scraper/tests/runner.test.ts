@@ -26,11 +26,13 @@ const mockMkdir = vi.fn().mockResolvedValue(undefined);
 const mockRm = vi.fn().mockResolvedValue(undefined);
 const mockReadFile = vi.fn();
 const mockStat = vi.fn();
+const mockCopyFile = vi.fn().mockResolvedValue(undefined);
 vi.mock("node:fs/promises", () => ({
   mkdir: (...args: unknown[]) => mockMkdir(...args),
   rm: (...args: unknown[]) => mockRm(...args),
   readFile: (...args: unknown[]) => mockReadFile(...args),
   stat: (...args: unknown[]) => mockStat(...args),
+  copyFile: (...args: unknown[]) => mockCopyFile(...args),
 }));
 
 // Mock code-prep
@@ -58,6 +60,7 @@ describe("runner", () => {
     // Re-apply default mock implementations after clear
     mockMkdir.mockResolvedValue(undefined);
     mockRm.mockResolvedValue(undefined);
+    mockCopyFile.mockResolvedValue(undefined);
   });
 
   describe("executeRun", () => {
@@ -101,7 +104,7 @@ describe("runner", () => {
       expect(result.output).toBeDefined();
       expect(result.output!.rows).toBe(2);
       expect(result.output!.bytes).toBe(csvContent.length);
-      expect(result.output!.content_base64).toBe(csvContent.toString("base64"));
+      expect(result.output!.download_url).toBe("/output/550e8400-e29b-41d4-a716-446655440001/data.csv");
     });
 
     it("returns timeout status when podman is killed", async () => {
