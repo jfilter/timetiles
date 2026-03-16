@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ConcurrencyError, TimeoutError } from "../src/lib/errors.js";
+import { ConcurrencyError } from "../src/lib/errors.js";
 import type { RunRequest } from "../src/types.js";
 
 // Mock logger to avoid side effects
