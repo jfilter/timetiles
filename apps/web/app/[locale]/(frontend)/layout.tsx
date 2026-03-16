@@ -40,6 +40,7 @@ import { ConditionalTopMenuBar } from "@/app/_components/conditional-top-menu-ba
 import { IconMapper } from "@/components/icon-mapper";
 import { Providers } from "@/components/providers";
 import { SiteBranding } from "@/components/site-branding";
+import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
 import { SiteProvider } from "@/lib/context/site-context";
 import { resolveSite } from "@/lib/services/site-resolver";
@@ -52,18 +53,19 @@ const fontSerif = Playfair_Display({ subsets: ["latin"], variable: "--font-serif
 
 const fontMono = Space_Mono({ subsets: ["latin"], variable: "--font-mono", weight: ["400", "700"], display: "swap" });
 
-const getFooterData = async (): Promise<FooterType> => {
+const getFooterData = async (locale: Locale): Promise<FooterType> => {
   const payload = await getPayload({ config });
-  return payload.findGlobal({ slug: "footer" });
+  return payload.findGlobal({ slug: "footer", locale });
 };
 
-const getBranding = async (): Promise<Branding> => {
+const getBranding = async (locale: Locale): Promise<Branding> => {
   const payload = await getPayload({ config });
-  return payload.findGlobal({ slug: "branding" });
+  return payload.findGlobal({ slug: "branding", locale });
 };
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const branding = await getBranding();
+  const locale = (await getLocale()) as Locale;
+  const branding = await getBranding(locale);
   const payload = await getPayload({ config });
   const headersList = await headers();
   const host = headersList.get("host");
@@ -93,15 +95,27 @@ export const generateMetadata = async (): Promise<Metadata> => {
 };
 
 export default async function FrontendLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [footerData, locale, messages] = await Promise.all([getFooterData(), getLocale(), getMessages()]);
+  const [locale, messages] = await Promise.all([getLocale() as Promise<Locale>, getMessages()]);
+  const footerData = await getFooterData(locale);
   const payload = await getPayload({ config });
   const headersList = await headers();
   const host = headersList.get("host");
   const site = await resolveSite(payload, host);
 
+  // Pre-build dangerouslySetInnerHTML objects outside JSX to satisfy react-perf/jsx-no-new-object-as-prop
+  const bodyStartHtmlContent = site?.customCode?.bodyStartHtml ? { __html: site.customCode.bodyStartHtml } : undefined;
+  const bodyEndHtmlContent = site?.customCode?.bodyEndHtml ? { __html: site.customCode.bodyEndHtml } : undefined;
+
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} font-sans antialiased`}>
+      <body
+        className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} font-sans antialiased`}
+        data-site={site?.slug ?? undefined}
+      >
+        {bodyStartHtmlContent && (
+          // eslint-disable-next-line react/no-danger -- Admin-configured body start HTML
+          <div dangerouslySetInnerHTML={bodyStartHtmlContent} />
+        )}
         <NextIntlClientProvider messages={messages}>
           <Providers>
             <SiteProvider site={site}>
@@ -183,6 +197,10 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
             </SiteProvider>
           </Providers>
         </NextIntlClientProvider>
+        {bodyEndHtmlContent && (
+          // eslint-disable-next-line react/no-danger -- Admin-configured body end HTML
+          <div dangerouslySetInnerHTML={bodyEndHtmlContent} />
+        )}
       </body>
     </html>
   );

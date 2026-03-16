@@ -21,10 +21,10 @@ import type { SeedManager } from "../seed-manager";
 import { catalogSeeds } from "../seeds/catalogs";
 import { datasetSeeds } from "../seeds/datasets";
 import { eventSeeds } from "../seeds/events";
-import { footerSeed } from "../seeds/footer";
+import { footerSeed, footerSeedDe } from "../seeds/footer";
 import { geocodingProviderSeeds } from "../seeds/geocoding-providers";
-import { mainMenuSeed } from "../seeds/main-menu";
-import { pagesSeed } from "../seeds/pages";
+import { mainMenuSeed, mainMenuSeedDe } from "../seeds/main-menu";
+import { pagesSeed, pagesSeedDe } from "../seeds/pages";
 import { siteSeeds } from "../seeds/sites";
 import { userSeeds } from "../seeds/users";
 import { viewSeeds } from "../seeds/views";
@@ -118,14 +118,38 @@ export class SeedingOperations {
       if (!payload) {
         throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
       }
+
+      // Seed with default locale (creates structure + writes EN localized fields)
       await payload.updateGlobal({
         slug: collectionName,
         data: data as Config["globals"]["main-menu"] & Config["globals"]["footer"],
       });
-      logger.info(`Seeded ${collectionName} global successfully!`);
+
+      // Seed German locale
+      const deData = this.getGermanGlobalSeedData(collectionName);
+      if (deData) {
+        await payload.updateGlobal({
+          slug: collectionName,
+          data: deData as unknown as Config["globals"]["main-menu"] & Config["globals"]["footer"],
+          locale: "de",
+        });
+      }
+
+      logger.info(`Seeded ${collectionName} global (en${deData ? " + de" : ""}) successfully!`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error({ global: collectionName }, `Failed to seed ${collectionName} global: ${errorMsg}`);
+    }
+  }
+
+  private getGermanGlobalSeedData(collectionName: string): Record<string, unknown> | null {
+    switch (collectionName) {
+      case MAIN_MENU_SLUG:
+        return mainMenuSeedDe as unknown as Record<string, unknown>;
+      case FOOTER_SLUG:
+        return footerSeedDe as unknown as Record<string, unknown>;
+      default:
+        return null;
     }
   }
 
@@ -368,6 +392,23 @@ export class SeedingOperations {
           mimetype: (resolvedItem as { mimeType?: string }).mimeType ?? "text/plain",
         },
       });
+    } else if (collectionName === "pages") {
+      const doc = await payload.create({
+        collection: collectionName as keyof Config["collections"],
+        data: resolvedItem,
+      });
+
+      // Seed German locale if translation exists
+      const slug = resolvedItem.slug as string | undefined;
+      if (slug && pagesSeedDe[slug]) {
+        await payload.update({
+          collection: collectionName as keyof Config["collections"],
+          id: doc.id,
+          data: pagesSeedDe[slug] as Record<string, unknown>,
+          locale: "de",
+        });
+        logger.debug(`Seeded German translation for page: ${slug}`);
+      }
     } else if (collectionName === "users") {
       // Disable verification email for seeded users (they're already pre-verified).
       // Payload's create() types don't include disableVerificationEmail, but it's supported at runtime.

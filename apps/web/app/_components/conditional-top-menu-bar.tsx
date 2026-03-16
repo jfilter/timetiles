@@ -9,16 +9,18 @@
  * @category Components
  */
 import { headers as getHeaders } from "next/headers";
+import { getLocale } from "next-intl/server";
 import { getPayload } from "payload";
 
+import type { Locale } from "@/i18n/config";
 import config from "@/payload.config";
 import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
 import { AdaptiveHeader } from "./adaptive-header";
 
-const getMainMenu = async (): Promise<MainMenu> => {
+const getMainMenu = async (locale: Locale): Promise<MainMenu> => {
   const payload = await getPayload({ config });
-  return payload.findGlobal({ slug: "main-menu" });
+  return payload.findGlobal({ slug: "main-menu", locale });
 };
 
 const getUser = async (): Promise<User | null> => {
@@ -53,8 +55,9 @@ const getDatasets = async (): Promise<Dataset[]> => {
 };
 
 export const ConditionalTopMenuBar = async () => {
+  const locale = (await getLocale()) as Locale;
   const [mainMenu, user, catalogs, datasets] = await Promise.all([
-    getMainMenu(),
+    getMainMenu(locale),
     getUser(),
     getCatalogs(),
     getDatasets(),

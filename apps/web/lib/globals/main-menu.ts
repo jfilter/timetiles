@@ -23,7 +23,7 @@ export const MainMenu: GlobalConfig = {
       type: "array",
       maxRows: 6,
       fields: [
-        { name: "label", type: "text", required: true },
+        { name: "label", type: "text", required: true, localized: true },
         { name: "url", type: "text", required: true },
       ],
     },

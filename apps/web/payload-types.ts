@@ -83,6 +83,8 @@ export interface Config {
     'geocoding-providers': GeocodingProvider;
     pages: Page;
     sites: Site;
+    themes: Theme;
+    'layout-templates': LayoutTemplate;
     views: View;
     'schema-detectors': SchemaDetector;
     'payload-kv': PayloadKv;
@@ -109,6 +111,8 @@ export interface Config {
     'geocoding-providers': GeocodingProvidersSelect<false> | GeocodingProvidersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     sites: SitesSelect<false> | SitesSelect<true>;
+    themes: ThemesSelect<false> | ThemesSelect<true>;
+    'layout-templates': LayoutTemplatesSelect<false> | LayoutTemplatesSelect<true>;
     views: ViewsSelect<false> | ViewsSelect<true>;
     'schema-detectors': SchemaDetectorsSelect<false> | SchemaDetectorsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -120,7 +124,7 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
-  fallbackLocale: null;
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'de') | ('en' | 'de')[];
   globals: {
     'main-menu': MainMenu;
     footer: Footer;
@@ -135,7 +139,7 @@ export interface Config {
     settings: SettingsSelect<false> | SettingsSelect<true>;
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
-  locale: null;
+  locale: 'en' | 'de';
   user: User & {
     collection: 'users';
   };
@@ -2151,6 +2155,43 @@ export interface Page {
               id?: string | null;
             }[]
           | null;
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'hero';
@@ -2181,6 +2222,43 @@ export interface Page {
           accent?: ('none' | 'primary' | 'secondary' | 'accent' | 'muted') | null;
           id?: string | null;
         }[];
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'features';
@@ -2210,6 +2288,43 @@ export interface Page {
             | null;
           id?: string | null;
         }[];
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'stats';
@@ -2239,6 +2354,43 @@ export interface Page {
           link?: string | null;
           id?: string | null;
         }[];
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'detailsGrid';
@@ -2255,6 +2407,43 @@ export interface Page {
           description: string;
           id?: string | null;
         }[];
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'timeline';
@@ -2293,6 +2482,43 @@ export interface Page {
             | null;
           id?: string | null;
         }[];
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'testimonials';
@@ -2313,6 +2539,43 @@ export interface Page {
           };
           [k: string]: unknown;
         };
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'richText';
@@ -2322,6 +2585,43 @@ export interface Page {
         description?: string | null;
         buttonText: string;
         buttonLink: string;
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'cta';
@@ -2339,6 +2639,43 @@ export interface Page {
          * Submit button text
          */
         buttonText?: string | null;
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'newsletterForm';
@@ -2362,11 +2699,52 @@ export interface Page {
         buttonText?: string | null;
         variant?: ('default' | 'elevated' | 'centered') | null;
         size?: ('default' | 'lg' | 'xl') | null;
+        /**
+         * Visual styling overrides for this block instance
+         */
+        blockStyle?: {
+          /**
+           * Top padding
+           */
+          paddingTop?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Bottom padding
+           */
+          paddingBottom?: ('none' | 'sm' | 'md' | 'lg' | 'xl') | null;
+          /**
+           * Maximum content width
+           */
+          maxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+          /**
+           * Bottom separator style
+           */
+          separator?: ('none' | 'line' | 'gradient' | 'wave') | null;
+          /**
+           * Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))
+           */
+          backgroundColor?: string | null;
+          /**
+           * HTML anchor ID for scroll-to links (e.g., 'features')
+           */
+          anchorId?: string | null;
+          /**
+           * Hide on mobile devices
+           */
+          hideOnMobile?: boolean | null;
+          /**
+           * Hide on desktop devices
+           */
+          hideOnDesktop?: boolean | null;
+        };
         id?: string | null;
         blockName?: string | null;
         blockType: 'newsletterCTA';
       }
   )[];
+  /**
+   * Override the site's default layout template for this page
+   */
+  layoutOverride?: (number | null) | LayoutTemplate;
   /**
    * User who created this page
    */
@@ -2421,33 +2799,340 @@ export interface Site {
      */
     favicon?: (number | null) | Media;
     /**
-     * Custom color scheme
+     * Semantic color overrides (CSS color values, e.g. #3b82f6 or oklch(0.58 0.11 220))
      */
     colors?: {
       /**
-       * Primary color (hex, e.g., #3b82f6)
+       * Primary color — navigation, headings
        */
       primary?: string | null;
       /**
-       * Secondary color (hex)
+       * Text on primary color
+       */
+      primaryForeground?: string | null;
+      /**
+       * Secondary accent color
        */
       secondary?: string | null;
       /**
-       * Background color (hex)
+       * Text on secondary color
+       */
+      secondaryForeground?: string | null;
+      /**
+       * Page background color
        */
       background?: string | null;
+      /**
+       * Default text color
+       */
+      foreground?: string | null;
+      /**
+       * Card background color
+       */
+      card?: string | null;
+      /**
+       * Card text color
+       */
+      cardForeground?: string | null;
+      /**
+       * Muted/subtle background
+       */
+      muted?: string | null;
+      /**
+       * Muted text color
+       */
+      mutedForeground?: string | null;
+      /**
+       * Accent color — success states, highlights
+       */
+      accent?: string | null;
+      /**
+       * Text on accent color
+       */
+      accentForeground?: string | null;
+      /**
+       * Destructive/error color
+       */
+      destructive?: string | null;
+      /**
+       * Border color
+       */
+      border?: string | null;
+      /**
+       * Focus ring color
+       */
+      ring?: string | null;
     };
     /**
-     * Custom HTML for header (analytics scripts, etc.)
+     * Typography customization
      */
-    headerHtml?: string | null;
+    typography?: {
+      /**
+       * Font pairing for headings and body text
+       */
+      fontPairing?: ('editorial' | 'modern' | 'monospace') | null;
+    };
+    /**
+     * Visual style customization
+     */
+    style?: {
+      /**
+       * Corner rounding for UI elements
+       */
+      borderRadius?: ('sharp' | 'rounded' | 'pill') | null;
+      /**
+       * Spacing density for UI elements
+       */
+      density?: ('compact' | 'default' | 'comfortable') | null;
+    };
+    /**
+     * Optional theme preset (overridden by inline color settings above)
+     */
+    theme?: (number | null) | Theme;
   };
+  /**
+   * Custom CSS and HTML injection (scoped to this site)
+   */
+  customCode?: {
+    /**
+     * Custom HTML injected into <head> (analytics scripts, meta tags, external fonts)
+     */
+    headHtml?: string | null;
+    /**
+     * Custom CSS scoped to this site. Target blocks with [data-block-type='hero']. Dangerous patterns (@import, url(), javascript:) are stripped for security.
+     */
+    customCSS?: string | null;
+    /**
+     * Custom HTML injected at the start of <body> (tag managers, noscript tags)
+     */
+    bodyStartHtml?: string | null;
+    /**
+     * Custom HTML injected at the end of <body> (tracking scripts)
+     */
+    bodyEndHtml?: string | null;
+  };
+  /**
+   * Default layout template for all pages on this site
+   */
+  defaultLayout?: (number | null) | LayoutTemplate;
   /**
    * Allow public access to this site
    */
   isPublic?: boolean | null;
   /**
    * User who created this site
+   */
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Reusable theme presets for site branding
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "themes".
+ */
+export interface Theme {
+  id: number;
+  /**
+   * Theme name (e.g., 'City Government Blue')
+   */
+  name: string;
+  /**
+   * Brief description of this theme's visual style
+   */
+  description?: string | null;
+  /**
+   * Semantic color tokens for light mode
+   */
+  colors?: {
+    /**
+     * Primary color — navigation, headings
+     */
+    primary?: string | null;
+    /**
+     * Text on primary color
+     */
+    primaryForeground?: string | null;
+    /**
+     * Secondary accent color
+     */
+    secondary?: string | null;
+    /**
+     * Text on secondary color
+     */
+    secondaryForeground?: string | null;
+    /**
+     * Page background color
+     */
+    background?: string | null;
+    /**
+     * Default text color
+     */
+    foreground?: string | null;
+    /**
+     * Card background color
+     */
+    card?: string | null;
+    /**
+     * Card text color
+     */
+    cardForeground?: string | null;
+    /**
+     * Muted/subtle background
+     */
+    muted?: string | null;
+    /**
+     * Muted text color
+     */
+    mutedForeground?: string | null;
+    /**
+     * Accent color — success states, highlights
+     */
+    accent?: string | null;
+    /**
+     * Text on accent color
+     */
+    accentForeground?: string | null;
+    /**
+     * Destructive/error color
+     */
+    destructive?: string | null;
+    /**
+     * Border color
+     */
+    border?: string | null;
+    /**
+     * Focus ring color
+     */
+    ring?: string | null;
+  };
+  /**
+   * Override tokens for dark mode (leave empty to auto-derive)
+   */
+  darkColors?: {
+    /**
+     * Primary color in dark mode
+     */
+    primary?: string | null;
+    /**
+     * Text on primary in dark mode
+     */
+    primaryForeground?: string | null;
+    /**
+     * Secondary color in dark mode
+     */
+    secondary?: string | null;
+    /**
+     * Text on secondary in dark mode
+     */
+    secondaryForeground?: string | null;
+    /**
+     * Background in dark mode
+     */
+    background?: string | null;
+    /**
+     * Text color in dark mode
+     */
+    foreground?: string | null;
+    /**
+     * Card background in dark mode
+     */
+    card?: string | null;
+    /**
+     * Card text in dark mode
+     */
+    cardForeground?: string | null;
+    /**
+     * Muted background in dark mode
+     */
+    muted?: string | null;
+    /**
+     * Muted text in dark mode
+     */
+    mutedForeground?: string | null;
+    /**
+     * Accent color in dark mode
+     */
+    accent?: string | null;
+    /**
+     * Text on accent in dark mode
+     */
+    accentForeground?: string | null;
+    /**
+     * Destructive color in dark mode
+     */
+    destructive?: string | null;
+    /**
+     * Border color in dark mode
+     */
+    border?: string | null;
+    /**
+     * Focus ring in dark mode
+     */
+    ring?: string | null;
+  };
+  typography?: {
+    /**
+     * Font pairing for headings and body text
+     */
+    fontPairing?: ('editorial' | 'modern' | 'monospace') | null;
+  };
+  style?: {
+    /**
+     * Corner rounding for UI elements
+     */
+    borderRadius?: ('sharp' | 'rounded' | 'pill') | null;
+    /**
+     * Spacing density for UI elements
+     */
+    density?: ('compact' | 'default' | 'comfortable') | null;
+  };
+  /**
+   * User who created this theme
+   */
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Layout templates controlling page structure (header, footer, width)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "layout-templates".
+ */
+export interface LayoutTemplate {
+  id: number;
+  /**
+   * Template name (e.g., 'Landing Page', 'Documentation')
+   */
+  name: string;
+  /**
+   * Brief description of when to use this template
+   */
+  description?: string | null;
+  /**
+   * Header style
+   */
+  headerVariant?: ('marketing' | 'app' | 'minimal' | 'none') | null;
+  /**
+   * Keep header visible when scrolling
+   */
+  stickyHeader?: boolean | null;
+  /**
+   * Footer style
+   */
+  footerVariant?: ('full' | 'compact' | 'none') | null;
+  /**
+   * Maximum content width
+   */
+  contentMaxWidth?: ('sm' | 'md' | 'lg' | 'xl' | 'full') | null;
+  /**
+   * User who created this template
    */
   createdBy?: (number | null) | User;
   updatedAt: string;
@@ -2838,6 +3523,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'sites';
         value: number | Site;
+      } | null)
+    | ({
+        relationTo: 'themes';
+        value: number | Theme;
+      } | null)
+    | ({
+        relationTo: 'layout-templates';
+        value: number | LayoutTemplate;
       } | null)
     | ({
         relationTo: 'views';
@@ -3625,6 +4318,18 @@ export interface PagesSelect<T extends boolean = true> {
                     variant?: T;
                     id?: T;
                   };
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
+                  };
               id?: T;
               blockName?: T;
             };
@@ -3643,6 +4348,18 @@ export interface PagesSelect<T extends boolean = true> {
                     accent?: T;
                     id?: T;
                   };
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
+                  };
               id?: T;
               blockName?: T;
             };
@@ -3656,6 +4373,18 @@ export interface PagesSelect<T extends boolean = true> {
                     label?: T;
                     icon?: T;
                     id?: T;
+                  };
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
                   };
               id?: T;
               blockName?: T;
@@ -3674,6 +4403,18 @@ export interface PagesSelect<T extends boolean = true> {
                     link?: T;
                     id?: T;
                   };
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
+                  };
               id?: T;
               blockName?: T;
             };
@@ -3689,6 +4430,18 @@ export interface PagesSelect<T extends boolean = true> {
                     title?: T;
                     description?: T;
                     id?: T;
+                  };
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
                   };
               id?: T;
               blockName?: T;
@@ -3707,6 +4460,18 @@ export interface PagesSelect<T extends boolean = true> {
                     avatar?: T;
                     id?: T;
                   };
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
+                  };
               id?: T;
               blockName?: T;
             };
@@ -3714,6 +4479,18 @@ export interface PagesSelect<T extends boolean = true> {
           | T
           | {
               content?: T;
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
+                  };
               id?: T;
               blockName?: T;
             };
@@ -3724,6 +4501,18 @@ export interface PagesSelect<T extends boolean = true> {
               description?: T;
               buttonText?: T;
               buttonLink?: T;
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
+                  };
               id?: T;
               blockName?: T;
             };
@@ -3733,6 +4522,18 @@ export interface PagesSelect<T extends boolean = true> {
               headline?: T;
               placeholder?: T;
               buttonText?: T;
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
+                  };
               id?: T;
               blockName?: T;
             };
@@ -3745,10 +4546,23 @@ export interface PagesSelect<T extends boolean = true> {
               buttonText?: T;
               variant?: T;
               size?: T;
+              blockStyle?:
+                | T
+                | {
+                    paddingTop?: T;
+                    paddingBottom?: T;
+                    maxWidth?: T;
+                    separator?: T;
+                    backgroundColor?: T;
+                    anchorId?: T;
+                    hideOnMobile?: T;
+                    hideOnDesktop?: T;
+                  };
               id?: T;
               blockName?: T;
             };
       };
+  layoutOverride?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -3775,12 +4589,123 @@ export interface SitesSelect<T extends boolean = true> {
           | T
           | {
               primary?: T;
+              primaryForeground?: T;
               secondary?: T;
+              secondaryForeground?: T;
               background?: T;
+              foreground?: T;
+              card?: T;
+              cardForeground?: T;
+              muted?: T;
+              mutedForeground?: T;
+              accent?: T;
+              accentForeground?: T;
+              destructive?: T;
+              border?: T;
+              ring?: T;
             };
-        headerHtml?: T;
+        typography?:
+          | T
+          | {
+              fontPairing?: T;
+            };
+        style?:
+          | T
+          | {
+              borderRadius?: T;
+              density?: T;
+            };
+        theme?: T;
       };
+  customCode?:
+    | T
+    | {
+        headHtml?: T;
+        customCSS?: T;
+        bodyStartHtml?: T;
+        bodyEndHtml?: T;
+      };
+  defaultLayout?: T;
   isPublic?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "themes_select".
+ */
+export interface ThemesSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  colors?:
+    | T
+    | {
+        primary?: T;
+        primaryForeground?: T;
+        secondary?: T;
+        secondaryForeground?: T;
+        background?: T;
+        foreground?: T;
+        card?: T;
+        cardForeground?: T;
+        muted?: T;
+        mutedForeground?: T;
+        accent?: T;
+        accentForeground?: T;
+        destructive?: T;
+        border?: T;
+        ring?: T;
+      };
+  darkColors?:
+    | T
+    | {
+        primary?: T;
+        primaryForeground?: T;
+        secondary?: T;
+        secondaryForeground?: T;
+        background?: T;
+        foreground?: T;
+        card?: T;
+        cardForeground?: T;
+        muted?: T;
+        mutedForeground?: T;
+        accent?: T;
+        accentForeground?: T;
+        destructive?: T;
+        border?: T;
+        ring?: T;
+      };
+  typography?:
+    | T
+    | {
+        fontPairing?: T;
+      };
+  style?:
+    | T
+    | {
+        borderRadius?: T;
+        density?: T;
+      };
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "layout-templates_select".
+ */
+export interface LayoutTemplatesSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  headerVariant?: T;
+  stickyHeader?: T;
+  footerVariant?: T;
+  contentMaxWidth?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;

@@ -54,8 +54,7 @@ import * as migration_20251201_204515 from './20251201_204515';
 import * as migration_20260309_120000_nested_field_filters_sql_functions from './20260309_120000_nested_field_filters_sql_functions';
 import * as migration_20260310_020000_generic_audit_log from './20260310_020000_generic_audit_log';
 import * as migration_20260310_111831 from './20260310_111831';
-import * as migration_20260311_000000_add_sites_refactor_views from './20260311_000000_add_sites_refactor_views';
-import * as migration_20260311_000001_add_site_to_pages from './20260311_000001_add_site_to_pages';
+import * as migration_20260316_103139 from './20260316_103139';
 
 export const migrations = [
   {
@@ -339,13 +338,8 @@ export const migrations = [
     name: '20260310_111831',
   },
   {
-    up: migration_20260311_000000_add_sites_refactor_views.up,
-    down: migration_20260311_000000_add_sites_refactor_views.down,
-    name: '20260311_000000_add_sites_refactor_views',
-  },
-  {
-    up: migration_20260311_000001_add_site_to_pages.up,
-    down: migration_20260311_000001_add_site_to_pages.down,
-    name: '20260311_000001_add_site_to_pages',
+    up: migration_20260316_103139.up,
+    down: migration_20260316_103139.down,
+    name: '20260316_103139'
   },
 ];

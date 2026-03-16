@@ -1,0 +1,228 @@
+---
+title: Content Localization
+description: How TimeTiles localizes CMS content using Payload CMS field-level localization and next-intl
+---
+
+# Content Localization
+
+TimeTiles uses two complementary systems for internationalization:
+
+- **next-intl** — translates UI strings (buttons, labels, navigation chrome)
+- **Payload CMS localization** — translates CMS-managed content (pages, menus, footer, branding)
+
+This page covers the Payload CMS content localization system. For import language detection (CSV column header matching), see [Language Support](/developer-guide/architecture/language-support).
+
+## Supported Locales
+
+| Code | Language | URL Pattern   | Notes                         |
+| ---- | -------- | ------------- | ----------------------------- |
+| `en` | English  | `/explore`    | Default locale, no URL prefix |
+| `de` | German   | `/de/explore` | Prefixed with `/de/`          |
+
+Configured in `i18n/config.ts` and `payload-config-factory.ts`.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    Browser Request                    │
+│              /de/about  or  /about                   │
+└──────────────────────┬──────────────────────────────┘
+                       │
+              ┌────────▼────────┐
+              │   middleware.ts  │  Detects locale from URL/cookie/header
+              │   (next-intl)   │  Sets locale for the request
+              └────────┬────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+   ┌────▼────┐   ┌─────▼─────┐  ┌────▼────┐
+   │ UI      │   │ CMS       │  │ API     │
+   │ Strings │   │ Content   │  │ Routes  │
+   │         │   │           │  │         │
+   │messages/│   │ Payload   │  │ No      │
+   │en.json  │   │ findGlobal│  │ locale  │
+   │de.json  │   │ ({locale})│  │         │
+   └─────────┘   └───────────┘  └─────────┘
+```
+
+## What Gets Localized
+
+### CMS Content (Payload localization)
+
+These are admin-managed content stored in the database with per-locale values:
+
+| Collection/Global | Localized Fields                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| **Pages**         | `title`, all block text fields (hero titles, descriptions, button text, etc.)                    |
+| **MainMenu**      | `navItems[].label`                                                                               |
+| **Footer**        | `tagline`, `columns[].title`, `columns[].links[].label`, newsletter text, `copyright`, `credits` |
+| **Branding**      | `siteName`, `siteDescription`                                                                    |
+
+### NOT Localized
+
+| Content             | Reason                                                                         |
+| ------------------- | ------------------------------------------------------------------------------ |
+| Catalogs            | User-generated content — users create in their own language                    |
+| Datasets            | Has a `language` field (ISO 639-3) describing the data language, not UI locale |
+| Events              | User data                                                                      |
+| Slugs, URLs         | Must be stable across locales                                                  |
+| Select options, IDs | Structural, not user-facing                                                    |
+
+## How Payload Localization Works
+
+### Field-Level Storage
+
+When a field has `localized: true`, Payload stores values in a separate `_locales` table instead of the main table:
+
+```sql
+-- Before localization: value in main table
+SELECT title FROM pages WHERE id = 1;
+-- "Home"
+
+-- After localization: values in locale table
+SELECT title FROM pages_locales WHERE _parent_id = 1 AND _locale = 'en';
+-- "Home"
+SELECT title FROM pages_locales WHERE _parent_id = 1 AND _locale = 'de';
+-- "Startseite"
+```
+
+### Fallback Behavior
+
+The Payload config uses `fallback: true`:
+
+```typescript
+localization: {
+  locales: [
+    { label: "English", code: "en" },
+    { label: "Deutsch", code: "de" },
+  ],
+  defaultLocale: "en",
+  fallback: true,
+}
+```
+
+If a German translation is missing for a field, Payload returns the English value. This means content works immediately — you can translate gradually without broken pages.
+
+### Querying with Locale
+
+Frontend server components pass the current locale to Payload queries:
+
+```typescript
+import { getLocale } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
+
+const locale = (await getLocale()) as Locale;
+
+// Globals
+const footer = await payload.findGlobal({ slug: "footer", locale });
+
+// Collections
+const pages = await payload.find({ collection: "pages", where: { slug: { equals: "home" } }, locale });
+```
+
+The `locale` parameter tells Payload which translation to return. Without it, the default locale (English) is used.
+
+### Admin Dashboard
+
+In the Payload dashboard at `/dashboard`, localized fields show locale tabs (EN / DE). Editors can switch between locales to enter translations for each field.
+
+## Adding a Localized Field
+
+### Step 1: Mark the Field
+
+Add `localized: true` to any text, textarea, or richText field in a collection or global:
+
+```typescript
+// In a collection config
+fields: [
+  { name: "title", type: "text", required: true, localized: true },
+  { name: "slug", type: "text" }, // NOT localized — stable identifier
+];
+```
+
+### Step 2: Create Migration
+
+```bash
+cd apps/web && pnpm payload:migrate:create
+```
+
+This generates a migration that creates locale tables and moves existing data.
+
+### Step 3: Pass Locale in Queries
+
+Ensure all frontend queries for this collection pass the `locale` parameter (see [Querying with Locale](#querying-with-locale)).
+
+### Step 4: Update Seeds (if applicable)
+
+Add translations to seed files for the new localized fields. See [Seed Data](#seed-data) below.
+
+## Seed Data
+
+Seed scripts provide content in both English and German:
+
+### Globals (MainMenu, Footer)
+
+The seeding operation calls `updateGlobal` twice — once for English (default), once for German:
+
+```typescript
+// English (default locale)
+await payload.updateGlobal({ slug: "main-menu", data: mainMenuSeed });
+
+// German
+await payload.updateGlobal({ slug: "main-menu", data: mainMenuSeedDe, locale: "de" });
+```
+
+### Pages
+
+Pages are created in English first, then updated with German translations:
+
+```typescript
+const doc = await payload.create({ collection: "pages", data: englishData });
+await payload.update({ collection: "pages", id: doc.id, data: germanData, locale: "de" });
+```
+
+German seed data is defined in `pagesSeedDe` (keyed by slug) in `lib/seed/seeds/pages.ts`.
+
+## Adding a New Locale
+
+To add a third locale (e.g., French):
+
+1. **i18n config** — add `"fr"` to `SUPPORTED_LOCALES` in `i18n/config.ts`
+2. **Payload config** — add `{ label: "Français", code: "fr" }` to `localization.locales` in `payload-config-factory.ts`
+3. **next-intl messages** — create `messages/fr.json` with UI string translations
+4. **Migration** — run `pnpm payload:migrate:create` to update the `_locales` enum
+5. **Seed data** — add French translations to seed files (optional — fallback covers missing translations)
+6. **Middleware** — no changes needed; next-intl auto-detects from the routing config
+
+## Key Files
+
+| File                                   | Purpose                                                 |
+| -------------------------------------- | ------------------------------------------------------- |
+| `i18n/config.ts`                       | Locale definitions (`SUPPORTED_LOCALES`, `Locale` type) |
+| `i18n/routing.ts`                      | URL routing strategy (`localePrefix: "as-needed"`)      |
+| `i18n/request.ts`                      | Per-request message loading                             |
+| `i18n/navigation.ts`                   | Locale-aware `Link`, `useRouter`, etc.                  |
+| `middleware.ts`                        | Locale detection and routing                            |
+| `messages/en.json`                     | English UI strings                                      |
+| `messages/de.json`                     | German UI strings                                       |
+| `lib/config/payload-config-factory.ts` | Payload localization config                             |
+| `lib/globals/main-menu.ts`             | MainMenu with localized `label`                         |
+| `lib/globals/footer.ts`                | Footer with 8 localized fields                          |
+| `lib/globals/branding.ts`              | Branding with localized `siteName`, `siteDescription`   |
+| `lib/blocks/*.ts`                      | Block definitions with localized text fields            |
+| `lib/seed/seeds/pages.ts`              | English + German page content                           |
+| `lib/seed/seeds/footer.ts`             | English + German footer content                         |
+| `lib/seed/seeds/main-menu.ts`          | English + German nav labels                             |
+
+## Localization vs Language Support
+
+These are two separate systems:
+
+| Aspect      | Content Localization (this page)      | Language Support                 |
+| ----------- | ------------------------------------- | -------------------------------- |
+| **Purpose** | Translate UI and CMS content          | Detect CSV column headers        |
+| **Codes**   | ISO 639-1 (`en`, `de`)                | ISO 639-3 (`eng`, `deu`)         |
+| **Scope**   | Pages, menus, footer, branding        | Import field mapping             |
+| **How**     | Payload `localized: true` + next-intl | franc detection + regex patterns |
+| **Affects** | What visitors see                     | How imports are processed        |

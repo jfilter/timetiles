@@ -12,6 +12,304 @@ import type { Page } from "@/payload-types";
 
 export type PageSeed = Omit<Page, "id" | "createdAt" | "updatedAt">;
 
+/** German translations for pages, keyed by slug */
+export const pagesSeedDe: Record<string, Partial<PageSeed>> = {
+  home: {
+    title: "Startseite",
+    pageBuilder: [
+      {
+        blockType: "hero",
+        title: "Erkunden Sie Ihre Geodaten mit TimeTiles",
+        subtitle:
+          "Eine Open-Source-Plattform zur Visualisierung, Analyse und Interaktion mit räumlichen und zeitlichen Daten",
+        description:
+          "TimeTiles ermöglicht es Ihnen, Geodaten zu kartieren, zu filtern und Muster zu entdecken – so werden Rohdaten zu aussagekräftigen Erkenntnissen.",
+        background: "grid",
+        buttons: [
+          { text: "Loslegen", link: "/explore", variant: "default" },
+          { text: "Mehr erfahren", link: "/about", variant: "outline" },
+        ],
+      },
+      {
+        blockType: "features",
+        sectionTitle: "Leistungsstarke Funktionen",
+        sectionDescription: "Alles, was Sie für die Arbeit mit Geodaten brauchen",
+        columns: "3",
+        features: [
+          {
+            icon: "map",
+            title: "Interaktive Karten",
+            description:
+              "Laden Sie Ihre Geodaten hoch und sehen Sie sie sofort auf interaktiven Karten. Schwenken, zoomen und erkunden Sie Ihre Daten in Raum und Zeit.",
+            accent: "primary",
+          },
+          {
+            icon: "timeline",
+            title: "Zeitliche Analyse",
+            description:
+              "Animieren Sie Ihre Daten über die Zeit, filtern Sie nach Zeiträumen und entdecken Sie Trends und Bewegungen in Ihren räumlichen Datensätzen.",
+            accent: "secondary",
+          },
+          {
+            icon: "insights",
+            title: "Aussagekräftige Einblicke",
+            description:
+              "Nutzen Sie integrierte Analysen zum Clustern, Zusammenfassen und Extrahieren von Bedeutung aus Ihren Geodaten. Teilen Sie Ihre Ergebnisse mit interaktiven Dashboards.",
+            accent: "accent",
+          },
+        ],
+      },
+      {
+        blockType: "stats",
+        stats: [
+          { value: "10.000+", label: "Kartierte Ereignisse", icon: "map" },
+          { value: "500+", label: "Importierte Datensätze", icon: "timeline" },
+          { value: "100%", label: "Open Source", icon: "github" },
+        ],
+      },
+      {
+        blockType: "newsletterCTA",
+        headline: "Keine Entdeckung verpassen",
+        description:
+          "Treten Sie unserer Community bei. Erhalten Sie kuratierte Highlights, räumliche Einblicke und neue Datensatzveröffentlichungen direkt in Ihren Posteingang.",
+        placeholder: "deine@email.adresse",
+        buttonText: "Updates abonnieren",
+        variant: "default",
+        size: "default",
+      },
+      {
+        blockType: "cta",
+        headline: "Bereit, Ihre Daten zu erkunden?",
+        description: "Beginnen Sie noch heute mit der Visualisierung und Analyse Ihrer Geodaten",
+        buttonText: "Jetzt erkunden",
+        buttonLink: "/explore",
+      },
+    ],
+  },
+  about: {
+    title: "Über uns",
+    pageBuilder: [
+      {
+        blockType: "hero",
+        title: "Über TimeTiles",
+        subtitle: "Eine Open-Source-Plattform für raumbezogenes Ereignismanagement",
+        background: "grid",
+      },
+      {
+        blockType: "richText",
+        content: {
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "TimeTiles ist ein Open-Source-Projekt, das ein reales Problem löst: die Verwaltung und Visualisierung von Ereignissen mit Orts- und Zeitkomponenten. Ob Sie Veranstaltungen verfolgen, historische Daten analysieren oder eine Zeitleiste georeferenzierter Aktivitäten erstellen – TimeTiles bietet die Werkzeuge, die Sie brauchen.",
+                  },
+                ],
+              },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Als Einzelentwickler-Projekt setzt TimeTiles auf praktische Funktionen statt Enterprise-Komplexität. Die Plattform kombiniert moderne Webtechnologien (Next.js, Payload CMS, PostGIS) mit Fokus auf Entwicklererfahrung und Erweiterbarkeit.",
+                  },
+                ],
+              },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Das Projekt ist vollständig quelloffen und begrüßt Beiträge. Ob Fehlerbehebungen, neue Funktionen, Dokumentationsverbesserungen oder Vorschläge – Ihre Mitarbeit hilft, TimeTiles für alle besser zu machen.",
+                  },
+                ],
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
+      },
+      {
+        blockType: "features",
+        sectionTitle: "Kernfunktionen",
+        columns: "3",
+        features: [
+          {
+            icon: "map",
+            title: "Flexibler Import",
+            description:
+              "Importieren Sie Ereignisse aus CSV/Excel-Dateien oder richten Sie automatische Imports von URLs ein. Intelligente Schemaerkennung und Geokodierung machen die Datenaufnahme nahtlos.",
+            accent: "primary",
+          },
+          {
+            icon: "timeline",
+            title: "Räumlich & Zeitlich",
+            description:
+              "Interaktive Karten mit Clustering, Zeitachsen-Visualisierung mit Histogrammen und leistungsstarke Filter zum Erkunden von Ereignissen in Raum und Zeit.",
+            accent: "secondary",
+          },
+          {
+            icon: "insights",
+            title: "Moderner Technologie-Stack",
+            description:
+              "Erstellt mit Next.js 16, Payload CMS 3, PostGIS und MapLibre GL JS. Selbst-hostbar mit Docker, vollständig typisiert mit TypeScript.",
+            accent: "accent",
+          },
+        ],
+      },
+      {
+        blockType: "timeline",
+        sectionTitle: "Projektgeschichte",
+        items: [
+          {
+            date: "2024",
+            title: "Erste Entwicklung",
+            description:
+              "Begonnen als Lösung zur Verwaltung standortbasierter Ereignisse. Aufbau des Import-Systems, der Geokodierung und der Kartenvisualisierung.",
+          },
+          {
+            date: "2024",
+            title: "PostGIS-Integration",
+            description:
+              "Einführung von PostGIS für effiziente räumliche Abfragen, serverseitiges Clustering und Geodatenanalyse.",
+          },
+          {
+            date: "2024",
+            title: "Zeitliche Funktionen",
+            description:
+              "Implementierung der Zeitachsen-Visualisierung, Histogramm-Aggregation und zeitlicher Filterung zur Erkundung von Ereignissen über die Zeit.",
+          },
+          {
+            date: "2025",
+            title: "Open-Source-Veröffentlichung",
+            description:
+              "Veröffentlicht unter Open-Source-Lizenz. Community-Beiträge zu Funktionen, Dokumentation und Tests willkommen.",
+          },
+        ],
+      },
+      {
+        blockType: "testimonials",
+        sectionTitle: "Was es besonders macht",
+        variant: "grid",
+        items: [
+          {
+            quote:
+              "Eine praktische Plattform zur Verwaltung von Ereignissen mit raumbezogenen und zeitlichen Komponenten, ohne Enterprise-Komplexität.",
+            author: "Designphilosophie",
+            role: "Kernprinzip",
+          },
+          {
+            quote:
+              "Erstellt mit modernen Technologien und Best Practices. Vollständig typisiert, gut getestet und für Self-Hosting konzipiert.",
+            author: "Technische Grundlage",
+            role: "Architektur",
+          },
+          {
+            quote:
+              "Open Source und community-getrieben. Beiträge, Feedback und Ideen von Entwicklern und Nutzern gleichermaßen willkommen.",
+            author: "Offene Entwicklung",
+            role: "Gemeinschaft",
+          },
+        ],
+      },
+      {
+        blockType: "cta",
+        headline: "Möchten Sie mitwirken oder mehr erfahren?",
+        description: "Besuchen Sie das GitHub-Repository für Code, Dokumentation und Beitragsrichtlinien",
+        buttonText: "Auf GitHub ansehen",
+        buttonLink: "https://github.com/jfilter/timetiles",
+      },
+    ],
+  },
+  contact: {
+    title: "Kontakt",
+    pageBuilder: [
+      {
+        blockType: "hero",
+        title: "Kontaktieren Sie uns",
+        subtitle: "Fragen, Ideen oder Beiträge sind willkommen",
+        background: "grid",
+      },
+      {
+        blockType: "detailsGrid",
+        variant: "grid-3",
+        items: [
+          {
+            icon: "github",
+            label: "GitHub Issues",
+            value: "Ideal für Fehlerberichte, Feature-Anfragen und technische Fragen",
+            link: "https://github.com/jfilter/timetiles/issues",
+          },
+          {
+            icon: "github",
+            label: "GitHub-Diskussionen",
+            value: "Community-Chat, Ideen und allgemeine Fragen",
+            link: "https://github.com/jfilter/timetiles/discussions",
+          },
+          { icon: "email", label: "E-Mail", value: "hello@timetiles.io", link: "mailto:hello@timetiles.io" },
+        ],
+      },
+      {
+        blockType: "richText",
+        content: {
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "TimeTiles ist ein Open-Source-Projekt, das von einem einzelnen Entwickler betreut wird. Für die schnellste Antwort und um anderen mit ähnlichen Fragen zu helfen, nutzen Sie bitte GitHub Issues oder Discussions.",
+                  },
+                ],
+              },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Einen Fehler gefunden? Eine Idee für ein Feature? Möchten Sie Code oder Dokumentation beitragen? Das GitHub-Repository ist der Ort für die Zusammenarbeit. Alle Beiträge sind willkommen – ob Code, Dokumentation, Tests oder Design.",
+                  },
+                ],
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
+      },
+      {
+        blockType: "newsletterForm",
+        headline: "Bleiben Sie informiert",
+        placeholder: "deine@email.adresse",
+        buttonText: "Abonnieren",
+      },
+      {
+        blockType: "cta",
+        headline: "Bereit einzusteigen?",
+        description: "Markieren Sie das Repository mit einem Stern, forken Sie es oder eröffnen Sie Ihr erstes Issue",
+        buttonText: "Auf GitHub ansehen",
+        buttonLink: "https://github.com/jfilter/timetiles",
+      },
+    ],
+  },
+};
+
 export const pagesSeed: PageSeed[] = [
   {
     title: "Home",
