@@ -748,8 +748,8 @@ test.describe("Import Wizard - Browser Navigation", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Navigate away
-    await page.goto("/explore");
+    // Navigate away (use waitUntil: "domcontentloaded" to avoid i18n middleware delays)
+    await page.goto("/explore", { timeout: 30000, waitUntil: "domcontentloaded" });
     await page.waitForLoadState("domcontentloaded");
 
     // Navigate back

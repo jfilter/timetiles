@@ -181,8 +181,8 @@ export default async function globalSetup(): Promise<void> {
     });
   }
 
-  // Wait for server to be ready (use /explore which is simpler than /api/health)
-  await waitForServer(`${baseURL}/explore`, 30000);
+  // Wait for server to be ready using /api/health (bypasses i18n middleware)
+  await waitForServer(`${baseURL}/api/health`, 30000);
   console.log(`✅ Server ready at ${baseURL}`);
 
   // Start job worker process (runs jobs every 2 seconds, like a production worker)

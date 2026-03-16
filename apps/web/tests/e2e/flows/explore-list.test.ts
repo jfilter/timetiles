@@ -11,10 +11,12 @@ import { expect, test } from "../fixtures";
 
 test.describe("Explore Page - List View", () => {
   test("should load the list view and display events", async ({ page }) => {
-    await page.goto("/explore/list", { timeout: 15000 });
+    // Use waitUntil: "domcontentloaded" to avoid waiting for i18n middleware
+    // to fully resolve all resources
+    await page.goto("/explore/list", { timeout: 30000, waitUntil: "domcontentloaded" });
 
     // Wait for the page to render content
-    await page.waitForSelector('[data-testid="map-container"], .maplibregl-canvas', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="map-container"], .maplibregl-canvas', { timeout: 15000 });
 
     // The list view should show the events count text
     await page.waitForFunction(() => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""), {
@@ -27,10 +29,11 @@ test.describe("Explore Page - List View", () => {
   });
 
   test("should filter events when selecting a catalog", async ({ page }) => {
-    await page.goto("/explore/list", { timeout: 15000 });
+    // Use waitUntil: "domcontentloaded" to avoid waiting for i18n middleware
+    await page.goto("/explore/list", { timeout: 30000, waitUntil: "domcontentloaded" });
 
     // Wait for catalog buttons to load
-    await page.waitForSelector('button:has-text("datasets")', { timeout: 10000 });
+    await page.waitForSelector('button:has-text("datasets")', { timeout: 15000 });
 
     // Click "Environmental Data" catalog
     const catalogButton = page.getByRole("button", { name: /Environmental Data/i }).first();

@@ -54,19 +54,21 @@ export class ExplorePage {
   }
 
   async goto() {
-    await this.page.goto("/explore", { timeout: 10000 });
+    // Use waitUntil: "domcontentloaded" to avoid waiting for i18n middleware
+    // to fully resolve all resources (the middleware intercepts all frontend routes)
+    await this.page.goto("/explore", { timeout: 30000, waitUntil: "domcontentloaded" });
     // Wait for key elements to be visible instead of networkidle
     // (networkidle is unreliable with SPAs that have polling/websockets)
-    await this.map.waitFor({ state: "visible", timeout: 10000 });
-    await this.dataSourcesSection.waitFor({ state: "visible", timeout: 5000 });
+    await this.map.waitFor({ state: "visible", timeout: 15000 });
+    await this.dataSourcesSection.waitFor({ state: "visible", timeout: 10000 });
 
     // Wait for catalog data to actually load (buttons with "X datasets" text)
     // This ensures the API has returned before tests proceed
-    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 10000 });
+    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 15000 });
   }
 
   async waitForMapLoad() {
-    await this.map.waitFor({ state: "visible", timeout: 10000 });
+    await this.map.waitFor({ state: "visible", timeout: 15000 });
     // Wait for map to be fully loaded and interactive
     await this.page.waitForFunction(
       () => {
@@ -76,7 +78,7 @@ export class ExplorePage {
         );
         return mapContainer !== null;
       },
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
   }
 

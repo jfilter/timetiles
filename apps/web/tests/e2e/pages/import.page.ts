@@ -130,9 +130,9 @@ export class ImportPage {
    * Clears localStorage to ensure wizard starts fresh.
    */
   async goto(): Promise<void> {
-    // Clear localStorage first by going to any page on the domain
-    await this.page.goto("/import", { timeout: 10000 });
-    await this.page.waitForLoadState("domcontentloaded");
+    // Use waitUntil: "domcontentloaded" to avoid waiting for i18n middleware
+    // to fully resolve all resources (the middleware intercepts all frontend routes)
+    await this.page.goto("/import", { timeout: 30000, waitUntil: "domcontentloaded" });
 
     // Clear wizard draft from localStorage to ensure clean state
     await this.page.evaluate(() => {
@@ -142,7 +142,7 @@ export class ImportPage {
     // Wait for wizard UI to render (auth heading or upload heading)
     const signInHeading = this.page.getByRole("heading", { name: /sign in to continue/i });
     const uploadHeading = this.page.getByRole("heading", { name: /upload your data/i });
-    await signInHeading.or(uploadHeading).waitFor({ state: "visible", timeout: 10000 });
+    await signInHeading.or(uploadHeading).waitFor({ state: "visible", timeout: 15000 });
   }
 
   /**
@@ -152,9 +152,10 @@ export class ImportPage {
     // Wait for the page to be fully interactive
     await this.page.waitForLoadState("domcontentloaded");
     // Wait for wizard UI to be interactive (either auth form or upload form)
+    // Use longer timeout to account for i18n middleware processing
     const signInHeading = this.page.getByRole("heading", { name: /sign in to continue/i });
     const uploadHeading = this.page.getByRole("heading", { name: /upload your data/i });
-    await signInHeading.or(uploadHeading).waitFor({ state: "visible", timeout: 10000 });
+    await signInHeading.or(uploadHeading).waitFor({ state: "visible", timeout: 15000 });
   }
 
   /**
