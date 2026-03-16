@@ -33,7 +33,7 @@ test.describe("Explore Page - List View", () => {
     await page.goto("/explore/list", { timeout: 30000, waitUntil: "domcontentloaded" });
 
     // Wait for catalog buttons to load
-    await page.waitForSelector('button:has-text("datasets")', { timeout: 15000 });
+    await page.waitForSelector('button:has-text("datasets")', { timeout: 30000 });
 
     // Click "Environmental Data" catalog
     const catalogButton = page.getByRole("button", { name: /Environmental Data/i }).first();

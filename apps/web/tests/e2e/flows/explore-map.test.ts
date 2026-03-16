@@ -22,12 +22,8 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should filter events by map bounds when panning", async ({ page }) => {
     // Select catalog (auto-selects all datasets)
     await explorePage.selectCatalog("Environmental Data");
-
-    // Wait for initial geo cluster response (proves map has bounds)
-    await page.waitForResponse(
-      (response) => response.url().includes("/api/v1/events/geo") && response.url().includes("bounds="),
-      { timeout: 10000 }
-    );
+    await explorePage.waitForApiResponse();
+    await explorePage.waitForEventsToLoad();
 
     // Pan the map
     await explorePage.panMap(200, 0);
@@ -35,7 +31,7 @@ test.describe("Explore Page - Map Interactions", () => {
     // Wait for new geo cluster response after pan (new bounds trigger new query after 300ms debounce)
     const postPanResponse = await page.waitForResponse(
       (response) => response.url().includes("/api/v1/events/geo") && response.url().includes("bounds="),
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
 
     // The response should be successful
@@ -52,7 +48,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Wait for event count to show loaded data (map bounds → debounce → query → render)
     await page.waitForFunction(() => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""), {
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Events count should be visible

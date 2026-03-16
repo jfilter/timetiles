@@ -79,8 +79,8 @@ describe.sequential("Webhook Trigger API Integration", () => {
     testScheduledImport = scheduledImport;
 
     // Clear rate limits for clean test state
-    rateLimitService.resetRateLimit(`webhook:${testScheduledImport.webhookToken}:burst`);
-    rateLimitService.resetRateLimit(`webhook:${testScheduledImport.webhookToken}:hourly`);
+    rateLimitService.resetRateLimit(`webhook:scheduled-import:${testScheduledImport.id}:burst`);
+    rateLimitService.resetRateLimit(`webhook:scheduled-import:${testScheduledImport.id}:hourly`);
   });
 
   describe("Successful Webhook Trigger", () => {
@@ -271,7 +271,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // Simulate 5 requests with proper spacing
       for (let i = 0; i < 5; i++) {
         // Clear burst window for each request
-        rateLimitService.resetRateLimit(`webhook:${testScheduledImport.webhookToken}:burst`);
+        rateLimitService.resetRateLimit(`webhook:scheduled-import:${testScheduledImport.id}:burst`);
 
         const response = await callWebhook(testScheduledImport.webhookToken!);
         expect(response.status).toBe(200);
@@ -285,7 +285,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       }
 
       // Clear burst window for 6th request
-      rateLimitService.resetRateLimit(`webhook:${testScheduledImport.webhookToken}:burst`);
+      rateLimitService.resetRateLimit(`webhook:scheduled-import:${testScheduledImport.id}:burst`);
 
       // 6th request hits hourly limit
       const response6 = await callWebhook(testScheduledImport.webhookToken!);

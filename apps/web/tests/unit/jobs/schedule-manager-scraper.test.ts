@@ -14,6 +14,7 @@ import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 // Mock dependencies
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  createLogger: vi.fn(() => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() })),
   logError: vi.fn(),
 }));
 

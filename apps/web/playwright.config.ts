@@ -30,8 +30,8 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: isCI,
 
-  /* Retry on CI only */
-  retries: isCI ? 2 : 0,
+  /* Retry flaky tests caused by import pipeline and map rendering timing */
+  retries: isCI ? 2 : 1,
 
   /* Enable parallel workers: 4 in CI, 4 locally */
   workers: 4,

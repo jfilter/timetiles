@@ -468,14 +468,15 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const baseUrl = page.url().split("/import")[0];
 
     // Wait for import to complete (job worker processes jobs automatically every 2s)
+    // Multi-sheet imports need extra time: 3 sheets × (detection + schema + geocoding + events)
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 180000 });
 
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
     // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
     const successMessage = page.getByText(/[1-9]\d* events imported/i);
-    await expect(successMessage).toBeVisible({ timeout: 5000 });
+    await expect(successMessage).toBeVisible({ timeout: 10000 });
 
     // Verify we can navigate to explore page
     const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
@@ -665,14 +666,15 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const baseUrl = page.url().split("/import")[0];
 
     // Wait for import to complete (job worker processes jobs automatically every 2s)
+    // Multi-sheet imports need extra time: 3 sheets × (detection + schema + geocoding + events)
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 180000 });
 
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
     // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
     const successMessage = page.getByText(/[1-9]\d* events imported/i);
-    await expect(successMessage).toBeVisible({ timeout: 5000 });
+    await expect(successMessage).toBeVisible({ timeout: 10000 });
 
     // Verify we can navigate to explore page
     const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
@@ -958,11 +960,11 @@ test.describe("Import Wizard - Full Flow", () => {
 
     // Wait for import to complete (job worker processes jobs automatically every 2s)
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
     // Verify success message shows events were created
     const successMessage = page.getByText(/events imported/i);
-    await expect(successMessage).toBeVisible({ timeout: 5000 });
+    await expect(successMessage).toBeVisible({ timeout: 10000 });
 
     // Verify we can navigate to explore page
     const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });

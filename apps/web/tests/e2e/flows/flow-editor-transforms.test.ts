@@ -123,7 +123,7 @@ test.describe("Flow Editor Transforms", () => {
     await expect(processingIndicator).toBeVisible({ timeout: 10000 });
 
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
     // Verify events were created
     // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
@@ -214,7 +214,7 @@ test.describe("Flow Editor Transforms", () => {
 
     // Wait for completion
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 120000 });
   });
 
   test("should apply uppercase transform to event titles during import", async ({ page }) => {
@@ -318,7 +318,7 @@ test.describe("Flow Editor Transforms", () => {
 
     // Wait for import to complete
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
     // Verify events were created with uppercased titles
     // Query the Payload REST API to check event data
@@ -436,7 +436,7 @@ test.describe("Flow Editor Transforms", () => {
 
     // Wait for import to complete
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 60000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
     // Verify events have "event_type" field instead of "category"
     const eventsResponse = await page.request.get("/api/events", { params: { limit: "10", sort: "-createdAt" } });

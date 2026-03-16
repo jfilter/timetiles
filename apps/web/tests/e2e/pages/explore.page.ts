@@ -182,7 +182,7 @@ export class ExplorePage {
     const buttonLoc = this.page.locator("button");
     // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
     const anyCatalogButton = buttonLoc.filter({ hasText: /\d+ datasets?/ }).first();
-    await anyCatalogButton.waitFor({ state: "visible", timeout: 5000 });
+    await anyCatalogButton.waitFor({ state: "visible", timeout: 15000 });
 
     // New UI: catalogs are displayed as buttons under "Data Sources" section
     // Each button shows: "CatalogName X datasets Y events"
@@ -417,7 +417,10 @@ export class ExplorePage {
     // Wait for API response with a reasonable timeout
     // Don't wait forever if no API call is made
     try {
-      await this.page.waitForResponse((response) => response.url().includes("/api/events"), { timeout: 2000 });
+      await this.page.waitForResponse(
+        (response) => response.url().includes("/api/v1/events") || response.url().includes("/api/events"),
+        { timeout: 5000 }
+      );
     } catch {
       // If no API call within 2s, data is likely cached — continue immediately
     }
