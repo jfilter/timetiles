@@ -119,7 +119,7 @@ openssl rand -hex 32
 From the monorepo root:
 
 ```bash
-pnpm --filter @timetiles/scraper dev
+pnpm --filter scraper dev
 ```
 
 The server starts on the port specified by `SCRAPER_PORT` (default 4000).
