@@ -56,7 +56,17 @@ const scraperEntrySchema = z.object({
     .min(1)
     .refine((v) => !v.includes("..") && !v.startsWith("/"), "Output path must not contain traversal")
     .optional(),
-  schedule: z.string().optional(),
+  schedule: z
+    .string()
+    .refine((v) => {
+      try {
+        const parts = v.trim().split(/\s+/);
+        return parts.length === 5;
+      } catch {
+        return false;
+      }
+    }, "Schedule must be a valid 5-field cron expression (e.g., '0 6 * * *')")
+    .optional(),
   limits: limitsSchema,
 });
 

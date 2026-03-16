@@ -47,7 +47,7 @@ describe("config", () => {
     expect(config.SCRAPER_DEFAULT_TIMEOUT).toBe(300);
     expect(config.SCRAPER_DEFAULT_MEMORY).toBe(512);
     expect(config.SCRAPER_MAX_REPO_SIZE_MB).toBe(50);
-    expect(config.SCRAPER_MAX_OUTPUT_SIZE_MB).toBe(100);
+    expect(config.SCRAPER_MAX_OUTPUT_SIZE_MB).toBe(50);
     expect(config.SCRAPER_DATA_DIR).toBe("/tmp/timescrape");
     expect(config.NODE_ENV).toBe("development");
   });

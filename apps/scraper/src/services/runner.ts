@@ -200,6 +200,9 @@ export function getActiveRunCount(): number {
 }
 
 function truncateLog(log: string, maxBytes: number = 1024 * 1024): string {
-  if (log.length <= maxBytes) return log;
-  return log.slice(0, maxBytes) + `\n... truncated (${log.length} bytes total)`;
+  const byteLength = Buffer.byteLength(log, "utf-8");
+  if (byteLength <= maxBytes) return log;
+  // Slice conservatively (multi-byte chars may overshoot)
+  const truncated = Buffer.from(log, "utf-8").subarray(0, maxBytes).toString("utf-8");
+  return truncated + `\n... truncated (${byteLength} bytes total)`;
 }

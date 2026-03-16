@@ -53,21 +53,22 @@ export const POST = apiRoute({
   params: z.object({ token: z.string() }),
   handler: async ({ params, payload }) => {
     const { token } = params;
-    const rateLimitService = getRateLimitService(payload);
 
-    // Check dual-window rate limits
-    const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(`webhook:${token}`, RATE_LIMITS.WEBHOOK_TRIGGER);
-
-    if (!rateLimitCheck.allowed) {
-      return createRateLimitResponse(rateLimitCheck);
-    }
-
-    // Resolve token to a target (scheduled-import or scraper)
+    // Resolve token first — rate limit on resource ID, not token string
     const target = await resolveWebhookToken(payload, token);
 
     if (!target) {
       logger.warn({ token: token.substring(0, 8) + "..." }, "Webhook trigger failed - invalid or disabled token");
       return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
+    }
+
+    // Rate limit keyed on resource ID (survives token rotation, no memory leak for invalid tokens)
+    const rateLimitService = getRateLimitService(payload);
+    const rateLimitKey = `webhook:${target.type}:${target.id}`;
+    const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(rateLimitKey, RATE_LIMITS.WEBHOOK_TRIGGER);
+
+    if (!rateLimitCheck.allowed) {
+      return createRateLimitResponse(rateLimitCheck);
     }
 
     // Dispatch based on target type

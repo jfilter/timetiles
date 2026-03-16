@@ -14,7 +14,9 @@ const envSchema = z.object({
   SCRAPER_DEFAULT_TIMEOUT: z.coerce.number().default(300),
   SCRAPER_DEFAULT_MEMORY: z.coerce.number().default(512),
   SCRAPER_MAX_REPO_SIZE_MB: z.coerce.number().default(50),
-  SCRAPER_MAX_OUTPUT_SIZE_MB: z.coerce.number().default(100),
+  // Output is returned as base64 in JSON response (~1.33x overhead).
+  // 50MB CSV = ~67MB base64 in memory. Keep conservative for concurrent runs.
+  SCRAPER_MAX_OUTPUT_SIZE_MB: z.coerce.number().default(50),
   SCRAPER_DATA_DIR: z.string().default("/tmp/timescrape"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
