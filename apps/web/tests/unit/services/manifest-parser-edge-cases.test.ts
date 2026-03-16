@@ -73,7 +73,7 @@ scrapers:
   });
 
   describe("Entrypoint Validation", () => {
-    it("accepts an entrypoint starting with / (absolute path)", () => {
+    it("rejects an entrypoint starting with / (absolute path)", () => {
       const yaml = `
 scrapers:
   - name: Absolute Path
@@ -81,11 +81,10 @@ scrapers:
     entrypoint: /usr/local/bin/scraper.py
 `;
 
-      // The schema only rejects path traversal (..), not absolute paths
-      const result = parseManifest(yaml) as ManifestParseResult;
+      const result = parseManifest(yaml) as ManifestParseError;
 
-      expect(result.success).toBe(true);
-      expect(result.scrapers[0]?.entrypoint).toBe("/usr/local/bin/scraper.py");
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/entrypoint/i);
     });
   });
 

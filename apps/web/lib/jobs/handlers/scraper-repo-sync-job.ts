@@ -131,7 +131,7 @@ const syncScrapers = async (
       runtime: scraper.runtime,
       entrypoint: scraper.entrypoint,
       outputFile: scraper.output,
-      schedule: scraper.schedule ?? undefined,
+      schedule: scraper.schedule ?? null,
       timeoutSecs: scraper.limits.timeout,
       memoryMb: scraper.limits.memory,
     };
@@ -147,9 +147,14 @@ const syncScrapers = async (
     }
   }
 
-  // Delete scrapers no longer in manifest
+  // Delete scrapers no longer in manifest (and their associated runs)
   for (const [slug, doc] of existingBySlug) {
     if (!manifestSlugs.has(slug)) {
+      await payload.delete({
+        collection: "scraper-runs",
+        where: { scraper: { equals: doc.id } },
+        overrideAccess: true,
+      });
       await payload.delete({ collection: "scrapers", id: doc.id, overrideAccess: true });
       result.deleted++;
       logger.info("Deleted scraper no longer in manifest", { slug, id: doc.id });

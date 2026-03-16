@@ -36,7 +36,8 @@ const runtimeSchema = z.enum(["python", "node"]);
 const entrypointSchema = z
   .string()
   .min(1, "Entrypoint must not be empty")
-  .refine((val) => !val.includes(".."), "Entrypoint must not contain path traversal (..)");
+  .refine((val) => !val.includes(".."), "Entrypoint must not contain path traversal (..)")
+  .refine((val) => !val.startsWith("/"), "Entrypoint must not be an absolute path");
 
 const limitsSchema = z
   .object({
@@ -50,7 +51,11 @@ const scraperEntrySchema = z.object({
   slug: slugSchema,
   runtime: runtimeSchema.optional(),
   entrypoint: entrypointSchema,
-  output: z.string().min(1).optional(),
+  output: z
+    .string()
+    .min(1)
+    .refine((v) => !v.includes("..") && !v.startsWith("/"), "Output path must not contain traversal")
+    .optional(),
   schedule: z.string().optional(),
   limits: limitsSchema,
 });

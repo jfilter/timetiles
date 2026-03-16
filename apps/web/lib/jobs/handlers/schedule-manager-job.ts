@@ -14,6 +14,7 @@ import type { Payload } from "payload";
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { triggerScheduledImport } from "@/lib/services/scheduled-import-trigger-service";
+import { claimScraperRunning } from "@/lib/services/webhook-registry";
 import { calculateNextCronRun } from "@/lib/utils/cron-parser";
 import type { ScheduledImport, Scraper } from "@/payload-types";
 
@@ -302,8 +303,9 @@ const processScheduledScrapers = async (
     try {
       if (!shouldScraperRunNow(scraper, currentTime)) continue;
 
-      // Concurrency guard: skip if already running
-      if (scraper.lastRunStatus === "running") {
+      // Atomic concurrency guard: claim "running" status to prevent concurrent triggers
+      const claimed = await claimScraperRunning(payload, scraper.id);
+      if (!claimed) {
         logger.info("Skipping scraper - already running", { scraperId: scraper.id, name: scraper.name });
         continue;
       }

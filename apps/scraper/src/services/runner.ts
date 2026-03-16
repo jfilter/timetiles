@@ -68,7 +68,8 @@ async function collectOutput(
     const rows = Math.max(0, lines.length - 1);
 
     return { output: { rows, bytes: stats.size, content_base64: content.toString("base64") }, exitCode, stderr };
-  } catch {
+  } catch (error) {
+    if (error instanceof RunnerError) throw error;
     if (exitCode === 0) {
       return { output: undefined, exitCode: 1, stderr: stderr + "\nNo valid output file produced" };
     }

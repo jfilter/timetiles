@@ -104,7 +104,13 @@ const callRunner = async (request: RunnerRequest): Promise<RunnerResponse> => {
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
 
-  const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(request) });
+  const timeoutMs = ((request.limits?.timeout_secs ?? 300) + 60) * 1000;
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(request),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -440,9 +446,11 @@ export const scraperExecutionJob = {
       }
     }
 
-    const run = await createRunRecord(payload, scraperId, repo, triggeredBy);
+    let run: { id: number } | undefined;
 
     try {
+      run = await createRunRecord(payload, scraperId, repo, triggeredBy);
+
       const runUuid = uuidv4();
       const request = buildRunnerRequest(scraper, repo, runUuid);
 
@@ -462,7 +470,9 @@ export const scraperExecutionJob = {
         },
       };
     } catch (error) {
-      await handleRunFailure(payload, scraper, run.id, error);
+      if (run) {
+        await handleRunFailure(payload, scraper, run.id, error);
+      }
 
       // Rollback quota on failure (best-effort)
       if (repoOwnerId) {
@@ -475,7 +485,7 @@ export const scraperExecutionJob = {
         }
       }
 
-      logError(error, "Scraper execution failed", { jobId, scraperId, runId: run.id });
+      logError(error, "Scraper execution failed", { jobId, scraperId, runId: run?.id });
       throw error;
     }
   },

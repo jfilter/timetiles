@@ -27,6 +27,12 @@ vi.mock("@/lib/services/scheduled-import-trigger-service", () => ({
   triggerScheduledImport: vi.fn().mockResolvedValue(undefined),
 }));
 
+const mockClaimScraperRunning = vi.fn();
+
+vi.mock("@/lib/services/webhook-registry", () => ({
+  claimScraperRunning: (...args: unknown[]) => mockClaimScraperRunning(...args),
+}));
+
 describe.sequential("scheduleManagerJob — scraper scheduling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -38,6 +44,9 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
       if (flag === "enableScrapers") return Promise.resolve(true);
       return Promise.resolve(false);
     });
+
+    // By default: atomic claim succeeds
+    mockClaimScraperRunning.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -124,7 +133,7 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     });
   });
 
-  it("should skip scrapers with lastRunStatus 'running' (concurrency guard)", async () => {
+  it("should skip scrapers when atomic claim fails (concurrency guard)", async () => {
     const { mockPayload, mockJob, mockReq } = createMockContext();
 
     vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
@@ -140,8 +149,12 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
 
     setupScrapersOnly(mockPayload, [runningScraper]);
 
+    // Atomic claim fails — scraper is already running
+    mockClaimScraperRunning.mockResolvedValueOnce(false);
+
     const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
+    expect(mockClaimScraperRunning).toHaveBeenCalledWith(expect.anything(), 1);
     expect(mockPayload.jobs.queue).not.toHaveBeenCalledWith(expect.objectContaining({ task: "scraper-execution" }));
     expect(result.output.scrapersTriggered).toBe(0);
   });

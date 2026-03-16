@@ -228,7 +228,13 @@ describe.sequential("scraperRepoSyncJob", () => {
     const context = createMockContext({ scraperRepoId: 5 });
     const result = await scraperRepoSyncJob.handler(context as any);
 
-    // Should delete the scraper not in manifest
+    // Should delete the scraper-runs for the removed scraper first
+    expect(mockPayload.delete).toHaveBeenCalledWith({
+      collection: "scraper-runs",
+      where: { scraper: { equals: 51 } },
+      overrideAccess: true,
+    });
+    // Then delete the scraper itself
     expect(mockPayload.delete).toHaveBeenCalledWith({ collection: "scrapers", id: 51, overrideAccess: true });
 
     // Should update the kept scraper
