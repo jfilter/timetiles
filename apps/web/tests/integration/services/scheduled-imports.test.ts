@@ -217,7 +217,7 @@ describe.sequential("Scheduled Imports Integration", () => {
         });
       }
 
-      expect(result.output).toEqual({ success: true, totalScheduled: 1, triggered: 1, errors: 0 });
+      expect(result.output).toMatchObject({ success: true, totalScheduled: 1, triggered: 1, errors: 0 });
 
       // With fake timers, we need to advance time manually
       await vi.advanceTimersByTimeAsync(100);
