@@ -7,6 +7,18 @@
  * @category Types
  */
 
+/** Style controls available on every page builder block. */
+export interface BlockStyle {
+  paddingTop?: "none" | "sm" | "md" | "lg" | "xl" | null;
+  paddingBottom?: "none" | "sm" | "md" | "lg" | "xl" | null;
+  backgroundColor?: string | null;
+  maxWidth?: "sm" | "md" | "lg" | "xl" | "full" | null;
+  anchorId?: string | null;
+  hideOnMobile?: boolean | null;
+  hideOnDesktop?: boolean | null;
+  separator?: "none" | "line" | "gradient" | "wave" | null;
+}
+
 export interface HeroBlock {
   blockType: "hero";
   title: string;
@@ -14,6 +26,7 @@ export interface HeroBlock {
   description?: string | null;
   background?: "gradient" | "grid" | null;
   buttons?: Array<{ text: string; link: string; variant?: "default" | "outline" | null; id?: string | null }> | null;
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -32,6 +45,7 @@ export interface FeaturesBlock {
   sectionDescription?: string | null;
   features: FeatureItem[];
   columns?: "1" | "2" | "3" | "4" | null;
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -46,6 +60,7 @@ export interface StatItem {
 export interface StatsBlock {
   blockType: "stats";
   stats: StatItem[];
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -63,6 +78,7 @@ export interface DetailsGridBlock {
   sectionTitle?: string | null;
   variant?: "grid-2" | "grid-3" | "grid-4" | "compact" | null;
   items: DetailsGridItem[];
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -79,6 +95,7 @@ export interface TimelineBlock {
   sectionTitle?: string | null;
   variant?: "vertical" | "compact" | null;
   items: TimelineBlockItem[];
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -96,6 +113,7 @@ export interface TestimonialsBlock {
   sectionTitle?: string | null;
   variant?: "grid" | "single" | "masonry" | null;
   items: TestimonialItem[];
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -103,6 +121,7 @@ export interface TestimonialsBlock {
 export interface RichTextBlock {
   blockType: "richText";
   content: unknown;
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -113,6 +132,7 @@ export interface CTABlock {
   description?: string | null;
   buttonText: string;
   buttonLink: string;
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -122,6 +142,7 @@ export interface NewsletterFormBlock {
   headline?: string | null;
   placeholder?: string | null;
   buttonText?: string | null;
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }
@@ -134,6 +155,7 @@ export interface NewsletterCTABlock {
   buttonText?: string | null;
   variant?: "default" | "elevated" | "centered" | null;
   size?: "default" | "lg" | "xl" | null;
+  blockStyle?: BlockStyle | null;
   id?: string | null;
   blockName?: string | null;
 }

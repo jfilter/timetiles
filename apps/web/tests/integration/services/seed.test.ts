@@ -228,7 +228,8 @@ describe.sequential("Database-backed Seed Operations", () => {
     it("should seed main-menu global successfully", async () => {
       await testEnv.seedManager.seedWithConfig({ preset: "development", collections: ["main-menu"] });
 
-      const mainMenu = await testEnv.payload.findGlobal({ slug: "main-menu" });
+      // Query with German locale to verify localized content was seeded
+      const mainMenu = await testEnv.payload.findGlobal({ slug: "main-menu", locale: "de" });
 
       expect(mainMenu).toBeDefined();
       expect(mainMenu.navItems).toBeDefined();
@@ -243,8 +244,8 @@ describe.sequential("Database-backed Seed Operations", () => {
       });
 
       const labels = mainMenu.navItems!.map((item: any) => item.label);
-      expect(labels).toContain("Home");
-      expect(labels).toContain("Explore");
+      expect(labels).toContain("Startseite");
+      expect(labels).toContain("Erkunden");
     });
   });
 });

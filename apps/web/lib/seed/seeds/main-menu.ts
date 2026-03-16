@@ -21,3 +21,13 @@ export const mainMenuSeed: MainMenuSeed = {
     { label: "Contact", url: "/contact" },
   ],
 };
+
+export const mainMenuSeedDe: MainMenuSeed = {
+  navItems: [
+    { label: "Startseite", url: "/" },
+    { label: "Erkunden", url: "/explore" },
+    { label: "Importieren", url: "/import" },
+    { label: "Über uns", url: "/about" },
+    { label: "Kontakt", url: "/contact" },
+  ],
+};

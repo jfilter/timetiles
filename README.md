@@ -21,17 +21,18 @@ Perfect for:
 - **Activists** tracking environmental or social issues
 - **Organizations** presenting data-driven narratives
 
-Built with Next.js, React, PostgreSQL/PostGIS, and Payload CMS.
+Built with Next.js 16, React 19, PostgreSQL/PostGIS, and Payload CMS 3. Supports English and German (via next-intl).
 
 ## Key Features
 
 ### Data Import & Processing
 
 - **📁 Multiple Formats**: Import CSV, Excel, and ODS files with automatic format detection
-- **🗺️ Smart Geocoding**: Automatically convert addresses to map coordinates
+- **🗺️ Smart Geocoding**: Multi-provider geocoding (Nominatim, Google Maps, OpenCage) with fallback
 - **⚡ Real-time Progress**: Watch your data being processed with live updates
 - **🔄 Batch Processing**: Handle thousands of events efficiently
-- **💾 Intelligent Caching**: Reduce API costs with smart location caching
+- **⏰ Scheduled Imports**: Automated URL-based imports on a cron schedule
+- **💾 Intelligent Caching**: Reduce API costs with smart location and URL fetch caching
 
 ### Visualization & Exploration
 
@@ -44,9 +45,9 @@ Built with Next.js, React, PostgreSQL/PostGIS, and Payload CMS.
 ### Sharing & Collaboration
 
 - **🔗 Shareable Links**: Each view has a unique URL with filters preserved
-- **🖼️ Embeddable Widgets**: Add TimeTiles to any website with an iframe
 - **👥 Multi-user Support**: Collaborate with team members on datasets
 - **🔒 Access Control**: Public or private chronicles with granular permissions
+- **📦 Data Export**: Download all your data as a ZIP archive
 
 ## 🚀 Quick Start
 
@@ -79,9 +80,7 @@ Full documentation at **[docs.timetiles.io](https://docs.timetiles.io)**
 ### For Users
 
 - [Getting Started](https://docs.timetiles.io/user-guide/getting-started) - Overview and first steps
-- [Data Preparation](https://docs.timetiles.io/user-guide/data-preparation) - Format your data correctly
-- [Creating Chronicles](https://docs.timetiles.io/user-guide/creating-chronicles) - Step-by-step guide
-- [Sharing & Embedding](https://docs.timetiles.io/user-guide/sharing) - Share your stories
+- [Use Cases](https://docs.timetiles.io/user-guide/use-cases) - Real-world examples
 
 ### For Developers
 

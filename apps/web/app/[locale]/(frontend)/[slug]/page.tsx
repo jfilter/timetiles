@@ -8,11 +8,13 @@
  */
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { getPayload } from "payload";
 import React from "react";
 
 import { BlockRenderer } from "@/components/block-renderer";
 import { PageLayout } from "@/components/layout/page-layout";
+import type { Locale } from "@/i18n/config";
 import { resolveSite } from "@/lib/services/site-resolver";
 import config from "@/payload.config";
 
@@ -22,7 +24,7 @@ interface PageProps {
 
 export default async function Page({ params }: Readonly<PageProps>) {
   const { slug } = await params;
-  const payload = await getPayload({ config });
+  const [payload, locale] = await Promise.all([getPayload({ config }), getLocale() as Promise<Locale>]);
 
   // Resolve site from request host
   const headersList = await headers();
@@ -33,6 +35,7 @@ export default async function Page({ params }: Readonly<PageProps>) {
     collection: "pages",
     where: { slug: { equals: slug }, ...(site != null && { site: { equals: site.id } }) },
     depth: 2,
+    locale,
   });
 
   if (!pages.docs.length) {

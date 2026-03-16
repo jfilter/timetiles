@@ -183,6 +183,14 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   const config: Config = {
     secret: secret ?? "default-secret-key",
     i18n: { supportedLanguages: { en, de } },
+    localization: {
+      locales: [
+        { label: "English", code: "en" },
+        { label: "Deutsch", code: "de" },
+      ],
+      defaultLocale: "en",
+      fallback: true,
+    },
     routes: { admin: "/dashboard" },
     admin: {
       user: collections?.includes("users") ? Users.slug : undefined,

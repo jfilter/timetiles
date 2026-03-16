@@ -7,16 +7,18 @@
  * @module
  */
 import { notFound } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { getPayload } from "payload";
 import React from "react";
 
 import { BlockRenderer } from "@/components/block-renderer";
+import type { Locale } from "@/i18n/config";
 import config from "@/payload.config";
 
 export default async function Page() {
-  const payload = await getPayload({ config });
+  const [payload, locale] = await Promise.all([getPayload({ config }), getLocale() as Promise<Locale>]);
 
-  const pages = await payload.find({ collection: "pages", where: { slug: { equals: "home" } } });
+  const pages = await payload.find({ collection: "pages", where: { slug: { equals: "home" } }, locale });
 
   if (!pages.docs.length) {
     notFound();

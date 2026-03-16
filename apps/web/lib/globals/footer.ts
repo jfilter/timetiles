@@ -22,6 +22,7 @@ export const Footer: GlobalConfig = {
       name: "tagline",
       type: "text",
       required: true,
+      localized: true,
       admin: { description: "Brief tagline or description for your brand" },
     },
     {
@@ -53,13 +54,13 @@ export const Footer: GlobalConfig = {
       type: "array",
       maxRows: 3,
       fields: [
-        { name: "title", type: "text", required: true },
+        { name: "title", type: "text", required: true, localized: true },
         {
           name: "links",
           type: "array",
           maxRows: 10,
           fields: [
-            { name: "label", type: "text", required: true },
+            { name: "label", type: "text", required: true, localized: true },
             { name: "url", type: "text", required: true },
           ],
         },
@@ -79,18 +80,21 @@ export const Footer: GlobalConfig = {
         {
           name: "headline",
           type: "text",
+          localized: true,
           defaultValue: "Stay Mapped In",
           admin: { description: "Newsletter section headline", condition: (data) => data.newsletter?.enabled },
         },
         {
           name: "placeholder",
           type: "text",
+          localized: true,
           defaultValue: "your@email.address",
           admin: { description: "Email input placeholder text", condition: (data) => data.newsletter?.enabled },
         },
         {
           name: "buttonText",
           type: "text",
+          localized: true,
           defaultValue: "Subscribe",
           admin: { description: "Submit button text", condition: (data) => data.newsletter?.enabled },
         },
@@ -100,8 +104,9 @@ export const Footer: GlobalConfig = {
       name: "copyright",
       type: "text",
       required: true,
+      localized: true,
       admin: { description: "Copyright text (e.g., © 2024 TimeTiles. All rights reserved.)" },
     },
-    { name: "credits", type: "text", admin: { description: "Optional credits or attribution text" } },
+    { name: "credits", type: "text", localized: true, admin: { description: "Optional credits or attribution text" } },
   ],
 };

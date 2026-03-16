@@ -2,15 +2,18 @@
 
 Understanding TimeTiles' data model will help you organize and present your data effectively. TimeTiles uses a hierarchical structure to organize events, making it easy to manage multiple projects and datasets.
 
-## 📚 The Three-Level Hierarchy
+## 📚 Data Hierarchy
 
-TimeTiles organizes data in three levels:
+TimeTiles organizes data in a hierarchy with optional multi-tenant support:
 
 ```
-Catalog (Project)
-  └── Dataset (Collection)
-      └── Event (Data Point)
+Site (Optional — multi-tenant)
+  └── Catalog (Project)
+        └── Dataset (Collection)
+              └── Event (Data Point)
 ```
+
+**Views** can be configured at the catalog level to create saved display configurations — defining which datasets are shown, map bounds, and active filters.
 
 ## 🗂️ Catalogs
 
@@ -150,6 +153,28 @@ When preparing your data:
 2. **Plan Categories**: Use consistent category names for filtering
 3. **Consider Analysis**: Include numerical fields for charts
 4. **Think About Display**: What information do users need to see?
+
+## 🌐 Sites
+
+A **Site** is an optional multi-tenant configuration unit. When enabled, sites allow a single TimeTiles installation to serve multiple independent instances with separate branding and domains.
+
+### What Sites Are For
+
+- **Multi-Tenancy**: Host multiple organizations or projects on one installation
+- **Custom Branding**: Each site can have its own name, logos, and appearance
+- **Domain Routing**: Route different domains to different sites
+
+Sites are optional — a simple single-site deployment works without configuring sites at all.
+
+## 👁️ Views
+
+A **View** is a saved display configuration for exploring data. Views let you define how data appears in the explore interface.
+
+### What Views Are For
+
+- **Preset Displays**: Save specific map bounds, active filters, and layout preferences
+- **Curated Experiences**: Create focused views for different audiences
+- **Shareable**: Each view has its own URL for easy sharing
 
 ## 🔗 Relationships
 

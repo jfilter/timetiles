@@ -9,41 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Enhanced React Query integration for improved data fetching
-- Comprehensive documentation reorganization
-- Advanced schema detection capabilities
-- Dynamic filtering system
+- Internationalization with next-intl (English and German locales)
+- Content management system (Pages collection with block-based builder)
+- Site branding globals (logos, favicons, site name)
+- Footer and MainMenu globals for navigation
+- Audit log system tracking user and admin actions across 5 domains
+- Account management: self-service deletion with 7-day grace period
+- Data export: users can download all their data as ZIP archives
+- Sites collection for multi-tenant configuration
+- Views collection for saved display configurations
+- Feature flags system (8 toggleable platform capabilities)
+- User quotas and rate limiting with trust levels (0–5)
+- Scheduled URL imports with cron-based automation
+- Multi-provider geocoding with priority-based fallback (Nominatim, Google, OpenCage)
+- Dynamic filtering system with URL-based state (nuqs)
+- Formatter migration from Prettier to oxfmt (ADR 0014)
 
 ### Changed
 
-- Improved import pipeline performance
-- Enhanced coordinate validation
-- Better error handling and logging
+- Migrated all frontend routes to locale-aware `[locale]/(frontend)/` structure
+- Replaced custom fade animations with native View Transitions API
+- Renamed service factories from `get*Service` to `create*Service`
+- Unified API response format via `apiRoute()` auto-wrapping
+- Payload config refactored into factory pattern (`payload-config-factory.ts`)
 
 ### Fixed
 
+- Access control hardening (5 audit findings including a security bug)
 - Seed data relationship resolution
 - Various CI/CD improvements
 
-## [0.1.0] - 2024-XX-XX
+## [0.1.0] - 2025-01-01
 
 ### Added
 
 - Initial release of TimeTiles
 - Interactive geospatial timeline visualization
-- Data import system supporting CSV, JSON, and KML formats
+- Data import system supporting CSV, Excel, and ODS formats
 - Real-time map clustering and filtering
 - Responsive web interface
-- PostgreSQL + PostGIS backend
-- Next.js 15 frontend with Payload CMS
-- Comprehensive testing suite
+- PostgreSQL 17 + PostGIS 3.5 backend
+- Next.js 16 frontend with Payload CMS 3
+- Comprehensive testing suite (Vitest + Playwright)
+- Advanced schema detection capabilities
+- Enhanced React Query integration for data fetching
 
 ### Features
 
-- **Timeline Navigation**: Scrub through time to explore events
-- **Map Interactions**: Zoom, pan, and cluster geospatial data
-- **Data Import**: Automatic schema detection and validation
-- **Export Capabilities**: Share and embed interactive timelines
+- **Map Visualization**: Zoom, pan, and cluster geospatial data with MapLibre GL JS
+- **Data Import**: Automatic schema detection, geocoding, and validation
+- **Timeline**: Temporal histogram for event distribution over time
+- **Dynamic Filters**: Interactive filters synced to URL state
 - **Responsive Design**: Works on desktop and mobile devices
 
 ---

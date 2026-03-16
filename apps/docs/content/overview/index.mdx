@@ -49,10 +49,8 @@ CSV/Excel → TimeTiles → Interactive Chronicle
 
 Bring your data from:
 
-- **CSV/Excel files** with location and timestamp columns
-- **JSON datasets** from investigations or APIs
-- **API endpoints** for live data feeds
-- **Manual entry** for smaller datasets
+- **CSV/Excel/ODS files** with location and timestamp columns
+- **Scheduled URL imports** for automated data feeds from external APIs
 
 ### 2. Automatic Processing
 
@@ -69,7 +67,6 @@ Deploy as:
 
 - **Public website** for maximum reach
 - **Private instance** for internal research
-- **Embeddable widgets** (future feature) for integration into articles
 
 ## Real-World Examples
 
@@ -101,24 +98,33 @@ _"Document pollution incidents in marginalized communities over the past decade.
 
 ### Data Import
 
-- Upload CSV or Excel files
-- Automatic schema detection
+- Upload CSV, Excel, or ODS files
+- Automatic schema detection with field mapping
 - Batch processing for large datasets
-- Smart geocoding with fallbacks
+- Multi-provider geocoding (Nominatim, Google Maps, OpenCage) with fallback
+- Scheduled URL imports with cron automation
 
 ### Visualization
 
-- Clustered map views for thousands of events
-- Timeline scrubbing and animation
-- Histogram and statistical charts
-- Customizable themes and styles
+- Clustered map views for thousands of events (MapLibre GL JS)
+- Timeline histogram with date range filtering
+- Dynamic filters generated from your data schema
+- Customizable themes with light/dark modes
+
+### Platform Features
+
+- Multi-language UI (English, German)
+- User quotas and rate limiting with trust levels
+- Content management (pages, branding, navigation, footer)
+- Multi-tenant support via Sites
+- Audit logging for accountability
+- Self-service data export and account deletion
 
 ### Sharing
 
-- Public or private chronicles
-- Embeddable widgets for websites
-- Shareable links with filters preserved
-- Export capabilities
+- Public or private chronicles with access control
+- Shareable links with filters preserved in URL
+- Data export (ZIP download of all user data)
 
 ## Learn More
 
