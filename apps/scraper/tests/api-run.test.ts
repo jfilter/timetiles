@@ -21,6 +21,17 @@ vi.mock("../src/config.js", () => ({
   loadConfig: vi.fn(() => ({ SCRAPER_DATA_DIR: "/tmp/timescrape-test" })),
 }));
 
+// Mock fs for output endpoints
+const mockStat = vi.fn();
+const mockRm = vi.fn().mockResolvedValue(undefined);
+vi.mock("node:fs/promises", () => ({
+  stat: (...args: unknown[]) => mockStat(...args),
+  rm: (...args: unknown[]) => mockRm(...args),
+}));
+
+const mockCreateReadStream = vi.fn();
+vi.mock("node:fs", () => ({ createReadStream: (...args: unknown[]) => mockCreateReadStream(...args) }));
+
 import { runRoutes } from "../src/api/run.js";
 import { executeRun } from "../src/services/runner.js";
 
@@ -242,6 +253,74 @@ describe("POST /run endpoint", () => {
       expect(executeRun).toHaveBeenCalledWith(
         expect.objectContaining({ run_id: VALID_RUN_BODY.run_id, runtime: "python", entrypoint: "scraper.py" })
       );
+    });
+  });
+
+  describe("GET /output/:runId/:filename", () => {
+    it("returns 401 without auth", async () => {
+      const res = await app.request("/output/run-123/data.csv");
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 400 for path traversal in filename", async () => {
+      // Hono's router won't match ".." as route segments (404),
+      // but "..data.csv" passes routing and hits our validation
+      const res = await app.request("/output/run-123/..data.csv", {
+        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 404 when file does not exist", async () => {
+      mockStat.mockRejectedValue(new Error("ENOENT"));
+      const res = await app.request("/output/run-123/data.csv", {
+        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+      });
+      expect(res.status).toBe(404);
+    });
+
+    it("streams file with correct headers when found", async () => {
+      mockStat.mockResolvedValue({ size: 1024 });
+      // Mock a readable stream
+      const mockStream = { pipe: vi.fn(), on: vi.fn() };
+      mockCreateReadStream.mockReturnValue(mockStream);
+
+      const res = await app.request("/output/run-123/data.csv", {
+        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+      });
+
+      // Hono may return 200 with the stream response
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Type")).toBe("text/csv");
+      expect(res.headers.get("Content-Length")).toBe("1024");
+      expect(res.headers.get("Content-Disposition")).toBe('attachment; filename="data.csv"');
+    });
+  });
+
+  describe("DELETE /output/:runId", () => {
+    it("returns 401 without auth", async () => {
+      const res = await app.request("/output/run-123", { method: "DELETE" });
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 400 for path traversal in runId", async () => {
+      const res = await app.request("/output/..run-evil", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("deletes output directory and returns success", async () => {
+      mockRm.mockResolvedValue(undefined);
+      const res = await app.request("/output/run-123", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe("deleted");
+      expect(mockRm).toHaveBeenCalledWith("/tmp/timescrape-test/outputs/run-123", { recursive: true, force: true });
     });
   });
 });
