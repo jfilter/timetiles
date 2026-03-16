@@ -39,6 +39,10 @@ See our full documentation at **[docs.timetiles.io](https://docs.timetiles.io)**
 
 We use [Conventional Commits](https://docs.timetiles.io/developer-guide/development/commit-guidelines) for commit messages.
 
+## Scraper Package
+
+The `apps/scraper` package (TimeScrape runner) is optional and requires Podman for container execution. See `apps/scraper/docs/SETUP.md` for setup.
+
 ## Need Help?
 
 - [GitHub Issues](https://github.com/jfilter/timetiles/issues) - Bug reports and feature requests

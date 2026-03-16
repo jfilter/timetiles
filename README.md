@@ -33,6 +33,7 @@ Built with Next.js 16, React 19, PostgreSQL/PostGIS, and Payload CMS 3. Supports
 - **🔄 Batch Processing**: Handle thousands of events efficiently
 - **⏰ Scheduled Imports**: Automated URL-based imports on a cron schedule
 - **💾 Intelligent Caching**: Reduce API costs with smart location and URL fetch caching
+- **🕷️ Web Scrapers**: Run Python/Node.js scrapers in isolated containers for non-tabular data sources
 
 ### Visualization & Exploration
 
