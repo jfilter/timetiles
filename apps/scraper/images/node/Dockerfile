@@ -19,3 +19,5 @@ WORKDIR /scraper
 
 # Allow importing global modules
 ENV NODE_PATH=/usr/local/lib/node_modules
+
+HEALTHCHECK --interval=60s --timeout=5s --retries=1 CMD node -e "console.log('ok')" || exit 1

@@ -118,13 +118,16 @@ VOLUME ["/data"]
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV POSTGRES_USER=timetiles
-ENV POSTGRES_PASSWORD=timetiles
 ENV POSTGRES_DB=timetiles
-ENV PAYLOAD_SECRET=change_me_in_production
 ENV NEXT_PUBLIC_PAYLOAD_URL=http://localhost
+# POSTGRES_PASSWORD and PAYLOAD_SECRET must be provided at container runtime
+# via -e flags or docker-compose environment section
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost/api/health || exit 1
 
+# Note: This multi-service container requires root for the entrypoint to initialize
+# PostgreSQL, generate SSL certificates, and start supervisord. Individual services
+# run as non-root users via supervisord (postgres, nextjs, nginx).
 ENTRYPOINT ["/entrypoint.sh"]
