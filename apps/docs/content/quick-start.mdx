@@ -42,20 +42,21 @@ Open http://localhost:3000 to see the application running!
 **Monorepo commands** (from project root):
 
 - `make dev` - Start all services with database
-- `make test` - Run all tests
-- `make check-ai` - Run lint and typecheck (AI-friendly)
+- `make check-ai` - Run lint and typecheck (AI-friendly output)
+- `make test-ai` - Run all tests (AI-friendly output)
+- `make test-e2e` - Run E2E tests (Playwright)
 
 **Package-specific commands** (from `apps/web`):
 
 - `pnpm dev` - Start Next.js dev server only
-- `pnpm payload:generate` - Generate TypeScript types
+- `pnpm payload:migrate:create` - Create new migration
+- `pnpm payload:migrate` - Run pending migrations
 - `pnpm seed [preset]` - Seed development data
-- `pnpm test` - Run Vitest tests
 
 **Database commands** (from project root):
 
-- `make migrate` - Run database migrations
-- `make migrate-create` - Create new migration
+- `make db-reset` - Reset database
+- `make db-shell` - PostgreSQL shell
 - `make seed ARGS="development"` - Seed with preset
 
 ## Docker Commands

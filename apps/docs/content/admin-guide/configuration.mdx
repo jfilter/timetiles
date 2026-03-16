@@ -36,7 +36,7 @@ TimeTiles supports multiple geocoding providers configured through the admin pan
 
 #### Geocoding Providers
 
-Configure providers directly in the admin interface at `/admin/collections/geocoding-providers`:
+Configure providers directly in the admin interface at `/dashboard/collections/geocoding-providers`:
 
 - **Add multiple providers** with different priorities
 - **Enable/disable providers** without restart
@@ -60,7 +60,7 @@ Providers are tried in priority order (lower number = higher priority).
 
 #### Geocoding Settings
 
-Configure geocoding behavior at `/admin/globals/settings`:
+Configure geocoding behavior at `/dashboard/globals/settings`:
 
 - **Enable/Disable Geocoding**: Toggle geocoding globally
 - **Provider Fallback**: Enable fallback to alternative providers on failure
@@ -225,7 +225,7 @@ psql $DATABASE_URL -c "SELECT 1"
 
 ### Geocoding Issues
 
-Check geocoding provider configuration in the admin panel at `/admin/collections/geocoding-providers`.
+Check geocoding provider configuration in the admin panel at `/dashboard/collections/geocoding-providers`.
 
 To test a provider's API key directly:
 
@@ -293,6 +293,59 @@ Feature flags are configured in Settings (`/dashboard/globals/settings`) under "
 | Enable Import Creation         | On      | Users can create new import jobs                            |
 | Enable Scheduled Job Execution | On      | Scheduled imports run automatically                         |
 | Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests               |
+
+## Scheduled Imports
+
+Users can create automated imports that fetch data from a URL on a cron schedule.
+
+### Configuration
+
+- Enable/disable via the **Enable Scheduled Imports** feature flag
+- Users create schedules at `/dashboard/collections/scheduled-imports`
+- Each schedule specifies: URL, cron expression, target catalog/dataset, authentication (optional)
+
+### Authentication Options
+
+Scheduled imports support several authentication methods for fetching protected URLs:
+
+- **None**: Public URLs with no authentication
+- **API Key**: Header or query parameter API key
+- **Bearer Token**: Authorization header with bearer token
+- **Basic Auth**: HTTP Basic authentication
+
+### URL Fetch Caching
+
+Scheduled imports use HTTP caching (RFC 7234) to avoid re-downloading unchanged data. See [Usage Limits](./usage-limits#http-caching) for cache configuration.
+
+### Monitoring
+
+- View all schedules: `/dashboard/collections/scheduled-imports`
+- Check schedule health: `GET /api/admin/schedule-service`
+- System automatically cleans up stuck imports via background job
+
+## Audit Log
+
+TimeTiles tracks user and admin actions for accountability and debugging.
+
+### What's Tracked
+
+20 action types across 5 domains:
+
+- **Account**: Login, logout, registration, email change, password change, deletion request/cancel/execute
+- **Admin**: User role change, trust level change, feature flag change
+- **Data**: Catalog/dataset/event create/update/delete
+- **Import**: Import start, import complete, import fail
+- **System**: Settings change, geocoding provider change
+
+### Privacy
+
+- IP addresses are stored for 30 days, then cleared by the `audit-log-ip-cleanup` background job
+- `performedBy` is only set when the acting user differs from the target user
+
+### Viewing Logs
+
+- Admin panel: `/dashboard/collections/audit-log`
+- Filter by user, action type, domain, or date range
 
 ## User Data Management
 

@@ -10,7 +10,7 @@ TimeTiles is in **alpha phase** - core features are functional but the system is
 
 - [x] Monorepo structure with Turbo
 - [x] PostgreSQL 17 + PostGIS 3.5 database
-- [x] Payload CMS integration
+- [x] Payload CMS 3 integration
 - [x] Next.js 16 frontend
 - [x] Comprehensive testing (Vitest + Playwright)
 - [x] CI/CD with GitHub Actions
@@ -18,20 +18,50 @@ TimeTiles is in **alpha phase** - core features are functional but the system is
 
 ### Core Import System
 
-- [x] File parsing (CSV, JSON, Excel)
+- [x] File parsing (CSV, Excel, ODS)
 - [x] Progressive schema detection
 - [x] Smart deduplication strategies
 - [x] Geographic field detection
 - [x] Schema approval workflow
 - [x] Batch processing with background jobs
+- [x] URL-based scheduled imports with cron automation
 
 ### Data Exploration
 
-- [x] Map visualization with clustering
+- [x] Map visualization with clustering (MapLibre GL JS)
 - [x] Dynamic filter generation
 - [x] Timeline histogram
 - [x] Event list with pagination
 - [x] Geographic filtering
+- [x] Views for saved display configurations
+
+### User & Account Management
+
+- [x] User quotas and rate limiting with trust levels (0–5)
+- [x] Account self-service deletion with 7-day grace period
+- [x] Data export (ZIP download of all user data)
+- [x] Feature flags system (8 toggleable capabilities)
+- [x] Audit log tracking user and admin actions
+
+### Multi-Provider Geocoding
+
+- [x] Nominatim (OpenStreetMap), Google Maps, OpenCage
+- [x] Priority-based provider selection with fallback
+- [x] Location cache with TTL
+- [x] Admin-configurable provider settings
+
+### Content Management
+
+- [x] Pages collection with block-based builder
+- [x] Site branding globals (logos, favicons, site name)
+- [x] Footer and MainMenu globals for navigation
+- [x] Sites collection for multi-tenant configuration
+
+### Internationalization
+
+- [x] next-intl with English and German locales
+- [x] Locale-prefix routing (`localePrefix: "as-needed"`)
+- [x] Multi-language import field mapping (7 languages)
 
 ## Alpha Phase 🚧
 
@@ -39,21 +69,17 @@ TimeTiles is in **alpha phase** - core features are functional but the system is
 
 - [ ] Advanced filter customization UI
 - [ ] Performance optimizations for large datasets
-- [ ] URL-based scheduled imports
-- [ ] Enhanced geocoding support
-- [ ] User quota management
-- [ ] Improved error handling and validation
+- [ ] Enhanced error handling and validation
+- [ ] Additional UI locales beyond English and German
 
 ## Beta Release 📋
 
-- [ ] Advanced filtering and search
-- [ ] Export capabilities
-- [ ] Performance optimizations
+- [ ] Advanced search capabilities
+- [ ] Embeddable map widgets
 - [ ] User feedback integration
 
 ## Version 1.0 🎯
 
 - [ ] Full feature set
-- [ ] Comprehensive testing
 - [ ] Production-ready performance
 - [ ] Complete documentation

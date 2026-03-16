@@ -26,6 +26,44 @@ const getMediaUrl = (media: unknown): string | undefined => {
   return undefined;
 };
 
+/** Semantic color token overrides from site branding. */
+export interface SiteBrandingColors {
+  primary?: string;
+  primaryForeground?: string;
+  secondary?: string;
+  secondaryForeground?: string;
+  background?: string;
+  foreground?: string;
+  card?: string;
+  cardForeground?: string;
+  muted?: string;
+  mutedForeground?: string;
+  accent?: string;
+  accentForeground?: string;
+  destructive?: string;
+  border?: string;
+  ring?: string;
+}
+
+/** Custom code injection fields. */
+export interface SiteCustomCode {
+  headHtml?: string;
+  customCSS?: string;
+  bodyStartHtml?: string;
+  bodyEndHtml?: string;
+}
+
+/** Typography settings from site branding. */
+export interface SiteTypography {
+  fontPairing?: "editorial" | "modern" | "monospace";
+}
+
+/** Visual style settings from site branding. */
+export interface SiteStyle {
+  borderRadius?: "sharp" | "rounded" | "pill";
+  density?: "compact" | "default" | "comfortable";
+}
+
 /**
  * Context value containing the active site and branding.
  */
@@ -42,9 +80,13 @@ interface SiteContextValue {
     logoUrl?: string;
     logoDarkUrl?: string;
     faviconUrl?: string;
-    colors?: { primary?: string; secondary?: string; background?: string };
-    headerHtml?: string;
+    colors?: SiteBrandingColors;
+    typography?: SiteTypography;
+    style?: SiteStyle;
   };
+
+  /** Custom code injection */
+  customCode?: SiteCustomCode;
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null);
@@ -65,6 +107,9 @@ interface SiteProviderProps {
  */
 export const SiteProvider = ({ site, children }: SiteProviderProps): React.ReactElement => {
   const value = useMemo((): SiteContextValue => {
+    const colors = site?.branding?.colors;
+    const hasColors = colors && Object.values(colors).some((v) => v != null && v !== "");
+
     return {
       site,
       hasSite: site != null,
@@ -73,15 +118,41 @@ export const SiteProvider = ({ site, children }: SiteProviderProps): React.React
         logoUrl: getMediaUrl(site?.branding?.logo),
         logoDarkUrl: getMediaUrl(site?.branding?.logoDark),
         faviconUrl: getMediaUrl(site?.branding?.favicon),
-        colors: site?.branding?.colors
+        colors: hasColors
           ? {
-              primary: site.branding.colors.primary ?? undefined,
-              secondary: site.branding.colors.secondary ?? undefined,
-              background: site.branding.colors.background ?? undefined,
+              primary: colors.primary ?? undefined,
+              primaryForeground: colors.primaryForeground ?? undefined,
+              secondary: colors.secondary ?? undefined,
+              secondaryForeground: colors.secondaryForeground ?? undefined,
+              background: colors.background ?? undefined,
+              foreground: colors.foreground ?? undefined,
+              card: colors.card ?? undefined,
+              cardForeground: colors.cardForeground ?? undefined,
+              muted: colors.muted ?? undefined,
+              mutedForeground: colors.mutedForeground ?? undefined,
+              accent: colors.accent ?? undefined,
+              accentForeground: colors.accentForeground ?? undefined,
+              destructive: colors.destructive ?? undefined,
+              border: colors.border ?? undefined,
+              ring: colors.ring ?? undefined,
             }
           : undefined,
-        headerHtml: site?.branding?.headerHtml ?? undefined,
+        typography: site?.branding?.typography?.fontPairing
+          ? { fontPairing: site.branding.typography.fontPairing as SiteTypography["fontPairing"] }
+          : undefined,
+        style: {
+          borderRadius: (site?.branding?.style?.borderRadius as SiteStyle["borderRadius"]) ?? undefined,
+          density: (site?.branding?.style?.density as SiteStyle["density"]) ?? undefined,
+        },
       },
+      customCode: site?.customCode
+        ? {
+            headHtml: site.customCode.headHtml ?? undefined,
+            customCSS: site.customCode.customCSS ?? undefined,
+            bodyStartHtml: site.customCode.bodyStartHtml ?? undefined,
+            bodyEndHtml: site.customCode.bodyEndHtml ?? undefined,
+          }
+        : undefined,
     };
   }, [site]);
 

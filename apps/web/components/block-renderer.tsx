@@ -51,6 +51,7 @@ import React from "react";
 import type {
   Block,
   BlockRendererProps,
+  BlockStyle,
   CTABlock,
   DetailsGridBlock,
   FeaturesBlock,
@@ -209,6 +210,91 @@ const renderTestimonials = (block: TestimonialsBlock, key: string) => (
   </div>
 );
 
+const PADDING_MAP: Record<string, string> = { none: "py-0", sm: "py-4", md: "py-8", lg: "py-16", xl: "py-24" };
+
+const MAX_WIDTH_MAP: Record<string, string> = {
+  sm: "max-w-3xl",
+  md: "max-w-5xl",
+  lg: "max-w-6xl",
+  xl: "max-w-7xl",
+  full: "max-w-full",
+};
+
+const WAVE_SEPARATOR_CLASS =
+  "h-4 bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%201440%2050%22%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M0%2C25%20Q360%2C0%20720%2C25%20T1440%2C25%20V50%20H0%20Z%22/%3E%3C/svg%3E')] bg-cover text-border opacity-30";
+
+const SEPARATOR_CLASS_MAP: Record<string, string> = {
+  line: "border-border border-t",
+  gradient: "via-border h-px bg-gradient-to-r from-transparent to-transparent",
+  wave: WAVE_SEPARATOR_CLASS,
+};
+
+const getBlockStyle = (block: Block): BlockStyle | null | undefined =>
+  (block as unknown as Record<string, unknown>).blockStyle as BlockStyle | null | undefined;
+
+const buildBlockStyleClasses = (style: BlockStyle): string[] => {
+  const classes: string[] = [];
+
+  if (style.paddingTop) {
+    const pt = PADDING_MAP[style.paddingTop];
+    if (pt) classes.push(pt.replace("py-", "pt-"));
+  }
+  if (style.paddingBottom) {
+    const pb = PADDING_MAP[style.paddingBottom];
+    if (pb) classes.push(pb.replace("py-", "pb-"));
+  }
+  if (style.hideOnMobile) classes.push("hidden md:block");
+  if (style.hideOnDesktop) classes.push("md:hidden");
+  if (style.maxWidth) {
+    const mw = MAX_WIDTH_MAP[style.maxWidth];
+    if (mw) classes.push(mw, "mx-auto");
+  }
+
+  return classes;
+};
+
+const renderSeparator = (separator: string | null | undefined): React.ReactElement | null => {
+  if (!separator || separator === "none") return null;
+  const className = SEPARATOR_CLASS_MAP[separator] ?? "";
+  return <div className={className} />;
+};
+
+const buildInlineStyle = (style: BlockStyle): React.CSSProperties | undefined => {
+  if (!style.backgroundColor) return undefined;
+  return { backgroundColor: style.backgroundColor };
+};
+
+const BlockStyleWrapper = ({ block, children }: { block: Block; children: React.ReactElement }) => {
+  const style = getBlockStyle(block);
+  if (!style) return children;
+
+  const classes = buildBlockStyleClasses(style);
+  const inlineStyle = buildInlineStyle(style);
+  const separator = renderSeparator(style.separator);
+  const hasWrapper = classes.length > 0 || inlineStyle != null || style.anchorId;
+
+  if (!hasWrapper && !separator) return children;
+
+  return (
+    <>
+      {hasWrapper ? (
+        <div
+          id={style.anchorId ?? undefined}
+          className={classes.length > 0 ? classes.join(" ") : undefined}
+          style={inlineStyle}
+          data-block-type={block.blockType}
+          data-block-id={block.id ?? undefined}
+        >
+          {children}
+        </div>
+      ) : (
+        children
+      )}
+      {separator}
+    </>
+  );
+};
+
 const blockRenderers: Record<string, (block: Block, key: string) => React.ReactElement> = {
   hero: (block, key) => renderHero(block as HeroBlock, key),
   features: (block, key) => renderFeatures(block as FeaturesBlock, key),
@@ -271,7 +357,12 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => (
       .filter((block) => block.blockType in blockRenderers)
       .map((block, index) => {
         const key = block.id ?? `${block.blockType}-${index}`;
-        return blockRenderers[block.blockType]!(block, key);
+        const rendered = blockRenderers[block.blockType]!(block, key);
+        return (
+          <BlockStyleWrapper key={key} block={block}>
+            {rendered}
+          </BlockStyleWrapper>
+        );
       })}
   </>
 );

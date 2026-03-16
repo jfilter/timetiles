@@ -69,19 +69,117 @@ const Sites: CollectionConfig = {
         {
           name: "colors",
           type: "group",
-          admin: { description: "Custom color scheme" },
+          admin: { description: "Semantic color overrides (CSS color values, e.g. #3b82f6 or oklch(0.58 0.11 220))" },
           fields: [
-            { name: "primary", type: "text", admin: { description: "Primary color (hex, e.g., #3b82f6)" } },
-            { name: "secondary", type: "text", admin: { description: "Secondary color (hex)" } },
-            { name: "background", type: "text", admin: { description: "Background color (hex)" } },
+            { name: "primary", type: "text", admin: { description: "Primary color — navigation, headings" } },
+            { name: "primaryForeground", type: "text", admin: { description: "Text on primary color" } },
+            { name: "secondary", type: "text", admin: { description: "Secondary accent color" } },
+            { name: "secondaryForeground", type: "text", admin: { description: "Text on secondary color" } },
+            { name: "background", type: "text", admin: { description: "Page background color" } },
+            { name: "foreground", type: "text", admin: { description: "Default text color" } },
+            { name: "card", type: "text", admin: { description: "Card background color" } },
+            { name: "cardForeground", type: "text", admin: { description: "Card text color" } },
+            { name: "muted", type: "text", admin: { description: "Muted/subtle background" } },
+            { name: "mutedForeground", type: "text", admin: { description: "Muted text color" } },
+            { name: "accent", type: "text", admin: { description: "Accent color — success states, highlights" } },
+            { name: "accentForeground", type: "text", admin: { description: "Text on accent color" } },
+            { name: "destructive", type: "text", admin: { description: "Destructive/error color" } },
+            { name: "border", type: "text", admin: { description: "Border color" } },
+            { name: "ring", type: "text", admin: { description: "Focus ring color" } },
           ],
         },
         {
-          name: "headerHtml",
-          type: "textarea",
-          admin: { description: "Custom HTML for header (analytics scripts, etc.)" },
+          name: "typography",
+          type: "group",
+          admin: { description: "Typography customization" },
+          fields: [
+            {
+              name: "fontPairing",
+              type: "select",
+              admin: { description: "Font pairing for headings and body text" },
+              options: [
+                { label: "Editorial (Playfair Display + DM Sans)", value: "editorial" },
+                { label: "Modern (Inter + Geist Sans)", value: "modern" },
+                { label: "Monospace (Space Mono + IBM Plex Mono)", value: "monospace" },
+              ],
+            },
+          ],
+        },
+        {
+          name: "style",
+          type: "group",
+          admin: { description: "Visual style customization" },
+          fields: [
+            {
+              name: "borderRadius",
+              type: "select",
+              admin: { description: "Corner rounding for UI elements" },
+              options: [
+                { label: "Sharp (0px)", value: "sharp" },
+                { label: "Rounded (4px)", value: "rounded" },
+                { label: "Pill (16px)", value: "pill" },
+              ],
+            },
+            {
+              name: "density",
+              type: "select",
+              admin: { description: "Spacing density for UI elements" },
+              options: [
+                { label: "Compact", value: "compact" },
+                { label: "Default", value: "default" },
+                { label: "Comfortable", value: "comfortable" },
+              ],
+            },
+          ],
+        },
+        {
+          name: "theme",
+          type: "relationship",
+          relationTo: "themes",
+          admin: { description: "Optional theme preset (overridden by inline color settings above)" },
         },
       ],
+    },
+
+    // ============ CUSTOM CODE ============
+    {
+      type: "group",
+      name: "customCode",
+      label: "Custom Code",
+      admin: { description: "Custom CSS and HTML injection (scoped to this site)" },
+      fields: [
+        {
+          name: "headHtml",
+          type: "textarea",
+          admin: { description: "Custom HTML injected into <head> (analytics scripts, meta tags, external fonts)" },
+        },
+        {
+          name: "customCSS",
+          type: "textarea",
+          admin: {
+            description:
+              "Custom CSS scoped to this site. Target blocks with [data-block-type='hero']. Dangerous patterns (@import, url(), javascript:) are stripped for security.",
+          },
+        },
+        {
+          name: "bodyStartHtml",
+          type: "textarea",
+          admin: { description: "Custom HTML injected at the start of <body> (tag managers, noscript tags)" },
+        },
+        {
+          name: "bodyEndHtml",
+          type: "textarea",
+          admin: { description: "Custom HTML injected at the end of <body> (tracking scripts)" },
+        },
+      ],
+    },
+
+    // ============ LAYOUT ============
+    {
+      name: "defaultLayout",
+      type: "relationship",
+      relationTo: "layout-templates",
+      admin: { description: "Default layout template for all pages on this site" },
     },
 
     // ============ ACCESS & METADATA ============

@@ -19,11 +19,13 @@ import Events from "@/lib/collections/events";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
 import ImportFiles from "@/lib/collections/import-files";
 import ImportJobs from "@/lib/collections/import-jobs/";
+import { LayoutTemplates } from "@/lib/collections/layout-templates";
 import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
 import ScheduledImports from "@/lib/collections/scheduled-imports/index";
 import Sites from "@/lib/collections/sites";
+import { Themes } from "@/lib/collections/themes";
 import UserUsage from "@/lib/collections/user-usage";
 import Users from "@/lib/collections/users";
 import Views from "@/lib/collections/views";
@@ -75,6 +77,8 @@ export const COLLECTIONS = {
   "geocoding-providers": GeocodingProviders,
   pages: Pages,
   sites: Sites,
+  themes: Themes,
+  "layout-templates": LayoutTemplates,
   views: Views,
 } as const;
 
@@ -104,6 +108,8 @@ export const ALL_COLLECTIONS = [
   DataExports,
   // Configuration
   Sites,
+  Themes,
+  LayoutTemplates,
   Views,
 ];
 

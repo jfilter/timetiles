@@ -51,10 +51,9 @@ Currently supported:
 - **CSV files** (most common)
 - **Excel files** (.xlsx, .xls)
 - **ODS files** (OpenDocument Spreadsheet)
-- **JSON data** (API responses or exported data)
-- **Manual entry** through the web interface
+- **Scheduled URL imports** for automated data feeds from external APIs
 
-_Coming soon_: Direct API endpoint connections, Google Sheets integration.
+Files can be uploaded manually or fetched automatically on a schedule from a URL.
 
 ### My data only has addresses, not coordinates. Will it work?
 
@@ -104,20 +103,13 @@ Yes, several integration options:
 **As a standalone application**:
 
 - Deploy TimeTiles as a complete web application
-- Import data through the admin interface
-- Embed maps in other sites (future feature)
+- Import data through the admin interface or scheduled URL imports
 
-**As a development library**:
+**Via API**:
 
-- Use TimeTiles components in your existing applications
-- Integrate with your data pipelines
-- Customize the interface and functionality
-
-**API access**:
-
-- REST API for programmatic data import
-- Query API for building custom interfaces
-- Webhook support for real-time updates
+- Versioned REST API (`/api/v1/`) for querying events, clusters, and statistics
+- Payload CMS REST API for CRUD operations on all collections
+- Webhook triggers for automated workflows
 
 ### Is my data secure?
 
@@ -130,17 +122,24 @@ TimeTiles provides several security options:
 
 For sensitive data, we recommend self-hosting rather than using managed services.
 
+### Does TimeTiles support multiple languages?
+
+Yes! The user interface is available in **English** (default) and **German**. The import system supports automatic field mapping detection in 7 languages (English, German, French, Spanish, Italian, Dutch, Portuguese).
+
+For non-default locales, URLs are prefixed with the locale code (e.g., `/de/explore`). The default locale uses clean URLs with no prefix.
+
 ### Can I customize the appearance?
 
 **Basic customization**:
 
-- Configure colors, logos, and basic branding through the admin interface
-- Choose from preset map styles and color schemes
+- Configure site name, logos, and favicons through the Branding global in the admin dashboard
+- Customize footer links, navigation menu, and newsletter integration
+- Create custom pages with a block-based builder (Hero, Features, Stats, etc.)
 
 **Advanced customization**:
 
-- Modify CSS and styling for complete visual control
-- Use TimeTiles as a library to build completely custom interfaces
+- Configure Sites for multi-tenant deployments with separate branding per domain
+- Modify CSS and styling using Tailwind CSS and the shared UI component library
 - Override default components with your own implementations
 
 ## Usage & Workflow Questions
@@ -149,8 +148,8 @@ For sensitive data, we recommend self-hosting rather than using managed services
 
 **Public chronicles**: Anyone with the URL can access and explore the data
 **Private chronicles**: Require user accounts and appropriate permissions
-**Embeddable widgets**: (Future feature) Include maps in articles or reports
-**Export options**: Generate static images or data exports for traditional publishing
+**Data export**: Download all your data as a ZIP archive from Account Settings
+**Shareable URLs**: Filter state is preserved in the URL — bookmark or share specific views
 
 ### Can multiple people work on the same chronicle?
 

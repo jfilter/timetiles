@@ -2,6 +2,10 @@
 
 > **Part of the TimeTiles Cartographic Design System**
 > See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for complete design guidance
+>
+> **CMS-Driven Customization**: TimeTiles also supports runtime theming via the Payload CMS dashboard.
+> Sites can override all semantic tokens, assign theme presets, and inject custom CSS.
+> See ADR 0015 and the UI Customization docs for the full system.
 
 ## Multi-Theme Support
 

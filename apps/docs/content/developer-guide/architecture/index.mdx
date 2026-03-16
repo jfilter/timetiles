@@ -62,7 +62,7 @@ TimeTiles follows a **full-stack monorepo architecture** with clear separation o
 - **Why**: URL-first state management for filters and navigation
 - **Features**: Type-safe URL parameters, server/client sync
 - **Usage**: Search filters, pagination, shareable URLs
-- **Location**: `/apps/web/lib/filters.ts`
+- **Location**: `/apps/web/lib/filters/`
 
 ### Backend & CMS
 
@@ -87,14 +87,14 @@ TimeTiles follows a **full-stack monorepo architecture** with clear separation o
 - **Why**: High-performance WebGL-based mapping library
 - **Features**: Vector tiles, smooth interactions, clustering
 - **Usage**: Interactive map visualization, event clustering
-- **Location**: `/apps/web/components/clustered-map.tsx`
+- **Location**: `/apps/web/components/maps/clustered-map.tsx`
 
 **Apache ECharts**
 
 - **Why**: Comprehensive charting library with React integration
 - **Features**: Interactive charts, theming, responsive design
 - **Usage**: Histogram charts, data analysis visualizations
-- **Location**: `/apps/web/components/event-histogram.tsx`
+- **Location**: `/apps/web/components/charts/event-histogram.tsx`
 
 ### Development Tools
 
@@ -111,11 +111,22 @@ TimeTiles follows a **full-stack monorepo architecture** with clear separation o
 - **Usage**: Build system for apps and packages
 - **Location**: `/turbo.json`
 
-**ESLint + Prettier**
+**ESLint + oxfmt**
 
 - **Why**: Consistent code style and quality enforcement
-- **Features**: TypeScript-aware rules, auto-formatting
+- **Features**: TypeScript-aware lint rules, ultra-fast formatting with oxfmt (migrated from Prettier, see ADR 0014)
 - **Usage**: Enforced via git hooks and CI
+
+### Internationalization
+
+**next-intl**
+
+- **Why**: Type-safe, App Router-native i18n with minimal configuration
+- **Features**: Locale-prefix routing, message namespaces, server component support
+- **Usage**: All frontend routes, UI text, locale detection
+- **Location**: `/apps/web/i18n/`, `/apps/web/messages/`
+
+Currently supports English (default, no URL prefix) and German (`/de/...`). Uses `localePrefix: "as-needed"` so the default locale has clean URLs.
 
 ## 📊 Data Flow Architecture
 
@@ -165,10 +176,20 @@ File Upload → Parsing → Coordinate Detection → Geocoding → Event Creatio
 
 **Technologies**:
 
-- **CSV/Excel Parsing**: Built-in Node.js libraries
+- **CSV/Excel Parsing**: Papa Parse (CSV), ExcelJS (Excel/ODS)
 - **Geocoding**: Multi-provider (Nominatim, Google Maps, OpenCage) with priority-based fallback
 - **Progress Tracking**: React Query polling with automatic termination
 - **Batch Processing**: Queue-based system with Payload jobs
+
+### Background Jobs
+
+TimeTiles runs **18 background jobs** via Payload's job queue:
+
+- **Import pipeline** (7 jobs): Dataset detection → duplicates → schema → validation → geocoding → event creation
+- **Scheduling** (5 jobs): Schedule manager, URL fetch, stuck imports cleanup, pending retries, approval lock cleanup
+- **System maintenance** (6 jobs): Quota reset, cache cleanup, schema maintenance, audit log IP cleanup, data export/cleanup, account deletion
+
+See [Background Jobs](./background-jobs) for the complete reference.
 
 ### Real-time Updates
 
