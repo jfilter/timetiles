@@ -25,7 +25,7 @@ vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
 vi.mock("node:util", () => ({ promisify: () => vi.fn().mockResolvedValue({ stdout: "", stderr: "" }) }));
 
 vi.mock("node:fs/promises", () => ({
-  mkdtemp: vi.fn().mockResolvedValue("/tmp/scraper-repo-abc123"),
+  mkdtemp: vi.fn().mockResolvedValue("/private/var/folders/scraper-repo-abc123"),
   readFile: vi.fn(),
   rm: vi.fn().mockResolvedValue(undefined),
 }));
@@ -67,7 +67,7 @@ describe.sequential("scraperRepoSyncJob", () => {
 
     // Re-apply filesystem mocks after clearAllMocks
     const fsp = await import("node:fs/promises");
-    (fsp.mkdtemp as any).mockResolvedValue("/tmp/scraper-repo-abc123");
+    (fsp.mkdtemp as any).mockResolvedValue("/private/var/folders/scraper-repo-abc123");
     (fsp.rm as any).mockResolvedValue(undefined);
   });
 
