@@ -440,7 +440,7 @@
         "@typescript-eslint/require-await": "off"
       }
     },
-    { "files": ["**/cli/**/*.ts"], "rules": { "no-console": "off" } },
+    { "files": ["**/cli/**/*.ts", "**/examples/**/*.{js,ts}"], "rules": { "no-console": "off" } },
     {
       "files": ["**/tests/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
       "rules": {
