@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev scraper-dev scraper-images scraper-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE from .env (default: docker)
 -include .env
@@ -170,6 +170,27 @@ dev: ensure-infra
 	@echo "🚀 Starting development server..."
 	exec pnpm dev
 
+# Start scraper runner in dev mode (separate from main dev server)
+scraper-dev:
+	@echo "🔧 Starting TimeScrape runner..."
+	@if [ ! -f apps/scraper/.env ]; then \
+		echo "⚠️  No apps/scraper/.env found. Copying from .env.example..."; \
+		cp apps/scraper/.env.example apps/scraper/.env; \
+		echo "⚠️  Please update SCRAPER_API_KEY in apps/scraper/.env"; \
+	fi
+	pnpm --filter @timetiles/scraper dev
+
+# Build scraper base container images (requires Podman)
+scraper-images:
+	@echo "🐳 Building scraper base images..."
+	podman build -t timescrape-python apps/scraper/images/python/
+	podman build -t timescrape-node apps/scraper/images/node/
+	@echo "✅ Base images built: timescrape-python, timescrape-node"
+
+# Run scraper tests
+scraper-test:
+	pnpm --filter @timetiles/scraper test
+
 # Kill all development servers and processes
 kill-dev:
 	@echo "🛑 Stopping all development servers..."
@@ -226,7 +247,7 @@ test:
 # Note: Full runs (no FILTER) use Turbo caching. Filtered runs bypass Turbo.
 test-ai:
 	@if [ -z "$(FILTER)" ]; then \
-		pnpm turbo run test:ai --filter=web; \
+		pnpm turbo run test:ai --filter=web --filter=@timetiles/scraper; \
 	else \
 		cd apps/web && pnpm test:ai "$(FILTER)"; \
 	fi

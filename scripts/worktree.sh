@@ -59,6 +59,14 @@ copy_env_files() {
         warn "No apps/web/.env.local in main repo (skipping)"
     fi
 
+    # scraper env if present
+    if [ -f "$REPO_ROOT/apps/scraper/.env" ]; then
+        mkdir -p "$target/apps/scraper"
+        cp "$REPO_ROOT/apps/scraper/.env" "$target/apps/scraper/.env"
+        info "Copied apps/scraper/.env"
+        copied=$((copied + 1))
+    fi
+
     # deployment env if present
     if [ -f "$REPO_ROOT/deployment/.env.production" ]; then
         mkdir -p "$target/deployment"

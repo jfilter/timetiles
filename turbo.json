@@ -60,7 +60,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {
       "dependsOn": ["transit"],
@@ -96,6 +96,7 @@
         "app/**/*.tsx",
         "components/**/*.ts",
         "components/**/*.tsx",
+        "src/**/*.ts",
         "tests/**/*.ts",
         "tests/**/*.tsx",
         "migrations/**/*",
@@ -115,6 +116,7 @@
         "app/**/*.tsx",
         "components/**/*.ts",
         "components/**/*.tsx",
+        "src/**/*.ts",
         "tests/**/*.ts",
         "tests/**/*.tsx",
         "migrations/**/*",

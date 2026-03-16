@@ -11,7 +11,7 @@
     "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**'",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:ai": "vitest run --reporter=json"
+    "test:ai": "vitest run --reporter=json --outputFile=.test-results/latest.json"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.1",
