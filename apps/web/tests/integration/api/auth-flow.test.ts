@@ -223,7 +223,7 @@ describe.sequential("Authentication Flow", () => {
 
       expect(loginResult).toBeDefined();
       expect(loginResult.user).toBeDefined();
-      expect(loginResult.user.email).toBe(testEmail);
+      expect(loginResult.user!.email).toBe(testEmail);
       expect(loginResult.token).toBeDefined();
     });
 

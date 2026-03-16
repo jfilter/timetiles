@@ -50,7 +50,7 @@ describe("Session Authentication", () => {
 
       expect(loginResult.token).toBeDefined();
       expect(loginResult.user).toBeDefined();
-      expect(loginResult.user.id).toBe(user.id);
+      expect(loginResult.user!.id).toBe(user.id);
 
       console.log(`Login successful, token length: ${loginResult.token?.length}`);
 

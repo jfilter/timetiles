@@ -15,6 +15,7 @@ import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 export type UserSeed = Omit<
   User,
   | "id"
+  | "collection"
   | "createdAt"
   | "updatedAt"
   | "salt"
