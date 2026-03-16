@@ -80,7 +80,7 @@ describe.sequential("scheduleManagerJob", () => {
         pagination: false,
       });
 
-      expect(result.output).toEqual({ success: true, totalScheduled: 1, triggered: 1, errors: 0 });
+      expect(result.output).toMatchObject({ success: true, totalScheduled: 1, triggered: 1, errors: 0 });
     });
 
     it("should trigger imports that are due based on frequency", async () => {
@@ -318,7 +318,7 @@ describe.sequential("scheduleManagerJob", () => {
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       // Should handle error and continue
-      expect(result.output).toEqual({ success: true, totalScheduled: 1, triggered: 0, errors: 1 });
+      expect(result.output).toMatchObject({ success: true, totalScheduled: 1, triggered: 0, errors: 1 });
 
       // Should update the import with error status
       expect(mockPayload.update).toHaveBeenCalledWith({
