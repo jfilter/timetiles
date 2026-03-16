@@ -178,7 +178,7 @@ scraper-dev:
 		cp apps/scraper/.env.example apps/scraper/.env; \
 		echo "⚠️  Please update SCRAPER_API_KEY in apps/scraper/.env"; \
 	fi
-	pnpm --filter @timetiles/scraper dev
+	pnpm --filter scraper dev
 
 # Build scraper base container images (requires Podman)
 scraper-images:
@@ -189,7 +189,7 @@ scraper-images:
 
 # Run scraper tests
 scraper-test:
-	pnpm --filter @timetiles/scraper test
+	pnpm --filter scraper test
 
 # Kill all development servers and processes
 kill-dev:
@@ -247,7 +247,7 @@ test:
 # Note: Full runs (no FILTER) use Turbo caching. Filtered runs bypass Turbo.
 test-ai:
 	@if [ -z "$(FILTER)" ]; then \
-		pnpm turbo run test:ai --filter=web --filter=@timetiles/scraper; \
+		pnpm turbo run test:ai --filter=web --filter=scraper; \
 	else \
 		cd apps/web && pnpm test:ai "$(FILTER)"; \
 	fi
@@ -279,7 +279,7 @@ check-ai:
 	elif [ "$(PACKAGE)" = "ui" ]; then \
 		pnpm --filter ui lint && pnpm --filter ui typecheck; \
 	elif [ "$(PACKAGE)" = "scraper" ]; then \
-		pnpm --filter @timetiles/scraper lint && pnpm --filter @timetiles/scraper typecheck; \
+		pnpm --filter scraper lint && pnpm --filter scraper typecheck; \
 	else \
 		echo "❌ Unknown package: $(PACKAGE)"; \
 		echo "Available packages: web, docs, ui, scraper"; \

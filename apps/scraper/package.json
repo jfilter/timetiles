@@ -1,5 +1,5 @@
 {
-  "name": "@timetiles/scraper",
+  "name": "scraper",
   "version": "0.0.1",
   "private": true,
   "description": "TimeScrape runner — executes user-defined scrapers in isolated Podman containers.",
