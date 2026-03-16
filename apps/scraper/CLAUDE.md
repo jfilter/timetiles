@@ -31,6 +31,7 @@ pnpm --filter scraper typecheck
 | POST | /stop/:runId | Bearer | Kill running container |
 | GET | /status/:runId | Bearer | Check if run is active |
 | GET | /health | None | Health check |
+| GET | /metrics | None | Runner metrics (runs, success/fail counts, uptime) |
 
 Auth: `Authorization: Bearer {SCRAPER_API_KEY}` (shared with apps/web).
 
@@ -38,12 +39,26 @@ Auth: `Authorization: Bearer {SCRAPER_API_KEY}` (shared with apps/web).
 
 See `apps/scraper/.env.example` for all variables. Required: `SCRAPER_API_KEY` (min 16 chars).
 
+## CLI — `timescrape init`
+
+Scaffolds a new scraper project:
+
+```bash
+npx timescrape init my-scraper              # Python (default)
+npx timescrape init my-scraper --runtime node
+```
+
+Creates `my-scraper/` with `scrapers.yml`, entrypoint, `.gitignore`, and `README.md`.
+
+Source: `src/cli/init.ts` + `src/cli/templates/`.
+
 ## Key Files
 
 - `src/index.ts` — Hono server + auth middleware
-- `src/services/runner.ts` — Podman container lifecycle
+- `src/services/runner.ts` — Podman container lifecycle + metrics
 - `src/security/container-config.ts` — Hardening flags builder
 - `src/security/seccomp-profile.json` — Allowed syscalls
+- `src/cli/init.ts` — CLI scaffolding tool
 - `images/python/` — Python base image + timescrape helper
 - `images/node/` — Node.js base image + @timescrape/helper
 

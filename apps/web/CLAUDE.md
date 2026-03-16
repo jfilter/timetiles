@@ -55,9 +55,9 @@ pnpm seed test                        # Seed test data
 - Never fetch data directly in components
 - Hook naming: `use{Entity}{Action}Query` / `use{Entity}Mutations`
 
-**Query hooks**: `useEventsQueries`, `useCatalogsQuery`, `useDataSourcesQuery`, `useScheduledImportsQuery`, `useImportProgressQuery`, `useChartQuery`, `useDataSourceStats`, `useDatasetEnumFields`, `useFeatureFlags`, `usePreviewValidationQuery`
+**Query hooks**: `useEventsQueries`, `useCatalogsQuery`, `useDataSourcesQuery`, `useScheduledImportsQuery`, `useImportProgressQuery`, `useChartQuery`, `useDataSourceStats`, `useDatasetEnumFields`, `useFeatureFlags`, `usePreviewValidationQuery`, `useScraperReposQuery`, `useScrapersQuery`, `useScraperRunsQuery`
 
-**Mutation hooks**: `useAccountMutations`, `useAuthMutations`, `useFormMutation`, `useImportWizardMutations`, `useScheduledImportMutations`, `useDataExport`
+**Mutation hooks**: `useAccountMutations`, `useAuthMutations`, `useFormMutation`, `useImportWizardMutations`, `useScheduledImportMutations`, `useDataExport`, `useScraperMutations` (sync, run, delete)
 
 **Utility hooks**: `useFilters`, `useTimeRangeSlider`, `useChartFilters`, `useDebounce`, `useAdminFeatureFlag`, `useViewScope`, `useMediaQuery`, `useTheme`
 

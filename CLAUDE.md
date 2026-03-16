@@ -98,7 +98,7 @@ apps/web/
 │   ├── filters/          # Canonical filter model, SQL/Payload adapters
 │   ├── geospatial/       # Coordinate parsing, validation, bounds, distance
 │   ├── globals/          # Payload globals (Branding, Footer, MainMenu, Settings)
-│   ├── hooks/            # React Query hooks (27 hooks)
+│   ├── hooks/            # React Query hooks (30 hooks)
 │   ├── jobs/             # Background job handlers (18 jobs)
 │   ├── services/         # Business logic services
 │   └── utils/            # Utility functions
@@ -108,6 +108,7 @@ apps/web/
 
 apps/scraper/              # TimeScrape runner (optional)
 ├── src/                   # Hono API server
+├── src/cli/               # `timescrape init` CLI tool
 ├── images/                # Base container images (Python, Node.js)
 └── examples/              # Example scrapers
 ```
