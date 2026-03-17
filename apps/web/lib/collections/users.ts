@@ -21,6 +21,7 @@ import {
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
 } from "@/lib/constants/quota-constants";
+import { emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
 
 import { createCommonConfig } from "./shared-fields";
@@ -63,24 +64,15 @@ const Users: CollectionConfig = {
         const firstName = user?.firstName ?? "";
         const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
         const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
-        return `
-          <!DOCTYPE html>
-          <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-              <h1>Verify your TimeTiles account</h1>
-              <p>Hello${firstName ? ` ${firstName}` : ""},</p>
-              <p>Thank you for registering with TimeTiles. Please verify your email address by clicking the link below:</p>
-              <p style="margin: 20px 0;">
-                <a href="${verifyUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-                  Verify Email
-                </a>
-              </p>
-              <p>Or copy and paste this link into your browser:</p>
-              <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-              <p>If you didn't create an account, you can safely ignore this email.</p>
-            </body>
-          </html>
-        `;
+        return emailLayout(`
+          <h1>Verify your TimeTiles account</h1>
+          ${greeting(firstName)}
+          <p>Thank you for registering with TimeTiles. Please verify your email address by clicking the link below:</p>
+          ${emailButton(verifyUrl, "Verify Email")}
+          <p>Or copy and paste this link into your browser:</p>
+          <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+          <p>If you didn't create an account, you can safely ignore this email.</p>
+        `);
       },
       generateEmailSubject: () => {
         return "Verify your TimeTiles account";
@@ -94,25 +86,16 @@ const Users: CollectionConfig = {
         const firstName = user?.firstName ?? "";
         const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
         const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-        return `
-          <!DOCTYPE html>
-          <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-              <h1>Reset your password</h1>
-              <p>Hello${firstName ? ` ${firstName}` : ""},</p>
-              <p>You requested to reset your password. Click the link below to set a new password:</p>
-              <p style="margin: 20px 0;">
-                <a href="${resetUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-                  Reset Password
-                </a>
-              </p>
-              <p>Or copy and paste this link into your browser:</p>
-              <p><a href="${resetUrl}">${resetUrl}</a></p>
-              <p>This link will expire in 1 hour.</p>
-              <p>If you didn't request a password reset, you can safely ignore this email.</p>
-            </body>
-          </html>
-        `;
+        return emailLayout(`
+          <h1>Reset your password</h1>
+          ${greeting(firstName)}
+          <p>You requested to reset your password. Click the link below to set a new password:</p>
+          ${emailButton(resetUrl, "Reset Password")}
+          <p>Or copy and paste this link into your browser:</p>
+          <p><a href="${resetUrl}">${resetUrl}</a></p>
+          <p>This link will expire in 1 hour.</p>
+          <p>If you didn't request a password reset, you can safely ignore this email.</p>
+        `);
       },
       generateEmailSubject: () => {
         return "Reset your TimeTiles password";
