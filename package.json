@@ -35,7 +35,7 @@
     "oxlint": "^1.52.0",
     "oxlint-tsgolint": "^0.16.0",
     "tsx": "catalog:",
-    "turbo": "^2.8.13",
+    "turbo": "^2.8.15",
     "typescript": "catalog:"
   },
   "engines": {

@@ -53,7 +53,7 @@
     "@tailwindcss/postcss": "^4.2.1",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
-    "@turbo/gen": "^2.8.13",
+    "@turbo/gen": "^2.8.15",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
