@@ -11,7 +11,7 @@
  */
 import type { Payload } from "payload";
 
-import { callout, emailButton, emailFooter, emailLayout, greeting } from "@/lib/email/layout";
+import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { formatLongDate } from "@/lib/utils/date";
 import { safeSendEmail } from "@/lib/utils/email";
 
@@ -49,7 +49,6 @@ export const sendDeletionScheduledEmail = async (
       Or visit your account settings: <a href="${cancelUrl}">${cancelUrl}</a>
     </p>
 
-    ${emailFooter("This email was sent because an account deletion was requested for your TimeTiles account. If you have questions, please contact support.")}
   `);
 
   await safeSendEmail(
@@ -80,7 +79,6 @@ export const sendDeletionCancelledEmail = async (
       <li>Reviewing your recent account activity</li>
     </ul>
 
-    ${emailFooter("This email was sent because an account deletion was cancelled for your TimeTiles account.")}
   `);
 
   await safeSendEmail(
@@ -134,7 +132,6 @@ export const sendDeletionCompletedEmail = async (
 
     <p>Thank you for using TimeTiles. If you have any questions about your data, please contact support within 30 days.</p>
 
-    ${emailFooter("This is a confirmation of your account deletion. No further action is required.")}
   `);
 
   await safeSendEmail(

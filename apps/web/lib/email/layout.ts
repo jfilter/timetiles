@@ -3,7 +3,7 @@
  *
  * Provides consistent styling and structure for all transactional emails.
  * All email templates should use {@link emailLayout} to wrap their body content
- * and {@link emailFooter} for the standard footer line.
+ * and a shared footer with support contact info.
  *
  * @module
  * @category Email
@@ -35,13 +35,8 @@ export const callout = (content: string, color: "red" | "green" | "amber" | "gra
   return `<div style="background-color: ${bg}; border-left: 4px solid ${border}; padding: 16px; margin: 20px 0;">${content}</div>`;
 };
 
-/** Horizontal divider + footer text. */
-export const emailFooter = (text: string): string =>
-  `<hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-  <p style="color: #999; font-size: 12px;">${text}</p>`;
-
 /**
- * Wrap email body content in the standard HTML layout.
+ * Wrap email body content in the standard HTML layout with shared footer.
  *
  * @param body - Inner HTML content (everything between the body tags)
  * @returns Complete HTML document string
@@ -51,5 +46,9 @@ export const emailLayout = (body: string): string =>
 <html>
   <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     ${body}
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    <p style="color: #999; font-size: 12px;">
+      This is an automated message from TimeTiles. If you have questions, please contact support.
+    </p>
   </body>
 </html>`;

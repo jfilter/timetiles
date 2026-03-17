@@ -10,7 +10,7 @@
  */
 import type { Payload } from "payload";
 
-import { callout, emailButton, emailFooter, emailLayout, greeting } from "@/lib/email/layout";
+import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { formatLongDate } from "@/lib/utils/date";
 import { safeSendEmail } from "@/lib/utils/email";
 
@@ -71,7 +71,9 @@ export const sendExportReadyEmail = async (
       "amber"
     )}
 
-    ${emailFooter("This email was sent because you requested a data export for your TimeTiles account. If you didn't request this export, please secure your account by changing your password.")}
+    <p style="color: #666; font-size: 14px;">
+      If you didn't request this export, please secure your account by changing your password.
+    </p>
   `);
 
   await safeSendEmail(
@@ -116,7 +118,6 @@ export const sendExportFailedEmail = async (
 
     <p>We apologize for the inconvenience.</p>
 
-    ${emailFooter("This email was sent because a data export request for your TimeTiles account encountered an error.")}
   `);
 
   await safeSendEmail(
