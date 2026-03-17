@@ -10,7 +10,10 @@
  */
 
 /** Standard greeting line. */
-export const greeting = (firstName?: string | null): string => `<p>Hello${firstName ? ` ${firstName}` : ""},</p>`;
+export const greeting = (firstName?: string | null): string => {
+  const name = firstName ? ` ${firstName}` : "";
+  return `<p>Hello${name},</p>`;
+};
 
 /** Primary action button. */
 export const emailButton = (href: string, label: string, color = "#0070f3"): string =>
