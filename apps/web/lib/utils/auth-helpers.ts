@@ -6,11 +6,36 @@
  */
 import type { Payload } from "payload";
 
+import { ForbiddenError } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
 import type { User } from "@/payload-types";
 
 import { unauthorized } from "./api-response";
+
+/**
+ * Check if a user can manage a resource based on role or ownership.
+ * Admins and editors can manage any resource; regular users only their own.
+ */
+export const canManageResource = (
+  user: { id: number; role?: string | null },
+  ownerId: number | string | null | undefined
+): boolean => {
+  if (user.role === "admin" || user.role === "editor") return true;
+  return ownerId != null && ownerId === user.id;
+};
+
+/**
+ * Require that the scrapers feature flag is enabled.
+ * @throws ForbiddenError if the feature is disabled
+ */
+export const requireScrapersEnabled = async (payload: Payload): Promise<void> => {
+  const enabled = await isFeatureEnabled(payload, "enableScrapers");
+  if (!enabled) {
+    throw new ForbiddenError("Scraper feature is not enabled");
+  }
+};
 
 /**
  * Verify a user's password by attempting a login.

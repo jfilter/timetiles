@@ -24,7 +24,7 @@ export const useSyncScraperRepoMutation = () => {
 
   return useMutation({
     mutationFn: async (repoId: number) => {
-      return fetchJson<{ success: boolean; message: string }>(`/api/scraper-repos/${repoId}/sync`, {
+      return fetchJson<{ message: string }>(`/api/scraper-repos/${repoId}/sync`, {
         method: "POST",
         credentials: "include",
       });
@@ -40,7 +40,7 @@ export const useRunScraperMutation = () => {
 
   return useMutation({
     mutationFn: async (scraperId: number) => {
-      return fetchJson<{ success: boolean; message: string }>(`/api/scrapers/${scraperId}/run`, {
+      return fetchJson<{ message: string }>(`/api/scrapers/${scraperId}/run`, {
         method: "POST",
         credentials: "include",
       });

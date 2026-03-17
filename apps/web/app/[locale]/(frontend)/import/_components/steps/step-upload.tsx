@@ -78,24 +78,8 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     setAuthConfig((prev) => ({ ...prev, type: value as UrlAuthConfig["type"] }));
   };
 
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAuthConfig((prev) => ({ ...prev, apiKey: e.target.value }));
-  };
-
-  const handleApiKeyHeaderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAuthConfig((prev) => ({ ...prev, apiKeyHeader: e.target.value }));
-  };
-
-  const handleBearerTokenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAuthConfig((prev) => ({ ...prev, bearerToken: e.target.value }));
-  };
-
-  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAuthConfig((prev) => ({ ...prev, username: e.target.value }));
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAuthConfig((prev) => ({ ...prev, password: e.target.value }));
+  const handleAuthField = (field: keyof UrlAuthConfig) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAuthConfig((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
   const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,7 +225,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
                 type="password"
                 placeholder="Your API key"
                 value={authConfig.apiKey ?? ""}
-                onChange={handleApiKeyChange}
+                onChange={handleAuthField("apiKey")}
               />
             </div>
             <div className="space-y-2">
@@ -250,7 +234,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
                 id="api-key-header"
                 placeholder="X-API-Key"
                 value={authConfig.apiKeyHeader ?? "X-API-Key"}
-                onChange={handleApiKeyHeaderChange}
+                onChange={handleAuthField("apiKeyHeader")}
               />
             </div>
           </div>
@@ -264,7 +248,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
               type="password"
               placeholder="Your bearer token"
               value={authConfig.bearerToken ?? ""}
-              onChange={handleBearerTokenChange}
+              onChange={handleAuthField("bearerToken")}
             />
           </div>
         );
@@ -277,7 +261,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
                 id="username"
                 placeholder="Username"
                 value={authConfig.username ?? ""}
-                onChange={handleUsernameChange}
+                onChange={handleAuthField("username")}
               />
             </div>
             <div className="space-y-2">
@@ -287,7 +271,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
                 type="password"
                 placeholder="Password"
                 value={authConfig.password ?? ""}
-                onChange={handlePasswordChange}
+                onChange={handleAuthField("password")}
               />
             </div>
           </div>

@@ -26,6 +26,42 @@ export interface FormatDetectionResult {
   confidence: number;
 }
 
+/** Minimum ratio of matching samples required for positive format detection. */
+const DETECTION_CONFIDENCE_THRESHOLD = 0.7;
+
+/**
+ * Type guard for GeoJSON Point objects.
+ */
+interface GeoJsonPoint {
+  type: "Point";
+  coordinates: number[];
+}
+
+const isGeoJsonPoint = (value: unknown): value is GeoJsonPoint =>
+  value != null &&
+  typeof value === "object" &&
+  (value as Record<string, unknown>).type === "Point" &&
+  Array.isArray((value as Record<string, unknown>).coordinates);
+
+/**
+ * Generic format detection using a matcher function.
+ *
+ * Filters samples through the matcher, computes the match ratio,
+ * and returns a detection result if it meets the confidence threshold.
+ */
+const detectFormat = (
+  samples: unknown[],
+  matcher: (sample: unknown) => boolean,
+  format: string
+): FormatDetectionResult | null => {
+  const matches = samples.filter(matcher);
+  const confidence = matches.length / samples.length;
+  if (confidence >= DETECTION_CONFIDENCE_THRESHOLD) {
+    return { format, confidence };
+  }
+  return null;
+};
+
 /**
  * Check for comma-separated coordinate format.
  *
@@ -46,21 +82,18 @@ export interface FormatDetectionResult {
  * ```
  */
 export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | null => {
-  const commaFormat = samples.filter((s) => {
-    const commaRegex = /^(-?\d{1,3}\.?\d{0,10}),\s{0,5}(-?\d{1,3}\.?\d{0,10})$/;
-    const match = commaRegex.exec(typeof s === "string" || typeof s === "number" ? String(s) : "");
-    if (match?.[1] != null && match?.[1] != undefined && match[2] != null && match[2] != undefined) {
-      const lat = Number.parseFloat(match[1]);
-      const lon = Number.parseFloat(match[2]);
-      return isValidCoordinate(lat, lon);
-    }
-    return false;
-  });
-
-  if (commaFormat.length / samples.length >= 0.7) {
-    return { format: "combined_comma", confidence: commaFormat.length / samples.length };
-  }
-  return null;
+  return detectFormat(
+    samples,
+    (s) => {
+      const commaRegex = /^(-?\d{1,3}\.?\d{0,10}),\s{0,5}(-?\d{1,3}\.?\d{0,10})$/;
+      const match = commaRegex.exec(typeof s === "string" || typeof s === "number" ? String(s) : "");
+      if (match?.[1] != null && match[2] != null) {
+        return isValidCoordinate(Number.parseFloat(match[1]), Number.parseFloat(match[2]));
+      }
+      return false;
+    },
+    "combined_comma"
+  );
 };
 
 /**
@@ -83,21 +116,18 @@ export const checkCommaFormat = (samples: unknown[]): FormatDetectionResult | nu
  * ```
  */
 export const checkSpaceFormat = (samples: unknown[]): FormatDetectionResult | null => {
-  const spaceFormat = samples.filter((s) => {
-    const spaceRegex = /^(-?\d{1,3}\.?\d{0,10})\s{1,5}(-?\d{1,3}\.?\d{0,10})$/;
-    const match = spaceRegex.exec(typeof s === "string" || typeof s === "number" ? String(s) : "");
-    if (match?.[1] != null && match?.[1] != undefined && match[2] != null && match[2] != undefined) {
-      const lat = Number.parseFloat(match[1]);
-      const lon = Number.parseFloat(match[2]);
-      return isValidCoordinate(lat, lon);
-    }
-    return false;
-  });
-
-  if (spaceFormat.length / samples.length >= 0.7) {
-    return { format: "combined_space", confidence: spaceFormat.length / samples.length };
-  }
-  return null;
+  return detectFormat(
+    samples,
+    (s) => {
+      const spaceRegex = /^(-?\d{1,3}\.?\d{0,10})\s{1,5}(-?\d{1,3}\.?\d{0,10})$/;
+      const match = spaceRegex.exec(typeof s === "string" || typeof s === "number" ? String(s) : "");
+      if (match?.[1] != null && match[2] != null) {
+        return isValidCoordinate(Number.parseFloat(match[1]), Number.parseFloat(match[2]));
+      }
+      return false;
+    },
+    "combined_space"
+  );
 };
 
 /**
@@ -128,31 +158,21 @@ export const checkSpaceFormat = (samples: unknown[]): FormatDetectionResult | nu
  * ```
  */
 export const checkGeoJsonFormat = (samples: unknown[]): FormatDetectionResult | null => {
-  const geoJsonFormat = samples.filter((s) => {
-    try {
-      const parsed: unknown = typeof s == "string" ? JSON.parse(s) : s;
-      if (
-        parsed != null &&
-        parsed != undefined &&
-        typeof parsed == "object" &&
-        (parsed as Record<string, unknown>).type == "Point" &&
-        Array.isArray((parsed as Record<string, unknown>).coordinates)
-      ) {
-        const coordinates = (parsed as Record<string, unknown>).coordinates as unknown[];
-        if (coordinates.length >= 2) {
-          const lon = coordinates[0] as number;
-          const lat = coordinates[1] as number;
+  return detectFormat(
+    samples,
+    (s) => {
+      try {
+        const parsed: unknown = typeof s === "string" ? JSON.parse(s) : s;
+        if (isGeoJsonPoint(parsed) && parsed.coordinates.length >= 2) {
+          const lon = parsed.coordinates[0]!;
+          const lat = parsed.coordinates[1]!;
           return isValidCoordinate(lat, lon);
         }
+      } catch {
+        // Not JSON
       }
-    } catch {
-      // Not JSON
-    }
-    return false;
-  });
-
-  if (geoJsonFormat.length / samples.length >= 0.7) {
-    return { format: "geojson", confidence: geoJsonFormat.length / samples.length };
-  }
-  return null;
+      return false;
+    },
+    "geojson"
+  );
 };

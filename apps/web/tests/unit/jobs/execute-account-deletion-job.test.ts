@@ -19,12 +19,6 @@ describe("executeAccountDeletionJob", () => {
     expect(executeAccountDeletionJob.slug).toBe("execute-account-deletion");
   });
 
-  it("should throw when payload is not available", async () => {
-    await expect(executeAccountDeletionJob.handler({ job: { id: "1" }, req: {} })).rejects.toThrow(
-      "Payload not available in job context"
-    );
-  });
-
   it("should process due deletions successfully", async () => {
     const findDue = vi.fn().mockResolvedValue([
       { id: 1, email: "user1@test.com" },

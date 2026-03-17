@@ -13,7 +13,7 @@
 
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
-import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date-slider";
+import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date";
 
 const DATE_INPUT_CLASS =
   "border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none";

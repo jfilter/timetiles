@@ -17,7 +17,7 @@ import type { FilterState } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 import type { HistogramResponse } from "@/lib/schemas/events";
 
-import { formatISODate, parseISODate } from "../utils/date-slider";
+import { formatISODate, parseISODate } from "../utils/date";
 
 interface UseTimeRangeSliderProps {
   filters: FilterState;

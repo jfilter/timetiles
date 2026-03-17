@@ -10,8 +10,7 @@
  */
 import { unlink } from "node:fs/promises";
 
-import type { Payload } from "payload";
-
+import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 
 /**
@@ -19,12 +18,8 @@ import { logError, logger } from "@/lib/logger";
  */
 export const dataExportCleanupJob = {
   slug: "data-export-cleanup",
-  handler: async ({ job, req }: { job?: { id?: string | number }; req?: { payload?: Payload } }) => {
-    const payload = req?.payload;
-
-    if (!payload) {
-      throw new Error("Payload not available in job context");
-    }
+  handler: async ({ job, req }: JobHandlerContext) => {
+    const { payload } = req;
 
     try {
       logger.info({ jobId: job?.id }, "Starting data export cleanup job");

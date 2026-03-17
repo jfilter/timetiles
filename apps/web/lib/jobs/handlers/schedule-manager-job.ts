@@ -12,6 +12,7 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { triggerScheduledImport } from "@/lib/services/scheduled-import-trigger-service";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
@@ -344,12 +345,8 @@ const processScheduledScrapers = async (
 export const scheduleManagerJob = {
   slug: "schedule-manager",
   schedule: [{ cron: "* * * * *", queue: "default" as const }],
-  handler: async ({ job, req }: { job?: { id?: string | number }; req?: { payload?: Payload } }) => {
-    const payload = req?.payload;
-
-    if (!payload) {
-      throw new Error("Payload not available in job context");
-    }
+  handler: async ({ job, req }: JobHandlerContext) => {
+    const { payload } = req;
 
     try {
       // Check feature flag - skip execution if disabled

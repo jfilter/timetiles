@@ -11,10 +11,7 @@
 import type { Payload } from "payload";
 
 import { formatLongDate } from "@/lib/utils/date";
-
-import { createLogger, logError } from "../logger";
-
-const logger = createLogger("data-export-emails");
+import { safeSendEmail } from "@/lib/utils/email";
 
 /**
  * Send export ready notification email.
@@ -85,13 +82,11 @@ export const sendExportReadyEmail = async (
     </html>
   `;
 
-  try {
-    await payload.sendEmail({ to: email, subject: "Your TimeTiles data export is ready", html });
-    logger.info({ email }, "Export ready email sent");
-  } catch (error) {
-    logError(error, "Failed to send export ready email", { email });
-    // Don't throw - email failure shouldn't block export completion
-  }
+  await safeSendEmail(
+    payload,
+    { to: email, subject: "Your TimeTiles data export is ready", html },
+    "export-ready-email"
+  );
 };
 
 /**
@@ -152,10 +147,9 @@ export const sendExportFailedEmail = async (
     </html>
   `;
 
-  try {
-    await payload.sendEmail({ to: email, subject: "Your TimeTiles data export could not be completed", html });
-    logger.info({ email }, "Export failed email sent");
-  } catch (error) {
-    logError(error, "Failed to send export failed email", { email });
-  }
+  await safeSendEmail(
+    payload,
+    { to: email, subject: "Your TimeTiles data export could not be completed", html },
+    "export-failed-email"
+  );
 };

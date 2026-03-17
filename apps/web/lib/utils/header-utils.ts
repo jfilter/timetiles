@@ -1,18 +1,11 @@
 /**
- * Utility functions for header title and date formatting.
+ * Utility functions for header title formatting.
  *
  * @module
  * @category Utils
  */
+import { formatShortDate } from "@/lib/utils/date";
 import type { Catalog, Dataset } from "@/payload-types";
-
-/**
- * Format date for display in header.
- */
-export const formatHeaderDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-};
 
 /**
  * Build dynamic title based on active filters.
@@ -49,11 +42,11 @@ export const buildDynamicTitle = (
   const hasEnd = filters.endDate != null && filters.endDate !== "";
 
   if (hasStart && hasEnd) {
-    dateRange = `${formatHeaderDate(filters.startDate!)} – ${formatHeaderDate(filters.endDate!)}`;
+    dateRange = `${formatShortDate(filters.startDate!)} – ${formatShortDate(filters.endDate!)}`;
   } else if (hasStart) {
-    dateRange = `From ${formatHeaderDate(filters.startDate!)}`;
+    dateRange = `From ${formatShortDate(filters.startDate!)}`;
   } else if (hasEnd) {
-    dateRange = `Until ${formatHeaderDate(filters.endDate!)}`;
+    dateRange = `Until ${formatShortDate(filters.endDate!)}`;
   }
 
   return { title, dateRange };

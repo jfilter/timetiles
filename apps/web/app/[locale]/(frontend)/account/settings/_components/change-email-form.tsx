@@ -10,6 +10,7 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Loader2, Mail } from "lucide-react";
+import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
 
 import { changeEmailRequest } from "@/lib/hooks/use-account-mutations";
@@ -39,13 +40,8 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
     },
   });
 
-  const handleNewEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewEmail(e.target.value);
-    reset();
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
+  const fieldHandler = (setter: Dispatch<SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value);
     reset();
   };
 
@@ -88,7 +84,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
               id="new-email"
               type="email"
               value={newEmail}
-              onChange={handleNewEmailChange}
+              onChange={fieldHandler(setNewEmail)}
               placeholder="Enter new email"
               disabled={isLoading}
             />
@@ -100,7 +96,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
               id="email-password"
               type="password"
               value={password}
-              onChange={handlePasswordChange}
+              onChange={fieldHandler(setPassword)}
               placeholder="Confirm with your password"
               disabled={isLoading}
             />

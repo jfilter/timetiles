@@ -12,10 +12,7 @@
 import type { Payload } from "payload";
 
 import { formatLongDate } from "@/lib/utils/date";
-
-import { createLogger, logError } from "../logger";
-
-const logger = createLogger("account-deletion-emails");
+import { safeSendEmail } from "@/lib/utils/email";
 
 /**
  * Send deletion scheduled email.
@@ -70,13 +67,11 @@ export const sendDeletionScheduledEmail = async (
     </html>
   `;
 
-  try {
-    await payload.sendEmail({ to: email, subject: "Your TimeTiles account deletion is scheduled", html });
-    logger.info({ email }, "Deletion scheduled email sent");
-  } catch (error) {
-    logError(error, "Failed to send deletion scheduled email", { email });
-    // Don't throw - email failure shouldn't block deletion
-  }
+  await safeSendEmail(
+    payload,
+    { to: email, subject: "Your TimeTiles account deletion is scheduled", html },
+    "deletion-scheduled-email"
+  );
 };
 
 /**
@@ -114,12 +109,11 @@ export const sendDeletionCancelledEmail = async (
     </html>
   `;
 
-  try {
-    await payload.sendEmail({ to: email, subject: "Your TimeTiles account deletion has been cancelled", html });
-    logger.info({ email }, "Deletion cancelled email sent");
-  } catch (error) {
-    logError(error, "Failed to send deletion cancelled email", { email });
-  }
+  await safeSendEmail(
+    payload,
+    { to: email, subject: "Your TimeTiles account deletion has been cancelled", html },
+    "deletion-cancelled-email"
+  );
 };
 
 /**
@@ -176,10 +170,9 @@ export const sendDeletionCompletedEmail = async (
     </html>
   `;
 
-  try {
-    await payload.sendEmail({ to: email, subject: "Your TimeTiles account has been deleted", html });
-    logger.info({ email }, "Deletion completed email sent");
-  } catch (error) {
-    logError(error, "Failed to send deletion completed email", { email });
-  }
+  await safeSendEmail(
+    payload,
+    { to: email, subject: "Your TimeTiles account has been deleted", html },
+    "deletion-completed-email"
+  );
 };

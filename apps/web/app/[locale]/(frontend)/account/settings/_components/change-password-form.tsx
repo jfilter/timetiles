@@ -10,6 +10,7 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Key, Loader2 } from "lucide-react";
+import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
 
 import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
@@ -33,18 +34,8 @@ export const ChangePasswordForm = () => {
     },
   });
 
-  const handleCurrentPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentPassword(e.target.value);
-    reset();
-  };
-
-  const handleNewPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewPassword(e.target.value);
-    reset();
-  };
-
-  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfirmPassword(e.target.value);
+  const fieldHandler = (setter: Dispatch<SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value);
     reset();
   };
 
@@ -82,7 +73,7 @@ export const ChangePasswordForm = () => {
               id="current-password"
               type="password"
               value={currentPassword}
-              onChange={handleCurrentPasswordChange}
+              onChange={fieldHandler(setCurrentPassword)}
               placeholder="Enter current password"
               disabled={isLoading}
             />
@@ -94,7 +85,7 @@ export const ChangePasswordForm = () => {
               id="new-password"
               type="password"
               value={newPassword}
-              onChange={handleNewPasswordChange}
+              onChange={fieldHandler(setNewPassword)}
               placeholder="Enter new password"
               disabled={isLoading}
             />
@@ -107,7 +98,7 @@ export const ChangePasswordForm = () => {
               id="confirm-password"
               type="password"
               value={confirmPassword}
-              onChange={handleConfirmPasswordChange}
+              onChange={fieldHandler(setConfirmPassword)}
               placeholder="Confirm new password"
               disabled={isLoading}
             />

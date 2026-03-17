@@ -9,7 +9,9 @@
  */
 import type { Payload } from "payload";
 
-import { logError } from "@/lib/logger";
+import { createLogger, logError } from "@/lib/logger";
+
+const logger = createLogger("email");
 
 interface SendEmailOptions {
   to: string;
@@ -26,6 +28,7 @@ interface SendEmailOptions {
 export const safeSendEmail = async (payload: Payload, options: SendEmailOptions, context: string): Promise<void> => {
   try {
     await payload.sendEmail(options);
+    logger.info({ context }, "Email sent");
   } catch (error) {
     logError(error, context);
   }

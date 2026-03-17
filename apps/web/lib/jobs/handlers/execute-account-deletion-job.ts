@@ -8,8 +8,7 @@
  * @module
  * @category Jobs
  */
-import type { Payload } from "payload";
-
+import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { createAccountDeletionService } from "@/lib/services/account-deletion-service";
 
@@ -18,12 +17,8 @@ import { createAccountDeletionService } from "@/lib/services/account-deletion-se
  */
 export const executeAccountDeletionJob = {
   slug: "execute-account-deletion",
-  handler: async ({ job, req }: { job?: { id?: string | number }; req?: { payload?: Payload } }) => {
-    const payload = req?.payload;
-
-    if (!payload) {
-      throw new Error("Payload not available in job context");
-    }
+  handler: async ({ job, req }: JobHandlerContext) => {
+    const { payload } = req;
 
     try {
       logger.info({ jobId: job?.id }, "Starting account deletion execution job");

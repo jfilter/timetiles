@@ -64,14 +64,13 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     mockPayload.findByID.mockResolvedValue(mockScraper);
   });
 
-  it("returns error when feature flag is disabled", async () => {
+  it("returns 403 when feature flag is disabled", async () => {
     mocks.mockIsFeatureEnabled.mockResolvedValue(false);
 
     const response = await POST(createRequest(), createParams("10"));
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
     const data = await response.json();
-    expect(data.success).toBe(false);
     expect(data.error).toBe("Scraper feature is not enabled");
     expect(mockPayload.findByID).not.toHaveBeenCalled();
   });
@@ -83,8 +82,7 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
 
     expect(response.status).toBe(404);
     const data = await response.json();
-    expect(data.success).toBe(false);
-    expect(data.error).toBe("Scraper not found");
+    expect(data.error).toContain("not found");
   });
 
   it("returns 403 when user does not own the scraper repo", async () => {
@@ -95,7 +93,6 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
 
     expect(response.status).toBe(403);
     const data = await response.json();
-    expect(data.success).toBe(false);
     expect(data.error).toBe("Not authorized");
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
@@ -110,7 +107,7 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.success).toBe(true);
+    expect(data.message).toBe("Scraper run queued");
   });
 
   it("returns 409 when claimScraperRunning returns false", async () => {
@@ -120,7 +117,6 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
 
     expect(response.status).toBe(409);
     const data = await response.json();
-    expect(data.success).toBe(false);
     expect(data.error).toBe("Scraper is already running");
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
@@ -130,7 +126,6 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.success).toBe(true);
     expect(data.message).toBe("Scraper run queued");
 
     expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
