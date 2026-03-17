@@ -63,7 +63,18 @@ SCRAPER_API_KEY=your-secret-key-at-least-16-chars
 
 The `SCRAPER_API_KEY` value must match the key configured on the runner. See [Deployment](./deployment) for full runner setup.
 
-### 3. Create a scraper repo
+### 3. Scaffold a new scraper
+
+Use the CLI tool to create a new scraper project:
+
+```bash
+npx timescrape init my-scraper              # Python (default)
+npx timescrape init my-scraper --runtime node
+```
+
+This creates a `my-scraper/` directory with a `scrapers.yml` manifest, a starter entrypoint script, `.gitignore`, and a `README.md`.
+
+### 4. Create a scraper repo
 
 In the Payload dashboard, go to **Scrapers > Scraper Repos** and create a new repo.
 
@@ -73,7 +84,7 @@ In the Payload dashboard, go to **Scrapers > Scraper Repos** and create a new re
 
 When you save the repo, TimeTiles automatically syncs the manifest and creates scraper records.
 
-### 4. Write a scraper
+### 5. Write a scraper
 
 Create a Python script that uses the `timescrape` helper:
 
@@ -110,7 +121,7 @@ scrapers:
     output: data.csv
 ```
 
-### 5. Trigger a run
+### 6. Trigger a run
 
 Use the manual trigger API:
 
@@ -121,9 +132,18 @@ curl -X POST https://your-timetiles-instance/api/scrapers/{id}/run \
 
 Or enable a cron schedule in the manifest to run automatically.
 
-### 6. View results
+### 7. View results
 
-After a successful run, check the scraper's run history in the dashboard. If `autoImport` is enabled and a `targetDataset` is configured, the CSV flows through the standard import pipeline and events appear on the map.
+After a successful run, check the scraper's run history in the dashboard or the management UI at **/account/scrapers**. If `autoImport` is enabled and a `targetDataset` is configured, the CSV flows through the standard import pipeline and events appear on the map.
+
+### Management UI
+
+Users can manage their scrapers at **/account/scrapers**. The page shows:
+
+- Scraper repos with sync status and source details
+- Scrapers within each repo with last run status and statistics
+- Action buttons: force sync, trigger run, delete repo
+- Expandable run history with stdout/stderr log viewer
 
 ---
 
@@ -435,6 +455,7 @@ These endpoints are on the TimeScrape runner (default port 4000) and are called 
 | `POST` | `/stop/{run_id}`   | Bearer | Kill a running container.                                    |
 | `GET`  | `/status/{run_id}` | Bearer | Check if a run is still active.                              |
 | `GET`  | `/health`          | None   | Health check. Returns `{"status": "ok", "active_runs": N}`.  |
+| `GET`  | `/metrics`         | None   | Runner metrics (total runs, success/fail counts, uptime).    |
 
 All endpoints except `/health` require `Authorization: Bearer {SCRAPER_API_KEY}`.
 

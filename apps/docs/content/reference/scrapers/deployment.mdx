@@ -323,6 +323,32 @@ curl -s http://localhost:4000/health | jq
 
 Monitor `active_runs` to track utilization. If it consistently equals `SCRAPER_MAX_CONCURRENT`, consider increasing the limit or adding another runner instance.
 
+### Metrics Endpoint
+
+The `/metrics` endpoint provides aggregate run statistics (no authentication required):
+
+```bash
+curl -s http://localhost:4000/metrics | jq
+```
+
+```json
+{
+  "active_runs": 1,
+  "total_runs": 145,
+  "total_success": 130,
+  "total_failed": 12,
+  "total_timeout": 3,
+  "uptime_seconds": 86400,
+  "queue_capacity": 3
+}
+```
+
+Counters reset when the runner process restarts. For persistent metrics, scrape this endpoint with Prometheus or a similar tool.
+
+### TimeTiles Health Integration
+
+When `SCRAPER_RUNNER_URL` is configured, the TimeTiles health endpoint (`/api/health`) automatically pings the runner's `/health` endpoint and includes the result in its response. If the runner is unreachable, the health check reports the runner as degraded.
+
 ### Run History
 
 All run outcomes are stored in the `scraper-runs` Payload collection. Query from the admin dashboard or via the REST API:
