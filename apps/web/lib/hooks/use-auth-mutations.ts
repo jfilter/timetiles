@@ -11,7 +11,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { HttpError, fetchJson } from "../api/http-error";
+import { fetchJson, HttpError } from "../api/http-error";
 
 // ---------------------------------------------------------------------------
 // Types
