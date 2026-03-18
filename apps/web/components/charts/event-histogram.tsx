@@ -16,7 +16,6 @@
 import { TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
-import { useChartFilters } from "@/lib/hooks/use-chart-filters";
 import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -32,8 +31,7 @@ import type { BaseChartProps } from "./types";
  */
 export const EventHistogram = ({ height = 200, className, bounds }: Readonly<BaseChartProps>) => {
   const chartTheme = useChartTheme();
-  const { filters } = useFilters();
-  const { handleDateClick } = useChartFilters();
+  const { filters, setSingleDayFilter } = useFilters();
   const scope = useViewScope();
 
   const histogramQuery = useHistogramQuery(filters, bounds ?? null, true, scope);
@@ -45,7 +43,7 @@ export const EventHistogram = ({ height = 200, className, bounds }: Readonly<Bas
   return (
     <TimeHistogram
       data={histogram}
-      onBarClick={handleDateClick}
+      onBarClick={setSingleDayFilter}
       theme={chartTheme}
       height={height}
       className={className}

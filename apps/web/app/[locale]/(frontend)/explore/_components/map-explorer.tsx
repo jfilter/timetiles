@@ -12,24 +12,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { EMPTY_ARRAY } from "@/lib/constants/empty";
-import { useEventsListQuery, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import { useMapPosition } from "@/lib/hooks/use-filters";
-import { useUIStore } from "@/lib/store";
 
 import { ChartSection } from "./chart-section";
 import { EventDetailModal } from "./event-detail-modal";
 import { EventsList } from "./events-list";
 import { FilterDrawer } from "./filter-drawer";
 import { FilterPanel } from "./filter-panel";
-import {
-  buildEventsDescription,
-  getFilterLabels,
-  getInitialViewState,
-  getLoadingStates,
-  isDataBoundsOutsideViewport,
-  shouldShowZoomToData,
-} from "./map-explorer-helpers";
+import { buildEventsDescription, getFilterLabels, getInitialViewState, getLoadingStates } from "./map-explorer-helpers";
 import { MapPanel } from "./map-panel";
 import { MobileFilterSheet } from "./mobile-filter-sheet";
 import { useExplorerState } from "./use-explorer-state";
@@ -49,7 +39,7 @@ export const MapExplorer = () => {
 
   // Shared explorer state
   const explorer = useExplorerState({ onMapPositionChange: handleMapPositionChange });
-  const { map, filters: filterState, selection, data, ui, scope } = explorer;
+  const { map, filters: filterState, selection, data, ui } = explorer;
   const { filters, activeFilterCount } = filterState;
   const { selectedEventId, openEvent, closeEvent } = selection;
   const {
@@ -59,18 +49,19 @@ export const MapExplorer = () => {
     clustersLoading,
     clusterStats,
     boundsData,
-    boundsLoading,
     isLoadingInitialBounds,
+    events,
+    eventsLoading,
+    totalEventsData,
   } = data;
   const { isFilterDrawerOpen, toggleFilterDrawer, setFilterDrawerOpen } = ui;
   const {
     ref: mapRef,
     simpleBounds,
     debouncedSimpleBounds,
-    hasUserPanned,
+    showZoomToData,
     handleZoomToData,
     handleBoundsChange,
-    bounds: mapBounds,
   } = map;
 
   // Close filter drawer on mobile on first mount for better UX
@@ -83,38 +74,13 @@ export const MapExplorer = () => {
   // Convert URL map position to initial view state for ClusteredMap
   const initialViewState = getInitialViewState(hasMapPosition, mapPosition);
 
-  // React Query hooks for data fetching - use simple bounds directly for better cache key comparison
-  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(
-    filters,
-    debouncedSimpleBounds,
-    1000,
-    true,
-    scope
-  );
-
-  // Fetch total count without bounds filter for global statistics
-  const { data: totalEventsData } = useEventsTotalQuery(filters, true, scope);
-
-  // Extract data from queries
-  const events = eventsData?.events ?? EMPTY_ARRAY;
+  // Loading states
   const isLoading = eventsLoading || clustersLoading;
-
-  // Track loading states
   const { isInitialLoad, isUpdating, shouldMarkLoaded } = getLoadingStates(isLoading, hasLoadedOnce);
 
-  // Mark as loaded once we have data
   useEffect(() => {
     if (shouldMarkLoaded) setHasLoadedOnce(true);
   }, [shouldMarkLoaded]);
-
-  // Update map stats in Zustand store when data changes
-  // Use totalEventsData.total for absolute count (not viewport-bounded)
-  const setMapStats = useUIStore((state) => state.setMapStats);
-  useEffect(() => {
-    if (eventsData != null && totalEventsData != null) {
-      setMapStats({ visibleEvents: events.length, totalEvents: totalEventsData.total });
-    }
-  }, [events.length, eventsData, totalEventsData, setMapStats]);
 
   // ResizeObserver to trigger map resize during grid transitions
   useEffect(() => {
@@ -135,18 +101,6 @@ export const MapExplorer = () => {
       cancelAnimationFrame(rafId);
     };
   }, [mapRef]);
-
-  // Show "zoom to data" button when:
-  // 1. User has panned away from data, OR
-  // 2. Data bounds exist and map viewport doesn't fully contain them (e.g., after filter change)
-  const dataBoundsOutsideViewport = isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds);
-
-  const showZoomToData = shouldShowZoomToData(
-    hasUserPanned,
-    dataBoundsOutsideViewport,
-    boundsData?.bounds != null,
-    boundsLoading
-  );
 
   // Get human-readable filter labels (uses helper function)
   const filterLabels = getFilterLabels(filters, catalogs, datasets);

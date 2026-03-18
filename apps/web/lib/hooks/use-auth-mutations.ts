@@ -11,7 +11,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { fetchJson } from "../api/http-error";
+import { HttpError, fetchJson } from "../api/http-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -109,53 +109,39 @@ export const useAuthState = () => {
 // Mutations
 // ---------------------------------------------------------------------------
 
-/**
- * Login via Payload CMS `/api/users/login`.
- *
- * Uses raw `fetch` instead of `fetchJson` because the component inspects the
- * response body for both success and error cases (Payload returns 4xx with a
- * JSON body containing `errors` or `message`).
- */
+/** Login via Payload CMS `/api/users/login`. */
 export const loginRequest = async (input: LoginInput): Promise<LoginResponse> => {
-  const response = await fetch("/api/users/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-    credentials: "include",
-  });
-
-  const data = (await response.json()) as LoginResponse;
-
-  if (response.ok && data.user) {
-    return data;
+  try {
+    return await fetchJson<LoginResponse>("/api/users/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      credentials: "include",
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      const body = error.body as LoginResponse | undefined;
+      throw new Error(body?.errors?.[0]?.message ?? body?.message ?? "Invalid email or password");
+    }
+    throw error;
   }
-
-  const message = data.errors?.[0]?.message ?? data.message ?? "Invalid email or password";
-  throw new Error(message);
 };
 
-/**
- * Register a new user via `/api/auth/register`.
- *
- * Uses raw `fetch` because the response shape differs from the standard
- * `fetchJson` error-handling convention (uses `error` field, not HTTP status
- * for some validation errors).
- */
+/** Register a new user via `/api/auth/register`. */
 export const registerRequest = async (input: RegisterInput): Promise<RegisterResponse> => {
-  const response = await fetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-
-  const data = (await response.json()) as RegisterResponse;
-
-  if (!response.ok) {
-    const message = data.error ?? "Registration failed. Please try again.";
-    throw new Error(message);
+  try {
+    return await fetchJson<RegisterResponse>("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      const body = error.body as RegisterResponse | undefined;
+      throw new Error(body?.error ?? "Registration failed. Please try again.");
+    }
+    throw error;
   }
-
-  return data;
 };
 
 /**
@@ -164,12 +150,15 @@ export const registerRequest = async (input: RegisterInput): Promise<RegisterRes
  * Always succeeds from the caller's perspective to prevent email enumeration.
  */
 export const forgotPasswordRequest = async (input: ForgotPasswordInput): Promise<void> => {
-  await fetch("/api/users/forgot-password", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  // Always succeed regardless of response to prevent email enumeration
+  try {
+    await fetchJson<void>("/api/users/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    // Intentionally swallow — prevent email enumeration
+  }
 };
 
 /**

@@ -144,10 +144,10 @@ describe.sequential("StageTransitionService", () => {
         StageTransitionService.validateStageTransition(PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.GEOCODE_BATCH)
       ).toBe(false);
 
-      // FAILED -> CREATE_EVENTS is not a valid recovery stage
+      // FAILED -> CREATE_EVENTS is now a valid recovery stage
       expect(
         StageTransitionService.validateStageTransition(PROCESSING_STAGE.FAILED, PROCESSING_STAGE.CREATE_EVENTS)
-      ).toBe(false);
+      ).toBe(true);
     });
 
     it("should allow recovery transitions from FAILED state", () => {

@@ -1,8 +1,8 @@
 /**
- * This file defines the main data exploration page of the application.
+ * Main data exploration page.
  *
- * Resolves the active view from search params and wraps the explorer
- * in a ViewProvider. The site is resolved in the layout above.
+ * Resolves the active view via ExploreViewResolver and renders the
+ * responsive explorer (map on desktop, list on mobile).
  *
  * URL patterns:
  * - /explore — default view for the active site
@@ -10,17 +10,8 @@
  *
  * @module
  */
-import { headers } from "next/headers";
-import { getTranslations } from "next-intl/server";
-import { getPayload } from "payload";
-
-import { Link } from "@/i18n/navigation";
-import { ViewProvider } from "@/lib/context/view-context";
-import { resolveSite } from "@/lib/services/site-resolver";
-import { resolveView } from "@/lib/services/view-resolver";
-import config from "@/payload.config";
-
 import { ExploreContent } from "./_components/explore-content";
+import { ExploreViewResolver } from "./_components/explore-view-resolver";
 
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";
@@ -29,39 +20,10 @@ interface ExplorePageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function ExplorePage({ searchParams }: Readonly<ExplorePageProps>) {
-  const payload = await getPayload({ config });
-  const headersList = await headers();
-  const host = headersList.get("host");
-
-  // Resolve site from domain
-  const site = await resolveSite(payload, host);
-  const siteId = site?.id;
-
-  // Resolve view from search params
-  const params = await searchParams;
-  const viewSlug = typeof params.view === "string" ? params.view : undefined;
-  const view = await resolveView(payload, siteId, viewSlug);
-
-  if (!view) {
-    const t = await getTranslations("Explore");
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold">{t("siteNotConfigured")}</h1>
-        <p className="text-muted-foreground max-w-md">{t("siteNotConfiguredDescription")}</p>
-        <Link
-          href="/dashboard/collections/views"
-          className="text-primary underline underline-offset-4 hover:opacity-80"
-        >
-          {t("goToDashboard")}
-        </Link>
-      </div>
-    );
-  }
-
+export default function ExplorePage({ searchParams }: Readonly<ExplorePageProps>) {
   return (
-    <ViewProvider view={view}>
+    <ExploreViewResolver searchParams={searchParams}>
       <ExploreContent />
-    </ViewProvider>
+    </ExploreViewResolver>
   );
 }

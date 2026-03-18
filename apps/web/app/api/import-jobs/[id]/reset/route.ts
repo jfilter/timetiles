@@ -12,22 +12,16 @@
 import { z } from "zod";
 
 import { apiRoute, safeFindByID } from "@/lib/api";
-import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { RECOVERY_STAGES_LIST } from "@/lib/constants/stage-graph";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { badRequest } from "@/lib/utils/api-response";
 import type { ImportJob } from "@/payload-types";
 
 /**
- * Valid stages for manual reset.
+ * Valid stages for manual reset — derived from the canonical stage graph.
  */
-const VALID_RESET_STAGES = [
-  PROCESSING_STAGE.ANALYZE_DUPLICATES,
-  PROCESSING_STAGE.DETECT_SCHEMA,
-  PROCESSING_STAGE.VALIDATE_SCHEMA,
-  PROCESSING_STAGE.GEOCODE_BATCH,
-  PROCESSING_STAGE.CREATE_EVENTS,
-] as const;
+const VALID_RESET_STAGES = RECOVERY_STAGES_LIST;
 
 export const POST = apiRoute({
   auth: "admin",

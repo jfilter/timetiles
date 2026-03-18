@@ -11,6 +11,7 @@ import type {
 } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { isRecoveryStage } from "@/lib/constants/stage-graph";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -22,15 +23,6 @@ import type { ImportJob } from "@/payload-types";
 
 import { getImportFilePath } from "../../jobs/utils/upload-path";
 import { handleJobCompletion, isJobCompleted } from "./helpers";
-
-/**
- * Validates recovery stages for FAILED jobs.
- */
-const isValidRecoveryStage = (stage: string): boolean =>
-  stage === PROCESSING_STAGE.ANALYZE_DUPLICATES ||
-  stage === PROCESSING_STAGE.DETECT_SCHEMA ||
-  stage === PROCESSING_STAGE.VALIDATE_SCHEMA ||
-  stage === PROCESSING_STAGE.GEOCODE_BATCH;
 
 /**
  * Enforces terminal state for COMPLETED jobs.
@@ -70,7 +62,7 @@ const validateFailedRecovery = (
   originalDoc: ImportJob
 ): void => {
   if (fromStage === PROCESSING_STAGE.FAILED && toStage !== PROCESSING_STAGE.FAILED) {
-    if (!isValidRecoveryStage(toStage)) {
+    if (!isRecoveryStage(toStage)) {
       throw new Error(
         `Invalid recovery stage '${toStage}' for failed import job. ` +
           `Failed jobs can only be retried from specific stages via the retry mechanism.`

@@ -128,7 +128,6 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
     }) => {
       const map = evt.target as MapRef;
-      (globalThis as { _mapRef?: unknown })._mapRef = map;
 
       // Use initialViewState if provided (URL position), otherwise fall back to initialBounds
       if (initialViewState) {
@@ -208,10 +207,8 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
             <MapThemeControl />
           </div>
           <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">
-            {/* oxlint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <Layer {...(eventPointLayer as any)} />
-            {/* oxlint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <Layer {...(clusterLayer as any)} />
+            <Layer {...eventPointLayer} />
+            <Layer {...clusterLayer} />
           </Source>
           {popupInfo && (
             <Popup longitude={popupInfo.longitude} latitude={popupInfo.latitude} anchor="bottom" onClose={closePopup}>

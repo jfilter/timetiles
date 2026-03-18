@@ -33,7 +33,10 @@ vi.mock("@/lib/context/view-context", () => ({
 
 // Mock the filters hook
 vi.mock("../../../lib/hooks/use-filters", () => ({
-  useFilters: () => ({ filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} } }),
+  useFilters: () => ({
+    filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} },
+    setSingleDayFilter: vi.fn(),
+  }),
 }));
 
 // Mock the UI store
@@ -60,7 +63,7 @@ vi.mock("../../../lib/hooks/use-chart-query", () => ({
   }),
 }));
 
-vi.mock("../../../lib/hooks/use-chart-filters", () => ({ useChartFilters: () => ({ handleDateClick: vi.fn() }) }));
+// useChartFilters deleted — setSingleDayFilter is now part of useFilters (mocked above)
 
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({

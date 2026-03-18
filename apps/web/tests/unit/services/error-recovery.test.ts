@@ -282,7 +282,7 @@ describe.sequential("ErrorRecoveryService", () => {
         return null;
       });
 
-      mockPayload.update.mockResolvedValue({});
+      mockPayload.update.mockResolvedValue({ docs: [{ id: 1 }] });
 
       const result = await ErrorRecoveryService.recoverFailedJob(mockPayload, 1);
 
@@ -325,7 +325,7 @@ describe.sequential("ErrorRecoveryService", () => {
         return null;
       });
 
-      mockPayload.update.mockResolvedValue({});
+      mockPayload.update.mockResolvedValue({ docs: [{ id: 1 }] });
 
       const result = await ErrorRecoveryService.recoverFailedJob(mockPayload, 1, { maxRetries: 15 });
 
@@ -354,7 +354,7 @@ describe.sequential("ErrorRecoveryService", () => {
     it("should allow resetting to any valid stage", async () => {
       mockPayload.findByID.mockResolvedValue({ id: 1, stage: PROCESSING_STAGE.FAILED });
 
-      mockPayload.update.mockResolvedValue({});
+      mockPayload.update.mockResolvedValue({ docs: [{ id: 1 }] });
 
       const result = await ErrorRecoveryService.resetJobToStage(mockPayload, 1, PROCESSING_STAGE.GEOCODE_BATCH, true);
 
@@ -372,7 +372,7 @@ describe.sequential("ErrorRecoveryService", () => {
     it("should preserve retry count if clearRetries is false", async () => {
       mockPayload.findByID.mockResolvedValue({ id: 1, stage: PROCESSING_STAGE.FAILED, retryAttempts: 2 });
 
-      mockPayload.update.mockResolvedValue({});
+      mockPayload.update.mockResolvedValue({ docs: [{ id: 1 }] });
 
       await ErrorRecoveryService.resetJobToStage(mockPayload, 1, PROCESSING_STAGE.ANALYZE_DUPLICATES, false);
 

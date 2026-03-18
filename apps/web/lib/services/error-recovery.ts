@@ -16,13 +16,8 @@
  */
 import type { Payload } from "payload";
 
-import {
-  COLLECTION_NAMES,
-  JOB_TYPES,
-  type JobType,
-  PROCESSING_STAGE,
-  type ProcessingStage,
-} from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/import-constants";
+import { getNextRecoveryStage } from "@/lib/constants/stage-graph";
 import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { normalizeJobId } from "@/lib/utils/event-params";
@@ -337,9 +332,11 @@ export class ErrorRecoveryService {
       const nextRetryAt = new Date(Date.now() + delay);
       const recoveryStage = this.determineRecoveryStage(job, classification);
 
-      await payload.update({
+      // Use conditional update for atomic claim — if another retry already
+      // moved the job out of FAILED, docs will be empty.
+      const updateResult = await payload.update({
         collection: IMPORT_JOBS_COLLECTION,
-        id: job.id,
+        where: { id: { equals: job.id }, stage: { equals: PROCESSING_STAGE.FAILED } },
         data: {
           stage: recoveryStage,
           retryAttempts: retryCount + 1,
@@ -355,8 +352,12 @@ export class ErrorRecoveryService {
             },
           },
         },
-        context: { skipStageTransition: true },
+        // Let the afterChange hook queue the appropriate job via StageTransitionService
       });
+
+      if (updateResult.docs.length === 0) {
+        return { success: false, action: "already_claimed", error: "Retry already in progress" };
+      }
 
       logger.info("Scheduled job recovery", {
         importJobId: job.id,
@@ -479,26 +480,8 @@ export class ErrorRecoveryService {
       return PROCESSING_STAGE.VALIDATE_SCHEMA;
     }
 
-    // For most recoverable errors, restart from current stage
-    if (job.lastSuccessfulStage) {
-      // Restart from the last successful stage
-      const stageOrder = [
-        PROCESSING_STAGE.ANALYZE_DUPLICATES,
-        PROCESSING_STAGE.DETECT_SCHEMA,
-        PROCESSING_STAGE.VALIDATE_SCHEMA,
-        PROCESSING_STAGE.AWAIT_APPROVAL,
-        PROCESSING_STAGE.GEOCODE_BATCH,
-        PROCESSING_STAGE.CREATE_EVENTS,
-      ];
-
-      const lastSuccessfulIndex = stageOrder.indexOf(job.lastSuccessfulStage);
-      if (lastSuccessfulIndex >= 0 && lastSuccessfulIndex < stageOrder.length - 1) {
-        return stageOrder[lastSuccessfulIndex + 1]!;
-      }
-    }
-
-    // Default: restart from analyze duplicates
-    return PROCESSING_STAGE.ANALYZE_DUPLICATES;
+    // Derive next recovery stage from the canonical stage graph
+    return getNextRecoveryStage(job.lastSuccessfulStage);
   }
 
   /**
@@ -558,51 +541,23 @@ export class ErrorRecoveryService {
 
         const recoveryStage = this.determineRecoveryStage(job, classification);
 
-        // Update job to recovery stage — the afterChange hook will
-        // automatically queue the appropriate job via StageTransitionService
-        await payload.update({
+        // Conditional update — if another process already moved this job, skip it.
+        // The afterChange hook queues the appropriate job via StageTransitionService.
+        const updateResult = await payload.update({
           collection: IMPORT_JOBS_COLLECTION,
-          id: job.id,
+          where: { id: { equals: job.id }, stage: { equals: PROCESSING_STAGE.FAILED } },
           data: {
             stage: recoveryStage,
             nextRetryAt: null, // Clear the retry schedule
           },
-          context: { skipStageTransition: true },
         });
 
-        logger.info("Set recovery stage (job queued via hook)", { importJobId: job.id, stage: recoveryStage });
+        if (updateResult.docs.length > 0) {
+          logger.info("Set recovery stage (job queued via hook)", { importJobId: job.id, stage: recoveryStage });
+        }
       }
     } catch (error) {
       logError(error, "Failed to process pending retries");
-    }
-  }
-
-  /**
-   * Get job type for a given stage.
-   *
-   * Maps processing stages to their corresponding background job types
-   * for queueing during recovery. With unified naming, stage names match
-   * job type names.
-   *
-   * @param stage - Processing stage name
-   * @returns Corresponding job type constant or null if stage has no associated job
-   * @private
-   */
-  private static getJobTypeForStage(stage: string): JobType | null {
-    // With unified naming, stage names are the same as job types
-    switch (stage) {
-      case PROCESSING_STAGE.ANALYZE_DUPLICATES:
-        return JOB_TYPES.ANALYZE_DUPLICATES;
-      case PROCESSING_STAGE.DETECT_SCHEMA:
-        return JOB_TYPES.DETECT_SCHEMA;
-      case PROCESSING_STAGE.VALIDATE_SCHEMA:
-        return JOB_TYPES.VALIDATE_SCHEMA;
-      case PROCESSING_STAGE.GEOCODE_BATCH:
-        return JOB_TYPES.GEOCODE_BATCH;
-      case PROCESSING_STAGE.CREATE_EVENTS:
-        return JOB_TYPES.CREATE_EVENTS;
-      default:
-        return null;
     }
   }
 
@@ -665,12 +620,8 @@ export class ErrorRecoveryService {
         updateData.retryAttempts = 0;
       }
 
-      await payload.update({
-        collection: IMPORT_JOBS_COLLECTION,
-        id: job.id,
-        data: updateData,
-        context: { skipStageTransition: true },
-      });
+      // Let the afterChange hook queue the appropriate job via StageTransitionService
+      await payload.update({ collection: IMPORT_JOBS_COLLECTION, id: job.id, data: updateData });
 
       logger.info("Manually reset job stage", {
         importJobId: job.id,

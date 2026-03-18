@@ -165,7 +165,7 @@ const ExpandCollapseButton = ({
 
 /* oxlint-disable-next-line eslint(complexity) -- Inline handlers after React Compiler migration increase reported complexity */
 export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset }: DataSourceSelectorProps) => {
-  const { filters, setCatalog, setDatasets } = useFilters();
+  const { filters, toggleCatalog, toggleDataset } = useFilters();
   const [catalogsExpanded, setCatalogsExpanded] = useState(false);
   const [datasetsExpanded, setDatasetsExpanded] = useState(false);
 
@@ -195,28 +195,11 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
 
   // Handle catalog selection - auto-select all datasets in that catalog
   const handleCatalogSelect = (catalogId: string) => {
-    if (catalogId === filters.catalog) {
-      // Toggle off: show all data
-      setCatalog(null);
-      setDatasets([]);
-    } else {
-      // Select catalog and auto-select all its datasets
-      setCatalog(catalogId);
-      const datasets = dataSources?.datasets ?? [];
-      const catalogDatasets = datasets
-        .filter((d) => d.catalogId != null && String(d.catalogId) === catalogId)
-        .map((d) => String(d.id));
-      setDatasets(catalogDatasets);
-    }
-  };
-
-  // Handle dataset toggle
-  const handleDatasetToggle = (datasetId: string) => {
-    const current = filters.datasets;
-    const newDatasets = current.includes(datasetId)
-      ? current.filter((id) => id !== datasetId)
-      : [...current, datasetId];
-    setDatasets(newDatasets);
+    const datasets = dataSources?.datasets ?? [];
+    const catalogDatasets = datasets
+      .filter((d) => d.catalogId != null && String(d.catalogId) === catalogId)
+      .map((d) => String(d.id));
+    toggleCatalog(catalogId, catalogDatasets);
   };
 
   // Catalog expand/collapse handler
@@ -301,7 +284,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
                     dataset={dataset}
                     isActive={filters.datasets.includes(String(dataset.id))}
                     eventCount={eventCountsByDataset?.[String(dataset.id)]}
-                    onToggle={handleDatasetToggle}
+                    onToggle={toggleDataset}
                   />
                 ))}
 

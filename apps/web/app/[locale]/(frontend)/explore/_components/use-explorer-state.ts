@@ -15,21 +15,29 @@ import type { LngLatBounds } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 
 import type { ClusteredMapHandle } from "@/components/maps/clustered-map";
+import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { useBoundsQuery, useClusterStatsQuery, useMapClustersQuery } from "@/lib/hooks/use-events-queries";
+import {
+  useBoundsQuery,
+  useClusterStatsQuery,
+  useEventsListQuery,
+  useEventsTotalQuery,
+  useMapClustersQuery,
+} from "@/lib/hooks/use-events-queries";
 import { useFilters, useSelectedEvent } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 import { useUIStore } from "@/lib/store";
 import { serializeFilterKey } from "@/lib/types/filter-state";
 
-import { simplifyBounds } from "./map-explorer-helpers";
+import { isDataBoundsOutsideViewport, shouldShowZoomToData, simplifyBounds } from "./map-explorer-helpers";
 
 interface UseExplorerStateOptions {
   /** Called on bounds change with center and zoom for URL persistence */
   onMapPositionChange?: (center: { lng: number; lat: number }, zoom: number) => void;
 }
 
+// eslint-disable-next-line sonarjs/max-lines-per-function -- explorer hook centralises shared state for both layouts
 export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const [mapZoom, setMapZoom] = useState(9);
   const [hasUserPanned, setHasUserPanned] = useState(false);
@@ -74,6 +82,25 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters, true, scope);
 
   const clusters = clustersData?.features ?? [];
+
+  // Events list + total (shared by both MapExplorer and ListExplorer)
+  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(
+    filters,
+    debouncedSimpleBounds,
+    1000,
+    true,
+    scope
+  );
+  const { data: totalEventsData } = useEventsTotalQuery(filters, true, scope);
+  const events = eventsData?.events ?? EMPTY_ARRAY;
+
+  // Update header stats in Zustand store when data changes
+  const setMapStats = useUIStore((state) => state.setMapStats);
+  useEffect(() => {
+    if (eventsData != null && totalEventsData != null) {
+      setMapStats({ visibleEvents: events.length, totalEvents: totalEventsData.total });
+    }
+  }, [events.length, eventsData, totalEventsData, setMapStats]);
 
   // Reset user panning state when filters change
   const filterKey = serializeFilterKey(filters);
@@ -121,6 +148,15 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     }
   };
 
+  // Shared zoom-to-data logic (both MapExplorer and ListExplorer)
+  const dataBoundsOutsideViewport = isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds);
+  const showZoomToData = shouldShowZoomToData(
+    hasUserPanned,
+    dataBoundsOutsideViewport,
+    boundsData?.bounds != null,
+    boundsLoading
+  );
+
   return {
     map: {
       zoom: mapZoom,
@@ -130,6 +166,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
       debouncedSimpleBounds,
       hasUserPanned,
       isInitialBoundsApplied,
+      showZoomToData,
       handleBoundsChange,
       handleZoomToData,
     },
@@ -145,6 +182,10 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
       boundsData,
       boundsLoading,
       isLoadingInitialBounds,
+      events,
+      eventsData,
+      eventsLoading,
+      totalEventsData,
     },
     ui: { isFilterDrawerOpen, toggleFilterDrawer, setFilterDrawerOpen },
     scope,

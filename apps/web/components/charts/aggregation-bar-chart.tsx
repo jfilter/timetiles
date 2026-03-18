@@ -39,7 +39,7 @@ const AggregationBarChartComponent = ({
   type,
 }: Readonly<AggregationBarChartProps>) => {
   const chartTheme = useChartTheme();
-  const { filters, setCatalog, setDatasets } = useFilters();
+  const { filters, setCatalog, toggleDataset } = useFilters();
   const scope = useViewScope();
 
   // Fetch aggregation data using unified endpoint (viewport-filtered)
@@ -62,12 +62,7 @@ const AggregationBarChartComponent = ({
     if (type === "catalog") {
       setCatalog(itemId);
     } else {
-      const current = filters.datasets;
-      if (current.includes(itemId)) {
-        setDatasets(current.filter((id) => id !== itemId));
-      } else {
-        setDatasets([...current, itemId]);
-      }
+      toggleDataset(itemId);
     }
   };
 

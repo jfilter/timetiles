@@ -2,8 +2,8 @@
  * Retries a failed import job.
  *
  * Uses ErrorRecoveryService to classify the error, determine the appropriate
- * recovery stage, and schedule the retry. Includes quota checks and an atomic
- * claim pattern to prevent concurrent retries.
+ * recovery stage, and schedule the retry. The service handles quota checks
+ * and atomic claiming internally.
  *
  * POST /api/import-jobs/:id/retry
  *
@@ -16,9 +16,7 @@ import { apiRoute, safeFindByID } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
 import { ErrorRecoveryService } from "@/lib/services/error-recovery";
-import { createQuotaService } from "@/lib/services/quota-service";
-import { badRequest, forbidden } from "@/lib/utils/api-response";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { badRequest } from "@/lib/utils/api-response";
 import type { ImportJob } from "@/payload-types";
 
 export const POST = apiRoute({
@@ -36,39 +34,7 @@ export const POST = apiRoute({
       return badRequest(`Import job is not in failed state. Current stage: ${importJob.stage}`);
     }
 
-    // Atomically claim the retry by transitioning stage away from FAILED
-    const claimResult = await payload.update({
-      collection: "import-jobs",
-      where: { id: { equals: importJob.id }, stage: { equals: PROCESSING_STAGE.FAILED } },
-      data: { stage: PROCESSING_STAGE.FAILED },
-      overrideAccess: true,
-    });
-
-    if (claimResult.docs.length === 0) {
-      return badRequest("Retry already in progress for this import job");
-    }
-
-    // Get import file for quota check
-    const importFileId = extractRelationId(importJob.importFile)!;
-    const importFile = await payload.findByID({ collection: "import-files", id: importFileId, overrideAccess: true });
-
-    // Check quota before allowing retry
-    if (importFile.user) {
-      const userId = extractRelationId(importFile.user)!;
-      const fileUser = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
-
-      const quotaService = createQuotaService(payload);
-      const quotaCheck = await quotaService.checkQuota(fileUser, "IMPORT_JOBS_PER_DAY", 1);
-
-      if (!quotaCheck.allowed) {
-        return forbidden(
-          "Quota exceeded. Cannot retry import at this time. Please try again tomorrow.",
-          "QUOTA_EXCEEDED"
-        );
-      }
-    }
-
-    // Attempt recovery via ErrorRecoveryService
+    // Delegate to ErrorRecoveryService — handles quota, atomic claim, and job queueing
     const result = await ErrorRecoveryService.recoverFailedJob(payload, importJob.id);
 
     if (!result.success) {

@@ -10,23 +10,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { ScheduledImport } from "@/payload-types";
 
-import { fetchJson } from "../api/http-error";
+import { fetchCollectionDocs } from "./use-payload-collection-query";
 import { scheduledImportKeys } from "./use-scheduled-import-mutations";
-
-interface ScheduledImportsResponse {
-  docs: ScheduledImport[];
-  totalDocs: number;
-}
 
 export const useScheduledImportsQuery = (initialData?: ScheduledImport[]) =>
   useQuery({
     queryKey: scheduledImportKeys.all,
-    queryFn: async () => {
-      const data = await fetchJson<ScheduledImportsResponse>("/api/scheduled-imports?sort=-updatedAt&limit=200", {
-        credentials: "include",
-      });
-      return data.docs;
-    },
+    queryFn: () => fetchCollectionDocs<ScheduledImport>("/api/scheduled-imports?sort=-updatedAt&limit=200"),
     initialData,
     staleTime: 60_000,
   });

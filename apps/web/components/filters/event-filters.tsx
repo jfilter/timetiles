@@ -24,7 +24,8 @@ import { FilterSection } from "./filter-section";
 import { TimeRangeSlider } from "./time-range-slider";
 
 export const EventFilters = () => {
-  const { filters, setStartDate, setEndDate, clearAllFilters, hasActiveFilters, activeFilterCount } = useFilters();
+  const { filters, setStartDate, setEndDate, clearDateRange, clearAllFilters, hasActiveFilters, activeFilterCount } =
+    useFilters();
 
   // Fetch event counts for catalogs and datasets
   const { data: statsData, isError: isStatsError } = useDataSourceStatsQuery();
@@ -33,11 +34,6 @@ export const EventFilters = () => {
   const singleDatasetId = filters.datasets.length === 1 ? (filters.datasets[0] ?? null) : null;
   const { data: enumFields, isLoading: isEnumFieldsLoading } = useDatasetEnumFieldsQuery(singleDatasetId);
   const hasEnumFields = enumFields != null && enumFields.length > 0;
-
-  const handleClearDateFilters = () => {
-    setStartDate(null);
-    setEndDate(null);
-  };
 
   // Calculate active filter counts per section
   const dataSourcesActiveCount = (filters.catalog == null ? 0 : 1) + filters.datasets.length;
@@ -92,7 +88,7 @@ export const EventFilters = () => {
         {(filters.startDate != null || filters.endDate != null) && (
           <button
             type="button"
-            onClick={handleClearDateFilters}
+            onClick={clearDateRange}
             className="text-cartographic-navy/50 hover:text-cartographic-terracotta dark:text-cartographic-charcoal/50 dark:hover:text-cartographic-terracotta mt-1 w-full text-center font-mono text-xs transition-colors"
           >
             ✕ Clear date filters

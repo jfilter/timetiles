@@ -63,21 +63,10 @@ import type {
   TestimonialsBlock,
   TimelineBlock,
 } from "@/lib/types/cms-blocks";
+import { submitNewsletterSubscription } from "@/lib/utils/newsletter";
 
 import { IconMapper } from "./icon-mapper";
 import { RichText } from "./layout/rich-text";
-
-const newsletterSubmit = async (email: string, additionalData?: Record<string, unknown>) => {
-  const res = await fetch("/api/newsletter/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, ...additionalData }),
-  });
-  if (!res.ok) {
-    const data = (await res.json()) as { error?: string };
-    throw new Error(data.error ?? "Subscription failed.");
-  }
-};
 
 const renderHero = (block: HeroBlock, key: string) => {
   const heroBackground = block.background === "gradient" ? "grid" : (block.background ?? "grid");
@@ -295,74 +284,87 @@ const BlockStyleWrapper = ({ block, children }: { block: Block; children: React.
   );
 };
 
-const blockRenderers: Record<string, (block: Block, key: string) => React.ReactElement> = {
-  hero: (block, key) => renderHero(block as HeroBlock, key),
-  features: (block, key) => renderFeatures(block as FeaturesBlock, key),
-  stats: (block, key) => renderStats(block as StatsBlock, key),
-  detailsGrid: (block, key) => renderDetailsGrid(block as DetailsGridBlock, key),
-  timeline: (block, key) => renderTimeline(block as TimelineBlock, key),
-  testimonials: (block, key) => renderTestimonials(block as TestimonialsBlock, key),
-  richText: (block, key) => (
-    <div key={key} className="container mx-auto max-w-4xl px-6 py-12">
-      <RichText content={(block as RichTextBlock).content as Parameters<typeof RichText>[0]["content"]} />
+const renderRichText = (block: RichTextBlock, key: string) => (
+  <div key={key} className="container mx-auto max-w-4xl px-6 py-12">
+    <RichText content={block.content as Parameters<typeof RichText>[0]["content"]} />
+  </div>
+);
+
+const renderCTA = (block: CTABlock, key: string) => (
+  <div key={key} className="bg-primary/5 py-16">
+    <div className="container mx-auto max-w-4xl px-6 text-center">
+      <h2 className="text-foreground mb-4 font-serif text-3xl font-bold md:text-4xl">{block.headline}</h2>
+      {block.description && <p className="text-muted-foreground mb-8 text-lg">{block.description}</p>}
+      <Button asChild size="lg">
+        <a href={block.buttonLink}>{block.buttonText}</a>
+      </Button>
     </div>
-  ),
-  cta: (block, key) => {
-    const b = block as CTABlock;
-    return (
-      <div key={key} className="bg-primary/5 py-16">
-        <div className="container mx-auto max-w-4xl px-6 text-center">
-          <h2 className="text-foreground mb-4 font-serif text-3xl font-bold md:text-4xl">{b.headline}</h2>
-          {b.description && <p className="text-muted-foreground mb-8 text-lg">{b.description}</p>}
-          <Button asChild size="lg">
-            <a href={b.buttonLink}>{b.buttonText}</a>
-          </Button>
-        </div>
-      </div>
-    );
-  },
-  newsletterForm: (block, key) => {
-    const b = block as NewsletterFormBlock;
-    return (
-      <div key={key} className="container mx-auto max-w-xl px-6 py-8">
-        <NewsletterForm
-          headline={b.headline ?? undefined}
-          placeholder={b.placeholder ?? undefined}
-          buttonText={b.buttonText ?? undefined}
-          onSubmit={newsletterSubmit}
-        />
-      </div>
-    );
-  },
-  newsletterCTA: (block, key) => {
-    const b = block as NewsletterCTABlock;
-    return (
-      <NewsletterCTA
-        key={key}
-        headline={b.headline ?? undefined}
-        description={b.description ?? undefined}
-        placeholder={b.placeholder ?? undefined}
-        buttonText={b.buttonText ?? undefined}
-        variant={b.variant ?? undefined}
-        size={b.size ?? undefined}
-        onSubmit={newsletterSubmit}
-      />
-    );
-  },
+  </div>
+);
+
+const renderNewsletterForm = (block: NewsletterFormBlock, key: string) => (
+  <div key={key} className="container mx-auto max-w-xl px-6 py-8">
+    <NewsletterForm
+      headline={block.headline ?? undefined}
+      placeholder={block.placeholder ?? undefined}
+      buttonText={block.buttonText ?? undefined}
+      onSubmit={submitNewsletterSubscription}
+    />
+  </div>
+);
+
+const renderNewsletterCTA = (block: NewsletterCTABlock, key: string) => (
+  <NewsletterCTA
+    key={key}
+    headline={block.headline ?? undefined}
+    description={block.description ?? undefined}
+    placeholder={block.placeholder ?? undefined}
+    buttonText={block.buttonText ?? undefined}
+    variant={block.variant ?? undefined}
+    size={block.size ?? undefined}
+    onSubmit={submitNewsletterSubscription}
+  />
+);
+
+/** Render a single block using discriminated union narrowing (no unsafe casts). */
+const renderBlock = (block: Block, key: string): React.ReactElement | null => {
+  switch (block.blockType) {
+    case "hero":
+      return renderHero(block, key);
+    case "features":
+      return renderFeatures(block, key);
+    case "stats":
+      return renderStats(block, key);
+    case "detailsGrid":
+      return renderDetailsGrid(block, key);
+    case "timeline":
+      return renderTimeline(block, key);
+    case "testimonials":
+      return renderTestimonials(block, key);
+    case "richText":
+      return renderRichText(block, key);
+    case "cta":
+      return renderCTA(block, key);
+    case "newsletterForm":
+      return renderNewsletterForm(block, key);
+    case "newsletterCTA":
+      return renderNewsletterCTA(block, key);
+    default:
+      return null;
+  }
 };
 
 export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => (
   <>
-    {(blocks ?? [])
-      .filter((block) => block.blockType in blockRenderers)
-      .map((block, index) => {
-        const key = block.id ?? `${block.blockType}-${index}`;
-        const rendered = blockRenderers[block.blockType]!(block, key);
-        return (
-          <BlockStyleWrapper key={key} block={block}>
-            {rendered}
-          </BlockStyleWrapper>
-        );
-      })}
+    {(blocks ?? []).map((block, index) => {
+      const key = block.id ?? `${block.blockType}-${index}`;
+      const rendered = renderBlock(block, key);
+      if (!rendered) return null;
+      return (
+        <BlockStyleWrapper key={key} block={block}>
+          {rendered}
+        </BlockStyleWrapper>
+      );
+    })}
   </>
 );

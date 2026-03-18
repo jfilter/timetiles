@@ -14,32 +14,10 @@
  */
 import type { Payload } from "payload";
 
-import { JOB_TYPES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/import-constants";
+import { JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { isValidTransition, STAGE_TO_JOB_TYPE } from "@/lib/constants/stage-graph";
 import { logger } from "@/lib/logger";
 import type { ImportJob } from "@/payload-types";
-
-// Valid stage transitions map
-const VALID_STAGE_TRANSITIONS: Partial<Record<ProcessingStage, ProcessingStage[]>> = {
-  [PROCESSING_STAGE.ANALYZE_DUPLICATES]: [PROCESSING_STAGE.DETECT_SCHEMA],
-  [PROCESSING_STAGE.DETECT_SCHEMA]: [PROCESSING_STAGE.VALIDATE_SCHEMA],
-  [PROCESSING_STAGE.VALIDATE_SCHEMA]: [
-    PROCESSING_STAGE.AWAIT_APPROVAL,
-    PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
-    PROCESSING_STAGE.GEOCODE_BATCH,
-  ],
-  [PROCESSING_STAGE.AWAIT_APPROVAL]: [PROCESSING_STAGE.CREATE_SCHEMA_VERSION],
-  [PROCESSING_STAGE.CREATE_SCHEMA_VERSION]: [PROCESSING_STAGE.GEOCODE_BATCH],
-  [PROCESSING_STAGE.GEOCODE_BATCH]: [PROCESSING_STAGE.CREATE_EVENTS],
-  [PROCESSING_STAGE.CREATE_EVENTS]: [PROCESSING_STAGE.COMPLETED],
-  [PROCESSING_STAGE.COMPLETED]: [], // Terminal state
-  [PROCESSING_STAGE.FAILED]: [
-    // Recovery stages - must match isValidRecoveryStage() in import-jobs/hooks.ts
-    PROCESSING_STAGE.ANALYZE_DUPLICATES,
-    PROCESSING_STAGE.DETECT_SCHEMA,
-    PROCESSING_STAGE.VALIDATE_SCHEMA,
-    PROCESSING_STAGE.GEOCODE_BATCH,
-  ],
-};
 
 export interface StageTransitionResult {
   success: boolean;
@@ -56,15 +34,7 @@ export class StageTransitionService {
    * Validate stage transition.
    */
   static validateStageTransition(fromStage: string, toStage: string): boolean {
-    // Allow transitions to failed state from any stage
-    if (toStage === PROCESSING_STAGE.FAILED) return true;
-
-    // Allow staying in the same stage (for updates)
-    if (fromStage === toStage) return true;
-
-    // Check if transition is valid
-    const validTransitions = VALID_STAGE_TRANSITIONS[fromStage as ProcessingStage] ?? [];
-    return validTransitions.includes(toStage as ProcessingStage);
+    return isValidTransition(fromStage, toStage);
   }
 
   /**
@@ -116,48 +86,27 @@ export class StageTransitionService {
    * Queue appropriate job for the current stage.
    */
   private static async queueStageJob(payload: Payload, job: ImportJob): Promise<{ queued: boolean; jobType?: string }> {
-    switch (job.stage) {
-      case PROCESSING_STAGE.ANALYZE_DUPLICATES:
-        await payload.jobs.queue({ task: JOB_TYPES.ANALYZE_DUPLICATES, input: { importJobId: job.id } });
-        return { queued: true, jobType: JOB_TYPES.ANALYZE_DUPLICATES };
+    const jobType = STAGE_TO_JOB_TYPE[job.stage];
 
-      case PROCESSING_STAGE.DETECT_SCHEMA:
-        await payload.jobs.queue({ task: JOB_TYPES.DETECT_SCHEMA, input: { importJobId: job.id } });
-        return { queued: true, jobType: JOB_TYPES.DETECT_SCHEMA };
-
-      case PROCESSING_STAGE.VALIDATE_SCHEMA:
-        await payload.jobs.queue({ task: JOB_TYPES.VALIDATE_SCHEMA, input: { importJobId: job.id } });
-        return { queued: true, jobType: JOB_TYPES.VALIDATE_SCHEMA };
-
-      case PROCESSING_STAGE.AWAIT_APPROVAL:
-        // Send notification to user
+    // Stages with no automatic job
+    if (jobType === null || jobType === undefined) {
+      if (job.stage === PROCESSING_STAGE.AWAIT_APPROVAL) {
         logger.info("Import requires manual approval", { importJobId: job.id });
-        // No automatic advancement from this stage
-        return { queued: false };
-
-      case PROCESSING_STAGE.CREATE_SCHEMA_VERSION:
-        await payload.jobs.queue({ task: JOB_TYPES.CREATE_SCHEMA_VERSION, input: { importJobId: job.id } });
-        return { queued: true, jobType: JOB_TYPES.CREATE_SCHEMA_VERSION };
-
-      case PROCESSING_STAGE.GEOCODE_BATCH:
-        await payload.jobs.queue({ task: JOB_TYPES.GEOCODE_BATCH, input: { importJobId: job.id, batchNumber: 0 } });
-        return { queued: true, jobType: JOB_TYPES.GEOCODE_BATCH };
-
-      case PROCESSING_STAGE.CREATE_EVENTS:
-        await payload.jobs.queue({ task: JOB_TYPES.CREATE_EVENTS, input: { importJobId: job.id } });
-        return { queued: true, jobType: JOB_TYPES.CREATE_EVENTS };
-
-      case PROCESSING_STAGE.COMPLETED:
+      } else if (job.stage === PROCESSING_STAGE.COMPLETED) {
         logger.info("Import job completed successfully", { importJobId: job.id });
-        return { queued: false };
-
-      case PROCESSING_STAGE.FAILED:
+      } else if (job.stage === PROCESSING_STAGE.FAILED) {
         logger.error("Import job failed", { importJobId: job.id });
-        return { queued: false };
-
-      default:
+      } else {
         logger.warn("Unknown stage for job queuing", { importJobId: job.id, stage: job.stage });
-        return { queued: false };
+      }
+      return { queued: false };
     }
+
+    // Geocode batch needs batchNumber input
+    const input =
+      jobType === JOB_TYPES.GEOCODE_BATCH ? { importJobId: job.id, batchNumber: 0 } : { importJobId: job.id };
+
+    await payload.jobs.queue({ task: jobType, input });
+    return { queued: true, jobType };
   }
 }

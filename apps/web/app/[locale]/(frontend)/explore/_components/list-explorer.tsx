@@ -34,12 +34,9 @@ export const ListExplorer = () => {
   const { map, filters: filterState, selection, data, ui } = explorer;
   const { filters, activeFilterCount } = filterState;
   const { selectedEventId, openEvent, closeEvent } = selection;
-  const { datasets, clusters, clusterStats, boundsData, boundsLoading, isLoadingInitialBounds } = data;
+  const { datasets, clusters, clusterStats, boundsData, isLoadingInitialBounds } = data;
   const { isFilterDrawerOpen, toggleFilterDrawer } = ui;
-  const { ref: mapRef, debouncedSimpleBounds, hasUserPanned, handleZoomToData, handleBoundsChange } = map;
-
-  // Show "zoom to data" button when user has panned and we have bounds data
-  const showZoomToData = hasUserPanned && boundsData?.bounds != null && !boundsLoading;
+  const { ref: mapRef, debouncedSimpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
 
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
