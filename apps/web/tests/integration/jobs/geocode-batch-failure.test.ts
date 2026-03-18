@@ -134,5 +134,74 @@ Event 3,2024-01-03,Hamburg Germany
     expect(events.docs).toHaveLength(0);
   });
 
-  it.todo("should continue if some geocoding succeeds");
+  it("should continue if some geocoding succeeds", async () => {
+    // Override beforeEach all-reject mock with partial success
+    const mockGeocode = vi
+      .fn()
+      .mockResolvedValueOnce({
+        latitude: 52.52,
+        longitude: 13.405,
+        normalizedAddress: "Berlin, Germany",
+        confidence: 0.9,
+      })
+      .mockRejectedValueOnce(new Error("Geocoding failed for Munich"))
+      .mockResolvedValueOnce({
+        latitude: 53.55,
+        longitude: 9.993,
+        normalizedAddress: "Hamburg, Germany",
+        confidence: 0.9,
+      });
+
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      geocode: mockGeocode,
+    } as unknown as ReturnType<typeof geocodingModule.createGeocodingService>);
+
+    const csvContent = `name,date,location
+Event 1,2024-01-01,Berlin Germany
+Event 2,2024-01-02,Munich Germany
+Event 3,2024-01-03,Hamburg Germany
+`;
+
+    await withDataset(testEnv, testCatalogId, {
+      name: "geocode-partial-test.csv",
+      language: "eng",
+      schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
+    });
+
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "geocode-partial-test.csv",
+      mimeType: "text/csv",
+      user: testUserId,
+      additionalData: { originalName: "geocode-partial-test.csv" },
+    });
+
+    const stageResult = await runJobsUntilImportJobStage(
+      payload,
+      importFile.id,
+      (importJob) => importJob.stage === "failed" || importJob.stage === "completed",
+      { maxIterations: 50 }
+    );
+
+    const importJobs = await payload.find({
+      collection: "import-jobs",
+      where: { importFile: { equals: importFile.id } },
+    });
+
+    expect(importJobs.docs).toHaveLength(1);
+    const importJob = importJobs.docs[0];
+
+    // Partial success should NOT fail — job should reach completed
+    expect(importJob.stage).toBe("completed");
+
+    // Geocoding results should contain only the 2 successful locations
+    expect(importJob.geocodingResults).toBeDefined();
+    expect(Object.keys(importJob.geocodingResults)).toHaveLength(2);
+    expect(importJob.geocodingResults["Berlin Germany"]).toBeDefined();
+    expect(importJob.geocodingResults["Hamburg Germany"]).toBeDefined();
+    expect(importJob.geocodingResults["Munich Germany"]).toBeUndefined();
+
+    // Events should be created for all 3 rows
+    const events = await payload.find({ collection: "events", where: { importJob: { equals: importJob.id } } });
+    expect(events.docs.length).toBeGreaterThanOrEqual(3);
+  });
 });
