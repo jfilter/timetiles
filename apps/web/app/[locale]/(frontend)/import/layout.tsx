@@ -12,8 +12,6 @@ import config from "@payload-config";
 import { headers } from "next/headers";
 import { getPayload } from "payload";
 
-import type { User } from "@/payload-types";
-
 import { WizardLayoutClient } from "./_components/wizard-layout-client";
 
 const getInitialAuth = async () => {
@@ -24,7 +22,7 @@ const getInitialAuth = async () => {
     const { user } = await payload.auth({ headers: headersList });
 
     if (user) {
-      const typedUser = user as User;
+      const typedUser = user;
       return { isAuthenticated: true, isEmailVerified: typedUser._verified === true, userId: typedUser.id };
     }
   } catch {

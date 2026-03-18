@@ -73,14 +73,14 @@ const processCatalogValidation = async (
 
   // Validate create permission
   if (operation === "create" && req.user) {
-    validateCreatePermission(req.user as User, catalog, catalogCreatorId);
+    validateCreatePermission(req.user, catalog, catalogCreatorId);
   }
 
   // Validate update permission when catalog is being changed
   if (operation === "update" && req.user) {
     const previousCatalogId = originalDoc?.catalog ? extractRelationId(originalDoc.catalog) : undefined;
     if (previousCatalogId !== catalogId) {
-      validateCreatePermission(req.user as User, catalog, catalogCreatorId);
+      validateCreatePermission(req.user, catalog, catalogCreatorId);
     }
   }
 
