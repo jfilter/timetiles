@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { getEmailTranslations } from "@/lib/email/i18n";
 import { generateAccountExistsEmailHTML } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { safeSendEmail } from "@/lib/utils/email";
@@ -53,18 +54,20 @@ export const POST = apiRoute({
 
     if (existingUser.docs.length > 0) {
       // User exists - send notification email (don't reveal this to the client)
+      const existingUserDoc = existingUser.docs[0];
       logger.info({ email: maskEmail(normalizedEmail) }, "Registration attempt for existing email");
 
       // Generate password reset URL so user can recover their account
       const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
       const resetUrl = `${baseUrl}/forgot-password`;
+      const t = getEmailTranslations(existingUserDoc?.locale);
 
       await safeSendEmail(
         payload,
         {
           to: normalizedEmail,
-          subject: "TimeTiles - Account Registration Attempt",
-          html: generateAccountExistsEmailHTML(resetUrl),
+          subject: t("accountExistsSubject"),
+          html: generateAccountExistsEmailHTML(resetUrl, existingUserDoc?.locale),
         },
         `Failed to send account exists email to: ${maskEmail(normalizedEmail)}`
       );

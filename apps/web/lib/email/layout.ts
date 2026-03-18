@@ -2,20 +2,20 @@
  * Shared HTML email layout wrapper.
  *
  * Provides consistent styling and structure for all transactional emails.
- * All email templates should use {@link emailLayout} to wrap their body content
- * and a shared footer with support contact info.
+ * All email templates should use {@link emailLayout} to wrap their body content.
+ * The shared footer is rendered automatically using the provided translator.
  *
  * @module
  * @category Email
  */
 
-/** Standard greeting line. */
-export const greeting = (firstName?: string | null): string => {
-  const name = firstName ? ` ${firstName}` : "";
-  return `<p>Hello${name},</p>`;
-};
+import type { EmailTranslator } from "./i18n";
 
-/** Primary action button. */
+/** Standard greeting line, translated. */
+export const greeting = (t: EmailTranslator, firstName?: string | null): string =>
+  firstName ? `<p>${t("greeting", { name: firstName })}</p>` : `<p>${t("greetingAnonymous")}</p>`;
+
+/** Primary action button. Label should already be translated by the caller. */
 export const emailButton = (href: string, label: string, color = "#0070f3"): string =>
   `<p style="margin: 30px 0;">
     <a href="${href}" style="background-color: ${color}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
@@ -36,19 +36,20 @@ export const callout = (content: string, color: "red" | "green" | "amber" | "gra
 };
 
 /**
- * Wrap email body content in the standard HTML layout with shared footer.
+ * Wrap email body content in the standard HTML layout with translated footer.
  *
  * @param body - Inner HTML content (everything between the body tags)
+ * @param t - Email translation function
  * @returns Complete HTML document string
  */
-export const emailLayout = (body: string): string =>
+export const emailLayout = (body: string, t: EmailTranslator): string =>
   `<!DOCTYPE html>
 <html>
   <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     ${body}
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     <p style="color: #999; font-size: 12px;">
-      This is an automated message from TimeTiles. If you have questions, please contact support.
+      ${t("footer")}
     </p>
   </body>
 </html>`;

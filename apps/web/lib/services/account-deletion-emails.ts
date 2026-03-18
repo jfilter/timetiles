@@ -11,6 +11,7 @@
  */
 import type { Payload } from "payload";
 
+import { getEmailTranslations } from "@/lib/email/i18n";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { formatLongDate } from "@/lib/utils/date";
 import { safeSendEmail } from "@/lib/utils/email";
@@ -23,39 +24,40 @@ export const sendDeletionScheduledEmail = async (
   email: string,
   firstName: string | null | undefined,
   deletionScheduledAt: string,
-  cancelUrl: string
+  cancelUrl: string,
+  locale?: string | null
 ): Promise<void> => {
+  const t = getEmailTranslations(locale);
   const formattedDate = formatLongDate(deletionScheduledAt);
 
-  const html = emailLayout(`
-    <h1 style="color: #dc2626;">Account Deletion Scheduled</h1>
-    ${greeting(firstName)}
-    <p>Your TimeTiles account deletion has been scheduled.</p>
+  const html = emailLayout(
+    `
+    <h1 style="color: #dc2626;">${t("deletionScheduledTitle")}</h1>
+    ${greeting(t, firstName)}
+    <p>${t("deletionScheduledBody")}</p>
 
-    ${callout(`<p style="margin: 0;"><strong>Deletion Date:</strong> ${formattedDate}</p>`, "red")}
+    ${callout(`<p style="margin: 0;"><strong>${t("deletionScheduledDate")}</strong> ${formattedDate}</p>`, "red")}
 
-    <h2 style="font-size: 18px;">What happens next?</h2>
+    <h2 style="font-size: 18px;">${t("deletionScheduledNext")}</h2>
     <ul>
-      <li><strong>Public data</strong> will be transferred to the system and remain accessible</li>
-      <li><strong>Private data</strong> will be permanently deleted on the scheduled date</li>
-      <li>You can <strong>cancel this deletion anytime</strong> before the scheduled date</li>
+      <li><strong>${t("deletionScheduledPublic")}</strong></li>
+      <li><strong>${t("deletionScheduledPrivate")}</strong></li>
+      <li><strong>${t("deletionScheduledCancel")}</strong></li>
     </ul>
 
-    <p>If you didn't request this deletion, please cancel it immediately and secure your account.</p>
+    <p>${t("deletionScheduledWarning")}</p>
 
-    ${emailButton(cancelUrl, "Cancel Deletion", "#dc2626")}
+    ${emailButton(cancelUrl, t("cancelDeletionBtn"), "#dc2626")}
 
     <p style="color: #666; font-size: 14px;">
-      Or visit your account settings: <a href="${cancelUrl}">${cancelUrl}</a>
+      ${t("deletionScheduledLink")} <a href="${cancelUrl}">${cancelUrl}</a>
     </p>
 
-  `);
-
-  await safeSendEmail(
-    payload,
-    { to: email, subject: "Your TimeTiles account deletion is scheduled", html },
-    "deletion-scheduled-email"
+  `,
+    t
   );
+
+  await safeSendEmail(payload, { to: email, subject: t("deletionScheduledSubject"), html }, "deletion-scheduled-email");
 };
 
 /**
@@ -64,28 +66,30 @@ export const sendDeletionScheduledEmail = async (
 export const sendDeletionCancelledEmail = async (
   payload: Payload,
   email: string,
-  firstName: string | null | undefined
+  firstName: string | null | undefined,
+  locale?: string | null
 ): Promise<void> => {
-  const html = emailLayout(`
-    <h1 style="color: #16a34a;">Account Deletion Cancelled</h1>
-    ${greeting(firstName)}
-    <p>Good news! Your TimeTiles account deletion has been cancelled.</p>
+  const t = getEmailTranslations(locale);
 
-    ${callout(`<p style="margin: 0;">Your account is now <strong>active</strong> and all your data is safe.</p>`, "green")}
+  const html = emailLayout(
+    `
+    <h1 style="color: #16a34a;">${t("deletionCancelledTitle")}</h1>
+    ${greeting(t, firstName)}
+    <p>${t("deletionCancelledBody")}</p>
 
-    <p>If you didn't cancel this deletion, someone may have access to your account. We recommend:</p>
+    ${callout(`<p style="margin: 0;">${t("deletionCancelledActive")}</p>`, "green")}
+
+    <p>${t("deletionCancelledWarning")}</p>
     <ul>
-      <li>Changing your password immediately</li>
-      <li>Reviewing your recent account activity</li>
+      <li>${t("deletionCancelledChangePassword")}</li>
+      <li>${t("deletionCancelledReviewActivity")}</li>
     </ul>
 
-  `);
-
-  await safeSendEmail(
-    payload,
-    { to: email, subject: "Your TimeTiles account deletion has been cancelled", html },
-    "deletion-cancelled-email"
+  `,
+    t
   );
+
+  await safeSendEmail(payload, { to: email, subject: t("deletionCancelledSubject"), html }, "deletion-cancelled-email");
 };
 
 /**
@@ -96,47 +100,49 @@ export const sendDeletionCompletedEmail = async (
   email: string,
   firstName: string | null | undefined,
   dataTransferred: { catalogs: number; datasets: number },
-  dataDeleted: { catalogs: number; datasets: number; events: number }
+  dataDeleted: { catalogs: number; datasets: number; events: number },
+  locale?: string | null
 ): Promise<void> => {
-  const html = emailLayout(`
-    <h1>Your TimeTiles Account Has Been Deleted</h1>
-    ${greeting(firstName)}
-    <p>Your TimeTiles account has been permanently deleted as scheduled.</p>
+  const t = getEmailTranslations(locale);
 
-    <h2 style="font-size: 18px;">Summary of Changes</h2>
+  const html = emailLayout(
+    `
+    <h1>${t("deletionCompletedTitle")}</h1>
+    ${greeting(t, firstName)}
+    <p>${t("deletionCompletedBody")}</p>
+
+    <h2 style="font-size: 18px;">${t("deletionCompletedSummary")}</h2>
 
     ${callout(
-      `<h3 style="margin: 0 0 10px 0; font-size: 16px;">Public Data Transferred</h3>
+      `<h3 style="margin: 0 0 10px 0; font-size: 16px;">${t("deletionCompletedTransferred")}</h3>
       <ul style="margin: 0; padding-left: 20px;">
-        <li>${dataTransferred.catalogs} catalog(s)</li>
-        <li>${dataTransferred.datasets} dataset(s)</li>
+        <li>${t("deletionCompletedCatalogs", { count: dataTransferred.catalogs })}</li>
+        <li>${t("deletionCompletedDatasets", { count: dataTransferred.datasets })}</li>
       </ul>
       <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
-        This data remains publicly accessible.
+        ${t("deletionCompletedTransferredNote")}
       </p>`,
       "green"
     )}
 
     ${callout(
-      `<h3 style="margin: 0 0 10px 0; font-size: 16px;">Private Data Deleted</h3>
+      `<h3 style="margin: 0 0 10px 0; font-size: 16px;">${t("deletionCompletedDeleted")}</h3>
       <ul style="margin: 0; padding-left: 20px;">
-        <li>${dataDeleted.catalogs} private catalog(s)</li>
-        <li>${dataDeleted.datasets} private dataset(s)</li>
-        <li>${dataDeleted.events} event(s)</li>
+        <li>${t("deletionCompletedPrivateCatalogs", { count: dataDeleted.catalogs })}</li>
+        <li>${t("deletionCompletedPrivateDatasets", { count: dataDeleted.datasets })}</li>
+        <li>${t("deletionCompletedEvents", { count: dataDeleted.events })}</li>
       </ul>
       <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
-        This data has been permanently removed.
+        ${t("deletionCompletedDeletedNote")}
       </p>`,
       "red"
     )}
 
-    <p>Thank you for using TimeTiles. If you have any questions about your data, please contact support within 30 days.</p>
+    <p>${t("deletionCompletedThanks")}</p>
 
-  `);
-
-  await safeSendEmail(
-    payload,
-    { to: email, subject: "Your TimeTiles account has been deleted", html },
-    "deletion-completed-email"
+  `,
+    t
   );
+
+  await safeSendEmail(payload, { to: email, subject: t("deletionCompletedSubject"), html }, "deletion-completed-email");
 };

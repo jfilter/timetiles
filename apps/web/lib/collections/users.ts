@@ -21,6 +21,7 @@ import {
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
 } from "@/lib/constants/quota-constants";
+import { getEmailTranslations } from "@/lib/email/i18n";
 import { emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
 
@@ -62,20 +63,25 @@ const Users: CollectionConfig = {
         const token = args?.token ?? "";
         const user = args?.user;
         const firstName = user?.firstName ?? "";
+        const t = getEmailTranslations(user?.locale);
         const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
         const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
-        return emailLayout(`
-          <h1>Verify your TimeTiles account</h1>
-          ${greeting(firstName)}
-          <p>Thank you for registering with TimeTiles. Please verify your email address by clicking the link below:</p>
-          ${emailButton(verifyUrl, "Verify Email")}
-          <p>Or copy and paste this link into your browser:</p>
+        return emailLayout(
+          `
+          <h1>${t("verifyAccountTitle")}</h1>
+          ${greeting(t, firstName)}
+          <p>${t("verifyAccountBody")}</p>
+          ${emailButton(verifyUrl, t("verifyEmailBtn"))}
+          <p>${t("orCopyLink")}</p>
           <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-          <p>If you didn't create an account, you can safely ignore this email.</p>
-        `);
+          <p>${t("verifyAccountIgnore")}</p>
+        `,
+          t
+        );
       },
-      generateEmailSubject: () => {
-        return "Verify your TimeTiles account";
+      generateEmailSubject: (args) => {
+        const t = getEmailTranslations(args?.user?.locale);
+        return t("verifyAccountSubject");
       },
     },
     // Configure forgot password emails
@@ -84,21 +90,26 @@ const Users: CollectionConfig = {
         const token = args?.token ?? "";
         const user = args?.user;
         const firstName = user?.firstName ?? "";
+        const t = getEmailTranslations(user?.locale);
         const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
         const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-        return emailLayout(`
-          <h1>Reset your password</h1>
-          ${greeting(firstName)}
-          <p>You requested to reset your password. Click the link below to set a new password:</p>
-          ${emailButton(resetUrl, "Reset Password")}
-          <p>Or copy and paste this link into your browser:</p>
+        return emailLayout(
+          `
+          <h1>${t("resetPasswordTitle")}</h1>
+          ${greeting(t, firstName)}
+          <p>${t("resetPasswordBody")}</p>
+          ${emailButton(resetUrl, t("resetPasswordBtn"))}
+          <p>${t("orCopyLink")}</p>
           <p><a href="${resetUrl}">${resetUrl}</a></p>
-          <p>This link will expire in 1 hour.</p>
-          <p>If you didn't request a password reset, you can safely ignore this email.</p>
-        `);
+          <p>${t("resetPasswordExpiry")}</p>
+          <p>${t("resetPasswordIgnore")}</p>
+        `,
+          t
+        );
       },
-      generateEmailSubject: () => {
-        return "Reset your TimeTiles password";
+      generateEmailSubject: (args) => {
+        const t = getEmailTranslations(args?.user?.locale);
+        return t("resetPasswordSubject");
       },
     },
   },
@@ -170,6 +181,16 @@ const Users: CollectionConfig = {
       ],
       defaultValue: "admin",
       admin: { position: "sidebar", readOnly: true, description: "How this user account was created" },
+    },
+    {
+      name: "locale",
+      type: "select",
+      options: [
+        { label: "English", value: "en" },
+        { label: "Deutsch", value: "de" },
+      ],
+      defaultValue: "en",
+      admin: { position: "sidebar", description: "Preferred language for email notifications" },
     },
     // Permission and Quota Fields
     {

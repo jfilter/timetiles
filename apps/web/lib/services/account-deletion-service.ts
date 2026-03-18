@@ -210,7 +210,14 @@ export class AccountDeletionService {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
       const cancelUrl = `${baseUrl}/account/settings`;
-      await sendDeletionScheduledEmail(this.payload, user.email, user.firstName, deletionDate.toISOString(), cancelUrl);
+      await sendDeletionScheduledEmail(
+        this.payload,
+        user.email,
+        user.firstName,
+        deletionDate.toISOString(),
+        cancelUrl,
+        user.locale
+      );
     } catch (error) {
       logError(error, "Failed to send deletion scheduled email", { userId });
     }
@@ -243,7 +250,7 @@ export class AccountDeletionService {
 
     // Send cancellation email — best-effort, state change already succeeded
     try {
-      await sendDeletionCancelledEmail(this.payload, user.email, user.firstName);
+      await sendDeletionCancelledEmail(this.payload, user.email, user.firstName, user.locale);
     } catch (error) {
       logError(error, "Failed to send deletion cancelled email", { userId });
     }
@@ -301,7 +308,8 @@ export class AccountDeletionService {
           user.email,
           user.firstName,
           result.dataTransferred,
-          result.dataDeleted
+          result.dataDeleted,
+          user.locale
         );
       } catch (error) {
         logError(error, "Failed to send deletion completed email", { userId });

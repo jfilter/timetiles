@@ -14,6 +14,7 @@ import type { Payload } from "payload";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
+import { getEmailTranslations } from "@/lib/email/i18n";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
@@ -30,7 +31,7 @@ import { hashEmail } from "@/lib/utils/hash";
 /** Update email, send verification to new address, notify old address, and audit. */
 const updateEmailAndNotify = async (
   payload: Payload,
-  user: { id: number; email: string; firstName?: string | null },
+  user: { id: number; email: string; firstName?: string | null; locale?: string | null },
   newEmail: string,
   clientId: string
 ): Promise<void> => {
@@ -46,24 +47,21 @@ const updateEmailAndNotify = async (
   const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
   const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
   const firstName = user.firstName ?? "";
+  const t = getEmailTranslations(user.locale);
 
   await safeSendEmail(
     payload,
     {
       to: newEmail,
-      subject: "Verify your new TimeTiles email address",
-      html: buildVerificationEmailHtml(verifyUrl, firstName),
+      subject: t("emailVerifySubject"),
+      html: buildVerificationEmailHtml(verifyUrl, firstName, user.locale),
     },
     "Failed to send verification email after email change"
   );
 
   await safeSendEmail(
     payload,
-    {
-      to: user.email,
-      subject: "Your TimeTiles email address was changed",
-      html: buildOldEmailNotificationHtml(firstName),
-    },
+    { to: user.email, subject: t("emailChangedSubject"), html: buildOldEmailNotificationHtml(firstName, user.locale) },
     "Failed to send notification to old email after email change"
   );
 

@@ -412,6 +412,10 @@ export const enum_users_registration_source = db_schema.enum(
   "enum_users_registration_source",
   ["admin", "self"],
 );
+export const enum_users_locale = db_schema.enum("enum_users_locale", [
+  "en",
+  "de",
+]);
 export const enum_users_trust_level = db_schema.enum("enum_users_trust_level", [
   "0",
   "1",
@@ -3829,6 +3833,7 @@ export const users = db_schema.table(
     registrationSource: enum_users_registration_source(
       "registration_source",
     ).default("admin"),
+    locale: enum_users_locale("locale").default("en"),
     trustLevel: enum_users_trust_level("trust_level").notNull().default("2"),
     quotas_maxActiveSchedules: numeric("quotas_max_active_schedules", {
       mode: "number",
@@ -10889,6 +10894,7 @@ type DatabaseSchema = {
   enum__events_v_published_locale: typeof enum__events_v_published_locale;
   enum_users_role: typeof enum_users_role;
   enum_users_registration_source: typeof enum_users_registration_source;
+  enum_users_locale: typeof enum_users_locale;
   enum_users_trust_level: typeof enum_users_trust_level;
   enum_users_deletion_status: typeof enum_users_deletion_status;
   enum_media_status: typeof enum_media_status;

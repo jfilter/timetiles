@@ -48,7 +48,7 @@ const handleExportFailure = async (payload: Payload, exportId: number, error: un
     const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     if (user) {
-      await sendExportFailedEmail(payload, user.email, user.firstName, errorMessage);
+      await sendExportFailedEmail(payload, user.email, user.firstName, errorMessage, user.locale);
     }
   } catch (updateError) {
     logError(updateError, "Failed to update export status after error", { exportId });
@@ -139,7 +139,15 @@ export const dataExportJob = {
       const fileSizeMB = result.fileSize / (1024 * 1024);
 
       // Send notification email
-      await sendExportReadyEmail(payload, user.email, user.firstName, downloadUrl, expiresAt.toISOString(), fileSizeMB);
+      await sendExportReadyEmail(
+        payload,
+        user.email,
+        user.firstName,
+        downloadUrl,
+        expiresAt.toISOString(),
+        fileSizeMB,
+        user.locale
+      );
 
       logger.info({ jobId: job?.id, exportId, fileSize: result.fileSize }, "Data export completed successfully");
 

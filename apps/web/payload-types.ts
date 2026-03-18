@@ -248,6 +248,10 @@ export interface User {
    */
   registrationSource?: ('admin' | 'self') | null;
   /**
+   * Preferred language for email notifications
+   */
+  locale?: ('en' | 'de') | null;
+  /**
    * User trust level determines resource quotas and rate limits
    */
   trustLevel: '0' | '1' | '2' | '3' | '4' | '5';
@@ -4385,6 +4389,7 @@ export interface UsersSelect<T extends boolean = true> {
   isActive?: T;
   lastLoginAt?: T;
   registrationSource?: T;
+  locale?: T;
   trustLevel?: T;
   quotas?:
     | T
