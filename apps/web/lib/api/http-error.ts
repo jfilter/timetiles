@@ -58,3 +58,17 @@ export const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit)
 
   return response.json() as Promise<T>;
 };
+
+/**
+ * Convenience wrapper for POST requests with JSON body.
+ *
+ * Sets `Content-Type`, `credentials: "include"`, and serializes the body.
+ * Throws `HttpError` on non-ok responses (via `fetchJson`).
+ */
+export const postJson = <T>(url: string, data: unknown): Promise<T> =>
+  fetchJson<T>(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });

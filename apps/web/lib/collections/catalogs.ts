@@ -28,6 +28,7 @@ import {
   createSlugField,
   isAuthenticated,
   isEditorOrAdmin,
+  isPrivileged,
   setCreatedByHook,
 } from "./shared-fields";
 
@@ -205,7 +206,7 @@ const Catalogs: CollectionConfig = {
     // eslint-disable-next-line sonarjs/function-return-type
     read: ({ req: { user } }) => {
       // Admins and editors can read all
-      if (user?.role === "admin" || user?.role === "editor") return true;
+      if (isPrivileged(user)) return true;
 
       // Users (including not logged in) can read public catalogs OR their own private catalogs
       if (user) {

@@ -13,15 +13,16 @@ import { Check, Key, Loader2 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
-import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 
 export const ChangePasswordForm = () => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const { status, error, isLoading, mutate, reset } = useFormMutation({
+  const { status, error, isPending, mutate, reset } = useMutation({
     mutationFn: async (input: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
       validatePasswords(input.newPassword, input.confirmPassword);
 
@@ -58,7 +59,7 @@ export const ChangePasswordForm = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error}</div>}
+          {error && <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error?.message}</div>}
 
           {status === "success" && (
             <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
@@ -75,7 +76,7 @@ export const ChangePasswordForm = () => {
               value={currentPassword}
               onChange={fieldHandler(setCurrentPassword)}
               placeholder="Enter current password"
-              disabled={isLoading}
+              disabled={isPending}
             />
           </div>
 
@@ -87,7 +88,7 @@ export const ChangePasswordForm = () => {
               value={newPassword}
               onChange={fieldHandler(setNewPassword)}
               placeholder="Enter new password"
-              disabled={isLoading}
+              disabled={isPending}
             />
             <p className="text-muted-foreground text-xs">Must be at least {MIN_PASSWORD_LENGTH} characters</p>
           </div>
@@ -100,12 +101,12 @@ export const ChangePasswordForm = () => {
               value={confirmPassword}
               onChange={fieldHandler(setConfirmPassword)}
               placeholder="Confirm new password"
-              disabled={isLoading}
+              disabled={isPending}
             />
           </div>
 
-          <Button type="submit" disabled={isLoading || !currentPassword || !newPassword || !confirmPassword}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isPending || !currentPassword || !newPassword || !confirmPassword}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Change Password
           </Button>
         </form>

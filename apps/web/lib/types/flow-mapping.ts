@@ -9,7 +9,7 @@
  * @category Types
  */
 
-import type { Edge, Node } from "@xyflow/react";
+import type { Node } from "@xyflow/react";
 
 import type { ImportTransform } from "./import-transforms";
 import type { FieldMapping } from "./import-wizard";
@@ -68,16 +68,6 @@ export interface TransformNodeData extends Record<string, unknown> {
 }
 
 /**
- * Custom node types for the flow editor
- */
-export type FlowMappingNodeType = "source-column" | "target-field" | "transform";
-
-/**
- * Union of all flow mapping node data types
- */
-export type FlowMappingNodeData = SourceColumnNodeData | TargetFieldNodeData | TransformNodeData;
-
-/**
  * Typed node for source columns
  */
 export type SourceColumnNode = Node<SourceColumnNodeData, "source-column">;
@@ -91,30 +81,6 @@ export type TargetFieldNode = Node<TargetFieldNodeData, "target-field">;
  * Typed node for transforms
  */
 export type TransformNode = Node<TransformNodeData, "transform">;
-
-/**
- * Union of all flow mapping nodes
- */
-export type FlowMappingNode = SourceColumnNode | TargetFieldNode | TransformNode;
-
-/**
- * Data attached to edges for validation status
- */
-export interface FlowMappingEdgeData extends Record<string, unknown> {
-  /** Whether this edge represents a valid mapping */
-  isValid: boolean;
-  /** Validation error message if invalid */
-  validationError?: string;
-  /** Sample value being passed through */
-  sampleValue?: unknown;
-  /** Confidence level if auto-detected (0-1) */
-  confidence?: number;
-}
-
-/**
- * Typed edge for flow mappings
- */
-export type FlowMappingEdge = Edge<FlowMappingEdgeData>;
 
 /**
  * Target field definitions with metadata

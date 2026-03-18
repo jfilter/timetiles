@@ -10,8 +10,9 @@
 "use client";
 
 import { addEdge, type Connection, type Edge, type Node, useEdgesState, useNodesState } from "@xyflow/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
+import { usePreviewSheetsQuery } from "@/lib/hooks/use-import-wizard-mutations";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/types/flow-mapping";
 import { createSourceNodes, createTargetNodes, TARGET_FIELD_DEFINITIONS } from "@/lib/types/flow-mapping";
 import {
@@ -152,74 +153,65 @@ const createInitialEdges = (mappingPairs: MappingPair[], sheetIndex: number): Fl
 export const useFlowEditor = (previewId: string | null, sheetIndex: number): UseFlowEditorResult => {
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sheetInfo, setSheetInfo] = useState<SheetInfo | null>(null);
+  const hasInitializedRef = useRef(false);
 
-  // Load preview data
+  // Load preview data via React Query
+  const { data: previewData, isLoading: queryLoading, error: queryError } = usePreviewSheetsQuery(previewId);
+
+  // Derive sheet info from query data
+  const sheet = previewData?.sheets[sheetIndex] ?? null;
+
+  // Derive loading and error states
+  const isLoading = !previewId ? false : queryLoading;
+  const error = !previewId
+    ? "No preview ID provided. Please start from the import wizard."
+    : queryError
+      ? queryError instanceof Error
+        ? queryError.message
+        : "Failed to load data"
+      : sheet === null && !queryLoading
+        ? `Sheet ${sheetIndex} not found`
+        : null;
+
+  // Initialize nodes/edges when preview data arrives (once per query result)
   useEffect(() => {
-    if (!previewId) {
-      setError("No preview ID provided. Please start from the import wizard.");
-      setIsLoading(false);
-      return;
+    if (!sheet || hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
+
+    const sourceNodes = createSourceNodes(sheet.headers, sheet.sampleData, sheet.index, sheet.name);
+    const targetNodes = createTargetNodes();
+    setNodes([...sourceNodes, ...targetNodes] as FlowNode[]);
+
+    if (sheet.suggestedMappings?.mappings) {
+      const mappingPairs = buildMappingPairs(sheet.suggestedMappings.mappings);
+      const initialEdges = createInitialEdges(mappingPairs, sheetIndex);
+      setEdges(initialEdges);
+
+      // Update node connection states
+      setNodes((nds) =>
+        // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
+        nds.map((node) => {
+          if (node.type === NODE_TYPE_SOURCE) {
+            const isConnected = initialEdges.some((e) => e.source === node.id);
+            return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected } } as FlowNode;
+          }
+          if (node.type === NODE_TYPE_TARGET) {
+            const edge = initialEdges.find((e) => e.target === node.id);
+            const sourceNode = edge ? sourceNodes.find((n) => n.id === edge.source) : null;
+            return {
+              ...node,
+              data: {
+                ...(node.data as TargetFieldNodeData),
+                isConnected: !!edge,
+                connectedColumn: sourceNode?.data.columnName ?? null,
+              },
+            } as FlowNode;
+          }
+          return node;
+        })
+      );
     }
-
-    const loadPreviewData = async () => {
-      try {
-        const response = await fetch(`/api/import/preview-schema?previewId=${previewId}`);
-        if (!response.ok) throw new Error("Failed to load preview data");
-
-        const data = await response.json();
-        const sheets = data.sheets as SheetInfo[];
-        const sheet = sheets[sheetIndex];
-
-        if (!sheet) throw new Error(`Sheet ${sheetIndex} not found`);
-
-        setSheetInfo(sheet);
-
-        const sourceNodes = createSourceNodes(sheet.headers, sheet.sampleData, sheet.index, sheet.name);
-        const targetNodes = createTargetNodes();
-        setNodes([...sourceNodes, ...targetNodes] as FlowNode[]);
-
-        if (sheet.suggestedMappings?.mappings) {
-          const mappingPairs = buildMappingPairs(sheet.suggestedMappings.mappings);
-          const initialEdges = createInitialEdges(mappingPairs, sheetIndex);
-          setEdges(initialEdges);
-
-          // Update node connection states
-          setNodes((nds) =>
-            // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
-            nds.map((node) => {
-              if (node.type === NODE_TYPE_SOURCE) {
-                const isConnected = initialEdges.some((e) => e.source === node.id);
-                return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected } } as FlowNode;
-              }
-              if (node.type === NODE_TYPE_TARGET) {
-                const edge = initialEdges.find((e) => e.target === node.id);
-                const sourceNode = edge ? sourceNodes.find((n) => n.id === edge.source) : null;
-                return {
-                  ...node,
-                  data: {
-                    ...(node.data as TargetFieldNodeData),
-                    isConnected: !!edge,
-                    connectedColumn: sourceNode?.data.columnName ?? null,
-                  },
-                } as FlowNode;
-              }
-              return node;
-            })
-          );
-        }
-
-        setIsLoading(false);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load data");
-        setIsLoading(false);
-      }
-    };
-
-    void loadPreviewData();
-  }, [previewId, sheetIndex, setNodes, setEdges]);
+  }, [sheet, sheetIndex, setNodes, setEdges]);
 
   // Handle new connections (source→target, source→transform, transform→target)
   const onConnect = useCallback(
@@ -380,7 +372,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     addTransformNode,
     isLoading,
     error,
-    sheetInfo,
+    sheetInfo: sheet,
     serializeFlowState,
   };
 };

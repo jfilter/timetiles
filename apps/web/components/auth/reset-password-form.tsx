@@ -13,9 +13,10 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { validatePasswords } from "@/lib/constants/validation";
 import { resetPasswordRequest } from "@/lib/hooks/use-auth-mutations";
-import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface ResetPasswordFormProps {
@@ -31,7 +32,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
   const t = useTranslations("Auth");
   const [password, handlePasswordChange] = useInputState();
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
-  const { status, error, isLoading, mutate } = useFormMutation({
+  const { status, error, isPending, mutate } = useMutation({
     mutationFn: async (input: { token: string; password: string; confirmPassword: string }) => {
       validatePasswords(input.password, input.confirmPassword);
 
@@ -62,7 +63,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
           value={password}
           onChange={handlePasswordChange}
           placeholder={t("newPasswordPlaceholder")}
-          disabled={isLoading}
+          disabled={isPending}
           required
           autoComplete="new-password"
           minLength={8}
@@ -77,7 +78,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
           value={confirmPassword}
           onChange={handleConfirmPasswordChange}
           placeholder={t("confirmPasswordPlaceholder")}
-          disabled={isLoading}
+          disabled={isPending}
           required
           autoComplete="new-password"
         />
@@ -85,12 +86,12 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
 
       {error && (
         <p className="text-destructive text-sm" role="alert">
-          {error}
+          {error.message}
         </p>
       )}
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? t("resetting") : t("resetPassword")}
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? t("resetting") : t("resetPassword")}
       </Button>
     </form>
   );

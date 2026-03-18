@@ -7,6 +7,7 @@
 import type { MapBounds } from "@/lib/geospatial/types";
 import type { DataSourceCatalog, DataSourceDataset } from "@/lib/hooks/use-data-sources-query";
 import type { FilterState } from "@/lib/types/filter-state";
+import { formatDateRangeLabel } from "@/lib/utils/date";
 
 export interface FilterLabels {
   catalog?: string;
@@ -33,27 +34,8 @@ export const getDatasetName = (datasets: DataSourceDataset[], datasetId: string)
   return dataset?.name ?? "Unknown Dataset";
 };
 
-/** Format date range for display */
-export const formatDateRange = (startDate: string | null, endDate: string | null): string | undefined => {
-  const hasStartDate = startDate != null && startDate !== "";
-  const hasEndDate = endDate != null && endDate !== "";
-
-  if (!hasStartDate && !hasEndDate) {
-    return undefined;
-  }
-
-  const start = hasStartDate ? new Date(startDate).toLocaleDateString("en-US") : "Start";
-  const end = hasEndDate ? new Date(endDate).toLocaleDateString("en-US") : "End";
-
-  if (hasStartDate && hasEndDate) {
-    return `${start} - ${end}`;
-  } else if (hasStartDate) {
-    return `From ${start}`;
-  } else if (hasEndDate) {
-    return `Until ${end}`;
-  }
-  return undefined;
-};
+/** Format date range for display -- delegates to shared utility */
+export const formatDateRange = formatDateRangeLabel;
 
 /** Get human-readable filter labels */
 export const getFilterLabels = (

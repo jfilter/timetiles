@@ -87,6 +87,20 @@ export interface FieldMapping {
   longitudeField: string | null;
 }
 
+/**
+ * Check if a field mapping has all required fields filled in.
+ *
+ * Requires title, date, and either a location field or both lat/lng fields.
+ */
+export const isFieldMappingComplete = (mapping: FieldMapping | undefined): boolean => {
+  if (!mapping) return false;
+  return (
+    mapping.titleField !== null &&
+    mapping.dateField !== null &&
+    (mapping.locationField !== null || (mapping.latitudeField !== null && mapping.longitudeField !== null))
+  );
+};
+
 /** Schedule creation configuration */
 export interface CreateScheduleConfig {
   enabled: boolean;
@@ -131,4 +145,36 @@ export interface PreviewMetadata {
   expiresAt: string;
   sourceUrl?: string;
   authConfig?: AuthConfig;
+}
+
+// ---------------------------------------------------------------------------
+// API request/response types for import wizard endpoints
+// ---------------------------------------------------------------------------
+
+/** Response from POST /api/import/preview-schema/upload */
+export interface PreviewSchemaUploadResponse {
+  sheets: SheetInfo[];
+  previewId: string;
+}
+
+/** Request body for POST /api/import/preview-schema/url */
+export interface PreviewSchemaUrlRequest {
+  sourceUrl: string;
+  authConfig?: UrlAuthConfig;
+}
+
+/** Response from POST /api/import/preview-schema/url */
+export interface PreviewSchemaUrlResponse {
+  sheets: SheetInfo[];
+  previewId: string;
+  sourceUrl: string;
+  fileName: string;
+  contentLength: number;
+  contentType: string;
+}
+
+/** Response from POST /api/import/configure */
+export interface ImportConfigureResponse {
+  importFileId: number;
+  scheduledImportId?: number;
 }

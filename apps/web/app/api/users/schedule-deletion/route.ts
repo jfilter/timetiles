@@ -11,13 +11,12 @@
 import { z } from "zod";
 
 import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/account/deletion-service";
-import { apiRoute } from "@/lib/api";
+import { apiRoute, AppError, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
-import { badRequest, rateLimited } from "@/lib/utils/api-response";
 
 export const POST = apiRoute({
   auth: "required",
@@ -34,7 +33,7 @@ export const POST = apiRoute({
     );
 
     if (!deletionCheck.allowed) {
-      return rateLimited("Too many deletion attempts. Please try again later.");
+      throw new AppError(429, "Too many deletion attempts. Please try again later.");
     }
 
     const { password } = body;
@@ -46,31 +45,23 @@ export const POST = apiRoute({
     );
 
     if (!passwordCheck.allowed) {
-      return rateLimited("Too many failed password attempts. Please try again later.");
+      throw new AppError(429, "Too many failed password attempts. Please try again later.");
     }
 
     // Verify password
-    const verifyError = await verifyPasswordWithAudit(
-      payload,
-      user,
-      password,
-      clientId,
-      "account_deletion",
-      "Invalid password"
-    );
-    if (verifyError) return verifyError;
+    await verifyPasswordWithAudit(payload, user, password, clientId, "account_deletion", "Invalid password");
 
     // Check if user can be deleted
     const deletionService = createAccountDeletionService(payload);
     const canDelete = await deletionService.canDeleteUser(user.id);
 
     if (!canDelete.allowed) {
-      return badRequest(canDelete.reason ?? "Account cannot be deleted");
+      throw new ValidationError(canDelete.reason ?? "Account cannot be deleted");
     }
 
     // Check if already pending deletion
     if (user.deletionStatus === "pending_deletion") {
-      return badRequest("Deletion already scheduled");
+      throw new ValidationError("Deletion already scheduled");
     }
 
     // Schedule deletion

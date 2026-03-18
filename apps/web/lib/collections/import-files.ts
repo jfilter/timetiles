@@ -29,7 +29,13 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import { createRequestLogger } from "../logger";
 import { createQuotaService } from "../services/quota-service";
 import { getClientIdentifier, getRateLimitService } from "../services/rate-limit-service";
-import { createCommonConfig, createOwnershipAccess, isAuthenticated, isEditorOrAdmin } from "./shared-fields";
+import {
+  createCommonConfig,
+  createOwnershipAccess,
+  isAuthenticated,
+  isEditorOrAdmin,
+  isPrivileged,
+} from "./shared-fields";
 
 const logger = createRequestLogger("import-files");
 
@@ -61,7 +67,7 @@ const ImportFiles: CollectionConfig = {
       const { user, payload } = req;
 
       // Admins and editors can read all
-      if (user?.role === "admin" || user?.role === "editor") return true;
+      if (isPrivileged(user)) return true;
 
       // Authentication required
       if (!user) return false;

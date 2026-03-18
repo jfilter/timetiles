@@ -19,8 +19,13 @@ import type { Config } from "@/payload-types";
 import { createSlugHook } from "./slug";
 
 // Access control helpers for role-based permissions
+
+/** Plain boolean helper for checking admin or editor role outside Payload Access context. */
+export const isPrivileged = (user?: { role?: string | null } | null): boolean =>
+  user?.role === "admin" || user?.role === "editor";
+
 export const isAdmin: Access = ({ req: { user } }) => user?.role === "admin";
-export const isEditorOrAdmin: Access = ({ req: { user } }) => user?.role === "editor" || user?.role === "admin";
+export const isEditorOrAdmin: Access = ({ req: { user } }) => isPrivileged(user);
 export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
 
 /**
@@ -35,7 +40,7 @@ export const createOwnershipAccess = (
   // Payload Access functions legitimately return boolean | Where
   // eslint-disable-next-line sonarjs/function-return-type
   return ({ req: { user } }): boolean | Where => {
-    if (user?.role === "admin" || user?.role === "editor") return true;
+    if (isPrivileged(user)) return true;
     if (!user) return false;
     return { [ownerField]: { equals: user.id } } as Where;
   };
@@ -57,14 +62,14 @@ export const createPublicOwnershipAccess = (
   // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
   const update: Access = ({ req: { user } }): boolean | Where => {
     if (!user) return false;
-    if (user.role === "admin" || user.role === "editor") return true;
+    if (isPrivileged(user)) return true;
     return { [ownerField]: { equals: user.id } } as Where;
   };
 
   return {
     // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     read: ({ req: { user } }): boolean | Where => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
+      if (isPrivileged(user)) return true;
       if (user) {
         return { or: [{ isPublic: { equals: true } }, { [ownerField]: { equals: user.id } }] } as Where;
       }
@@ -140,7 +145,7 @@ export const createIsPublicField = (options?: {
 
 /** Admin condition: only show field to editors and admins. */
 export const editorOrAdminCondition = ({ req }: { req?: { user?: { role?: string } | null } }): boolean =>
-  req?.user?.role === "editor" || req?.user?.role === "admin";
+  isPrivileged(req?.user);
 
 // Generic metadata JSON field
 export const metadataField: Field = {

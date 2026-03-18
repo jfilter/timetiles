@@ -10,11 +10,11 @@
  */
 import type { Payload } from "payload";
 
-import { apiRoute } from "@/lib/api";
+import { apiRoute, ConflictError } from "@/lib/api";
 import { createDataExportService } from "@/lib/export/service";
 import { logger } from "@/lib/logger";
 import type { RequestExportResponse } from "@/lib/types/data-export-api";
-import { apiSuccess, conflict } from "@/lib/utils/api-response";
+import { apiSuccess } from "@/lib/utils/api-response";
 
 export type { RequestExportError, RequestExportResponse } from "@/lib/types/data-export-api";
 
@@ -37,12 +37,7 @@ export const POST = apiRoute({
     const existingExports = await findActiveExport(payload, user.id);
 
     if (existingExports.docs.length > 0) {
-      const existing = existingExports.docs[0];
-      return conflict("Export already in progress", "EXPORT_IN_PROGRESS", {
-        exportId: existing?.id,
-        status: existing?.status,
-        requestedAt: existing?.requestedAt,
-      });
+      throw new ConflictError("Export already in progress");
     }
 
     // Get export summary
@@ -66,7 +61,7 @@ export const POST = apiRoute({
       // Re-check for existing exports in case of race condition
       const raceCheck = await findActiveExport(payload, user.id);
       if (raceCheck.docs.length > 0) {
-        return conflict("Export already in progress", "EXPORT_IN_PROGRESS", { exportId: raceCheck.docs[0]?.id });
+        throw new ConflictError("Export already in progress");
       }
       throw createError;
     }

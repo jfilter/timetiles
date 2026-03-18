@@ -24,6 +24,7 @@ import {
   createOwnershipAccess,
   createSlugField,
   isEditorOrAdmin,
+  isPrivileged,
   setCreatedByHook,
 } from "./shared-fields";
 
@@ -34,7 +35,7 @@ const ScraperRepos: CollectionConfig = {
   access: {
     // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     read: ({ req: { user } }): boolean | Where => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
+      if (isPrivileged(user)) return true;
       if (!user) return false;
       return { createdBy: { equals: user.id } } as Where;
     },

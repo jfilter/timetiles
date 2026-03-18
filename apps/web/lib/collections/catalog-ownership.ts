@@ -9,6 +9,7 @@
  */
 import type { Payload, PayloadRequest } from "payload";
 
+import { isPrivileged } from "@/lib/collections/shared-fields";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Config } from "@/payload-types";
 import type { Dataset } from "@/payload-types";
@@ -24,8 +25,7 @@ export const validateCatalogOwnership = async (
   catalogRef: unknown,
   user: { id: number; role?: string | null }
 ): Promise<void> => {
-  const isAdminOrEditor = user.role === "admin" || user.role === "editor";
-  if (isAdminOrEditor) return;
+  if (isPrivileged(user)) return;
 
   const catalogId = extractRelationId<number>(catalogRef as number | { id: number } | null | undefined);
   if (!catalogId) return;

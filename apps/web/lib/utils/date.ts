@@ -164,3 +164,39 @@ export const formatISODate = (timestamp: number): string => {
 export const parseISODate = (dateStr: string): number => {
   return new Date(dateStr).getTime();
 };
+
+/**
+ * Format a date range for display with "From"/"Until" prefixes.
+ *
+ * Returns `undefined` when both dates are empty. Uses en-US locale formatting.
+ */
+export const formatDateRangeLabel = (startDate: string | null, endDate: string | null): string | undefined => {
+  const hasStartDate = startDate != null && startDate !== "";
+  const hasEndDate = endDate != null && endDate !== "";
+
+  if (!hasStartDate && !hasEndDate) {
+    return undefined;
+  }
+
+  const start = hasStartDate ? new Date(startDate).toLocaleDateString("en-US") : "Start";
+  const end = hasEndDate ? new Date(endDate).toLocaleDateString("en-US") : "End";
+
+  if (hasStartDate && hasEndDate) {
+    return `${start} - ${end}`;
+  } else if (hasStartDate) {
+    return `From ${start}`;
+  } else if (hasEndDate) {
+    return `Until ${end}`;
+  }
+  return undefined;
+};
+
+/**
+ * Format a date string using the browser's locale-aware toLocaleString().
+ *
+ * Returns an em-dash for null/undefined input.
+ */
+export const formatDateLocale = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return "\u2014";
+  return new Date(dateStr).toLocaleString();
+};

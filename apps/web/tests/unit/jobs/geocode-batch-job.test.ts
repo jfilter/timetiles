@@ -19,16 +19,15 @@ import { createMockDataset, createMockImportJob, createMockPayload } from "@/tes
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   const geocode = vi.fn();
-  return {
-    streamBatchesFromFile: vi.fn(),
-    cleanupSidecarFiles: vi.fn(),
-    geocode,
-    createGeocodingService: vi.fn(() => ({ geocode })),
-  };
+  return { streamBatchesFromFile: vi.fn(), cleanupSidecarFiles: vi.fn(), geocode };
 });
 
 // Mock external dependencies
-vi.mock("@/lib/services/geocoding", () => ({ createGeocodingService: mocks.createGeocodingService }));
+vi.mock("@/lib/services/geocoding", () => ({
+  GeocodingService: class MockGeocodingService {
+    geocode = mocks.geocode;
+  },
+}));
 
 vi.mock("@/lib/import/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
@@ -54,7 +53,6 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     mocks.streamBatchesFromFile.mockReset();
     mocks.cleanupSidecarFiles.mockReset();
     mocks.geocode.mockReset();
-    mocks.createGeocodingService.mockReset().mockReturnValue({ geocode: mocks.geocode });
     mockPayload = createMockPayload();
     mockContext = { req: { payload: mockPayload }, input: { importJobId: 123 } } as unknown as JobHandlerContext;
   });

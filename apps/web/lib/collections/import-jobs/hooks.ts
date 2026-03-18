@@ -11,6 +11,7 @@ import type {
 } from "payload";
 
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
+import { isPrivileged } from "@/lib/collections/shared-fields";
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { isRecoveryStage } from "@/lib/constants/stage-graph";
 import { cleanupSidecarFiles } from "@/lib/import/file-readers";
@@ -149,8 +150,7 @@ const validateCreateOwnership = async (data: Partial<ImportJob>, req: PayloadReq
   const user = req.user as { id: number; role?: string } | undefined;
   if (!user) return;
 
-  const isPrivileged = user.role === "admin" || user.role === "editor";
-  if (isPrivileged) return;
+  if (isPrivileged(user)) return;
 
   await validateImportFileOwnership(data.importFile, user.id, req);
   await validateDatasetCatalogAccess(data.dataset, user.id, req);

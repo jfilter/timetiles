@@ -11,7 +11,9 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { fetchJson, HttpError } from "../api/http-error";
+import type { User } from "@/payload-types";
+
+import { fetchJson, HttpError, postJson } from "../api/http-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -19,12 +21,12 @@ import { fetchJson, HttpError } from "../api/http-error";
 
 /** Payload CMS `/api/users/me` response shape. */
 export interface CurrentUserResponse {
-  user: { id: number; email: string; _verified?: boolean; [key: string]: unknown } | null;
+  user: User | null;
 }
 
 /** Payload CMS `/api/users/login` response shape. */
 interface LoginResponse {
-  user?: { id: number; email: string; [key: string]: unknown };
+  user?: User;
   message?: string;
   errors?: Array<{ message: string }>;
 }
@@ -76,10 +78,12 @@ export const authKeys = { currentUser: ["auth", "current-user"] as const };
 export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: authKeys.currentUser,
-    queryFn: async () => {
-      const response = await fetch("/api/users/me", { credentials: "include" });
-      if (!response.ok) return { user: null } satisfies CurrentUserResponse;
-      return (await response.json()) as CurrentUserResponse;
+    queryFn: async (): Promise<CurrentUserResponse> => {
+      try {
+        return await fetchJson<CurrentUserResponse>("/api/users/me", { credentials: "include" });
+      } catch {
+        return { user: null };
+      }
     },
     enabled: options?.enabled ?? true,
     staleTime: 0,
@@ -112,12 +116,7 @@ export const useAuthState = () => {
 /** Login via Payload CMS `/api/users/login`. */
 export const loginRequest = async (input: LoginInput): Promise<LoginResponse> => {
   try {
-    return await fetchJson<LoginResponse>("/api/users/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-      credentials: "include",
-    });
+    return await postJson<LoginResponse>("/api/users/login", input);
   } catch (error) {
     if (error instanceof HttpError) {
       const body = error.body as LoginResponse | undefined;
@@ -175,7 +174,11 @@ export const resetPasswordRequest = (input: ResetPasswordInput): Promise<void> =
  * Logout via Payload CMS `/api/users/logout`.
  */
 export const logoutRequest = async (): Promise<void> => {
-  await fetch("/api/users/logout", { method: "POST", credentials: "include" });
+  try {
+    await fetchJson<void>("/api/users/logout", { method: "POST", credentials: "include" });
+  } catch {
+    // Logout may return non-JSON; swallow errors since session is cleared regardless
+  }
 };
 
 export const useLogoutMutation = () => useMutation({ mutationFn: logoutRequest });

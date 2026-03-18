@@ -15,13 +15,10 @@ import { useEffect, useRef, useState } from "react";
 import { useMapPosition } from "@/lib/hooks/use-filters";
 
 import { ChartSection } from "./chart-section";
-import { EventDetailModal } from "./event-detail-modal";
 import { EventsList } from "./events-list";
-import { FilterDrawer } from "./filter-drawer";
-import { FilterPanel } from "./filter-panel";
+import { ExplorerEventModal, ExplorerFilterPanel, ExplorerMobileFilters } from "./explorer-chrome";
 import { buildEventsDescription, getFilterLabels, getInitialViewState, getLoadingStates } from "./map-explorer-helpers";
 import { MapPanel } from "./map-panel";
-import { MobileFilterSheet } from "./mobile-filter-sheet";
 import { useExplorerState } from "./use-explorer-state";
 
 export const MapExplorer = () => {
@@ -147,9 +144,7 @@ export const MapExplorer = () => {
         </div>
 
         {/* Filter Panel - fixed width with slide animation */}
-        <FilterPanel isOpen={isFilterDrawerOpen} className="bg-background h-full overflow-hidden">
-          <FilterDrawer />
-        </FilterPanel>
+        <ExplorerFilterPanel isOpen={isFilterDrawerOpen} className="bg-background h-full overflow-hidden" />
       </div>
 
       {/* Mobile: Stacked layout with overlay filter drawer */}
@@ -189,18 +184,15 @@ export const MapExplorer = () => {
         </div>
 
         {/* Mobile: Bottom sheet filter drawer */}
-        <MobileFilterSheet
+        <ExplorerMobileFilters
           isOpen={isFilterDrawerOpen}
-          onClose={toggleFilterDrawer}
-          onOpen={toggleFilterDrawer}
+          onToggle={toggleFilterDrawer}
           activeFilterCount={activeFilterCount}
-        >
-          <FilterDrawer />
-        </MobileFilterSheet>
+        />
       </div>
 
       {/* Event Detail Modal */}
-      <EventDetailModal eventId={selectedEventId} onClose={closeEvent} />
+      <ExplorerEventModal selectedEventId={selectedEventId} onClose={closeEvent} />
     </div>
   );
 };

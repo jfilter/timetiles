@@ -12,9 +12,8 @@
  */
 import { z } from "zod";
 
-import { apiRoute, safeFindByID } from "@/lib/api";
+import { apiRoute, AppError, ConflictError, safeFindByID } from "@/lib/api";
 import { logError } from "@/lib/logger";
-import { conflict, internalError } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";
 
 export const POST = apiRoute({
@@ -43,7 +42,7 @@ export const POST = apiRoute({
     });
 
     if (claimResult.docs.length === 0) {
-      return conflict("Import is already running");
+      throw new ConflictError("Import is already running");
     }
 
     try {
@@ -62,7 +61,7 @@ export const POST = apiRoute({
       return { message: "Import triggered" };
     } catch (error) {
       logError(error, "Error triggering scheduled import", { scheduleId: numericId, userId: user.id });
-      return internalError();
+      throw new AppError(500, "Internal server error");
     }
   },
 });

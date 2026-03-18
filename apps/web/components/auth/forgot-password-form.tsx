@@ -13,8 +13,9 @@ import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { forgotPasswordRequest } from "@/lib/hooks/use-auth-mutations";
-import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface ForgotPasswordFormProps {
@@ -27,7 +28,7 @@ export interface ForgotPasswordFormProps {
 export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPasswordFormProps>) => {
   const t = useTranslations("Auth");
   const [email, handleEmailChange] = useInputState();
-  const { status, error, isLoading, mutate } = useFormMutation({
+  const { status, error, isPending, mutate } = useMutation({
     mutationFn: forgotPasswordRequest,
     onSuccess: () => onSuccess?.(),
   });
@@ -71,7 +72,7 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
           value={email}
           onChange={handleEmailChange}
           placeholder={t("emailPlaceholder")}
-          disabled={isLoading}
+          disabled={isPending}
           required
           autoComplete="email"
         />
@@ -79,12 +80,12 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
 
       {error && (
         <p className="text-destructive text-sm" role="alert">
-          {error}
+          {error.message}
         </p>
       )}
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? t("sending") : t("sendResetLink")}
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? t("sending") : t("sendResetLink")}
       </Button>
     </form>
   );

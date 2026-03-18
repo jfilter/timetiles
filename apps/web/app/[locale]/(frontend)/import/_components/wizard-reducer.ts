@@ -61,11 +61,7 @@ export interface WizardState {
   importFileId: number | null;
   /** ID of the created scheduled import (if schedule was created) */
   scheduledImportId: number | null;
-  isProcessing: boolean;
   error: string | null;
-
-  // Meta
-  lastSavedAt: string | null;
 }
 
 // Initial state
@@ -87,9 +83,7 @@ export const initialState: WizardState = {
   scheduleConfig: null,
   importFileId: null,
   scheduledImportId: null,
-  isProcessing: false,
   error: null,
-  lastSavedAt: null,
 };
 
 // Action types
@@ -249,12 +243,11 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
           ...state,
           importFileId: action.importFileId,
           scheduledImportId: action.scheduledImportId ?? null,
-          isProcessing: true,
           error: null,
         };
 
       case "SET_ERROR":
-        return { ...state, error: action.error, isProcessing: false };
+        return { ...state, error: action.error };
 
       case "COMPLETE":
         return { ...initialState };
@@ -270,8 +263,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
     }
   })();
 
-  // Update lastSavedAt for persistence
-  return { ...newState, lastSavedAt: new Date().toISOString() };
+  return newState;
 };
 /* eslint-enable sonarjs/max-lines-per-function */
 /* oxlint-enable complexity */

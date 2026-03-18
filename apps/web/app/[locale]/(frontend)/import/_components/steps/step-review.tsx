@@ -142,6 +142,11 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         .filter(([, t]) => t.length > 0)
         .map(([idx, transforms]) => ({ sheetIndex: Number(idx), transforms }));
 
+      if (selectedCatalogId == null) {
+        setError("Please select a catalog");
+        return;
+      }
+
       const data = await configureMutation.mutateAsync({
         previewId: state.previewId ?? "",
         catalogId: selectedCatalogId,

@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 
 import { EventDetailContent, EventDetailError, EventDetailSkeleton } from "@/components/events";
 import { useEventDetailQuery } from "@/lib/hooks/use-events-queries";
+import { getEventData, getEventTitle } from "@/lib/utils/event-detail";
 
 interface EventDetailModalProps {
   /** The event ID to display, or null if closed */
@@ -22,18 +23,6 @@ interface EventDetailModalProps {
   /** Callback when the modal is closed */
   onClose: () => void;
 }
-
-// Helper to extract event title for accessibility
-const getEventTitle = (event: { data?: unknown }): string => {
-  const data = event.data as Record<string, unknown> | undefined;
-  if (data && typeof data.title === "string" && data.title) {
-    return data.title;
-  }
-  if (data && typeof data.name === "string" && data.name) {
-    return data.name;
-  }
-  return "Untitled Event";
-};
 
 export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) => {
   const t = useTranslations("Events");
@@ -54,7 +43,7 @@ export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) =>
   // Compute dialog title without nested ternary
   const dialogTitle = (() => {
     if (isLoading) return t("loadingEventDetails");
-    if (event) return getEventTitle(event);
+    if (event) return getEventTitle(getEventData(event));
     return t("eventDetails");
   })();
 

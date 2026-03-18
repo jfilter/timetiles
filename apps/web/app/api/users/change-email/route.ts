@@ -13,7 +13,7 @@ import { randomBytes } from "node:crypto";
 import type { Payload } from "payload";
 import { z } from "zod";
 
-import { apiRoute } from "@/lib/api";
+import { apiRoute, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
@@ -23,7 +23,6 @@ import { logger } from "@/lib/logger";
 import { hashEmail } from "@/lib/security/hash";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
-import { badRequest } from "@/lib/utils/api-response";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -96,12 +95,11 @@ export const POST = apiRoute({
 
     // Check if email is same as current
     if (newEmail === user.email.toLowerCase()) {
-      return badRequest("New email must be different from current email");
+      throw new ValidationError("New email must be different from current email");
     }
 
     // Verify password
-    const verifyError = await verifyPasswordWithAudit(payload, user, password, clientId, "email_change");
-    if (verifyError) return verifyError;
+    await verifyPasswordWithAudit(payload, user, password, clientId, "email_change");
 
     // Constant-time response: both paths return after the same elapsed time
     // to prevent timing side-channel attacks from distinguishing "email exists"

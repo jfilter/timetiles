@@ -39,8 +39,3 @@ export const getEmailBranding = async (payload: Payload): Promise<EmailBranding>
   cache = { data, expiry: Date.now() + CACHE_TTL };
   return data;
 };
-
-/** Clear the branding cache (for tests). */
-export const clearEmailBrandingCache = (): void => {
-  cache = null;
-};

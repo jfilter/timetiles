@@ -13,8 +13,9 @@ import { Check, Loader2, Mail } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { changeEmailRequest } from "@/lib/hooks/use-account-mutations";
-import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 
 interface ChangeEmailFormProps {
   currentEmail: string;
@@ -24,7 +25,7 @@ interface ChangeEmailFormProps {
 export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProps) => {
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { status, error, isLoading, mutate, reset } = useFormMutation({
+  const { status, error, isPending, mutate, reset } = useMutation({
     mutationFn: async (input: { newEmail: string; password: string; currentEmail: string }) => {
       const emailLower = input.newEmail.trim().toLowerCase();
       if (emailLower === input.currentEmail.toLowerCase()) {
@@ -64,7 +65,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error}</div>}
+          {error && <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error?.message}</div>}
 
           {status === "success" && (
             <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
@@ -86,7 +87,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
               value={newEmail}
               onChange={fieldHandler(setNewEmail)}
               placeholder="Enter new email"
-              disabled={isLoading}
+              disabled={isPending}
             />
           </div>
 
@@ -98,13 +99,13 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
               value={password}
               onChange={fieldHandler(setPassword)}
               placeholder="Confirm with your password"
-              disabled={isLoading}
+              disabled={isPending}
             />
             <p className="text-muted-foreground text-xs">Enter your password to confirm this change</p>
           </div>
 
-          <Button type="submit" disabled={isLoading || !newEmail || !password}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isPending || !newEmail || !password}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Change Email
           </Button>
         </form>

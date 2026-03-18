@@ -36,24 +36,17 @@ import {
 import { useState } from "react";
 
 import { Link } from "@/i18n/navigation";
-import type { ConfidenceLevel, FieldMapping, SuggestedMappings } from "@/lib/types/import-wizard";
+import {
+  isFieldMappingComplete,
+  type ConfidenceLevel,
+  type FieldMapping,
+  type SuggestedMappings,
+} from "@/lib/types/import-wizard";
 
 import { useWizard } from "../wizard-context";
 import { FieldSelect } from "./field-select";
 import { IdStrategyCard } from "./id-strategy-card";
 import { SheetTabButton } from "./sheet-tab-button";
-
-/**
- * Check if a field mapping is complete (has all required fields)
- */
-const isMappingComplete = (mapping: FieldMapping | undefined): boolean => {
-  if (!mapping) return false;
-  return (
-    mapping.titleField !== null &&
-    mapping.dateField !== null &&
-    (mapping.locationField !== null || (mapping.latitudeField !== null && mapping.longitudeField !== null))
-  );
-};
 
 /**
  * Language detection banner showing the detected language.
@@ -185,7 +178,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           <div className="flex flex-wrap gap-2" data-testid="sheet-tabs">
             {sheets.map((sheet) => {
               const mapping = fieldMappings.find((m) => m.sheetIndex === sheet.index);
-              const isComplete = isMappingComplete(mapping);
+              const isComplete = isFieldMappingComplete(mapping);
               const isActive = sheet.index === activeSheetIndex;
               const sheetMapping = sheetMappings.find((m) => m.sheetIndex === sheet.index);
 

@@ -39,9 +39,7 @@ const baseWizardState: WizardState = {
   scheduleConfig: null,
   importFileId: null,
   scheduledImportId: null,
-  isProcessing: false,
   error: null,
-  lastSavedAt: null,
 };
 
 let wizardState = { ...baseWizardState };

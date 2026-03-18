@@ -10,12 +10,14 @@
  */
 import type { GlobalConfig } from "payload";
 
+import { isPrivileged } from "@/lib/collections/shared-fields";
+
 import { generateFaviconsHook } from "./branding-hooks";
 
 export const Branding: GlobalConfig = {
   slug: "branding",
   admin: { group: "Content" },
-  access: { read: () => true, update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor" },
+  access: { read: () => true, update: ({ req: { user } }) => isPrivileged(user) },
   hooks: { afterChange: [generateFaviconsHook] },
   fields: [
     {

@@ -2,64 +2,26 @@
  * React Query mutation hooks for import wizard API calls.
  *
  * Extracts fetch logic from wizard step components into reusable
- * mutation hooks following the project convention.
+ * mutation hooks following the project convention. All request/response
+ * types are imported from the canonical `import-wizard` types module.
  *
  * @module
  * @category Hooks
  */
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import type { ImportTransform } from "@/lib/types/import-transforms";
-import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
+import type {
+  ConfigureImportRequest,
+  ImportConfigureResponse,
+  PreviewSchemaUploadResponse,
+  PreviewSchemaUrlRequest,
+  PreviewSchemaUrlResponse,
+  SheetInfo,
+} from "@/lib/types/import-wizard";
 
 import { fetchJson } from "../api/http-error";
-
-interface PreviewSchemaUploadResponse {
-  sheets: SheetInfo[];
-  previewId: string;
-}
-
-interface PreviewSchemaUrlRequest {
-  sourceUrl: string;
-  authConfig?: UrlAuthConfig;
-}
-
-interface PreviewSchemaUrlResponse {
-  sheets: SheetInfo[];
-  previewId: string;
-  sourceUrl: string;
-  fileName: string;
-  contentLength: number;
-  contentType: string;
-}
-
-interface ImportConfigureRequest {
-  previewId: string;
-  catalogId: number | "new" | null;
-  newCatalogName?: string;
-  sheetMappings: SheetMapping[];
-  fieldMappings: FieldMapping[];
-  deduplicationStrategy: string;
-  geocodingEnabled: boolean;
-  transforms?: Array<{ sheetIndex: number; transforms: ImportTransform[] }>;
-  createSchedule?: {
-    enabled: boolean;
-    sourceUrl: string;
-    name: string;
-    scheduleType: "frequency" | "cron";
-    frequency?: string;
-    cronExpression?: string;
-    schemaMode: string;
-    authConfig?: UrlAuthConfig;
-  };
-}
-
-interface ImportConfigureResponse {
-  importFileId: number;
-  scheduledImportId?: number;
-}
 
 export const previewSchemaUpload = async (formData: FormData): Promise<PreviewSchemaUploadResponse> => {
   return fetchJson<PreviewSchemaUploadResponse>("/api/import/preview-schema/upload", {
@@ -76,7 +38,7 @@ export const previewSchemaUrl = async (request: PreviewSchemaUrlRequest): Promis
   });
 };
 
-export const importConfigure = async (request: ImportConfigureRequest): Promise<ImportConfigureResponse> => {
+export const importConfigure = async (request: ConfigureImportRequest): Promise<ImportConfigureResponse> => {
   return fetchJson<ImportConfigureResponse>("/api/import/configure", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -103,4 +65,16 @@ export const usePreviewSchemaUrlMutation = () => {
  */
 export const useImportConfigureMutation = () => {
   return useMutation({ mutationFn: importConfigure });
+};
+
+/**
+ * Query hook for loading preview sheet data by previewId.
+ * Used by the flow editor to load preview data for visual field mapping.
+ */
+export const usePreviewSheetsQuery = (previewId: string | null) => {
+  return useQuery({
+    queryKey: ["preview-sheets", previewId],
+    queryFn: () => fetchJson<{ sheets: SheetInfo[] }>(`/api/import/preview-schema?previewId=${previewId}`),
+    enabled: !!previewId,
+  });
 };

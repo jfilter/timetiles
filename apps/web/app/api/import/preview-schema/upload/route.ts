@@ -15,7 +15,7 @@ import path from "node:path";
 import { v4 as uuidv4 } from "uuid";
 
 import { apiRoute, ValidationError } from "@/lib/api";
-import { createLogger } from "@/lib/logger";
+import { createLogger, logError } from "@/lib/logger";
 
 import {
   ALLOWED_MIME_TYPES,
@@ -75,7 +75,7 @@ export const POST = apiRoute({
     } catch (parseError) {
       // Clean up temp file on parse error
       fs.unlinkSync(previewFilePath);
-      logger.error({ error: parseError }, "Failed to parse file");
+      logError(parseError, "preview-schema-upload-parse");
       throw new ValidationError("Failed to parse file. Please check the file format.");
     }
 

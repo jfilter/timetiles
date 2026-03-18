@@ -7,13 +7,13 @@ import type { Access } from "payload";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
 
-import { isEditorOrAdmin } from "../shared-fields";
+import { isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
 export const importJobsAccess = {
   // Import jobs can be read by the import file owner, editors, or admins
   read: (async ({ req }) => {
     const { user, payload } = req;
-    if (user?.role === "admin" || user?.role === "editor") return true;
+    if (isPrivileged(user)) return true;
 
     if (!user) return false;
 
@@ -49,7 +49,7 @@ export const importJobsAccess = {
   // Only import file owner, editors, or admins can update
   update: (async ({ req, id }) => {
     const { user } = req;
-    if (user?.role === "admin" || user?.role === "editor") return true;
+    if (isPrivileged(user)) return true;
 
     // Security: Check ownership of EXISTING job, not the new data being set
     if (user && id) {

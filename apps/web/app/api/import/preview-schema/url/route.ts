@@ -18,7 +18,7 @@ import { z } from "zod";
 import { apiRoute, ValidationError } from "@/lib/api";
 import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
 import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
-import { createLogger } from "@/lib/logger";
+import { createLogger, logError } from "@/lib/logger";
 
 import {
   getPreviewDir,
@@ -117,7 +117,7 @@ export const POST = apiRoute({
         throw fetchError;
       }
       const errorMessage = fetchError instanceof Error ? fetchError.message : "Unknown error";
-      logger.error({ sourceUrl, error: fetchError }, "Failed to fetch URL");
+      logError(fetchError, "preview-schema-url-fetch", { sourceUrl });
       throw new ValidationError(`Failed to fetch URL: ${errorMessage}`);
     }
 
@@ -128,7 +128,7 @@ export const POST = apiRoute({
     } catch (parseError) {
       // Clean up temp file on parse error
       fs.unlinkSync(previewFilePath);
-      logger.error({ error: parseError }, "Failed to parse file");
+      logError(parseError, "preview-schema-url-parse");
       throw new ValidationError("Failed to parse file. Please check the file format.");
     }
 

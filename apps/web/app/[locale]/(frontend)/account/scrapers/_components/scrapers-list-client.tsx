@@ -26,91 +26,43 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   useDeleteScraperRepoMutation,
   useRunScraperMutation,
   useSyncScraperRepoMutation,
 } from "@/lib/hooks/use-scraper-mutations";
 import { useScraperReposQuery } from "@/lib/hooks/use-scrapers-query";
+import { formatDateLocale } from "@/lib/utils/date";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
 import { ScraperRunLog } from "./scraper-run-log";
 
-const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleString();
-};
-
 const getSyncStatusBadge = (repo: ScraperRepo) => {
   if (!repo.lastSyncAt) {
-    return (
-      <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-        <ClockIcon className="h-3 w-3" />
-        Pending
-      </span>
-    );
+    return <StatusBadge variant="muted" label="Pending" icon={<ClockIcon className="h-3 w-3" />} />;
   }
-
   if (repo.lastSyncStatus === "failed") {
-    return (
-      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-        <XCircleIcon className="h-3 w-3" />
-        Sync Failed
-      </span>
-    );
+    return <StatusBadge variant="error" label="Sync Failed" icon={<XCircleIcon className="h-3 w-3" />} />;
   }
-
-  return (
-    <span className="bg-cartographic-forest/10 text-cartographic-forest inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-      <CheckCircle2Icon className="h-3 w-3" />
-      Synced
-    </span>
-  );
+  return <StatusBadge variant="success" label="Synced" icon={<CheckCircle2Icon className="h-3 w-3" />} />;
 };
 
 const getRunStatusBadge = (scraper: Scraper) => {
   const status = scraper.lastRunStatus;
   if (!status) {
-    return (
-      <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-        Never run
-      </span>
-    );
+    return <StatusBadge variant="muted" label="Never run" />;
   }
-
   if (status === "running") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-        <Loader2Icon className="h-3 w-3 animate-spin" />
-        Running
-      </span>
-    );
+    return <StatusBadge variant="info" label="Running" icon={<Loader2Icon className="h-3 w-3 animate-spin" />} />;
   }
-
   if (status === "success") {
-    return (
-      <span className="bg-cartographic-forest/10 text-cartographic-forest inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-        <CheckCircle2Icon className="h-3 w-3" />
-        Success
-      </span>
-    );
+    return <StatusBadge variant="success" label="Success" icon={<CheckCircle2Icon className="h-3 w-3" />} />;
   }
-
   if (status === "timeout") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-        <AlertCircleIcon className="h-3 w-3" />
-        Timeout
-      </span>
-    );
+    return <StatusBadge variant="warning" label="Timeout" icon={<AlertCircleIcon className="h-3 w-3" />} />;
   }
-
-  return (
-    <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-      <XCircleIcon className="h-3 w-3" />
-      Failed
-    </span>
-  );
+  return <StatusBadge variant="error" label="Failed" icon={<XCircleIcon className="h-3 w-3" />} />;
 };
 
 interface ScraperCardProps {
@@ -144,7 +96,7 @@ const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs }: Scr
               {scraper.runtime} &middot; {scraper.entrypoint}
             </span>
             {scraper.schedule && <span>Schedule: {scraper.schedule}</span>}
-            {scraper.lastRunAt && <span>Last run: {formatDate(scraper.lastRunAt)}</span>}
+            {scraper.lastRunAt && <span>Last run: {formatDateLocale(scraper.lastRunAt)}</span>}
             {stats?.totalRuns != null && stats.totalRuns > 0 && (
               <span>
                 {stats.totalRuns} runs ({stats.successRuns ?? 0} ok, {stats.failedRuns ?? 0} failed)
@@ -238,7 +190,7 @@ const RepoCard = ({
             </div>
 
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-xs">
-              {repo.lastSyncAt && <span>Last synced: {formatDate(repo.lastSyncAt)}</span>}
+              {repo.lastSyncAt && <span>Last synced: {formatDateLocale(repo.lastSyncAt)}</span>}
               {repo.lastSyncError && (
                 <span className="text-destructive truncate" title={repo.lastSyncError}>
                   Error: {repo.lastSyncError.substring(0, 80)}

@@ -17,7 +17,7 @@ import { sql } from "@payloadcms/db-postgres";
 
 import { apiRoute } from "@/lib/api";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
-import { toSqlConditions } from "@/lib/filters/to-sql-conditions";
+import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { BoundsResponse } from "@/lib/types/event-bounds";
@@ -50,15 +50,9 @@ export const GET = apiRoute({
 
     const { filters } = ctx;
 
-    // Build SQL conditions from canonical filters
-    const filterConditions = toSqlConditions(filters);
-    const conditions = [
-      sql`e.location_longitude IS NOT NULL`,
-      sql`e.location_latitude IS NOT NULL`,
-      ...filterConditions,
-    ];
-
-    const whereClause = conditions.reduce((acc, cond) => sql`${acc} AND ${cond}`, sql`TRUE`);
+    // Build SQL WHERE clause from canonical filters
+    const filterWhereClause = toSqlWhereClause(filters);
+    const whereClause = sql`e.location_longitude IS NOT NULL AND e.location_latitude IS NOT NULL AND ${filterWhereClause}`;
 
     // Execute bounds query using MIN/MAX for efficient computation
     type BoundsRow = {

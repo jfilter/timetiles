@@ -1,15 +1,15 @@
 /**
  * Shared helpers for preview-schema endpoints (upload and URL).
  *
- * Contains file parsing, field detection, URL validation, and metadata
- * persistence logic used by both the upload and URL preview routes.
+ * Contains file parsing, field detection, and URL validation logic used by
+ * both the upload and URL preview routes. Preview storage operations
+ * (path creation, metadata save/load, cleanup) are delegated to
+ * `@/lib/import/preview-store`.
  *
  * @module
  * @category API Routes
  */
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 
 import { FIELD_PATTERNS, LATITUDE_PATTERNS, LONGITUDE_PATTERNS } from "@timetiles/payload-schema-detection";
 import Papa from "papaparse";
@@ -19,6 +19,9 @@ import { detectLanguageFromSamples } from "@/lib/services/schema-builder/languag
 import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
 
 export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
+
+// Re-export preview storage functions for use by upload/url routes
+export { getPreviewDir, savePreviewMetadata } from "@/lib/import/preview-store";
 
 export const ALLOWED_MIME_TYPES = [
   "text/csv",
@@ -67,6 +70,14 @@ const matchPatternsToHeaders = (
 /**
  * Detect a field mapping from headers based on patterns.
  * Uses patterns from the schema detection plugin.
+ *
+ * NOTE: This detection is intentionally separate from `detectFieldMappings`
+ * in `field-mapping-detection.ts`. The preview operates on raw headers + a
+ * few sample rows available immediately at upload time, while the background
+ * job detector operates on full-file `FieldStatistics` (type distributions,
+ * average lengths, date parsing) computed after a complete file scan. Forcing
+ * the preview to use the stats-based engine with synthetic data would produce
+ * worse results than this simpler pattern-only matching.
  */
 const detectFieldFromHeaders = (headers: string[], fieldType: string, language: string): FieldMappingSuggestion => {
   if (fieldType === "latitude") return detectCoordinateField(headers, LATITUDE_PATTERNS);
@@ -126,14 +137,6 @@ export const detectSuggestedMappings = (
       locationPath: detectFieldFromHeaders(headers, "location", langCode),
     },
   };
-};
-
-export const getPreviewDir = (): string => {
-  const previewDir = path.join(os.tmpdir(), "timetiles-wizard-preview");
-  if (!fs.existsSync(previewDir)) {
-    fs.mkdirSync(previewDir, { recursive: true });
-  }
-  return previewDir;
 };
 
 export const parseCSVPreview = (filePath: string): SheetInfo[] => {
@@ -229,35 +232,4 @@ export const parseFileSheets = (filePath: string, fileExtension: string): SheetI
   }
   // xlsx library handles .xls, .xlsx, and .ods files
   return parseExcelPreview(filePath);
-};
-
-/**
- * Save preview metadata to disk.
- * Intentionally omits authConfig to avoid persisting secrets to disk.
- */
-export const savePreviewMetadata = (opts: {
-  previewId: string;
-  userId: number;
-  originalName: string;
-  filePath: string;
-  mimeType: string;
-  fileSize: number;
-  sourceUrl?: string;
-}): void => {
-  const previewDir = getPreviewDir();
-  const previewMetaPath = path.join(previewDir, `${opts.previewId}.meta.json`);
-  fs.writeFileSync(
-    previewMetaPath,
-    JSON.stringify({
-      previewId: opts.previewId,
-      userId: opts.userId,
-      originalName: opts.originalName,
-      filePath: opts.filePath,
-      mimeType: opts.mimeType,
-      fileSize: opts.fileSize,
-      sourceUrl: opts.sourceUrl,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour expiry
-    })
-  );
 };

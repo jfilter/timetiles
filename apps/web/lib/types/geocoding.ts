@@ -79,14 +79,3 @@ export const getGeocodingCandidate = (job: { detectedFieldMappings?: unknown }):
 
   return { locationField };
 };
-
-/**
- * Safely get geocoding result for a specific location.
- */
-export const getImportGeocodingResultForLocation = (
-  geocodingResults: ImportGeocodingResultsMap,
-  location: string
-): ImportGeocodingResult | null => {
-  const result = geocodingResults[location];
-  return result ?? null;
-};

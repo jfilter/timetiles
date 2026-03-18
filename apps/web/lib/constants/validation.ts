@@ -6,7 +6,6 @@
  */
 
 export const MIN_PASSWORD_LENGTH = 8;
-export const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 
 /**
  * Validate a password and its confirmation value.

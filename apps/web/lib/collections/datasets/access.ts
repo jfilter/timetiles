@@ -15,7 +15,7 @@
  */
 import type { Access, Where } from "payload";
 
-import { isEditorOrAdmin } from "../shared-fields";
+import { isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
 /**
  * Read access: Datasets visible if both dataset AND catalog are public, OR if user owns the catalog.
@@ -27,7 +27,7 @@ import { isEditorOrAdmin } from "../shared-fields";
 // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
 export const read: Access = ({ req: { user } }): boolean | Where => {
   // Admin and editor can read all
-  if (user?.role === "admin" || user?.role === "editor") return true;
+  if (isPrivileged(user)) return true;
 
   // Logged-in users can see: (public data in public catalog) OR data in catalogs they own
   if (user) {
@@ -65,7 +65,7 @@ export const create: Access = async ({ req: { user, payload } }) => {
 // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
 export const update: Access = ({ req: { user } }): boolean | Where => {
   if (!user) return false;
-  if (user.role === "admin" || user.role === "editor") return true;
+  if (isPrivileged(user)) return true;
 
   // Catalog owner can update datasets in their catalog
   return { catalogCreatorId: { equals: user.id } } as Where;

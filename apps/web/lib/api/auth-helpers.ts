@@ -6,11 +6,11 @@
  */
 import type { Payload } from "payload";
 
-import { ForbiddenError } from "@/lib/api/errors";
+import { AppError, ForbiddenError } from "@/lib/api/errors";
+import { isPrivileged } from "@/lib/collections/shared-fields";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
-import { unauthorized } from "@/lib/utils/api-response";
 import type { User } from "@/payload-types";
 
 /**
@@ -21,7 +21,7 @@ export const canManageResource = (
   user: { id: number; role?: string | null },
   ownerId: number | string | null | undefined
 ): boolean => {
-  if (user.role === "admin" || user.role === "editor") return true;
+  if (isPrivileged(user)) return true;
   return ownerId != null && ownerId === user.id;
 };
 
@@ -51,9 +51,10 @@ export const verifyPassword = async (payload: Payload, user: User, password: str
 
 /**
  * Verify a user's password and log a failed attempt to the audit log.
- * Returns null on success, or an unauthorized response on failure.
+ * Throws AppError(401) on failure.
  *
  * @param errorMessage - Custom error message for the 401 response (default: "Password is incorrect")
+ * @throws AppError with status 401 if the password is incorrect
  */
 export const verifyPasswordWithAudit = async (
   payload: Payload,
@@ -62,10 +63,9 @@ export const verifyPasswordWithAudit = async (
   clientId: string,
   context: string,
   errorMessage: string = "Password is incorrect"
-): Promise<Response | null> => {
+): Promise<void> => {
   try {
     await verifyPassword(payload, user, password);
-    return null;
   } catch {
     await auditLog(payload, {
       action: AUDIT_ACTIONS.PASSWORD_VERIFY_FAILED,
@@ -74,6 +74,6 @@ export const verifyPasswordWithAudit = async (
       ipAddress: clientId,
       details: { context },
     });
-    return unauthorized(errorMessage);
+    throw new AppError(401, errorMessage);
   }
 };

@@ -12,6 +12,7 @@
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
 
 import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
+import { isPrivileged } from "@/lib/collections/shared-fields";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
@@ -34,10 +35,9 @@ const getCatalogCreatorId = (catalog: Catalog): number | null => {
 
 /** Validate user can create dataset in this catalog */
 const validateCreatePermission = (user: User, _catalog: Catalog, catalogCreatorId: number | null): void => {
-  const isAdminOrEditor = user.role === "admin" || user.role === "editor";
   const isOwner = catalogCreatorId === user.id;
 
-  if (!isAdminOrEditor && !isOwner) {
+  if (!isPrivileged(user) && !isOwner) {
     throw new Error("You can only create datasets in your own catalogs");
   }
 };

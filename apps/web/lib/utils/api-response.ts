@@ -40,18 +40,14 @@ export const apiError = (message: string, status: number, code?: string, details
 /**
  * Create a 400 Bad Request error response.
  *
- * @param message - Error message describing what was invalid
- * @param code - Optional error code
- * @returns Response with 400 status
+ * @deprecated Use `throw new ValidationError(message)` inside apiRoute handlers instead.
  */
 export const badRequest = (message: string, code?: string): Response => apiError(message, 400, code ?? "BAD_REQUEST");
 
 /**
  * Create a 401 Unauthorized error response.
  *
- * @param message - Error message describing the authorization failure
- * @param code - Optional error code
- * @returns Response with 401 status
+ * @deprecated Use `throw new AppError(401, message)` inside apiRoute handlers instead.
  */
 export const unauthorized = (message: string = "Unauthorized", code?: string): Response =>
   apiError(message, 401, code ?? "UNAUTHORIZED");
@@ -59,9 +55,7 @@ export const unauthorized = (message: string = "Unauthorized", code?: string): R
 /**
  * Create a 403 Forbidden error response.
  *
- * @param message - Error message describing the authorization failure
- * @param code - Optional error code
- * @returns Response with 403 status
+ * @deprecated Use `throw new ForbiddenError(message)` inside apiRoute handlers instead.
  */
 export const forbidden = (message: string = "Forbidden", code?: string): Response =>
   apiError(message, 403, code ?? "FORBIDDEN");
@@ -69,9 +63,7 @@ export const forbidden = (message: string = "Forbidden", code?: string): Respons
 /**
  * Create a 404 Not Found error response.
  *
- * @param message - Error message describing what was not found
- * @param code - Optional error code
- * @returns Response with 404 status
+ * @deprecated Use `throw new NotFoundError(message)` inside apiRoute handlers instead.
  */
 export const notFound = (message: string = "Resource not found", code?: string): Response =>
   apiError(message, 404, code ?? "NOT_FOUND");
@@ -79,50 +71,15 @@ export const notFound = (message: string = "Resource not found", code?: string):
 /**
  * Create a 405 Method Not Allowed error response.
  *
- * @param message - Error message describing allowed methods
- * @param code - Optional error code
- * @returns Response with 405 status
+ * Used for standalone exports outside apiRoute handlers (e.g., `export const GET = () => methodNotAllowed(...)`).
  */
 export const methodNotAllowed = (message: string, code?: string): Response =>
   apiError(message, 405, code ?? "METHOD_NOT_ALLOWED");
 
 /**
- * Create a 409 Conflict error response.
- *
- * @param message - Error message describing the conflict
- * @param code - Optional error code
- * @param details - Optional conflict context (e.g., existing resource ID)
- * @returns Response with 409 status
- */
-export const conflict = (message: string, code?: string, details?: unknown): Response =>
-  apiError(message, 409, code ?? "CONFLICT", details);
-
-/**
- * Create a 429 Rate Limited error response.
- *
- * @param message - Error message describing the rate limit
- * @param code - Optional error code
- * @returns Response with 429 status
- */
-export const rateLimited = (message: string = "Too many requests", code?: string): Response =>
-  apiError(message, 429, code ?? "RATE_LIMITED");
-
-/**
- * Create a 410 Gone error response.
- *
- * @param message - Error message describing the expired resource
- * @param code - Optional error code
- * @returns Response with 410 status
- */
-export const gone = (message: string, code?: string): Response => apiError(message, 410, code ?? "GONE");
-
-/**
  * Create a 500 Internal Server Error response.
  *
- * @param message - Error message (should be generic, not expose internal details)
- * @param code - Optional error code
- * @param details - Optional error details (use cautiously, may expose internals)
- * @returns Response with 500 status
+ * @deprecated Use `throw new AppError(500, message)` inside apiRoute handlers instead.
  */
 export const internalError = (message: string = "Internal server error", code?: string, details?: unknown): Response =>
   apiError(message, 500, code ?? "INTERNAL_ERROR", details);

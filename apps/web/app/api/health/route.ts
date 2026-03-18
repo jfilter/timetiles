@@ -11,7 +11,7 @@
  */
 import { apiRoute } from "@/lib/api";
 import { runHealthChecks } from "@/lib/health";
-import { createLogger } from "@/lib/logger";
+import { createLogger, logError } from "@/lib/logger";
 
 const logger = createLogger("health-api");
 
@@ -69,13 +69,7 @@ export const GET = apiRoute({
       }
       return { ...results };
     } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Health check failed with exception"
-      );
+      logError(error, "health-check");
 
       const errorResponse = createErrorResponse(error);
       return Response.json(

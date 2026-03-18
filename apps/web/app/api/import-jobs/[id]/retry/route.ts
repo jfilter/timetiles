@@ -12,11 +12,10 @@
  */
 import { z } from "zod";
 
-import { apiRoute, safeFindByID } from "@/lib/api";
+import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { ErrorRecoveryService } from "@/lib/import/error-recovery";
 import { logger } from "@/lib/logger";
-import { badRequest } from "@/lib/utils/api-response";
 import type { ImportJob } from "@/payload-types";
 
 export const POST = apiRoute({
@@ -31,7 +30,7 @@ export const POST = apiRoute({
 
     // Verify job is in failed state
     if (importJob.stage !== PROCESSING_STAGE.FAILED) {
-      return badRequest(`Import job is not in failed state. Current stage: ${importJob.stage}`);
+      throw new ValidationError(`Import job is not in failed state. Current stage: ${importJob.stage}`);
     }
 
     // Delegate to ErrorRecoveryService — handles quota, atomic claim, and job queueing
@@ -40,7 +39,7 @@ export const POST = apiRoute({
     if (!result.success) {
       logger.warn({ importJobId: importJob.id, userId: user.id, reason: result.error }, "Manual retry attempt failed");
 
-      return badRequest(result.error ?? "Failed to retry import job");
+      throw new ValidationError(result.error ?? "Failed to retry import job");
     }
 
     logger.info(

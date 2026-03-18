@@ -10,8 +10,9 @@
  */
 import { z } from "zod";
 
-import { loadPreviewMetadata, validateRequest } from "@/app/api/import/configure/helpers";
+import { validateRequest } from "@/app/api/import/configure/helpers";
 import { apiRoute } from "@/lib/api";
+import { loadPreviewMetadata } from "@/lib/import/preview-store";
 
 export const GET = apiRoute({
   auth: "required",

@@ -50,33 +50,3 @@ export const useDebounce = <T>(value: T, delay: number): T => {
 
   return debouncedValue;
 };
-
-/**
- * Debounce hook with deep comparison for objects.
- *
- * Useful when you need to debounce objects and want to avoid
- * unnecessary updates when object contents haven't actually changed.
- *
- * @param value - The value to debounce.
- * @param delay - Delay in milliseconds.
- * @param compare - Custom comparison function (optional).
- * @returns The debounced value.
- */
-export const useDebounceWithComparison = <T>(value: T, delay: number, compare?: (prev: T, next: T) => boolean): T => {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      // Only update if values are actually different
-      if (compare ? !compare(debouncedValue, value) : debouncedValue !== value) {
-        setDebouncedValue(value);
-      }
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay, debouncedValue, compare]);
-
-  return debouncedValue;
-};

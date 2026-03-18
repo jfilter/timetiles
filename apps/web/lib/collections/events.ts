@@ -24,7 +24,7 @@ import type { Access, CollectionConfig, Where } from "payload";
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 
 import { eventsBeforeChangeHook } from "./events/hooks";
-import { createCommonConfig, isEditorOrAdmin } from "./shared-fields";
+import { createCommonConfig, isEditorOrAdmin, isPrivileged } from "./shared-fields";
 
 const Events: CollectionConfig = {
   slug: "events",
@@ -46,7 +46,7 @@ const Events: CollectionConfig = {
     // Uses denormalized fields for zero-query access control
     // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     read: (({ req: { user } }): boolean | Where => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
+      if (isPrivileged(user)) return true;
 
       // Logged-in users can see: public data OR data they own (via catalog)
       if (user) {
@@ -65,14 +65,14 @@ const Events: CollectionConfig = {
       const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
       if (!(await isFeatureEnabled(payload, "enableEventCreation"))) return false;
 
-      return user.role === "admin" || user.role === "editor";
+      return isPrivileged(user);
     },
 
     // Admins/editors can update all events, catalog owners can update their own
     // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     update: (({ req: { user } }): boolean | Where => {
       if (!user) return false;
-      if (user.role === "admin" || user.role === "editor") return true;
+      if (isPrivileged(user)) return true;
 
       // Catalog owner can update events in their catalog
       return { catalogOwnerId: { equals: user.id } } as Where;

@@ -12,7 +12,13 @@ import type { CollectionConfig, Where } from "payload";
 
 import { computeWebhookUrl, handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 
-import { createCommonConfig, createOwnershipAccess, isAuthenticated, isEditorOrAdmin } from "./shared-fields";
+import {
+  createCommonConfig,
+  createOwnershipAccess,
+  isAuthenticated,
+  isEditorOrAdmin,
+  isPrivileged,
+} from "./shared-fields";
 
 const Scrapers: CollectionConfig = {
   slug: "scrapers",
@@ -25,7 +31,7 @@ const Scrapers: CollectionConfig = {
   access: {
     // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     read: ({ req: { user } }): boolean | Where => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
+      if (isPrivileged(user)) return true;
       if (!user) return false;
       return { repoCreatedBy: { equals: user.id } } as Where;
     },

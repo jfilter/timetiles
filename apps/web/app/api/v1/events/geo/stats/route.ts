@@ -20,7 +20,7 @@ import { apiRoute } from "@/lib/api";
 import { DEFAULT_CLUSTER_STATS } from "@/lib/constants/map";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
-import { toSqlConditions } from "@/lib/filters/to-sql-conditions";
+import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import { ClusterStatsQuerySchema } from "@/lib/schemas/events";
 
@@ -38,15 +38,7 @@ export const GET = apiRoute({
 });
 
 const calculateGlobalStats = async (payload: Payload, filters: CanonicalEventFilters) => {
-  const filterConditions = toSqlConditions(filters);
-
-  const extraConditions =
-    filterConditions.length > 0
-      ? filterConditions.reduce(
-          (acc: ReturnType<typeof sql>, cond: ReturnType<typeof sql>) => sql`${acc} AND ${cond}`,
-          sql``
-        )
-      : sql``;
+  const filterWhereClause = toSqlWhereClause(filters);
 
   // Query to get event counts grouped by location (simulating clustering at high zoom)
   const result = (await payload.db.drizzle.execute(sql`
@@ -60,7 +52,7 @@ const calculateGlobalStats = async (payload: Payload, filters: CanonicalEventFil
       WHERE
         e.location_longitude IS NOT NULL
         AND e.location_latitude IS NOT NULL
-        ${extraConditions}
+        AND ${filterWhereClause}
     ),
     location_clusters AS (
       SELECT

@@ -12,7 +12,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { DeletionSummary } from "../account/deletion-types";
-import { fetchJson } from "../api/http-error";
+import { fetchJson, postJson } from "../api/http-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,23 +96,13 @@ export const useDeletionSummaryQuery = (options?: { enabled?: boolean }) => {
  * Change the current user's email via `/api/users/change-email`.
  */
 export const changeEmailRequest = (input: ChangeEmailInput): Promise<ChangeEmailResponse> =>
-  fetchJson<ChangeEmailResponse>("/api/users/change-email", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(input),
-  });
+  postJson<ChangeEmailResponse>("/api/users/change-email", input);
 
 /**
  * Change the current user's password via `/api/users/change-password`.
  */
 export const changePasswordRequest = (input: ChangePasswordInput): Promise<ChangePasswordResponse> =>
-  fetchJson<ChangePasswordResponse>("/api/users/change-password", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(input),
-  });
+  postJson<ChangePasswordResponse>("/api/users/change-password", input);
 
 /**
  * Cancel a pending account deletion via `/api/users/cancel-deletion`.
@@ -134,11 +124,6 @@ export const useCancelDeletionMutation = () => {
 export const useScheduleDeletionMutation = () => {
   return useMutation({
     mutationFn: (input: ScheduleDeletionInput) =>
-      fetchJson<ScheduleDeletionResponse>("/api/users/schedule-deletion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(input),
-      }),
+      postJson<ScheduleDeletionResponse>("/api/users/schedule-deletion", input),
   });
 };

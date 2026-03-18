@@ -11,13 +11,13 @@
 import { sql } from "@payloadcms/db-postgres";
 import { z } from "zod";
 
-import { apiRoute } from "@/lib/api";
+import { apiRoute, AppError } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { queueWebhookImport } from "@/lib/import/trigger-service";
 import { logger } from "@/lib/logger";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
 import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
-import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
+import { methodNotAllowed } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";
 
 interface RateLimitResponse {
@@ -59,7 +59,7 @@ export const POST = apiRoute({
 
     if (!target) {
       logger.warn({ token: token.substring(0, 8) + "..." }, "Webhook trigger failed - invalid or disabled token");
-      return unauthorized("Invalid or disabled webhook", "INVALID_WEBHOOK");
+      throw new AppError(401, "Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
     // Rate limit keyed on resource ID (survives token rotation, no memory leak for invalid tokens)
@@ -84,7 +84,7 @@ export const POST = apiRoute({
 const handleScheduledImportTrigger = async (
   payload: Parameters<typeof queueWebhookImport>[0],
   target: { id: number; name: string; record: Record<string, unknown> }
-): Promise<Response | Record<string, unknown>> => {
+): Promise<Record<string, unknown>> => {
   // Atomically claim "running" status to prevent concurrent executions
   const claimResult = (await payload.db.drizzle.execute(sql`
     UPDATE payload.scheduled_imports
@@ -106,7 +106,7 @@ const handleScheduledImportTrigger = async (
     const { jobId } = await queueWebhookImport(payload, target.record as unknown as ScheduledImport);
     return { message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() };
   } catch {
-    return internalError("Failed to queue import job");
+    throw new AppError(500, "Failed to queue import job");
   }
 };
 
@@ -114,7 +114,7 @@ const handleScheduledImportTrigger = async (
 const handleScraperTrigger = async (
   payload: Parameters<typeof queueWebhookImport>[0],
   target: { id: number; name: string }
-): Promise<Response | Record<string, unknown>> => {
+): Promise<Record<string, unknown>> => {
   // Atomically claim "running" to prevent concurrent executions
   const claimed = await claimScraperRunning(payload, target.id);
 
@@ -142,7 +142,7 @@ const handleScraperTrigger = async (
     } catch {
       logger.error({ scraperId: target.id }, "Failed to reset scraper status after queue failure");
     }
-    return internalError("Failed to queue scraper execution job");
+    throw new AppError(500, "Failed to queue scraper execution job");
   }
 };
 

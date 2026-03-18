@@ -49,6 +49,7 @@
     ".lint-results/",
     ".typecheck-results/",
     "migrations/",
-    "uploads/"
+    "uploads/",
+    "apps/docs/app/globals.css"
   ]
 }

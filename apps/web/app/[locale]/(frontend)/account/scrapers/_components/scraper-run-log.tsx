@@ -13,17 +13,13 @@ import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 
 import { useScraperRunsQuery } from "@/lib/hooks/use-scrapers-query";
+import { formatDateLocale } from "@/lib/utils/date";
 import type { ScraperRun } from "@/payload-types";
 
 const formatDuration = (ms: number | null | undefined) => {
-  if (ms == null) return "—";
+  if (ms == null) return "\u2014";
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
-};
-
-const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleString();
 };
 
 const statusColors: Record<string, string> = {
@@ -50,7 +46,7 @@ const RunEntry = ({ run }: { run: ScraperRun }) => {
           <ChevronRightIcon className="h-3 w-3 flex-shrink-0" />
         )}
         <span className={`font-medium ${statusColors[run.status] ?? ""}`}>{run.status}</span>
-        <span className="text-muted-foreground">{formatDate(run.startedAt ?? run.createdAt)}</span>
+        <span className="text-muted-foreground">{formatDateLocale(run.startedAt ?? run.createdAt)}</span>
         <span className="text-muted-foreground">{formatDuration(run.durationMs)}</span>
         {run.triggeredBy && <span className="text-muted-foreground">via {run.triggeredBy}</span>}
         {run.outputRows != null && run.outputRows > 0 && (

@@ -277,16 +277,13 @@ describe("Wizard Reducer", () => {
       const result = wizardReducer(initialState, { type: "START_PROCESSING", importFileId: 456 });
 
       expect(result.importFileId).toBe(456);
-      expect(result.isProcessing).toBe(true);
       expect(result.error).toBeNull();
     });
 
-    it("SET_ERROR sets error and clears processing", () => {
-      const state = { ...initialState, isProcessing: true };
-      const result = wizardReducer(state, { type: "SET_ERROR", error: "Import failed: invalid data" });
+    it("SET_ERROR sets error", () => {
+      const result = wizardReducer(initialState, { type: "SET_ERROR", error: "Import failed: invalid data" });
 
       expect(result.error).toBe("Import failed: invalid data");
-      expect(result.isProcessing).toBe(false);
     });
 
     it("SET_ERROR clears error when null", () => {
@@ -305,7 +302,6 @@ describe("Wizard Reducer", () => {
         isAuthenticated: true,
         file: { name: "test.csv", size: 1024, mimeType: "text/csv" },
         importFileId: 789,
-        isProcessing: true,
       };
 
       const result = wizardReducer(state, { type: "COMPLETE" });
@@ -313,7 +309,6 @@ describe("Wizard Reducer", () => {
       expect(result.currentStep).toBe(1);
       expect(result.file).toBeNull();
       expect(result.importFileId).toBeNull();
-      expect(result.isProcessing).toBe(false);
     });
 
     it("RESET resets to initial state", () => {
@@ -324,16 +319,6 @@ describe("Wizard Reducer", () => {
       expect(result.currentStep).toBe(1);
       expect(result.selectedCatalogId).toBeNull();
       expect(result.error).toBeNull();
-    });
-  });
-
-  describe("State Persistence", () => {
-    it("updates lastSavedAt on every action", () => {
-      const originalDate = initialState.lastSavedAt;
-      const result = wizardReducer(initialState, { type: "NEXT_STEP" });
-
-      expect(result.lastSavedAt).not.toBe(originalDate);
-      expect(result.lastSavedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
   });
 });
@@ -637,12 +622,12 @@ describe("canProceed Validation", () => {
 
   describe("Step 6: Processing", () => {
     it("never allows proceeding from processing step", () => {
-      const state = { ...initialState, currentStep: 6 as WizardStep, isProcessing: true };
+      const state = { ...initialState, currentStep: 6 as WizardStep };
       expect(computeCanProceed(state)).toBe(false);
     });
 
     it("blocks even after processing completes", () => {
-      const state = { ...initialState, currentStep: 6 as WizardStep, isProcessing: false, importFileId: 123 };
+      const state = { ...initialState, currentStep: 6 as WizardStep, importFileId: 123 };
       expect(computeCanProceed(state)).toBe(false);
     });
   });

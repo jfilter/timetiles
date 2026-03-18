@@ -11,11 +11,10 @@
  */
 import { z } from "zod";
 
-import { apiRoute, safeFindByID } from "@/lib/api";
+import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { RECOVERY_STAGES_LIST } from "@/lib/constants/stage-graph";
 import { ErrorRecoveryService } from "@/lib/import/error-recovery";
 import { logger } from "@/lib/logger";
-import { badRequest } from "@/lib/utils/api-response";
 import type { ImportJob } from "@/payload-types";
 
 /**
@@ -44,7 +43,7 @@ export const POST = apiRoute({
         "Admin stage reset failed"
       );
 
-      return badRequest(result.error ?? "Failed to reset import job");
+      throw new ValidationError(result.error ?? "Failed to reset import job");
     }
 
     logger.info(

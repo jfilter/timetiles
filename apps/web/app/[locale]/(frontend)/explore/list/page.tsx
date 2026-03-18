@@ -22,7 +22,7 @@ interface ExploreListPageProps {
 export default function ExploreListPage({ searchParams }: Readonly<ExploreListPageProps>) {
   return (
     <ExploreViewResolver searchParams={searchParams}>
-      <Suspense fallback={LOADING_ELEMENT}>
+      <Suspense fallback={<div>Loading...</div>}>
         <ListExplorer />
       </Suspense>
     </ExploreViewResolver>

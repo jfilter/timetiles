@@ -182,7 +182,7 @@ export const useEventsListQuery = (
     queryFn: ({ signal }) => fetchEventsInternal(filters, bounds, { limit }, signal, scope),
     enabled: enabled && bounds != null, // Only run when bounds are available
     ...QUERY_PRESETS.standard,
-    refetchOnWindowFocus: false,
+
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
 
@@ -193,7 +193,6 @@ export const useEventsTotalQuery = (filters: FilterState, enabled: boolean = tru
     queryFn: ({ signal }) => fetchEventsInternal(filters, null, { limit: 1 }, signal, scope),
     enabled,
     ...QUERY_PRESETS.standard,
-    refetchOnWindowFocus: false,
   });
 
 export const useMapClustersQuery = (
@@ -208,7 +207,7 @@ export const useMapClustersQuery = (
     queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal, scope),
     enabled: enabled && bounds != null, // Only run when bounds are available
     ...QUERY_PRESETS.standard,
-    refetchOnWindowFocus: false,
+
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
 
@@ -223,7 +222,7 @@ export const useHistogramQuery = (
     queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal, scope),
     enabled: enabled && bounds != null, // Only run when bounds are available
     ...QUERY_PRESETS.expensive,
-    refetchOnWindowFocus: false,
+
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
 
@@ -240,7 +239,6 @@ export const useFullHistogramQuery = (filters: FilterState, scope?: ViewScope) =
     queryKey: eventsQueryKeys.histogramFull(fullRangeFilters, scope),
     queryFn: ({ signal }) => fetchHistogram(fullRangeFilters, null, signal, scope),
     ...QUERY_PRESETS.stable,
-    refetchOnWindowFocus: false,
   });
 };
 
@@ -250,7 +248,6 @@ export const useClusterStatsQuery = (filters: FilterState, enabled: boolean = tr
     queryFn: ({ signal }) => fetchClusterStats(filters, signal, scope),
     enabled,
     ...QUERY_PRESETS.stable,
-    refetchOnWindowFocus: false,
   });
 
 /**
@@ -269,7 +266,6 @@ export const useBoundsQuery = (filters: FilterState, enabled: boolean = true, sc
     queryFn: ({ signal }) => fetchBounds(filters, signal, scope),
     enabled,
     ...QUERY_PRESETS.standard,
-    refetchOnWindowFocus: false,
   });
 
 // Fetch function for unified aggregation endpoint
@@ -301,7 +297,7 @@ export const useEventsAggregationQuery = (
     queryFn: ({ signal }) => fetchAggregation(filters, bounds, groupBy, signal, scope),
     enabled: enabled && bounds != null,
     ...QUERY_PRESETS.expensive,
-    refetchOnWindowFocus: false,
+
     placeholderData: (previousData) => previousData,
   });
 
@@ -320,7 +316,6 @@ export const useEventsInfiniteQuery = (
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
     enabled: enabled && bounds != null,
     ...QUERY_PRESETS.standard,
-    refetchOnWindowFocus: false,
   });
 
 // Helper hook that flattens paginated data for easier consumption

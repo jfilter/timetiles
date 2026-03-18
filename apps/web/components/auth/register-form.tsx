@@ -19,10 +19,11 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { Lock, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { validatePasswords } from "@/lib/constants/validation";
 import { registerRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
-import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface RegisterFormProps {
@@ -41,14 +42,14 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const [email, handleEmailChange] = useInputState();
   const [password, handlePasswordChange] = useInputState();
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
-  const { status, error, isLoading, mutate } = useFormMutation({
+  const { status, error, isPending, mutate } = useMutation({
     mutationFn: async (input: { email: string; password: string; confirmPassword: string }) => {
       validatePasswords(input.password, input.confirmPassword);
 
       return registerRequest({ email: input.email, password: input.password });
     },
     onSuccess: () => onSuccess?.(),
-    onError: (err) => onError?.(err.message),
+    onError: (err: Error) => onError?.(err.message),
   });
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -106,7 +107,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
           value={email}
           onChange={handleEmailChange}
           placeholder={t("registerEmailPlaceholder")}
-          disabled={isLoading}
+          disabled={isPending}
           required
           autoComplete="email"
         />
@@ -120,7 +121,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
           value={password}
           onChange={handlePasswordChange}
           placeholder={t("registerPasswordPlaceholder")}
-          disabled={isLoading}
+          disabled={isPending}
           required
           autoComplete="new-password"
           minLength={8}
@@ -135,7 +136,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
           value={confirmPassword}
           onChange={handleConfirmPasswordChange}
           placeholder={t("confirmPasswordPlaceholder")}
-          disabled={isLoading}
+          disabled={isPending}
           required
           autoComplete="new-password"
         />
@@ -143,12 +144,12 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
 
       {error && (
         <p className="text-destructive text-sm" role="alert">
-          {error}
+          {error.message}
         </p>
       )}
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? t("creatingAccount") : t("createAccount")}
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? t("creatingAccount") : t("createAccount")}
       </Button>
 
       <p className="text-muted-foreground text-center text-xs">{t("termsNotice")}</p>

@@ -12,13 +12,6 @@
  * Constants for import processing to avoid string duplication.
  */
 
-export const IMPORT_STATUS = {
-  PENDING: "pending",
-  PROCESSING: "processing",
-  COMPLETED: "completed",
-  FAILED: "failed",
-} as const;
-
 export const PROCESSING_STAGE = {
   ANALYZE_DUPLICATES: "analyze-duplicates",
   DETECT_SCHEMA: "detect-schema",
@@ -64,7 +57,6 @@ export const BATCH_SIZES = {
   DATABASE_CHUNK: Number.parseInt(process.env.BATCH_SIZE_DATABASE_CHUNK ?? "1000", 10),
 } as const;
 
-export type ImportStatus = (typeof IMPORT_STATUS)[keyof typeof IMPORT_STATUS];
 export type ProcessingStage = (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
 export type CollectionName = (typeof COLLECTION_NAMES)[keyof typeof COLLECTION_NAMES];

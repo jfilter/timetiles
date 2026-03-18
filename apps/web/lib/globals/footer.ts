@@ -9,6 +9,8 @@
  */
 import type { GlobalConfig } from "payload";
 
+import { isPrivileged } from "@/lib/collections/shared-fields";
+
 export const Footer: GlobalConfig = {
   slug: "footer",
   admin: { group: "Content" },
@@ -16,7 +18,7 @@ export const Footer: GlobalConfig = {
     drafts: { autosave: true },
     max: 0, // Keep all versions
   },
-  access: { read: () => true, update: ({ req: { user } }) => user?.role === "admin" || user?.role === "editor" },
+  access: { read: () => true, update: ({ req: { user } }) => isPrivileged(user) },
   fields: [
     {
       name: "tagline",

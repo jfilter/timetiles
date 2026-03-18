@@ -14,8 +14,9 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
+import { useMutation } from "@tanstack/react-query";
+
 import { loginRequest } from "@/lib/hooks/use-auth-mutations";
-import { useFormMutation } from "@/lib/hooks/use-form-mutation";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
 export interface LoginFormProps {
@@ -32,10 +33,10 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
   const tCommon = useTranslations("Common");
   const [email, handleEmailChange] = useInputState();
   const [password, handlePasswordChange] = useInputState();
-  const { error, isLoading, mutate } = useFormMutation({
+  const { error, isPending, mutate } = useMutation({
     mutationFn: loginRequest,
     onSuccess: () => onSuccess?.(),
-    onError: (err) => onError?.(err.message),
+    onError: (err: Error) => onError?.(err.message),
   });
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -56,7 +57,7 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
           value={email}
           onChange={handleEmailChange}
           placeholder={t("emailPlaceholder")}
-          disabled={isLoading}
+          disabled={isPending}
           required
           autoComplete="email"
         />
@@ -70,7 +71,7 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
           value={password}
           onChange={handlePasswordChange}
           placeholder={t("passwordPlaceholder")}
-          disabled={isLoading}
+          disabled={isPending}
           required
           autoComplete="current-password"
         />
@@ -78,12 +79,12 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
 
       {error && (
         <p className="text-destructive text-sm" role="alert">
-          {error}
+          {error.message}
         </p>
       )}
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? t("signingIn") : tCommon("signIn")}
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? t("signingIn") : tCommon("signIn")}
       </Button>
 
       <div className="text-center">

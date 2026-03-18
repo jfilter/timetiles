@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Link } from "@/i18n/navigation";
 import {
   useDeleteScheduledImportMutation,
@@ -31,6 +32,7 @@ import {
   useTriggerScheduledImportMutation,
 } from "@/lib/hooks/use-scheduled-import-mutations";
 import { useScheduledImportsQuery } from "@/lib/hooks/use-scheduled-imports-query";
+import { formatDateLocale } from "@/lib/utils/date";
 import type { ScheduledImport } from "@/payload-types";
 
 // Helper to get toggle button icon based on loading state
@@ -57,38 +59,15 @@ const FREQUENCY_LABELS: Record<string, string> = {
 
 const SCHEMA_MODE_LABELS: Record<string, string> = { strict: "Strict", additive: "Additive", flexible: "Flexible" };
 
-// Format date for display
-const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleString();
-};
-
 // Get status badge
 const getStatusBadge = (schedule: ScheduledImport) => {
   if (!schedule.enabled) {
-    return (
-      <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-        <PauseCircleIcon className="h-3 w-3" />
-        Disabled
-      </span>
-    );
+    return <StatusBadge variant="muted" label="Disabled" icon={<PauseCircleIcon className="h-3 w-3" />} />;
   }
-
   if (schedule.lastStatus === "failed") {
-    return (
-      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-        <XCircleIcon className="h-3 w-3" />
-        Failed
-      </span>
-    );
+    return <StatusBadge variant="error" label="Failed" icon={<XCircleIcon className="h-3 w-3" />} />;
   }
-
-  return (
-    <span className="bg-cartographic-forest/10 text-cartographic-forest inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-      <CheckCircle2Icon className="h-3 w-3" />
-      Active
-    </span>
-  );
+  return <StatusBadge variant="success" label="Active" icon={<CheckCircle2Icon className="h-3 w-3" />} />;
 };
 
 interface ScheduleCardProps {
@@ -140,8 +119,8 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: Sch
 
             {/* Execution info */}
             <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-4 text-xs">
-              {schedule.lastRun && <span>Last run: {formatDate(schedule.lastRun)}</span>}
-              {schedule.nextRun && schedule.enabled && <span>Next run: {formatDate(schedule.nextRun)}</span>}
+              {schedule.lastRun && <span>Last run: {formatDateLocale(schedule.lastRun)}</span>}
+              {schedule.nextRun && schedule.enabled && <span>Next run: {formatDateLocale(schedule.nextRun)}</span>}
               {schedule.lastError && (
                 <span className="text-destructive truncate" title={schedule.lastError}>
                   Error: {schedule.lastError.substring(0, 50)}...

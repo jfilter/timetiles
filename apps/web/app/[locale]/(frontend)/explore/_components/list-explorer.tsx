@@ -14,13 +14,10 @@
 import { useState } from "react";
 
 import { ChartSection } from "./chart-section";
-import { EventDetailModal } from "./event-detail-modal";
 import { EventsListPaginated } from "./events-list-paginated";
-import { FilterDrawer } from "./filter-drawer";
-import { FilterPanel } from "./filter-panel";
+import { ExplorerEventModal, ExplorerFilterPanel, ExplorerMobileFilters } from "./explorer-chrome";
 import { formatDateRange, getDatasetName } from "./map-explorer-helpers";
 import { MapPanel } from "./map-panel";
-import { MobileFilterSheet } from "./mobile-filter-sheet";
 import { MobileTabs } from "./mobile-tabs";
 import { useExplorerState } from "./use-explorer-state";
 
@@ -117,9 +114,7 @@ export const ListExplorer = () => {
           </div>
 
           {/* Filter Panel - slides in, scrolls with page, ends with content */}
-          <FilterPanel isOpen={isFilterDrawerOpen} className="self-start">
-            <FilterDrawer />
-          </FilterPanel>
+          <ExplorerFilterPanel isOpen={isFilterDrawerOpen} className="self-start" />
         </div>
       </div>
 
@@ -135,18 +130,15 @@ export const ListExplorer = () => {
         />
 
         {/* Mobile: Bottom sheet filter drawer */}
-        <MobileFilterSheet
+        <ExplorerMobileFilters
           isOpen={isFilterDrawerOpen}
-          onClose={toggleFilterDrawer}
-          onOpen={toggleFilterDrawer}
+          onToggle={toggleFilterDrawer}
           activeFilterCount={activeFilterCount}
-        >
-          <FilterDrawer />
-        </MobileFilterSheet>
+        />
       </div>
 
       {/* Event Detail Modal */}
-      <EventDetailModal eventId={selectedEventId} onClose={closeEvent} />
+      <ExplorerEventModal selectedEventId={selectedEventId} onClose={closeEvent} />
     </div>
   );
 };

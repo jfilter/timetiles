@@ -24,7 +24,7 @@ export const POST = apiRoute({
     const { currentPassword, newPassword } = body;
 
     // Verify current password
-    const verifyError = await verifyPasswordWithAudit(
+    await verifyPasswordWithAudit(
       payload,
       user,
       currentPassword,
@@ -32,7 +32,6 @@ export const POST = apiRoute({
       "password_change",
       "Current password is incorrect"
     );
-    if (verifyError) return verifyError;
 
     // Update the password
     await payload.update({ collection: "users", id: user.id, data: { password: newPassword } });

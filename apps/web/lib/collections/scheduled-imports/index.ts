@@ -26,7 +26,7 @@ import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 
-import { createCommonConfig, createOwnershipAccess } from "../shared-fields";
+import { createCommonConfig, createOwnershipAccess, isPrivileged } from "../shared-fields";
 import { coreFields } from "./fields/core-fields";
 import { importConfigFields } from "./fields/import-config-fields";
 import { runtimeFields } from "./fields/runtime-fields";
@@ -237,7 +237,7 @@ const ScheduledImports: CollectionConfig = {
     // eslint-disable-next-line sonarjs/function-return-type
     read: ({ req: { user } }): boolean | { createdBy: { equals: string | number } } => {
       if (!user) return false;
-      if (user.role === "admin" || user.role === "editor") return true;
+      if (isPrivileged(user)) return true;
 
       return { createdBy: { equals: user.id } };
     },

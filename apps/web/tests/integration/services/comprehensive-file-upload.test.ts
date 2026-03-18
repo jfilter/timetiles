@@ -75,19 +75,21 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
   beforeEach(async () => {
     // Re-apply spies each test (global afterEach restores all mocks)
-    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
-      geocode: vi
-        .fn()
-        .mockResolvedValue({
-          latitude: 40.7128,
-          longitude: -74.006,
-          confidence: 0.9,
-          normalizedAddress: "New York, NY, USA",
-          provider: "mock",
-          components: {},
-          metadata: {},
-        }),
-    } as unknown as ReturnType<typeof geocodingModule.createGeocodingService>);
+    vi.spyOn(geocodingModule, "GeocodingService").mockImplementation(
+      class MockGeocodingService {
+        geocode = vi
+          .fn()
+          .mockResolvedValue({
+            latitude: 40.7128,
+            longitude: -74.006,
+            confidence: 0.9,
+            normalizedAddress: "New York, NY, USA",
+            provider: "mock",
+            components: {},
+            metadata: {},
+          });
+      } as unknown as typeof geocodingModule.GeocodingService
+    );
 
     await testEnv.seedManager.truncate(collectionsToReset);
   });

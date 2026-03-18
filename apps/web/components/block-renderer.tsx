@@ -218,8 +218,7 @@ const SEPARATOR_CLASS_MAP: Record<string, string> = {
   wave: WAVE_SEPARATOR_CLASS,
 };
 
-const getBlockStyle = (block: Block): BlockStyle | null | undefined =>
-  (block as unknown as Record<string, unknown>).blockStyle as BlockStyle | null | undefined;
+const getBlockStyle = (block: Block): BlockStyle | null | undefined => block.blockStyle;
 
 const buildBlockStyleClasses = (style: BlockStyle): string[] => {
   const classes: string[] = [];

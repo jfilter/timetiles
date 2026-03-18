@@ -84,7 +84,7 @@ export const POST = apiRoute({
         payload,
         user,
         previewMeta!,
-        body as unknown as ConfigureImportRequest,
+        body as ConfigureImportRequest,
         finalCatalogId,
         datasetIdMap,
         datasetMappingEntries

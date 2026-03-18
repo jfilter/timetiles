@@ -2,8 +2,10 @@
  * Wizard context for managing import wizard state.
  *
  * Provides centralized state management for the multi-step import wizard
- * using React Context and useReducer. Includes localStorage persistence
- * for draft recovery.
+ * using React Context and useReducer. Persistence (localStorage save/restore,
+ * preview validation) is delegated to {@link useWizardPersistence}. Pure
+ * computed values are delegated to {@link canProceedFromStep} and
+ * {@link getStepTitle} in `wizard-selectors.ts`.
  *
  * @module
  * @category Components
@@ -42,24 +44,24 @@
  */
 "use client";
 
-import { createContext, useContext, useEffect, useReducer } from "react";
+import { createContext, useContext, useReducer } from "react";
 
 import { useAuthState } from "@/lib/hooks/use-auth-mutations";
-import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 
-import { clearStorage, loadFromStorage, saveToStorage } from "./use-wizard-storage";
+import { clearStorage } from "./use-wizard-storage";
+import { useWizardPersistence } from "./use-wizard-persistence";
 import {
   type CatalogSelection,
   initialState,
   type ScheduleConfig,
-  STEP_TITLES,
   type WizardAction,
   wizardReducer,
   type WizardState,
   type WizardStep,
 } from "./wizard-reducer";
+import { canProceedFromStep, getStepTitle } from "./wizard-selectors";
 
 // Re-export types so index.ts doesn't need to change
 export type { CatalogSelection, ScheduleConfig, WizardState, WizardStep };
@@ -105,91 +107,25 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
   const wasAuthenticatedOnStart = initialAuth?.isAuthenticated && initialAuth?.isEmailVerified;
   const [state, dispatch] = useReducer(wizardReducer, {
     ...initialState,
-    // Track if user was already authenticated when wizard started
     startedAuthenticated: wasAuthenticatedOnStart ?? false,
-    // Skip auth step if already authenticated and verified
     currentStep: wasAuthenticatedOnStart ? 2 : 1,
   });
 
   // Single source of truth for client-side auth state
   const { isAuthenticated, isEmailVerified } = useAuthState();
 
-  // Restore from localStorage on mount
-  useEffect(() => {
-    const saved = loadFromStorage();
-    if (saved) {
-      // Never restore auth state from localStorage - always use server-provided initialAuth
-      // This prevents issues when user logs out but localStorage still has isAuthenticated: true
+  // Persistence: localStorage save/restore + preview file validation
+  useWizardPersistence({
+    state,
+    dispatch,
+    wasAuthenticatedOnStart: wasAuthenticatedOnStart ?? false,
+    isCurrentlyAuthenticated: initialAuth?.isAuthenticated ?? false,
+  });
 
-      // Determine the restored step based on current auth state
-      const getRestoredStep = (): WizardStep => {
-        if (wasAuthenticatedOnStart) {
-          return Math.max(saved.currentStep ?? 2, 2) as WizardStep;
-        }
-        if (!initialAuth?.isAuthenticated) {
-          return 1;
-        }
-        return saved.currentStep ?? 1;
-      };
-
-      const restoredState = {
-        ...saved,
-        // startedAuthenticated is based on initial page load, not restored state
-        startedAuthenticated: wasAuthenticatedOnStart ?? false,
-        // Adjust step based on current auth state
-        currentStep: getRestoredStep(),
-      };
-      dispatch({ type: "RESTORE", state: restoredState });
-    }
-  }, [initialAuth?.isAuthenticated, initialAuth?.isEmailVerified, initialAuth?.userId, wasAuthenticatedOnStart]);
-
-  // Validate preview file exists when we have a previewId
-  // If preview is invalid (file deleted, expired), clear file state and go back to upload step
-  // Skip validation during processing (step 6) since the preview is cleaned up after import starts
-  const validationEnabled = state.currentStep !== 6 && state.importFileId === null;
-  const { data: validationData } = usePreviewValidationQuery(state.previewId, validationEnabled);
-
-  useEffect(() => {
-    if (validationData && !validationData.valid) {
-      // Preview file no longer exists - clear file state
-      dispatch({ type: "CLEAR_FILE" });
-      // If we were past the upload step, go back to it
-      if (state.currentStep > 2) {
-        const getTargetStep = (): WizardStep => {
-          if (wasAuthenticatedOnStart) {
-            return 2;
-          }
-          return state.currentStep > 1 ? 2 : 1;
-        };
-        dispatch({ type: "SET_STEP", step: getTargetStep() });
-      }
-      clearStorage();
-    }
-  }, [validationData, state.currentStep, wasAuthenticatedOnStart]);
-
-  // Save to localStorage on state changes (debounced)
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (state.currentStep < 6) {
-        saveToStorage(state);
-      }
-    }, 500);
-
-    return () => clearTimeout(timeout);
-  }, [state]);
-
-  // Helper actions
-  const goToStep = (step: WizardStep) => {
-    dispatch({ type: "SET_STEP", step });
-  };
-
-  const nextStep = () => {
-    dispatch({ type: "NEXT_STEP" });
-  };
-
-  const prevStep = () => {
-    dispatch({ type: "PREV_STEP" });
-  };
+  // Helper actions (thin dispatch wrappers)
+  const goToStep = (step: WizardStep) => dispatch({ type: "SET_STEP", step });
+  const nextStep = () => dispatch({ type: "NEXT_STEP" });
+  const prevStep = () => dispatch({ type: "PREV_STEP" });
 
   const setFile = (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => {
     dispatch({ type: "SET_FILE", file, sheets, previewId, sourceUrl });
@@ -203,9 +139,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     dispatch({ type: "SET_SCHEDULE_CONFIG", scheduleConfig: config });
   };
 
-  const clearFile = () => {
-    dispatch({ type: "CLEAR_FILE" });
-  };
+  const clearFile = () => dispatch({ type: "CLEAR_FILE" });
 
   const setCatalog = (catalogId: number | "new" | null, newCatalogName?: string) => {
     dispatch({ type: "SET_CATALOG", catalogId, newCatalogName });
@@ -234,9 +168,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     dispatch({ type: "START_PROCESSING", importFileId, scheduledImportId });
   };
 
-  const setError = (error: string | null) => {
-    dispatch({ type: "SET_ERROR", error });
-  };
+  const setError = (error: string | null) => dispatch({ type: "SET_ERROR", error });
 
   const complete = () => {
     clearStorage();
@@ -248,33 +180,9 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     dispatch({ type: "RESET" });
   };
 
-  // Compute canProceed based on current step
-  const canProceed = (() => {
-    switch (state.currentStep) {
-      case 1:
-        return isAuthenticated && isEmailVerified;
-      case 2:
-        return state.file !== null && state.sheets.length > 0;
-      case 3:
-        // datasetId is always number | "new", so we just check if catalog is selected
-        return state.selectedCatalogId !== null && state.sheetMappings.length > 0;
-      case 4:
-        return state.fieldMappings.every(
-          (m) =>
-            m.titleField !== null &&
-            m.dateField !== null &&
-            (m.locationField !== null || (m.latitudeField !== null && m.longitudeField !== null))
-        );
-      case 5:
-        return true;
-      case 6:
-        return false;
-      default:
-        return false;
-    }
-  })();
-
-  const stepTitle = STEP_TITLES[state.currentStep];
+  // Computed values from pure selectors
+  const canProceed = canProceedFromStep(state, isAuthenticated, isEmailVerified);
+  const stepTitle = getStepTitle(state.currentStep);
 
   const value = {
     state,
