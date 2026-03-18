@@ -31,11 +31,11 @@
     "glob": "^13.0.6",
     "husky": "^9.1.7",
     "nyc": "^17.1.0",
-    "oxfmt": "^0.37.0",
-    "oxlint": "^1.52.0",
+    "oxfmt": "^0.38.0",
+    "oxlint": "^1.53.0",
     "oxlint-tsgolint": "^0.16.0",
     "tsx": "catalog:",
-    "turbo": "^2.8.13",
+    "turbo": "^2.8.16",
     "typescript": "catalog:"
   },
   "engines": {
