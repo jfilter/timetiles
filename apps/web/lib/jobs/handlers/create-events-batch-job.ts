@@ -16,13 +16,13 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/import/file-readers";
+import { ProgressTrackingService } from "@/lib/import/progress-tracking";
+import { applyTransforms } from "@/lib/import/transforms";
 import { createJobLogger, logError, logger, logPerformance } from "@/lib/logger";
-import { applyTransforms } from "@/lib/services/import-transforms";
-import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { getImportGeocodingResults } from "@/lib/types/geocoding";
 import type { ImportTransform } from "@/lib/types/import-transforms";
-import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 

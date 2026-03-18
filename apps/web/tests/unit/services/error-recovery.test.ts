@@ -9,7 +9,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { ErrorRecoveryService } from "@/lib/services/error-recovery";
+import { ErrorRecoveryService } from "@/lib/import/error-recovery";
 import type { ImportJob } from "@/payload-types";
 
 // Mock payload

@@ -218,7 +218,7 @@ export const parseExcelPreview = (filePath: string): SheetInfo[] => {
 };
 
 // Re-export centralized URL validation for use by preview-schema routes
-export { validateExternalHttpUrl as validateUrl } from "@/lib/utils/url-validation";
+export { validateExternalHttpUrl as validateUrl } from "@/lib/security/url-validation";
 
 /**
  * Parse file sheets based on file extension.

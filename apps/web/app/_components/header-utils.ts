@@ -2,7 +2,7 @@
  * Utility functions for header title formatting.
  *
  * @module
- * @category Utils
+ * @category Components
  */
 import { formatShortDate } from "@/lib/utils/date";
 import type { Catalog, Dataset } from "@/payload-types";

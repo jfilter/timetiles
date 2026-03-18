@@ -9,8 +9,8 @@
  * @category Collections/ScheduledImports
  */
 
-import { parseCronExpression } from "@/lib/utils/cron-parser";
-import { validateExternalHttpUrl } from "@/lib/utils/url-validation";
+import { parseCronExpression } from "@/lib/import/cron-parser";
+import { validateExternalHttpUrl } from "@/lib/security/url-validation";
 
 /**
  * Validates a URL string for Payload field validation.

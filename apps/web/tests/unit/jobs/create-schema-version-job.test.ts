@@ -28,13 +28,13 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/services/schema-versioning", () => ({
+vi.mock("@/lib/import/schema-versioning", () => ({
   SchemaVersioningService: { createSchemaVersion: mocks.createSchemaVersion },
 }));
 
 vi.mock("@/lib/types/schema-detection", () => ({ getFieldStats: mocks.getFieldStats }));
 
-vi.mock("@/lib/services/progress-tracking", () => ({
+vi.mock("@/lib/import/progress-tracking", () => ({
   ProgressTrackingService: {
     startStage: mocks.startStage,
     completeStage: mocks.completeStage,

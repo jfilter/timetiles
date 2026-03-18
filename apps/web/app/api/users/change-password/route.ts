@@ -10,10 +10,10 @@
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
+import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
-import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
 export const POST = apiRoute({
   auth: "required",

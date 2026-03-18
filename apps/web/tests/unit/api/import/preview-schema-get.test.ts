@@ -61,7 +61,7 @@ vi.mock("@timetiles/payload-schema-detection", () => ({
   LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
 }));
 
-vi.mock("@/lib/utils/url-validation", () => ({ isPrivateUrl: mocks.mockIsPrivateUrl }));
+vi.mock("@/lib/security/url-validation", () => ({ isPrivateUrl: mocks.mockIsPrivateUrl }));
 
 // 4. Vitest imports and source code AFTER mocks
 import type { NextRequest } from "next/server";

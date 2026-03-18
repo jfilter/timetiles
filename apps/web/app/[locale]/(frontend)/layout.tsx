@@ -43,7 +43,7 @@ import { SiteBranding } from "@/components/site-branding";
 import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
 import { SiteProvider } from "@/lib/context/site-context";
-import { resolveSite } from "@/lib/services/site-resolver";
+import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import config from "@/payload.config";
 import type { Branding, Footer as FooterType } from "@/payload-types";
 

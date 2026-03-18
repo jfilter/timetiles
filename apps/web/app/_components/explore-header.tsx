@@ -11,11 +11,12 @@ import React, { useEffect, useState } from "react";
 
 import { ViewToggle } from "@/app/[locale]/(frontend)/explore/_components/view-toggle";
 import { Link } from "@/i18n/navigation";
+import { formatCenterCoordinates, formatEventCount } from "@/lib/geospatial/formatting";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useUIStore } from "@/lib/store";
-import { formatCenterCoordinates, formatEventCount } from "@/lib/utils/coordinates";
-import { buildDynamicTitle } from "@/lib/utils/header-utils";
 import type { Catalog, Dataset } from "@/payload-types";
+
+import { buildDynamicTitle } from "./header-utils";
 
 export interface ExploreNavigationProps {
   catalogs: Catalog[];

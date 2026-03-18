@@ -11,7 +11,7 @@ import {
   formatCoordinate,
   formatEventCount,
   getCenterFromBounds,
-} from "@/lib/utils/coordinates";
+} from "@/lib/geospatial/formatting";
 
 describe("coordinates", () => {
   describe("getCenterFromBounds", () => {

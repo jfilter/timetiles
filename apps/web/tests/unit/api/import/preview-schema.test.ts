@@ -77,7 +77,7 @@ vi.mock("@timetiles/payload-schema-detection", () => ({
   LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
 }));
 
-vi.mock("@/lib/utils/url-validation", () => ({
+vi.mock("@/lib/security/url-validation", () => ({
   isPrivateUrl: mocks.mockIsPrivateUrl,
   validateExternalHttpUrl: (urlString: string) => {
     try {

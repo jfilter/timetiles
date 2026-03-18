@@ -10,8 +10,8 @@
 import { z } from "zod";
 
 import { apiRoute, ConflictError, ForbiddenError, safeFindByID } from "@/lib/api";
+import { canManageResource, requireScrapersEnabled } from "@/lib/api/auth-helpers";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
-import { canManageResource, requireScrapersEnabled } from "@/lib/utils/auth-helpers";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 

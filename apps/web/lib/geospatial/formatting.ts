@@ -5,9 +5,9 @@
  * appropriate for map interfaces and navigation displays.
  *
  * @module
- * @category Utils
+ * @category Geospatial
  */
-import type { MapBounds } from "@/lib/geospatial/types";
+import type { MapBounds } from "./types";
 
 const getCenterLongitude = (east: number, west: number): number => {
   if (east >= west) {

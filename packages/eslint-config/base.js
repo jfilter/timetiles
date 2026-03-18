@@ -131,14 +131,43 @@ export default [
     },
     settings: {
       "boundaries/elements": [
-        { type: "app", pattern: "apps/*" },
-        { type: "app-web", pattern: "apps/web/**/*" },
-        { type: "app-docs", pattern: "apps/docs/**/*" },
-        { type: "package", pattern: "packages/*/**/*" },
+        // Layer 0 — Foundation (pure functions, no service/domain deps)
+        {
+          type: "web-lib-foundation",
+          pattern: [
+            "apps/web/lib/utils/**/*",
+            "apps/web/lib/security/**/*",
+            "apps/web/lib/types/**/*",
+            "apps/web/lib/constants/**/*",
+            "apps/web/lib/geospatial/**/*",
+            "apps/web/lib/filters/**/*",
+          ],
+        },
+        // Layer 1 — Infrastructure (cross-cutting services, DB, middleware)
+        {
+          type: "web-lib-infra",
+          pattern: ["apps/web/lib/services/**/*", "apps/web/lib/database/**/*", "apps/web/lib/middleware/**/*"],
+        },
+        // Layer 2 — Domain (import pipeline, account, export, email, collections)
+        {
+          type: "web-lib-domain",
+          pattern: [
+            "apps/web/lib/import/**/*",
+            "apps/web/lib/account/**/*",
+            "apps/web/lib/export/**/*",
+            "apps/web/lib/email/**/*",
+            "apps/web/lib/collections/**/*",
+          ],
+        },
+        // Layer 3 — Application (hooks, api helpers, blocks, jobs, etc.)
+        { type: "web-lib", pattern: "apps/web/lib/**/*" },
         { type: "web-api", pattern: "apps/web/app/api/**/*" },
         { type: "web-components", pattern: "apps/web/components/**/*" },
-        { type: "web-lib", pattern: "apps/web/lib/**/*" },
         { type: "web-pages", pattern: "apps/web/app/**/page.tsx" },
+        { type: "app-web", pattern: "apps/web/**/*" },
+        { type: "app-docs", pattern: "apps/docs/**/*" },
+        { type: "app", pattern: "apps/*" },
+        { type: "package", pattern: "packages/*/**/*" },
         { type: "root", pattern: ["*.js", "*.ts", "*.json", "scripts/**/*"] },
       ],
     },
@@ -213,7 +242,7 @@ export default [
       // Disable import/order in favor of simple-import-sort
       "import/order": "off",
 
-      // Boundaries (Monorepo Architecture)
+      // Boundaries (Monorepo Architecture + Layered lib/ Architecture)
       "boundaries/element-types": [
         "error",
         {
@@ -223,10 +252,28 @@ export default [
             { from: ["app-web", "app-docs"], allow: ["package", "package-ui", "package-config"] },
             // Packages can only use other packages
             { from: "package", allow: ["package"] },
-            // Web app internal boundaries
-            { from: "web-components", allow: ["web-lib", "package"] },
-            { from: "web-pages", allow: ["web-components", "web-lib", "package"] },
-            { from: "web-api", allow: ["web-lib", "package"] },
+
+            // ── Layered Architecture (lib/) ──────────────────────────
+            // Layer 0: Foundation → Foundation + packages only
+            { from: "web-lib-foundation", allow: ["web-lib-foundation", "package"] },
+            // Layer 1: Infrastructure → Foundation + Infrastructure + packages
+            { from: "web-lib-infra", allow: ["web-lib-foundation", "web-lib-infra", "package"] },
+            // Layer 2: Domain → Foundation + Infrastructure + Domain + packages
+            { from: "web-lib-domain", allow: ["web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] },
+            // Layer 3: Application lib → all lib layers + packages
+            { from: "web-lib", allow: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] },
+
+            // ── Web app boundaries ───────────────────────────────────
+            {
+              from: "web-components",
+              allow: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"],
+            },
+            {
+              from: "web-pages",
+              allow: ["web-components", "web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"],
+            },
+            { from: "web-api", allow: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] },
+
             // Root can access everything
             { from: "root", allow: "*" },
           ],

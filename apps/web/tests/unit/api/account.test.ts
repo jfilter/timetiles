@@ -55,7 +55,7 @@ vi.mock("@/lib/services/rate-limit-service", () => ({
   },
 }));
 
-vi.mock("@/lib/services/account-deletion-service", () => ({
+vi.mock("@/lib/account/deletion-service", () => ({
   createAccountDeletionService: vi
     .fn()
     .mockReturnValue({

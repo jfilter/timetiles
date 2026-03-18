@@ -22,8 +22,8 @@
 import type { CollectionConfig, Where } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
+import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
-import { validateCatalogOwnership } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { createRequestLogger } from "../logger";

@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/services/progress-tracking", () => ({
+vi.mock("@/lib/import/progress-tracking", () => ({
   ProgressTrackingService: {
     initializeStageProgress: vi.fn().mockResolvedValue(undefined),
     updateStageProgress: vi.fn().mockResolvedValue(undefined),
@@ -33,7 +33,7 @@ vi.mock("@/lib/services/progress-tracking", () => ({
   },
 }));
 
-vi.mock("@/lib/utils/file-readers", () => ({
+vi.mock("@/lib/import/file-readers", () => ({
   getFileRowCount: mocks.getFileRowCount,
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,

@@ -15,9 +15,9 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { AccountDeletionService } from "@/lib/services/account-deletion-service";
-import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/services/account-deletion-service";
-import { createSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/services/system-user-service";
+import type { AccountDeletionService } from "@/lib/account/deletion-service";
+import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/account/deletion-service";
+import { createSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/account/system-user";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";

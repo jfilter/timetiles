@@ -15,7 +15,7 @@ import React from "react";
 import { BlockRenderer } from "@/components/block-renderer";
 import { PageLayout } from "@/components/layout/page-layout";
 import type { Locale } from "@/i18n/config";
-import { resolveSite } from "@/lib/services/site-resolver";
+import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import config from "@/payload.config";
 
 interface PageProps {

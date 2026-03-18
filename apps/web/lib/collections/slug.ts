@@ -9,7 +9,7 @@
  * - A factory function (`createSlugHook`) to easily integrate this logic into Payload CMS
  *   collection field hooks.
  *
- * @category Utilities
+ * @category Collections
  * @module
  */
 import { randomBytes } from "node:crypto";

@@ -5,7 +5,7 @@
  * to repeat try/catch + logError for fire-and-forget notification emails.
  *
  * @module
- * @category Utils
+ * @category Email
  */
 import type { Payload } from "payload";
 

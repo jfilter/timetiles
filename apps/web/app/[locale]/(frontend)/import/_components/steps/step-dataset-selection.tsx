@@ -15,7 +15,7 @@ import { DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "luci
 import { useEffect } from "react";
 
 import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
-import { humanizeFileName } from "@/lib/utils/humanize-file-name";
+import { humanizeFileName } from "@/lib/import/humanize-file-name";
 
 import { useWizard } from "../wizard-context";
 

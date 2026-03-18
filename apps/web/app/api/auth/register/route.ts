@@ -18,10 +18,10 @@ import { apiRoute, AppError } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
+import { safeSendEmail } from "@/lib/email/send";
 import { generateAccountExistsEmailHTML } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
-import { safeSendEmail } from "@/lib/utils/email";
-import { maskEmail } from "@/lib/utils/masking";
+import { maskEmail } from "@/lib/security/masking";
 
 // Rate limit config for registration (strict to prevent enumeration attacks)
 const REGISTRATION_RATE_LIMIT = {

@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/utils/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
+vi.mock("@/lib/import/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
@@ -46,14 +46,14 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({
 
 vi.mock("@/lib/services/schema-builder", () => ({ ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder }));
 
-vi.mock("@/lib/services/schema-versioning", () => ({
+vi.mock("@/lib/import/schema-versioning", () => ({
   SchemaVersioningService: {
     createSchemaVersion: mocks.createSchemaVersion,
     linkImportToSchemaVersion: mocks.linkImportToSchemaVersion,
   },
 }));
 
-vi.mock("@/lib/services/progress-tracking", () => ({
+vi.mock("@/lib/import/progress-tracking", () => ({
   ProgressTrackingService: { startStage: mocks.startStage, completeStage: mocks.completeStage },
 }));
 

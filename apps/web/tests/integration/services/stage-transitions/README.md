@@ -4,7 +4,7 @@ This directory contains integration tests specifically for stage transitions in 
 
 ## Overview
 
-The import pipeline has **13 valid stage transitions** defined in `/Users/user/code/jf/timetiles/apps/web/lib/services/stage-transition.ts`:
+The import pipeline has **13 valid stage transitions** defined in `/Users/user/code/jf/timetiles/apps/web/lib/import/stage-transition.ts`:
 
 ```
 ANALYZE_DUPLICATES → DETECT_SCHEMA
@@ -192,7 +192,7 @@ await expect(
 
 ## Related Documentation
 
-- **Stage Transition Service**: `/Users/user/code/jf/timetiles/apps/web/lib/services/stage-transition.ts`
+- **Stage Transition Service**: `/Users/user/code/jf/timetiles/apps/web/lib/import/stage-transition.ts`
 - **Processing Stages**: `/Users/user/code/jf/timetiles/apps/web/lib/constants/import-constants.ts`
 - **Integration Test Patterns**: `/Users/user/code/jf/timetiles/apps/web/tests/integration/CLAUDE.md`
 - **Hook-Based Job Queueing**: `/Users/user/code/jf/timetiles/apps/web/lib/collections/import-jobs/hooks.ts`

@@ -14,16 +14,16 @@ import type { Payload } from "payload";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
+import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
+import { safeSendEmail } from "@/lib/email/send";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
+import { hashEmail } from "@/lib/security/hash";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 import { badRequest } from "@/lib/utils/api-response";
-import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
-import { safeSendEmail } from "@/lib/utils/email";
-import { hashEmail } from "@/lib/utils/hash";
 
 // ---------------------------------------------------------------------------
 // Helpers

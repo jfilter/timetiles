@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { applyTransforms, applyTransformsBatch } from "@/lib/services/import-transforms";
+import { applyTransforms, applyTransformsBatch } from "@/lib/import/transforms";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import { deleteByPath, getByPath, setByPath } from "@/lib/utils/object-path";
 

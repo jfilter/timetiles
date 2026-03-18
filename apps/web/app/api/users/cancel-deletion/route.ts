@@ -7,9 +7,9 @@
  * @module
  * @category API
  */
+import { createAccountDeletionService } from "@/lib/account/deletion-service";
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { createAccountDeletionService } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { badRequest } from "@/lib/utils/api-response";
 

@@ -15,9 +15,9 @@ import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
+import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
-import { ProgressiveSchemaBuilder } from "./schema-builder";
 import { getSchemaFreshness } from "./schema-freshness";
 import { SchemaVersioningService } from "./schema-versioning";
 

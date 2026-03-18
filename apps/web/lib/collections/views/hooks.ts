@@ -10,7 +10,7 @@
  */
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from "payload";
 
-import { clearViewCache } from "@/lib/services/view-resolver";
+import { clearViewCache } from "@/lib/services/resolution/view-resolver";
 import type { View } from "@/payload-types";
 
 import { createEnforceSingleDefault } from "../shared-hooks";

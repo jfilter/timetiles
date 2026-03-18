@@ -15,7 +15,7 @@
 
 import type { Field, FieldHook } from "payload";
 
-import { decryptField, encryptField, isEncrypted } from "@/lib/utils/encryption";
+import { decryptField, encryptField, isEncrypted } from "@/lib/security/encryption";
 
 // ---------------------------------------------------------------------------
 // Schema configuration fields

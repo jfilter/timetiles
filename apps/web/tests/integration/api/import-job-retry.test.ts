@@ -99,7 +99,7 @@ Event 2,2024-01-02,Location 2`;
       expect(failedJob.retryAttempts).toBe(0);
 
       // Import ErrorRecoveryService to manually trigger retry
-      const { ErrorRecoveryService } = await import("@/lib/services/error-recovery");
+      const { ErrorRecoveryService } = await import("@/lib/import/error-recovery");
       const result = await ErrorRecoveryService.recoverFailedJob(payload, failedJob.id);
 
       // Verify retry was scheduled
@@ -146,7 +146,7 @@ Event,2024-01-01`;
         },
       });
 
-      const { ErrorRecoveryService } = await import("@/lib/services/error-recovery");
+      const { ErrorRecoveryService } = await import("@/lib/import/error-recovery");
       const result = await ErrorRecoveryService.recoverFailedJob(payload, completedJob.id);
 
       expect(result.success).toBe(false);
@@ -184,7 +184,7 @@ Event,2024-01-01`;
         },
       });
 
-      const { ErrorRecoveryService } = await import("@/lib/services/error-recovery");
+      const { ErrorRecoveryService } = await import("@/lib/import/error-recovery");
       const result = await ErrorRecoveryService.recoverFailedJob(payload, maxRetriesJob.id);
 
       expect(result.success).toBe(false);
@@ -223,7 +223,7 @@ Event,2024-01-01`;
         },
       });
 
-      const { ErrorRecoveryService } = await import("@/lib/services/error-recovery");
+      const { ErrorRecoveryService } = await import("@/lib/import/error-recovery");
       const result = await ErrorRecoveryService.resetJobToStage(
         payload,
         failedJob.id,
@@ -303,7 +303,7 @@ Event 2,2024-01-02`;
         },
       });
 
-      const { ErrorRecoveryService } = await import("@/lib/services/error-recovery");
+      const { ErrorRecoveryService } = await import("@/lib/import/error-recovery");
       const recommendations = await ErrorRecoveryService.getRecoveryRecommendations(payload);
 
       expect(recommendations).toHaveLength(2);

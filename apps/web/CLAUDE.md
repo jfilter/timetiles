@@ -82,30 +82,40 @@ components/
 └── maps/        # Map components (clustering, controls, themes)
 ```
 
-### Lib Modules
+### Lib Modules (Layered Architecture)
+
+Import rule: each layer can only import from the same layer or below. Enforced via ESLint boundaries.
 
 ```
 lib/
-├── api/          # apiRoute() handler, error classes
-├── blocks/       # Page builder blocks (hero, features, CTA, etc.)
-├── collections/  # Payload CMS collection configs
-├── config/       # Payload config factory
+# Layer 0 — Foundation (no lib/ deps except other foundation)
+├── utils/        # Pure cross-cutting utilities (relation-id, date, etc.)
+├── security/     # Crypto, sanitization, SSRF protection
+├── types/        # Domain type definitions
 ├── constants/    # App constants (quotas, rate limits, map defaults)
-├── context/      # React contexts (site, view)
-├── database/     # Database setup and operations
-├── email/        # Email service (account deletion, exports)
-├── filters/      # Canonical filter model, SQL/Payload adapters
 ├── geospatial/   # Coordinate parsing, validation, bounds, distance
-├── globals/      # Payload globals (Branding, Footer, MainMenu, Settings)
+├── filters/      # Canonical filter model, SQL/Payload adapters
+# Layer 1 — Infrastructure (can import Layer 0)
+├── services/     # Cross-cutting services (audit, quota, rate-limit, etc.)
+├── database/     # Database setup and operations
+├── middleware/    # Rate limiting, auth middleware
+# Layer 2 — Domain (can import Layer 0 + 1)
+├── import/       # Import pipeline (file readers, transforms, state machine)
+├── account/      # Account lifecycle (deletion, system user)
+├── export/       # Data export (service, emails, formatting)
+├── email/        # Email service, templates, i18n
+├── collections/  # Payload CMS collection configs
+# Layer 3 — Application (can import anything)
+├── api/          # apiRoute() handler, error classes, auth helpers
 ├── hooks/        # React Query hooks (27 hooks)
 ├── jobs/         # Background job handlers (18 jobs)
-├── middleware/    # Rate limiting, auth middleware
+├── blocks/       # Page builder blocks (hero, features, CTA, etc.)
+├── config/       # Payload config factory
+├── context/      # React contexts (site, view)
+├── globals/      # Payload globals (Branding, Footer, MainMenu, Settings)
 ├── openapi/      # OpenAPI schema generation
 ├── schemas/      # Zod validation schemas
-├── seed/         # Database seeding
-├── services/     # Business logic services
-├── types/        # Domain type definitions
-└── utils/        # Utility functions (file readers, cron, URL validation, etc.)
+└── seed/         # Database seeding
 ```
 
 ### Geospatial Data

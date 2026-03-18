@@ -24,8 +24,8 @@ import { ArrowLeft } from "lucide-react";
 import { type DragEvent, useCallback, useMemo, useRef } from "react";
 
 import { Link, useRouter } from "@/i18n/navigation";
+import { storeMappingData } from "@/lib/import/mapping-transfer";
 import type { TransformType } from "@/lib/types/import-transforms";
-import { storeMappingData } from "@/lib/utils/mapping-transfer";
 
 import { FlowEditorHeader } from "./flow-editor-header";
 import { NodePalette } from "./node-palette";

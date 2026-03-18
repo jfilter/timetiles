@@ -8,9 +8,9 @@
  * @module
  * @category Jobs
  */
+import { createAccountDeletionService } from "@/lib/account/deletion-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
-import { createAccountDeletionService } from "@/lib/services/account-deletion-service";
 
 /**
  * Job handler for executing scheduled account deletions.

@@ -11,10 +11,10 @@
  */
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
 
+import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
-import { safeFetchRecord } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
 

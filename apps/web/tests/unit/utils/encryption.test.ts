@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { decryptField, encryptField, isEncrypted } from "@/lib/utils/encryption";
+import { decryptField, encryptField, isEncrypted } from "@/lib/security/encryption";
 
 const TEST_SECRET = "test-secret-key-for-encryption-tests";
 

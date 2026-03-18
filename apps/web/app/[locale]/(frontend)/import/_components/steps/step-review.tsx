@@ -29,8 +29,8 @@ import {
 import { useCallback, useEffect } from "react";
 
 import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutations";
+import { humanizeFileName } from "@/lib/import/humanize-file-name";
 import { formatFileSize } from "@/lib/utils/format";
-import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
 import { useNavigationConfig } from "../navigation-config-context";
 import type { ScheduleConfig } from "../wizard-context";

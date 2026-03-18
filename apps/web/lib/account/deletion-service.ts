@@ -12,19 +12,10 @@ import type { User } from "@/payload-types";
 
 import { PROCESSING_STAGE } from "../constants/import-constants";
 import { createLogger, logError } from "../logger";
-import {
-  sendDeletionCancelledEmail,
-  sendDeletionCompletedEmail,
-  sendDeletionScheduledEmail,
-} from "./account-deletion-emails";
-import type {
-  CanDeleteResult,
-  DeletionSummary,
-  ExecuteDeletionResult,
-  ScheduleDeletionResult,
-} from "./account-deletion-types";
-import { AUDIT_ACTIONS, auditLog } from "./audit-log-service";
-import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user-service";
+import { AUDIT_ACTIONS, auditLog } from "../services/audit-log-service";
+import { sendDeletionCancelledEmail, sendDeletionCompletedEmail, sendDeletionScheduledEmail } from "./deletion-emails";
+import type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult } from "./deletion-types";
+import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user";
 
 export type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult };
 

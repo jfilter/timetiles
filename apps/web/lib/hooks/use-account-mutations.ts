@@ -11,8 +11,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { DeletionSummary } from "../account/deletion-types";
 import { fetchJson } from "../api/http-error";
-import type { DeletionSummary } from "../services/account-deletion-types";
 
 // ---------------------------------------------------------------------------
 // Types

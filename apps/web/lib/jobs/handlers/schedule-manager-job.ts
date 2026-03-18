@@ -12,11 +12,11 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+import { calculateNextCronRun } from "@/lib/import/cron-parser";
+import { triggerScheduledImport } from "@/lib/import/trigger-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
-import { triggerScheduledImport } from "@/lib/services/scheduled-import-trigger-service";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
-import { calculateNextCronRun } from "@/lib/utils/cron-parser";
 import type { ScheduledImport, Scraper } from "@/payload-types";
 
 // Unused but kept for future expansion

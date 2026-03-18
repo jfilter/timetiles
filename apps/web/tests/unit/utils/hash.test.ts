@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { hashEmail, hashIpAddress } from "@/lib/utils/hash";
+import { hashEmail, hashIpAddress } from "@/lib/security/hash";
 
 describe.sequential("hashEmail", () => {
   it("produces a consistent SHA-256 hex digest", () => {

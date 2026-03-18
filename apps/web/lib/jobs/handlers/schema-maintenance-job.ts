@@ -12,11 +12,11 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+import type { SchemaFreshnessResult } from "@/lib/import/schema-freshness";
+import { getSchemaFreshness } from "@/lib/import/schema-freshness";
+import { SchemaInferenceService } from "@/lib/import/schema-inference";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
-import type { SchemaFreshnessResult } from "@/lib/services/schema-freshness";
-import { getSchemaFreshness } from "@/lib/services/schema-freshness";
-import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
 
 export interface SchemaMaintenanceJobInput {
   /** Optional: specific dataset IDs to check (if omitted, checks all) */

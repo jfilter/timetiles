@@ -10,7 +10,7 @@
 import { z } from "zod";
 
 import { apiRoute, ForbiddenError, safeFindByID } from "@/lib/api";
-import { canManageResource, requireScrapersEnabled } from "@/lib/utils/auth-helpers";
+import { canManageResource, requireScrapersEnabled } from "@/lib/api/auth-helpers";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScraperRepo } from "@/payload-types";
 

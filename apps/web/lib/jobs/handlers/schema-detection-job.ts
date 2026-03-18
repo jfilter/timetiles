@@ -17,14 +17,14 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/import/file-readers";
+import { ProgressTrackingService } from "@/lib/import/progress-tracking";
+import { applyTransformsBatch } from "@/lib/import/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { applyTransformsBatch } from "@/lib/services/import-transforms";
-import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { detectFieldMappings } from "@/lib/services/schema-builder/field-mapping-detection";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
-import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
 import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";

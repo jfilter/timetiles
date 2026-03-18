@@ -5,7 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SystemUserService } from "@/lib/services/system-user-service";
+import { SystemUserService } from "@/lib/account/system-user";
 
 vi.mock("@/lib/logger", () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),

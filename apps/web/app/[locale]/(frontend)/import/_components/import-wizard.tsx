@@ -14,7 +14,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { useRouter } from "@/i18n/navigation";
-import { retrieveMappingData } from "@/lib/utils/mapping-transfer";
+import { retrieveMappingData } from "@/lib/import/mapping-transfer";
 
 import { StepAuth, StepDatasetSelection, StepFieldMapping, StepProcessing, StepReview, StepUpload } from "./steps";
 import { useWizard, type WizardStep } from "./wizard-context";

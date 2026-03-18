@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { ProgressTrackingService } from "@/lib/services/progress-tracking";
+import { ProgressTrackingService } from "@/lib/import/progress-tracking";
 import type { ImportJob } from "@/payload-types";
 
 describe.sequential("ProgressTrackingService", () => {

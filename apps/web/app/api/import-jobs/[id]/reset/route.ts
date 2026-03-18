@@ -13,8 +13,8 @@ import { z } from "zod";
 
 import { apiRoute, safeFindByID } from "@/lib/api";
 import { RECOVERY_STAGES_LIST } from "@/lib/constants/stage-graph";
+import { ErrorRecoveryService } from "@/lib/import/error-recovery";
 import { logger } from "@/lib/logger";
-import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { badRequest } from "@/lib/utils/api-response";
 import type { ImportJob } from "@/payload-types";
 

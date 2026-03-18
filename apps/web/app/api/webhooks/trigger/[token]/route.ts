@@ -13,9 +13,9 @@ import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
+import { queueWebhookImport } from "@/lib/import/trigger-service";
 import { logger } from "@/lib/logger";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
-import { queueWebhookImport } from "@/lib/services/scheduled-import-trigger-service";
 import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
 import { internalError, methodNotAllowed, unauthorized } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";

@@ -126,7 +126,7 @@ export interface RecoveryResult {
  * @example
  * Basic usage - automatic retry:
  * ```typescript
- * import { ErrorRecoveryService } from "@/lib/services/error-recovery";
+ * import { ErrorRecoveryService } from "@/lib/import/error-recovery";
  *
  * const result = await ErrorRecoveryService.recoverFailedJob(payload, jobId);
  * if (result.success) {

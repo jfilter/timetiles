@@ -33,7 +33,7 @@ import type {
   MediaExportData,
   ScheduledImportExportData,
   UserExportData,
-} from "./data-export-types";
+} from "./types";
 
 const logger = createLogger("data-export-service");
 

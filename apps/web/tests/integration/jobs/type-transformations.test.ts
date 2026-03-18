@@ -11,8 +11,8 @@
 import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import * as fileReaders from "@/lib/import/file-readers";
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
-import * as fileReaders from "@/lib/utils/file-readers";
 import type { Catalog, Dataset, Event } from "@/payload-types";
 
 import {

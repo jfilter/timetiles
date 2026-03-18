@@ -24,9 +24,7 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
   isFeatureEnabled: (...args: unknown[]) => mockIsFeatureEnabled(...args),
 }));
 
-vi.mock("@/lib/services/scheduled-import-trigger-service", () => ({
-  triggerScheduledImport: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock("@/lib/import/trigger-service", () => ({ triggerScheduledImport: vi.fn().mockResolvedValue(undefined) }));
 
 const mockClaimScraperRunning = vi.fn();
 

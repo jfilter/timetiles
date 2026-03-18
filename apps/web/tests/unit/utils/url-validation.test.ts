@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isPrivateUrl } from "@/lib/utils/url-validation";
+import { isPrivateUrl } from "@/lib/security/url-validation";
 
 describe("isPrivateUrl", () => {
   describe("blocks loopback addresses", () => {

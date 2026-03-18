@@ -8,11 +8,11 @@ const mocks = vi.hoisted(() => ({
   getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
 }));
 
-vi.mock("@/lib/utils/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
+vi.mock("@/lib/import/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({ getImportFilePath: mocks.getImportFilePath }));
 
-vi.mock("@/lib/services/stage-transition", () => ({ StageTransitionService: { processStageTransition: vi.fn() } }));
+vi.mock("@/lib/import/stage-transition", () => ({ StageTransitionService: { processStageTransition: vi.fn() } }));
 
 vi.mock("@/lib/services/audit-log-service", () => ({ AUDIT_ACTIONS: {}, auditLog: vi.fn() }));
 

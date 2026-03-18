@@ -7,9 +7,9 @@
  * @module
  * @category Components
  */
+import { humanizeFileName } from "@/lib/import/humanize-file-name";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
-import { humanizeFileName } from "@/lib/utils/humanize-file-name";
 
 // Types
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;

@@ -17,8 +17,8 @@ import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { DataExportService } from "@/lib/services/data-export-service";
-import { createDataExportService } from "@/lib/services/data-export-service";
+import type { DataExportService } from "@/lib/export/service";
+import { createDataExportService } from "@/lib/export/service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 

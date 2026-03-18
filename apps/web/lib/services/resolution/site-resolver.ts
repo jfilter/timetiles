@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 
 import type { Site } from "@/payload-types";
 
-import { logger } from "../logger";
+import { logger } from "../../logger";
 import { createCachedResolver } from "./create-cached-resolver";
 
 const resolver = createCachedResolver<Site>({ collection: "sites", keyField: "domain" });

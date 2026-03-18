@@ -11,8 +11,8 @@
 import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
+import { createDataExportService } from "@/lib/export/service";
 import { logger } from "@/lib/logger";
-import { createDataExportService } from "@/lib/services/data-export-service";
 import type { RequestExportResponse } from "@/lib/types/data-export-api";
 import { apiSuccess, conflict } from "@/lib/utils/api-response";
 

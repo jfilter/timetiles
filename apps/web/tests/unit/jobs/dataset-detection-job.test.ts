@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => {
 // Mock external dependencies
 vi.mock("fs", () => ({ default: mocks.fs, promises: { readFile: vi.fn() } }));
 
-vi.mock("@/lib/services/progress-tracking", () => ({
+vi.mock("@/lib/import/progress-tracking", () => ({
   ProgressTrackingService: {
     updateProgress: vi.fn().mockResolvedValue(undefined),
     createInitialProgress: vi.fn((totalRows) => ({

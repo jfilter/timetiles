@@ -10,8 +10,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { ManifestParseError, ManifestParseResult } from "@/lib/services/manifest-parser";
-import { parseManifest } from "@/lib/services/manifest-parser";
+import type { ManifestParseError, ManifestParseResult } from "@/lib/import/manifest-parser";
+import { parseManifest } from "@/lib/import/manifest-parser";
 
 describe("parseManifest", () => {
   describe("Valid Manifests", () => {

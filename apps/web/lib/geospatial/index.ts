@@ -44,6 +44,9 @@ export {
 export type { FormatDetectionResult } from "./detection";
 export { checkCommaFormat, checkGeoJsonFormat, checkSpaceFormat } from "./detection";
 
+// Formatting
+export { formatCenterCoordinates, formatCoordinate, formatEventCount, getCenterFromBounds } from "./formatting";
+
 // Patterns for coordinate detection
 export {
   ADDRESS_PATTERNS,

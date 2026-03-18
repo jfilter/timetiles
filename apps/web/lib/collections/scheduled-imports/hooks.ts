@@ -13,8 +13,8 @@ import { randomBytes } from "node:crypto";
 
 import type { CollectionBeforeChangeHook } from "payload";
 
+import { calculateNextCronRun } from "@/lib/import/cron-parser";
 import { logger } from "@/lib/logger";
-import { calculateNextCronRun } from "@/lib/utils/cron-parser";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 /**

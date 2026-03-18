@@ -12,8 +12,8 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { getSchemaFreshness } from "@/lib/services/schema-freshness";
-import { SchemaInferenceService } from "@/lib/services/schema-inference-service";
+import { getSchemaFreshness } from "@/lib/import/schema-freshness";
+import { SchemaInferenceService } from "@/lib/import/schema-inference";
 
 import {
   createIntegrationTestEnvironment,

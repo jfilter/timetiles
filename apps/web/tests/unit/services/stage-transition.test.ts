@@ -5,7 +5,7 @@ import type { Payload } from "payload";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { StageTransitionService } from "@/lib/services/stage-transition";
+import { StageTransitionService } from "@/lib/import/stage-transition";
 import type { ImportJob } from "@/payload-types";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories

@@ -14,7 +14,7 @@ import {
   matchesCronField,
   parseCronExpression,
   validateCronParts,
-} from "../../../lib/utils/cron-parser";
+} from "../../../lib/import/cron-parser";
 
 describe("Cron Parser Utilities", () => {
   describe("parseCronExpression", () => {

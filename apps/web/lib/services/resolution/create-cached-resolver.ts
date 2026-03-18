@@ -12,7 +12,7 @@ import type { Payload, Where } from "payload";
 
 import type { Config } from "@/payload-types";
 
-import { logger } from "../logger";
+import { logger } from "../../logger";
 
 type CollectionSlug = keyof Config["collections"];
 

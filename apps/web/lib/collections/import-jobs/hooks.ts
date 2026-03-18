@@ -10,14 +10,14 @@ import type {
   PayloadRequest,
 } from "payload";
 
+import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { isRecoveryStage } from "@/lib/constants/stage-graph";
+import { cleanupSidecarFiles } from "@/lib/import/file-readers";
+import { StageTransitionService } from "@/lib/import/stage-transition";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
-import { StageTransitionService } from "@/lib/services/stage-transition";
-import { validateCatalogOwnership } from "@/lib/utils/catalog-ownership";
-import { cleanupSidecarFiles } from "@/lib/utils/file-readers";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
 

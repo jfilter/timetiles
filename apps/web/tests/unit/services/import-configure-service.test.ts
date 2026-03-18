@@ -33,7 +33,7 @@ import {
   buildGeoFieldDetection,
   buildIdStrategy,
   translateSchemaMode,
-} from "@/lib/services/import-configure-service";
+} from "@/lib/import/configure-service";
 import type { FieldMapping, SheetMapping } from "@/lib/types/import-wizard";
 
 const fullFieldMapping: FieldMapping = {

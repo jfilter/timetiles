@@ -10,8 +10,8 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { clearSiteCache } from "@/lib/services/site-resolver";
-import { clearViewCache, findDefaultView, findViewBySlug, resolveView } from "@/lib/services/view-resolver";
+import { clearSiteCache } from "@/lib/services/resolution/site-resolver";
+import { clearViewCache, findDefaultView, findViewBySlug, resolveView } from "@/lib/services/resolution/view-resolver";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Site, User, View } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";

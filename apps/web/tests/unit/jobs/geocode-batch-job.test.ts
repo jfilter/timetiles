@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => {
 // Mock external dependencies
 vi.mock("@/lib/services/geocoding", () => ({ createGeocodingService: mocks.createGeocodingService }));
 
-vi.mock("@/lib/utils/file-readers", () => ({
+vi.mock("@/lib/import/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));

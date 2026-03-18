@@ -9,9 +9,9 @@
 import type { PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { ProgressTrackingService } from "@/lib/import/progress-tracking";
+import { SchemaVersioningService } from "@/lib/import/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
-import { ProgressTrackingService } from "@/lib/services/progress-tracking";
-import { SchemaVersioningService } from "@/lib/services/schema-versioning";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";

@@ -14,7 +14,7 @@ import { useMemo } from "react";
 
 import type { SiteBrandingColors } from "@/lib/context/site-context";
 import { useSite } from "@/lib/context/site-context";
-import { sanitizeCSS } from "@/lib/utils/css-sanitizer";
+import { sanitizeCSS } from "@/lib/security/css-sanitizer";
 
 /** Map semantic color keys to CSS custom property names. */
 const COLOR_TOKEN_MAP: Record<keyof SiteBrandingColors, string> = {

@@ -5,14 +5,13 @@
  * to validate catalog access and extract denormalized access fields.
  *
  * @module
- * @category Utils
+ * @category Collections
  */
 import type { Payload, PayloadRequest } from "payload";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Config } from "@/payload-types";
 import type { Dataset } from "@/payload-types";
-
-import { extractRelationId } from "./relation-id";
 
 /**
  * Validates that a user has access to a catalog (owns it or it's public).

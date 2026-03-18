@@ -5,9 +5,9 @@
  * so they can be used in both React and non-React contexts.
  *
  * @module
- * @category Utils
+ * @category Export
  */
-import { formatDate, parseDateInput } from "./date";
+import { formatDate, parseDateInput } from "@/lib/utils/date";
 
 /**
  * Get download URL for an export.

@@ -2,7 +2,7 @@
  * Shared authentication helper functions for account API routes.
  *
  * @module
- * @category Utils
+ * @category API
  */
 import type { Payload } from "payload";
 
@@ -10,9 +10,8 @@ import { ForbiddenError } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { unauthorized } from "@/lib/utils/api-response";
 import type { User } from "@/payload-types";
-
-import { unauthorized } from "./api-response";
 
 /**
  * Check if a user can manage a resource based on role or ownership.

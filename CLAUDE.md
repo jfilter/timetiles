@@ -89,19 +89,27 @@ apps/web/
 ├── components/            # React components
 ├── i18n/                  # next-intl config (routing, locale detection)
 ├── messages/              # Translation files (en.json, de.json)
-├── lib/                   # Core logic
-│   ├── api/              # API route handler (apiRoute), error classes
-│   ├── blocks/           # Page builder blocks (hero, features, CTA, etc.)
-│   ├── collections/       # Payload collections
-│   ├── config/           # Payload config factory & shared config
-│   ├── constants/        # App constants (quotas, rate limits, map defaults)
-│   ├── filters/          # Canonical filter model, SQL/Payload adapters
-│   ├── geospatial/       # Coordinate parsing, validation, bounds, distance
+├── lib/                   # Core logic (layered architecture)
+│   ├── utils/            # Layer 0: Pure cross-cutting utilities
+│   ├── security/         # Layer 0: Crypto, sanitization, SSRF protection
+│   ├── types/            # Layer 0: Domain type definitions
+│   ├── constants/        # Layer 0: App constants (quotas, rate limits, map)
+│   ├── geospatial/       # Layer 0: Coordinate parsing, validation, bounds
+│   ├── filters/          # Layer 0: Canonical filter model, SQL/Payload adapters
+│   ├── services/         # Layer 1: Cross-cutting services (audit, quota, etc.)
+│   ├── database/         # Layer 1: Database client & setup
+│   ├── middleware/        # Layer 1: Rate limiting, auth middleware
+│   ├── import/           # Layer 2: Import pipeline (readers, transforms, state)
+│   ├── account/          # Layer 2: Account lifecycle (deletion, system user)
+│   ├── export/           # Layer 2: Data export (service, emails, formatting)
+│   ├── email/            # Layer 2: Email service, templates, i18n
+│   ├── collections/      # Layer 2: Payload CMS collections
+│   ├── api/              # Layer 3: API route handler, error classes
+│   ├── hooks/            # Layer 3: React Query hooks (30 hooks)
+│   ├── jobs/             # Layer 3: Background job handlers (18 jobs)
+│   ├── blocks/           # Layer 3: Page builder blocks
 │   ├── globals/          # Payload globals (Branding, Footer, MainMenu, Settings)
-│   ├── hooks/            # React Query hooks (30 hooks)
-│   ├── jobs/             # Background job handlers (18 jobs)
-│   ├── services/         # Business logic services
-│   └── utils/            # Utility functions
+│   └── config/           # Payload config factory & shared config
 ├── migrations/           # Database migrations
 ├── tests/               # Test suites
 └── payload.config.ts    # Payload CMS configuration

@@ -8,7 +8,12 @@ import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { clearSiteCache, findDefaultSite, findSiteByDomain, resolveSite } from "@/lib/services/site-resolver";
+import {
+  clearSiteCache,
+  findDefaultSite,
+  findSiteByDomain,
+  resolveSite,
+} from "@/lib/services/resolution/site-resolver";
 
 /**
  * Creates a fresh mock Payload instance with a `find` method.

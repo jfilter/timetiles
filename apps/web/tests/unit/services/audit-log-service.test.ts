@@ -12,8 +12,8 @@ vi.mock("@/lib/logger", () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }));
 
+import { hashEmail, hashIpAddress } from "@/lib/security/hash";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
-import { hashEmail, hashIpAddress } from "@/lib/utils/hash";
 
 describe.sequential("AUDIT_ACTIONS", () => {
   it("defines EMAIL_CHANGED action", () => {

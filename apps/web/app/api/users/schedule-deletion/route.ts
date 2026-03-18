@@ -10,14 +10,14 @@
  */
 import { z } from "zod";
 
+import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/account/deletion-service";
 import { apiRoute } from "@/lib/api";
+import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
-import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/services/account-deletion-service";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import { badRequest, rateLimited } from "@/lib/utils/api-response";
-import { verifyPasswordWithAudit } from "@/lib/utils/auth-helpers";
 
 export const POST = apiRoute({
   auth: "required",

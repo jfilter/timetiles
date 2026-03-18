@@ -9,10 +9,10 @@
  */
 import type { Payload } from "payload";
 
+import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails";
+import { createDataExportService } from "@/lib/export/service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
-import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/services/data-export-emails";
-import { createDataExportService } from "@/lib/services/data-export-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 /** Expiry time in milliseconds (7 days) */

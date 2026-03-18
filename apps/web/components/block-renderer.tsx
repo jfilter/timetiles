@@ -48,6 +48,7 @@ import {
 } from "@timetiles/ui";
 import React from "react";
 
+import { submitNewsletterSubscription } from "@/lib/blocks/newsletter";
 import type {
   Block,
   BlockRendererProps,
@@ -63,7 +64,6 @@ import type {
   TestimonialsBlock,
   TimelineBlock,
 } from "@/lib/types/cms-blocks";
-import { submitNewsletterSubscription } from "@/lib/utils/newsletter";
 
 import { IconMapper } from "./icon-mapper";
 import { RichText } from "./layout/rich-text";

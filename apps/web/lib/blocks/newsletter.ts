@@ -2,7 +2,7 @@
  * Shared newsletter subscription utility.
  *
  * @module
- * @category Utils
+ * @category Blocks
  */
 import { fetchJson } from "@/lib/api/http-error";
 

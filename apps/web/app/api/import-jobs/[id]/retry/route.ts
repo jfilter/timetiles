@@ -14,8 +14,8 @@ import { z } from "zod";
 
 import { apiRoute, safeFindByID } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { ErrorRecoveryService } from "@/lib/import/error-recovery";
 import { logger } from "@/lib/logger";
-import { ErrorRecoveryService } from "@/lib/services/error-recovery";
 import { badRequest } from "@/lib/utils/api-response";
 import type { ImportJob } from "@/payload-types";
 

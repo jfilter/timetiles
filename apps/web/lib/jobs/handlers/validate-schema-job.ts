@@ -17,15 +17,15 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { cleanupSidecarFiles } from "@/lib/import/file-readers";
+import { ProgressTrackingService } from "@/lib/import/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { parseStrictInteger } from "@/lib/utils/event-params";
-import { cleanupSidecarFiles } from "@/lib/utils/file-readers";
 import type { ImportJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";

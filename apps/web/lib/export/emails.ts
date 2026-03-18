@@ -13,8 +13,8 @@ import type { Payload } from "payload";
 import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
+import { safeSendEmail } from "@/lib/email/send";
 import { formatLongDate } from "@/lib/utils/date";
-import { safeSendEmail } from "@/lib/utils/email";
 
 /**
  * Send export ready notification email.

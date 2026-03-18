@@ -15,13 +15,13 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/import/file-readers";
+import { ProgressTrackingService } from "@/lib/import/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService } from "@/lib/services/geocoding";
 import type { GeocodingService } from "@/lib/services/geocoding/geocoding-service";
-import { ProgressTrackingService } from "@/lib/services/progress-tracking";
 import type { ImportGeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
-import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/utils/file-readers";
 import type { ImportJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";

@@ -13,7 +13,7 @@
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from "payload";
 
 import { logError } from "@/lib/logger";
-import { clearSiteCache } from "@/lib/services/site-resolver";
+import { clearSiteCache } from "@/lib/services/resolution/site-resolver";
 import type { Site } from "@/payload-types";
 
 import { createEnforceSingleDefault } from "../shared-hooks";

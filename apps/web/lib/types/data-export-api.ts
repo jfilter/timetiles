@@ -10,7 +10,7 @@
  * @module
  * @category Types
  */
-import type { ExportSummary } from "@/lib/services/data-export-types";
+import type { ExportSummary } from "@/lib/export/types";
 
 /**
  * A single data export record as returned by the API.

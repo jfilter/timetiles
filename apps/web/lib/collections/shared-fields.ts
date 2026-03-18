@@ -16,7 +16,7 @@ import type { Access, CollectionBeforeChangeHook, Field, Where } from "payload";
 
 import type { Config } from "@/payload-types";
 
-import { createSlugHook } from "../utils/slug";
+import { createSlugHook } from "./slug";
 
 // Access control helpers for role-based permissions
 export const isAdmin: Access = ({ req: { user } }) => user?.role === "admin";

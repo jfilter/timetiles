@@ -11,7 +11,7 @@
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
-import { hashEmail, hashIpAddress } from "@/lib/utils/hash";
+import { hashEmail, hashIpAddress } from "@/lib/security/hash";
 import { getByPath } from "@/lib/utils/object-path";
 
 const logger = createLogger("audit-log-service");

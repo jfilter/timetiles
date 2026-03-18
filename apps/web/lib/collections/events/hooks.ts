@@ -10,8 +10,8 @@
  */
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
 
+import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { createQuotaService } from "@/lib/services/quota-service";
-import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/utils/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, Event } from "@/payload-types";
 

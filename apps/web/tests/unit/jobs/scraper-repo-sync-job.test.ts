@@ -10,8 +10,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ParsedScraper } from "@/lib/import/manifest-parser";
 import { scraperRepoSyncJob } from "@/lib/jobs/handlers/scraper-repo-sync-job";
-import type { ParsedScraper } from "@/lib/services/manifest-parser";
 
 // Mock dependencies
 vi.mock("@/lib/logger", () => ({
@@ -32,7 +32,7 @@ vi.mock("node:fs/promises", () => ({
 
 vi.mock("node:os", () => ({ tmpdir: () => "/tmp" }));
 
-vi.mock("@/lib/services/manifest-parser", () => ({ parseManifest: vi.fn() }));
+vi.mock("@/lib/import/manifest-parser", () => ({ parseManifest: vi.fn() }));
 
 describe.sequential("scraperRepoSyncJob", () => {
   let mockPayload: any;
@@ -85,7 +85,7 @@ describe.sequential("scraperRepoSyncJob", () => {
 
     mockPayload.findByID.mockResolvedValue(repo);
 
-    const { parseManifest } = await import("@/lib/services/manifest-parser");
+    const { parseManifest } = await import("@/lib/import/manifest-parser");
     (parseManifest as any).mockReturnValue({
       success: true,
       scrapers: [createParsedScraper({ name: "S1", slug: "s1" })],
@@ -108,7 +108,7 @@ describe.sequential("scraperRepoSyncJob", () => {
 
     mockPayload.findByID.mockResolvedValue(repo);
 
-    const { parseManifest } = await import("@/lib/services/manifest-parser");
+    const { parseManifest } = await import("@/lib/import/manifest-parser");
     (parseManifest as any).mockReturnValue({
       success: true,
       scrapers: [createParsedScraper({ name: "Inline Scraper", slug: "inline-scraper", entrypoint: "run.py" })],
@@ -132,7 +132,7 @@ describe.sequential("scraperRepoSyncJob", () => {
       createParsedScraper({ name: "Scraper B", slug: "scraper-b", entrypoint: "b.py", runtime: "node" }),
     ];
 
-    const { parseManifest } = await import("@/lib/services/manifest-parser");
+    const { parseManifest } = await import("@/lib/import/manifest-parser");
     (parseManifest as any).mockReturnValue({ success: true, scrapers: parsedScrapers });
 
     const context = createMockContext({ scraperRepoId: 5 });
@@ -181,7 +181,7 @@ describe.sequential("scraperRepoSyncJob", () => {
 
     const parsedScrapers = [createParsedScraper({ name: "New Name", slug: "my-scraper", entrypoint: "updated.py" })];
 
-    const { parseManifest } = await import("@/lib/services/manifest-parser");
+    const { parseManifest } = await import("@/lib/import/manifest-parser");
     (parseManifest as any).mockReturnValue({ success: true, scrapers: parsedScrapers });
 
     const context = createMockContext({ scraperRepoId: 5 });
@@ -222,7 +222,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     // Manifest only has keep-this
     const parsedScrapers = [createParsedScraper({ name: "Keep This", slug: "keep-this", entrypoint: "keep.py" })];
 
-    const { parseManifest } = await import("@/lib/services/manifest-parser");
+    const { parseManifest } = await import("@/lib/import/manifest-parser");
     (parseManifest as any).mockReturnValue({ success: true, scrapers: parsedScrapers });
 
     const context = createMockContext({ scraperRepoId: 5 });
@@ -255,7 +255,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     mockPayload.findByID.mockResolvedValue(repo);
     mockPayload.find.mockResolvedValue({ docs: [] });
 
-    const { parseManifest } = await import("@/lib/services/manifest-parser");
+    const { parseManifest } = await import("@/lib/import/manifest-parser");
     (parseManifest as any).mockReturnValue({ success: true, scrapers: [createParsedScraper()] });
 
     const context = createMockContext({ scraperRepoId: 5 });

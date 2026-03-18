@@ -9,14 +9,14 @@
  * @category API Routes
  */
 import { apiRoute, ForbiddenError, ValidationError } from "@/lib/api";
-import { createLogger } from "@/lib/logger";
 import {
   createImportFileRecord,
   createScheduledImport,
   getOrCreateCatalog,
   processSheetMappings,
   rethrowQuotaError,
-} from "@/lib/services/import-configure-service";
+} from "@/lib/import/configure-service";
+import { createLogger } from "@/lib/logger";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 
 import {

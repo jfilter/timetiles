@@ -13,8 +13,8 @@ import { getPayload } from "payload";
 
 import { Link } from "@/i18n/navigation";
 import { ViewProvider } from "@/lib/context/view-context";
-import { resolveSite } from "@/lib/services/site-resolver";
-import { resolveView } from "@/lib/services/view-resolver";
+import { resolveSite } from "@/lib/services/resolution/site-resolver";
+import { resolveView } from "@/lib/services/resolution/view-resolver";
 import config from "@/payload.config";
 
 interface ExploreViewResolverProps {

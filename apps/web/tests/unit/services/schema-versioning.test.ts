@@ -4,7 +4,7 @@
 import type { BasePayload } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SchemaVersioningService } from "@/lib/services/schema-versioning";
+import { SchemaVersioningService } from "@/lib/import/schema-versioning";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
 describe.sequential("SchemaVersioningService", () => {
