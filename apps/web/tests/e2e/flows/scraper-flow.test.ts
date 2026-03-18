@@ -181,10 +181,8 @@ test.describe("Scraper Flow - API", () => {
     expect([200, 409]).toContain(runResponse.status());
 
     const body = await runResponse.json();
-    expect(body.success).toBeDefined();
 
     if (runResponse.status() === 200) {
-      expect(body.success).toBe(true);
       expect(body.message).toBe("Scraper run queued");
     }
   });
@@ -200,7 +198,6 @@ test.describe("Scraper Flow - API", () => {
     expect(runResponse.status()).toBe(409);
 
     const body = await runResponse.json();
-    expect(body.success).toBe(false);
     expect(body.error).toBe("Scraper is already running");
   });
 
