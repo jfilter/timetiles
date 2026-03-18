@@ -73,8 +73,17 @@ export interface AuditLogEntry {
  *
  * This function catches all errors and logs them — it never throws.
  * Audit logging must not prevent the primary operation from completing.
+ *
+ * @param payload - Payload instance
+ * @param entry - Audit log entry data
+ * @param options - Optional configuration
+ * @param options.req - PayloadRequest to participate in an existing transaction
  */
-export const auditLog = async (payload: Payload, entry: AuditLogEntry): Promise<void> => {
+export const auditLog = async (
+  payload: Payload,
+  entry: AuditLogEntry,
+  options?: { req?: { transactionID?: number | string | Promise<number | string>; context?: Record<string, unknown> } }
+): Promise<void> => {
   try {
     await payload.create({
       collection: "audit-log",
@@ -89,6 +98,7 @@ export const auditLog = async (payload: Payload, entry: AuditLogEntry): Promise<
         details: entry.details ?? undefined,
       },
       overrideAccess: true,
+      ...(options?.req && { req: options.req }),
     });
   } catch (error) {
     logger.error({ error, action: entry.action, userId: entry.userId }, "Failed to create audit log entry");

@@ -1,11 +1,16 @@
 /**
  * Service for managing account deletion with grace period support.
  *
+ * The {@link AccountDeletionService.executeDeletion} method wraps all database
+ * operations in a Payload transaction so that partial failures roll back
+ * cleanly. Emails are sent **after** the transaction commits.
+ *
  * @module
  * @category Services
  */
 import { sql } from "@payloadcms/db-postgres";
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
+import { commitTransaction, initTransaction, killTransaction } from "payload";
 
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
@@ -16,6 +21,14 @@ import { AUDIT_ACTIONS, auditLog } from "../services/audit-log-service";
 import { sendDeletionCancelledEmail, sendDeletionCompletedEmail, sendDeletionScheduledEmail } from "./deletion-emails";
 import type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult } from "./deletion-types";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user";
+
+/**
+ * Minimal request object for Payload transaction management.
+ *
+ * Includes `context` because Payload's internal operations destructure
+ * `req.context` in hooks. An empty object is safe and prevents errors.
+ */
+type TransactionReq = Pick<PayloadRequest, "payload" | "transactionID" | "context">;
 
 export type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult };
 
@@ -249,6 +262,13 @@ export class AccountDeletionService {
 
   /**
    * Execute account deletion (called by background job after grace period).
+   *
+   * All database mutations (transfers, deletes, user anonymization, audit log)
+   * are wrapped in a single Payload transaction. If any step fails the entire
+   * operation is rolled back, preventing inconsistent state.
+   *
+   * Emails are sent **after** the transaction commits so that a failed email
+   * does not trigger a rollback of the deletion itself.
    */
   async executeDeletion(
     userId: number,
@@ -262,7 +282,7 @@ export class AccountDeletionService {
       throw new Error(USER_NOT_FOUND);
     }
 
-    // Get system user for public data transfer
+    // Get system user for public data transfer (outside transaction — read-only)
     const systemUserService = createSystemUserService(this.payload);
     const systemUser = await systemUserService.getOrCreateSystemUser();
 
@@ -276,23 +296,43 @@ export class AccountDeletionService {
       dataDeleted: { catalogs: 0, datasets: 0, events: 0, scheduledImports: 0, importFiles: 0 },
     };
 
+    // Create a minimal req object for Payload's transaction utilities.
+    // `context` must be present because Payload operations destructure it in hooks.
+    const req = { payload: this.payload, transactionID: undefined, context: {} } as TransactionReq;
+
     try {
-      // Transfer public data to system user
-      await this.transferPublicData(userId, systemUser.id, user.email, result);
+      // Begin a Payload-managed transaction
+      const ownsTransaction = await initTransaction(req as unknown as PayloadRequest);
 
-      // Delete private data
-      await this.deletePrivateData(userId, result);
+      try {
+        // Transfer public data to system user
+        await this.transferPublicData(userId, systemUser.id, user.email, result, req);
 
-      // Delete user resources (scheduled imports, import files)
-      await this.deleteUserResources(userId, result);
+        // Delete private data
+        await this.deletePrivateData(userId, result, req);
 
-      // Finalize user deletion and create audit log
-      await this.finalizeAndAudit(userId, user, deletedBy, deletionType, ipAddress, result);
+        // Delete user resources (scheduled imports, import files)
+        await this.deleteUserResources(userId, result, req);
+
+        // Finalize user deletion and create audit log
+        await this.finalizeAndAudit(userId, user, deletedBy, deletionType, ipAddress, result, req);
+
+        // Commit the transaction (only if we own it)
+        if (ownsTransaction) {
+          await commitTransaction(req as unknown as PayloadRequest);
+        }
+      } catch (error) {
+        // Roll back on any failure
+        if (ownsTransaction) {
+          await killTransaction(req as unknown as PayloadRequest);
+        }
+        throw error;
+      }
 
       result.success = true;
       logger.info({ userId, result }, "Account deletion completed");
 
-      // Send completion email — best-effort, deletion already succeeded
+      // Send completion email AFTER commit — best-effort, deletion already succeeded
       try {
         await sendDeletionCompletedEmail(
           this.payload,
@@ -308,7 +348,7 @@ export class AccountDeletionService {
 
       return result;
     } catch (error) {
-      logError(error, "Account deletion failed", { userId });
+      logError(error, "Account deletion failed — transaction rolled back", { userId });
       throw error;
     }
   }
@@ -320,7 +360,8 @@ export class AccountDeletionService {
     userId: number,
     systemUserId: number,
     userEmail: string,
-    result: ExecuteDeletionResult
+    result: ExecuteDeletionResult,
+    req: TransactionReq
   ): Promise<void> {
     const isPublicFilter = [{ isPublic: { equals: true } }];
 
@@ -333,13 +374,18 @@ export class AccountDeletionService {
         id: catalog.id,
         data: { createdBy: systemUserId },
         overrideAccess: true,
+        req,
       });
-      await auditLog(this.payload, {
-        action: AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED,
-        userId,
-        userEmail,
-        details: { catalogId: catalog.id, reason: "account_deletion", newOwnerId: systemUserId },
-      });
+      await auditLog(
+        this.payload,
+        {
+          action: AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED,
+          userId,
+          userEmail,
+          details: { catalogId: catalog.id, reason: "account_deletion", newOwnerId: systemUserId },
+        },
+        { req }
+      );
       result.dataTransferred.catalogs++;
     }
 
@@ -352,13 +398,18 @@ export class AccountDeletionService {
         id: dataset.id,
         data: { createdBy: systemUserId },
         overrideAccess: true,
+        req,
       });
-      await auditLog(this.payload, {
-        action: AUDIT_ACTIONS.DATASET_OWNERSHIP_TRANSFERRED,
-        userId,
-        userEmail,
-        details: { datasetId: dataset.id, reason: "account_deletion", newOwnerId: systemUserId },
-      });
+      await auditLog(
+        this.payload,
+        {
+          action: AUDIT_ACTIONS.DATASET_OWNERSHIP_TRANSFERRED,
+          userId,
+          userEmail,
+          details: { datasetId: dataset.id, reason: "account_deletion", newOwnerId: systemUserId },
+        },
+        { req }
+      );
       result.dataTransferred.datasets++;
     }
   }
@@ -366,7 +417,7 @@ export class AccountDeletionService {
   /**
    * Delete private datasets, events, and catalogs.
    */
-  private async deletePrivateData(userId: number, result: ExecuteDeletionResult): Promise<void> {
+  private async deletePrivateData(userId: number, result: ExecuteDeletionResult, req: TransactionReq): Promise<void> {
     const isPrivateFilter = [{ isPublic: { equals: false } }];
 
     // Delete private datasets and their events
@@ -379,15 +430,16 @@ export class AccountDeletionService {
         where: { dataset: { equals: dataset.id } },
         pagination: false,
         overrideAccess: true,
+        req,
       });
 
       for (const event of events.docs) {
-        await this.payload.delete({ collection: "events", id: event.id, overrideAccess: true });
+        await this.payload.delete({ collection: "events", id: event.id, overrideAccess: true, req });
         result.dataDeleted.events++;
       }
 
       // Delete the dataset
-      await this.payload.delete({ collection: "datasets", id: dataset.id, overrideAccess: true });
+      await this.payload.delete({ collection: "datasets", id: dataset.id, overrideAccess: true, req });
       result.dataDeleted.datasets++;
     }
 
@@ -395,7 +447,7 @@ export class AccountDeletionService {
     const privateCatalogs = await findUserDocs(this.payload, "catalogs", userId, { extraWhere: isPrivateFilter });
 
     for (const catalog of privateCatalogs) {
-      await this.payload.delete({ collection: "catalogs", id: catalog.id, overrideAccess: true });
+      await this.payload.delete({ collection: "catalogs", id: catalog.id, overrideAccess: true, req });
       result.dataDeleted.catalogs++;
     }
   }
@@ -403,12 +455,12 @@ export class AccountDeletionService {
   /**
    * Delete scheduled imports and import files.
    */
-  private async deleteUserResources(userId: number, result: ExecuteDeletionResult): Promise<void> {
+  private async deleteUserResources(userId: number, result: ExecuteDeletionResult, req: TransactionReq): Promise<void> {
     // Delete scheduled imports
     const scheduledImports = await findUserDocs(this.payload, "scheduled-imports", userId);
 
     for (const schedule of scheduledImports) {
-      await this.payload.delete({ collection: "scheduled-imports", id: schedule.id, overrideAccess: true });
+      await this.payload.delete({ collection: "scheduled-imports", id: schedule.id, overrideAccess: true, req });
       result.dataDeleted.scheduledImports++;
     }
 
@@ -416,7 +468,7 @@ export class AccountDeletionService {
     const importFiles = await findUserDocs(this.payload, "import-files", userId, { userField: "user" });
 
     for (const file of importFiles) {
-      await this.payload.delete({ collection: "import-files", id: file.id, overrideAccess: true });
+      await this.payload.delete({ collection: "import-files", id: file.id, overrideAccess: true, req });
       result.dataDeleted.importFiles++;
     }
 
@@ -426,10 +478,11 @@ export class AccountDeletionService {
       where: { createdBy: { equals: userId } },
       pagination: false,
       overrideAccess: true,
+      req,
     });
 
     for (const view of views.docs) {
-      await this.payload.delete({ collection: "views", id: view.id, overrideAccess: true });
+      await this.payload.delete({ collection: "views", id: view.id, overrideAccess: true, req });
     }
 
     if (views.docs.length > 0) {
@@ -442,10 +495,11 @@ export class AccountDeletionService {
       where: { user: { equals: userId } },
       pagination: false,
       overrideAccess: true,
+      req,
     });
 
     for (const exportRecord of dataExports.docs) {
-      await this.payload.delete({ collection: "data-exports", id: exportRecord.id, overrideAccess: true });
+      await this.payload.delete({ collection: "data-exports", id: exportRecord.id, overrideAccess: true, req });
     }
 
     if (dataExports.docs.length > 0) {
@@ -462,7 +516,8 @@ export class AccountDeletionService {
     deletedBy: number | undefined,
     deletionType: "self" | "admin" | "scheduled",
     ipAddress: string | undefined,
-    result: ExecuteDeletionResult
+    result: ExecuteDeletionResult,
+    req: TransactionReq
   ): Promise<void> {
     // Clear user PII and mark as deleted
     await this.payload.update({
@@ -476,38 +531,68 @@ export class AccountDeletionService {
         isActive: false,
       },
       overrideAccess: true,
+      req,
     });
 
     // Invalidate all sessions
-    await this.invalidateAllSessions(userId);
+    await this.invalidateAllSessions(userId, req);
 
     // Create audit log entry
-    await auditLog(this.payload, {
-      action: AUDIT_ACTIONS.DELETION_EXECUTED,
-      userId,
-      userEmail: user.email,
-      performedBy: deletedBy,
-      ipAddress,
-      details: {
-        deletionType,
-        deletionRequestedAt: user.deletionRequestedAt ?? undefined,
-        dataTransferred: result.dataTransferred,
-        dataDeleted: result.dataDeleted,
+    await auditLog(
+      this.payload,
+      {
+        action: AUDIT_ACTIONS.DELETION_EXECUTED,
+        userId,
+        userEmail: user.email,
+        performedBy: deletedBy,
+        ipAddress,
+        details: {
+          deletionType,
+          deletionRequestedAt: user.deletionRequestedAt ?? undefined,
+          dataTransferred: result.dataTransferred,
+          dataDeleted: result.dataDeleted,
+        },
       },
-    });
+      { req }
+    );
   }
 
   /**
    * Invalidate all sessions for a user.
+   *
+   * Uses the transaction-aware drizzle instance when a transaction is active,
+   * so session deletion is rolled back together with other operations on failure.
    */
-  private async invalidateAllSessions(userId: number): Promise<void> {
+  private async invalidateAllSessions(userId: number, req?: TransactionReq): Promise<void> {
     try {
-      await this.payload.db.drizzle.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${userId}`);
+      const drizzle = await this.getTransactionAwareDrizzle(req);
+      await drizzle.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${userId}`);
       logger.debug({ userId }, "All user sessions invalidated");
     } catch (error) {
       logError(error, "Failed to invalidate sessions", { userId });
       // Don't throw - session invalidation failure shouldn't block deletion
     }
+  }
+
+  /**
+   * Get the transaction-aware drizzle instance.
+   *
+   * When called with a `req` that has a `transactionID`, returns the drizzle
+   * client bound to that transaction. Otherwise returns the default drizzle client.
+   */
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Payload's internal session/drizzle types aren't publicly exported
+  private async getTransactionAwareDrizzle(req?: TransactionReq): Promise<any> {
+    const db = this.payload.db;
+    if (req?.transactionID && "sessions" in db) {
+      const sessions = (db as unknown as Record<string, unknown>).sessions as
+        | Record<string, { db: unknown } | undefined>
+        | undefined;
+      if (sessions) {
+        const transactionID = req.transactionID instanceof Promise ? await req.transactionID : req.transactionID;
+        return sessions[String(transactionID)]?.db ?? db.drizzle;
+      }
+    }
+    return db.drizzle;
   }
 
   /**

@@ -13,7 +13,7 @@
  * @module
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccountDeletionService } from "@/lib/account/deletion-service";
 import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/account/deletion-service";
@@ -351,6 +351,93 @@ describe.sequential("Account Deletion Service", () => {
       expect(auditLogs.docs[0].userId).toBe(users.testUser.id);
       expect(auditLogs.docs[0].userEmailHash).toBeDefined();
       expect((auditLogs.docs[0].details as Record<string, unknown>).deletionType).toBe("scheduled");
+    });
+
+    it("should roll back all changes when an error occurs mid-deletion", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+
+      // Create public catalog (should be transferred, then rolled back)
+      const publicCatalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Public Catalog", isPublic: true },
+        user: users.testUser,
+      });
+
+      // Create private catalog (should be deleted, then rolled back)
+      const privateCatalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Private Catalog", isPublic: false },
+        user: users.testUser,
+      });
+
+      // Create private dataset (should be deleted, then rolled back)
+      const privateDataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Private Dataset", catalog: privateCatalog.id, isPublic: false, language: "eng" },
+        user: users.testUser,
+      });
+
+      // Intercept payload.update to throw during user anonymization (the last update in the flow)
+      const originalUpdate = payload.update.bind(payload);
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- mock must return Promise to match payload.update signature
+      const updateSpy = vi.spyOn(payload, "update").mockImplementation((args: any) => {
+        if (args.collection === "users" && args.data?.deletionStatus === "deleted") {
+          return Promise.reject(new Error("Simulated database failure during user anonymization"));
+        }
+        return originalUpdate(args) as Promise<any>;
+      });
+
+      try {
+        await expect(deletionService.executeDeletion(users.testUser.id)).rejects.toThrow(
+          "Simulated database failure during user anonymization"
+        );
+      } finally {
+        updateSpy.mockRestore();
+      }
+
+      // Verify public catalog ownership was NOT transferred (rolled back)
+      const catalogAfter = await payload.findByID({
+        collection: "catalogs",
+        id: publicCatalog.id,
+        overrideAccess: true,
+      });
+      const catalogOwner = extractRelationId(catalogAfter.createdBy);
+      expect(catalogOwner).toBe(users.testUser.id);
+
+      // Verify private catalog still exists (deletion was rolled back)
+      const privateCatalogAfter = await payload.findByID({
+        collection: "catalogs",
+        id: privateCatalog.id,
+        overrideAccess: true,
+      });
+      expect(privateCatalogAfter).toBeDefined();
+      expect(privateCatalogAfter.name).toBe("Private Catalog");
+
+      // Verify private dataset still exists (deletion was rolled back)
+      const privateDatasetAfter = await payload.findByID({
+        collection: "datasets",
+        id: privateDataset.id,
+        overrideAccess: true,
+      });
+      expect(privateDatasetAfter).toBeDefined();
+      expect(privateDatasetAfter.name).toBe("Private Dataset");
+
+      // Verify user was NOT anonymized (rolled back)
+      const userAfter = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
+      expect(userAfter.deletionStatus).not.toBe("deleted");
+      expect(userAfter.email).toBe(users.testUser.email);
+      expect(userAfter.isActive).toBe(true);
+
+      // Verify no deletion_executed audit log (error happened before this step)
+      const auditLogs = await payload.find({
+        collection: "audit-log",
+        where: {
+          and: [{ userId: { equals: users.testUser.id } }, { action: { equals: "account.deletion_executed" } }],
+        },
+        overrideAccess: true,
+      });
+      expect(auditLogs.docs).toHaveLength(0);
     });
   });
 
