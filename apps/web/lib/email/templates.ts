@@ -8,6 +8,7 @@
  * @category Email
  */
 
+import type { EmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 
 import { emailButton, emailLayout, greeting } from "./layout";
@@ -15,8 +16,12 @@ import { emailButton, emailLayout, greeting } from "./layout";
 /**
  * Notification sent to the **old** email address after an email change.
  */
-export const buildOldEmailNotificationHtml = (firstName: string, locale?: string | null): string => {
-  const t = getEmailTranslations(locale);
+export const buildOldEmailNotificationHtml = (
+  firstName: string,
+  locale?: string | null,
+  branding?: EmailBranding
+): string => {
+  const t = getEmailTranslations(locale, branding ? { siteName: branding.siteName } : undefined);
 
   return emailLayout(
     `
@@ -25,15 +30,21 @@ export const buildOldEmailNotificationHtml = (firstName: string, locale?: string
     <p>${t("emailChangedBody")}</p>
     <p>${t("emailChangedWarning")}</p>
   `,
-    t
+    t,
+    branding?.logoUrl
   );
 };
 
 /**
  * Verification email sent to the **new** email address after an email change.
  */
-export const buildVerificationEmailHtml = (verifyUrl: string, firstName: string, locale?: string | null): string => {
-  const t = getEmailTranslations(locale);
+export const buildVerificationEmailHtml = (
+  verifyUrl: string,
+  firstName: string,
+  locale?: string | null,
+  branding?: EmailBranding
+): string => {
+  const t = getEmailTranslations(locale, branding ? { siteName: branding.siteName } : undefined);
 
   return emailLayout(
     `
@@ -45,7 +56,8 @@ export const buildVerificationEmailHtml = (verifyUrl: string, firstName: string,
     <p><a href="${verifyUrl}">${verifyUrl}</a></p>
     <p>${t("emailVerifyWarning")}</p>
   `,
-    t
+    t,
+    branding?.logoUrl
   );
 };
 
@@ -53,8 +65,12 @@ export const buildVerificationEmailHtml = (verifyUrl: string, firstName: string,
  * Notification sent when someone attempts to register with an email
  * that already has an account (anti-enumeration measure).
  */
-export const generateAccountExistsEmailHTML = (resetUrl: string, locale?: string | null): string => {
-  const t = getEmailTranslations(locale);
+export const generateAccountExistsEmailHTML = (
+  resetUrl: string,
+  locale?: string | null,
+  branding?: EmailBranding
+): string => {
+  const t = getEmailTranslations(locale, branding ? { siteName: branding.siteName } : undefined);
 
   return emailLayout(
     `
@@ -74,6 +90,7 @@ export const generateAccountExistsEmailHTML = (resetUrl: string, locale?: string
       ${t("footer")}
     </p>
   `,
-    t
+    t,
+    branding?.logoUrl
   );
 };

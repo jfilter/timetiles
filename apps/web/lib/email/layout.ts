@@ -36,16 +36,18 @@ export const callout = (content: string, color: "red" | "green" | "amber" | "gra
 };
 
 /**
- * Wrap email body content in the standard HTML layout with translated footer.
+ * Wrap email body content in the standard HTML layout with logo header and translated footer.
  *
  * @param body - Inner HTML content (everything between the body tags)
  * @param t - Email translation function
+ * @param logoUrl - Optional absolute URL to the site logo
  * @returns Complete HTML document string
  */
-export const emailLayout = (body: string, t: EmailTranslator): string =>
+export const emailLayout = (body: string, t: EmailTranslator, logoUrl?: string | null): string =>
   `<!DOCTYPE html>
 <html>
   <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    ${logoUrl ? `<img src="${logoUrl}" alt="" width="40" height="40" style="display: block; margin-bottom: 16px;">` : ""}
     ${body}
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     <p style="color: #999; font-size: 12px;">

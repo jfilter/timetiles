@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
     login: vi.fn(),
     find: vi.fn(),
     findByID: vi.fn(),
+    findGlobal: vi.fn().mockResolvedValue({ siteName: "TimeTiles", logoLight: null }),
     update: vi.fn(),
     create: vi.fn(),
     sendEmail: vi.fn().mockResolvedValue(undefined),

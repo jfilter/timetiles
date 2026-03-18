@@ -14,6 +14,7 @@ import type { Payload } from "payload";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
+import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
@@ -47,21 +48,26 @@ const updateEmailAndNotify = async (
   const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
   const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
   const firstName = user.firstName ?? "";
-  const t = getEmailTranslations(user.locale);
+  const branding = await getEmailBranding(payload);
+  const t = getEmailTranslations(user.locale, { siteName: branding.siteName });
 
   await safeSendEmail(
     payload,
     {
       to: newEmail,
       subject: t("emailVerifySubject"),
-      html: buildVerificationEmailHtml(verifyUrl, firstName, user.locale),
+      html: buildVerificationEmailHtml(verifyUrl, firstName, user.locale, branding),
     },
     "Failed to send verification email after email change"
   );
 
   await safeSendEmail(
     payload,
-    { to: user.email, subject: t("emailChangedSubject"), html: buildOldEmailNotificationHtml(firstName, user.locale) },
+    {
+      to: user.email,
+      subject: t("emailChangedSubject"),
+      html: buildOldEmailNotificationHtml(firstName, user.locale, branding),
+    },
     "Failed to send notification to old email after email change"
   );
 

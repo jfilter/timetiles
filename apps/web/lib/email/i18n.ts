@@ -27,19 +27,23 @@ const messages: Record<string, Record<EmailKey, string>> = { en, de };
  *
  * @example
  * ```typescript
- * const t = getEmailTranslations("de");
+ * const t = getEmailTranslations("de", { siteName: "TimeTiles" });
  * t("greeting", { name: "Max" }); // "Hallo Max,"
- * t("footer"); // "Dies ist eine automatische Nachricht..."
+ * t("footer"); // "Dies ist eine automatische Nachricht von TimeTiles..."
  * ```
  */
-export const getEmailTranslations = (locale?: string | null): EmailTranslator => {
+export const getEmailTranslations = (
+  locale?: string | null,
+  defaults?: Record<string, string | number>
+): EmailTranslator => {
   const resolved = locale && locale in messages ? locale : DEFAULT_LOCALE;
   const msgs = messages[resolved]!;
 
   return (key, params) => {
     let text: string = msgs[key];
-    if (params) {
-      for (const [k, v] of Object.entries(params)) {
+    const merged = (defaults ?? params) ? { ...defaults, ...params } : undefined;
+    if (merged) {
+      for (const [k, v] of Object.entries(merged)) {
         text = text.replaceAll(`{${k}}`, String(v));
       }
     }

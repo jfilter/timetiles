@@ -11,6 +11,7 @@
  */
 import type { Payload } from "payload";
 
+import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { formatLongDate } from "@/lib/utils/date";
@@ -27,7 +28,8 @@ export const sendDeletionScheduledEmail = async (
   cancelUrl: string,
   locale?: string | null
 ): Promise<void> => {
-  const t = getEmailTranslations(locale);
+  const branding = await getEmailBranding(payload);
+  const t = getEmailTranslations(locale, { siteName: branding.siteName });
   const formattedDate = formatLongDate(deletionScheduledAt);
 
   const html = emailLayout(
@@ -54,7 +56,8 @@ export const sendDeletionScheduledEmail = async (
     </p>
 
   `,
-    t
+    t,
+    branding.logoUrl
   );
 
   await safeSendEmail(payload, { to: email, subject: t("deletionScheduledSubject"), html }, "deletion-scheduled-email");
@@ -69,7 +72,8 @@ export const sendDeletionCancelledEmail = async (
   firstName: string | null | undefined,
   locale?: string | null
 ): Promise<void> => {
-  const t = getEmailTranslations(locale);
+  const branding = await getEmailBranding(payload);
+  const t = getEmailTranslations(locale, { siteName: branding.siteName });
 
   const html = emailLayout(
     `
@@ -86,7 +90,8 @@ export const sendDeletionCancelledEmail = async (
     </ul>
 
   `,
-    t
+    t,
+    branding.logoUrl
   );
 
   await safeSendEmail(payload, { to: email, subject: t("deletionCancelledSubject"), html }, "deletion-cancelled-email");
@@ -103,7 +108,8 @@ export const sendDeletionCompletedEmail = async (
   dataDeleted: { catalogs: number; datasets: number; events: number },
   locale?: string | null
 ): Promise<void> => {
-  const t = getEmailTranslations(locale);
+  const branding = await getEmailBranding(payload);
+  const t = getEmailTranslations(locale, { siteName: branding.siteName });
 
   const html = emailLayout(
     `
@@ -141,7 +147,8 @@ export const sendDeletionCompletedEmail = async (
     <p>${t("deletionCompletedThanks")}</p>
 
   `,
-    t
+    t,
+    branding.logoUrl
   );
 
   await safeSendEmail(payload, { to: email, subject: t("deletionCompletedSubject"), html }, "deletion-completed-email");

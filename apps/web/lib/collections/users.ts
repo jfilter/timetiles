@@ -21,6 +21,7 @@ import {
   TRUST_LEVEL_LABELS,
   TRUST_LEVELS,
 } from "@/lib/constants/quota-constants";
+import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
@@ -59,11 +60,13 @@ const Users: CollectionConfig = {
     // hook for verifyEmail). Tokens remain valid until used. To add expiry, a custom
     // API route wrapping /api/users/verify/:token would be needed.
     verify: {
-      generateEmailHTML: (args) => {
+      generateEmailHTML: async (args) => {
         const token = args?.token ?? "";
         const user = args?.user;
         const firstName = user?.firstName ?? "";
-        const t = getEmailTranslations(user?.locale);
+        const payload = args?.req?.payload;
+        const branding = payload ? await getEmailBranding(payload) : { siteName: "TimeTiles", logoUrl: null };
+        const t = getEmailTranslations(user?.locale, { siteName: branding.siteName });
         const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
         const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
         return emailLayout(
@@ -76,21 +79,24 @@ const Users: CollectionConfig = {
           <p><a href="${verifyUrl}">${verifyUrl}</a></p>
           <p>${t("verifyAccountIgnore")}</p>
         `,
-          t
+          t,
+          branding.logoUrl
         );
       },
       generateEmailSubject: (args) => {
-        const t = getEmailTranslations(args?.user?.locale);
+        const t = getEmailTranslations(args?.user?.locale, { siteName: "TimeTiles" });
         return t("verifyAccountSubject");
       },
     },
     // Configure forgot password emails
     forgotPassword: {
-      generateEmailHTML: (args) => {
+      generateEmailHTML: async (args) => {
         const token = args?.token ?? "";
         const user = args?.user;
         const firstName = user?.firstName ?? "";
-        const t = getEmailTranslations(user?.locale);
+        const payload = args?.req?.payload;
+        const branding = payload ? await getEmailBranding(payload) : { siteName: "TimeTiles", logoUrl: null };
+        const t = getEmailTranslations(user?.locale, { siteName: branding.siteName });
         const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
         const resetUrl = `${baseUrl}/reset-password?token=${token}`;
         return emailLayout(
@@ -104,11 +110,12 @@ const Users: CollectionConfig = {
           <p>${t("resetPasswordExpiry")}</p>
           <p>${t("resetPasswordIgnore")}</p>
         `,
-          t
+          t,
+          branding.logoUrl
         );
       },
       generateEmailSubject: (args) => {
-        const t = getEmailTranslations(args?.user?.locale);
+        const t = getEmailTranslations(args?.user?.locale, { siteName: "TimeTiles" });
         return t("resetPasswordSubject");
       },
     },

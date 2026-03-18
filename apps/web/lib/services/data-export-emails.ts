@@ -10,6 +10,7 @@
  */
 import type { Payload } from "payload";
 
+import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { formatLongDate } from "@/lib/utils/date";
@@ -27,7 +28,8 @@ export const sendExportReadyEmail = async (
   fileSizeMB: number,
   locale?: string | null
 ): Promise<void> => {
-  const t = getEmailTranslations(locale);
+  const branding = await getEmailBranding(payload);
+  const t = getEmailTranslations(locale, { siteName: branding.siteName });
   const formattedDate = formatLongDate(expiresAt, true);
   const settingsUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
 
@@ -78,7 +80,8 @@ export const sendExportReadyEmail = async (
       ${t("exportReadySecurityWarning")}
     </p>
   `,
-    t
+    t,
+    branding.logoUrl
   );
 
   await safeSendEmail(payload, { to: email, subject: t("exportReadySubject"), html }, "export-ready-email");
@@ -94,7 +97,8 @@ export const sendExportFailedEmail = async (
   errorReason?: string,
   locale?: string | null
 ): Promise<void> => {
-  const t = getEmailTranslations(locale);
+  const branding = await getEmailBranding(payload);
+  const t = getEmailTranslations(locale, { siteName: branding.siteName });
   const settingsUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
 
   const html = emailLayout(
@@ -126,7 +130,8 @@ export const sendExportFailedEmail = async (
     <p>${t("exportFailedApology")}</p>
 
   `,
-    t
+    t,
+    branding.logoUrl
   );
 
   await safeSendEmail(payload, { to: email, subject: t("exportFailedSubject"), html }, "export-failed-email");

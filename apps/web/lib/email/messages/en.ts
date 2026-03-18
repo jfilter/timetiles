@@ -7,7 +7,7 @@
 /* eslint-disable sonarjs/no-hardcoded-passwords -- translation keys referencing "password" are not credentials */
 const en = {
   // Shared layout
-  footer: "This is an automated message from TimeTiles. If you have questions, please contact support.",
+  footer: "This is an automated message from {siteName}. If you have questions, please contact support.",
   greeting: "Hello {name},",
   greetingAnonymous: "Hello,",
   orCopyLink: "Or copy and paste this link into your browser:",
@@ -20,36 +20,36 @@ const en = {
   tryAgainBtn: "Try Again",
 
   // Verify account (Payload auth)
-  verifyAccountSubject: "Verify your TimeTiles account",
-  verifyAccountTitle: "Verify your TimeTiles account",
+  verifyAccountSubject: "Verify your {siteName} account",
+  verifyAccountTitle: "Verify your {siteName} account",
   verifyAccountBody:
-    "Thank you for registering with TimeTiles. Please verify your email address by clicking the link below:",
+    "Thank you for registering with {siteName}. Please verify your email address by clicking the link below:",
   verifyAccountIgnore: "If you didn't create an account, you can safely ignore this email.",
 
   // Reset password (Payload auth)
-  resetPasswordSubject: "Reset your TimeTiles password",
+  resetPasswordSubject: "Reset your {siteName} password",
   resetPasswordTitle: "Reset your password",
   resetPasswordBody: "You requested to reset your password. Click the link below to set a new password:",
   resetPasswordExpiry: "This link will expire in 1 hour.",
   resetPasswordIgnore: "If you didn't request a password reset, you can safely ignore this email.",
 
   // Email changed — old address notification
-  emailChangedSubject: "Your TimeTiles email address was changed",
+  emailChangedSubject: "Your {siteName} email address was changed",
   emailChangedTitle: "Your email address was changed",
-  emailChangedBody: "The email address associated with your TimeTiles account was recently changed.",
+  emailChangedBody: "The email address associated with your {siteName} account was recently changed.",
   emailChangedWarning: "If you did not make this change, please contact support immediately to secure your account.",
 
   // Email changed — new address verification
-  emailVerifySubject: "Verify your new TimeTiles email address",
+  emailVerifySubject: "Verify your new {siteName} email address",
   emailVerifyTitle: "Verify your new email address",
   emailVerifyBody:
-    "You recently changed your email address on TimeTiles. Please verify your new email address by clicking the link below:",
+    "You recently changed your email address on {siteName}. Please verify your new email address by clicking the link below:",
   emailVerifyWarning: "If you didn't change your email, please contact support immediately.",
 
   // Account exists (anti-enumeration)
-  accountExistsSubject: "TimeTiles - Account Registration Attempt",
+  accountExistsSubject: "{siteName} - Account Registration Attempt",
   accountExistsTitle: "Account Registration Attempt",
-  accountExistsBody: "Someone (possibly you) tried to create a TimeTiles account with this email address.",
+  accountExistsBody: "Someone (possibly you) tried to create a {siteName} account with this email address.",
   accountExistsExplain: "Since you already have an account, no new account was created.",
   accountExistsIfYou: "If this was you:",
   accountExistsForgot: "You may have forgotten you already have an account",
@@ -58,9 +58,9 @@ const en = {
   accountExistsIgnore: "You can safely ignore this email. Your account is secure and no changes were made.",
 
   // Deletion scheduled
-  deletionScheduledSubject: "Your TimeTiles account deletion is scheduled",
+  deletionScheduledSubject: "Your {siteName} account deletion is scheduled",
   deletionScheduledTitle: "Account Deletion Scheduled",
-  deletionScheduledBody: "Your TimeTiles account deletion has been scheduled.",
+  deletionScheduledBody: "Your {siteName} account deletion has been scheduled.",
   deletionScheduledDate: "Deletion Date:",
   deletionScheduledNext: "What happens next?",
   deletionScheduledPublic: "Public data will be transferred to the system and remain accessible",
@@ -71,9 +71,9 @@ const en = {
   deletionScheduledLink: "Or visit your account settings:",
 
   // Deletion cancelled
-  deletionCancelledSubject: "Your TimeTiles account deletion has been cancelled",
+  deletionCancelledSubject: "Your {siteName} account deletion has been cancelled",
   deletionCancelledTitle: "Account Deletion Cancelled",
-  deletionCancelledBody: "Good news! Your TimeTiles account deletion has been cancelled.",
+  deletionCancelledBody: "Good news! Your {siteName} account deletion has been cancelled.",
   deletionCancelledActive: "Your account is now <strong>active</strong> and all your data is safe.",
   deletionCancelledWarning:
     "If you didn't cancel this deletion, someone may have access to your account. We recommend:",
@@ -81,9 +81,9 @@ const en = {
   deletionCancelledReviewActivity: "Reviewing your recent account activity",
 
   // Deletion completed
-  deletionCompletedSubject: "Your TimeTiles account has been deleted",
-  deletionCompletedTitle: "Your TimeTiles Account Has Been Deleted",
-  deletionCompletedBody: "Your TimeTiles account has been permanently deleted as scheduled.",
+  deletionCompletedSubject: "Your {siteName} account has been deleted",
+  deletionCompletedTitle: "Your {siteName} Account Has Been Deleted",
+  deletionCompletedBody: "Your {siteName} account has been permanently deleted as scheduled.",
   deletionCompletedSummary: "Summary of Changes",
   deletionCompletedTransferred: "Public Data Transferred",
   deletionCompletedTransferredNote: "This data remains publicly accessible.",
@@ -95,12 +95,12 @@ const en = {
   deletionCompletedPrivateCatalogs: "{count} private catalog(s)",
   deletionCompletedPrivateDatasets: "{count} private dataset(s)",
   deletionCompletedThanks:
-    "Thank you for using TimeTiles. If you have any questions about your data, please contact support within 30 days.",
+    "Thank you for using {siteName}. If you have any questions about your data, please contact support within 30 days.",
 
   // Export ready
-  exportReadySubject: "Your TimeTiles data export is ready",
+  exportReadySubject: "Your {siteName} data export is ready",
   exportReadyTitle: "Your Data Export is Ready",
-  exportReadyBody: "Good news! Your TimeTiles data export has been completed and is ready for download.",
+  exportReadyBody: "Good news! Your {siteName} data export has been completed and is ready for download.",
   exportReadyDetails: "Export Details",
   exportReadySize: "Size:",
   exportReadyExpires: "Expires:",
@@ -118,7 +118,7 @@ const en = {
     "If you didn't request this export, please secure your account by changing your password.",
 
   // Export failed
-  exportFailedSubject: "Your TimeTiles data export could not be completed",
+  exportFailedSubject: "Your {siteName} data export could not be completed",
   exportFailedTitle: "Data Export Failed",
   exportFailedBody:
     "Unfortunately, we couldn't complete your data export. This may be due to a temporary technical issue.",

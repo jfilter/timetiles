@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { generateAccountExistsEmailHTML } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
@@ -60,14 +61,15 @@ export const POST = apiRoute({
       // Generate password reset URL so user can recover their account
       const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
       const resetUrl = `${baseUrl}/forgot-password`;
-      const t = getEmailTranslations(existingUserDoc?.locale);
+      const branding = await getEmailBranding(payload);
+      const t = getEmailTranslations(existingUserDoc?.locale, { siteName: branding.siteName });
 
       await safeSendEmail(
         payload,
         {
           to: normalizedEmail,
           subject: t("accountExistsSubject"),
-          html: generateAccountExistsEmailHTML(resetUrl, existingUserDoc?.locale),
+          html: generateAccountExistsEmailHTML(resetUrl, existingUserDoc?.locale, branding),
         },
         `Failed to send account exists email to: ${maskEmail(normalizedEmail)}`
       );
