@@ -16,12 +16,67 @@ import type { CollectionBeforeChangeHook } from "payload";
 import { calculateNextCronRun } from "@/lib/import/cron-parser";
 import { logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import { getDatePartsInTimezone, wallClockToUtc } from "@/lib/utils/timezone";
+
+/**
+ * Calculate the next frequency-based run in a specific timezone.
+ *
+ * Determines the next run boundary (next hour, next midnight, next Sunday, etc.)
+ * in the user's timezone, then converts that wall-clock time back to UTC.
+ */
+const calculateNextFrequencyInTimezone = (frequency: string, now: Date, timezone: string): Date => {
+  const local = getDatePartsInTimezone(now, timezone);
+
+  switch (frequency) {
+    case "hourly": {
+      let result = wallClockToUtc(local.year, local.month, local.day, local.hour + 1, 0, timezone);
+      while (result <= now) {
+        result = new Date(result.getTime() + 60 * 60 * 1000);
+      }
+      return result;
+    }
+    case "daily": {
+      let result = wallClockToUtc(local.year, local.month, local.day + 1, 0, 0, timezone);
+      while (result <= now) {
+        result = new Date(result.getTime() + 24 * 60 * 60 * 1000);
+      }
+      return result;
+    }
+    case "weekly": {
+      const daysUntilSunday = 7 - local.dayOfWeek || 7;
+      let result = wallClockToUtc(local.year, local.month, local.day + daysUntilSunday, 0, 0, timezone);
+      while (result <= now) {
+        result = new Date(result.getTime() + 7 * 24 * 60 * 60 * 1000);
+      }
+      return result;
+    }
+    case "monthly": {
+      const nextMonth = local.month + 1;
+      let result = wallClockToUtc(local.year, nextMonth, 1, 0, 0, timezone);
+      while (result <= now) {
+        const advParts = getDatePartsInTimezone(result, timezone);
+        result = wallClockToUtc(advParts.year, advParts.month + 1, 1, 0, 0, timezone);
+      }
+      return result;
+    }
+    default:
+      throw new Error(`Invalid frequency: ${frequency}`);
+  }
+};
 
 /**
  * Calculates the next run time based on frequency.
+ *
+ * When a timezone is provided, "daily at midnight" means midnight in that
+ * timezone rather than midnight UTC. The returned Date is always a UTC instant.
  */
-const calculateNextRunByFrequency = (frequency: string, fromDate?: Date): Date => {
+const calculateNextRunByFrequency = (frequency: string, fromDate?: Date, timezone?: string): Date => {
   const now = fromDate ?? new Date();
+
+  if (timezone && timezone !== "UTC") {
+    return calculateNextFrequencyInTimezone(frequency, now, timezone);
+  }
+
   const next = new Date(now);
   next.setUTCSeconds(0);
   next.setUTCMilliseconds(0);
@@ -72,16 +127,20 @@ const handleWebhookToken = (data: Record<string, unknown>, originalDoc?: Record<
 
 /**
  * Handle schedule initialization and statistics.
+ *
+ * Uses the timezone field (defaulting to UTC) for both frequency and cron calculations.
  */
 const handleScheduleInitialization = (data: Record<string, unknown>, operation: string): void => {
   if ((operation === "create" || (operation === "update" && data.enabled)) && (data.cronExpression ?? data.frequency)) {
+    const timezone = (data.timezone as string | undefined) ?? "UTC";
+
     // Calculate initial nextRun based on frequency or cron
     if (!data.nextRun && data.frequency) {
-      data.nextRun = calculateNextRunByFrequency(data.frequency as string);
+      data.nextRun = calculateNextRunByFrequency(data.frequency as string, undefined, timezone);
     }
 
     if (!data.nextRun && data.cronExpression) {
-      const nextRun = calculateNextCronRun(data.cronExpression as string);
+      const nextRun = calculateNextCronRun(data.cronExpression as string, undefined, timezone);
       if (nextRun) {
         data.nextRun = nextRun.toISOString();
       } else {

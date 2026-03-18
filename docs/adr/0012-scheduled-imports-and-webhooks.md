@@ -19,11 +19,27 @@ Each scheduled import (`scheduled-imports` collection) uses one of two schedule 
 | Frequency | `frequency`      | `hourly`, `daily`, `weekly`, `monthly` | Run daily at midnight UTC     |
 | Cron      | `cronExpression` | Standard 5-field cron                  | `0 */6 * * *` (every 6 hours) |
 
-Source: `lib/collections/scheduled-imports/fields/schedule-fields.ts`
+Source: `lib/collections/scheduled-imports/fields/core-fields.ts`
 
 The `scheduleType` select field determines which is active. A `beforeChange` hook clears the unused field when the type changes.
 
 Source: `lib/collections/scheduled-imports/hooks.ts` (`clearScheduleTypeFields`)
+
+### Timezone Support
+
+Each scheduled import has an optional `timezone` field (IANA timezone identifier, e.g., `"Europe/Berlin"`, `"America/New_York"`). It defaults to `"UTC"` for backward compatibility.
+
+When a timezone is set:
+
+- **Cron expressions** are evaluated against wall-clock time in that timezone. For example, `0 8 * * *` with timezone `"Europe/Berlin"` fires at 08:00 Berlin time, which is 07:00 UTC in winter (CET) and 06:00 UTC in summer (CEST).
+- **Frequency schedules** use timezone-local boundaries. "Daily" means midnight in the configured timezone, "weekly" means Sunday midnight in that timezone, etc.
+- **DST transitions** are handled automatically. The UTC instant of the next run shifts when the timezone's offset changes (e.g., spring forward / fall back).
+
+The timezone is validated on save using `Intl.DateTimeFormat`, which throws for invalid identifiers. No external timezone library is required.
+
+Implementation uses `Intl.DateTimeFormat.formatToParts()` to decompose a UTC instant into wall-clock components in the target timezone, and a reverse conversion (`wallClockToUtc`) to compute the UTC instant for a desired wall-clock time. For the cron matching hot loop, a single `Intl.DateTimeFormat` instance is created and reused across all iterations to avoid per-call construction overhead.
+
+Source: `lib/utils/timezone.ts`, `lib/import/cron-parser.ts` (`matchesCronDate`, `calculateNextCronRun`), `lib/jobs/handlers/schedule-manager-job.ts` (`getNextExecutionTime`), `lib/collections/scheduled-imports/hooks.ts` (`handleScheduleInitialization`)
 
 ### Feature Flag Gates
 
@@ -167,3 +183,5 @@ Source: `lib/collections/scheduled-imports/index.ts` (hooks), `lib/jobs/handlers
 - SSRF prevention via `isPrivateUrl()` uses hostname pattern matching only. It does not perform DNS resolution, so it cannot catch DNS rebinding attacks where a public hostname resolves to a private IP. This is an accepted trade-off to avoid blocking I/O in the validation path.
 - Credential encryption uses a static salt with `scrypt` key derivation. This is acceptable because `PAYLOAD_SECRET` is already high-entropy, but rotating the secret requires re-encrypting all stored credentials.
 - Content-hash deduplication only checks against completed imports in the same catalog. Cross-catalog deduplication is not supported.
+- Timezone support relies on the built-in `Intl.DateTimeFormat` API. The IANA timezone database is bundled with the Node.js runtime (via ICU), so timezone data updates come with Node.js version upgrades. There is no separate timezone data dependency to maintain.
+- The cron matching loop iterates minute-by-minute in UTC and converts each candidate to the target timezone. For non-UTC timezones this is slower than UTC-only matching due to `Intl.DateTimeFormat.formatToParts()` calls, but the formatter is reused across iterations to keep overhead manageable. In practice, most cron expressions match within a few hundred iterations (the maximum is ~525,600 for a full year scan).

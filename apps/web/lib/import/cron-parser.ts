@@ -5,9 +5,15 @@
  * Supports standard 5-field cron syntax with common patterns like daily,
  * weekly, and monthly schedules. Used by the scheduled import system.
  *
+ * All functions default to UTC when no timezone is specified (backward compatible).
+ * When a timezone is provided, cron fields are matched against wall-clock time
+ * in that timezone rather than UTC.
+ *
  * @module
  * @category Utilities
  */
+
+import { createTimezoneFormatter, getDatePartsWithFormatter } from "@/lib/utils/timezone";
 
 export interface CronParts {
   minute: string;
@@ -183,14 +189,40 @@ export const matchesCronField = (field: string, value: number): boolean => {
 
 /**
  * Test if a date matches a cron expression's parts.
+ *
+ * When a timezone formatter is provided, the cron fields are matched against
+ * wall-clock time in that timezone. Pass `undefined` or omit for UTC (backward compatible).
+ *
+ * Accepts an Intl.DateTimeFormat for performance in tight loops; use
+ * {@link createTimezoneFormatter} from `@/lib/utils/timezone` to create one.
  */
-export const matchesCronDate = (date: Date, parts: CronParts): boolean => {
-  if (!matchesCronField(parts.minute, date.getUTCMinutes())) return false;
-  if (!matchesCronField(parts.hour, date.getUTCHours())) return false;
-  if (!matchesCronField(parts.month, date.getUTCMonth() + 1)) return false;
+export const matchesCronDate = (date: Date, parts: CronParts, tzFormatter?: Intl.DateTimeFormat): boolean => {
+  let minute: number;
+  let hour: number;
+  let month: number;
+  let dayOfMonthValue: number;
+  let dayOfWeek: number;
 
-  const dayOfMonthMatches = matchesCronField(parts.dayOfMonth, date.getUTCDate());
-  const dayOfWeek = date.getUTCDay();
+  if (tzFormatter) {
+    const tz = getDatePartsWithFormatter(date, tzFormatter);
+    minute = tz.minute;
+    hour = tz.hour;
+    month = tz.month;
+    dayOfMonthValue = tz.day;
+    dayOfWeek = tz.dayOfWeek;
+  } else {
+    minute = date.getUTCMinutes();
+    hour = date.getUTCHours();
+    month = date.getUTCMonth() + 1;
+    dayOfMonthValue = date.getUTCDate();
+    dayOfWeek = date.getUTCDay();
+  }
+
+  if (!matchesCronField(parts.minute, minute)) return false;
+  if (!matchesCronField(parts.hour, hour)) return false;
+  if (!matchesCronField(parts.month, month)) return false;
+
+  const dayOfMonthMatches = matchesCronField(parts.dayOfMonth, dayOfMonthValue);
   const dayOfWeekMatches =
     parts.dayOfWeek === "*" ||
     matchesCronField(parts.dayOfWeek, dayOfWeek) ||
@@ -207,17 +239,23 @@ export const matchesCronDate = (date: Date, parts: CronParts): boolean => {
 /**
  * Calculate the next time a cron expression matches after fromDate.
  * Returns null if no match found within ~1 year.
+ *
+ * When timezone is provided, cron fields are matched against wall-clock time
+ * in that timezone. The returned Date is always a UTC Date object.
  */
-export const calculateNextCronRun = (cronExpression: string, fromDate?: Date): Date | null => {
+export const calculateNextCronRun = (cronExpression: string, fromDate?: Date, timezone?: string): Date | null => {
   const parts = parseCronExpression(cronExpression);
   const next = new Date(fromDate ?? new Date());
   next.setUTCSeconds(0);
   next.setUTCMilliseconds(0);
   next.setUTCMinutes(next.getUTCMinutes() + 1);
 
+  // Create formatter once for the entire search (avoids O(n) Intl construction)
+  const tzFormatter = timezone && timezone !== "UTC" ? createTimezoneFormatter(timezone) : undefined;
+
   const maxIterations = 366 * 24 * 60;
   for (let i = 0; i < maxIterations; i++) {
-    if (matchesCronDate(next, parts)) {
+    if (matchesCronDate(next, parts, tzFormatter)) {
       return next;
     }
     next.setUTCMinutes(next.getUTCMinutes() + 1);

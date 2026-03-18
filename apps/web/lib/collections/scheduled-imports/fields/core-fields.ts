@@ -10,6 +10,8 @@
 
 import type { Field } from "payload";
 
+import { isValidTimezone } from "@/lib/utils/timezone";
+
 import { createCreatedByField } from "../../shared-fields";
 import { validateUrl } from "../validation";
 
@@ -132,6 +134,23 @@ const scheduleFields: Field[] = [
     admin: {
       condition: (data) => data?.scheduleType === "cron",
       description: "Cron expression (e.g., '0 */6 * * *' for every 6 hours)",
+    },
+  },
+  {
+    name: "timezone",
+    type: "text",
+    defaultValue: "UTC",
+    validate: (val: string | null | undefined): string | true => {
+      if (!val || val === "UTC") return true;
+      if (!isValidTimezone(val)) {
+        return `The following field is invalid: Timezone - "${val}" is not a valid IANA timezone (e.g., "Europe/Berlin", "America/New_York")`;
+      }
+      return true;
+    },
+    admin: {
+      description:
+        'IANA timezone for schedule evaluation (e.g., "Europe/Berlin", "America/New_York"). ' +
+        "Cron expressions and frequency schedules are interpreted in this timezone. Defaults to UTC.",
     },
   },
   {

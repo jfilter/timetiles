@@ -1433,6 +1433,10 @@ export interface ScheduledImport {
    */
   cronExpression?: string | null;
   /**
+   * IANA timezone for schedule evaluation (e.g., "Europe/Berlin", "America/New_York"). Cron expressions and frequency schedules are interpreted in this timezone. Defaults to UTC.
+   */
+  timezone?: string | null;
+  /**
    * Template for generated import names. Available variables: {{name}}, {{date}}, {{time}}, {{url}}
    */
   importNameTemplate?: string | null;
@@ -4184,6 +4188,7 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   scheduleType?: T;
   frequency?: T;
   cronExpression?: T;
+  timezone?: T;
   importNameTemplate?: T;
   schemaMode?: T;
   sourceImportFile?: T;

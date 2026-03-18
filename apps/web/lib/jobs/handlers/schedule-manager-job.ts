@@ -17,6 +17,7 @@ import { triggerScheduledImport } from "@/lib/import/trigger-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
+import { getDatePartsInTimezone, wallClockToUtc } from "@/lib/utils/timezone";
 import type { ScheduledImport, Scraper } from "@/payload-types";
 
 // Unused but kept for future expansion
@@ -25,10 +26,20 @@ import type { ScheduledImport, Scraper } from "@/payload-types";
 // }
 
 /**
- * Gets the next execution time based on frequency (UTC).
+ * Gets the next execution time based on frequency.
+ *
+ * When a timezone is provided, schedule boundaries (midnight, start of week, etc.)
+ * are computed in that timezone. The returned Date is always a UTC instant.
+ * Defaults to UTC for backward compatibility.
  */
-const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => {
+const getNextFrequencyExecution = (frequency: string, fromDate?: Date, timezone?: string): Date => {
   const now = fromDate ?? new Date();
+  const tz = timezone ?? "UTC";
+
+  if (tz !== "UTC") {
+    return getNextFrequencyInTimezone(frequency, now, tz);
+  }
+
   const next = new Date(now);
   next.setUTCSeconds(0);
   next.setUTCMilliseconds(0);
@@ -87,13 +98,59 @@ const getNextFrequencyExecution = (frequency: string, fromDate?: Date): Date => 
 };
 
 /**
- * Gets the next execution time based on schedule type (UTC).
+ * Calculate the next frequency-based execution in a specific timezone.
+ */
+const getNextFrequencyInTimezone = (frequency: string, now: Date, timezone: string): Date => {
+  const local = getDatePartsInTimezone(now, timezone);
+
+  switch (frequency) {
+    case "hourly": {
+      let result = wallClockToUtc(local.year, local.month, local.day, local.hour + 1, 0, timezone);
+      while (result <= now) {
+        result = new Date(result.getTime() + 60 * 60 * 1000);
+      }
+      return result;
+    }
+    case "daily": {
+      let result = wallClockToUtc(local.year, local.month, local.day + 1, 0, 0, timezone);
+      while (result <= now) {
+        result = new Date(result.getTime() + 24 * 60 * 60 * 1000);
+      }
+      return result;
+    }
+    case "weekly": {
+      const daysUntilSunday = 7 - local.dayOfWeek || 7;
+      let result = wallClockToUtc(local.year, local.month, local.day + daysUntilSunday, 0, 0, timezone);
+      while (result <= now) {
+        result = new Date(result.getTime() + 7 * 24 * 60 * 60 * 1000);
+      }
+      return result;
+    }
+    case "monthly": {
+      let result = wallClockToUtc(local.year, local.month + 1, 1, 0, 0, timezone);
+      while (result <= now) {
+        const advParts = getDatePartsInTimezone(result, timezone);
+        result = wallClockToUtc(advParts.year, advParts.month + 1, 1, 0, 0, timezone);
+      }
+      return result;
+    }
+    default:
+      throw new Error(`Invalid frequency: ${frequency}`);
+  }
+};
+
+/**
+ * Gets the next execution time based on schedule type.
+ *
+ * Respects the timezone field on the scheduled import. Defaults to UTC.
  */
 const getNextExecutionTime = (scheduledImport: ScheduledImport, fromDate?: Date): Date => {
+  const timezone = scheduledImport.timezone ?? "UTC";
+
   if (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) {
-    return getNextFrequencyExecution(scheduledImport.frequency, fromDate);
+    return getNextFrequencyExecution(scheduledImport.frequency, fromDate, timezone);
   } else if (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression) {
-    const nextRun = calculateNextCronRun(scheduledImport.cronExpression, fromDate);
+    const nextRun = calculateNextCronRun(scheduledImport.cronExpression, fromDate, timezone);
     if (!nextRun) {
       throw new Error(`Unable to calculate next run for cron expression: ${scheduledImport.cronExpression}`);
     }
