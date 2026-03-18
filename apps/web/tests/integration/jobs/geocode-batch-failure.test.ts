@@ -175,7 +175,7 @@ Event 3,2024-01-03,Hamburg Germany
       additionalData: { originalName: "geocode-partial-test.csv" },
     });
 
-    const stageResult = await runJobsUntilImportJobStage(
+    await runJobsUntilImportJobStage(
       payload,
       importFile.id,
       (importJob) => importJob.stage === "failed" || importJob.stage === "completed",
