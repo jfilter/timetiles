@@ -11,6 +11,7 @@
 
 import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -39,6 +40,8 @@ export const EventsListPaginated = ({
   dateRangeLabel,
   onEventClick,
 }: Readonly<EventsListPaginatedProps>) => {
+  const t = useTranslations("Explore");
+  const tCommon = useTranslations("Common");
   const scope = useViewScope();
 
   const { events, total, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, isError, error } =
@@ -76,8 +79,8 @@ export const EventsListPaginated = ({
     return (
       <ContentState
         variant="error"
-        title="Failed to load events"
-        subtitle={error?.message ?? "Something went wrong"}
+        title={t("failedToLoadEvents")}
+        subtitle={error?.message ?? tCommon("error")}
         height={256}
       />
     );
@@ -87,7 +90,7 @@ export const EventsListPaginated = ({
   if (events.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground">No events found</div>
+        <div className="text-muted-foreground">{tCommon("noEventsFound")}</div>
       </div>
     );
   }
@@ -109,10 +112,10 @@ export const EventsListPaginated = ({
             {isFetchingNextPage ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
+                {tCommon("loading")}
               </>
             ) : (
-              "Load More"
+              tCommon("loadMore")
             )}
           </Button>
         </div>
@@ -120,7 +123,7 @@ export const EventsListPaginated = ({
 
       {/* End of list indicator */}
       {!hasNextPage && events.length > 0 && (
-        <div className="text-muted-foreground py-4 text-center text-sm">All {total} events loaded</div>
+        <div className="text-muted-foreground py-4 text-center text-sm">{t("allEventsLoaded", { count: total })}</div>
       )}
     </div>
   );

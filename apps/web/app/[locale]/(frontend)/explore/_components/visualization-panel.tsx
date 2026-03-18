@@ -12,6 +12,7 @@
 
 import { Card, CardContent, CardHeader } from "@timetiles/ui/components/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
+import { useTranslations } from "next-intl";
 
 export type ChartType = "histogram" | "dataset-bar" | "catalog-bar";
 
@@ -21,11 +22,10 @@ export interface ChartMeta {
   subtitle: string;
 }
 
-/** Labels for each chart type in the dropdown */
-const CHART_TYPE_LABELS: Record<ChartType, string> = {
-  histogram: "Timeline",
-  "dataset-bar": "By Dataset",
-  "catalog-bar": "By Catalog",
+/** Get labels for each chart type in the dropdown using translations */
+const useChartTypeLabels = (): Record<ChartType, string> => {
+  const t = useTranslations("Explore");
+  return { histogram: t("timeline"), "dataset-bar": t("byDataset"), "catalog-bar": t("byCatalog") };
 };
 
 interface VisualizationPanelProps {
@@ -63,6 +63,7 @@ export const VisualizationPanel = ({
   availableChartTypes = ALL_CHART_TYPES,
   fillHeight = false,
 }: Readonly<VisualizationPanelProps>) => {
+  const chartTypeLabels = useChartTypeLabels();
   const handleValueChange = (value: string) => onChartTypeChange(value as ChartType);
 
   // Only show dropdown if there are multiple options
@@ -95,7 +96,7 @@ export const VisualizationPanel = ({
             <SelectContent>
               {availableChartTypes.map((type) => (
                 <SelectItem key={type} value={type}>
-                  {CHART_TYPE_LABELS[type]}
+                  {chartTypeLabels[type]}
                 </SelectItem>
               ))}
             </SelectContent>

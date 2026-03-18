@@ -11,6 +11,8 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
 import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date";
@@ -57,6 +59,9 @@ export const TimeRangeSlider = ({
   onStartDateChange,
   onEndDateChange,
 }: Readonly<TimeRangeSliderProps>) => {
+  const t = useTranslations("Explore");
+  const tCommon = useTranslations("Common");
+
   const {
     trackRef,
     histogramRef,
@@ -87,7 +92,7 @@ export const TimeRangeSlider = ({
   if (isLoading) {
     return (
       <div className="flex h-24 items-center justify-center">
-        <span className="text-muted-foreground font-mono text-xs">Loading timeline...</span>
+        <span className="text-muted-foreground font-mono text-xs">{t("loadingTimeline")}</span>
       </div>
     );
   }
@@ -96,7 +101,7 @@ export const TimeRangeSlider = ({
   if (histogram.length === 0) {
     return (
       <div className="flex h-24 items-center justify-center">
-        <span className="text-muted-foreground font-mono text-xs">No events to display</span>
+        <span className="text-muted-foreground font-mono text-xs">{t("noEventsToDisplay")}</span>
       </div>
     );
   }
@@ -217,7 +222,7 @@ export const TimeRangeSlider = ({
               onClick={handleCloseEditMode}
               className="text-cartographic-navy/60 hover:text-cartographic-navy dark:text-cartographic-charcoal/60 dark:hover:text-cartographic-charcoal w-full text-center text-xs"
             >
-              Done
+              {tCommon("done")}
             </button>
           </div>
         ) : (

@@ -11,6 +11,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { LoginForm } from "./login-form";
@@ -26,6 +27,8 @@ export interface AuthTabsProps {
 }
 
 export const AuthTabs = ({ defaultTab = "signin", onSuccess, className }: Readonly<AuthTabsProps>) => {
+  const t = useTranslations("Auth");
+  const tCommon = useTranslations("Common");
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   const handleTabChange = (value: string) => {
@@ -45,19 +48,19 @@ export const AuthTabs = ({ defaultTab = "signin", onSuccess, className }: Readon
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="w-full">
           <TabsTrigger value="signin" className="flex-1">
-            Sign In
+            {tCommon("signIn")}
           </TabsTrigger>
           <TabsTrigger value="signup" className="flex-1">
-            Sign Up
+            {tCommon("signUp")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="signin">
           <LoginForm onSuccess={onSuccess} />
           <p className="text-muted-foreground mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
+            {t("noAccount")}{" "}
             <button type="button" className="text-primary hover:underline" onClick={handleSwitchToSignup}>
-              Sign up
+              {tCommon("signUp")}
             </button>
           </p>
         </TabsContent>
@@ -65,9 +68,9 @@ export const AuthTabs = ({ defaultTab = "signin", onSuccess, className }: Readon
         <TabsContent value="signup">
           <RegisterForm onSuccess={onSuccess} />
           <p className="text-muted-foreground mt-4 text-center text-sm">
-            Already have an account?{" "}
+            {t("hasAccount")}{" "}
             <button type="button" className="text-primary hover:underline" onClick={handleSwitchToSignin}>
-              Sign in
+              {tCommon("signIn")}
             </button>
           </p>
         </TabsContent>

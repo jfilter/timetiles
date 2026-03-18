@@ -14,12 +14,14 @@ import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { LayoutList, Map } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 interface ViewToggleProps {
   currentView: "map" | "list";
 }
 
 export const ViewToggle = ({ currentView }: ViewToggleProps) => {
+  const t = useTranslations("Explore");
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -51,7 +53,7 @@ export const ViewToggle = ({ currentView }: ViewToggleProps) => {
         className={cn("h-8 gap-2", currentView === "map" && "shadow-sm")}
       >
         <Map className="h-4 w-4" />
-        <span className="hidden sm:inline">Map</span>
+        <span className="hidden sm:inline">{t("map")}</span>
       </Button>
       <Button
         variant={currentView === "list" ? "default" : "ghost"}
@@ -60,7 +62,7 @@ export const ViewToggle = ({ currentView }: ViewToggleProps) => {
         className={cn("h-8 gap-2", currentView === "list" && "shadow-sm")}
       >
         <LayoutList className="h-4 w-4" />
-        <span className="hidden sm:inline">List</span>
+        <span className="hidden sm:inline">{t("list")}</span>
       </Button>
     </div>
   );

@@ -12,6 +12,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { getDatasetColors } from "@/lib/constants/dataset-colors";
@@ -143,28 +144,34 @@ const ExpandCollapseButton = ({
   isExpanded: boolean;
   collapsedLabel: string;
   onToggle: () => void;
-}) => (
-  <button
-    type="button"
-    onClick={onToggle}
-    className="text-cartographic-blue hover:text-cartographic-blue/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
-  >
-    {isExpanded ? (
-      <>
-        <ChevronUp className="h-3 w-3" />
-        Show less
-      </>
-    ) : (
-      <>
-        <ChevronDown className="h-3 w-3" />
-        {collapsedLabel}
-      </>
-    )}
-  </button>
-);
+}) => {
+  const tCommon = useTranslations("Common");
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="text-cartographic-blue hover:text-cartographic-blue/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
+    >
+      {isExpanded ? (
+        <>
+          <ChevronUp className="h-3 w-3" />
+          {tCommon("showLess")}
+        </>
+      ) : (
+        <>
+          <ChevronDown className="h-3 w-3" />
+          {collapsedLabel}
+        </>
+      )}
+    </button>
+  );
+};
 
 /* oxlint-disable-next-line eslint(complexity) -- Inline handlers after React Compiler migration increase reported complexity */
 export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset }: DataSourceSelectorProps) => {
+  const t = useTranslations("Filters");
+  const tCommon = useTranslations("Common");
   const { filters, toggleCatalog, toggleDataset } = useFilters();
   const [catalogsExpanded, setCatalogsExpanded] = useState(false);
   const [datasetsExpanded, setDatasetsExpanded] = useState(false);
@@ -228,7 +235,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
     <div className="space-y-4">
       {/* Catalog Selection */}
       <div>
-        <div className="text-cartographic-navy/60 mb-2 font-mono text-xs tracking-wider uppercase">Catalogs</div>
+        <div className="text-cartographic-navy/60 mb-2 font-mono text-xs tracking-wider uppercase">{t("catalogs")}</div>
 
         {/* Grid layout for catalogs - flows left-to-right so top items stay visible when collapsed */}
         <div
@@ -253,7 +260,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
         {useCatalogCollapse && (
           <ExpandCollapseButton
             isExpanded={catalogsExpanded}
-            collapsedLabel={`Show all (${hiddenCatalogCount} more)`}
+            collapsedLabel={tCommon("showAll", { count: hiddenCatalogCount })}
             onToggle={handleToggleCatalogsExpanded}
           />
         )}
@@ -264,7 +271,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
         <div className="border-cartographic-navy/10 border-t pt-4">
           <div className="text-cartographic-navy/60 mb-2 flex items-center justify-between font-mono text-xs tracking-wider uppercase">
             <span>
-              Datasets
+              {t("datasets")}
               {activeDatasetCount < filteredDatasets.length && (
                 <span className="text-cartographic-terracotta ml-1">
                   ({activeDatasetCount}/{filteredDatasets.length} active)
@@ -274,7 +281,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
           </div>
 
           {filteredDatasets.length === 0 ? (
-            <p className="text-cartographic-navy/50 text-sm">No datasets available</p>
+            <p className="text-cartographic-navy/50 text-sm">{t("noDatasets")}</p>
           ) : (
             <>
               <div className="flex flex-wrap gap-2">
@@ -300,7 +307,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
               {useDatasetCollapse && (
                 <ExpandCollapseButton
                   isExpanded={datasetsExpanded}
-                  collapsedLabel="Show all datasets"
+                  collapsedLabel={tCommon("showAllDatasets")}
                   onToggle={handleToggleDatasetsExpanded}
                 />
               )}

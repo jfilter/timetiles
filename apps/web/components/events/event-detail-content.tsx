@@ -14,6 +14,7 @@
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, ExternalLink, MapPin, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
@@ -60,6 +61,9 @@ export const EventDetailContent = ({
   error,
   onRetry,
 }: EventDetailContentProps) => {
+  const t = useTranslations("Events");
+  const tCommon = useTranslations("Common");
+
   // Get additional data fields (excluding known fields)
   const knownFields = new Set(["title", "name", "description", "startDate", "endDate", "city", "country", "id"]);
 
@@ -108,12 +112,18 @@ export const EventDetailContent = ({
           {variant === "modal" && (
             <>
               <Button variant="ghost" size="icon" className="hover:bg-muted" asChild>
-                <Link href={`/events/${event.id}`} target="_blank" aria-label="Open in new tab">
+                <Link href={`/events/${event.id}`} target="_blank" aria-label={t("openInNewTab")}>
                   <ExternalLink className="h-5 w-5" />
                 </Link>
               </Button>
               {onClose && (
-                <Button variant="ghost" size="icon" className="hover:bg-muted" onClick={onClose} aria-label="Close">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-muted"
+                  onClick={onClose}
+                  aria-label={tCommon("close")}
+                >
                   <X className="h-5 w-5" />
                 </Button>
               )}
@@ -148,7 +158,7 @@ export const EventDetailContent = ({
         <div className="flex flex-wrap gap-2">
           {hasCoordinates && (
             <FieldBox
-              label="Coordinates"
+              label={t("coordinates")}
               value={`${event.location!.latitude!.toFixed(4)}, ${event.location!.longitude!.toFixed(4)}`}
               mono
             />
@@ -158,13 +168,13 @@ export const EventDetailContent = ({
           {event.geocodingInfo && event.geocodingInfo.geocodingStatus !== "pending" && (
             <>
               {event.geocodingInfo.provider && (
-                <FieldBox label="Geocoding" value={event.geocodingInfo.provider} capitalize />
+                <FieldBox label={t("geocoding")} value={event.geocodingInfo.provider} capitalize />
               )}
               {event.geocodingInfo.confidence != null && (
-                <FieldBox label="Confidence" value={`${(event.geocodingInfo.confidence * 100).toFixed(0)}%`} />
+                <FieldBox label={t("confidence")} value={`${(event.geocodingInfo.confidence * 100).toFixed(0)}%`} />
               )}
               <FieldBox
-                label="Status"
+                label={t("status")}
                 value={event.geocodingInfo.geocodingStatus ?? "unknown"}
                 capitalize
                 status={event.geocodingInfo.geocodingStatus as "success" | "failed" | "pending"}
@@ -172,7 +182,7 @@ export const EventDetailContent = ({
             </>
           )}
 
-          {event.eventTimestamp && <FieldBox label="Event Date" value={formatDate(event.eventTimestamp)} />}
+          {event.eventTimestamp && <FieldBox label={t("eventDate")} value={formatDate(event.eventTimestamp)} />}
 
           {/* Additional Data Fields */}
           {additionalFields.map(([key, value]) => (

@@ -8,7 +8,7 @@
  * @category Pages
  */
 import { headers as nextHeaders } from "next/headers";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { redirect } from "@/i18n/navigation";
@@ -32,9 +32,11 @@ export default async function AccountSettingsPage() {
     return redirect({ href: "/login?redirect=/account/settings", locale });
   }
 
+  const t = await getTranslations("Account");
+
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-8 text-2xl font-bold">Account Settings</h1>
+      <h1 className="mb-8 text-2xl font-bold">{t("settings")}</h1>
 
       <AccountSettingsClient user={user} />
     </div>

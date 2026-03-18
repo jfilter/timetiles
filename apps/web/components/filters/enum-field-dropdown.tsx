@@ -20,6 +20,7 @@ import {
 } from "@timetiles/ui/components/dropdown-menu";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ChevronDown, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface EnumValue {
   value: string;
@@ -74,6 +75,7 @@ const EnumCheckboxItem = ({ value, count, percent, checked, onToggle, onPreventS
  * Shows value counts and allows clearing all selections.
  */
 export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionChange }: EnumFieldDropdownProps) => {
+  const t = useTranslations("Common");
   const hasSelection = selectedValues.length > 0;
 
   const handleToggle = (value: string) => {
@@ -112,7 +114,9 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
               hasSelection ? "border-cartographic-blue/30 text-foreground" : "border-input text-muted-foreground"
             )}
           >
-            <span className="truncate">{hasSelection ? `${selectedValues.length} selected` : "Any"}</span>
+            <span className="truncate">
+              {hasSelection ? t("selected", { count: selectedValues.length }) : t("any")}
+            </span>
             <div className="flex items-center gap-1">
               {hasSelection && (
                 <button
@@ -140,7 +144,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
                 onClick={handleClear}
                 className="text-cartographic-terracotta text-xs hover:underline"
               >
-                Clear
+                {t("clear")}
               </button>
             )}
           </DropdownMenuLabel>
@@ -160,7 +164,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
             <>
               <DropdownMenuSeparator />
               <div className="text-muted-foreground px-2 py-1 text-center text-xs">
-                {values.length - displayValues.length} more values not shown
+                {t("moreValues", { count: values.length - displayValues.length })}
               </div>
             </>
           )}

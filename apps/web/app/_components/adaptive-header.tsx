@@ -24,6 +24,7 @@ import {
   MobileNavDrawerTrigger,
 } from "@timetiles/ui";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import React from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -78,6 +79,7 @@ export const AdaptiveHeader = ({
   user = null,
 }: Readonly<AdaptiveHeaderProps>) => {
   const pathname = usePathname();
+  const t = useTranslations("Common");
   const isExplorePage = pathname === "/explore" || pathname === "/explore/list";
   const currentView: "map" | "list" = pathname === "/explore/list" ? "list" : "map";
   const { resolvedTheme } = useTheme();
@@ -134,13 +136,13 @@ export const AdaptiveHeader = ({
 
             {/* Auth link for mobile */}
             <MobileNavDrawerLink active={pathname === "/login"} asChild>
-              <Link href={user ? "/dashboard" : "/login"}>{user ? "Dashboard" : "Sign In"}</Link>
+              <Link href={user ? "/dashboard" : "/login"}>{user ? t("dashboard") : t("signIn")}</Link>
             </MobileNavDrawerLink>
 
             {/* Theme toggle in drawer */}
             <div className="flex items-center justify-between px-6 py-4">
               <span className="text-cartographic-charcoal dark:text-cartographic-charcoal font-serif text-lg">
-                Theme
+                {t("theme")}
               </span>
               <ThemeToggle />
             </div>

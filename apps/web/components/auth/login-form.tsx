@@ -11,6 +11,7 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
+import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { loginRequest } from "@/lib/hooks/use-auth-mutations";
@@ -27,6 +28,8 @@ export interface LoginFormProps {
 }
 
 export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormProps>) => {
+  const t = useTranslations("Auth");
+  const tCommon = useTranslations("Common");
   const [email, handleEmailChange] = useInputState();
   const [password, handlePasswordChange] = useInputState();
   const { error, isLoading, mutate } = useFormMutation({
@@ -46,13 +49,13 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
       <div className="space-y-2">
-        <Label htmlFor="login-email">Email</Label>
+        <Label htmlFor="login-email">{t("emailLabel")}</Label>
         <Input
           id="login-email"
           type="email"
           value={email}
           onChange={handleEmailChange}
-          placeholder="you@example.com"
+          placeholder={t("emailPlaceholder")}
           disabled={isLoading}
           required
           autoComplete="email"
@@ -60,13 +63,13 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="login-password">Password</Label>
+        <Label htmlFor="login-password">{t("passwordLabel")}</Label>
         <Input
           id="login-password"
           type="password"
           value={password}
           onChange={handlePasswordChange}
-          placeholder="Enter your password"
+          placeholder={t("passwordPlaceholder")}
           disabled={isLoading}
           required
           autoComplete="current-password"
@@ -80,12 +83,12 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
       )}
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Signing in..." : "Sign In"}
+        {isLoading ? t("signingIn") : tCommon("signIn")}
       </Button>
 
       <div className="text-center">
         <Link href="/forgot-password" className="text-primary text-sm hover:underline">
-          Forgot your password?
+          {t("forgotPassword")}
         </Link>
       </div>
     </form>

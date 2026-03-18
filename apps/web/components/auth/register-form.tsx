@@ -17,6 +17,7 @@
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Lock, Mail } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { validatePasswords } from "@/lib/constants/validation";
 import { registerRequest } from "@/lib/hooks/use-auth-mutations";
@@ -34,6 +35,8 @@ export interface RegisterFormProps {
 }
 
 export const RegisterForm = ({ onSuccess, onError, className }: Readonly<RegisterFormProps>) => {
+  const t = useTranslations("Auth");
+  const tCommon = useTranslations("Common");
   const { isEnabled: registrationEnabled, isLoading: flagsLoading } = useFeatureEnabled("enableRegistration");
   const [email, handleEmailChange] = useInputState();
   const [password, handlePasswordChange] = useInputState();
@@ -60,7 +63,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   if (flagsLoading) {
     return (
       <div className={cn("flex items-center justify-center py-8", className)}>
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{tCommon("loading")}</div>
       </div>
     );
   }
@@ -71,10 +74,8 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
       <div className={cn("space-y-4 text-center", className)}>
         <div className="bg-muted/50 border-border rounded-sm border p-6">
           <Lock className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
-          <h3 className="text-lg font-semibold">Registration Unavailable</h3>
-          <p className="text-muted-foreground mt-2 text-sm">
-            New account registration is currently disabled. Please contact an administrator if you need access.
-          </p>
+          <h3 className="text-lg font-semibold">{t("registrationUnavailable")}</h3>
+          <p className="text-muted-foreground mt-2 text-sm">{t("registrationDisabled")}</p>
         </div>
       </div>
     );
@@ -86,10 +87,9 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
       <div className={cn("space-y-4 text-center", className)}>
         <div className="bg-primary/10 border-primary/20 rounded-sm border p-6">
           <Mail className="text-primary mx-auto mb-4 h-12 w-12" />
-          <h3 className="text-lg font-semibold">Check your email</h3>
+          <h3 className="text-lg font-semibold">{t("checkYourEmail")}</h3>
           <p className="text-muted-foreground mt-2 text-sm">
-            We&apos;ve sent a verification link to <strong>{email}</strong>. Please click the link to verify your
-            account before signing in.
+            {t.rich("verificationSent", { email, strong: (chunks) => <strong>{chunks}</strong> })}
           </p>
         </div>
       </div>
@@ -99,13 +99,13 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
       <div className="space-y-2">
-        <Label htmlFor="register-email">Email</Label>
+        <Label htmlFor="register-email">{t("emailLabel")}</Label>
         <Input
           id="register-email"
           type="email"
           value={email}
           onChange={handleEmailChange}
-          placeholder="you@example.com"
+          placeholder={t("registerEmailPlaceholder")}
           disabled={isLoading}
           required
           autoComplete="email"
@@ -113,13 +113,13 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="register-password">Password</Label>
+        <Label htmlFor="register-password">{t("passwordLabel")}</Label>
         <Input
           id="register-password"
           type="password"
           value={password}
           onChange={handlePasswordChange}
-          placeholder="At least 8 characters"
+          placeholder={t("registerPasswordPlaceholder")}
           disabled={isLoading}
           required
           autoComplete="new-password"
@@ -128,13 +128,13 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="register-confirm-password">Confirm Password</Label>
+        <Label htmlFor="register-confirm-password">{t("confirmPasswordLabel")}</Label>
         <Input
           id="register-confirm-password"
           type="password"
           value={confirmPassword}
           onChange={handleConfirmPasswordChange}
-          placeholder="Repeat your password"
+          placeholder={t("confirmPasswordPlaceholder")}
           disabled={isLoading}
           required
           autoComplete="new-password"
@@ -148,12 +148,10 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
       )}
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Creating account..." : "Create Account"}
+        {isLoading ? t("creatingAccount") : t("createAccount")}
       </Button>
 
-      <p className="text-muted-foreground text-center text-xs">
-        By registering, you agree to our terms of service and privacy policy.
-      </p>
+      <p className="text-muted-foreground text-center text-xs">{t("termsNotice")}</p>
     </form>
   );
 };

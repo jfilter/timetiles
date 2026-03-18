@@ -15,8 +15,6 @@ import { ExploreViewResolver } from "../_components/explore-view-resolver";
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";
 
-const LOADING_ELEMENT = <div>Loading explorer...</div>;
-
 interface ExploreListPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }

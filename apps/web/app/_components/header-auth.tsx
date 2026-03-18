@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@timetiles/ui";
 import { LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Link, useRouter } from "@/i18n/navigation";
 import { useLogoutMutation } from "@/lib/hooks/use-auth-mutations";
@@ -30,6 +31,8 @@ interface HeaderAuthProps {
 
 export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
   const router = useRouter();
+  const t = useTranslations("Common");
+  const tHeader = useTranslations("Header");
   const logoutMutation = useLogoutMutation();
 
   const handleLogout = () => {
@@ -45,7 +48,7 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
   if (!user) {
     return (
       <Button variant="outline" size="sm" asChild>
-        <Link href="/login">Sign In</Link>
+        <Link href="/login">{t("signIn")}</Link>
       </Button>
     );
   }
@@ -85,21 +88,21 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
         <DropdownMenuItem asChild>
           <Link href="/import" className="cursor-pointer">
             <Upload className="mr-2 h-4 w-4" />
-            Import Data
+            {tHeader("importData")}
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link href="/account/settings" className="cursor-pointer">
             <UserIcon className="mr-2 h-4 w-4" />
-            Account Settings
+            {tHeader("accountSettings")}
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link href="/dashboard" className="cursor-pointer">
             <Settings className="mr-2 h-4 w-4" />
-            Dashboard
+            {t("dashboard")}
           </Link>
         </DropdownMenuItem>
 
@@ -111,7 +114,7 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
           className="text-destructive focus:text-destructive cursor-pointer"
         >
           <LogOut className="mr-2 h-4 w-4" />
-          {logoutMutation.isPending ? "Signing out..." : "Sign Out"}
+          {logoutMutation.isPending ? t("signingOut") : t("signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
