@@ -12,6 +12,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { Filter, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 interface MobileFilterSheetProps {
@@ -29,6 +30,7 @@ export const MobileFilterSheet = ({
   children,
   activeFilterCount = 0,
 }: MobileFilterSheetProps) => {
+  const t = useTranslations("Common");
   const sheetRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -106,7 +108,7 @@ export const MobileFilterSheet = ({
           "dark:bg-cartographic-cream dark:text-cartographic-charcoal dark:hover:bg-cartographic-cream/90",
           isOpen && "pointer-events-none scale-0 opacity-0"
         )}
-        aria-label="Open filters"
+        aria-label={t("openFilters")}
       >
         <Filter className="h-6 w-6" />
         {activeFilterCount > 0 && (
@@ -149,13 +151,13 @@ export const MobileFilterSheet = ({
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 pt-2 pb-3">
           <h2 className="text-cartographic-charcoal dark:text-cartographic-cream font-serif text-lg font-semibold">
-            Filters
+            {t("filters")}
           </h2>
           <button
             type="button"
             onClick={onClose}
             className="text-cartographic-navy/70 hover:bg-cartographic-navy/10 hover:text-cartographic-navy dark:text-cartographic-cream/70 dark:hover:bg-cartographic-cream/10 dark:hover:text-cartographic-cream rounded-sm p-2 transition-colors"
-            aria-label="Close filters"
+            aria-label={t("closeFilters")}
           >
             <X className="h-5 w-5" />
           </button>

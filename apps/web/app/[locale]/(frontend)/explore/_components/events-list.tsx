@@ -10,6 +10,7 @@
 import { Card, CardDescription, CardTitle, ContentState } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, MapPin } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import type { EventListItem } from "@/lib/schemas/events";
@@ -120,6 +121,9 @@ export const EventsList = ({
   onRetry,
   onEventClick,
 }: Readonly<EventsListProps>) => {
+  const t = useTranslations("Explore");
+  const tCommon = useTranslations("Common");
+
   if (isInitialLoad) {
     return <EventsListSkeleton count={6} />;
   }
@@ -128,8 +132,8 @@ export const EventsList = ({
     return (
       <ContentState
         variant="error"
-        title="Failed to load events"
-        subtitle={error.message ?? "Something went wrong"}
+        title={t("failedToLoadEvents")}
+        subtitle={error.message ?? tCommon("error")}
         onRetry={onRetry}
         height={256}
       />
@@ -139,7 +143,7 @@ export const EventsList = ({
   if (events.length === 0 && !isUpdating) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground">No events found</div>
+        <div className="text-muted-foreground">{tCommon("noEventsFound")}</div>
       </div>
     );
   }
@@ -150,7 +154,7 @@ export const EventsList = ({
         <div className="absolute top-0 right-0 z-10">
           <div className="bg-background/80 flex items-center gap-2 rounded-md border px-3 py-1 text-xs backdrop-blur-sm">
             <div className="border-primary h-3 w-3 animate-spin rounded-full border-b-2" />
-            <span className="text-muted-foreground">Updating...</span>
+            <span className="text-muted-foreground">{tCommon("updating")}</span>
           </div>
         </div>
       )}

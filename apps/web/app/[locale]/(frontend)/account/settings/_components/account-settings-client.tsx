@@ -10,6 +10,7 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
@@ -26,6 +27,8 @@ interface AccountSettingsClientProps {
 }
 
 export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
+  const t = useTranslations("Account");
+  const tCommon = useTranslations("Common");
   const router = useRouter();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -56,22 +59,22 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
       {/* Profile Information */}
       <Card>
         <CardHeader>
-          <CardTitle>Profile Information</CardTitle>
-          <CardDescription>Your account details</CardDescription>
+          <CardTitle>{t("profileInfo")}</CardTitle>
+          <CardDescription>{t("profileDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <span className="text-muted-foreground text-sm font-medium">Email</span>
+            <span className="text-muted-foreground text-sm font-medium">{tCommon("email")}</span>
             <p className="text-sm">{user.email}</p>
           </div>
           {(user.firstName ?? user.lastName) && (
             <div>
-              <span className="text-muted-foreground text-sm font-medium">Name</span>
+              <span className="text-muted-foreground text-sm font-medium">{tCommon("name")}</span>
               <p className="text-sm">{[user.firstName, user.lastName].filter(Boolean).join(" ")}</p>
             </div>
           )}
           <div>
-            <span className="text-muted-foreground text-sm font-medium">Role</span>
+            <span className="text-muted-foreground text-sm font-medium">{tCommon("role")}</span>
             <p className="text-sm capitalize">{user.role}</p>
           </div>
         </CardContent>
@@ -95,20 +98,17 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
         <CardHeader>
           <CardTitle className="text-destructive flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Danger Zone
+            {t("dangerZone")}
           </CardTitle>
-          <CardDescription>Irreversible actions that affect your account</CardDescription>
+          <CardDescription>{t("dangerZoneDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="bg-destructive/10 border-destructive/30 mb-4 rounded-md border p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
               <div>
-                <h4 className="text-destructive font-medium">Delete Account</h4>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Once you delete your account, public data will be transferred to the system, and private data will be
-                  permanently deleted. This action cannot be undone after the grace period.
-                </p>
+                <h4 className="text-destructive font-medium">{t("deleteAccount")}</h4>
+                <p className="text-muted-foreground mt-1 text-sm">{t("deleteAccountDescription")}</p>
               </div>
             </div>
           </div>
@@ -118,7 +118,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
             onClick={handleOpenDeleteModal}
             disabled={user.deletionStatus === "pending_deletion"}
           >
-            {user.deletionStatus === "pending_deletion" ? "Deletion Scheduled" : "Delete Account"}
+            {user.deletionStatus === "pending_deletion" ? t("deletionScheduled") : t("deleteAccount")}
           </Button>
         </CardContent>
       </Card>

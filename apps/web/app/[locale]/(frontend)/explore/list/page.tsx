@@ -7,6 +7,7 @@
  * @module
  */
 import { headers } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 import { Suspense } from "react";
 
@@ -19,8 +20,6 @@ import config from "@/payload.config";
 
 // Force dynamic rendering to prevent build-time database queries
 export const dynamic = "force-dynamic";
-
-const LOADING_ELEMENT = <div>Loading explorer...</div>;
 
 interface ExploreListPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -38,18 +37,18 @@ export default async function ExploreListPage({ searchParams }: Readonly<Explore
   const viewSlug = typeof params.view === "string" ? params.view : undefined;
   const view = await resolveView(payload, siteId, viewSlug);
 
+  const t = await getTranslations("Explore");
+
   if (!view) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold">Site not configured</h1>
-        <p className="text-muted-foreground max-w-md">
-          This site needs a default view to display the explorer. Please configure one in the admin dashboard.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("siteNotConfigured")}</h1>
+        <p className="text-muted-foreground max-w-md">{t("siteNotConfiguredDescription")}</p>
         <Link
           href="/dashboard/collections/views"
           className="text-primary underline underline-offset-4 hover:opacity-80"
         >
-          Go to Dashboard
+          {t("goToDashboard")}
         </Link>
       </div>
     );
@@ -57,7 +56,7 @@ export default async function ExploreListPage({ searchParams }: Readonly<Explore
 
   return (
     <ViewProvider view={view}>
-      <Suspense fallback={LOADING_ELEMENT}>
+      <Suspense fallback={<div>{t("loadingExplorer")}</div>}>
         <ListExplorer />
       </Suspense>
     </ViewProvider>

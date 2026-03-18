@@ -11,6 +11,7 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
+import { useTranslations } from "next-intl";
 
 import { EventDetailContent, EventDetailError, EventDetailSkeleton } from "@/components/events";
 import { useEventDetailQuery } from "@/lib/hooks/use-events-queries";
@@ -35,6 +36,7 @@ const getEventTitle = (event: { data?: unknown }): string => {
 };
 
 export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) => {
+  const t = useTranslations("Events");
   const isOpen = eventId !== null;
 
   const { data: event, isLoading, error, refetch } = useEventDetailQuery(eventId);
@@ -51,9 +53,9 @@ export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) =>
 
   // Compute dialog title without nested ternary
   const dialogTitle = (() => {
-    if (isLoading) return "Loading event details";
-    if (event) return `Event: ${getEventTitle(event)}`;
-    return "Event details";
+    if (isLoading) return t("loadingEventDetails");
+    if (event) return getEventTitle(event);
+    return t("eventDetails");
   })();
 
   return (
@@ -72,7 +74,7 @@ export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) =>
         {/* Screen reader accessible title */}
         <DialogTitle className="sr-only">{dialogTitle}</DialogTitle>
         <DialogDescription id="event-detail-description" className="sr-only">
-          Detailed information about the selected event including location, dates, and additional data.
+          {t("eventDescription")}
         </DialogDescription>
 
         {/* Content */}

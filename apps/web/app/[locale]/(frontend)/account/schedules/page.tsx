@@ -7,7 +7,7 @@
  * @category Pages
  */
 import { headers as nextHeaders } from "next/headers";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { redirect } from "@/i18n/navigation";
@@ -38,12 +38,14 @@ export default async function SchedulesPage() {
     depth: 1,
   });
 
+  const t = await getTranslations("Schedules");
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Scheduled Imports</h1>
-          <p className="text-muted-foreground mt-1">Manage your automatic data imports from URLs</p>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("description")}</p>
         </div>
       </div>
 

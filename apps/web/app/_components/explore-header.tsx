@@ -7,6 +7,7 @@
 "use client";
 
 import { ArrowLeft, Filter } from "lucide-react";
+import { useTranslations } from "next-intl";
 import React, { useEffect, useState } from "react";
 
 import { ViewToggle } from "@/app/[locale]/(frontend)/explore/_components/view-toggle";
@@ -28,6 +29,7 @@ export interface ExploreNavigationProps {
  * Shows catalog/dataset title and event count (visible/total).
  */
 const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps, "currentView">) => {
+  const t = useTranslations("Common");
   const { filters } = useFilters();
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const mapStats = useUIStore((state) => state.ui.mapStats);
@@ -44,7 +46,7 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
       <Link
         href="/"
         className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 ml-6 flex items-center rounded-sm p-2 transition-colors"
-        title="Back to home"
+        title={t("backToHome")}
       >
         <ArrowLeft className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
       </Link>
@@ -66,8 +68,8 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
         type="button"
         onClick={toggleFilterDrawer}
         className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 mr-6 rounded-sm p-2 transition-colors"
-        title="Show filters"
-        aria-label="Show filters"
+        title={t("showFilters")}
+        aria-label={t("showFilters")}
       >
         <Filter className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
       </button>
@@ -84,6 +86,7 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
  * - Filter area: matches sidebar width (320px when open, 0 when closed)
  */
 const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
+  const t = useTranslations("Common");
   const { filters } = useFilters();
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const mapStats = useUIStore((state) => state.ui.mapStats);
@@ -117,7 +120,7 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
         <Link
           href="/"
           className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 ml-8 flex items-center rounded-sm p-2 transition-colors"
-          title="Back to home"
+          title={t("backToHome")}
         >
           <ArrowLeft className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
         </Link>
@@ -168,8 +171,8 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
             type="button"
             onClick={toggleFilterDrawer}
             className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 mr-4 rounded-sm p-2 transition-colors"
-            title="Show filters"
-            aria-label="Show filters"
+            title={t("showFilters")}
+            aria-label={t("showFilters")}
           >
             <Filter className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
           </button>
@@ -186,10 +189,10 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
           type="button"
           onClick={toggleFilterDrawer}
           className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 rounded-sm px-3 py-1 transition-colors"
-          title="Hide filters"
-          aria-label="Hide filters"
+          title={t("hideFilters")}
+          aria-label={t("hideFilters")}
         >
-          <span className="text-cartographic-charcoal font-sans text-sm font-semibold">Filters</span>
+          <span className="text-cartographic-charcoal font-sans text-sm font-semibold">{t("filters")}</span>
         </button>
       </div>
     </div>

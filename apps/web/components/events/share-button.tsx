@@ -8,10 +8,12 @@
 
 import { Button } from "@timetiles/ui";
 import { Check, Copy, Loader2, Share2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 /** Share button that copies current URL to clipboard or uses native share on mobile */
 export const ShareButton = ({ title }: { title: string }) => {
+  const t = useTranslations("Events");
   const [shareState, setShareState] = useState<"idle" | "copying" | "copied" | "error">("idle");
 
   const handleShare = () => {
@@ -49,7 +51,7 @@ export const ShareButton = ({ title }: { title: string }) => {
       className="hover:bg-muted"
       onClick={handleShare}
       disabled={shareState === "copying"}
-      aria-label={shareState === "copied" ? "Link copied" : "Share event"}
+      aria-label={shareState === "copied" ? t("linkCopied") : t("shareEvent")}
     >
       {shareState === "copying" && <Loader2 className="h-5 w-5 animate-spin" />}
       {shareState === "copied" && <Check className="text-cartographic-forest h-5 w-5" />}

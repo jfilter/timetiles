@@ -11,6 +11,7 @@
 
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useEffect } from "react";
 
 import { PageLayout } from "@/components/layout/page-layout";
@@ -22,6 +23,7 @@ type VerificationStatus = "idle" | "loading" | "success" | "error" | "no-token";
 const VerifyEmailContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations("VerifyEmail");
   const token = searchParams.get("token");
 
   const mutation = useVerifyEmailMutation();
@@ -47,29 +49,27 @@ const VerifyEmailContent = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <PageLayout title="Email Verification" maxWidth="md" centered>
+      <PageLayout title={t("pageTitle")} maxWidth="md" centered>
         <div className="rounded-lg bg-white p-8 shadow-md">
           {status === "loading" && (
             <div className="flex flex-col items-center gap-4 text-center">
               <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-              <h2 className="text-xl font-semibold text-gray-900">Verifying your email...</h2>
-              <p className="text-gray-600">Please wait while we verify your email address.</p>
+              <h2 className="text-xl font-semibold text-gray-900">{t("verifying")}</h2>
+              <p className="text-gray-600">{t("verifyingDescription")}</p>
             </div>
           )}
 
           {status === "success" && (
             <div className="flex flex-col items-center gap-4 text-center">
               <CheckCircle className="h-12 w-12 text-green-500" />
-              <h2 className="text-xl font-semibold text-gray-900">Email Verified!</h2>
-              <p className="text-gray-600">
-                Your email has been successfully verified. You can now complete your imports.
-              </p>
-              <p className="text-sm text-gray-500">Redirecting you to the import page...</p>
+              <h2 className="text-xl font-semibold text-gray-900">{t("verified")}</h2>
+              <p className="text-gray-600">{t("verifiedDescription")}</p>
+              <p className="text-sm text-gray-500">{t("redirecting")}</p>
               <Link
                 href="/import"
                 className="mt-4 rounded-md bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
               >
-                Go to Import Page
+                {t("goToImport")}
               </Link>
             </div>
           )}
@@ -77,20 +77,20 @@ const VerifyEmailContent = () => {
           {status === "error" && (
             <div className="flex flex-col items-center gap-4 text-center">
               <AlertCircle className="h-12 w-12 text-red-500" />
-              <h2 className="text-xl font-semibold text-gray-900">Verification Failed</h2>
+              <h2 className="text-xl font-semibold text-gray-900">{t("failed")}</h2>
               <p className="text-gray-600">{errorMessage}</p>
               <div className="mt-4 flex gap-4">
                 <Link
                   href="/login"
                   className="rounded-md bg-gray-200 px-6 py-2 text-gray-700 transition-colors hover:bg-gray-300"
                 >
-                  Go to Login
+                  {t("goToLogin")}
                 </Link>
                 <Link
                   href="/import"
                   className="rounded-md bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
                 >
-                  Go to Import Page
+                  {t("goToImport")}
                 </Link>
               </div>
             </div>
@@ -99,15 +99,13 @@ const VerifyEmailContent = () => {
           {status === "no-token" && (
             <div className="flex flex-col items-center gap-4 text-center">
               <AlertCircle className="h-12 w-12 text-yellow-500" />
-              <h2 className="text-xl font-semibold text-gray-900">No Verification Token</h2>
-              <p className="text-gray-600">
-                No verification token was provided. Please check your email for the verification link.
-              </p>
+              <h2 className="text-xl font-semibold text-gray-900">{t("noToken")}</h2>
+              <p className="text-gray-600">{t("noTokenDescription")}</p>
               <Link
                 href="/"
                 className="mt-4 rounded-md bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
               >
-                Go to Homepage
+                {t("goToHomepage")}
               </Link>
             </div>
           )}
@@ -118,15 +116,18 @@ const VerifyEmailContent = () => {
 };
 
 export default function VerifyEmailPage() {
+  const t = useTranslations("VerifyEmail");
+  const tCommon = useTranslations("Common");
+
   return (
     <Suspense
       fallback={
         <div className="min-h-screen bg-gray-50">
-          <PageLayout title="Email Verification" maxWidth="md" centered>
+          <PageLayout title={t("pageTitle")} maxWidth="md" centered>
             <div className="rounded-lg bg-white p-8 shadow-md">
               <div className="flex flex-col items-center gap-4 text-center">
                 <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                <h2 className="text-xl font-semibold text-gray-900">Loading...</h2>
+                <h2 className="text-xl font-semibold text-gray-900">{tCommon("loading")}</h2>
               </div>
             </div>
           </PageLayout>

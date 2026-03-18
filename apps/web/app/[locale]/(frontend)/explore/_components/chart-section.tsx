@@ -11,6 +11,7 @@
 "use client";
 
 import { cn } from "@timetiles/ui/lib/utils";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
@@ -27,17 +28,21 @@ interface ChartSectionProps {
 }
 
 /**
- * Get metadata for each chart type including label, heading, and subtitle.
+ * Hook to get metadata for each chart type including label, heading, and subtitle.
  */
-const getChartMeta = (type: ChartType): ChartMeta => {
-  switch (type) {
-    case "histogram":
-      return { label: "Temporal Analysis", heading: "Event Timeline", subtitle: "Distribution of events over time" };
-    case "dataset-bar":
-      return { label: "Data Distribution", heading: "Events by Dataset", subtitle: "Event counts across datasets" };
-    case "catalog-bar":
-      return { label: "Data Distribution", heading: "Events by Catalog", subtitle: "Event counts across catalogs" };
-  }
+const useChartMeta = () => {
+  const t = useTranslations("Explore");
+
+  return (type: ChartType): ChartMeta => {
+    switch (type) {
+      case "histogram":
+        return { label: t("temporalAnalysis"), heading: t("eventTimeline"), subtitle: t("eventDistribution") };
+      case "dataset-bar":
+        return { label: t("dataDistribution"), heading: t("eventsByDataset"), subtitle: t("datasetCounts") };
+      case "catalog-bar":
+        return { label: t("dataDistribution"), heading: t("eventsByCatalog"), subtitle: t("catalogCounts") };
+    }
+  };
 };
 
 /**
@@ -54,6 +59,7 @@ const getChartHeight = (type: ChartType): number => {
 };
 
 export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSectionProps>) => {
+  const getChartMeta = useChartMeta();
   const [chartType, setChartType] = useState<ChartType>("histogram");
   const [isTransitioning, setIsTransitioning] = useState(false);
 

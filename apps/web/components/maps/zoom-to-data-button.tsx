@@ -11,6 +11,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { Maximize2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface ZoomToDataButtonProps {
   onClick: () => void;
@@ -18,6 +19,8 @@ interface ZoomToDataButtonProps {
 }
 
 export const ZoomToDataButton = ({ onClick, visible }: ZoomToDataButtonProps) => {
+  const t = useTranslations("Explore");
+
   return (
     <div
       className={cn(
@@ -29,8 +32,8 @@ export const ZoomToDataButton = ({ onClick, visible }: ZoomToDataButtonProps) =>
       <button
         type="button"
         onClick={onClick}
-        title="Zoom to fit all events"
-        aria-label="Zoom to fit all events"
+        title={t("zoomToFitAll")}
+        aria-label={t("zoomToFitAll")}
         className={cn(
           "flex items-center gap-2 rounded bg-white px-3 py-1.5",
           "text-sm font-medium text-gray-700 shadow-md",
@@ -39,7 +42,7 @@ export const ZoomToDataButton = ({ onClick, visible }: ZoomToDataButtonProps) =>
         )}
       >
         <Maximize2 className="h-4 w-4" />
-        <span>Zoom to data</span>
+        <span>{t("zoomToData")}</span>
       </button>
     </div>
   );

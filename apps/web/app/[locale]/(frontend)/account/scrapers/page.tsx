@@ -7,7 +7,7 @@
  * @category Pages
  */
 import { headers as nextHeaders } from "next/headers";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { redirect } from "@/i18n/navigation";
@@ -51,20 +51,18 @@ export default async function ScrapersPage() {
     depth: 1,
   });
 
+  const t = await getTranslations("Scrapers");
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Scrapers</h1>
-          <p className="text-muted-foreground mt-1">Manage your web scraper repositories and runs</p>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("description")}</p>
         </div>
       </div>
 
-      {!scrapersEnabled && (
-        <div className="bg-muted mb-6 rounded-lg border p-4 text-sm">
-          The scrapers feature is currently disabled. Contact an administrator to enable it.
-        </div>
-      )}
+      {!scrapersEnabled && <div className="bg-muted mb-6 rounded-lg border p-4 text-sm">{t("featureDisabled")}</div>}
 
       <ScrapersListClient initialRepos={reposResult.docs} initialScrapers={scrapersResult.docs} />
     </div>

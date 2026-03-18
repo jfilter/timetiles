@@ -12,6 +12,7 @@
 
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useState } from "react";
 
 import { ResetPasswordForm } from "@/components/auth";
@@ -20,6 +21,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 const ResetPasswordInner = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations("Auth");
   const [success, setSuccess] = useState(false);
 
   const token = searchParams.get("token");
@@ -45,14 +47,12 @@ const ResetPasswordInner = () => {
         <div className="w-full max-w-sm text-center">
           <AlertCircle className="text-destructive mx-auto mb-4 h-12 w-12" />
           <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-2xl font-bold">
-            Invalid Reset Link
+            {t("invalidResetLink")}
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            No reset token was provided. Please request a new password reset link.
-          </p>
+          <p className="text-muted-foreground mt-2 text-sm">{t("noResetToken")}</p>
           <div className="mt-6">
             <Link href="/forgot-password" className="text-primary text-sm hover:underline">
-              Request a new reset link
+              {t("requestNewResetLink")}
             </Link>
           </div>
         </div>
@@ -66,14 +66,12 @@ const ResetPasswordInner = () => {
         <div className="w-full max-w-sm text-center">
           <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
           <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-2xl font-bold">
-            Password Reset
+            {t("passwordResetSuccess")}
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Your password has been successfully reset. Redirecting you to login...
-          </p>
+          <p className="text-muted-foreground mt-2 text-sm">{t("passwordResetSuccessMessage")}</p>
           <div className="mt-6">
             <Link href="/login" className="text-primary text-sm hover:underline">
-              Go to login
+              {t("goToLogin")}
             </Link>
           </div>
         </div>
@@ -86,14 +84,14 @@ const ResetPasswordInner = () => {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-3xl font-bold">
-            Set new password
+            {t("setNewPassword")}
           </h1>
-          <p className="text-muted-foreground mt-2">Enter your new password below.</p>
+          <p className="text-muted-foreground mt-2">{t("setNewPasswordDescription")}</p>
         </div>
         <ResetPasswordForm token={token} onSuccess={handleSuccess} />
         <div className="mt-6 text-center">
           <Link href="/login" className="text-primary text-sm hover:underline">
-            Back to login
+            {t("backToLogin")}
           </Link>
         </div>
       </div>
@@ -102,11 +100,13 @@ const ResetPasswordInner = () => {
 };
 
 export const ResetPasswordContent = () => {
+  const tCommon = useTranslations("Common");
+
   return (
     <Suspense
       fallback={
         <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="text-muted-foreground">Loading...</div>
+          <div className="text-muted-foreground">{tCommon("loading")}</div>
         </div>
       }
     >

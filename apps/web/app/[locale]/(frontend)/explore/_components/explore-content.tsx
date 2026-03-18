@@ -10,6 +10,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -17,13 +18,14 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { ListExplorer } from "./list-explorer";
 import { MapExplorer } from "./map-explorer";
 
-const LOADING_ELEMENT = <div>Loading explorer...</div>;
-
 export const ExploreContent = () => {
+  const t = useTranslations("Explore");
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
-  // Before media query resolves (SSR / first frame), show loading
-  if (isDesktop === null) return LOADING_ELEMENT;
+  const loadingElement = <div>{t("loadingExplorer")}</div>;
 
-  return <Suspense fallback={LOADING_ELEMENT}>{isDesktop ? <MapExplorer /> : <ListExplorer />}</Suspense>;
+  // Before media query resolves (SSR / first frame), show loading
+  if (isDesktop === null) return loadingElement;
+
+  return <Suspense fallback={loadingElement}>{isDesktop ? <MapExplorer /> : <ListExplorer />}</Suspense>;
 };

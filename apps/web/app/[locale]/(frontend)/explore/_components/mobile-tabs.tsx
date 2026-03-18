@@ -12,6 +12,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { BarChart3, LayoutList, Map } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 type TabType = "map" | "chart" | "list";
@@ -24,11 +25,7 @@ interface MobileTabsProps {
   listContent: ReactNode;
 }
 
-const TAB_CONFIG = [
-  { id: "map" as const, label: "Map", icon: Map },
-  { id: "chart" as const, label: "Chart", icon: BarChart3 },
-  { id: "list" as const, label: "List", icon: LayoutList },
-] as const;
+const TAB_ICONS = { map: Map, chart: BarChart3, list: LayoutList } as const;
 
 const TABS: TabType[] = ["map", "chart", "list"];
 
@@ -66,6 +63,12 @@ const TabButton = ({ id, label, icon: Icon, isActive, onTabChange }: TabButtonPr
 };
 
 export const MobileTabs = ({ activeTab, onTabChange, mapContent, chartContent, listContent }: MobileTabsProps) => {
+  const t = useTranslations("Explore");
+  const TAB_CONFIG = [
+    { id: "map" as const, label: t("map"), icon: TAB_ICONS.map },
+    { id: "chart" as const, label: t("chart"), icon: TAB_ICONS.chart },
+    { id: "list" as const, label: t("list"), icon: TAB_ICONS.list },
+  ] as const;
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const currentIndex = TABS.indexOf(activeTab);
 

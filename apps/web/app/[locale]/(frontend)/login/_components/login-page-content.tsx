@@ -11,12 +11,14 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 
 import { AuthTabs } from "@/components/auth";
 
 const LoginContent = () => {
   const searchParams = useSearchParams();
+  const t = useTranslations("Auth");
 
   const redirectTo = searchParams.get("redirect") ?? "/";
 
@@ -29,23 +31,28 @@ const LoginContent = () => {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">
       <div className="mb-8 text-center">
-        <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-3xl font-bold">Welcome back</h1>
-        <p className="text-muted-foreground mt-2">Sign in to your account or create a new one</p>
+        <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-3xl font-bold">
+          {t("welcomeBack")}
+        </h1>
+        <p className="text-muted-foreground mt-2">{t("signInDescription")}</p>
       </div>
       <AuthTabs onSuccess={handleSuccess} />
     </div>
   );
 };
 
+const LoginFallback = () => {
+  const tCommon = useTranslations("Common");
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="text-muted-foreground">{tCommon("loading")}</div>
+    </div>
+  );
+};
+
 export const LoginPageContent = () => {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="text-muted-foreground">Loading...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<LoginFallback />}>
       <LoginContent />
     </Suspense>
   );

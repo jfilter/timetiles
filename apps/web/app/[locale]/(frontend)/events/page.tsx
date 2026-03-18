@@ -8,6 +8,7 @@
  * @module
  */
 import configPromise from "@payload-config";
+import { getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { Link } from "@/i18n/navigation";
@@ -27,12 +28,14 @@ export default async function EventsListPage() {
     depth: 1, // Include dataset info
   });
 
+  const t = await getTranslations("Events");
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-8 text-3xl font-bold">Events</h1>
+      <h1 className="mb-8 text-3xl font-bold">{t("title")}</h1>
 
       {events.length === 0 ? (
-        <p className="text-gray-500">No events found</p>
+        <p className="text-gray-500">{t("noEventsFound")}</p>
       ) : (
         <div className="grid gap-4">
           {events.map((event) => {
@@ -53,12 +56,21 @@ export default async function EventsListPage() {
                   <div>
                     <h2 className="mb-1 text-xl font-semibold">{title}</h2>
                     <div className="space-y-1 text-sm text-gray-600">
-                      {event.eventTimestamp != null && <p>Date: {formatDateShort(event.eventTimestamp)}</p>}
-                      {dataset != null && <p>Dataset: {dataset.name}</p>}
+                      {event.eventTimestamp != null && (
+                        <p>
+                          {t("date")}: {formatDateShort(event.eventTimestamp)}
+                        </p>
+                      )}
+                      {dataset != null && (
+                        <p>
+                          {t("dataset")}: {dataset.name}
+                        </p>
+                      )}
                       {event.location != null &&
                         (event.location.latitude != null || event.location.longitude != null) && (
                           <p>
-                            Location: {event.location.latitude?.toFixed(4)}, {event.location.longitude?.toFixed(4)}
+                            {t("location")}: {event.location.latitude?.toFixed(4)},{" "}
+                            {event.location.longitude?.toFixed(4)}
                           </p>
                         )}
                     </div>
@@ -78,7 +90,7 @@ export default async function EventsListPage() {
       )}
 
       <div className="mt-8 text-sm text-gray-500">
-        <p>Showing up to 50 most recent events</p>
+        <p>{t("showingRecentEvents")}</p>
       </div>
     </div>
   );

@@ -6,9 +6,11 @@
  */
 import { ContentState } from "@timetiles/ui";
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 /** Error display for event detail loading failures, with not-found detection */
 export const EventDetailError = ({ error, onRetry }: { error: Error | null; onRetry?: () => void }) => {
+  const t = useTranslations("Events");
   const isNotFound = error?.message?.includes("not found");
   return (
     <ContentState
@@ -18,12 +20,8 @@ export const EventDetailError = ({ error, onRetry }: { error: Error | null; onRe
           <AlertTriangle className="text-destructive h-8 w-8" />
         </div>
       }
-      title={isNotFound ? "Event Not Found" : "Failed to Load Event"}
-      subtitle={
-        isNotFound
-          ? "This event may have been deleted or you don't have permission to view it."
-          : "There was a problem loading the event details. Please try again."
-      }
+      title={isNotFound ? t("eventNotFound") : t("failedToLoad")}
+      subtitle={isNotFound ? t("eventNotFoundDescription") : t("failedToLoadDescription")}
       onRetry={isNotFound ? undefined : onRetry}
       className="py-12"
     />

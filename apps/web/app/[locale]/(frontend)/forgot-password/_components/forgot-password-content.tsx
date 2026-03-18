@@ -9,25 +9,27 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { ForgotPasswordForm } from "@/components/auth";
 import { Link } from "@/i18n/navigation";
 
 export const ForgotPasswordContent = () => {
+  const t = useTranslations("Auth");
+
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-3xl font-bold">
-            Reset your password
+            {t("resetYourPassword")}
           </h1>
-          <p className="text-muted-foreground mt-2">
-            Enter your email address and we&apos;ll send you a link to reset your password.
-          </p>
+          <p className="text-muted-foreground mt-2">{t("resetDescription")}</p>
         </div>
         <ForgotPasswordForm />
         <div className="mt-6 text-center">
           <Link href="/login" className="text-primary text-sm hover:underline">
-            Back to login
+            {t("backToLogin")}
           </Link>
         </div>
       </div>

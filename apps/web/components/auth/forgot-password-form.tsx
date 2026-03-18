@@ -11,6 +11,7 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
+import { useTranslations } from "next-intl";
 
 import { forgotPasswordRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFormMutation } from "@/lib/hooks/use-form-mutation";
@@ -24,6 +25,7 @@ export interface ForgotPasswordFormProps {
 }
 
 export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPasswordFormProps>) => {
+  const t = useTranslations("Auth");
   const [email, handleEmailChange] = useInputState();
   const { status, error, isLoading, mutate } = useFormMutation({
     mutationFn: forgotPasswordRequest,
@@ -50,10 +52,9 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
               d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
             />
           </svg>
-          <h3 className="text-lg font-semibold">Check your email</h3>
+          <h3 className="text-lg font-semibold">{t("emailSentTitle")}</h3>
           <p className="text-muted-foreground mt-2 text-sm">
-            If an account exists for <strong>{email}</strong>, we&apos;ve sent a password reset link. Please check your
-            inbox.
+            {t.rich("emailSentDescription", { email, strong: (chunks) => <strong>{chunks}</strong> })}
           </p>
         </div>
       </div>
@@ -63,13 +64,13 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
       <div className="space-y-2">
-        <Label htmlFor="forgot-email">Email</Label>
+        <Label htmlFor="forgot-email">{t("emailLabel")}</Label>
         <Input
           id="forgot-email"
           type="email"
           value={email}
           onChange={handleEmailChange}
-          placeholder="you@example.com"
+          placeholder={t("emailPlaceholder")}
           disabled={isLoading}
           required
           autoComplete="email"
@@ -83,7 +84,7 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
       )}
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Sending..." : "Send Reset Link"}
+        {isLoading ? t("sending") : t("sendResetLink")}
       </Button>
     </form>
   );

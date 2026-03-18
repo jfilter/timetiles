@@ -11,6 +11,7 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
+import { useTranslations } from "next-intl";
 
 import { validatePasswords } from "@/lib/constants/validation";
 import { resetPasswordRequest } from "@/lib/hooks/use-auth-mutations";
@@ -27,6 +28,7 @@ export interface ResetPasswordFormProps {
 }
 
 export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<ResetPasswordFormProps>) => {
+  const t = useTranslations("Auth");
   const [password, handlePasswordChange] = useInputState();
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isLoading, mutate } = useFormMutation({
@@ -53,13 +55,13 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
       <div className="space-y-2">
-        <Label htmlFor="reset-password">New Password</Label>
+        <Label htmlFor="reset-password">{t("newPasswordLabel")}</Label>
         <Input
           id="reset-password"
           type="password"
           value={password}
           onChange={handlePasswordChange}
-          placeholder="At least 8 characters"
+          placeholder={t("newPasswordPlaceholder")}
           disabled={isLoading}
           required
           autoComplete="new-password"
@@ -68,13 +70,13 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="reset-confirm-password">Confirm Password</Label>
+        <Label htmlFor="reset-confirm-password">{t("confirmPasswordLabel")}</Label>
         <Input
           id="reset-confirm-password"
           type="password"
           value={confirmPassword}
           onChange={handleConfirmPasswordChange}
-          placeholder="Repeat your password"
+          placeholder={t("confirmPasswordPlaceholder")}
           disabled={isLoading}
           required
           autoComplete="new-password"
@@ -88,7 +90,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
       )}
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Resetting..." : "Reset Password"}
+        {isLoading ? t("resetting") : t("resetPassword")}
       </Button>
     </form>
   );

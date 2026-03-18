@@ -12,6 +12,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
@@ -24,6 +25,8 @@ import { FilterSection } from "./filter-section";
 import { TimeRangeSlider } from "./time-range-slider";
 
 export const EventFilters = () => {
+  const t = useTranslations("Filters");
+  const tExplore = useTranslations("Explore");
   const { filters, setStartDate, setEndDate, clearAllFilters, hasActiveFilters, activeFilterCount } = useFilters();
 
   // Fetch event counts for catalogs and datasets
@@ -54,14 +57,14 @@ export const EventFilters = () => {
           aria-label="Clear all filters"
         >
           <X className="h-4 w-4" />
-          <span>Clear Filters</span>
+          <span>{tExplore("clearFilters")}</span>
           <span className="bg-muted rounded-full px-1.5 py-0.5 text-xs font-medium">{activeFilterCount}</span>
         </button>
       )}
 
       {/* Data Sources Section */}
-      <FilterSection title="Data Sources" defaultOpen activeCount={dataSourcesActiveCount}>
-        {isStatsError && <p className="text-cartographic-terracotta mb-2 text-xs">Failed to load event counts.</p>}
+      <FilterSection title={t("dataSources")} defaultOpen activeCount={dataSourcesActiveCount}>
+        {isStatsError && <p className="text-cartographic-terracotta mb-2 text-xs">{t("failedToLoadCounts")}</p>}
         <DataSourceSelector
           eventCountsByCatalog={statsData?.catalogCounts}
           eventCountsByDataset={statsData?.datasetCounts}
@@ -71,7 +74,7 @@ export const EventFilters = () => {
       {/* Categorical Filters Section - only shown when single dataset selected and has enum fields */}
       {filters.datasets.length === 1 && (hasEnumFields || isEnumFieldsLoading) && (
         <FilterSection
-          title="Categories"
+          title={t("categories")}
           defaultOpen
           activeCount={Object.values(filters.fieldFilters ?? {}).reduce((sum, vals) => sum + vals.length, 0)}
         >
@@ -80,7 +83,7 @@ export const EventFilters = () => {
       )}
 
       {/* Time Range Section */}
-      <FilterSection title="Time Range" defaultOpen activeCount={timeRangeActiveCount}>
+      <FilterSection title={t("timeRange")} defaultOpen activeCount={timeRangeActiveCount}>
         <TimeRangeSlider
           filters={filters}
           startDate={filters.startDate}
@@ -95,7 +98,7 @@ export const EventFilters = () => {
             onClick={handleClearDateFilters}
             className="text-cartographic-navy/50 hover:text-cartographic-terracotta dark:text-cartographic-charcoal/50 dark:hover:text-cartographic-terracotta mt-1 w-full text-center font-mono text-xs transition-colors"
           >
-            ✕ Clear date filters
+            {tExplore("clearDateFilters")}
           </button>
         )}
       </FilterSection>
