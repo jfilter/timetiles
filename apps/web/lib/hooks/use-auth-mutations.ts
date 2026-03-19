@@ -15,11 +15,6 @@ import type { User } from "@/payload-types";
 
 import { fetchJson, HttpError, postJson } from "../api/http-error";
 
-// Re-export queries for backward compatibility with existing importers.
-// New code should import directly from `use-auth-queries`.
-export type { CurrentUserResponse } from "./use-auth-queries";
-export { authKeys, useAuthState, useCurrentUserQuery } from "./use-auth-queries";
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

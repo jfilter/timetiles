@@ -23,9 +23,6 @@ import type {
 
 import { fetchJson } from "../api/http-error";
 
-// Re-export query for backward compatibility. New code should import from use-import-wizard-queries.
-export { usePreviewSheetsQuery } from "./use-import-wizard-queries";
-
 export const previewSchemaUpload = async (formData: FormData): Promise<PreviewSchemaUploadResponse> => {
   return fetchJson<PreviewSchemaUploadResponse>("/api/import/preview-schema/upload", {
     method: "POST",
