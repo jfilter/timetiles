@@ -39,11 +39,12 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
 
   beforeEach(async () => {
     // Re-apply spies each test (global afterEach restores all mocks)
-    vi.spyOn(geocodingModule, "GeocodingService").mockImplementation(
-      class MockGeocodingService {
-        geocode = vi.fn().mockRejectedValue(new Error("Geocoding API unavailable"));
-      } as unknown as typeof geocodingModule.GeocodingService
-    );
+    // Spy on createGeocodingService (not GeocodingService) because the factory
+    // function closes over the local class reference and won't see a spy on the
+    // re-exported class.
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      geocode: vi.fn().mockRejectedValue(new Error("Geocoding API unavailable")),
+    } as unknown as ReturnType<typeof geocodingModule.createGeocodingService>);
 
     await testEnv.seedManager.truncate([
       "users",
@@ -154,11 +155,9 @@ Event 3,2024-01-03,Hamburg Germany
         confidence: 0.9,
       });
 
-    vi.spyOn(geocodingModule, "GeocodingService").mockImplementation(
-      class MockGeocodingService {
-        geocode = mockGeocode;
-      } as unknown as typeof geocodingModule.GeocodingService
-    );
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      geocode: mockGeocode,
+    } as unknown as ReturnType<typeof geocodingModule.createGeocodingService>);
 
     const csvContent = `name,date,location
 Event 1,2024-01-01,Berlin Germany

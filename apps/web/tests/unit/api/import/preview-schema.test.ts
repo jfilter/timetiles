@@ -117,6 +117,8 @@ vi.mock("@/lib/security/url-validation", () => ({
 
 vi.mock("@/lib/middleware/auth", () => ({}));
 
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
+
 // 4. Vitest imports and source code AFTER mocks
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";

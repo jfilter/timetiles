@@ -22,7 +22,13 @@ const mocks = vi.hoisted(() => {
   const MockGeocodingService = class {
     geocode = geocode;
   };
-  return { streamBatchesFromFile: vi.fn(), cleanupSidecarFiles: vi.fn(), geocode, MockGeocodingService };
+  return {
+    streamBatchesFromFile: vi.fn(),
+    cleanupSidecarFiles: vi.fn(),
+    geocode,
+    MockGeocodingService,
+    getImportFilePath: vi.fn().mockReturnValue("/app/uploads/test-import.csv"),
+  };
 });
 
 // Mock external dependencies
@@ -35,6 +41,8 @@ vi.mock("@/lib/import/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
+
+vi.mock("@/lib/jobs/utils/upload-path", () => ({ getImportFilePath: mocks.getImportFilePath }));
 
 // Don't mock @/lib/types/geocoding - use real implementation
 
@@ -55,6 +63,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     mocks.streamBatchesFromFile.mockReset();
     mocks.cleanupSidecarFiles.mockReset();
     mocks.geocode.mockReset();
+    mocks.getImportFilePath.mockReset();
+    mocks.getImportFilePath.mockReturnValue("/app/uploads/test-import.csv");
     mockPayload = createMockPayload();
     mockContext = { req: { payload: mockPayload }, input: { importJobId: 123 } } as unknown as JobHandlerContext;
   });
