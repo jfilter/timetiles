@@ -925,6 +925,7 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
     "url-fetch",
     "schedule-manager",
     "cleanup-stuck-scheduled-imports",
+    "cleanup-stuck-scrapers",
     "process-pending-retries",
     "quota-reset",
     "cache-cleanup",
@@ -956,6 +957,7 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
     "url-fetch",
     "schedule-manager",
     "cleanup-stuck-scheduled-imports",
+    "cleanup-stuck-scrapers",
     "process-pending-retries",
     "quota-reset",
     "cache-cleanup",
@@ -2899,6 +2901,7 @@ export const scheduled_imports = db_schema.table(
       ),
     frequency: enum_scheduled_imports_frequency("frequency"),
     cronExpression: varchar("cron_expression"),
+    timezone: varchar("timezone").default("UTC"),
     importNameTemplate: varchar("import_name_template").default(
       "{{name}} - {{date}}",
     ),
@@ -3118,6 +3121,7 @@ export const _scheduled_imports_v = db_schema.table(
     version_frequency:
       enum__scheduled_imports_v_version_frequency("version_frequency"),
     version_cronExpression: varchar("version_cron_expression"),
+    version_timezone: varchar("version_timezone").default("UTC"),
     version_importNameTemplate: varchar("version_import_name_template").default(
       "{{name}} - {{date}}",
     ),
