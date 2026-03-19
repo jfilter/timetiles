@@ -156,7 +156,7 @@ export const createSourceNodes = (
   return headers.map((header, index) => ({
     id: `source-${sheetIndex}-${header}`,
     type: "source-column" as const,
-    position: { x: 50, y: 50 + index * 100 },
+    position: { x: 50, y: 50 + index * 120 },
     data: {
       columnName: header,
       sheetIndex,
