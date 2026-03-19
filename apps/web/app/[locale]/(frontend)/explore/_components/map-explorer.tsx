@@ -12,11 +12,9 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
-import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
 import type { MapPosition } from "@/lib/hooks/use-filters";
 import { useMapPosition } from "@/lib/hooks/use-filters";
 import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
 import { ChartSection } from "./chart-section";
 import { EventsList } from "./events-list";
@@ -54,8 +52,8 @@ interface MapExplorerContentProps {
 }
 
 const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorerContentProps) => {
-  const { explorer, filterPanel, mobileFilters } = chrome;
-  const { map, filters: filterState, selection, data, ui } = explorer;
+  const { explorer, filterPanel } = chrome;
+  const { map, filters: filterState, selection, data } = explorer;
   const { filters } = filterState;
   const { openEvent } = selection;
   const {
@@ -70,7 +68,6 @@ const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorer
     eventsLoading,
     totalEventsData,
   } = data;
-  const { setFilterDrawerOpen } = ui;
   const {
     ref: mapRef,
     simpleBounds,
@@ -81,14 +78,6 @@ const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorer
   } = map;
 
   const gridRef = useRef<HTMLDivElement>(null);
-  const isDesktop = useMediaQuery(BREAKPOINT_MD);
-
-  // Close filter drawer on mobile on first mount for better UX
-  useEffect(() => {
-    if (isDesktop === false) {
-      setFilterDrawerOpen(false);
-    }
-  }, [isDesktop, setFilterDrawerOpen]);
 
   // Convert URL map position to initial view state for ClusteredMap
   const initialViewState = getInitialViewState(hasMapPosition, mapPosition);
@@ -118,49 +107,6 @@ const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorer
 
   // Get human-readable filter labels (uses helper function)
   const filterLabels = getFilterLabels(filters, catalogs, datasets);
-
-  if (isDesktop === false) {
-    // Mobile: Stacked layout with overlay filter drawer
-    return (
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Map takes top half */}
-        <MapPanel
-          clusters={clusters}
-          clusterStats={clusterStats}
-          onBoundsChange={handleBoundsChange}
-          initialBounds={boundsData?.bounds}
-          initialViewState={initialViewState}
-          isLoadingBounds={isLoadingInitialBounds}
-          showZoomToData={showZoomToData}
-          onZoomToData={handleZoomToData}
-          className="relative h-1/2 min-h-0"
-        />
-
-        {/* Content takes bottom half */}
-        <div className="h-1/2 min-h-0 overflow-y-auto border-t">
-          <div className="p-4">
-            <div className="mb-4">
-              <ChartSection bounds={debouncedSimpleBounds} />
-            </div>
-
-            <div className="border-t pt-4">
-              <p className="text-muted-foreground mb-4 text-sm">
-                {buildEventsDescription(events.length, totalEventsData?.total, filterLabels, simpleBounds != null)}
-              </p>
-              <EventsList
-                events={events}
-                isInitialLoad={isInitialLoad}
-                isUpdating={isUpdating}
-                onEventClick={openEvent}
-              />
-            </div>
-          </div>
-        </div>
-
-        {mobileFilters}
-      </div>
-    );
-  }
 
   // Desktop: Flex layout - both map and list shrink proportionally when filters open
   return (

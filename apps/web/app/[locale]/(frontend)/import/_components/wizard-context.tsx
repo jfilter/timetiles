@@ -44,7 +44,7 @@
  */
 "use client";
 
-import { createContext, useContext, useReducer } from "react";
+import { createContext, useCallback, useContext, useMemo, useReducer } from "react";
 
 import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import type { ImportTransform } from "@/lib/types/import-transforms";
@@ -124,95 +124,150 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     wasAuthenticatedAtPageLoad: initialAuth?.isAuthenticated ?? false,
   });
 
-  // Helper actions (thin dispatch wrappers)
-  const goToStep = (step: WizardStep) => dispatch({ type: "SET_STEP", step });
-  const nextStep = () => dispatch({ type: "NEXT_STEP" });
-  const prevStep = () => dispatch({ type: "PREV_STEP" });
+  // Helper actions (thin dispatch wrappers, memoized to prevent child rerenders)
+  const goToStep = useCallback((step: WizardStep) => dispatch({ type: "SET_STEP", step }), [dispatch]);
+  const nextStep = useCallback(() => dispatch({ type: "NEXT_STEP" }), [dispatch]);
+  const prevStep = useCallback(() => dispatch({ type: "PREV_STEP" }), [dispatch]);
 
-  const setFile = (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => {
-    dispatch({ type: "SET_FILE", file, sheets, previewId, sourceUrl });
-  };
+  const setFile = useCallback(
+    (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => {
+      dispatch({ type: "SET_FILE", file, sheets, previewId, sourceUrl });
+    },
+    [dispatch]
+  );
 
-  const setSourceUrl = (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => {
-    dispatch({ type: "SET_SOURCE_URL", sourceUrl, authConfig });
-  };
+  const setSourceUrl = useCallback(
+    (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => {
+      dispatch({ type: "SET_SOURCE_URL", sourceUrl, authConfig });
+    },
+    [dispatch]
+  );
 
-  const setScheduleConfig = (config: ScheduleConfig | null) => {
-    dispatch({ type: "SET_SCHEDULE_CONFIG", scheduleConfig: config });
-  };
+  const setScheduleConfig = useCallback(
+    (config: ScheduleConfig | null) => {
+      dispatch({ type: "SET_SCHEDULE_CONFIG", scheduleConfig: config });
+    },
+    [dispatch]
+  );
 
-  const clearFile = () => dispatch({ type: "CLEAR_FILE" });
+  const clearFile = useCallback(() => dispatch({ type: "CLEAR_FILE" }), [dispatch]);
 
-  const setCatalog = (catalogId: number | "new" | null, newCatalogName?: string) => {
-    dispatch({ type: "SET_CATALOG", catalogId, newCatalogName });
-  };
+  const setCatalog = useCallback(
+    (catalogId: number | "new" | null, newCatalogName?: string) => {
+      dispatch({ type: "SET_CATALOG", catalogId, newCatalogName });
+    },
+    [dispatch]
+  );
 
-  const setSheetMapping = (sheetIndex: number, mapping: Partial<SheetMapping>) => {
-    dispatch({ type: "SET_SHEET_MAPPING", sheetIndex, mapping });
-  };
+  const setSheetMapping = useCallback(
+    (sheetIndex: number, mapping: Partial<SheetMapping>) => {
+      dispatch({ type: "SET_SHEET_MAPPING", sheetIndex, mapping });
+    },
+    [dispatch]
+  );
 
-  const setFieldMapping = (sheetIndex: number, mapping: Partial<FieldMapping>) => {
-    dispatch({ type: "SET_FIELD_MAPPING", sheetIndex, mapping });
-  };
+  const setFieldMapping = useCallback(
+    (sheetIndex: number, mapping: Partial<FieldMapping>) => {
+      dispatch({ type: "SET_FIELD_MAPPING", sheetIndex, mapping });
+    },
+    [dispatch]
+  );
 
-  const setTransforms = (sheetIndex: number, transforms: ImportTransform[]) => {
-    dispatch({ type: "SET_TRANSFORMS", sheetIndex, transforms });
-  };
+  const setTransforms = useCallback(
+    (sheetIndex: number, transforms: ImportTransform[]) => {
+      dispatch({ type: "SET_TRANSFORMS", sheetIndex, transforms });
+    },
+    [dispatch]
+  );
 
-  const setImportOptions = (options: {
-    deduplicationStrategy?: WizardState["deduplicationStrategy"];
-    geocodingEnabled?: boolean;
-  }) => {
-    dispatch({ type: "SET_IMPORT_OPTIONS", ...options });
-  };
+  const setImportOptions = useCallback(
+    (options: { deduplicationStrategy?: WizardState["deduplicationStrategy"]; geocodingEnabled?: boolean }) => {
+      dispatch({ type: "SET_IMPORT_OPTIONS", ...options });
+    },
+    [dispatch]
+  );
 
-  const startProcessing = (importFileId: number, scheduledImportId?: number) => {
-    dispatch({ type: "START_PROCESSING", importFileId, scheduledImportId });
-  };
+  const startProcessing = useCallback(
+    (importFileId: number, scheduledImportId?: number) => {
+      dispatch({ type: "START_PROCESSING", importFileId, scheduledImportId });
+    },
+    [dispatch]
+  );
 
-  const setError = (error: string | null) => dispatch({ type: "SET_ERROR", error });
+  const setError = useCallback((error: string | null) => dispatch({ type: "SET_ERROR", error }), [dispatch]);
 
-  const complete = () => {
+  const complete = useCallback(() => {
     clearStorage();
     dispatch({ type: "COMPLETE" });
-  };
+  }, [dispatch]);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     clearStorage();
     dispatch({ type: "RESET" });
-  };
+  }, [dispatch]);
 
-  const setNavigationConfig = (config: NavigationConfig) => {
-    dispatch({ type: "SET_NAVIGATION_CONFIG", config });
-  };
+  const setNavigationConfig = useCallback(
+    (config: NavigationConfig) => {
+      dispatch({ type: "SET_NAVIGATION_CONFIG", config });
+    },
+    [dispatch]
+  );
 
   // Computed values from pure selectors
-  const canProceed = canProceedFromStep(state, isAuthenticated, isEmailVerified);
-  const stepTitle = getStepTitle(state.currentStep);
+  const canProceed = useMemo(
+    () => canProceedFromStep(state, isAuthenticated, isEmailVerified),
+    [state, isAuthenticated, isEmailVerified]
+  );
+  const stepTitle = useMemo(() => getStepTitle(state.currentStep), [state.currentStep]);
 
-  const value = {
-    state,
-    dispatch,
-    goToStep,
-    nextStep,
-    prevStep,
-    setFile,
-    setSourceUrl,
-    setScheduleConfig,
-    clearFile,
-    setCatalog,
-    setSheetMapping,
-    setFieldMapping,
-    setTransforms,
-    setImportOptions,
-    startProcessing,
-    setError,
-    complete,
-    reset,
-    setNavigationConfig,
-    canProceed,
-    stepTitle,
-  };
+  const value = useMemo(
+    () => ({
+      state,
+      dispatch,
+      goToStep,
+      nextStep,
+      prevStep,
+      setFile,
+      setSourceUrl,
+      setScheduleConfig,
+      clearFile,
+      setCatalog,
+      setSheetMapping,
+      setFieldMapping,
+      setTransforms,
+      setImportOptions,
+      startProcessing,
+      setError,
+      complete,
+      reset,
+      setNavigationConfig,
+      canProceed,
+      stepTitle,
+    }),
+    [
+      state,
+      dispatch,
+      goToStep,
+      nextStep,
+      prevStep,
+      setFile,
+      setSourceUrl,
+      setScheduleConfig,
+      clearFile,
+      setCatalog,
+      setSheetMapping,
+      setFieldMapping,
+      setTransforms,
+      setImportOptions,
+      startProcessing,
+      setError,
+      complete,
+      reset,
+      setNavigationConfig,
+      canProceed,
+      stepTitle,
+    ]
+  );
 
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;
 };

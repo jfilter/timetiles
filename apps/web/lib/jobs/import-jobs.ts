@@ -60,8 +60,6 @@ export type {
   SchemaDetectionJobInput,
   ValidateSchemaJobInput,
 } from "./types/job-inputs";
-export type { JobHandlerContext } from "./utils/job-context";
-
 // Note: Job queue functions have been removed to avoid circular dependencies
 // To queue jobs, use payload.jobs.queue() directly from your API routes or other contexts
 // where you have access to the payload instance

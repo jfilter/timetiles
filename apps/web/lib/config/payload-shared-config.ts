@@ -92,39 +92,6 @@ export const COLLECTIONS = {
 
 export type CollectionName = keyof typeof COLLECTIONS;
 
-// Ordered list of all collections for production
-// Grouped: Data, Import, Content, System
-export const ALL_COLLECTIONS = [
-  // Data
-  Catalogs,
-  Datasets,
-  DatasetSchemas,
-  Events,
-  // Import
-  ImportFiles,
-  ImportJobs,
-  ScheduledImports,
-  // Scrapers
-  ScraperRepos,
-  Scrapers,
-  ScraperRuns,
-  // Content
-  Pages,
-  Media,
-  // System
-  Users,
-  UserUsage,
-  GeocodingProviders,
-  LocationCache,
-  AuditLog,
-  DataExports,
-  // Configuration
-  Sites,
-  Themes,
-  LayoutTemplates,
-  Views,
-];
-
 // All globals (grouped: Content, System)
 export const ALL_GLOBALS = [MainMenu, Footer, Branding, Settings];
 

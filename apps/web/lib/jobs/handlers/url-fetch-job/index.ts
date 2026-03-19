@@ -12,13 +12,13 @@
 import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
-import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
+import { createImportFileAndQueueDetection } from "@/lib/import/create-import-file";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
-import type { ImportFile, ScheduledImport, User } from "@/payload-types";
+import type { ScheduledImport, User } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
 import { calculateDataHash, detectFileTypeFromResponse, type FetchResult, fetchWithRetry } from "./fetch-utils";
@@ -158,38 +158,24 @@ const handleFetchSuccess = async (
     throw new Error(`User not found: ${context.userId}`);
   }
 
-  // Create import-files record
+  // Create import-files record, queue detection, and mark as parsing
   const importFileData = buildImportFileData(sourceUrl, dataHash, context);
-  const importFile = await payload.create({
-    collection: COLLECTION_NAMES.IMPORT_FILES,
-    data: importFileData as Omit<ImportFile, "id" | "createdAt" | "updatedAt">,
+  const { importFileId } = await createImportFileAndQueueDetection({
+    payload,
+    importFileData,
     file: { data, mimetype: mimeType, name: filename, size: data.length },
     user,
-    context: { skipImportFileHooks: true },
-  });
-
-  // Queue dataset detection and update status
-  const detectionJob = await payload.jobs.queue({
-    task: JOB_TYPES.DATASET_DETECTION,
-    input: { importFileId: importFile.id },
-  });
-
-  await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_FILES,
-    id: importFile.id,
-    data: { status: "parsing", jobId: String(detectionJob.id) },
-    context: { skipImportFileHooks: true },
   });
 
   logger.info("Import file created from URL", {
-    importFileId: importFile.id,
+    importFileId,
     filename,
     fileSize: data.length,
     contentType,
     sourceUrl: sanitizeUrlForLogging(sourceUrl),
   });
 
-  return { importFileId: importFile.id, filename, contentHash: dataHash, isDuplicate: false };
+  return { importFileId, filename, contentHash: dataHash, isDuplicate: false };
 };
 
 const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {

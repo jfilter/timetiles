@@ -10,10 +10,10 @@
  */
 import { v4 as uuidv4 } from "uuid";
 
-import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
+import { createImportFileAndQueueDetection } from "@/lib/import/create-import-file";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { ImportFile, Scraper, ScraperRepo, User } from "@/payload-types";
+import type { Scraper, ScraperRepo, User } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
 
@@ -206,36 +206,23 @@ const triggerAutoImport = async (
     processingOptions: { autoApproveSchema: true, skipDuplicateChecking: false },
   };
 
-  const importFile = await payload.create({
-    collection: "import-files",
-    data: importFileData as Omit<ImportFile, "id" | "createdAt" | "updatedAt">,
+  // Create import file, queue detection, and mark as parsing
+  const { importFileId } = await createImportFileAndQueueDetection({
+    payload,
+    importFileData,
     file: { data: csvBuffer, mimetype: "text/csv", name: filename, size: outputBytes },
-    ...(user ? { user } : {}),
-    context: { skipImportFileHooks: true },
+    user,
   });
 
-  // Queue dataset detection
-  const detectionJob = await payload.jobs.queue({
-    task: JOB_TYPES.DATASET_DETECTION,
-    input: { importFileId: importFile.id },
-  });
-
-  await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_FILES,
-    id: importFile.id,
-    data: { status: "parsing", jobId: String(detectionJob.id) },
-    context: { skipImportFileHooks: true },
-  });
-
-  // Link import file to the scraper run
-  await payload.update({ collection: "scraper-runs", id: runId, data: { resultFile: importFile.id } });
+  // Link import file to the scraper run (import-files IDs are always numeric)
+  await payload.update({ collection: "scraper-runs", id: runId, data: { resultFile: importFileId as number } });
 
   log.info(
-    { importFileId: importFile.id, scraperId: scraper.id, scraperRunId: runId, filename, size: outputBytes },
+    { importFileId, scraperId: scraper.id, scraperRunId: runId, filename, size: outputBytes },
     "Auto-import triggered from scraper output"
   );
 
-  return importFile.id;
+  return importFileId;
 };
 
 // ---------------------------------------------------------------------------

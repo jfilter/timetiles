@@ -56,6 +56,14 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     }
   }, [eventsData, setMapStats]);
 
+  // Clear stale mapStats when the explorer unmounts (e.g. route transition away from /explore).
+  // Without this, the header would briefly show the previous count until new data loads.
+  useEffect(() => {
+    return () => {
+      useUIStore.getState().setMapStats(null);
+    };
+  }, []);
+
   const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
 
   const handleZoomToData = () => {
