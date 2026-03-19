@@ -40,7 +40,7 @@ const baseWizardState: WizardState = {
   importFileId: null,
   scheduledImportId: null,
   error: null,
-  navigationConfig: { showBack: true, showNext: true },
+  userNavigatedBack: false,
 };
 
 let wizardState = { ...baseWizardState };

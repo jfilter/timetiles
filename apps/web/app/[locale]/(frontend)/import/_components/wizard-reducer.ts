@@ -17,20 +17,6 @@ export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type CatalogSelection = number | "new" | null;
 
-/** Configuration for the wizard navigation buttons. */
-export interface NavigationConfig {
-  /** Custom handler for the next button */
-  onNext?: () => void | Promise<void>;
-  /** Custom label for the next button */
-  nextLabel?: string;
-  /** Whether the next action is loading */
-  isLoading?: boolean;
-  /** Whether to show the back button (default: true) */
-  showBack?: boolean;
-  /** Whether to show the next button (default: true) */
-  showNext?: boolean;
-}
-
 /** Schedule configuration for creating scheduled imports */
 export interface ScheduleConfig {
   enabled: boolean;
@@ -78,8 +64,8 @@ export interface WizardState {
   scheduledImportId: number | null;
   error: string | null;
 
-  // Navigation config (set dynamically by step components)
-  navigationConfig: NavigationConfig;
+  /** Set to true when user navigates back; prevents auto-advance until they make a change */
+  userNavigatedBack: boolean;
 }
 
 // Initial state
@@ -102,7 +88,7 @@ export const initialState: WizardState = {
   importFileId: null,
   scheduledImportId: null,
   error: null,
-  navigationConfig: { showBack: true, showNext: true },
+  userNavigatedBack: false,
 };
 
 // Action types
@@ -127,8 +113,7 @@ export type WizardAction =
   | { type: "SET_ERROR"; error: string | null }
   | { type: "COMPLETE" }
   | { type: "RESET" }
-  | { type: "RESTORE"; state: Partial<WizardState> }
-  | { type: "SET_NAVIGATION_CONFIG"; config: NavigationConfig };
+  | { type: "RESTORE"; state: Partial<WizardState> };
 
 // Step definitions — single source of truth for titles and labels
 export const WIZARD_STEPS: ReadonlyArray<{ step: WizardStep; title: string; label: string; shortLabel: string }> = [
@@ -151,13 +136,13 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
   return (() => {
     switch (action.type) {
       case "SET_STEP":
-        return { ...state, currentStep: action.step };
+        return { ...state, currentStep: action.step, userNavigatedBack: action.step < state.currentStep };
 
       case "NEXT_STEP":
-        return { ...state, currentStep: Math.min(state.currentStep + 1, 6) as WizardStep };
+        return { ...state, currentStep: Math.min(state.currentStep + 1, 6) as WizardStep, userNavigatedBack: false };
 
       case "PREV_STEP":
-        return { ...state, currentStep: Math.max(state.currentStep - 1, 1) as WizardStep };
+        return { ...state, currentStep: Math.max(state.currentStep - 1, 1) as WizardStep, userNavigatedBack: true };
 
       case "SET_FILE": {
         // For single-sheet files (like CSV), use the file name instead of "Sheet1"
@@ -170,6 +155,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
 
         return {
           ...state,
+          userNavigatedBack: false,
           file: action.file,
           sheets: action.sheets,
           previewId: action.previewId,
@@ -197,6 +183,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
       case "CLEAR_FILE":
         return {
           ...state,
+          userNavigatedBack: false,
           file: null,
           sheets: [],
           previewId: null,
@@ -211,6 +198,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
       case "SET_CATALOG":
         return {
           ...state,
+          userNavigatedBack: false,
           selectedCatalogId: action.catalogId,
           newCatalogName: action.newCatalogName ?? state.newCatalogName,
         };
@@ -264,9 +252,6 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
 
       case "RESTORE":
         return { ...state, ...action.state };
-
-      case "SET_NAVIGATION_CONFIG":
-        return { ...state, navigationConfig: { showBack: true, showNext: true, ...action.config } };
 
       default:
         return state;

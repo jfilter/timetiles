@@ -16,18 +16,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   ArrowDownIcon,
+  ArrowLeft,
   CalendarIcon,
   ClockIcon,
   DatabaseIcon,
   FingerprintIcon,
   FolderIcon,
   GlobeIcon,
+  Loader2,
   MapPinIcon,
+  Rocket,
   SparklesIcon,
   TextIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutations";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
@@ -52,7 +55,7 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const t = useTranslations("Import");
-  const { state, startProcessing, nextStep, setError, setScheduleConfig, setNavigationConfig } = useWizard();
+  const { state, prevStep, startProcessing, nextStep, setError, setScheduleConfig } = useWizard();
   const {
     file,
     sheets,
@@ -186,16 +189,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     setError,
     t,
   ]);
-
-  // Configure navigation for this step
-  useEffect(() => {
-    setNavigationConfig({
-      onNext: handleStartImport,
-      nextLabel: t("startImport"),
-      isLoading: configureMutation.isPending,
-    });
-    return () => setNavigationConfig({});
-  }, [setNavigationConfig, handleStartImport, configureMutation.isPending, t]);
 
   // Get catalog and dataset names for display
   const catalogName = selectedCatalogId === "new" ? newCatalogName : t("catalogNumber", { id: selectedCatalogId ?? 0 });
@@ -536,6 +529,23 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       )}
 
       {state.error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{state.error}</div>}
+
+      {/* Inline action buttons */}
+      <div className="flex items-center justify-between pt-4">
+        <Button variant="ghost" size="sm" onClick={prevStep} className="gap-1.5">
+          <ArrowLeft className="h-4 w-4" />
+          {t("backToMapping")}
+        </Button>
+        <Button
+          size="lg"
+          onClick={() => void handleStartImport()}
+          disabled={configureMutation.isPending}
+          className="gap-2"
+        >
+          {configureMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+          {t("startImport")}
+        </Button>
+      </div>
     </div>
   );
 };

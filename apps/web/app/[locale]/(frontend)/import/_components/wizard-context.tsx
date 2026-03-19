@@ -55,17 +55,16 @@ import { clearStorage } from "./use-wizard-storage";
 import {
   type CatalogSelection,
   initialState,
-  type NavigationConfig,
   type ScheduleConfig,
   type WizardAction,
   wizardReducer,
   type WizardState,
   type WizardStep,
 } from "./wizard-reducer";
-import { canProceedFromStep, getStepTitle } from "./wizard-selectors";
+import { canProceedFromStep, getStepTitle, shouldAutoAdvance as shouldAutoAdvanceSelector } from "./wizard-selectors";
 
 // Re-export types so index.ts doesn't need to change
-export type { CatalogSelection, NavigationConfig, ScheduleConfig, WizardState, WizardStep };
+export type { CatalogSelection, ScheduleConfig, WizardState, WizardStep };
 
 // Context
 interface WizardContextValue {
@@ -91,9 +90,9 @@ interface WizardContextValue {
   setError: (error: string | null) => void;
   complete: () => void;
   reset: () => void;
-  setNavigationConfig: (config: NavigationConfig) => void;
   // Computed
   canProceed: boolean;
+  shouldAutoAdvance: boolean;
   stepTitle: string;
 }
 
@@ -206,16 +205,13 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     dispatch({ type: "RESET" });
   }, [dispatch]);
 
-  const setNavigationConfig = useCallback(
-    (config: NavigationConfig) => {
-      dispatch({ type: "SET_NAVIGATION_CONFIG", config });
-    },
-    [dispatch]
-  );
-
   // Computed values from pure selectors
   const canProceed = useMemo(
     () => canProceedFromStep(state, isAuthenticated, isEmailVerified),
+    [state, isAuthenticated, isEmailVerified]
+  );
+  const shouldAutoAdvance = useMemo(
+    () => shouldAutoAdvanceSelector(state, isAuthenticated, isEmailVerified),
     [state, isAuthenticated, isEmailVerified]
   );
   const stepTitle = useMemo(() => getStepTitle(state.currentStep), [state.currentStep]);
@@ -240,8 +236,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setError,
       complete,
       reset,
-      setNavigationConfig,
       canProceed,
+      shouldAutoAdvance,
       stepTitle,
     }),
     [
@@ -263,8 +259,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setError,
       complete,
       reset,
-      setNavigationConfig,
       canProceed,
+      shouldAutoAdvance,
       stepTitle,
     ]
   );

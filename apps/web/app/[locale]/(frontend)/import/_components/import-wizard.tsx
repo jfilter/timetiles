@@ -2,7 +2,7 @@
  * Import wizard step content component.
  *
  * Renders the appropriate step component based on current wizard state.
- * The wizard layout (progress, navigation) is handled by the parent layout.
+ * Handles auto-advance for steps 1-3 when their requirements are met.
  *
  * @module
  * @category Components
@@ -25,11 +25,11 @@ export interface ImportWizardProps {
 }
 
 export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
-  const { state, setFieldMapping, setTransforms, goToStep } = useWizard();
+  const { state, nextStep, setFieldMapping, setTransforms, goToStep, shouldAutoAdvance } = useWizard();
   const { currentStep } = state;
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const prevShouldAdvance = useRef(false);
 
   // Apply field mappings returned from the visual flow editor via sessionStorage
   useEffect(() => {
@@ -56,16 +56,19 @@ export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
     router.replace("/import", { scroll: false });
   }, [searchParams, setFieldMapping, setTransforms, goToStep, router]);
 
-  // Scroll to top of content area when step changes
+  // Auto-advance: when step requirements are met, move to the next step
+  // Only fires on false→true transition to prevent loops
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Find the scrollable parent (the overflow-y-auto container in the layout)
-      const scrollContainer = scrollContainerRef.current?.closest(".overflow-y-auto");
-      if (scrollContainer) {
-        scrollContainer.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    }, 50);
-    return () => clearTimeout(timer);
+    if (shouldAutoAdvance && !prevShouldAdvance.current) {
+      const timer = setTimeout(() => nextStep(), 400);
+      return () => clearTimeout(timer);
+    }
+    prevShouldAdvance.current = shouldAutoAdvance;
+  }, [shouldAutoAdvance, nextStep]);
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentStep]);
 
   const renderStep = () => {
@@ -87,9 +90,5 @@ export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
     }
   };
 
-  return (
-    <div ref={scrollContainerRef} className={cn("space-y-6", className)}>
-      {renderStep()}
-    </div>
-  );
+  return <div className={cn("space-y-6", className)}>{renderStep()}</div>;
 };

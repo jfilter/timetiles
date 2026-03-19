@@ -12,7 +12,7 @@ export const STORAGE_KEY = "timetiles_import_wizard_draft";
 export const STORAGE_EXPIRY_HOURS = 24;
 
 /** Bump when WizardState shape changes to auto-discard incompatible drafts. */
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 
 /**
  * Compile-time enforcement: if WizardState gains or loses a field, this
@@ -37,7 +37,7 @@ const _wizardStateShapeCheck: Record<keyof WizardState, true> = {
   importFileId: true,
   scheduledImportId: true,
   error: true,
-  navigationConfig: true,
+  userNavigatedBack: true,
 };
 // Prevent unused-variable warning (compile-time check only)
 export type { _wizardStateShapeCheck as _WizardStateShapeCheck };

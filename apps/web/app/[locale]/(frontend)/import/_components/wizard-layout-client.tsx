@@ -1,19 +1,18 @@
 /**
- * Client-side wizard layout component.
+ * Full-screen wizard layout component.
  *
- * Renders the fixed header (progress) and footer (navigation) with
- * scrollable content in between. Uses wizard context for state.
+ * Takes over the viewport with a fixed overlay, hiding site nav and footer.
+ * Renders a minimal header with back/close buttons and a thin progress bar.
  *
  * @module
  * @category Components
  */
 "use client";
 
-import { Card, CardContent } from "@timetiles/ui";
+import { useEffect } from "react";
 
 import { WizardProvider, type WizardProviderProps } from "./wizard-context";
-import { WizardNavigation } from "./wizard-navigation";
-import { WizardProgress } from "./wizard-progress";
+import { WizardHeader } from "./wizard-progress";
 
 interface WizardLayoutClientProps {
   children: React.ReactNode;
@@ -21,31 +20,22 @@ interface WizardLayoutClientProps {
 }
 
 export const WizardLayoutClient = ({ children, initialAuth }: Readonly<WizardLayoutClientProps>) => {
+  // Lock body scroll while wizard is mounted
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   return (
     <WizardProvider initialAuth={initialAuth}>
-      <div className="bg-background flex h-[calc(100vh-4rem)] flex-col">
-        {/* Fixed top - progress indicator */}
-        <div className="bg-background shrink-0 border-b">
-          <div className="mx-auto max-w-4xl px-6 py-4">
-            <WizardProgress />
-          </div>
-        </div>
+      <div className="bg-background fixed inset-0 z-50 flex flex-col">
+        <WizardHeader />
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-4xl px-6 py-8">
-            <Card>
-              <CardContent className="pt-6">{children}</CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Fixed bottom - navigation */}
-        <div className="bg-background shrink-0 border-t">
-          <div className="mx-auto max-w-4xl px-6 py-4">
-            <WizardNavigation />
-          </div>
-        </div>
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-3xl px-6 py-8">{children}</div>
+        </main>
       </div>
     </WizardProvider>
   );

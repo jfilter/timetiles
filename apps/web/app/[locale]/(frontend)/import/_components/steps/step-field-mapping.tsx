@@ -25,6 +25,7 @@ import {
 import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
+  ArrowRight,
   CalendarIcon,
   FileSpreadsheetIcon,
   MapPinIcon,
@@ -98,7 +99,7 @@ const formatCellValue = (value: unknown): string => {
 
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
   const t = useTranslations("Import");
-  const { state, setFieldMapping, setImportOptions } = useWizard();
+  const { state, nextStep, canProceed, setFieldMapping, setImportOptions } = useWizard();
   const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
 
   // State for active sheet tab (for multi-sheet files)
@@ -438,6 +439,14 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           </CardContent>
         </Card>
       )}
+
+      {/* Inline action button */}
+      <div className="flex justify-end pt-4">
+        <Button size="lg" onClick={nextStep} disabled={!canProceed} className="gap-2">
+          {t("continueToReview")}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };
