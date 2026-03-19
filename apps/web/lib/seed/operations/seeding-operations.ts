@@ -113,26 +113,34 @@ export class SeedingOperations {
     if (collectionName !== MAIN_MENU_SLUG && collectionName !== FOOTER_SLUG) return;
 
     try {
-      const data = Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData;
+      const enData = (Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData) as Record<
+        string,
+        unknown
+      >;
       const payload = this.seedManager.payloadInstance;
       if (!payload) {
         throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
       }
 
-      // Seed with default locale (creates structure + writes EN localized fields)
-      await payload.updateGlobal({
-        slug: collectionName,
-        data: data as Config["globals"]["main-menu"] & Config["globals"]["footer"],
-      });
+      type GlobalSlug = "main-menu" | "footer";
+      const slug = collectionName as GlobalSlug;
+      type GlobalData = Config["globals"]["main-menu"] & Config["globals"]["footer"];
 
-      // Seed German locale
+      // Initial update creates the array structure (localized fields inside arrays are dropped)
+      await payload.updateGlobal({ slug, data: enData as unknown as GlobalData, locale: "en" });
+
+      // Fetch to get Payload-generated array item IDs
+      const created = (await payload.findGlobal({ slug, depth: 0 })) as unknown as Record<string, unknown>;
+
+      // Re-apply English data with array IDs so localized fields are stored
+      const enWithIds = mergeGlobalArrayIds(created, enData);
+      await payload.updateGlobal({ slug, data: enWithIds as unknown as GlobalData, locale: "en" });
+
+      // Seed German locale with same array IDs
       const deData = this.getGermanGlobalSeedData(collectionName);
       if (deData) {
-        await payload.updateGlobal({
-          slug: collectionName,
-          data: deData as unknown as Config["globals"]["main-menu"] & Config["globals"]["footer"],
-          locale: "de",
-        });
+        const deWithIds = mergeGlobalArrayIds(created, deData);
+        await payload.updateGlobal({ slug, data: deWithIds as unknown as GlobalData, locale: "de" });
       }
 
       logger.info(`Seeded ${collectionName} global (en${deData ? " + de" : ""}) successfully!`);
@@ -533,4 +541,48 @@ const mergeBlockIds = (
 
     return merged;
   });
+};
+
+/**
+ * Merge Payload-generated array item IDs from a created global into seed data.
+ * Handles top-level arrays and one level of nested arrays (e.g. columns[].links).
+ */
+const mergeGlobalArrayIds = (
+  created: Record<string, unknown>,
+  seedData: Record<string, unknown>
+): Record<string, unknown> => {
+  const result = { ...seedData };
+
+  for (const key of Object.keys(seedData)) {
+    const seedArr = seedData[key];
+    const createdArr = created[key];
+
+    if (Array.isArray(seedArr) && Array.isArray(createdArr)) {
+      result[key] = seedArr.map((item, i) => {
+        const createdItem = createdArr[i] as Record<string, unknown> | undefined;
+        if (!createdItem?.id || typeof item !== "object" || item === null) return item;
+
+        const merged: Record<string, unknown> = { ...(item as Record<string, unknown>), id: createdItem.id };
+
+        // Merge nested arrays (e.g. columns[].links)
+        for (const subKey of Object.keys(item as Record<string, unknown>)) {
+          const subSeed = (item as Record<string, unknown>)[subKey];
+          const subCreated = createdItem[subKey] as unknown[];
+          if (Array.isArray(subSeed) && Array.isArray(subCreated)) {
+            merged[subKey] = subSeed.map((subItem, j) => {
+              const createdSub = (subCreated[j] ?? undefined) as Record<string, unknown> | undefined;
+              if (createdSub?.id && typeof subItem === "object" && subItem !== null) {
+                return { ...subItem, id: createdSub.id };
+              }
+              return subItem;
+            });
+          }
+        }
+
+        return merged;
+      });
+    }
+  }
+
+  return result;
 };

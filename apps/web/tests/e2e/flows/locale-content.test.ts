@@ -13,7 +13,11 @@ test.describe("Locale Content", () => {
   test("homepage renders English content", async ({ page }) => {
     await page.goto("/");
 
-    // Hero section
+    // Navigation (from MainMenu global)
+    await expect(page.getByRole("link", { name: "Explore" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "About" })).toBeVisible();
+
+    // Hero section (from Pages collection)
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Explore Your Geodata with TimeTiles");
 
     // Feature cards
@@ -22,10 +26,18 @@ test.describe("Locale Content", () => {
 
     // CTA
     await expect(page.getByRole("heading", { name: "Ready to explore your data?" })).toBeVisible();
+
+    // Footer (from Footer global)
+    await expect(page.getByRole("heading", { name: "Project" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Community" })).toBeVisible();
   });
 
   test("homepage renders German content", async ({ page }) => {
     await page.goto("/de");
+
+    // Navigation
+    await expect(page.getByRole("link", { name: "Erkunden" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Über uns" })).toBeVisible();
 
     // Hero section
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Erkunden Sie Ihre Geodaten mit TimeTiles");
@@ -36,5 +48,9 @@ test.describe("Locale Content", () => {
 
     // CTA
     await expect(page.getByRole("heading", { name: "Bereit, Ihre Daten zu erkunden?" })).toBeVisible();
+
+    // Footer
+    await expect(page.getByRole("heading", { name: "Projekt" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Gemeinschaft" })).toBeVisible();
   });
 });
