@@ -14,6 +14,7 @@ import path from "node:path";
 import { logger } from "@/lib/logger";
 import { getUrlFetchCache, type UrlFetchCache, type UrlFetchCacheOptions } from "@/lib/services/cache";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
 export interface FetchResult {
   data: Buffer;
@@ -337,14 +338,18 @@ export const fetchWithRetry = async (
 
   for (let attempt = 1; attempt <= attemptCount; attempt++) {
     try {
-      logger.info(`Fetching URL (attempt ${attempt}/${attemptCount})`, { url: sourceUrl, attempt, useCache });
+      logger.info(`Fetching URL (attempt ${attempt}/${attemptCount})`, {
+        url: sanitizeUrlForLogging(sourceUrl),
+        attempt,
+        useCache,
+      });
 
       const fetchOpts = buildCacheOptions(authHeaders, fetchOptions, useCache, cacheOptions, userId);
       return await processFetchResponse(urlFetchCache, sourceUrl, fetchOpts, fetchOptions, attempt);
     } catch (error) {
       lastError = error as Error;
       logger.warn(`Fetch attempt ${attempt} failed`, {
-        url: sourceUrl,
+        url: sanitizeUrlForLogging(sourceUrl),
         error: lastError.message,
         nextRetryIn: attempt < attemptCount ? currentDelay : null,
       });

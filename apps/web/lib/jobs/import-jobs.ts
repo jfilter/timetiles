@@ -19,6 +19,7 @@ export { validateSchemaJob } from "./handlers/validate-schema-job";
 
 // URL and scheduling job handlers
 export { cleanupStuckScheduledImportsJob } from "./handlers/cleanup-stuck-scheduled-imports-job";
+export { cleanupStuckScrapersJob } from "./handlers/cleanup-stuck-scrapers-job";
 export { scheduleManagerJob } from "./handlers/schedule-manager-job";
 export { urlFetchJob } from "./handlers/url-fetch-job";
 

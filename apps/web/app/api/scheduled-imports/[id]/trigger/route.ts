@@ -60,7 +60,17 @@ export const POST = apiRoute({
 
       return { message: "Import triggered" };
     } catch (error) {
-      logError(error, "Error triggering scheduled import", { scheduleId: numericId, userId: user.id });
+      // Revert status so the schedule doesn't get stuck as "running"
+      logError(error, "Error triggering scheduled import, reverting status", {
+        scheduleId: numericId,
+        userId: user.id,
+      });
+      await payload.update({
+        collection: "scheduled-imports",
+        where: { id: { equals: numericId } },
+        data: { lastStatus: "failed", lastError: "Failed to queue import job" },
+        overrideAccess: true,
+      });
       throw new AppError(500, "Internal server error");
     }
   },

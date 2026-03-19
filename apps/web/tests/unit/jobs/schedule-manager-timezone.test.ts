@@ -35,7 +35,8 @@ describe.sequential("scheduleManagerJob timezone support", () => {
     const mockPayload = {
       find: vi.fn(),
       findByID: vi.fn(),
-      update: vi.fn(),
+      // triggerScheduledImport uses conditional WHERE update that expects { docs: [...] }
+      update: vi.fn().mockResolvedValue({ docs: [{ id: "claimed" }] }),
       jobs: { queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-tz" }) },
     };
     const mockJob = { id: "schedule-job-tz" };

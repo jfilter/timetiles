@@ -495,7 +495,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: "import-123",
-        data: { stage: "failed", errors: [{ row: 0, error: "File not found" }] },
+        data: { stage: "failed", errorLog: { lastError: "File not found", context: "schema-detection" } },
       });
     });
 

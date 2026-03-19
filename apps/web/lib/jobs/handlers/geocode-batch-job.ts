@@ -25,7 +25,7 @@ import type { ImportJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { loadJobResources } from "../utils/resource-loading";
+import { failImportJob, loadJobResources } from "../utils/resource-loading";
 import { getImportFilePath } from "../utils/upload-path";
 
 /**
@@ -204,7 +204,7 @@ export const geocodeBatchJob = {
           data: {
             stage: PROCESSING_STAGE.FAILED,
             errorLog: {
-              error: errorMessage,
+              lastError: errorMessage,
               context: "geocode-batch",
               failedLocations: failureCount,
               failures: failures.slice(0, 10), // Store first 10 failures with details
@@ -268,14 +268,7 @@ export const geocodeBatchJob = {
         // Best-effort cleanup
       }
 
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-      // Update job status to failed with error details
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
-        data: { stage: PROCESSING_STAGE.FAILED, errorLog: { error: errorMessage, context: "geocode-batch" } },
-      });
+      await failImportJob(payload, importJobId, error, "geocode-batch");
 
       throw error;
     }

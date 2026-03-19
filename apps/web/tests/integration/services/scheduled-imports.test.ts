@@ -234,9 +234,9 @@ describe.sequential("Scheduled Imports Integration", () => {
       // Next run for daily schedule should be next day at midnight UTC
       expect(new Date(updatedSchedule.nextRun)).toEqual(new Date("2024-01-16T00:00:00.000Z"));
       expect(updatedSchedule.lastStatus).toBe("running");
-      expect(updatedSchedule.statistics.totalRuns).toBe(1);
-      // successfulRuns is NOT incremented at queue time - it's updated by the
+      // totalRuns is NOT incremented at queue time - it's updated by the
       // job handler when processing completes with actual success/failure status.
+      expect(updatedSchedule.statistics.totalRuns).toBe(0);
       expect(updatedSchedule.statistics.successfulRuns).toBe(0);
 
       vi.useRealTimers();

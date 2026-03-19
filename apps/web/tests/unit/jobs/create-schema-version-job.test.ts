@@ -325,11 +325,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         id: "import-123",
         data: {
           stage: "failed",
-          errorLog: {
-            error: "Schema version creation failed",
-            context: "schema version creation",
-            timestamp: expect.any(String),
-          },
+          errorLog: { lastError: "Schema version creation failed", context: "schema-version-creation" },
         },
       });
     });

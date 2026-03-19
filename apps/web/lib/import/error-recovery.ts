@@ -21,7 +21,7 @@ import { getNextRecoveryStage } from "@/lib/constants/stage-graph";
 import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { normalizeJobId } from "@/lib/utils/event-params";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { requireRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob, User } from "@/payload-types";
 
 // Constants
@@ -225,7 +225,7 @@ export class ErrorRecoveryService {
     job: ImportJob,
     retryCount: number
   ): Promise<RecoveryResult | null> {
-    const importFileId = extractRelationId(job.importFile)!;
+    const importFileId = requireRelationId(job.importFile, "importJob.importFile");
     const importFile = await payload.findByID({
       collection: COLLECTION_NAMES.IMPORT_FILES,
       id: importFileId,
@@ -236,7 +236,7 @@ export class ErrorRecoveryService {
       return null; // No quota check needed
     }
 
-    const userId = extractRelationId(importFile.user)!;
+    const userId = requireRelationId(importFile.user, "importFile.user");
     const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
     const quotaService = createQuotaService(payload);
@@ -254,7 +254,7 @@ export class ErrorRecoveryService {
       return {
         success: false,
         action: "quota_exceeded",
-        error: "User has exceeded their daily import quota. Retry will be attempted after quota resets.",
+        error: "User has exceeded their daily import quota. Retry blocked until quota resets at midnight UTC.",
       };
     }
 
@@ -442,7 +442,11 @@ export class ErrorRecoveryService {
   ];
 
   private static classifyError(job: ImportJob): ErrorClassification {
-    const errorMessage = getErrorLogState(job)?.lastError?.toLowerCase() ?? "";
+    const errorLog = getErrorLogState(job);
+    // Jobs may write the error message as `lastError` or `error` depending
+    // on the code path. Read both to ensure classification works regardless.
+    const rawError = errorLog?.lastError ?? (errorLog?.error as string | undefined);
+    const errorMessage = rawError?.toLowerCase() ?? "";
 
     const matched = this.ERROR_PATTERNS.find((pattern) =>
       pattern.keywords.some((keyword) => errorMessage.includes(keyword))

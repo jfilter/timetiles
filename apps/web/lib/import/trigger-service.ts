@@ -10,7 +10,7 @@
  */
 import type { Payload } from "payload";
 
-import { JOB_TYPES } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
 import { logError, logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledImport } from "@/payload-types";
@@ -38,6 +38,8 @@ interface TriggerOptions {
   triggeredBy: "webhook" | "schedule";
   /** If provided, nextRun will be set in the post-queue update. */
   nextRun?: string;
+  /** When true, skip the atomic status claim (caller already claimed "running"). */
+  alreadyClaimed?: boolean;
 }
 
 /**
@@ -63,14 +65,40 @@ export const triggerScheduledImport = async (
 ): Promise<{ jobId: number }> => {
   const importName = generateImportName(scheduledImport, currentTime);
 
-  // Set status to "running" before queuing to prevent overlapping triggers.
-  // For webhooks, the route already claimed "running" atomically via SQL,
-  // so this is a no-op. For the schedule manager, this is the guard.
-  await payload.update({
-    collection: "scheduled-imports",
-    id: scheduledImport.id,
-    data: { lastStatus: "running", lastRun: currentTime.toISOString() },
-  });
+  // Atomically claim "running" status to prevent overlapping triggers.
+  // The conditional WHERE prevents a race where two schedule-manager
+  // instances both see lastStatus != "running" and double-queue.
+  // For webhooks, the route already claimed "running" via raw SQL,
+  // so we skip the claim and only update metadata.
+  if (options.alreadyClaimed) {
+    // Caller already claimed "running" via raw SQL. Re-assert it here so
+    // the Payload ORM write doesn't overwrite the SQL-set value.
+    await payload.update({
+      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+      id: scheduledImport.id,
+      data: {
+        lastStatus: "running",
+        lastRun: currentTime.toISOString(),
+        currentRetries: 0,
+        ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
+      },
+    });
+  } else {
+    const claimResult = await payload.update({
+      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+      where: { id: { equals: scheduledImport.id }, lastStatus: { not_equals: "running" } },
+      data: {
+        lastStatus: "running",
+        lastRun: currentTime.toISOString(),
+        currentRetries: 0,
+        ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
+      },
+    });
+
+    if (claimResult.docs.length === 0) {
+      throw new Error("Scheduled import is already running (concurrent trigger rejected)");
+    }
+  }
 
   // Queue URL fetch job
   const urlFetchJob = await payload.jobs.queue({
@@ -86,23 +114,6 @@ export const triggerScheduledImport = async (
     },
   });
 
-  // Update statistics — only increment totalRuns at queue time.
-  // successfulRuns/failedRuns are updated by the job handler on completion.
-  const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
-  stats.totalRuns = (stats.totalRuns ?? 0) + 1;
-
-  await payload.update({
-    collection: "scheduled-imports",
-    id: scheduledImport.id,
-    data: {
-      lastRun: currentTime.toISOString(),
-      lastStatus: "running",
-      currentRetries: 0,
-      statistics: stats,
-      ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
-    },
-  });
-
   logger.info(
     {
       scheduledImportId: scheduledImport.id,
@@ -113,6 +124,10 @@ export const triggerScheduledImport = async (
     },
     `Triggered scheduled import via ${options.triggeredBy}`
   );
+
+  // NOTE: totalRuns is NOT incremented here. It is updated by the job
+  // handler on completion (updateScheduledImportSuccess / updateScheduledImportFailure)
+  // to avoid double-counting.
 
   return { jobId: urlFetchJob.id };
 };
@@ -135,7 +150,10 @@ export const queueWebhookImport = async (
   const previousStatus = scheduledImport.lastStatus ?? null;
 
   try {
-    return await triggerScheduledImport(payload, scheduledImport, currentTime, { triggeredBy: "webhook" });
+    return await triggerScheduledImport(payload, scheduledImport, currentTime, {
+      triggeredBy: "webhook",
+      alreadyClaimed: true,
+    });
   } catch (queueError) {
     // Revert lastStatus so the import doesn't get stuck as "running"
     logError(queueError, "Failed to queue webhook job, reverting status", {

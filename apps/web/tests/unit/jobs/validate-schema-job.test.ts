@@ -433,7 +433,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         id: 123,
         data: {
           stage: "failed",
-          errors: [{ row: 0, error: "Schema builder state not found. Schema detection stage must run first." }],
+          errorLog: {
+            lastError: "Schema builder state not found. Schema detection stage must run first.",
+            context: "validate-schema",
+          },
         },
       });
     });
@@ -472,7 +475,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 123,
-        data: { stage: "failed", errors: [{ row: 0, error: "Schema builder exploded" }] },
+        data: { stage: "failed", errorLog: { lastError: "Schema builder exploded", context: "validate-schema" } },
       });
     });
   });
@@ -895,9 +898,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           id: 123,
           data: expect.objectContaining({
             stage: "failed",
-            errors: expect.arrayContaining([
-              expect.objectContaining({ error: expect.stringContaining("would exceed your total events limit") }),
-            ]),
+            errorLog: expect.objectContaining({
+              lastError: expect.stringContaining("would exceed your total events limit"),
+              context: "validate-schema-quota",
+            }),
           }),
         })
       );

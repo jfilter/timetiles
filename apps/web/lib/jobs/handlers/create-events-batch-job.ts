@@ -23,13 +23,13 @@ import { createJobLogger, logError, logger, logPerformance } from "@/lib/logger"
 import { createQuotaService } from "@/lib/services/quota-service";
 import { getImportGeocodingResults } from "@/lib/types/geocoding";
 import type { ImportTransform } from "@/lib/types/import-transforms";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import { createEventData } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
-import { extractDuplicateRows, loadJobResources } from "../utils/resource-loading";
+import { extractDuplicateRows, failImportJob, loadJobResources } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 import { getImportFilePath } from "../utils/upload-path";
 
@@ -67,6 +67,22 @@ const updateImportFileStatusIfAllJobsComplete = async (
 
 // Extract helper functions to reduce complexity
 
+const getTransformPath = (t: ImportTransform): string => {
+  if ("from" in t) return t.from;
+  if ("fromFields" in t) return String(t.fromFields);
+  return "";
+};
+
+/** For rename transforms the source key is deleted, so newValue must read
+ *  from the destination path (t.to). For all other transforms the value
+ *  stays at t.from. */
+const getNewValuePath = (t: ImportTransform): string => {
+  if (t.type === "rename" && "to" in t) return t.to;
+  if ("from" in t) return t.from;
+  if ("fromFields" in t) return String(t.fromFields);
+  return "";
+};
+
 const processEventBatch = async (
   payload: Payload,
   rows: Record<string, unknown>[],
@@ -78,6 +94,9 @@ const processEventBatch = async (
 ) => {
   const duplicateRows = extractDuplicateRows(job);
   const geocodingResults = getImportGeocodingResults(job);
+
+  // Build transforms once per batch, not per row (they're dataset-level config)
+  const transforms = buildTransformsFromDataset(dataset);
 
   let eventsCreated = 0;
   let eventsSkipped = 0;
@@ -92,24 +111,16 @@ const processEventBatch = async (
     }
 
     try {
-      // Build unified transforms from dataset configuration
-      const transforms = buildTransformsFromDataset(dataset);
-
       // Apply all transforms in one pass
       const transformedRow = transforms.length > 0 ? applyTransforms(row, transforms) : row;
 
-      // Track if any transforms were applied
-      const getTransformPath = (t: ImportTransform): string => {
-        if ("from" in t) return t.from;
-        if ("fromFields" in t) return String(t.fromFields);
-        return "";
-      };
+      // Track what transforms changed
       const transformationChanges =
         transforms.length > 0
           ? transforms.map((t) => ({
               path: getTransformPath(t),
               oldValue: "from" in t ? (row[t.from] ?? null) : (null as unknown),
-              newValue: "from" in t ? (transformedRow[t.from] ?? null) : (null as unknown),
+              newValue: (transformedRow[getNewValuePath(t)] ?? null) as unknown,
             }))
           : null;
 
@@ -181,7 +192,7 @@ const markJobCompleted = async (
     const importJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
 
     if (importJob?.importFile) {
-      const importFileId = extractRelationId(importJob.importFile)!;
+      const importFileId = requireRelationId(importJob.importFile, "importJob.importFile");
       const importFile = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: importFileId });
 
       if (importFile?.user) {
@@ -245,14 +256,7 @@ const handleJobError = async (
   // Clean up sidecar CSV files on error
   cleanupSidecarFiles(filePath, sheetIndex);
 
-  await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
-    data: {
-      stage: PROCESSING_STAGE.FAILED,
-      errors: [{ row: 0, error: error instanceof Error ? error.message : "Unknown error" }],
-    },
-  });
+  await failImportJob(payload, importJobId, error, "create-events-batch");
 };
 
 const checkEventQuotaBeforeProcessing = async (
@@ -264,7 +268,7 @@ const checkEventQuotaBeforeProcessing = async (
     return;
   }
 
-  const userId = extractRelationId(importFile.user)!;
+  const userId = requireRelationId(importFile.user, "importFile.user");
   const user =
     typeof importFile.user === "object" ? importFile.user : await payload.findByID({ collection: "users", id: userId });
 
@@ -405,7 +409,7 @@ export const createEventsBatchJob = {
 
       try {
         const failedJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
-        const importFileId = extractRelationId(failedJob.importFile)!;
+        const importFileId = requireRelationId(failedJob.importFile, "importJob.importFile");
         await updateImportFileStatusIfAllJobsComplete(payload, importFileId);
       } catch (updateError) {
         logError(updateError, "Failed to update import file status", { importJobId });

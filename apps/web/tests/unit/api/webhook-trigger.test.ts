@@ -80,12 +80,12 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     // Atomic claim happens via raw SQL (drizzle.execute), not payload.update
     expect(mockDrizzleExecute).toHaveBeenCalledOnce();
 
-    // payload.update calls: [0] = pre-queue running guard, [1] = revert
+    // payload.update calls: [0] = metadata update (alreadyClaimed), [1] = revert
     const updateCalls = mockPayload.update.mock.calls;
     expect(updateCalls).toHaveLength(2);
-    // First call: triggerScheduledImport sets "running"
+    // First call: triggerScheduledImport updates metadata (status already claimed via SQL)
     expect(updateCalls[0]![0]).toEqual(
-      expect.objectContaining({ data: expect.objectContaining({ lastStatus: "running" }) })
+      expect.objectContaining({ data: expect.objectContaining({ currentRetries: 0 }) })
     );
     // Second call: queueWebhookImport reverts to previous status "success"
     expect(updateCalls[1]![0]).toEqual(
@@ -115,18 +115,14 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
 
     expect(response.status).toBe(200);
 
-    // The statistics update should NOT contain executionHistory with "success" status
+    // At queue time, neither executionHistory nor statistics should be updated.
+    // totalRuns is incremented by the job handler on completion, not at queue time.
     const updateCalls = mockPayload.update.mock.calls;
-    const statsUpdateCall = updateCalls.find(
-      (call: unknown[]) =>
-        (call[0] as Record<string, unknown>).data && (call[0] as { data: Record<string, unknown> }).data.statistics
-    );
-    expect(statsUpdateCall).toBeDefined();
-    // The stats update should not include executionHistory at all
-    const statsData = (statsUpdateCall![0] as { data: Record<string, unknown> }).data;
-    expect(statsData.executionHistory).toBeUndefined();
-    // But it should update totalRuns
-    expect(statsData.statistics).toEqual(expect.objectContaining({ totalRuns: 6 }));
+    for (const call of updateCalls) {
+      const data = (call[0] as { data: Record<string, unknown> }).data;
+      expect(data.executionHistory).toBeUndefined();
+      expect(data.statistics).toBeUndefined();
+    }
   });
 
   it("should skip when import is already running", async () => {

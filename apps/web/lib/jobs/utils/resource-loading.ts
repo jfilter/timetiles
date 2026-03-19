@@ -11,7 +11,7 @@
  */
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import { getImportFilePath } from "./upload-path";
@@ -91,6 +91,27 @@ export const loadJobAndFilePath = async (
   const filePath = getImportFilePath(importFile.filename ?? "");
 
   return { job, importFile, filePath };
+};
+
+/**
+ * Mark an import job as FAILED with a standardized error payload.
+ *
+ * Concentrates the repeated `payload.update({ stage: FAILED, ... })` pattern
+ * from job handler catch blocks into one place.
+ */
+export const failImportJob = async (
+  payload: Payload,
+  importJobId: string | number,
+  error: unknown,
+  context?: string
+): Promise<void> => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  await payload.update({
+    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    id: importJobId,
+    data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError: errorMessage, context: context ?? "unknown" } },
+  });
 };
 
 /**

@@ -17,6 +17,7 @@ import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledImport, User } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
@@ -186,7 +187,7 @@ const handleFetchSuccess = async (
     filename,
     fileSize: data.length,
     contentType,
-    sourceUrl,
+    sourceUrl: sanitizeUrlForLogging(sourceUrl),
   });
 
   return { importFileId: importFile.id, filename, contentHash: dataHash, isDuplicate: false };
@@ -258,7 +259,7 @@ const loadUser = async (payload: Payload, userId: string | number | User): Promi
 const checkAndTrackQuota = async (
   payload: Payload,
   userId: string | number | User | null | undefined,
-  scheduledImport: ScheduledImport | null
+  _scheduledImport: ScheduledImport | null
 ): Promise<void> => {
   if (!userId) return;
 
@@ -269,13 +270,12 @@ const checkAndTrackQuota = async (
   const quotaCheck = await quotaService.checkQuota(user, "URL_FETCHES_PER_DAY", 1);
 
   if (!quotaCheck.allowed) {
-    const errorMessage = `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`;
-
-    if (scheduledImport) {
-      await updateScheduledImportFailure(payload, scheduledImport, new Error(errorMessage));
-    }
-
-    throw new Error(errorMessage);
+    // Do NOT call updateScheduledImportFailure here — the outer catch
+    // block in the job handler already does that, and calling it twice
+    // would double-count failedRuns and duplicate execution history.
+    throw new Error(
+      `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`
+    );
   }
 
   // Track URL fetch usage
@@ -323,7 +323,10 @@ export const urlFetchJob = {
     const input = (context.input ?? context.job?.input) as UrlFetchJobInput;
 
     const startTime = Date.now();
-    logger.info("Starting URL fetch job", { sourceUrl: input.sourceUrl, scheduledImportId: input.scheduledImportId });
+    logger.info("Starting URL fetch job", {
+      sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
+      scheduledImportId: input.scheduledImportId,
+    });
 
     if (!input.sourceUrl) {
       throw new Error("Source URL is required");
@@ -354,7 +357,7 @@ export const urlFetchJob = {
       const fetchResult = await performFetch(input, scheduledImport, cachingEnabled);
 
       logger.info("URL fetch successful", {
-        sourceUrl: input.sourceUrl,
+        sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
         contentType: fetchResult.contentType,
         contentLength: fetchResult.contentLength,
         attempts: fetchResult.attempts,
@@ -380,7 +383,7 @@ export const urlFetchJob = {
     } catch (error) {
       const errorObj = error as Error;
       logError(errorObj, "URL fetch job failed", {
-        sourceUrl: input.sourceUrl,
+        sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
         scheduledImportId: input.scheduledImportId,
       });
 

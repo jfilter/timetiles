@@ -11,6 +11,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 
+import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 import { z } from "zod";
 
@@ -63,18 +64,14 @@ const streamExportFile = async (
     throw new NotFoundError("Export file not found on disk");
   }
 
-  // Increment download count -- re-read to minimize race window
-  const freshExport = await payload.findByID({
-    collection: DATA_EXPORTS_COLLECTION,
-    id: normalizedExportId,
-    overrideAccess: true,
-  });
-  await payload.update({
-    collection: DATA_EXPORTS_COLLECTION,
-    id: normalizedExportId,
-    data: { downloadCount: (freshExport.downloadCount ?? 0) + 1 },
-    overrideAccess: true,
-  });
+  // Atomically increment download count to avoid race conditions
+  // when multiple concurrent downloads hit this endpoint.
+  await payload.db.drizzle.execute(sql`
+    UPDATE data_exports
+    SET download_count = COALESCE(download_count, 0) + 1,
+        updated_at = NOW()
+    WHERE id = ${normalizedExportId}
+  `);
 
   logger.info({ userId, exportId }, "Data export downloaded");
 

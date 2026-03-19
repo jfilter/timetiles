@@ -19,6 +19,7 @@ import { apiRoute, ValidationError } from "@/lib/api";
 import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
 import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { createLogger, logError } from "@/lib/logger";
+import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
 import {
   getPreviewDir,
@@ -68,7 +69,11 @@ export const POST = apiRoute({
     const authHeaders = buildAuthHeaders(authConfig as Parameters<typeof buildAuthHeaders>[0]);
 
     logger.info(
-      { url: sourceUrl, hasAuth: authConfig?.type !== "none" && authConfig !== undefined, userId: user.id },
+      {
+        url: sanitizeUrlForLogging(sourceUrl),
+        hasAuth: authConfig?.type !== "none" && authConfig !== undefined,
+        userId: user.id,
+      },
       "Fetching data from URL"
     );
 
@@ -108,7 +113,7 @@ export const POST = apiRoute({
       fileSize = fetchResult.data.length;
 
       logger.info(
-        { previewId, sourceUrl, detectedType: mimeType, fileSize, userId: user.id },
+        { previewId, sourceUrl: sanitizeUrlForLogging(sourceUrl), detectedType: mimeType, fileSize, userId: user.id },
         "URL data fetched and saved for preview"
       );
     } catch (fetchError) {
@@ -117,7 +122,7 @@ export const POST = apiRoute({
         throw fetchError;
       }
       const errorMessage = fetchError instanceof Error ? fetchError.message : "Unknown error";
-      logError(fetchError, "preview-schema-url-fetch", { sourceUrl });
+      logError(fetchError, "preview-schema-url-fetch", { sourceUrl: sanitizeUrlForLogging(sourceUrl) });
       throw new ValidationError(`Failed to fetch URL: ${errorMessage}`);
     }
 

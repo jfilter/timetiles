@@ -316,7 +316,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "import-jobs",
         id: 123,
-        data: { stage: "failed", errorLog: { error: "File read error", context: "geocode-batch" } },
+        data: { stage: "failed", errorLog: { lastError: "File read error", context: "geocode-batch" } },
       });
     });
 
@@ -409,7 +409,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         data: {
           stage: "failed",
           errorLog: {
-            error: expect.stringContaining("Geocoding failed for all 2 locations"),
+            lastError: expect.stringContaining("Geocoding failed for all 2 locations"),
             context: "geocode-batch",
             failedLocations: 2,
             failures: expect.arrayContaining([

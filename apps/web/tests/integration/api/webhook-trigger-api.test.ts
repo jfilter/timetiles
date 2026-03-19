@@ -142,7 +142,8 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: testScheduledImport.id });
 
-      expect(updatedImport.statistics!.totalRuns).toBe(6);
+      // totalRuns is NOT incremented at queue time — only on job completion
+      expect(updatedImport.statistics!.totalRuns).toBe(5);
     });
 
     it("should use import name template", async () => {

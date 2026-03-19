@@ -38,7 +38,8 @@ describe.sequential("scheduleManagerJob", () => {
       const mockPayload = {
         find: vi.fn(),
         findByID: vi.fn(),
-        update: vi.fn(),
+        // triggerScheduledImport uses conditional WHERE update that expects { docs: [...] }
+        update: vi.fn().mockResolvedValue({ docs: [{ id: "claimed" }] }),
         jobs: { queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-123" }) },
       };
 
@@ -81,7 +82,14 @@ describe.sequential("scheduleManagerJob", () => {
         pagination: false,
       });
 
-      expect(result.output).toMatchObject({ success: true, totalScheduled: 1, triggered: 1, errors: 0 });
+      expect(result.output).toMatchObject({
+        success: true,
+        totalScheduled: 1,
+        triggered: 1,
+        errors: 0,
+        scrapersTriggered: 0,
+        scraperErrors: 0,
+      });
     });
 
     it("should trigger imports that are due based on frequency", async () => {
@@ -271,25 +279,28 @@ describe.sequential("scheduleManagerJob", () => {
 
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
+      // triggerScheduledImport uses a conditional WHERE update to atomically
+      // claim "running" status and set nextRun in a single operation.
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "scheduled-imports",
-        id: "import-1",
+        where: { id: { equals: "import-1" }, lastStatus: { not_equals: "running" } },
         data: expect.objectContaining({
           lastRun: currentTime.toISOString(),
           nextRun: new Date("2024-01-15 11:00:00").toISOString(), // Next hour
           lastStatus: "running",
           currentRetries: 0,
-          statistics: { totalRuns: 6, successfulRuns: 4, failedRuns: 1, averageDuration: 2.5 },
         }),
       });
 
-      // Execution history should NOT be recorded at queue time.
-      // It's added by the job handler on completion.
-      const metadataUpdate = mockPayload.update.mock.calls.find(
+      // totalRuns is NOT incremented at queue time — only on job completion.
+      // Execution history should also NOT be recorded at queue time.
+      const claimUpdate = mockPayload.update.mock.calls.find(
         (call: unknown[]) => (call[0] as { data: Record<string, unknown> }).data?.nextRun
       );
-      expect(metadataUpdate).toBeDefined();
-      expect((metadataUpdate![0] as { data: Record<string, unknown> }).data.executionHistory).toBeUndefined();
+      expect(claimUpdate).toBeDefined();
+      const claimData = (claimUpdate![0] as { data: Record<string, unknown> }).data;
+      expect(claimData.executionHistory).toBeUndefined();
+      expect(claimData.statistics).toBeUndefined();
     });
 
     it("should handle errors gracefully", async () => {
@@ -321,15 +332,12 @@ describe.sequential("scheduleManagerJob", () => {
       // Should handle error and continue
       expect(result.output).toMatchObject({ success: true, totalScheduled: 1, triggered: 0, errors: 1 });
 
-      // Should update the import with error status
+      // Should update the import with error status and advance nextRun
+      // so the scheduler doesn't retry every minute
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "scheduled-imports",
         id: "error-import",
-        data: expect.objectContaining({
-          lastStatus: "failed",
-          lastError: "Queue error",
-          statistics: expect.objectContaining({ totalRuns: 1, failedRuns: 1, successfulRuns: 0, averageDuration: 0 }),
-        }),
+        data: expect.objectContaining({ lastStatus: "failed", lastError: "Queue error", nextRun: expect.any(String) }),
       });
     });
 
@@ -382,9 +390,10 @@ describe.sequential("scheduleManagerJob", () => {
 
         await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
+        // triggerScheduledImport uses conditional WHERE update
         expect(mockPayload.update).toHaveBeenCalledWith({
           collection: "scheduled-imports",
-          id: `${testCase.frequency}-import`,
+          where: { id: { equals: `${testCase.frequency}-import` }, lastStatus: { not_equals: "running" } },
           data: expect.objectContaining({ nextRun: testCase.expectedNext.toISOString() }),
         });
       }
@@ -452,11 +461,11 @@ describe.sequential("scheduleManagerJob", () => {
 
       // Execution history should NOT be included in the update at queue time.
       // It's managed by the url-fetch job handler on completion.
-      const metadataUpdate = mockPayload.update.mock.calls.find(
-        (call: unknown[]) => (call[0] as { data: Record<string, unknown> }).data?.nextRun
+      const claimUpdate = mockPayload.update.mock.calls.find(
+        (call: unknown[]) => (call[0] as { where?: unknown; data: Record<string, unknown> }).where != null
       );
-      expect(metadataUpdate).toBeDefined();
-      expect((metadataUpdate![0] as { data: Record<string, unknown> }).data.executionHistory).toBeUndefined();
+      expect(claimUpdate).toBeDefined();
+      expect((claimUpdate![0] as { data: Record<string, unknown> }).data.executionHistory).toBeUndefined();
     });
   });
 });

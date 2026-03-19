@@ -121,7 +121,7 @@ Event 3,2024-01-03,Hamburg Germany
     expect(importJob.errorLog).toBeDefined();
     expect(importJob.errorLog.context).toBe("geocode-batch");
     // Error message should indicate geocoding failure (either all locations failed or service error)
-    expect(importJob.errorLog.error).toMatch(/Geocoding|geocoding/i);
+    expect(importJob.errorLog.lastError).toMatch(/Geocoding|geocoding/i);
 
     // Verify the import file status (may be "failed" or still "processing" depending on error type)
     const updatedImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });

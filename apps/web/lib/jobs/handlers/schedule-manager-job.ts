@@ -18,6 +18,7 @@ import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
 import { getDatePartsInTimezone, wallClockToUtc } from "@/lib/utils/timezone";
+import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledImport, Scraper } from "@/payload-types";
 
 // Unused but kept for future expansion
@@ -264,17 +265,23 @@ const processScheduledImport = async (
 };
 
 // Helper to handle import error
-const handleImportError = async (payload: Payload, scheduledImport: ScheduledImport, error: unknown): Promise<void> => {
+const handleImportError = async (
+  payload: Payload,
+  scheduledImport: ScheduledImport,
+  error: unknown,
+  currentTime: Date
+): Promise<void> => {
   logError(error, "Failed to trigger scheduled import", {
     scheduledImportId: scheduledImport.id,
     name: scheduledImport.name,
-    url: scheduledImport.sourceUrl,
+    url: sanitizeUrlForLogging(scheduledImport.sourceUrl),
   });
 
   try {
-    const stats = scheduledImport.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
-    stats.totalRuns = (stats.totalRuns ?? 0) + 1;
-    stats.failedRuns = (stats.failedRuns ?? 0) + 1;
+    // Advance nextRun so the scheduler doesn't retry every minute for a
+    // broken import. Without this, a queue failure would leave the old
+    // nextRun in the past and re-trigger on every scheduler tick.
+    const nextRun = calculateNextRun(scheduledImport, currentTime);
 
     await payload.update({
       collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
@@ -282,7 +289,7 @@ const handleImportError = async (payload: Payload, scheduledImport: ScheduledImp
       data: {
         lastStatus: "failed",
         lastError: error instanceof Error ? error.message : "Unknown error",
-        statistics: stats,
+        nextRun: nextRun.toISOString(),
       },
     });
   } catch (updateError) {
@@ -315,13 +322,10 @@ const shouldScraperRunNow = (scraper: Scraper, currentTime: Date): boolean => {
     }
   }
 
-  // First run: calculate from now minus 1 minute to see if cron matches
-  try {
-    const nextRun = calculateNextCronRun(scraper.schedule);
-    return nextRun != null && currentTime >= nextRun;
-  } catch {
-    return false;
-  }
+  // First run: no previous execution and no pre-calculated nextRunAt.
+  // Trigger immediately so the scraper starts its cadence; the handler
+  // will calculate and persist nextRunAt after the run.
+  return true;
 };
 
 /**
@@ -368,28 +372,43 @@ const processScheduledScrapers = async (
         continue;
       }
 
-      // Queue scraper execution job
-      await payload.jobs.queue({
-        task: "scraper-execution",
-        input: { scraperId: scraper.id, triggeredBy: "schedule" },
-      });
+      try {
+        // Queue scraper execution job
+        await payload.jobs.queue({
+          task: "scraper-execution",
+          input: { scraperId: scraper.id, triggeredBy: "schedule" },
+        });
 
-      // Calculate and update nextRunAt
-      const nextRun = calculateNextCronRun(scraper.schedule!, currentTime);
-      await payload.update({
-        collection: "scrapers",
-        id: scraper.id,
-        overrideAccess: true,
-        data: nextRun ? { nextRunAt: nextRun.toISOString() } : {},
-      });
+        // Calculate and update nextRunAt
+        const nextRun = calculateNextCronRun(scraper.schedule!, currentTime);
+        await payload.update({
+          collection: "scrapers",
+          id: scraper.id,
+          overrideAccess: true,
+          data: nextRun ? { nextRunAt: nextRun.toISOString() } : {},
+        });
 
-      logger.info("Queued scraper execution", {
-        scraperId: scraper.id,
-        name: scraper.name,
-        nextRunAt: nextRun?.toISOString(),
-      });
+        logger.info("Queued scraper execution", {
+          scraperId: scraper.id,
+          name: scraper.name,
+          nextRunAt: nextRun?.toISOString(),
+        });
 
-      triggered++;
+        triggered++;
+      } catch (queueError) {
+        // Revert "running" status so the scraper doesn't get stuck permanently
+        logError(queueError, "Failed to queue scraper, reverting status", {
+          scraperId: scraper.id,
+          name: scraper.name,
+        });
+        await payload.update({
+          collection: "scrapers",
+          id: scraper.id,
+          overrideAccess: true,
+          data: { lastRunStatus: "failed" },
+        });
+        errors++;
+      }
     } catch (error) {
       errors++;
       logError(error, "Failed to trigger scheduled scraper", { scraperId: scraper.id, name: scraper.name });
@@ -443,7 +462,7 @@ export const scheduleManagerJob = {
           }
         } catch (error) {
           errorCount++;
-          await handleImportError(payload, scheduledImport, error);
+          await handleImportError(payload, scheduledImport, error, currentTime);
         }
       }
 
