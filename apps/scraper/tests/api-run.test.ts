@@ -311,8 +311,13 @@ describe("POST /run endpoint", () => {
 
     it("streams file with correct headers when found", async () => {
       mockStat.mockResolvedValue({ size: 1024 });
-      // Mock a readable stream
-      const mockStream = { pipe: vi.fn(), on: vi.fn() };
+      // Mock a readable stream using a real Readable instance (required by Readable.toWeb)
+      const { Readable } = await import("node:stream");
+      const mockStream = new Readable({
+        read() {
+          this.push(null);
+        },
+      });
       mockCreateReadStream.mockReturnValue(mockStream);
 
       const res = await app.request("/output/run-123/data.csv", {

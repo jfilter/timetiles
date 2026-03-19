@@ -26,8 +26,8 @@ export const GET = apiRoute({
     const meta = loadPreviewMetadata(query.previewId);
     validateRequest(meta, user);
 
-    const fileExtension = path.extname(meta!.filePath).toLowerCase();
-    const sheets = parseFileSheets(meta!.filePath, fileExtension);
+    const fileExtension = path.extname(meta.filePath).toLowerCase();
+    const sheets = parseFileSheets(meta.filePath, fileExtension);
 
     return { sheets };
   },

@@ -13,7 +13,7 @@ import fs from "node:fs";
 
 import { z } from "zod";
 
-import { AppError, ValidationError } from "@/lib/api/errors";
+import { UnauthorizedError, ValidationError } from "@/lib/api/errors";
 import type { PreviewMetadata } from "@/lib/types/import-wizard";
 import type { User } from "@/payload-types";
 
@@ -121,8 +121,14 @@ export const ConfigureImportBodySchema = z.object({
  * Shape validation (required fields, types, non-empty arrays) is handled
  * by {@link ConfigureImportBodySchema}. This function checks that the preview
  * exists on disk, is not expired, and belongs to the requesting user.
+ *
+ * Throws {@link ValidationError} or {@link UnauthorizedError} on failure.
+ * After a successful call, `previewMeta` is narrowed to non-null.
  */
-export const validateRequest = (previewMeta: PreviewMetadata | null, user: User): void => {
+export function validateRequest(
+  previewMeta: PreviewMetadata | null,
+  user: User
+): asserts previewMeta is PreviewMetadata {
   if (!previewMeta) {
     throw new ValidationError("Preview not found or expired. Please upload the file again.");
   }
@@ -133,10 +139,10 @@ export const validateRequest = (previewMeta: PreviewMetadata | null, user: User)
   }
 
   if (previewMeta.userId !== user.id) {
-    throw new AppError(401, "You do not have access to this preview");
+    throw new UnauthorizedError("You do not have access to this preview");
   }
 
   if (!fs.existsSync(previewMeta.filePath)) {
     throw new ValidationError("Preview file not found. Please upload the file again.");
   }
-};
+}

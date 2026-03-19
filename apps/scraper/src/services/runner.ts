@@ -1,6 +1,12 @@
 /**
  * Podman container lifecycle management for scraper execution.
  *
+ * **Single-instance design**: All run tracking, metrics, and concurrency
+ * limits are held in module-level memory. This is intentional — the runner
+ * is deployed as a single ephemeral process. If multi-instance deployment
+ * is ever needed, run tracking should move to a shared store (e.g. Redis
+ * or the web app's database).
+ *
  * @module
  * @category Services
  */
@@ -20,8 +26,10 @@ import { validateOutput } from "./output-validator.js";
 
 const execFileAsync = promisify(execFile);
 
+/** In-memory set of active run IDs. Resets on process restart. */
 const activeRuns = new Set<string>();
 
+/** Metrics counters — non-durable, reset on process restart. */
 const startedAt = Date.now();
 let totalRuns = 0;
 let totalSuccess = 0;

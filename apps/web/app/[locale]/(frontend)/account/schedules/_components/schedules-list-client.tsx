@@ -22,10 +22,10 @@ import {
   Trash2Icon,
   XCircleIcon,
 } from "lucide-react";
-import { useState } from "react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Link } from "@/i18n/navigation";
+import { useLoadingStates } from "@/lib/hooks/use-loading-states";
 import {
   useDeleteScheduledImportMutation,
   useToggleScheduledImportMutation,
@@ -172,33 +172,25 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: Sch
 
 export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientProps) => {
   const { data: schedules = [] } = useScheduledImportsQuery(initialSchedules);
-  const [loadingStates, setLoadingStates] = useState<Record<number, string>>({});
+  const { states: loadingStates, setLoading, clearLoading } = useLoadingStates();
 
   const toggleMutation = useToggleScheduledImportMutation();
   const deleteMutation = useDeleteScheduledImportMutation();
   const triggerMutation = useTriggerScheduledImportMutation();
 
-  const clearLoading = (id: number) => {
-    setLoadingStates((prev) => {
-      const newState = { ...prev };
-      delete newState[id];
-      return newState;
-    });
-  };
-
   const handleToggleEnabled = (id: number, currentEnabled: boolean) => {
-    setLoadingStates((prev) => ({ ...prev, [id]: "toggling" }));
+    setLoading(id, "toggling");
     toggleMutation.mutate({ id, enabled: !currentEnabled }, { onSettled: () => clearLoading(id) });
   };
 
   const handleManualRun = (id: number) => {
-    setLoadingStates((prev) => ({ ...prev, [id]: "running" }));
+    setLoading(id, "running");
     triggerMutation.mutate(id, { onSettled: () => clearLoading(id) });
   };
 
   const handleDelete = (id: number) => {
     if (!confirm("Are you sure you want to delete this scheduled import?")) return;
-    setLoadingStates((prev) => ({ ...prev, [id]: "deleting" }));
+    setLoading(id, "deleting");
     deleteMutation.mutate(id, { onSettled: () => clearLoading(id) });
   };
 

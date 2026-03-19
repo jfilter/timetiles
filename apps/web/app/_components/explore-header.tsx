@@ -13,7 +13,9 @@ import React, { useEffect, useState } from "react";
 import { ViewToggle } from "@/app/[locale]/(frontend)/explore/_components/view-toggle";
 import { Link } from "@/i18n/navigation";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/geospatial/formatting";
+import { useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
+import { useViewScope } from "@/lib/hooks/use-view-scope";
 import { useUIStore } from "@/lib/store";
 import type { Catalog, Dataset } from "@/payload-types";
 
@@ -32,14 +34,19 @@ export interface ExploreNavigationProps {
 const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps, "currentView">) => {
   const t = useTranslations("Common");
   const { filters } = useFilters();
+  const scope = useViewScope();
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const mapStats = useUIStore((state) => state.ui.mapStats);
+  const { data: totalEventsData } = useEventsTotalQuery(filters, true, scope);
 
   const { title } = buildDynamicTitle(filters, catalogs, datasets);
 
   // Format event count as (visible/total)
+  const totalEvents = totalEventsData?.total;
   const eventCount =
-    mapStats == null ? null : `(${mapStats.visibleEvents.toLocaleString()}/${mapStats.totalEvents.toLocaleString()})`;
+    mapStats == null || totalEvents == null
+      ? null
+      : `(${mapStats.visibleEvents.toLocaleString()}/${totalEvents.toLocaleString()})`;
 
   return (
     <div className="-mx-6 flex flex-1 items-center justify-between">
@@ -89,10 +96,12 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
 const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
   const t = useTranslations("Common");
   const { filters } = useFilters();
+  const scope = useViewScope();
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const mapStats = useUIStore((state) => state.ui.mapStats);
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
+  const { data: totalEventsData } = useEventsTotalQuery(filters, true, scope);
 
   // Delay showing the filter icon until closing animation completes
   const [showFilterIcon, setShowFilterIcon] = useState(!isFilterDrawerOpen);
@@ -111,7 +120,9 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
   }, [isFilterDrawerOpen]);
 
   const { title, dateRange } = buildDynamicTitle(filters, catalogs, datasets);
-  const eventCount = mapStats ? formatEventCount(mapStats.visibleEvents, mapStats.totalEvents) : null;
+  const totalEvents = totalEventsData?.total;
+  const eventCount =
+    mapStats != null && totalEvents != null ? formatEventCount(mapStats.visibleEvents, totalEvents) : null;
 
   return (
     <div className="-mx-8 flex flex-1 items-center">

@@ -27,12 +27,13 @@ import {
 import { useState } from "react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useLoadingStates } from "@/lib/hooks/use-loading-states";
 import {
   useDeleteScraperRepoMutation,
   useRunScraperMutation,
   useSyncScraperRepoMutation,
 } from "@/lib/hooks/use-scraper-mutations";
-import { useScraperReposQuery } from "@/lib/hooks/use-scrapers-query";
+import { useScraperReposQuery, useScrapersQuery } from "@/lib/hooks/use-scrapers-query";
 import { formatDateLocale } from "@/lib/utils/date";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
@@ -256,43 +257,31 @@ interface ScrapersListClientProps {
 
 export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersListClientProps) => {
   const { data: repos = [] } = useScraperReposQuery(initialRepos);
-  const [allScrapers] = useState(initialScrapers);
-  const [repoLoadingStates, setRepoLoadingStates] = useState<Record<number, string>>({});
-  const [scraperLoadingStates, setScraperLoadingStates] = useState<Record<number, string>>({});
+  const { data: allScrapers = [] } = useScrapersQuery(undefined, initialScrapers);
+  const { states: repoLoadingStates, setLoading: setRepoLoading, clearLoading: clearRepoLoading } = useLoadingStates();
+  const {
+    states: scraperLoadingStates,
+    setLoading: setScraperLoading,
+    clearLoading: clearScraperLoading,
+  } = useLoadingStates();
 
   const syncMutation = useSyncScraperRepoMutation();
   const deleteMutation = useDeleteScraperRepoMutation();
   const runMutation = useRunScraperMutation();
 
-  const clearRepoLoading = (id: number) => {
-    setRepoLoadingStates((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  };
-
-  const clearScraperLoading = (id: number) => {
-    setScraperLoadingStates((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  };
-
   const handleSync = (repoId: number) => {
-    setRepoLoadingStates((prev) => ({ ...prev, [repoId]: "syncing" }));
+    setRepoLoading(repoId, "syncing");
     syncMutation.mutate(repoId, { onSettled: () => clearRepoLoading(repoId) });
   };
 
   const handleDelete = (repoId: number) => {
     if (!confirm("Are you sure you want to delete this scraper repo and all its scrapers?")) return;
-    setRepoLoadingStates((prev) => ({ ...prev, [repoId]: "deleting" }));
+    setRepoLoading(repoId, "deleting");
     deleteMutation.mutate(repoId, { onSettled: () => clearRepoLoading(repoId) });
   };
 
   const handleRunScraper = (scraperId: number) => {
-    setScraperLoadingStates((prev) => ({ ...prev, [scraperId]: "running" }));
+    setScraperLoading(scraperId, "running");
     runMutation.mutate(scraperId, { onSettled: () => clearScraperLoading(scraperId) });
   };
 

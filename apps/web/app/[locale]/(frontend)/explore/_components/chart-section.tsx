@@ -12,7 +12,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { EventHistogram } from "@/components/charts/event-histogram";
@@ -67,7 +67,7 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
   const { filters } = useFilters();
 
   // Determine which chart types should be available based on filters
-  const availableChartTypes: ChartType[] = (() => {
+  const availableChartTypes = useMemo<ChartType[]>(() => {
     const types: ChartType[] = ["histogram"]; // Always available
 
     // Show "By Dataset" when no datasets are selected (show all) or multiple are selected
@@ -83,7 +83,7 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
     }
 
     return types;
-  })();
+  }, [filters.datasets.length, filters.catalog]);
 
   // If current chart type becomes unavailable, switch to histogram
   useEffect(() => {
@@ -92,14 +92,19 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
     }
   }, [availableChartTypes, chartType]);
 
+  const transitionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
   const handleChartTypeChange = (newType: ChartType) => {
     if (newType === chartType) return;
+
+    // Clear any pending transition from a previous rapid click
+    clearTimeout(transitionTimer.current);
 
     // Start fade out
     setIsTransitioning(true);
 
     // After fade out, swap chart type
-    setTimeout(() => {
+    transitionTimer.current = setTimeout(() => {
       setChartType(newType);
       // Small delay then fade in
       requestAnimationFrame(() => {
@@ -107,6 +112,8 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
       });
     }, 150); // Match CSS transition duration
   };
+
+  useEffect(() => () => clearTimeout(transitionTimer.current), []);
 
   const chartMeta = getChartMeta(chartType);
   const chartHeight = getChartHeight(chartType);

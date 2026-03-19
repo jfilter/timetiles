@@ -21,7 +21,7 @@ export const useScraperReposQuery = (initialData?: ScraperRepo[]) =>
     staleTime: 60_000,
   });
 
-export const useScrapersQuery = (repoId?: number) =>
+export const useScrapersQuery = (repoId?: number, initialData?: Scraper[]) =>
   useQuery({
     queryKey: scraperKeys.byRepo(repoId),
     queryFn: () => {
@@ -30,6 +30,7 @@ export const useScrapersQuery = (repoId?: number) =>
         : "/api/scrapers?sort=-updatedAt&limit=200";
       return fetchCollectionDocs<Scraper>(url);
     },
+    initialData,
     staleTime: 60_000,
   });
 

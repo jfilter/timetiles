@@ -8,8 +8,7 @@
  * @module
  * @category Components
  */
-import type { NavigationConfig } from "./navigation-config-context";
-import type { WizardStep } from "./wizard-context";
+import type { NavigationConfig, WizardStep } from "./wizard-reducer";
 
 /**
  * Default navigation config per step. Missing entries fall through

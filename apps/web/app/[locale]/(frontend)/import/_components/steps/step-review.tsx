@@ -32,7 +32,6 @@ import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutati
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
 import { formatFileSize } from "@/lib/utils/format";
 
-import { useNavigationConfig } from "../navigation-config-context";
 import type { ScheduleConfig } from "../wizard-context";
 import { useWizard } from "../wizard-context";
 
@@ -60,8 +59,7 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 };
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
-  const { state, startProcessing, nextStep, setError, setScheduleConfig } = useWizard();
-  const { setNavigationConfig } = useNavigationConfig();
+  const { state, startProcessing, nextStep, setError, setScheduleConfig, setNavigationConfig } = useWizard();
   const {
     file,
     sheets,

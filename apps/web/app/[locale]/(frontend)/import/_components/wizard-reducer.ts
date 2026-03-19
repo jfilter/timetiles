@@ -7,6 +7,7 @@
  * @module
  * @category Components
  */
+import { createFieldMappingFromSuggestions } from "@/lib/import/field-mapping-utils";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
@@ -15,6 +16,20 @@ import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type CatalogSelection = number | "new" | null;
+
+/** Configuration for the wizard navigation buttons. */
+export interface NavigationConfig {
+  /** Custom handler for the next button */
+  onNext?: () => void | Promise<void>;
+  /** Custom label for the next button */
+  nextLabel?: string;
+  /** Whether the next action is loading */
+  isLoading?: boolean;
+  /** Whether to show the back button (default: true) */
+  showBack?: boolean;
+  /** Whether to show the next button (default: true) */
+  showNext?: boolean;
+}
 
 /** Schedule configuration for creating scheduled imports */
 export interface ScheduleConfig {
@@ -62,6 +77,9 @@ export interface WizardState {
   /** ID of the created scheduled import (if schedule was created) */
   scheduledImportId: number | null;
   error: string | null;
+
+  // Navigation config (set dynamically by step components)
+  navigationConfig: NavigationConfig;
 }
 
 // Initial state
@@ -84,6 +102,7 @@ export const initialState: WizardState = {
   importFileId: null,
   scheduledImportId: null,
   error: null,
+  navigationConfig: { showBack: true, showNext: true },
 };
 
 // Action types
@@ -108,7 +127,8 @@ export type WizardAction =
   | { type: "SET_ERROR"; error: string | null }
   | { type: "COMPLETE" }
   | { type: "RESET" }
-  | { type: "RESTORE"; state: Partial<WizardState> };
+  | { type: "RESTORE"; state: Partial<WizardState> }
+  | { type: "SET_NAVIGATION_CONFIG"; config: NavigationConfig };
 
 // Step definitions — single source of truth for titles and labels
 export const WIZARD_STEPS: ReadonlyArray<{ step: WizardStep; title: string; label: string; shortLabel: string }> = [
@@ -162,22 +182,9 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
             similarityScore: null,
           })),
           // Initialize field mappings for each sheet, pre-filled from suggested mappings
-          fieldMappings: action.sheets.map((sheet) => {
-            const suggestions = sheet.suggestedMappings?.mappings;
-            return {
-              sheetIndex: sheet.index,
-              // Pre-fill from auto-detected suggestions
-              titleField: suggestions?.titlePath.path ?? null,
-              descriptionField: suggestions?.descriptionPath.path ?? null,
-              locationNameField: suggestions?.locationNamePath?.path ?? null,
-              dateField: suggestions?.timestampPath.path ?? null,
-              idField: null,
-              idStrategy: "auto" as const,
-              locationField: suggestions?.locationPath.path ?? null,
-              latitudeField: suggestions?.latitudePath.path ?? null,
-              longitudeField: suggestions?.longitudePath.path ?? null,
-            };
-          }),
+          fieldMappings: action.sheets.map((sheet) =>
+            createFieldMappingFromSuggestions(sheet.index, sheet.suggestedMappings?.mappings)
+          ),
         };
       }
 
@@ -257,6 +264,9 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
 
       case "RESTORE":
         return { ...state, ...action.state };
+
+      case "SET_NAVIGATION_CONFIG":
+        return { ...state, navigationConfig: { showBack: true, showNext: true, ...action.config } };
 
       default:
         return state;

@@ -11,6 +11,7 @@
 import { createReadStream } from "node:fs";
 import { rm, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -110,7 +111,7 @@ runRoutes.get("/output/:runId/:filename", async (c) => {
     const stats = await stat(filePath);
     const fileStream = createReadStream(filePath);
 
-    return new Response(fileStream as unknown as ReadableStream, {
+    return new Response(Readable.toWeb(fileStream) as ReadableStream, {
       headers: {
         "Content-Type": "text/csv",
         "Content-Length": stats.size.toString(),

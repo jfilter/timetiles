@@ -16,14 +16,12 @@ interface UIState {
   isFilterDrawerOpen: boolean;
   mapBounds: MapBounds | null;
   /**
-   * Derived event counts pushed from `useExplorerState` so the header can display them.
+   * Visible event count pushed from `useExplorerState` so the header can display it.
    *
-   * This lives in Zustand because the explore header (`app/_components/explore-header.tsx`)
-   * is rendered in the root layout, while the explorer components that compute these stats
-   * live in the explore page. They share no common ancestor in the component tree, so
-   * Zustand bridges the layout boundary. See `use-explorer-state.ts` for the producer.
+   * Only `visibleEvents` is stored here (viewport-dependent). The header reads
+   * `totalEvents` directly from React Query via `useEventsTotalQuery`.
    */
-  mapStats: { visibleEvents: number; totalEvents: number } | null;
+  mapStats: { visibleEvents: number } | null;
 }
 
 // Define the shape of our UI-only store

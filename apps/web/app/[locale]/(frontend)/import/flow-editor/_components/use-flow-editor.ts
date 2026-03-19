@@ -13,6 +13,7 @@ import { addEdge, type Connection, type Edge, type Node, useEdgesState, useNodes
 import { useCallback, useEffect, useRef } from "react";
 
 import { usePreviewSheetsQuery } from "@/lib/hooks/use-import-wizard-mutations";
+import { createEmptyFieldMapping } from "@/lib/import/field-mapping-utils";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/types/flow-mapping";
 import { createSourceNodes, createTargetNodes, TARGET_FIELD_DEFINITIONS } from "@/lib/types/flow-mapping";
 import {
@@ -330,18 +331,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
 
   // Convert flow state to FieldMapping + ImportTransforms
   const serializeFlowState = useCallback((): FlowEditorResult => {
-    const mapping: FieldMapping = {
-      sheetIndex,
-      titleField: null,
-      descriptionField: null,
-      locationNameField: null,
-      dateField: null,
-      idField: null,
-      idStrategy: "auto",
-      locationField: null,
-      latitudeField: null,
-      longitudeField: null,
-    };
+    const mapping: FieldMapping = createEmptyFieldMapping(sheetIndex);
     const validKeys = TARGET_FIELD_DEFINITIONS.map((d) => d.fieldKey);
 
     // Process direct source→target edges

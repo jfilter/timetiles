@@ -50,11 +50,12 @@ import { useAuthState } from "@/lib/hooks/use-auth-mutations";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 
-import { clearStorage } from "./use-wizard-storage";
 import { useWizardPersistence } from "./use-wizard-persistence";
+import { clearStorage } from "./use-wizard-storage";
 import {
   type CatalogSelection,
   initialState,
+  type NavigationConfig,
   type ScheduleConfig,
   type WizardAction,
   wizardReducer,
@@ -64,7 +65,7 @@ import {
 import { canProceedFromStep, getStepTitle } from "./wizard-selectors";
 
 // Re-export types so index.ts doesn't need to change
-export type { CatalogSelection, ScheduleConfig, WizardState, WizardStep };
+export type { CatalogSelection, NavigationConfig, ScheduleConfig, WizardState, WizardStep };
 
 // Context
 interface WizardContextValue {
@@ -90,6 +91,7 @@ interface WizardContextValue {
   setError: (error: string | null) => void;
   complete: () => void;
   reset: () => void;
+  setNavigationConfig: (config: NavigationConfig) => void;
   // Computed
   canProceed: boolean;
   stepTitle: string;
@@ -180,6 +182,10 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     dispatch({ type: "RESET" });
   };
 
+  const setNavigationConfig = (config: NavigationConfig) => {
+    dispatch({ type: "SET_NAVIGATION_CONFIG", config });
+  };
+
   // Computed values from pure selectors
   const canProceed = canProceedFromStep(state, isAuthenticated, isEmailVerified);
   const stepTitle = getStepTitle(state.currentStep);
@@ -203,6 +209,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     setError,
     complete,
     reset,
+    setNavigationConfig,
     canProceed,
     stepTitle,
   };

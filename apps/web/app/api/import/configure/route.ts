@@ -80,7 +80,7 @@ export const POST = apiRoute({
       const importFile = await createImportFileRecord(
         payload,
         user,
-        previewMeta!,
+        previewMeta,
         body as ConfigureImportRequest,
         finalCatalogId,
         datasetIdMap,
@@ -97,7 +97,7 @@ export const POST = apiRoute({
           datasetMappingEntries,
           user,
           importFile.id,
-          previewMeta!
+          previewMeta
         );
       }
 
