@@ -156,17 +156,26 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
         <p className="text-cartographic-navy/70 mt-2">{t("mapFieldsDescription")}</p>
       </div>
 
-      {/* Visual editor link */}
-      {state.previewId && (
-        <div className="flex justify-end">
+      {/* Active sheet indicator + visual editor link */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FileSpreadsheetIcon className="text-cartographic-navy/50 h-5 w-5" />
+          <span className="text-cartographic-charcoal font-serif font-semibold">
+            {sheetMappings.find((m) => m.sheetIndex === activeSheetIndex)?.newDatasetName ?? activeSheet?.name}
+          </span>
+          <span className="text-cartographic-navy/50 text-sm">
+            {t("rowCount", { count: (activeSheet?.rowCount ?? 0).toLocaleString() })}
+          </span>
+        </div>
+        {state.previewId && (
           <Button variant="outline" size="sm" asChild>
             <Link href={`/import/flow-editor?previewId=${state.previewId}&sheetIndex=${activeSheetIndex}`}>
               <WorkflowIcon className="mr-2 h-4 w-4" />
               {t("openVisualEditor")}
             </Link>
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Language detection banner */}
       <LanguageDetectionBanner suggestedMappings={suggestedMappings} />
