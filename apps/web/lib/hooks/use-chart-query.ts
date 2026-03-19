@@ -11,14 +11,11 @@
 "use client";
 
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 
-export type ChartQueryResult<TData, TError> = UseQueryResult<TData, TError> & {
-  /** True when loading for the first time (no data has been loaded yet) */
-  isInitialLoad: boolean;
-  /** True when loading and data has been loaded before (refetching/updating) */
-  isUpdating: boolean;
-};
+import type { LoadingPhase } from "./use-loading-phase";
+import { useLoadingPhase } from "./use-loading-phase";
+
+export type ChartQueryResult<TData, TError> = UseQueryResult<TData, TError> & LoadingPhase;
 
 /**
  * Wraps a React Query result with chart-specific loading states.
@@ -45,21 +42,6 @@ export type ChartQueryResult<TData, TError> = UseQueryResult<TData, TError> & {
 export const useChartQuery = <TData = unknown, TError = Error>(
   queryResult: UseQueryResult<TData, TError>
 ): ChartQueryResult<TData, TError> => {
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-
-  // Track when we've successfully loaded data at least once
-  useEffect(() => {
-    if (queryResult.data != null && !hasLoadedOnce) {
-      setHasLoadedOnce(true);
-    }
-  }, [queryResult.data, hasLoadedOnce]);
-
-  // Initial load: loading and no data available yet (no placeholder data either)
-  const isInitialLoad = queryResult.isLoading && queryResult.data == null && !hasLoadedOnce;
-
-  // Updating: loading but we have data available (either from placeholder or previous fetch)
-  // AND we've loaded successfully at least once
-  const isUpdating = queryResult.isLoading && queryResult.data != null && hasLoadedOnce;
-
+  const { isInitialLoad, isUpdating } = useLoadingPhase(queryResult.isLoading);
   return { ...queryResult, isInitialLoad, isUpdating };
 };

@@ -131,16 +131,6 @@ export const buildEventsDescription = (
   return sentence + ".";
 };
 
-/** Determine loading states */
-export const getLoadingStates = (
-  isLoading: boolean,
-  hasLoadedOnce: boolean
-): { isInitialLoad: boolean; isUpdating: boolean; shouldMarkLoaded: boolean } => ({
-  isInitialLoad: isLoading && !hasLoadedOnce,
-  isUpdating: isLoading && hasLoadedOnce,
-  shouldMarkLoaded: !isLoading && !hasLoadedOnce,
-});
-
 /** Check if data bounds are outside the current viewport */
 export const isDataBoundsOutsideViewport = (
   dataBounds: MapBounds | null | undefined,

@@ -10,16 +10,17 @@
  */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import type { MapPosition } from "@/lib/hooks/use-filters";
 import { useMapPosition } from "@/lib/hooks/use-filters";
+import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
 
 import { ChartSection } from "./chart-section";
 import { EventsList } from "./events-list";
 import type { ExplorerChromeElements } from "./explorer-shell";
 import { ExplorerShell } from "./explorer-shell";
-import { buildEventsDescription, getFilterLabels, getInitialViewState, getLoadingStates } from "./map-explorer-helpers";
+import { buildEventsDescription, getFilterLabels, getInitialViewState } from "./map-explorer-helpers";
 import { MapPanel } from "./map-panel";
 
 export const MapExplorer = () => {
@@ -77,7 +78,6 @@ const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorer
     handleBoundsChange,
   } = map;
 
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Close filter drawer on mobile on first mount for better UX
@@ -90,13 +90,8 @@ const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorer
   // Convert URL map position to initial view state for ClusteredMap
   const initialViewState = getInitialViewState(hasMapPosition, mapPosition);
 
-  // Loading states
-  const isLoading = eventsLoading || clustersLoading;
-  const { isInitialLoad, isUpdating, shouldMarkLoaded } = getLoadingStates(isLoading, hasLoadedOnce);
-
-  useEffect(() => {
-    if (shouldMarkLoaded) setHasLoadedOnce(true);
-  }, [shouldMarkLoaded]);
+  // Loading states — shared hook tracks "has loaded at least once"
+  const { isInitialLoad, isUpdating } = useLoadingPhase(eventsLoading || clustersLoading);
 
   // ResizeObserver to trigger map resize during grid transitions
   useEffect(() => {
