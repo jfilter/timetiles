@@ -467,10 +467,10 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Get base URL for API calls
     const baseUrl = page.url().split("/import")[0];
 
-    // Wait for import to complete (job worker processes jobs automatically every 2s)
-    // Multi-sheet imports need extra time: 3 sheets × (detection + schema + geocoding + events)
+    // Wait for import to complete — 2 job workers process jobs in parallel,
+    // but multi-sheet imports queue 18+ jobs that compete with other parallel tests
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 180000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 210000 });
 
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
@@ -665,10 +665,10 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Get base URL for API calls
     const baseUrl = page.url().split("/import")[0];
 
-    // Wait for import to complete (job worker processes jobs automatically every 2s)
-    // Multi-sheet imports need extra time: 3 sheets × (detection + schema + geocoding + events)
+    // Wait for import to complete — 2 job workers process jobs in parallel,
+    // but multi-sheet imports queue 18+ jobs that compete with other parallel tests
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 180000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 210000 });
 
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
