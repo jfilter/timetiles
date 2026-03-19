@@ -25,7 +25,7 @@ import { default as default_f195e9cca2c4472a83cbc3b3ef6c7a6c } from "../../../co
 import { default as default_e3406e2c2f4b561e289fd3b87529fc18 } from "../../../components/admin/scheduled-imports-banner";
 import { default as default_8871ee136735cb71c58beaa0104e1a0e } from "../../../components/admin/geocoding-test-panel";
 import { default as default_6471ee4fc4b342fe3a3eaaed347b9dda } from "../../../components/admin/admin-header";
-import { CollectionCards as CollectionCards_ab83ff7e88da8d3530831f296ec4756a } from "@payloadcms/ui/rsc";
+import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from "@payloadcms/next/rsc";
 
 export const importMap = {
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -64,5 +64,5 @@ export const importMap = {
   "/components/admin/scheduled-imports-banner#default": default_e3406e2c2f4b561e289fd3b87529fc18,
   "/components/admin/geocoding-test-panel#default": default_8871ee136735cb71c58beaa0104e1a0e,
   "/components/admin/admin-header#default": default_6471ee4fc4b342fe3a3eaaed347b9dda,
-  "@payloadcms/ui/rsc#CollectionCards": CollectionCards_ab83ff7e88da8d3530831f296ec4756a,
+  "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1,
 };

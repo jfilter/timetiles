@@ -393,18 +393,44 @@ export class SeedingOperations {
         },
       });
     } else if (collectionName === "pages") {
+      // Payload CMS doesn't store localized fields inside blocks during create(),
+      // and updating with a full pageBuilder array replaces all blocks (losing other
+      // locales' data). Workaround: create, fetch IDs, then update each locale with
+      // the same block IDs so Payload updates in-place instead of replacing.
       const doc = await payload.create({
         collection: collectionName as keyof Config["collections"],
         data: resolvedItem,
+        locale: "en",
       });
 
-      // Seed German locale if translation exists
+      // Fetch created page to get Payload-generated block/array IDs
+      const created = await payload.findByID({
+        collection: collectionName as keyof Config["collections"],
+        id: doc.id,
+        depth: 0,
+      });
+      const createdBlocks = (created as unknown as Record<string, unknown>).pageBuilder as Record<string, unknown>[];
+
+      // Re-apply English data with block IDs to store localized fields
+      const enBlocks = mergeBlockIds(createdBlocks, resolvedItem.pageBuilder as Record<string, unknown>[]);
+      await payload.update({
+        collection: collectionName as keyof Config["collections"],
+        id: doc.id,
+        data: { pageBuilder: enBlocks },
+        locale: "en",
+      });
+
+      // Seed German locale with same block IDs
       const slug = resolvedItem.slug as string | undefined;
       if (slug && pagesSeedDe[slug]) {
+        const deData = pagesSeedDe[slug] as Record<string, unknown>;
+        const deBlocks = deData.pageBuilder
+          ? mergeBlockIds(createdBlocks, deData.pageBuilder as Record<string, unknown>[])
+          : undefined;
         await payload.update({
           collection: collectionName as keyof Config["collections"],
           id: doc.id,
-          data: pagesSeedDe[slug] as Record<string, unknown>,
+          data: { ...deData, ...(deBlocks ? { pageBuilder: deBlocks } : {}) },
           locale: "de",
         });
         logger.debug(`Seeded German translation for page: ${slug}`);
@@ -472,4 +498,39 @@ export class SeedingOperations {
         return [];
     }
   }
+}
+
+/**
+ * Merge Payload-generated IDs from created blocks into seed data so that
+ * locale updates modify existing blocks in-place instead of replacing them.
+ * Blocks are matched by index; nested arrays (buttons, features, stats, items)
+ * also get their IDs merged.
+ */
+function mergeBlockIds(
+  createdBlocks: Record<string, unknown>[],
+  seedBlocks: Record<string, unknown>[]
+): Record<string, unknown>[] {
+  return seedBlocks.map((seedBlock, i) => {
+    const created = createdBlocks[i];
+    if (!created) return seedBlock;
+
+    const merged: Record<string, unknown> = { ...seedBlock, id: created.id };
+
+    // Merge IDs for nested arrays (e.g. buttons, features, stats, items)
+    for (const key of Object.keys(seedBlock)) {
+      const seedArr = seedBlock[key];
+      const createdArr = created[key];
+      if (Array.isArray(seedArr) && Array.isArray(createdArr)) {
+        merged[key] = seedArr.map((item, j) => {
+          const createdItem = createdArr[j] as Record<string, unknown> | undefined;
+          if (createdItem?.id && typeof item === "object" && item !== null) {
+            return { ...item, id: createdItem.id };
+          }
+          return item;
+        });
+      }
+    }
+
+    return merged;
+  });
 }
