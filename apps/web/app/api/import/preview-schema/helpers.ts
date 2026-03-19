@@ -11,11 +11,15 @@
  */
 import fs from "node:fs";
 
-import { LATITUDE_PATTERNS, LONGITUDE_PATTERNS, matchFieldNamePatterns } from "@timetiles/payload-schema-detection";
+import {
+  detectLanguage,
+  LATITUDE_PATTERNS,
+  LONGITUDE_PATTERNS,
+  matchFieldNamePatterns,
+} from "@timetiles/payload-schema-detection";
 import Papa from "papaparse";
 import { read, utils } from "xlsx";
 
-import { detectLanguageFromSamples } from "@/lib/services/schema-builder/language-detection";
 import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
 
 export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
@@ -103,7 +107,7 @@ export const detectSuggestedMappings = (
   sampleData: Record<string, unknown>[]
 ): SuggestedMappings => {
   // Detect language from headers and sample data
-  const language = detectLanguageFromSamples(sampleData, headers);
+  const language = detectLanguage(sampleData, headers);
   const langCode = language.code;
 
   return {

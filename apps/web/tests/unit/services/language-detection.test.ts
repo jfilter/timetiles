@@ -4,16 +4,15 @@
  * @module
  * @category Tests
  */
-import { describe, expect, it } from "vitest";
-
 import {
   detectLanguage,
-  detectLanguageFromSamples,
+  detectLanguageFromText,
   extractTextForLanguageDetection,
   isSupportedLanguage,
   LANGUAGE_NAMES,
   SUPPORTED_LANGUAGES,
-} from "@/lib/services/schema-builder/language-detection";
+} from "@timetiles/payload-schema-detection/utilities";
+import { describe, expect, it } from "vitest";
 
 describe("language-detection", () => {
   describe("SUPPORTED_LANGUAGES", () => {
@@ -113,9 +112,9 @@ describe("language-detection", () => {
     });
   });
 
-  describe("detectLanguage", () => {
+  describe("detectLanguageFromText", () => {
     it("should return default for short text", () => {
-      const result = detectLanguage("hi");
+      const result = detectLanguageFromText("hi");
       expect(result.code).toBe("eng");
       expect(result.confidence).toBe(0);
       expect(result.isReliable).toBe(false);
@@ -123,7 +122,7 @@ describe("language-detection", () => {
 
     it("should detect English text", () => {
       const text = "The quick brown fox jumps over the lazy dog. This is a sample text for language detection.";
-      const result = detectLanguage(text);
+      const result = detectLanguageFromText(text);
       expect(result.code).toBe("eng");
       expect(result.name).toBe("English");
     });
@@ -131,19 +130,19 @@ describe("language-detection", () => {
     it("should detect German text", () => {
       const text =
         "Dies ist ein Beispieltext für die Spracherkennung. Die deutsche Sprache hat viele interessante Wörter und Sätze.";
-      const result = detectLanguage(text);
+      const result = detectLanguageFromText(text);
       expect(result.code).toBe("deu");
       expect(result.name).toBe("German");
     });
 
     it("should return default for empty text", () => {
-      const result = detectLanguage("");
+      const result = detectLanguageFromText("");
       expect(result.code).toBe("eng");
       expect(result.isReliable).toBe(false);
     });
   });
 
-  describe("detectLanguageFromSamples", () => {
+  describe("detectLanguage", () => {
     it("should detect language from sample data", () => {
       const headers = ["title", "description"];
       const sampleData = [
@@ -156,12 +155,12 @@ describe("language-detection", () => {
           description: "Come see the latest works from contemporary artists at the gallery",
         },
       ];
-      const result = detectLanguageFromSamples(sampleData, headers);
+      const result = detectLanguage(sampleData, headers);
       expect(result.code).toBe("eng");
     });
 
     it("should return default for empty data", () => {
-      const result = detectLanguageFromSamples([], []);
+      const result = detectLanguage([], []);
       expect(result.code).toBe("eng");
       expect(result.isReliable).toBe(false);
     });

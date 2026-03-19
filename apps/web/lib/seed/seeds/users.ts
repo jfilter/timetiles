@@ -26,6 +26,8 @@ export type UserSeed = Omit<
   | "lockUntil"
 > & {
   password: string; // Plain password for seeding, will be hashed
+  enableAPIKey?: boolean;
+  apiKey?: string;
 };
 
 export const userSeeds = (environment: string): UserSeed[] => {

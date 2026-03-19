@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => {
     mockFetchWithRetry: vi.fn(),
     mockDetectFileTypeFromResponse: vi.fn(),
     mockBuildAuthHeaders: vi.fn(),
-    mockDetectLanguageFromSamples: vi.fn(),
+    mockDetectLanguage: vi.fn(),
     mockExistsSync: vi.fn(),
     mockMkdirSync: vi.fn(),
     mockWriteFileSync: vi.fn(),
@@ -62,10 +62,6 @@ vi.mock("@/lib/jobs/handlers/url-fetch-job/fetch-utils", () => ({
   detectFileTypeFromResponse: mocks.mockDetectFileTypeFromResponse,
 }));
 
-vi.mock("@/lib/services/schema-builder/language-detection", () => ({
-  detectLanguageFromSamples: mocks.mockDetectLanguageFromSamples,
-}));
-
 vi.mock("@timetiles/payload-schema-detection", () => {
   const TEST_FIELD_PATTERNS: Record<string, Record<string, RegExp[]>> = {
     title: { eng: [/^title$/i] },
@@ -89,6 +85,7 @@ vi.mock("@timetiles/payload-schema-detection", () => {
   };
 
   return {
+    detectLanguage: mocks.mockDetectLanguage,
     FIELD_PATTERNS: TEST_FIELD_PATTERNS,
     LATITUDE_PATTERNS: [/^lat$/i, /^latitude$/i],
     LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
@@ -168,7 +165,7 @@ describe.sequential("POST /api/import/preview-schema/upload", () => {
 
     mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
     mocks.mockExistsSync.mockReturnValue(true);
-    mocks.mockDetectLanguageFromSamples.mockReturnValue({ code: "eng", confidence: 0.9 });
+    mocks.mockDetectLanguage.mockReturnValue({ code: "eng", confidence: 0.9 });
     mocks.mockIsPrivateUrl.mockReturnValue(false);
   });
 
@@ -356,7 +353,7 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
     mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockBuildAuthHeaders.mockReturnValue({});
-    mocks.mockDetectLanguageFromSamples.mockReturnValue({ code: "eng", confidence: 0.9 });
+    mocks.mockDetectLanguage.mockReturnValue({ code: "eng", confidence: 0.9 });
     mocks.mockIsPrivateUrl.mockReturnValue(false);
   });
 

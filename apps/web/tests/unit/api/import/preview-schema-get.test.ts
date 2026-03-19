@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   mockPapaParse: vi.fn(),
   mockXlsxRead: vi.fn(),
   mockSheetToJson: vi.fn(),
-  mockDetectLanguageFromSamples: vi.fn(),
+  mockDetectLanguage: vi.fn(),
   mockExistsSync: vi.fn(),
   mockMkdirSync: vi.fn(),
   mockReadFileSync: vi.fn(),
@@ -45,10 +45,6 @@ vi.mock("node:fs", () => ({
 vi.mock("papaparse", () => ({ default: { parse: mocks.mockPapaParse } }));
 vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_json: mocks.mockSheetToJson } }));
 
-vi.mock("@/lib/services/schema-builder/language-detection", () => ({
-  detectLanguageFromSamples: mocks.mockDetectLanguageFromSamples,
-}));
-
 vi.mock("@timetiles/payload-schema-detection", () => {
   const TEST_FIELD_PATTERNS: Record<string, Record<string, RegExp[]>> = {
     title: { eng: [/^title$/i] },
@@ -73,6 +69,7 @@ vi.mock("@timetiles/payload-schema-detection", () => {
   };
 
   return {
+    detectLanguage: mocks.mockDetectLanguage,
     FIELD_PATTERNS: TEST_FIELD_PATTERNS,
     LATITUDE_PATTERNS: [/^lat$/i, /^latitude$/i],
     LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
@@ -126,12 +123,7 @@ describe.sequential("GET /api/import/preview-schema", () => {
 
     mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
     mocks.mockExistsSync.mockReturnValue(true);
-    mocks.mockDetectLanguageFromSamples.mockReturnValue({
-      code: "eng",
-      confidence: 0.9,
-      name: "English",
-      isReliable: true,
-    });
+    mocks.mockDetectLanguage.mockReturnValue({ code: "eng", confidence: 0.9, name: "English", isReliable: true });
   });
 
   describe("Authentication", () => {

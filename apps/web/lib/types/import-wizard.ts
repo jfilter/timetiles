@@ -9,12 +9,12 @@
  * @category Types
  */
 
-import type { LanguageDetectionResult } from "@/lib/services/schema-builder/language-detection";
+import type { LanguageResult } from "@timetiles/payload-schema-detection";
 
 import type { ImportTransform } from "./import-transforms";
 
 export type { ImportTransform } from "./import-transforms";
-export type { LanguageDetectionResult } from "@/lib/services/schema-builder/language-detection";
+export type { LanguageResult } from "@timetiles/payload-schema-detection";
 
 /** Confidence level for a field mapping suggestion */
 export type ConfidenceLevel = "high" | "medium" | "low" | "none";
@@ -28,7 +28,7 @@ export interface FieldMappingSuggestion {
 
 /** Suggested field mappings from auto-detection */
 export interface SuggestedMappings {
-  language: LanguageDetectionResult;
+  language: LanguageResult;
   mappings: {
     titlePath: FieldMappingSuggestion;
     descriptionPath: FieldMappingSuggestion;

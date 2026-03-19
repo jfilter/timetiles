@@ -1,47 +1,41 @@
 /**
- * Pattern detection utilities for schema building.
+ * Pattern detection adapters for schema building.
  *
- * Contains functions for detecting ID fields, enumerations, and other
- * data patterns in schema analysis. Geo field detection is handled by
- * the timetiles/payload-schema-detection plugin.
+ * Re-exports utility functions from the shared `@timetiles/payload-schema-detection`
+ * package and provides thin adapters that bridge the app's `SchemaBuilderState`
+ * interface with the package's stateless API.
+ *
+ * `detectEnums` is app-specific because it mutates `FieldStatistics` in place
+ * (setting `isEnumCandidate` and `enumValues`), whereas the package's
+ * `detectEnumFields` returns a pure list of field paths.
  *
  * @module
  * @category Services/SchemaBuilder
  */
 
+import { detectIdFields as detectIdFieldsFromStats } from "@timetiles/payload-schema-detection/utilities";
+
 import type { SchemaBuilderState } from "@/lib/types/schema-detection";
+
+// Re-export identical utilities from the shared package (single source of truth)
+export { looksLikeCoordinate, looksLikeId } from "@timetiles/payload-schema-detection/utilities";
 
 /**
  * Detects potential ID fields based on naming patterns and characteristics.
+ *
+ * Thin adapter: extracts `fieldStats` from the builder state and delegates
+ * to the shared package implementation.
  */
 export const detectIdFields = (state: SchemaBuilderState): string[] => {
-  const idFields: string[] = [];
-  const idPatterns = [/^id$/i, /_id$/i, /^uuid$/i, /^guid$/i, /^key$/i, /_key$/i];
-
-  for (const [fieldPath, stats] of Object.entries(state.fieldStats)) {
-    const fieldName = fieldPath.split(".").pop() ?? "";
-
-    // Check naming patterns
-    const matchesPattern = idPatterns.some((pattern) => pattern.test(fieldName));
-
-    // Check characteristics
-    const hasIdCharacteristics =
-      stats.uniqueValues === stats.occurrences &&
-      stats.occurrences > 1 &&
-      ((stats.typeDistribution["string"] ?? 0) > 0 ||
-        (stats.typeDistribution["number"] ?? 0) > 0 ||
-        (stats.typeDistribution["integer"] ?? 0) > 0);
-
-    if (matchesPattern || hasIdCharacteristics) {
-      idFields.push(fieldPath);
-    }
-  }
-
-  return idFields;
+  return detectIdFieldsFromStats(state.fieldStats);
 };
 
 /**
- * Detects enumeration fields based on unique value ratios.
+ * Detects enumeration fields and mutates field statistics in place.
+ *
+ * Unlike the package's pure `detectEnumFields` (which returns field paths),
+ * this function sets `stats.isEnumCandidate` and `stats.enumValues` directly
+ * on the state — callers depend on this mutation behavior.
  */
 export const detectEnums = (
   state: SchemaBuilderState,
@@ -69,42 +63,5 @@ export const detectEnums = (
         }));
       }
     }
-  }
-};
-
-/**
- * Checks if a value looks like an ID.
- */
-export const looksLikeId = (value: unknown): boolean => {
-  if (typeof value === "string") {
-    // UUID pattern
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
-      return true;
-    }
-    // MongoDB ObjectId pattern
-    if (/^[0-9a-f]{24}$/i.test(value)) {
-      return true;
-    }
-    // Generic alphanumeric ID
-    if (/^[a-zA-Z0-9]{8,}$/.test(value)) {
-      return true;
-    }
-  } else if (typeof value === "number") {
-    // Large integers often used as IDs
-    return value > 1000000;
-  }
-  return false;
-};
-
-/**
- * Checks if a value looks like a geographic coordinate.
- */
-export const looksLikeCoordinate = (value: unknown, type: "lat" | "lng"): boolean => {
-  if (typeof value !== "number") return false;
-
-  if (type === "lat") {
-    return value >= -90 && value <= 90;
-  } else {
-    return value >= -180 && value <= 180;
   }
 };
