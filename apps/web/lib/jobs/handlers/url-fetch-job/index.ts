@@ -18,7 +18,7 @@ import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
-import type { ScheduledImport, User } from "@/payload-types";
+import type { ImportFile, ScheduledImport, User } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
 import { calculateDataHash, detectFileTypeFromResponse, type FetchResult, fetchWithRetry } from "./fetch-utils";
@@ -162,8 +162,7 @@ const handleFetchSuccess = async (
   const importFileData = buildImportFileData(sourceUrl, dataHash, context);
   const importFile = await payload.create({
     collection: COLLECTION_NAMES.IMPORT_FILES,
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Payload can't infer data shape from string-typed collection slug
-    data: importFileData as any,
+    data: importFileData as Omit<ImportFile, "id" | "createdAt" | "updatedAt">,
     file: { data, mimetype: mimeType, name: filename, size: data.length },
     user,
     context: { skipImportFileHooks: true },

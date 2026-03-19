@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from "uuid";
 import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { Scraper, ScraperRepo, User } from "@/payload-types";
+import type { ImportFile, Scraper, ScraperRepo, User } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
 
@@ -207,9 +207,8 @@ const triggerAutoImport = async (
   };
 
   const importFile = await payload.create({
-    collection: COLLECTION_NAMES.IMPORT_FILES,
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Payload can't infer data shape from string-typed collection slug
-    data: importFileData as any,
+    collection: "import-files",
+    data: importFileData as Omit<ImportFile, "id" | "createdAt" | "updatedAt">,
     file: { data: csvBuffer, mimetype: "text/csv", name: filename, size: outputBytes },
     ...(user ? { user } : {}),
     context: { skipImportFileHooks: true },
