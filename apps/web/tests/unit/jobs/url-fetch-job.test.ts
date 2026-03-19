@@ -52,6 +52,7 @@ vi.mock("@/lib/services/quota-service", () => ({
   createQuotaService: () => ({
     checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 }),
     incrementUsage: vi.fn().mockResolvedValue(undefined),
+    checkAndIncrementUsage: vi.fn().mockResolvedValue(true),
   }),
 }));
 

@@ -255,7 +255,7 @@ const loadUser = async (payload: Payload, userId: string | number | User): Promi
   return payload.findByID({ collection: "users", id: userId });
 };
 
-// Helper to check and track URL fetch quota
+// Helper to check and track URL fetch quota atomically
 const checkAndTrackQuota = async (
   payload: Payload,
   userId: string | number | User | null | undefined,
@@ -266,22 +266,9 @@ const checkAndTrackQuota = async (
   const user = await loadUser(payload, userId);
   if (!user) return;
 
+  // Atomic check+increment prevents TOCTOU race when concurrent jobs run
   const quotaService = createQuotaService(payload);
-  const quotaCheck = await quotaService.checkQuota(user, "URL_FETCHES_PER_DAY", 1);
-
-  if (!quotaCheck.allowed) {
-    // Do NOT call updateScheduledImportFailure here — the outer catch
-    // block in the job handler already does that, and calling it twice
-    // would double-count failedRuns and duplicate execution history.
-    throw new Error(
-      `Daily URL fetch limit reached (${quotaCheck.current}/${quotaCheck.limit}). Resets at midnight UTC.`
-    );
-  }
-
-  // Track URL fetch usage
-  await quotaService.incrementUsage(user.id, "URL_FETCHES_PER_DAY", 1);
-
-  logger.info("URL fetch quota checked and tracked", { userId: user.id, remaining: quotaCheck.remaining });
+  await quotaService.checkAndIncrementUsage(user, "URL_FETCHES_PER_DAY", 1);
 };
 
 // Helper to prepare cache options
