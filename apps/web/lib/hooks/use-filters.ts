@@ -11,7 +11,7 @@
  *
  * @module
  */
-import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState } from "nuqs";
+import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState, useQueryStates } from "nuqs";
 
 import type { FilterState } from "../types/filter-state";
 import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../types/filter-state";
@@ -45,13 +45,23 @@ const parseFieldFilters = (raw: string | null): Record<string, string[]> => {
 };
 
 // Custom hook for managing all filter state via URL
+// Uses useQueryStates to batch related URL param updates into a single URL change,
+// avoiding intermediate states and unnecessary rerenders.
 /* oxlint-disable-next-line eslint(sonarjs/max-lines-per-function) -- filter hook centralises many related setters */
 export const useFilters = () => {
-  const [catalog, setCatalog] = useQueryState("catalog", parseAsStringOrNull);
-  const [datasets, setDatasetsRaw] = useQueryState("datasets", parseAsArrayOfStrings);
-  const [startDate, setStartDate] = useQueryState("startDate", parseAsStringOrNull);
-  const [endDate, setEndDate] = useQueryState("endDate", parseAsStringOrNull);
-  const [fieldFiltersParam, setFieldFiltersParam] = useQueryState("ff", parseAsStringOrNull);
+  const [filterParams, setFilterParams] = useQueryStates({
+    catalog: parseAsStringOrNull,
+    datasets: parseAsArrayOfStrings,
+    startDate: parseAsStringOrNull,
+    endDate: parseAsStringOrNull,
+    ff: parseAsStringOrNull,
+  });
+
+  const catalog = filterParams.catalog;
+  const datasets = filterParams.datasets;
+  const startDate = filterParams.startDate;
+  const endDate = filterParams.endDate;
+  const fieldFiltersParam = filterParams.ff;
 
   const fieldFilters = parseFieldFilters(fieldFiltersParam);
 
@@ -66,21 +76,20 @@ export const useFilters = () => {
   // Enhanced setCatalog — clears datasets and field filters on catalog change
   const handleSetCatalog = (newCatalog: string | null) => {
     const catalogValue = newCatalog === "all" ? null : newCatalog;
-    void setCatalog(catalogValue ?? "");
     if (catalogValue !== catalog) {
-      void setDatasetsRaw([]);
-      void setFieldFiltersParam("");
+      void setFilterParams({ catalog: catalogValue ?? "", datasets: [], ff: "" });
+    } else {
+      void setFilterParams({ catalog: catalogValue ?? "" });
     }
   };
 
   // Enhanced setDatasets — clears field filters (dataset-specific)
   const handleSetDatasets = (newDatasets: string[]) => {
-    void setDatasetsRaw(newDatasets);
-    void setFieldFiltersParam("");
+    void setFilterParams({ datasets: newDatasets, ff: "" });
   };
 
   const setFieldFilters = (newFieldFilters: Record<string, string[]>) =>
-    void setFieldFiltersParam(serializeFieldFilters(newFieldFilters));
+    void setFilterParams({ ff: serializeFieldFilters(newFieldFilters) });
 
   const setFieldFilter = (fieldPath: string, values: string[]) => {
     const updated = { ...fieldFilters };
@@ -89,15 +98,17 @@ export const useFilters = () => {
     } else {
       delete updated[fieldPath];
     }
-    void setFieldFiltersParam(serializeFieldFilters(updated));
+    void setFilterParams({ ff: serializeFieldFilters(updated) });
   };
 
   const applyFilterState = (newFilters: FilterState) => {
-    void setCatalog(newFilters.catalog ?? "");
-    void setDatasetsRaw(newFilters.datasets);
-    void setStartDate(newFilters.startDate ?? "");
-    void setEndDate(newFilters.endDate ?? "");
-    void setFieldFiltersParam(serializeFieldFilters(newFilters.fieldFilters));
+    void setFilterParams({
+      catalog: newFilters.catalog ?? "",
+      datasets: newFilters.datasets,
+      startDate: newFilters.startDate ?? "",
+      endDate: newFilters.endDate ?? "",
+      ff: serializeFieldFilters(newFilters.fieldFilters),
+    });
   };
 
   const handleRemoveFilter = (filterType: keyof FilterState, value?: string) =>
@@ -108,11 +119,9 @@ export const useFilters = () => {
   // Higher-level filter actions
   const toggleCatalog = (catalogId: string, allDatasetsInCatalog: string[]) => {
     if (catalogId === filters.catalog) {
-      handleSetCatalog(null);
-      handleSetDatasets([]);
+      void setFilterParams({ catalog: "", datasets: [], ff: "" });
     } else {
-      handleSetCatalog(catalogId);
-      handleSetDatasets(allDatasetsInCatalog);
+      void setFilterParams({ catalog: catalogId, datasets: allDatasetsInCatalog, ff: "" });
     }
   };
 
@@ -123,13 +132,11 @@ export const useFilters = () => {
 
   const setSingleDayFilter = (date: Date) => {
     const formatted = formatDateValue(date);
-    void setStartDate(formatted);
-    void setEndDate(formatted);
+    void setFilterParams({ startDate: formatted, endDate: formatted });
   };
 
   const clearDateRange = () => {
-    void setStartDate("");
-    void setEndDate("");
+    void setFilterParams({ startDate: "", endDate: "" });
   };
 
   const activeFilterCount = getActiveFilterCount(filters);
@@ -142,8 +149,8 @@ export const useFilters = () => {
     // Individual filter setters
     setCatalog: handleSetCatalog,
     setDatasets: handleSetDatasets,
-    setStartDate: (value: string | null) => void setStartDate(value ?? ""),
-    setEndDate: (value: string | null) => void setEndDate(value ?? ""),
+    setStartDate: (value: string | null) => void setFilterParams({ startDate: value ?? "" }),
+    setEndDate: (value: string | null) => void setFilterParams({ endDate: value ?? "" }),
     setFieldFilters,
     setFieldFilter,
 

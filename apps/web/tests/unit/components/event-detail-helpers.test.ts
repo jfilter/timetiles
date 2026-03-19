@@ -173,6 +173,16 @@ describe("getDatasetInfo", () => {
     const dataset = { name: "Test", id: "42" };
     expect(getDatasetInfo(dataset)).toEqual({ name: "Test", id: 42 });
   });
+
+  it("should extract catalog name when catalog is a populated relation", () => {
+    const dataset = { name: "Events", id: 5, catalog: { id: 1, name: "Public" } };
+    expect(getDatasetInfo(dataset)).toEqual({ id: 5, name: "Events", catalog: "Public" });
+  });
+
+  it("should omit catalog when catalog is a number (not populated)", () => {
+    const dataset = { name: "Events", id: 5, catalog: 3 };
+    expect(getDatasetInfo(dataset)).toEqual({ id: 5, name: "Events" });
+  });
 });
 
 describe("formatDateRange", () => {

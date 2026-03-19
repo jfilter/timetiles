@@ -11,23 +11,12 @@
 import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
-import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
-import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import { extractEventFields, extractFieldFromData } from "@/lib/utils/event-detail";
+import { extractEventFields, extractFieldFromData, getDatasetInfo } from "@/lib/utils/event-detail";
 import type { Event, User } from "@/payload-types";
-
-const getDatasetInfo = (dataset: Event["dataset"]) => {
-  if (typeof dataset !== "object" || dataset == null) {
-    return { id: dataset, name: undefined, catalog: undefined };
-  }
-
-  const catalogName = typeof dataset.catalog === "object" && dataset.catalog != null ? dataset.catalog.name : undefined;
-
-  return { id: dataset.id, name: dataset.name, catalog: catalogName };
-};
 
 export const transformEvent = (event: Event): EventListItem => {
   // Extract field mappings from dataset
@@ -46,9 +35,16 @@ export const transformEvent = (event: Event): EventListItem => {
   }
   const enrichedData = { ...eventData, title, description, id };
 
+  const datasetSummary = getDatasetInfo(event.dataset);
+  const datasetInfo = datasetSummary ?? {
+    id: typeof event.dataset === "number" ? event.dataset : 0,
+    name: undefined,
+    catalog: undefined,
+  };
+
   return {
     id: event.id,
-    dataset: getDatasetInfo(event.dataset),
+    dataset: datasetInfo,
     data: enrichedData,
     location:
       event.location?.longitude != null && event.location?.latitude != null
@@ -63,12 +59,20 @@ export const GET = apiRoute({
   auth: "optional",
   query: EventListQuerySchema,
   handler: async ({ query, user, payload }) => {
-    // Get accessible catalog IDs for this user
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
+    const ctx = await resolveEventQueryContext({ payload, user, query, requireLocation: true });
+    if (ctx.denied) {
+      return buildListResponse({
+        docs: [],
+        page: 1,
+        limit: query.limit,
+        totalDocs: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      });
+    }
 
-    const filters = buildCanonicalFilters({ parameters: query, accessibleCatalogIds, requireLocation: true });
-
-    const where = toPayloadWhere(filters);
+    const where = toPayloadWhere(ctx.filters);
     const result = await executeEventsQuery(payload, where, query, user);
     return buildListResponse(result);
   },

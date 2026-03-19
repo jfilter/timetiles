@@ -46,8 +46,8 @@ export const useRunScraperMutation = () => {
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["scrapers"] });
-      void queryClient.invalidateQueries({ queryKey: ["scraper-runs"] });
+      void queryClient.invalidateQueries({ queryKey: scraperKeys.byRepo() });
+      void queryClient.invalidateQueries({ queryKey: scraperKeys.runs() });
     },
   });
 };
@@ -61,7 +61,7 @@ export const useDeleteScraperRepoMutation = () => {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: scraperKeys.repos });
-      void queryClient.invalidateQueries({ queryKey: ["scrapers"] });
+      void queryClient.invalidateQueries({ queryKey: scraperKeys.byRepo() });
     },
   });
 };

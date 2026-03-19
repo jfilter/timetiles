@@ -89,13 +89,17 @@ export const getEventTitle = (eventData: EventData, fieldMappings?: FieldMapping
   return extractEventFields(eventData, fieldMappings).title;
 };
 
-/** Extract dataset name and ID from a dataset relation value */
-export const getDatasetInfo = (dataset: unknown): { name: string; id: number } | null => {
+/** Extract dataset name, ID, and optional catalog from a dataset relation value */
+export const getDatasetInfo = (dataset: unknown): { id: number; name: string; catalog?: string } | null => {
   if (typeof dataset === "object" && dataset != null && "id" in dataset) {
     const d = dataset as Record<string, unknown>;
     const name = typeof d.name === "string" ? d.name : null;
     if (name) {
-      return { name, id: Number(d.id) };
+      const catalog =
+        typeof d.catalog === "object" && d.catalog != null && "name" in (d.catalog as Record<string, unknown>)
+          ? ((d.catalog as Record<string, unknown>).name as string | undefined)
+          : undefined;
+      return { id: Number(d.id), name, catalog };
     }
   }
   return null;

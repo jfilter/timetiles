@@ -8,7 +8,7 @@
  * @module
  * @category Collections
  */
-import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
+import type { CollectionBeforeChangeHook, PayloadRequest } from "payload";
 
 import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -59,17 +59,4 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
   }
 
   return data;
-};
-
-/**
- * After change hook for events.
- * Tracks quota usage for event creation.
- */
-export const eventsAfterChangeHook: CollectionAfterChangeHook<Event> = async ({ doc, operation, req }) => {
-  if (operation === "create" && req.user && req.user.role !== "admin") {
-    const quotaService = createQuotaService(req.payload);
-    await quotaService.incrementUsage(req.user.id, "TOTAL_EVENTS", 1, req);
-  }
-
-  return doc;
 };

@@ -16,6 +16,7 @@ import { z } from "zod";
 import { apiRoute, NotFoundError } from "@/lib/api";
 import { STAGE_DISPLAY_NAMES, STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
 import type { StageProgress } from "@/lib/types/progress-tracking";
+import { getDatasetInfo } from "@/lib/utils/event-detail";
 import type { ImportJob } from "@/payload-types";
 
 /**
@@ -50,16 +51,6 @@ interface FormattedJobProgress {
   schemaValidation?: ImportJob["schemaValidation"];
   results?: ImportJob["results"];
 }
-
-/**
- * Get dataset information from job.
- */
-const getDatasetInfo = (dataset: ImportJob["dataset"]) => {
-  if (typeof dataset === "object") {
-    return { id: dataset.id, name: dataset.name };
-  }
-  return { id: dataset, name: undefined };
-};
 
 /**
  * Calculate stage progress percentage.
@@ -111,7 +102,9 @@ const formatStage = (stageName: string, stageData: StageProgress): FormattedStag
  * Format job progress with detailed stage information.
  */
 const formatJobProgress = (job: ImportJob): FormattedJobProgress => {
-  const { id: datasetId, name: datasetName } = getDatasetInfo(job.dataset);
+  const datasetSummary = getDatasetInfo(job.dataset);
+  const datasetId = datasetSummary?.id ?? (typeof job.dataset === "number" ? job.dataset : 0);
+  const datasetName = datasetSummary?.name;
 
   // Get stages from new progress structure
   const stages = (job.progress?.stages as Record<string, StageProgress> | undefined) ?? {};

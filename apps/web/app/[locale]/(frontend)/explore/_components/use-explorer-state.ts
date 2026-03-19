@@ -39,20 +39,22 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
   // Data fetching
   const queries = useExplorerQueries(filters, debouncedSimpleBounds, mapZoom, scope);
-  const { boundsData, boundsLoading, events, eventsData } = queries;
+  const { boundsData, boundsLoading, eventsData } = queries;
 
   // Zustand UI state
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const setFilterDrawerOpen = useUIStore((state) => state.setFilterDrawerOpen);
 
-  // Push visible event count to Zustand so the header (outside explore tree) can display it
+  // Push visible event count to Zustand so the header (outside explore tree) can display it.
+  // Use eventsData.total (from API pagination) instead of events.length, because the events
+  // array is capped at 1000 items while total reflects the true count matching the viewport+filters.
   const setMapStats = useUIStore((state) => state.setMapStats);
   useEffect(() => {
     if (eventsData != null) {
-      setMapStats({ visibleEvents: events.length });
+      setMapStats({ visibleEvents: eventsData.total });
     }
-  }, [events.length, eventsData, setMapStats]);
+  }, [eventsData, setMapStats]);
 
   const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
 
