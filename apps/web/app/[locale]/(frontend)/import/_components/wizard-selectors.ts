@@ -48,17 +48,17 @@ export const getStepTitle = (step: WizardStep): string => STEP_TITLES[step];
  *
  * @param savedStep - The step from saved state
  * @param wasAuthenticatedOnStart - Whether user was authenticated when wizard loaded
- * @param isCurrentlyAuthenticated - Whether user is currently authenticated
+ * @param wasAuthenticatedAtPageLoad - Whether user was authenticated at page load (SSR snapshot)
  */
 export const getRestoredStep = (
   savedStep: WizardStep | undefined,
   wasAuthenticatedOnStart: boolean,
-  isCurrentlyAuthenticated: boolean
+  wasAuthenticatedAtPageLoad: boolean
 ): WizardStep => {
   if (wasAuthenticatedOnStart) {
     return Math.max(savedStep ?? 2, 2) as WizardStep;
   }
-  if (!isCurrentlyAuthenticated) {
+  if (!wasAuthenticatedAtPageLoad) {
     return 1;
   }
   return savedStep ?? 1;

@@ -121,7 +121,7 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     state,
     dispatch,
     wasAuthenticatedOnStart: wasAuthenticatedOnStart ?? false,
-    isCurrentlyAuthenticated: initialAuth?.isAuthenticated ?? false,
+    wasAuthenticatedAtPageLoad: initialAuth?.isAuthenticated ?? false,
   });
 
   // Helper actions (thin dispatch wrappers)

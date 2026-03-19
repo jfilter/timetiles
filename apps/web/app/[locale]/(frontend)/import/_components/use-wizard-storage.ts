@@ -11,9 +11,16 @@ import type { WizardState } from "./wizard-reducer";
 export const STORAGE_KEY = "timetiles_import_wizard_draft";
 export const STORAGE_EXPIRY_HOURS = 24;
 
+/** Bump when WizardState shape changes to auto-discard incompatible drafts. */
+const STORAGE_VERSION = 1;
+
 export const saveToStorage = (state: WizardState): void => {
   try {
-    const data = { state, expiresAt: new Date(Date.now() + STORAGE_EXPIRY_HOURS * 60 * 60 * 1000).toISOString() };
+    const data = {
+      _version: STORAGE_VERSION,
+      state,
+      expiresAt: new Date(Date.now() + STORAGE_EXPIRY_HOURS * 60 * 60 * 1000).toISOString(),
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
     // Ignore storage errors
@@ -26,8 +33,14 @@ export const loadFromStorage = (): Partial<WizardState> | null => {
     if (!raw) return null;
 
     const data = JSON.parse(raw);
-    const expiresAt = new Date(data.expiresAt);
 
+    // Discard drafts from older schema versions
+    if (data._version !== STORAGE_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
+    const expiresAt = new Date(data.expiresAt);
     if (expiresAt < new Date()) {
       localStorage.removeItem(STORAGE_KEY);
       return null;

@@ -24,7 +24,7 @@ interface UseWizardPersistenceOptions {
   state: WizardState;
   dispatch: React.Dispatch<WizardAction>;
   wasAuthenticatedOnStart: boolean;
-  isCurrentlyAuthenticated: boolean;
+  wasAuthenticatedAtPageLoad: boolean;
 }
 
 /**
@@ -39,7 +39,7 @@ export const useWizardPersistence = ({
   state,
   dispatch,
   wasAuthenticatedOnStart,
-  isCurrentlyAuthenticated,
+  wasAuthenticatedAtPageLoad,
 }: UseWizardPersistenceOptions): void => {
   // 1. Restore from localStorage on mount (once only)
   const hasRestoredRef = useRef(false);
@@ -52,11 +52,11 @@ export const useWizardPersistence = ({
       const restoredState = {
         ...saved,
         startedAuthenticated: wasAuthenticatedOnStart,
-        currentStep: getRestoredStep(saved.currentStep, wasAuthenticatedOnStart, isCurrentlyAuthenticated),
+        currentStep: getRestoredStep(saved.currentStep, wasAuthenticatedOnStart, wasAuthenticatedAtPageLoad),
       };
       dispatch({ type: "RESTORE", state: restoredState });
     }
-  }, [dispatch, wasAuthenticatedOnStart, isCurrentlyAuthenticated]);
+  }, [dispatch, wasAuthenticatedOnStart, wasAuthenticatedAtPageLoad]);
 
   // 2. Save to localStorage on state changes (debounced)
   useEffect(() => {
