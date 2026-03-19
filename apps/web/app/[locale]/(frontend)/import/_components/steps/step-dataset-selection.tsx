@@ -12,6 +12,7 @@
 import { Card, CardContent, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
@@ -34,13 +35,15 @@ interface DatasetSelectProps {
 }
 
 const DatasetSelect = ({ sheetIndex, value, datasets, onDatasetChange }: Readonly<DatasetSelectProps>) => {
+  const t = useTranslations("Import");
+
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onDatasetChange(sheetIndex, e.target.value);
   };
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={`dataset-${sheetIndex}`}>Target dataset</Label>
+      <Label htmlFor={`dataset-${sheetIndex}`}>{t("targetDataset")}</Label>
       <select
         id={`dataset-${sheetIndex}`}
         value={value === "new" ? "new" : value}
@@ -52,7 +55,7 @@ const DatasetSelect = ({ sheetIndex, value, datasets, onDatasetChange }: Readonl
             {dataset.name}
           </option>
         ))}
-        <option value="new">+ Create new dataset</option>
+        <option value="new">{t("createNewDataset")}</option>
       </select>
     </div>
   );
@@ -65,19 +68,21 @@ interface DatasetNameInputProps {
 }
 
 const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetNameInputProps>) => {
+  const t = useTranslations("Import");
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onNameChange(sheetIndex, e.target.value);
   };
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={`dataset-name-${sheetIndex}`}>Dataset name</Label>
+      <Label htmlFor={`dataset-name-${sheetIndex}`}>{t("datasetName")}</Label>
       <Input
         id={`dataset-name-${sheetIndex}`}
         type="text"
         value={value}
         onChange={handleChange}
-        placeholder="Enter dataset name"
+        placeholder={t("enterDatasetName")}
       />
     </div>
   );
@@ -85,12 +90,13 @@ const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetN
 
 // oxlint-disable-next-line eslint(complexity) -- wizard step with many conditional UI branches
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
+  const t = useTranslations("Import");
   const { state, setCatalog, setSheetMapping } = useWizard();
   const { sheets, selectedCatalogId, newCatalogName, sheetMappings } = state;
 
   const { data: catalogsData, isLoading, error: queryError } = useCatalogsQuery();
   const catalogs = catalogsData?.catalogs ?? [];
-  const errorMessage = queryError instanceof Error ? queryError.message : "Failed to load catalogs";
+  const errorMessage = queryError instanceof Error ? queryError.message : t("failedToLoadCatalogs");
   const error = queryError ? errorMessage : null;
 
   // Derive a clean catalog name from the uploaded file name
@@ -142,8 +148,8 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   return (
     <div className={cn("space-y-6", className)}>
       <div className="text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Select destination</h2>
-        <p className="text-cartographic-navy/70 mt-2">Choose where to import your data.</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("selectDestination")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("selectDestinationDescription")}</p>
       </div>
 
       {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
@@ -156,9 +162,9 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
               <FolderIcon className="text-cartographic-terracotta h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Catalog</h3>
+              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("catalog")}</h3>
               <p className="text-cartographic-navy/70 text-sm">
-                {catalogs.length === 0 ? "Create a catalog to organize your data" : "Select or create a catalog"}
+                {catalogs.length === 0 ? t("createCatalogPrompt") : t("selectOrCreateCatalog")}
               </p>
             </div>
           </div>
@@ -168,7 +174,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
           {catalogs.length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="catalog-select" className="text-cartographic-charcoal">
-                Select catalog
+                {t("selectCatalog")}
               </Label>
               <select
                 id="catalog-select"
@@ -176,13 +182,13 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                 onChange={handleCatalogChange}
                 className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
               >
-                <option value="">Choose a catalog...</option>
+                <option value="">{t("chooseCatalog")}</option>
                 {catalogs.map((catalog) => (
                   <option key={catalog.id} value={catalog.id}>
                     {catalog.name}
                   </option>
                 ))}
-                <option value="new">+ Create new catalog</option>
+                <option value="new">{t("createNewCatalog")}</option>
               </select>
             </div>
           )}
@@ -190,14 +196,14 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
           {selectedCatalogId === "new" && (
             <div className="space-y-2">
               <Label htmlFor="new-catalog-name" className="text-cartographic-charcoal">
-                Catalog name
+                {t("catalogName")}
               </Label>
               <Input
                 id="new-catalog-name"
                 type="text"
                 value={newCatalogName}
                 onChange={handleNewCatalogNameChange}
-                placeholder="Enter catalog name"
+                placeholder={t("enterCatalogName")}
                 className="border-cartographic-navy/20 focus:border-cartographic-blue focus:ring-cartographic-blue/20"
               />
             </div>
@@ -214,9 +220,9 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                 <DatabaseIcon className="text-cartographic-blue h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Dataset</h3>
+                <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("dataset")}</h3>
                 <p className="text-cartographic-navy/70 text-sm">
-                  {sheets.length === 1 ? "Name your dataset" : "Map sheets to datasets"}
+                  {sheets.length === 1 ? t("nameYourDataset") : t("mapSheetsToDatasets")}
                 </p>
               </div>
             </div>
@@ -226,18 +232,18 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
               // Simplified single-sheet view
               <div className="space-y-2">
                 <Label htmlFor="dataset-name-0" className="text-cartographic-charcoal">
-                  Dataset name
+                  {t("datasetName")}
                 </Label>
                 <Input
                   id="dataset-name-0"
                   type="text"
                   value={sheetMappings[0]?.newDatasetName ?? ""}
                   onChange={handleSingleSheetNameChange}
-                  placeholder="Enter dataset name"
+                  placeholder={t("enterDatasetName")}
                   className="border-cartographic-navy/20 focus:border-cartographic-blue focus:ring-cartographic-blue/20"
                 />
                 <p className="text-cartographic-navy/50 font-mono text-xs">
-                  {sheets[0]?.rowCount.toLocaleString()} rows will be imported
+                  {t("rowsWillBeImported", { count: sheets[0]?.rowCount.toLocaleString() ?? "0" })}
                 </p>
               </div>
             ) : (
@@ -258,7 +264,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                         <FileSpreadsheetIcon className="text-cartographic-navy/50 h-4 w-4" />
                         <span className="text-cartographic-charcoal font-medium">{sheet.name}</span>
                         <span className="text-cartographic-navy/50 font-mono text-xs">
-                          {sheet.rowCount.toLocaleString()} rows
+                          {t("rowCount", { count: sheet.rowCount.toLocaleString() })}
                         </span>
                       </div>
 
@@ -283,9 +289,9 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                       {mapping?.similarityScore !== null && mapping?.similarityScore !== undefined && (
                         <div className="mt-3 flex items-center gap-2 text-sm">
                           <span className="bg-cartographic-forest/10 text-cartographic-forest rounded px-2 py-0.5 font-mono text-xs">
-                            {Math.round(mapping.similarityScore * 100)}% match
+                            {t("percentMatch", { percent: Math.round(mapping.similarityScore * 100) })}
                           </span>
-                          <span className="text-cartographic-navy/50">Schema similarity</span>
+                          <span className="text-cartographic-navy/50">{t("schemaSimilarity")}</span>
                         </div>
                       )}
                     </div>

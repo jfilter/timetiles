@@ -13,6 +13,7 @@
 import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { AlertCircleIcon, CheckCircle2Icon, ExternalLinkIcon, Loader2Icon, MapIcon, RefreshCwIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { type ProgressApiResponse, useImportProgressQuery } from "@/lib/hooks/use-import-progress-query";
@@ -63,16 +64,6 @@ const transformProgressResponse = (data: ProgressApiResponse): ImportProgress =>
 
 type ProcessingStatus = "completed" | "failed" | "processing";
 
-const STAGE_LABELS: Record<string, string> = {
-  UPLOAD: "Uploading",
-  SCHEMA_DETECTION: "Detecting schema",
-  DATASET_DETECTION: "Setting up dataset",
-  VALIDATION: "Validating data",
-  CREATE_EVENTS: "Creating events",
-  GEOCODING: "Geocoding locations",
-  COMPLETED: "Complete",
-};
-
 const calculateProgressPercent = (progress: ImportProgress | null): number => {
   if (!progress) return 0;
   if (progress.eventsTotal > 0) {
@@ -81,34 +72,18 @@ const calculateProgressPercent = (progress: ImportProgress | null): number => {
   return progress.progress;
 };
 
-// Helper functions to avoid nested ternaries
-const getStageTitle = (status: ProcessingStatus, stageLabel: string): string => {
-  if (status === "completed") return "Success";
-  if (status === "failed") return "Error";
-  return stageLabel;
-};
-
-const getStageDescription = (status: ProcessingStatus, progress: ImportProgress | null): string => {
-  if (status === "completed") {
-    return `${progress?.eventsCreated?.toLocaleString() ?? 0} events imported`;
-  }
-  if (status === "failed") {
-    return "Import could not be completed";
-  }
-  // During processing, just show stage progress without event counts
-  return "Processing your data...";
-};
-
 // Helper component to render status header and avoid nested ternaries
 const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
+  const t = useTranslations("Import");
+
   if (status === "completed") {
     return (
       <>
         <div className="bg-cartographic-forest/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           <CheckCircle2Icon className="text-cartographic-forest h-8 w-8" />
         </div>
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Import complete!</h2>
-        <p className="text-cartographic-navy/70 mt-2">Your data has been successfully imported.</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importComplete")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("importCompleteDescription")}</p>
       </>
     );
   }
@@ -119,8 +94,8 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
         <div className="bg-destructive/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           <AlertCircleIcon className="text-destructive h-8 w-8" />
         </div>
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Import failed</h2>
-        <p className="text-cartographic-navy/70 mt-2">There was an error importing your data.</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importFailed")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("importFailedDescription")}</p>
       </>
     );
   }
@@ -130,19 +105,31 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
       <div className="bg-cartographic-blue/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
         <Loader2Icon className="text-cartographic-blue h-8 w-8 animate-spin" />
       </div>
-      <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Importing your data</h2>
-      <p className="text-cartographic-navy/70 mt-2">Please wait while we process your file.</p>
+      <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importingData")}</h2>
+      <p className="text-cartographic-navy/70 mt-2">{t("importingDataDescription")}</p>
     </>
   );
 };
 
 export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => {
+  const t = useTranslations("Import");
+  const tCommon = useTranslations("Common");
   const { state, complete, reset } = useWizard();
   const { importFileId, error: wizardError } = state;
 
   const { data: progressData, error: progressError } = useImportProgressQuery(importFileId ?? null);
   const progress = progressData ? transformProgressResponse(progressData) : null;
   const pollError = progressError instanceof Error ? progressError.message : null;
+
+  const STAGE_LABELS: Record<string, string> = {
+    UPLOAD: t("stageUploading"),
+    SCHEMA_DETECTION: t("stageDetectingSchema"),
+    DATASET_DETECTION: t("stageSettingUpDataset"),
+    VALIDATION: t("stageValidating"),
+    CREATE_EVENTS: t("stageCreatingEvents"),
+    GEOCODING: t("stageGeocoding"),
+    COMPLETED: t("stageComplete"),
+  };
 
   const handleComplete = () => {
     complete();
@@ -160,9 +147,27 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
     return "processing";
   })();
 
+  // Helper functions to avoid nested ternaries
+  const getStageTitle = (s: ProcessingStatus, stageLabel: string): string => {
+    if (s === "completed") return t("success");
+    if (s === "failed") return tCommon("error");
+    return stageLabel;
+  };
+
+  const getStageDescription = (s: ProcessingStatus, p: ImportProgress | null): string => {
+    if (s === "completed") {
+      return t("eventsImported", { count: p?.eventsCreated?.toLocaleString() ?? "0" });
+    }
+    if (s === "failed") {
+      return t("importCouldNotBeCompleted");
+    }
+    // During processing, just show stage progress without event counts
+    return t("processingYourData");
+  };
+
   const errorMessage = progress?.error ?? wizardError ?? pollError;
   const progressPercent = calculateProgressPercent(progress);
-  const stageLabel = STAGE_LABELS[progress?.currentStage ?? ""] ?? progress?.currentStage ?? "Processing";
+  const stageLabel = STAGE_LABELS[progress?.currentStage ?? ""] ?? progress?.currentStage ?? t("processingLabel");
   const progressBarStyle = { width: `${progressPercent}%` };
 
   return (
@@ -209,7 +214,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
           {/* Completion details */}
           {status === "completed" && progress?.datasets && progress.datasets.length > 0 && (
             <div className="border-cartographic-navy/10 border-t px-6 py-4">
-              <p className="text-cartographic-charcoal mb-3 text-sm font-medium">Imported datasets</p>
+              <p className="text-cartographic-charcoal mb-3 text-sm font-medium">{t("importedDatasets")}</p>
               <div className="space-y-2">
                 {progress.datasets.map((dataset) => (
                   <div
@@ -218,7 +223,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
                   >
                     <span className="text-cartographic-charcoal text-sm">{dataset.name}</span>
                     <span className="text-cartographic-navy/60 font-mono text-sm">
-                      {dataset.eventsCount.toLocaleString()} events
+                      {t("eventsCount", { count: dataset.eventsCount.toLocaleString() })}
                     </span>
                   </div>
                 ))}
@@ -234,11 +239,11 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
           <Button asChild size="lg">
             <Link href={progress?.catalogId ? `/explore?catalog=${progress.catalogId}` : "/explore"}>
               <MapIcon className="mr-2 h-4 w-4" />
-              View on map
+              {t("viewOnMap")}
             </Link>
           </Button>
           <Button variant="outline" size="lg" onClick={handleComplete}>
-            Import another file
+            {t("importAnotherFile")}
           </Button>
         </div>
       )}
@@ -247,11 +252,11 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Button size="lg" onClick={handleRetry}>
             <RefreshCwIcon className="mr-2 h-4 w-4" />
-            Try again
+            {tCommon("tryAgain")}
           </Button>
           <Button variant="outline" size="lg" asChild>
             <Link href="/explore">
-              Go to map
+              {t("goToMap")}
               <ExternalLinkIcon className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -261,9 +266,9 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
       {/* Processing info */}
       {status === "processing" && (
         <p className="text-cartographic-navy/50 text-center text-sm">
-          This may take a few minutes depending on the size of your file.
+          {t("processingInfo")}
           <br />
-          You can leave this page — we&apos;ll notify you when it&apos;s done.
+          {t("processingInfoLeave")}
         </p>
       )}
     </div>

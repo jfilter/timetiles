@@ -12,6 +12,7 @@
 import { cn } from "@timetiles/ui/lib/utils";
 import { Handle, Position } from "@xyflow/react";
 import { Building, Calendar, FileText, Hash, type LucideIcon, MapPin, Text } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { memo } from "react";
 
 import type { TargetFieldNodeData } from "@/lib/types/flow-mapping";
@@ -37,6 +38,7 @@ const getBorderClass = (isConnected: boolean, required: boolean): string => {
 };
 
 const TargetFieldNodeComponent = ({ data, selected }: Readonly<TargetFieldNodeProps>) => {
+  const t = useTranslations("Import");
   const Icon = ICON_MAP[data.icon] ?? Text;
   const borderClass = getBorderClass(data.isConnected, data.required);
 
@@ -69,7 +71,7 @@ const TargetFieldNodeComponent = ({ data, selected }: Readonly<TargetFieldNodePr
           className={cn("h-3.5 w-3.5", data.required ? "text-cartographic-terracotta" : "text-cartographic-forest")}
         />
         <span className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">
-          Target Field
+          {t("flowTargetField")}
           {data.required && <span className="text-cartographic-terracotta ml-1">*</span>}
         </span>
       </div>

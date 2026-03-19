@@ -16,6 +16,9 @@ export interface FilterLabels {
   fieldFilters?: Record<string, string[]>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accept any next-intl translator
+type TranslateFn = (key: string, values?: any) => string;
+
 /** Convert map bounds to simple object format for React Query compatibility */
 export const simplifyBounds = (mapBounds: MapBounds | null): MapBounds | null => {
   if (!mapBounds) return null;
@@ -50,30 +53,29 @@ export const getFilterLabels = (
 });
 
 /** Format dataset names for display in description */
-const formatDatasetNames = (names: string[]): string | null => {
+const formatDatasetNames = (names: string[], t: TranslateFn): string | null => {
   const first = names[0];
   const second = names[1];
   if (first == null) return null;
   if (second == null) return first;
-  if (names.length === 2) return `${first} and ${second}`;
-  return `${first}, ${second} and ${names.length - 2} more`;
+  if (names.length === 2) return t("descJoinTwo", { first, second });
+  return t("descJoinMore", { first, second, count: names.length - 2 });
 };
 
 /** Format field filters for display (e.g., "agency (EPA, DOT) and status (open, resolved)") */
-const formatFieldFilters = (fieldFilters: Record<string, string[]>): string | null => {
+const formatFieldFilters = (fieldFilters: Record<string, string[]>, t: TranslateFn): string | null => {
   const entries = Object.entries(fieldFilters).filter(([, values]) => values.length > 0);
   if (entries.length === 0) return null;
 
   const parts = entries.map(([field, values]) => {
-    const valuesList = values.length <= 3 ? values.join(", ") : `${values[0]}, ${values[1]} +${values.length - 2} more`;
+    const valuesList = values.length <= 3 ? values.join(", ") : `${values[0]}, ${values[1]} +${values.length - 2}`;
     return `${field} (${valuesList})`;
   });
 
-  // Join with "and" for natural English
   if (parts.length === 1) return parts[0] ?? null;
-  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  if (parts.length === 2) return t("descJoinTwo", { first: parts[0] ?? "", second: parts[1] ?? "" });
   const last = parts.pop();
-  return `${parts.join(", ")}, and ${last}`;
+  return `${parts.join(", ")}, ${last}`;
 };
 
 /** Build a natural sentence describing what events are being shown */
@@ -81,51 +83,44 @@ export const buildEventsDescription = (
   visibleCount: number,
   globalTotal: number | undefined,
   filterLabels: FilterLabels,
-  hasBounds: boolean
+  hasBounds: boolean,
+  t: TranslateFn
 ): string => {
-  // Build natural sentences like:
-  // "Showing 34 of 1,245 events from Historical Events in the map view, spanning Jan to Dec 2024."
-  // "Showing all 200 events from Historical Events."
-  // "Showing 500 of 1,245 events in the map view."
-  // "Showing all 1,245 events."
-  // "Showing 90 events filtered by category: Music, Sports."
-
   const datasetNames = filterLabels.datasets.map((d) => d.name);
-  const datasetsText = formatDatasetNames(datasetNames);
-  const fieldFiltersText = filterLabels.fieldFilters ? formatFieldFilters(filterLabels.fieldFilters) : null;
+  const datasetsText = formatDatasetNames(datasetNames, t);
+  const fieldFiltersText = filterLabels.fieldFilters ? formatFieldFilters(filterLabels.fieldFilters, t) : null;
 
   // Determine if map bounds are limiting the results
   const isMapLimiting = hasBounds && globalTotal != null && visibleCount < globalTotal;
 
-  // Start with the count
-  let sentence = "Showing ";
+  // Build the base sentence
+  let sentence: string;
   if (isMapLimiting) {
-    sentence += `${visibleCount.toLocaleString()} of ${globalTotal.toLocaleString()} events`;
+    sentence = t("descShowingOfTotal", { visible: visibleCount.toLocaleString(), total: globalTotal.toLocaleString() });
   } else if (globalTotal == null) {
-    sentence += `${visibleCount.toLocaleString()} event${visibleCount === 1 ? "" : "s"}`;
+    sentence = t("descShowingEvents", { count: visibleCount });
   } else {
-    sentence += `all ${visibleCount.toLocaleString()} events`;
+    sentence = t("descShowingAll", { count: visibleCount.toLocaleString() });
   }
 
   // Add dataset filter
   if (datasetsText) {
-    sentence += ` from ${datasetsText}`;
+    sentence += t("descFromDatasets", { datasets: datasetsText });
   }
 
   // Add spatial constraint (only when map is actually limiting)
   if (isMapLimiting) {
-    sentence += " in the map view";
+    sentence += t("descInMapView");
   }
 
   // Add field filters
   if (fieldFiltersText) {
-    sentence += `, filtered by ${fieldFiltersText}`;
+    sentence += t("descFilteredBy", { filters: fieldFiltersText });
   }
 
   // Add date filter
   if (filterLabels.dateRange) {
-    // Make the date range flow naturally
-    sentence += `, spanning ${filterLabels.dateRange.toLowerCase().replace(/^from /, "")}`;
+    sentence += t("descSpanning", { dateRange: filterLabels.dateRange.toLowerCase().replace(/^from /, "") });
   }
 
   return sentence + ".";
@@ -137,7 +132,6 @@ export const isDataBoundsOutsideViewport = (
   mapBounds: MapBounds | null | undefined
 ): boolean => {
   if (!dataBounds || !mapBounds) return false;
-  // Check if any edge of data bounds is outside current viewport
   return (
     dataBounds.west < mapBounds.west ||
     dataBounds.south < mapBounds.south ||

@@ -22,6 +22,7 @@ import {
   Trash2Icon,
   XCircleIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Link } from "@/i18n/navigation";
@@ -50,24 +51,21 @@ interface SchedulesListClientProps {
   initialSchedules: ScheduledImport[];
 }
 
-const FREQUENCY_LABELS: Record<string, string> = {
-  hourly: "Every hour",
-  daily: "Daily",
-  weekly: "Weekly",
-  monthly: "Monthly",
-};
+type TranslateFn = ReturnType<typeof useTranslations<"Schedules">>;
 
-const SCHEMA_MODE_LABELS: Record<string, string> = { strict: "Strict", additive: "Additive", flexible: "Flexible" };
+const FREQUENCY_KEYS = { hourly: "hourly", daily: "daily", weekly: "weekly", monthly: "monthly" } as const;
+
+const SCHEMA_MODE_KEYS = { strict: "strict", additive: "additive", flexible: "flexible" } as const;
 
 // Get status badge
-const getStatusBadge = (schedule: ScheduledImport) => {
+const getStatusBadge = (schedule: ScheduledImport, t: TranslateFn) => {
   if (!schedule.enabled) {
-    return <StatusBadge variant="muted" label="Disabled" icon={<PauseCircleIcon className="h-3 w-3" />} />;
+    return <StatusBadge variant="muted" label={t("disabled")} icon={<PauseCircleIcon className="h-3 w-3" />} />;
   }
   if (schedule.lastStatus === "failed") {
-    return <StatusBadge variant="error" label="Failed" icon={<XCircleIcon className="h-3 w-3" />} />;
+    return <StatusBadge variant="error" label={t("failed")} icon={<XCircleIcon className="h-3 w-3" />} />;
   }
-  return <StatusBadge variant="success" label="Active" icon={<CheckCircle2Icon className="h-3 w-3" />} />;
+  return <StatusBadge variant="success" label={t("active")} icon={<CheckCircle2Icon className="h-3 w-3" />} />;
 };
 
 interface ScheduleCardProps {
@@ -76,10 +74,15 @@ interface ScheduleCardProps {
   onToggle: () => void;
   onRun: () => void;
   onDelete: () => void;
+  t: TranslateFn;
 }
 
-const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: ScheduleCardProps) => {
+const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete, t }: ScheduleCardProps) => {
   const isLoading = Boolean(loadingState);
+
+  const frequencyKey = FREQUENCY_KEYS[schedule.frequency ?? "daily"];
+  const frequencyLabel = frequencyKey ? t(frequencyKey) : schedule.frequency;
+  const schemaModeKey = schedule.schemaMode ? SCHEMA_MODE_KEYS[schedule.schemaMode] : null;
 
   return (
     <Card className={cn("transition-opacity", !schedule.enabled && "opacity-60", isLoading && "pointer-events-none")}>
@@ -89,7 +92,7 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: Sch
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="text-cartographic-charcoal truncate font-serif text-lg font-semibold">{schedule.name}</h3>
-              {getStatusBadge(schedule)}
+              {getStatusBadge(schedule, t)}
             </div>
 
             {/* URL */}
@@ -102,28 +105,26 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: Sch
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
               <div className="flex items-center gap-1.5">
                 <CalendarIcon className="text-muted-foreground h-4 w-4" />
-                <span>
-                  {schedule.scheduleType === "frequency"
-                    ? FREQUENCY_LABELS[schedule.frequency ?? "daily"]
-                    : schedule.cronExpression}
-                </span>
+                <span>{schedule.scheduleType === "frequency" ? frequencyLabel : schedule.cronExpression}</span>
               </div>
 
-              {schedule.schemaMode && (
+              {schemaModeKey && (
                 <div className="text-muted-foreground flex items-center gap-1.5">
-                  <span>Schema:</span>
-                  <span className="font-medium">{SCHEMA_MODE_LABELS[schedule.schemaMode]}</span>
+                  <span>{t("schema")}</span>
+                  <span className="font-medium">{t(schemaModeKey)}</span>
                 </div>
               )}
             </div>
 
             {/* Execution info */}
             <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-4 text-xs">
-              {schedule.lastRun && <span>Last run: {formatDateLocale(schedule.lastRun)}</span>}
-              {schedule.nextRun && schedule.enabled && <span>Next run: {formatDateLocale(schedule.nextRun)}</span>}
+              {schedule.lastRun && <span>{t("lastRun", { date: formatDateLocale(schedule.lastRun) })}</span>}
+              {schedule.nextRun && schedule.enabled && (
+                <span>{t("nextRun", { date: formatDateLocale(schedule.nextRun) })}</span>
+              )}
               {schedule.lastError && (
                 <span className="text-destructive truncate" title={schedule.lastError}>
-                  Error: {schedule.lastError.substring(0, 50)}...
+                  {schedule.lastError.substring(0, 50)}...
                 </span>
               )}
             </div>
@@ -136,12 +137,12 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: Sch
               size="sm"
               onClick={onToggle}
               disabled={isLoading}
-              title={schedule.enabled ? "Disable schedule" : "Enable schedule"}
+              title={schedule.enabled ? t("disableSchedule") : t("enableSchedule")}
             >
               {getToggleButtonIcon(loadingState, schedule.enabled ?? false)}
             </Button>
 
-            <Button variant="outline" size="sm" onClick={onRun} disabled={isLoading} title="Run now">
+            <Button variant="outline" size="sm" onClick={onRun} disabled={isLoading} title={t("runNow")}>
               {loadingState === "running" ? (
                 <Loader2Icon className="h-4 w-4 animate-spin" />
               ) : (
@@ -154,7 +155,7 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: Sch
               size="sm"
               onClick={onDelete}
               disabled={isLoading}
-              title="Delete schedule"
+              title={t("deleteSchedule")}
               className="text-destructive hover:bg-destructive/10"
             >
               {loadingState === "deleting" ? (
@@ -171,6 +172,8 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete }: Sch
 };
 
 export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientProps) => {
+  const t = useTranslations("Schedules");
+  const tImport = useTranslations("Import");
   const { data: schedules = [] } = useScheduledImportsQuery(initialSchedules);
   const { states: loadingStates, setLoading, clearLoading } = useLoadingStates();
 
@@ -189,7 +192,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
   };
 
   const handleDelete = (id: number) => {
-    if (!confirm("Are you sure you want to delete this scheduled import?")) return;
+    if (!confirm(t("confirmDelete"))) return;
     setLoading(id, "deleting");
     deleteMutation.mutate(id, { onSettled: () => clearLoading(id) });
   };
@@ -210,12 +213,10 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <ClockIcon className="text-muted-foreground mb-4 h-12 w-12" />
-          <h3 className="text-lg font-medium">No scheduled imports</h3>
-          <p className="text-muted-foreground mt-1 text-center text-sm">
-            Create a scheduled import by importing data from a URL in the import wizard.
-          </p>
+          <h3 className="text-lg font-medium">{t("noSchedules")}</h3>
+          <p className="text-muted-foreground mt-1 text-center text-sm">{t("noSchedulesDescription")}</p>
           <Button asChild className="mt-4">
-            <Link href="/import">Import Data</Link>
+            <Link href="/import">{tImport("importData")}</Link>
           </Button>
         </CardContent>
       </Card>
@@ -235,6 +236,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
             onToggle={callbacks.onToggle}
             onRun={callbacks.onRun}
             onDelete={callbacks.onDelete}
+            t={t}
           />
         );
       })}

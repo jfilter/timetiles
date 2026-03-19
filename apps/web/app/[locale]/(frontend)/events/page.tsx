@@ -77,9 +77,9 @@ export default async function EventsListPage() {
                   </div>
                   <div className="text-sm">
                     {event.validationStatus === "valid" ? (
-                      <span className="text-green-600">✓ Valid</span>
+                      <span className="text-green-600">✓ {t("valid")}</span>
                     ) : (
-                      <span className="text-red-600">✗ Invalid</span>
+                      <span className="text-red-600">✗ {t("invalid")}</span>
                     )}
                   </div>
                 </div>

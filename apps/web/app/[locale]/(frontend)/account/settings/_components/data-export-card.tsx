@@ -10,6 +10,7 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { AlertTriangle, Check, Clock, Download, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import type { DataExport } from "@/lib/hooks/use-data-export";
 import {
@@ -30,81 +31,91 @@ interface ExportStatus {
 /**
  * Info box showing what's included in the export.
  */
-const ExportInfoBox = () => (
-  <div className="bg-muted rounded-md p-4">
-    <p className="text-muted-foreground mb-2 text-sm font-medium">Your export will include:</p>
-    <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-      <li>Catalogs and datasets you created</li>
-      <li>All events in your datasets</li>
-      <li>Import history and scheduled imports</li>
-      <li>Media files you uploaded</li>
-    </ul>
-  </div>
-);
+const ExportInfoBox = () => {
+  const t = useTranslations("DataExport");
+  return (
+    <div className="bg-muted rounded-md p-4">
+      <p className="text-muted-foreground mb-2 text-sm font-medium">{t("includesTitle")}</p>
+      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+        <li>{t("includesCatalogs")}</li>
+        <li>{t("includesEvents")}</li>
+        <li>{t("includesImports")}</li>
+        <li>{t("includesMedia")}</li>
+      </ul>
+    </div>
+  );
+};
 
 /**
  * Pending/Processing state display.
  */
-const ExportPendingState = ({ requestedAt }: { requestedAt?: string | null }) => (
-  <div className="rounded-md border-l-4 border-blue-500 bg-blue-50 p-4 dark:bg-blue-950">
-    <div className="flex items-start gap-3">
-      <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-      <div>
-        <p className="font-medium text-blue-700 dark:text-blue-300">Export in progress...</p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Your data export was requested on {formatExportDate(requestedAt)}.
-        </p>
-        <p className="text-muted-foreground mt-1 text-sm">We&apos;ll send you an email when it&apos;s ready.</p>
+const ExportPendingState = ({ requestedAt }: { requestedAt?: string | null }) => {
+  const t = useTranslations("DataExport");
+  return (
+    <div className="rounded-md border-l-4 border-blue-500 bg-blue-50 p-4 dark:bg-blue-950">
+      <div className="flex items-start gap-3">
+        <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+        <div>
+          <p className="font-medium text-blue-700 dark:text-blue-300">{t("inProgress")}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t("requestedOn", { date: formatExportDate(requestedAt) })}
+          </p>
+          <p className="text-muted-foreground mt-1 text-sm">{t("emailWhenReady")}</p>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Ready state display with download info.
  */
-const ExportReadyState = ({ latestExport }: { latestExport: DataExport }) => (
-  <div className="rounded-md border-l-4 border-green-500 bg-green-50 p-4 dark:bg-green-950">
-    <div className="flex items-start gap-3">
-      <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
-      <div className="flex-1">
-        <p className="font-medium text-green-700 dark:text-green-300">Your data export is ready!</p>
-        <div className="text-muted-foreground mt-2 space-y-1 text-sm">
-          <p>
-            <span className="font-medium">Created:</span> {formatExportDate(latestExport.completedAt)}
-          </p>
-          <p>
-            <span className="font-medium">Size:</span> {formatFileSize(latestExport.fileSize)}
-          </p>
-          {latestExport.expiresAt && (
-            <p className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              <span>{getTimeUntilExpiry(latestExport.expiresAt)}</span>
+const ExportReadyState = ({ latestExport }: { latestExport: DataExport }) => {
+  const t = useTranslations("DataExport");
+  return (
+    <div className="rounded-md border-l-4 border-green-500 bg-green-50 p-4 dark:bg-green-950">
+      <div className="flex items-start gap-3">
+        <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+        <div className="flex-1">
+          <p className="font-medium text-green-700 dark:text-green-300">{t("ready")}</p>
+          <div className="text-muted-foreground mt-2 space-y-1 text-sm">
+            <p>
+              <span className="font-medium">{t("createdLabel")}</span> {formatExportDate(latestExport.completedAt)}
             </p>
-          )}
+            <p>
+              <span className="font-medium">{t("sizeLabel")}</span> {formatFileSize(latestExport.fileSize)}
+            </p>
+            {latestExport.expiresAt && (
+              <p className="flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                <span>{getTimeUntilExpiry(latestExport.expiresAt)}</span>
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Failed state display.
  */
-const ExportFailedState = ({ errorLog }: { errorLog?: string }) => (
-  <div className="bg-destructive/10 border-destructive rounded-md border-l-4 p-4">
-    <div className="flex items-start gap-3">
-      <AlertTriangle className="text-destructive h-5 w-5" />
-      <div>
-        <p className="text-destructive font-medium">Export failed</p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          We couldn&apos;t generate your data export. This may be a temporary issue. Please try again.
-        </p>
-        {errorLog && <p className="mt-2 text-xs text-red-600 dark:text-red-400">Error: {errorLog}</p>}
+const ExportFailedState = ({ errorLog }: { errorLog?: string }) => {
+  const t = useTranslations("DataExport");
+  return (
+    <div className="bg-destructive/10 border-destructive rounded-md border-l-4 p-4">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="text-destructive h-5 w-5" />
+        <div>
+          <p className="text-destructive font-medium">{t("exportFailed")}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{t("exportFailedDescription")}</p>
+          {errorLog && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errorLog}</p>}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Action buttons based on export status.
@@ -122,6 +133,8 @@ const ExportActions = ({
   isRequesting: boolean;
   isLoading: boolean;
 }) => {
+  const t = useTranslations("DataExport");
+  const tCommon = useTranslations("Common");
   const { isPending, isReady, isFailed } = status;
 
   if (isReady) {
@@ -129,11 +142,11 @@ const ExportActions = ({
       <>
         <Button onClick={onDownload} className="w-full sm:w-auto">
           <Download className="mr-2 h-4 w-4" />
-          Download Export
+          {t("downloadExport")}
         </Button>
         <Button variant="outline" onClick={onRequestExport} disabled={isRequesting} className="w-full sm:w-auto">
           {isRequesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Request New Export
+          {t("requestNewExport")}
         </Button>
       </>
     );
@@ -143,7 +156,7 @@ const ExportActions = ({
     return (
       <Button onClick={onRequestExport} disabled={isRequesting} className="w-full sm:w-auto">
         {isRequesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Try Again
+        {tCommon("tryAgain")}
       </Button>
     );
   }
@@ -151,7 +164,7 @@ const ExportActions = ({
   return (
     <Button onClick={onRequestExport} disabled={isPending || isRequesting || isLoading} className="w-full sm:w-auto">
       {(isPending || isRequesting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      {isPending ? "Export in Progress..." : "Request Data Export"}
+      {isPending ? t("exportInProgress") : t("requestDataExport")}
     </Button>
   );
 };
@@ -160,6 +173,7 @@ const ExportActions = ({
  * Card for managing data exports.
  */
 export const DataExportCard = () => {
+  const t = useTranslations("DataExport");
   const { latestExport, isLoading } = useLatestExportQuery();
   const requestExport = useRequestDataExportMutation();
 
@@ -186,9 +200,9 @@ export const DataExportCard = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Download className="h-5 w-5" />
-          Download My Data
+          {t("title")}
         </CardTitle>
-        <CardDescription>Export all your data in a portable format</CardDescription>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {showInfoBox && <ExportInfoBox />}
@@ -206,21 +220,13 @@ export const DataExportCard = () => {
           />
         </div>
 
-        {showInfoBox && (
-          <p className="text-muted-foreground text-xs">
-            Processing may take a few minutes. You&apos;ll receive an email when your export is ready.
-          </p>
-        )}
+        {showInfoBox && <p className="text-muted-foreground text-xs">{t("processingTime")}</p>}
 
-        {status.isReady && (
-          <p className="text-muted-foreground text-xs">Download links are available for 7 days after generation.</p>
-        )}
+        {status.isReady && <p className="text-muted-foreground text-xs">{t("downloadExpiry")}</p>}
 
         {requestExport.isError && (
           <p className="text-destructive text-sm">
-            {requestExport.error instanceof Error
-              ? requestExport.error.message
-              : "Failed to request export. Please try again."}
+            {requestExport.error instanceof Error ? requestExport.error.message : t("requestError")}
           </p>
         )}
       </CardContent>

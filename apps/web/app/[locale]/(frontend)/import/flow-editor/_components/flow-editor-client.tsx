@@ -21,6 +21,7 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import { ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type DragEvent, useCallback, useMemo, useRef } from "react";
 
 import { Link, useRouter } from "@/i18n/navigation";
@@ -54,6 +55,7 @@ const fitViewOptions = { padding: 0.2 };
 const proOptions = { hideAttribution: true };
 
 export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorClientProps>) => {
+  const t = useTranslations("Import");
   const router = useRouter();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const {
@@ -111,7 +113,7 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-muted-foreground">Loading preview data...</div>
+        <div className="text-muted-foreground">{t("flowLoadingPreview")}</div>
       </div>
     );
   }
@@ -123,7 +125,7 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
         <Button variant="outline" asChild>
           <Link href="/import">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Return to Import Wizard
+            {t("flowReturnToWizard")}
           </Link>
         </Button>
       </div>

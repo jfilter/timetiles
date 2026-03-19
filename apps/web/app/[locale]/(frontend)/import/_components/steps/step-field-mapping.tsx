@@ -33,6 +33,7 @@ import {
   TextIcon,
   WorkflowIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { Link } from "@/i18n/navigation";
@@ -54,6 +55,8 @@ import { SheetTabButton } from "./sheet-tab-button";
 const LanguageDetectionBanner = ({
   suggestedMappings,
 }: Readonly<{ suggestedMappings: SuggestedMappings | undefined }>) => {
+  const t = useTranslations("Import");
+
   if (!suggestedMappings?.language) return null;
 
   const { language } = suggestedMappings;
@@ -68,14 +71,14 @@ const LanguageDetectionBanner = ({
       </div>
       <div>
         <p className="text-cartographic-charcoal text-sm font-medium">
-          Auto-detected: <span className="font-mono">{language.name}</span>
+          {t("autoDetected", { language: language.name })}
           {language.isReliable && (
             <span className="text-cartographic-navy/50 ml-2 font-mono text-xs">
               {Math.round(language.confidence * 100)}%
             </span>
           )}
         </p>
-        <p className="text-cartographic-navy/70 text-xs">Fields mapped automatically from column names</p>
+        <p className="text-cartographic-navy/70 text-xs">{t("fieldsMappedAutomatically")}</p>
       </div>
     </div>
   );
@@ -94,6 +97,7 @@ const formatCellValue = (value: unknown): string => {
 };
 
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
+  const t = useTranslations("Import");
   const { state, setFieldMapping, setImportOptions } = useWizard();
   const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
 
@@ -139,7 +143,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   if (!activeSheet || !activeMapping) {
     return (
       <div className={cn("py-12 text-center", className)}>
-        <p className="text-muted-foreground">No data available. Please go back and upload a file.</p>
+        <p className="text-muted-foreground">{t("noDataAvailable")}</p>
       </div>
     );
   }
@@ -147,8 +151,8 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   return (
     <div className={cn("space-y-6", className)}>
       <div className="text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Map your fields</h2>
-        <p className="text-cartographic-navy/70 mt-2">Tell us which columns contain your event data.</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("mapFields")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("mapFieldsDescription")}</p>
       </div>
 
       {/* Visual editor link */}
@@ -157,7 +161,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           <Button variant="outline" size="sm" asChild>
             <Link href={`/import/flow-editor?previewId=${state.previewId}&sheetIndex=${activeSheetIndex}`}>
               <WorkflowIcon className="mr-2 h-4 w-4" />
-              Open Visual Editor
+              {t("openVisualEditor")}
             </Link>
           </Button>
         </div>
@@ -171,9 +175,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
         <div className="border-cartographic-navy/10 bg-cartographic-cream/30 rounded-sm border p-4">
           <div className="mb-3 flex items-center gap-2">
             <FileSpreadsheetIcon className="text-cartographic-navy/50 h-5 w-5" />
-            <p className="text-cartographic-navy/70 text-sm">
-              {sheets.length} sheets detected. Configure mapping for each sheet.
-            </p>
+            <p className="text-cartographic-navy/70 text-sm">{t("sheetsDetected", { count: sheets.length })}</p>
           </div>
           <div className="flex flex-wrap gap-2" data-testid="sheet-tabs">
             {sheets.map((sheet) => {
@@ -206,15 +208,15 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
               <TextIcon className="text-cartographic-terracotta h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Required fields</h3>
-              <p className="text-cartographic-navy/70 text-sm">These fields are required for all events</p>
+              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("requiredFields")}</h3>
+              <p className="text-cartographic-navy/70 text-sm">{t("requiredFieldsDescription")}</p>
             </div>
           </div>
         </div>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
           <FieldSelect
             id="title-field"
-            label="Title"
+            label={t("fieldTitle")}
             field="titleField"
             required
             icon={<TextIcon className="h-4 w-4" />}
@@ -226,7 +228,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           />
           <FieldSelect
             id="date-field"
-            label="Date"
+            label={t("fieldDate")}
             field="dateField"
             required
             icon={<CalendarIcon className="h-4 w-4" />}
@@ -247,15 +249,15 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
               <MapPinIcon className="text-cartographic-blue h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Location</h3>
-              <p className="text-cartographic-navy/70 text-sm">Address or coordinates</p>
+              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("location")}</h3>
+              <p className="text-cartographic-navy/70 text-sm">{t("locationDescription")}</p>
             </div>
           </div>
         </div>
         <CardContent className="space-y-4 p-6">
           <FieldSelect
             id="location-field"
-            label="Address / Location"
+            label={t("addressLocation")}
             field="locationField"
             required={false}
             icon={null}
@@ -271,14 +273,14 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
               <span className="border-cartographic-navy/10 w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="text-cartographic-navy/50 bg-white px-3">Or use coordinates</span>
+              <span className="text-cartographic-navy/50 bg-white px-3">{t("orUseCoordinates")}</span>
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FieldSelect
               id="latitude-field"
-              label="Latitude"
+              label={t("latitude")}
               field="latitudeField"
               required={false}
               icon={null}
@@ -291,7 +293,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
             />
             <FieldSelect
               id="longitude-field"
-              label="Longitude"
+              label={t("longitude")}
               field="longitudeField"
               required={false}
               icon={null}
@@ -305,9 +307,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           </div>
 
           {!activeMapping.locationField && !activeMapping.latitudeField && !activeMapping.longitudeField && (
-            <p className="text-cartographic-terracotta text-sm">
-              Please select either a location field or both latitude and longitude.
-            </p>
+            <p className="text-cartographic-terracotta text-sm">{t("locationRequired")}</p>
           )}
 
           {/* Geocoding option - only show when using address field */}
@@ -321,9 +321,9 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
               />
               <div>
                 <Label htmlFor="geocoding-enabled" className="text-cartographic-charcoal">
-                  Enable geocoding
+                  {t("enableGeocoding")}
                 </Label>
-                <p className="text-cartographic-navy/70 text-sm">Convert addresses to coordinates for map display.</p>
+                <p className="text-cartographic-navy/70 text-sm">{t("enableGeocodingDescription")}</p>
               </div>
             </div>
           )}
@@ -338,15 +338,15 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
               <SparklesIcon className="text-cartographic-forest h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Optional fields</h3>
-              <p className="text-cartographic-navy/70 text-sm">Additional fields to enrich your events</p>
+              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("optionalFields")}</h3>
+              <p className="text-cartographic-navy/70 text-sm">{t("optionalFieldsDescription")}</p>
             </div>
           </div>
         </div>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2">
           <FieldSelect
             id="description-field"
-            label="Description"
+            label={t("fieldDescription")}
             field="descriptionField"
             required={false}
             icon={<TextIcon className="h-4 w-4" />}
@@ -358,7 +358,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           />
           <FieldSelect
             id="location-name-field"
-            label="Location Name"
+            label={t("fieldLocationName")}
             field="locationNameField"
             required={false}
             icon={<MapPinIcon className="h-4 w-4" />}
@@ -390,8 +390,8 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
                 <TableIcon className="text-cartographic-navy h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Preview</h3>
-                <p className="text-cartographic-navy/70 text-sm">Sample of your data with the current mapping</p>
+                <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("preview")}</h3>
+                <p className="text-cartographic-navy/70 text-sm">{t("previewDescription")}</p>
               </div>
             </div>
           </div>
@@ -401,13 +401,13 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
                 <TableHeader>
                   <TableRow className="border-cartographic-navy/10 bg-cartographic-cream/20">
                     {activeMapping.titleField && (
-                      <TableHead className="text-cartographic-charcoal font-medium">Title</TableHead>
+                      <TableHead className="text-cartographic-charcoal font-medium">{t("fieldTitle")}</TableHead>
                     )}
                     {activeMapping.dateField && (
-                      <TableHead className="text-cartographic-charcoal font-medium">Date</TableHead>
+                      <TableHead className="text-cartographic-charcoal font-medium">{t("fieldDate")}</TableHead>
                     )}
                     {activeMapping.locationField && (
-                      <TableHead className="text-cartographic-charcoal font-medium">Location</TableHead>
+                      <TableHead className="text-cartographic-charcoal font-medium">{t("location")}</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>

@@ -24,6 +24,7 @@ import {
   Trash2Icon,
   XCircleIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -39,31 +40,33 @@ import type { Scraper, ScraperRepo } from "@/payload-types";
 
 import { ScraperRunLog } from "./scraper-run-log";
 
-const getSyncStatusBadge = (repo: ScraperRepo) => {
+type TranslateFn = ReturnType<typeof useTranslations<"Scrapers">>;
+
+const getSyncStatusBadge = (repo: ScraperRepo, t: TranslateFn) => {
   if (!repo.lastSyncAt) {
-    return <StatusBadge variant="muted" label="Pending" icon={<ClockIcon className="h-3 w-3" />} />;
+    return <StatusBadge variant="muted" label={t("pending")} icon={<ClockIcon className="h-3 w-3" />} />;
   }
   if (repo.lastSyncStatus === "failed") {
-    return <StatusBadge variant="error" label="Sync Failed" icon={<XCircleIcon className="h-3 w-3" />} />;
+    return <StatusBadge variant="error" label={t("syncFailed")} icon={<XCircleIcon className="h-3 w-3" />} />;
   }
-  return <StatusBadge variant="success" label="Synced" icon={<CheckCircle2Icon className="h-3 w-3" />} />;
+  return <StatusBadge variant="success" label={t("synced")} icon={<CheckCircle2Icon className="h-3 w-3" />} />;
 };
 
-const getRunStatusBadge = (scraper: Scraper) => {
+const getRunStatusBadge = (scraper: Scraper, t: TranslateFn) => {
   const status = scraper.lastRunStatus;
   if (!status) {
-    return <StatusBadge variant="muted" label="Never run" />;
+    return <StatusBadge variant="muted" label={t("neverRun")} />;
   }
   if (status === "running") {
-    return <StatusBadge variant="info" label="Running" icon={<Loader2Icon className="h-3 w-3 animate-spin" />} />;
+    return <StatusBadge variant="info" label={t("running")} icon={<Loader2Icon className="h-3 w-3 animate-spin" />} />;
   }
   if (status === "success") {
-    return <StatusBadge variant="success" label="Success" icon={<CheckCircle2Icon className="h-3 w-3" />} />;
+    return <StatusBadge variant="success" label={t("success")} icon={<CheckCircle2Icon className="h-3 w-3" />} />;
   }
   if (status === "timeout") {
-    return <StatusBadge variant="warning" label="Timeout" icon={<AlertCircleIcon className="h-3 w-3" />} />;
+    return <StatusBadge variant="warning" label={t("timeout")} icon={<AlertCircleIcon className="h-3 w-3" />} />;
   }
-  return <StatusBadge variant="error" label="Failed" icon={<XCircleIcon className="h-3 w-3" />} />;
+  return <StatusBadge variant="error" label={t("failedStatus")} icon={<XCircleIcon className="h-3 w-3" />} />;
 };
 
 interface ScraperCardProps {
@@ -72,9 +75,10 @@ interface ScraperCardProps {
   onRun: () => void;
   onViewLogs: () => void;
   showLogs: boolean;
+  t: TranslateFn;
 }
 
-const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs }: ScraperCardProps) => {
+const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs, t }: ScraperCardProps) => {
   const isLoading = Boolean(loadingState);
   const stats = scraper.statistics as { totalRuns?: number; successRuns?: number; failedRuns?: number } | null;
 
@@ -85,10 +89,10 @@ const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs }: Scr
           <div className="flex items-center gap-2">
             <CodeIcon className="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <span className="truncate font-medium">{scraper.name}</span>
-            {getRunStatusBadge(scraper)}
+            {getRunStatusBadge(scraper, t)}
             {!scraper.enabled && (
               <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs">
-                Disabled
+                {t("disabledStatus")}
               </span>
             )}
           </div>
@@ -96,11 +100,15 @@ const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs }: Scr
             <span>
               {scraper.runtime} &middot; {scraper.entrypoint}
             </span>
-            {scraper.schedule && <span>Schedule: {scraper.schedule}</span>}
-            {scraper.lastRunAt && <span>Last run: {formatDateLocale(scraper.lastRunAt)}</span>}
+            {scraper.schedule && <span>{t("schedule", { schedule: scraper.schedule })}</span>}
+            {scraper.lastRunAt && <span>{t("lastRunAt", { date: formatDateLocale(scraper.lastRunAt) })}</span>}
             {stats?.totalRuns != null && stats.totalRuns > 0 && (
               <span>
-                {stats.totalRuns} runs ({stats.successRuns ?? 0} ok, {stats.failedRuns ?? 0} failed)
+                {t("runsStats", {
+                  total: stats.totalRuns,
+                  success: stats.successRuns ?? 0,
+                  failed: stats.failedRuns ?? 0,
+                })}
               </span>
             )}
           </div>
@@ -112,7 +120,7 @@ const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs }: Scr
             size="sm"
             onClick={onRun}
             disabled={isLoading || scraper.lastRunStatus === "running"}
-            title="Run scraper"
+            title={t("runScraper")}
           >
             {loadingState === "running" ? (
               <Loader2Icon className="h-4 w-4 animate-spin" />
@@ -120,7 +128,7 @@ const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs }: Scr
               <PlayIcon className="h-4 w-4" />
             )}
           </Button>
-          <Button variant="ghost" size="sm" onClick={onViewLogs} title="View run history">
+          <Button variant="ghost" size="sm" onClick={onViewLogs} title={t("viewRunHistory")}>
             {showLogs ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
           </Button>
         </div>
@@ -138,6 +146,7 @@ interface RepoCardProps {
   onSync: () => void;
   onDelete: () => void;
   onRunScraper: (id: number) => void;
+  t: TranslateFn;
 }
 
 const RepoCard = ({
@@ -148,6 +157,7 @@ const RepoCard = ({
   onSync,
   onDelete,
   onRunScraper,
+  t,
 }: RepoCardProps) => {
   const isLoading = Boolean(loadingState);
   const [expandedScrapers, setExpandedScrapers] = useState<Set<number>>(new Set());
@@ -171,7 +181,7 @@ const RepoCard = ({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="text-cartographic-charcoal truncate font-serif text-lg font-semibold">{repo.name}</h3>
-              {getSyncStatusBadge(repo)}
+              {getSyncStatusBadge(repo, t)}
             </div>
 
             <div className="text-muted-foreground mt-2 flex items-center gap-2 text-sm">
@@ -185,23 +195,23 @@ const RepoCard = ({
               ) : (
                 <>
                   <CodeIcon className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-xs">Uploaded code</span>
+                  <span className="text-xs">{t("uploadedCode")}</span>
                 </>
               )}
             </div>
 
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-xs">
-              {repo.lastSyncAt && <span>Last synced: {formatDateLocale(repo.lastSyncAt)}</span>}
+              {repo.lastSyncAt && <span>{t("lastSynced", { date: formatDateLocale(repo.lastSyncAt) })}</span>}
               {repo.lastSyncError && (
                 <span className="text-destructive truncate" title={repo.lastSyncError}>
-                  Error: {repo.lastSyncError.substring(0, 80)}
+                  {repo.lastSyncError.substring(0, 80)}
                 </span>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onSync} disabled={isLoading} title="Force sync">
+            <Button variant="outline" size="sm" onClick={onSync} disabled={isLoading} title={t("forceSync")}>
               {loadingState === "syncing" ? (
                 <Loader2Icon className="h-4 w-4 animate-spin" />
               ) : (
@@ -214,7 +224,7 @@ const RepoCard = ({
               size="sm"
               onClick={onDelete}
               disabled={isLoading}
-              title="Delete repo"
+              title={t("deleteRepo")}
               className="text-destructive hover:bg-destructive/10"
             >
               {loadingState === "deleting" ? (
@@ -237,13 +247,14 @@ const RepoCard = ({
                 onRun={() => onRunScraper(scraper.id)}
                 onViewLogs={() => toggleScraperLogs(scraper.id)}
                 showLogs={expandedScrapers.has(scraper.id)}
+                t={t}
               />
             ))}
           </div>
         )}
 
         {scrapers.length === 0 && repo.lastSyncAt && (
-          <div className="text-muted-foreground mt-4 border-t pt-3 text-sm">No scrapers found in manifest.</div>
+          <div className="text-muted-foreground mt-4 border-t pt-3 text-sm">{t("noScrapersInManifest")}</div>
         )}
       </CardContent>
     </Card>
@@ -256,6 +267,7 @@ interface ScrapersListClientProps {
 }
 
 export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersListClientProps) => {
+  const t = useTranslations("Scrapers");
   const { data: repos = [] } = useScraperReposQuery(initialRepos);
   const { data: allScrapers = [] } = useScrapersQuery(undefined, initialScrapers);
   const { states: repoLoadingStates, setLoading: setRepoLoading, clearLoading: clearRepoLoading } = useLoadingStates();
@@ -275,7 +287,7 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
   };
 
   const handleDelete = (repoId: number) => {
-    if (!confirm("Are you sure you want to delete this scraper repo and all its scrapers?")) return;
+    if (!confirm(t("confirmDeleteRepo"))) return;
     setRepoLoading(repoId, "deleting");
     deleteMutation.mutate(repoId, { onSettled: () => clearRepoLoading(repoId) });
   };
@@ -298,10 +310,8 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <CodeIcon className="text-muted-foreground mb-4 h-12 w-12" />
-          <h3 className="text-lg font-medium">No scraper repos</h3>
-          <p className="text-muted-foreground mt-1 text-center text-sm">
-            Create a scraper repo from the admin dashboard to start scraping data.
-          </p>
+          <h3 className="text-lg font-medium">{t("noRepos")}</h3>
+          <p className="text-muted-foreground mt-1 text-center text-sm">{t("noReposDescription")}</p>
         </CardContent>
       </Card>
     );
@@ -319,6 +329,7 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
           onSync={() => handleSync(repo.id)}
           onDelete={() => handleDelete(repo.id)}
           onRunScraper={handleRunScraper}
+          t={t}
         />
       ))}
     </div>

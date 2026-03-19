@@ -53,6 +53,7 @@ interface CatalogCardProps {
 }
 
 const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }: CatalogCardProps) => {
+  const t = useTranslations("Filters");
   const handleClick = () => {
     onSelect(String(catalog.id));
   };
@@ -89,10 +90,8 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
 
       {/* Stats - stacked vertically */}
       <div className="text-cartographic-navy/50 mt-1 space-y-0.5 font-mono text-[10px] dark:text-white/60">
-        <div>
-          {datasetCount} {datasetCount === 1 ? "dataset" : "datasets"}
-        </div>
-        {eventCount != null && <div>{formatCount(eventCount)} events</div>}
+        <div>{t("datasetCount", { count: datasetCount })}</div>
+        {eventCount != null && <div>{t("eventCount", { count: formatCount(eventCount) })}</div>}
       </div>
     </button>
   );

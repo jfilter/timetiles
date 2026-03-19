@@ -14,6 +14,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { EventDetailContent } from "@/components/events";
@@ -45,18 +46,18 @@ interface EventDetailsPageProps {
 }
 
 // Draft mode banner component
-const DraftModeBanner = () => (
+const DraftModeBanner = ({ previewMode, draftPreview }: { previewMode: string; draftPreview: string }) => (
   <div className="border-cartographic-gold bg-cartographic-gold/10 mb-6 rounded-sm border px-4 py-3">
-    <p className="text-cartographic-gold font-serif font-bold">Preview Mode</p>
-    <p className="text-muted-foreground text-sm">You are viewing a draft version of this event.</p>
+    <p className="text-cartographic-gold font-serif font-bold">{previewMode}</p>
+    <p className="text-muted-foreground text-sm">{draftPreview}</p>
   </div>
 );
 
 // Validation errors display component
-const ValidationErrorsSection = ({ errors }: { errors: unknown[] }) => (
+const ValidationErrorsSection = ({ errors, title }: { errors: unknown[]; title: string }) => (
   <Card variant="ghost" padding="sm">
     <CardContent className="p-4">
-      <h4 className="text-destructive mb-3 text-xs font-bold tracking-wider uppercase">Validation Errors</h4>
+      <h4 className="text-destructive mb-3 text-xs font-bold tracking-wider uppercase">{title}</h4>
       <div className="bg-destructive/10 rounded-sm p-3">
         <pre className="text-destructive text-sm whitespace-pre-wrap">{JSON.stringify(errors, null, 2)}</pre>
       </div>
@@ -65,9 +66,9 @@ const ValidationErrorsSection = ({ errors }: { errors: unknown[] }) => (
 );
 
 // Schema version display component
-const SchemaVersionSection = ({ version }: { version: number }) => (
+const SchemaVersionSection = ({ label }: { label: string }) => (
   <div className="text-muted-foreground mt-6 border-t pt-4 text-sm">
-    <span className="font-mono">Schema Version: {version}</span>
+    <span className="font-mono">{label}</span>
   </div>
 );
 
@@ -76,6 +77,7 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
   const { isEnabled: isDraftMode } = await draftMode();
 
   const payload = await getPayload({ config: configPromise });
+  const t = await getTranslations("Events");
 
   // Fetch the event with draft mode support
   const result = await payload.find({
@@ -99,7 +101,7 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       {/* Draft Mode Banner */}
-      {isDraftMode && <DraftModeBanner />}
+      {isDraftMode && <DraftModeBanner previewMode={t("previewMode")} draftPreview={t("draftPreview")} />}
 
       {/* Main Event Content - using shared component */}
       <EventDetailContent event={event} variant="page" />
@@ -107,10 +109,14 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
       {/* Additional page-only sections */}
       <div className={cn("mt-8 space-y-6", hasValidationErrors && "border-t pt-6")}>
         {/* Validation Errors */}
-        {hasValidationErrors && <ValidationErrorsSection errors={event.validationErrors as unknown[]} />}
+        {hasValidationErrors && (
+          <ValidationErrorsSection errors={event.validationErrors as unknown[]} title={t("validationErrors")} />
+        )}
 
         {/* Schema Version Info */}
-        {event.schemaVersionNumber != null && <SchemaVersionSection version={event.schemaVersionNumber} />}
+        {event.schemaVersionNumber != null && (
+          <SchemaVersionSection label={t("schemaVersion", { version: event.schemaVersionNumber })} />
+        )}
       </div>
     </div>
   );

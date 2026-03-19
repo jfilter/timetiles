@@ -10,6 +10,7 @@ import { Label } from "@timetiles/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircleIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import type { ConfidenceLevel, FieldMapping } from "@/lib/types/import-wizard";
 
@@ -17,6 +18,8 @@ import type { ConfidenceLevel, FieldMapping } from "@/lib/types/import-wizard";
  * Confidence badge component showing auto-detection confidence level.
  */
 export const ConfidenceBadge = ({ level, className }: Readonly<{ level: ConfidenceLevel; className?: string }>) => {
+  const t = useTranslations("Import");
+
   if (level === "none") return null;
 
   const styles = {
@@ -25,7 +28,7 @@ export const ConfidenceBadge = ({ level, className }: Readonly<{ level: Confiden
     low: "bg-muted text-muted-foreground",
   };
 
-  const labels = { high: "Auto-detected", medium: "Suggested", low: "Best guess" };
+  const labels = { high: t("confidenceAutoDetected"), medium: t("confidenceSuggested"), low: t("confidenceBestGuess") };
 
   return (
     <span
@@ -71,6 +74,7 @@ export const FieldSelect = ({
   confidenceLevel,
   isAutoDetected = false,
 }: Readonly<FieldSelectProps>) => {
+  const t = useTranslations("Import");
   const handleValueChange = (val: string) => onFieldChange(field, val === "__none__" ? null : val);
 
   return (
@@ -91,10 +95,10 @@ export const FieldSelect = ({
             disabled && "cursor-not-allowed opacity-60"
           )}
         >
-          <SelectValue placeholder="Select column..." />
+          <SelectValue placeholder={t("selectColumn")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__none__">Select column...</SelectItem>
+          <SelectItem value="__none__">{t("selectColumn")}</SelectItem>
           {headers.map((header) => (
             <SelectItem key={header} value={header}>
               {header}

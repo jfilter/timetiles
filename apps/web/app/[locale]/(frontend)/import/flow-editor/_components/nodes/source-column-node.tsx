@@ -11,6 +11,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { Handle, Position } from "@xyflow/react";
+import { useTranslations } from "next-intl";
 import { memo } from "react";
 
 import type { SourceColumnNodeData } from "@/lib/types/flow-mapping";
@@ -35,16 +36,26 @@ const toDisplayString = (value: unknown): string => {
   }
 };
 
-const TYPE_BADGES: Record<SourceColumnNodeData["inferredType"], { label: string; className: string }> = {
-  string: { label: "Text", className: "bg-cartographic-blue/10 text-cartographic-blue" },
-  number: { label: "Number", className: "bg-cartographic-forest/10 text-cartographic-forest" },
-  date: { label: "Date", className: "bg-cartographic-terracotta/10 text-cartographic-terracotta" },
-  boolean: { label: "Boolean", className: "bg-cartographic-navy/10 text-cartographic-navy" },
-  mixed: { label: "Mixed", className: "bg-muted text-muted-foreground" },
+const TYPE_BADGE_CLASSES: Record<SourceColumnNodeData["inferredType"], string> = {
+  string: "bg-cartographic-blue/10 text-cartographic-blue",
+  number: "bg-cartographic-forest/10 text-cartographic-forest",
+  date: "bg-cartographic-terracotta/10 text-cartographic-terracotta",
+  boolean: "bg-cartographic-navy/10 text-cartographic-navy",
+  mixed: "bg-muted text-muted-foreground",
 };
 
+const TYPE_BADGE_KEYS = {
+  string: "flowTypeText",
+  number: "flowTypeNumber",
+  date: "flowTypeDate",
+  boolean: "flowTypeBoolean",
+  mixed: "flowTypeMixed",
+} as const;
+
 const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNodeProps>) => {
-  const typeBadge = TYPE_BADGES[data.inferredType];
+  const t = useTranslations("Import");
+  const badgeClassName = TYPE_BADGE_CLASSES[data.inferredType];
+  const badgeLabelKey = TYPE_BADGE_KEYS[data.inferredType];
 
   return (
     <div
@@ -56,10 +67,10 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
     >
       {/* Header */}
       <div className="border-cartographic-navy/20 bg-cartographic-navy/5 flex items-center justify-between border-b px-3 py-1.5">
-        <span className="text-cartographic-navy/60 font-mono text-[10px] tracking-wide uppercase">Source Column</span>
-        <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", typeBadge.className)}>
-          {typeBadge.label}
+        <span className="text-cartographic-navy/60 font-mono text-[10px] tracking-wide uppercase">
+          {t("flowSourceColumn")}
         </span>
+        <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", badgeClassName)}>{t(badgeLabelKey)}</span>
       </div>
 
       {/* Content */}
@@ -78,7 +89,11 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
                   className="text-cartographic-navy/50 truncate font-mono text-xs"
                   title={displayValue}
                 >
-                  {displayValue === "" ? <span className="italic">empty</span> : displayValue.substring(0, 30)}
+                  {displayValue === "" ? (
+                    <span className="italic">{t("flowEmpty")}</span>
+                  ) : (
+                    displayValue.substring(0, 30)
+                  )}
                 </div>
               );
             })}

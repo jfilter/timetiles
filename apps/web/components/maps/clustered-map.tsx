@@ -16,6 +16,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import type { LngLatBounds } from "maplibre-gl";
+import { useTranslations } from "next-intl";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import Map, {
   Layer,
@@ -79,18 +80,18 @@ export interface ClusteredMapHandle {
 }
 
 /** Error overlay shown when map data fails to load */
-const MapErrorOverlay = () => (
+const MapErrorOverlay = ({ title, subtitle }: { title: string; subtitle: string }) => (
   <div className="bg-background/60 pointer-events-auto absolute inset-0 z-20 flex items-center justify-center backdrop-blur-sm">
-    <ContentState variant="error" title="Unable to load map data" subtitle="There was a problem loading the map" />
+    <ContentState variant="error" title={title} subtitle={subtitle} />
   </div>
 );
 
 /** Loading overlay shown while computing initial bounds */
-const MapLoadingOverlay = () => (
+const MapLoadingOverlay = ({ message }: { message: string }) => (
   <div className="bg-background/60 pointer-events-auto absolute inset-0 z-20 flex items-center justify-center backdrop-blur-sm">
     <div className="flex flex-col items-center gap-3">
       <Loader2 className="text-primary h-8 w-8 animate-spin" />
-      <span className="text-muted-foreground text-sm font-medium">Loading map data...</span>
+      <span className="text-muted-foreground text-sm font-medium">{message}</span>
     </div>
   </div>
 );
@@ -108,6 +109,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     },
     ref
   ) => {
+    const t = useTranslations("Explore");
     const { resolvedTheme } = useTheme();
     const [popupInfo, setPopupInfo] = useState<{ longitude: number; latitude: number; title: string } | null>(null);
     const mapRef = useRef<MapRef | null>(null);
@@ -189,8 +191,10 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
 
     return (
       <div className="relative h-full w-full">
-        {isLoadingBounds && <MapLoadingOverlay />}
-        {isError && !isLoadingBounds && <MapErrorOverlay />}
+        {isLoadingBounds && <MapLoadingOverlay message={t("loadingMapData")} />}
+        {isError && !isLoadingBounds && (
+          <MapErrorOverlay title={t("unableToLoadMapData")} subtitle={t("mapLoadError")} />
+        )}
         <Map
           ref={mapRef}
           initialViewState={INITIAL_VIEW_STATE}

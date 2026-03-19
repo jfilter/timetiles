@@ -10,34 +10,60 @@
 "use client";
 
 import { cn } from "@timetiles/ui/lib/utils";
-import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, Scissors, Type } from "lucide-react";
+import { ArrowLeftRight, Calendar, CaseSensitive, Scissors, Type } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type DragEvent, memo, useCallback } from "react";
 
-import { TRANSFORM_TYPE_DESCRIPTIONS, TRANSFORM_TYPE_LABELS, type TransformType } from "@/lib/types/import-transforms";
+import type { TransformType } from "@/lib/types/import-transforms";
 
 interface NodePaletteProps {
   className?: string;
 }
 
-interface TransformPaletteItem {
-  type: TransformType;
-  icon: LucideIcon;
-  color: string;
-}
-
-const PALETTE_ITEMS: TransformPaletteItem[] = [
-  { type: "rename", icon: Type, color: "text-cartographic-blue" },
-  { type: "date-parse", icon: Calendar, color: "text-cartographic-terracotta" },
-  { type: "string-op", icon: CaseSensitive, color: "text-cartographic-forest" },
-  { type: "concatenate", icon: ArrowLeftRight, color: "text-cartographic-navy" },
-  { type: "split", icon: Scissors, color: "text-purple-600" },
-];
+const PALETTE_ITEMS = [
+  {
+    type: "rename" as TransformType,
+    icon: Type,
+    color: "text-cartographic-blue",
+    labelKey: "flowTransformRename",
+    descriptionKey: "flowTransformRenameDescription",
+  },
+  {
+    type: "date-parse" as TransformType,
+    icon: Calendar,
+    color: "text-cartographic-terracotta",
+    labelKey: "flowTransformDateParse",
+    descriptionKey: "flowTransformDateParseDescription",
+  },
+  {
+    type: "string-op" as TransformType,
+    icon: CaseSensitive,
+    color: "text-cartographic-forest",
+    labelKey: "flowTransformStringOp",
+    descriptionKey: "flowTransformStringOpDescription",
+  },
+  {
+    type: "concatenate" as TransformType,
+    icon: ArrowLeftRight,
+    color: "text-cartographic-navy",
+    labelKey: "flowTransformConcatenate",
+    descriptionKey: "flowTransformConcatenateDescription",
+  },
+  {
+    type: "split" as TransformType,
+    icon: Scissors,
+    color: "text-purple-600",
+    labelKey: "flowTransformSplit",
+    descriptionKey: "flowTransformSplitDescription",
+  },
+] as const;
 
 interface PaletteItemProps {
-  item: TransformPaletteItem;
+  item: (typeof PALETTE_ITEMS)[number];
 }
 
 const PaletteItem = memo(({ item }: Readonly<PaletteItemProps>) => {
+  const t = useTranslations("Import");
   const Icon = item.icon;
 
   const handleDragStart = useCallback(
@@ -63,8 +89,8 @@ const PaletteItem = memo(({ item }: Readonly<PaletteItemProps>) => {
     >
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", item.color)} />
       <div className="min-w-0">
-        <div className="text-foreground text-sm font-medium">{TRANSFORM_TYPE_LABELS[item.type]}</div>
-        <div className="text-muted-foreground mt-0.5 text-xs">{TRANSFORM_TYPE_DESCRIPTIONS[item.type]}</div>
+        <div className="text-foreground text-sm font-medium">{t(item.labelKey)}</div>
+        <div className="text-muted-foreground mt-0.5 text-xs">{t(item.descriptionKey)}</div>
       </div>
     </div>
   );
@@ -72,12 +98,16 @@ const PaletteItem = memo(({ item }: Readonly<PaletteItemProps>) => {
 PaletteItem.displayName = "PaletteItem";
 
 export const NodePalette = ({ className }: Readonly<NodePaletteProps>) => {
+  const t = useTranslations("Import");
+
   return (
     <div className={cn("bg-background border-border flex flex-col gap-2 border-l p-3", className)}>
-      <h3 className="text-muted-foreground mb-2 font-mono text-[10px] tracking-wide uppercase">Transforms</h3>
-      <p className="text-muted-foreground mb-3 text-xs">Drag a transform onto the canvas to add data processing</p>
+      <h3 className="text-muted-foreground mb-2 font-mono text-[10px] tracking-wide uppercase">
+        {t("flowTransforms")}
+      </h3>
+      <p className="text-muted-foreground mb-3 text-xs">{t("flowTransformsDragHint")}</p>
 
-      <div role="list" aria-label="Available transforms">
+      <div role="list" aria-label={t("flowAvailableTransforms")}>
         {PALETTE_ITEMS.map((item) => (
           <PaletteItem key={item.type} item={item} />
         ))}

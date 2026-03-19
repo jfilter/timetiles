@@ -99,7 +99,10 @@ export const EventsListPaginated = ({
     <div className="space-y-6">
       {/* Header - explains what's being shown */}
       <p className="text-muted-foreground text-sm">
-        {buildEventsDescription(total, globalTotalData?.total, filterLabels, bounds != null)}
+        {buildEventsDescription(total, globalTotalData?.total, filterLabels, bounds != null, (k, v) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bridge next-intl Translator to plain fn
+          (t as any)(k, v)
+        )}
       </p>
 
       {/* Events list - reuses existing component */}

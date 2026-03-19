@@ -20,6 +20,7 @@ import {
   Label,
 } from "@timetiles/ui";
 import { AlertTriangle, Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { useDeletionSummaryQuery, useScheduleDeletionMutation } from "@/lib/hooks/use-account-mutations";
@@ -34,6 +35,8 @@ type Step = "summary" | "confirm" | "success";
 
 // oxlint-disable-next-line complexity -- multi-step modal with inherent branching
 export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: DeleteAccountModalProps) => {
+  const t = useTranslations("Account");
+  const tCommon = useTranslations("Common");
   const [step, setStep] = useState<Step>("summary");
   const [password, setPassword] = useState("");
   const [deletionScheduledAt, setDeletionScheduledAt] = useState<string | null>(null);
@@ -53,10 +56,10 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
   const getSummaryDisplayError = (): string | null => {
     if (summaryError) {
-      return summaryError instanceof Error ? summaryError.message : "Failed to load data";
+      return summaryError instanceof Error ? summaryError.message : t("failedToLoad");
     }
     if (summaryData && !summaryData.canDelete) {
-      return summaryData.reason ?? "Cannot delete account";
+      return summaryData.reason ?? t("cannotDelete");
     }
     return null;
   };
@@ -99,7 +102,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
   const handleScheduleDeletion = () => {
     if (!password) {
-      setDeletionError("Password is required");
+      setDeletionError(t("passwordRequired"));
       return;
     }
 
@@ -111,7 +114,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
         setDeletionScheduledAt(data.deletionScheduledAt);
         setStep("success");
       } catch (err) {
-        setDeletionError(err instanceof Error ? err.message : "Failed to schedule deletion");
+        setDeletionError(err instanceof Error ? err.message : t("failedToScheduleDeletion"));
       }
     })();
   };
@@ -127,19 +130,19 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
             {step === "success" ? (
               <>
                 <Check className="h-5 w-5 text-green-600" />
-                Deletion Scheduled
+                {t("deletionScheduled")}
               </>
             ) : (
               <>
                 <AlertTriangle className="text-destructive h-5 w-5" />
-                Delete Your Account
+                {t("deleteYourAccount")}
               </>
             )}
           </DialogTitle>
           <DialogDescription>
-            {step === "summary" && "Review what will happen to your data before proceeding."}
-            {step === "confirm" && "Enter your password to schedule account deletion."}
-            {step === "success" && "Your account deletion has been scheduled."}
+            {step === "summary" && t("deletionSummaryDescription")}
+            {step === "confirm" && t("confirmDeletionDescription")}
+            {step === "success" && t("deletionScheduledDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -156,18 +159,26 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
             {summary && !loading && (
               <>
                 <div className="bg-muted rounded-md p-4">
-                  <h4 className="mb-2 font-medium">Your Data Summary</h4>
+                  <h4 className="mb-2 font-medium">{t("dataSummary")}</h4>
                   <div className="text-muted-foreground space-y-1 text-sm">
                     <p>
-                      Catalogs: {summary.catalogs.public + summary.catalogs.private} ({summary.catalogs.public} public,{" "}
-                      {summary.catalogs.private} private)
+                      {t("catalogsCount", {
+                        total: summary.catalogs.public + summary.catalogs.private,
+                        public: summary.catalogs.public,
+                        private: summary.catalogs.private,
+                      })}
                     </p>
                     <p>
-                      Datasets: {summary.datasets.public + summary.datasets.private} ({summary.datasets.public} public,{" "}
-                      {summary.datasets.private} private)
+                      {t("datasetsCount", {
+                        total: summary.datasets.public + summary.datasets.private,
+                        public: summary.datasets.public,
+                        private: summary.datasets.private,
+                      })}
                     </p>
-                    <p>Events: {summary.events.inPublicDatasets + summary.events.inPrivateDatasets} total</p>
-                    <p>Scheduled Imports: {summary.scheduledImports}</p>
+                    <p>
+                      {t("eventsCount", { total: summary.events.inPublicDatasets + summary.events.inPrivateDatasets })}
+                    </p>
+                    <p>{t("scheduledImportsCount", { count: summary.scheduledImports })}</p>
                   </div>
                 </div>
 
@@ -175,10 +186,12 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
                   <div className="flex items-start gap-3">
                     <RefreshCw className="mt-0.5 h-5 w-5 text-green-600" />
                     <div>
-                      <h5 className="font-medium">Public data (will be transferred)</h5>
+                      <h5 className="font-medium">{t("publicDataTransfer")}</h5>
                       <p className="text-muted-foreground text-sm">
-                        {summary.catalogs.public} public catalogs and {summary.datasets.public} public datasets will be
-                        transferred to the system.
+                        {t("publicDataTransferDescription", {
+                          catalogs: summary.catalogs.public,
+                          datasets: summary.datasets.public,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -186,10 +199,13 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
                   <div className="flex items-start gap-3">
                     <Trash2 className="text-destructive mt-0.5 h-5 w-5" />
                     <div>
-                      <h5 className="font-medium">Private data (will be deleted)</h5>
+                      <h5 className="font-medium">{t("privateDataDelete")}</h5>
                       <p className="text-muted-foreground text-sm">
-                        {summary.catalogs.private} private catalogs, {summary.datasets.private} private datasets, and{" "}
-                        {summary.events.inPrivateDatasets} events will be permanently deleted.
+                        {t("privateDataDeleteDescription", {
+                          catalogs: summary.catalogs.private,
+                          datasets: summary.datasets.private,
+                          events: summary.events.inPrivateDatasets,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -197,8 +213,8 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
                 <div className="rounded-md bg-amber-50 p-4 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                   <p className="text-sm">
-                    <strong>{"7-day grace period: "}</strong>
-                    You can cancel the deletion anytime within 7 days. After that, this action cannot be undone.
+                    <strong>{t("gracePeriod")}</strong>
+                    {t("gracePeriodDescription")}
                   </p>
                 </div>
               </>
@@ -206,10 +222,10 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
             <DialogFooter className="pt-4">
               <Button variant="outline" onClick={handleClose}>
-                Cancel
+                {tCommon("cancel")}
               </Button>
               <Button variant="destructive" onClick={handleSetStepConfirm} disabled={loading || !summary}>
-                Continue
+                {tCommon("continue")}
               </Button>
             </DialogFooter>
           </div>
@@ -220,35 +236,33 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
             {error && <div className="bg-destructive/10 text-destructive rounded-md p-4">{error}</div>}
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{tCommon("password")}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={handlePasswordChange}
-                placeholder="Enter your password"
+                placeholder={t("enterPassword")}
                 disabled={loading}
               />
             </div>
 
             <div className="bg-destructive/10 rounded-md p-4">
-              <p className="text-destructive text-sm">
-                By clicking &quot;Delete My Account&quot;, you acknowledge that:
-              </p>
+              <p className="text-destructive text-sm">{t("deleteConfirmation")}</p>
               <ul className="text-destructive mt-2 list-inside list-disc text-sm">
-                <li>Your private data will be permanently deleted after 7 days</li>
-                <li>Public data will be transferred to the system</li>
-                <li>This action cannot be undone after the grace period</li>
+                <li>{t("deletePoint1")}</li>
+                <li>{t("deletePoint2")}</li>
+                <li>{t("deletePoint3")}</li>
               </ul>
             </div>
 
             <DialogFooter className="pt-4">
               <Button variant="outline" onClick={handleSetStepSummary} disabled={loading}>
-                Back
+                {tCommon("back")}
               </Button>
               <Button variant="destructive" onClick={handleScheduleDeletion} disabled={loading || !password}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Delete My Account
+                {t("deleteMyAccount")}
               </Button>
             </DialogFooter>
           </div>
@@ -257,22 +271,18 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
         {step === "success" && (
           <div className="space-y-4">
             <p className="text-muted-foreground">
-              Your account deletion has been scheduled for{" "}
-              <strong>
-                {deletionScheduledAt ? new Date(deletionScheduledAt).toLocaleDateString() : "7 days from now"}
-              </strong>
-              .
+              {t.rich("deletionScheduledFor", {
+                date: deletionScheduledAt ? new Date(deletionScheduledAt).toLocaleDateString() : t("sevenDaysFromNow"),
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </p>
 
             <div className="bg-muted rounded-md p-4">
-              <p className="text-sm">
-                You can cancel this deletion anytime before the scheduled date by returning to this page. After that,
-                the deletion will be permanent.
-              </p>
+              <p className="text-sm">{t("deletionCancelInfo")}</p>
             </div>
 
             <DialogFooter className="pt-4">
-              <Button onClick={handleClose}>Close</Button>
+              <Button onClick={handleClose}>{tCommon("close")}</Button>
             </DialogFooter>
           </div>
         )}

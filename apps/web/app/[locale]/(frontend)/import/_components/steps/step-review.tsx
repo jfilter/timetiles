@@ -26,6 +26,7 @@ import {
   SparklesIcon,
   TextIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect } from "react";
 
 import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutations";
@@ -39,15 +40,6 @@ export interface StepReviewProps {
   className?: string;
 }
 
-const ID_STRATEGY_LABELS: Record<string, string> = {
-  auto: "Auto-generated",
-  external: "From column",
-  computed: "Content hash",
-  hybrid: "External + fallback",
-};
-
-const DUPLICATE_LABELS: Record<string, string> = { skip: "Skip", update: "Update", version: "New version" };
-
 // Default schedule config
 const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
   enabled: false,
@@ -59,6 +51,7 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 };
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
+  const t = useTranslations("Import");
   const { state, startProcessing, nextStep, setError, setScheduleConfig, setNavigationConfig } = useWizard();
   const {
     file,
@@ -73,6 +66,19 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     authConfig,
     scheduleConfig,
   } = state;
+
+  const ID_STRATEGY_LABELS: Record<string, string> = {
+    auto: t("idStrategyAuto"),
+    external: t("idStrategyExternal"),
+    computed: t("idStrategyComputed"),
+    hybrid: t("idStrategyHybrid"),
+  };
+
+  const DUPLICATE_LABELS: Record<string, string> = {
+    skip: t("dedupSkip"),
+    update: t("dedupUpdate"),
+    version: t("dedupVersion"),
+  };
 
   const configureMutation = useImportConfigureMutation();
 
@@ -141,7 +147,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         .map(([idx, transforms]) => ({ sheetIndex: Number(idx), transforms }));
 
       if (selectedCatalogId == null) {
-        setError("Please select a catalog");
+        setError(t("pleaseSelectCatalog"));
         return;
       }
 
@@ -160,7 +166,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       startProcessing(data.importFileId, data.scheduledImportId);
       nextStep();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start import");
+      setError(err instanceof Error ? err.message : t("failedToStartImport"));
     }
   }, [
     sourceUrl,
@@ -178,24 +184,25 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     startProcessing,
     nextStep,
     setError,
+    t,
   ]);
 
   // Configure navigation for this step
   useEffect(() => {
     setNavigationConfig({
       onNext: handleStartImport,
-      nextLabel: "Start Import",
+      nextLabel: t("startImport"),
       isLoading: configureMutation.isPending,
     });
     return () => setNavigationConfig({});
-  }, [setNavigationConfig, handleStartImport, configureMutation.isPending]);
+  }, [setNavigationConfig, handleStartImport, configureMutation.isPending, t]);
 
   // Get catalog and dataset names for display
-  const catalogName = selectedCatalogId === "new" ? newCatalogName : `Catalog #${selectedCatalogId}`;
+  const catalogName = selectedCatalogId === "new" ? newCatalogName : t("catalogNumber", { id: selectedCatalogId ?? 0 });
 
   // Get all dataset names for multi-sheet imports
   const datasetNames = sheetMappings.map((mapping) =>
-    mapping.datasetId === "new" ? mapping.newDatasetName : `Dataset #${mapping.datasetId}`
+    mapping.datasetId === "new" ? mapping.newDatasetName : t("datasetNumber", { id: mapping.datasetId })
   );
   const datasetCount = sheetMappings.length;
   const isMultiDataset = datasetCount > 1;
@@ -216,10 +223,12 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     const sheetMapping = sheetMappings.find((sm) => sm.sheetIndex === mapping.sheetIndex);
     const sheet = sheets.find((s) => s.index === mapping.sheetIndex);
     const datasetName =
-      sheetMapping?.datasetId === "new" ? sheetMapping.newDatasetName : `Dataset #${sheetMapping?.datasetId}`;
+      sheetMapping?.datasetId === "new"
+        ? sheetMapping.newDatasetName
+        : t("datasetNumber", { id: sheetMapping?.datasetId ?? 0 });
     return {
       mapping,
-      datasetName: datasetName ?? sheet?.name ?? `Sheet ${mapping.sheetIndex + 1}`,
+      datasetName: datasetName ?? sheet?.name ?? t("sheetNumber", { number: mapping.sheetIndex + 1 }),
       sheetName: sheet?.name,
     };
   });
@@ -229,8 +238,8 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   return (
     <div className={cn("space-y-6", className)}>
       <div className="text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Review your import</h2>
-        <p className="text-cartographic-navy/70 mt-2">Confirm your settings before starting the import.</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("reviewTitle")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("reviewDescription")}</p>
       </div>
 
       {/* Data Flow: Source → Destination */}
@@ -247,7 +256,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                 <p className="text-cartographic-navy/60 mt-1 font-mono text-sm">
                   {file ? formatFileSize(file.size) : "-"}
                   <span className="text-cartographic-navy/30 mx-2">•</span>
-                  {totalRows.toLocaleString()} rows
+                  {t("rowCount", { count: totalRows.toLocaleString() })}
                 </p>
               </div>
             </div>
@@ -266,7 +275,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                   <FolderIcon className="text-cartographic-terracotta h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-cartographic-navy/50 text-xs">Catalog</p>
+                  <p className="text-cartographic-navy/50 text-xs">{t("catalog")}</p>
                   <p className="text-cartographic-charcoal truncate font-serif font-semibold">{catalogName}</p>
                 </div>
               </div>
@@ -278,7 +287,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                 </div>
                 <div className="min-w-0">
                   <p className="text-cartographic-navy/50 text-xs">
-                    {isMultiDataset ? `${datasetCount} datasets` : "Dataset"}
+                    {isMultiDataset ? t("datasetsCount", { count: datasetCount }) : t("dataset")}
                   </p>
                   {isMultiDataset ? (
                     <div className="space-y-1">
@@ -301,7 +310,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       {/* Field Mappings */}
       <Card className="overflow-hidden">
         <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
-          <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Field mappings</h3>
+          <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("fieldMappings")}</h3>
         </div>
         <CardContent className="p-6">
           <div className="space-y-6">
@@ -318,10 +327,10 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <TextIcon className="text-cartographic-navy/40 h-4 w-4" />
-                        <span className="text-cartographic-navy/70 text-sm">Title</span>
+                        <span className="text-cartographic-navy/70 text-sm">{t("fieldTitle")}</span>
                       </div>
                       <span className="text-cartographic-charcoal font-mono text-sm" data-testid="title-field">
-                        {mapping?.titleField ?? "—"}
+                        {mapping?.titleField ?? "\u2014"}
                       </span>
                     </div>
 
@@ -329,10 +338,10 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CalendarIcon className="text-cartographic-navy/40 h-4 w-4" />
-                        <span className="text-cartographic-navy/70 text-sm">Date</span>
+                        <span className="text-cartographic-navy/70 text-sm">{t("fieldDate")}</span>
                       </div>
                       <span className="text-cartographic-charcoal font-mono text-sm" data-testid="date-field">
-                        {mapping?.dateField ?? "—"}
+                        {mapping?.dateField ?? "\u2014"}
                       </span>
                     </div>
 
@@ -340,16 +349,16 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <MapPinIcon className="text-cartographic-navy/40 h-4 w-4" />
-                        <span className="text-cartographic-navy/70 text-sm">Location</span>
+                        <span className="text-cartographic-navy/70 text-sm">{t("location")}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-cartographic-charcoal font-mono text-sm" data-testid="location-field">
-                          {locationDisplay ?? "—"}
+                          {locationDisplay ?? "\u2014"}
                         </span>
                         {geocodingEnabled && locationDisplay && (
                           <span className="bg-cartographic-forest/10 text-cartographic-forest inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs">
                             <SparklesIcon className="h-3 w-3" />
-                            Geocode
+                            {t("geocode")}
                           </span>
                         )}
                       </div>
@@ -369,7 +378,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       {/* Record Handling: ID Strategy + Duplicates */}
       <Card className="overflow-hidden">
         <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
-          <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Record handling</h3>
+          <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("recordHandling")}</h3>
         </div>
         <CardContent className="p-6">
           <div className="space-y-6">
@@ -382,7 +391,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <FingerprintIcon className="text-cartographic-navy/40 h-4 w-4" />
-                    <span className="text-cartographic-navy/70 text-sm">Identify by</span>
+                    <span className="text-cartographic-navy/70 text-sm">{t("identifyBy")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-cartographic-charcoal font-mono text-sm">
@@ -404,7 +413,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <DatabaseIcon className="text-cartographic-navy/40 h-4 w-4" />
-                  <span className="text-cartographic-navy/70 text-sm">On duplicate</span>
+                  <span className="text-cartographic-navy/70 text-sm">{t("onDuplicate")}</span>
                 </div>
                 <span className="text-cartographic-charcoal font-mono text-sm">
                   {DUPLICATE_LABELS[deduplicationStrategy]}
@@ -421,16 +430,16 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
           <div className="border-cartographic-navy/10 bg-cartographic-cream/30 flex items-center justify-between border-b px-6 py-4">
             <div className="flex items-center gap-3">
               <ClockIcon className="text-cartographic-navy h-5 w-5" />
-              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">Scheduled Import</h3>
+              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("scheduledImport")}</h3>
             </div>
             <Button
               type="button"
               variant={activeScheduleConfig.enabled ? "default" : "outline"}
               size="sm"
               onClick={handleToggleScheduleEnabled}
-              aria-label="Enable scheduled import"
+              aria-label={t("enableScheduledImport")}
             >
-              {activeScheduleConfig.enabled ? "Enabled" : "Disabled"}
+              {activeScheduleConfig.enabled ? t("enabled") : t("disabled")}
             </Button>
           </div>
           {activeScheduleConfig.enabled && (
@@ -439,17 +448,17 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               <div className="flex items-start gap-3">
                 <GlobeIcon className="text-cartographic-navy/40 mt-0.5 h-4 w-4" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-cartographic-navy/70 text-xs">Source URL</p>
+                  <p className="text-cartographic-navy/70 text-xs">{t("sourceUrl")}</p>
                   <p className="text-cartographic-charcoal truncate font-mono text-sm">{sourceUrl}</p>
                 </div>
               </div>
 
               {/* Schedule name */}
               <div className="space-y-2">
-                <Label htmlFor="schedule-name">Schedule Name</Label>
+                <Label htmlFor="schedule-name">{t("scheduleName")}</Label>
                 <Input
                   id="schedule-name"
-                  placeholder="My scheduled import"
+                  placeholder={t("scheduleNamePlaceholder")}
                   value={activeScheduleConfig.name}
                   onChange={handleScheduleNameChange}
                 />
@@ -458,35 +467,35 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               {/* Schedule type and frequency */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="schedule-type">Schedule Type</Label>
+                  <Label htmlFor="schedule-type">{t("scheduleType")}</Label>
                   <Select value={activeScheduleConfig.scheduleType} onValueChange={handleScheduleTypeChange}>
                     <SelectTrigger id="schedule-type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="frequency">Simple frequency</SelectItem>
-                      <SelectItem value="cron">Cron expression</SelectItem>
+                      <SelectItem value="frequency">{t("simpleFrequency")}</SelectItem>
+                      <SelectItem value="cron">{t("cronExpression")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {activeScheduleConfig.scheduleType === "frequency" ? (
                   <div className="space-y-2">
-                    <Label htmlFor="frequency">Frequency</Label>
+                    <Label htmlFor="frequency">{t("frequency")}</Label>
                     <Select value={activeScheduleConfig.frequency} onValueChange={handleFrequencyChange}>
                       <SelectTrigger id="frequency">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="hourly">Hourly</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="hourly">{t("hourly")}</SelectItem>
+                        <SelectItem value="daily">{t("daily")}</SelectItem>
+                        <SelectItem value="weekly">{t("weekly")}</SelectItem>
+                        <SelectItem value="monthly">{t("monthly")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <Label htmlFor="cron-expression">Cron Expression</Label>
+                    <Label htmlFor="cron-expression">{t("cronExpressionLabel")}</Label>
                     <Input
                       id="cron-expression"
                       placeholder="0 0 * * *"
@@ -499,29 +508,27 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
               {/* Schema mode */}
               <div className="space-y-2">
-                <Label htmlFor="schema-mode">Schema Change Handling</Label>
+                <Label htmlFor="schema-mode">{t("schemaChangeHandling")}</Label>
                 <Select value={activeScheduleConfig.schemaMode} onValueChange={handleSchemaModeChange}>
                   <SelectTrigger id="schema-mode">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="strict">
-                      <span className="font-medium">Strict</span>
-                      <span className="text-muted-foreground ml-2 text-xs">— fail if schema changes</span>
+                      <span className="font-medium">{t("schemaStrict")}</span>
+                      <span className="text-muted-foreground ml-2 text-xs">{t("schemaStrictDescription")}</span>
                     </SelectItem>
                     <SelectItem value="additive">
-                      <span className="font-medium">Additive</span>
-                      <span className="text-muted-foreground ml-2 text-xs">— auto-accept new fields</span>
+                      <span className="font-medium">{t("schemaAdditive")}</span>
+                      <span className="text-muted-foreground ml-2 text-xs">{t("schemaAdditiveDescription")}</span>
                     </SelectItem>
                     <SelectItem value="flexible">
-                      <span className="font-medium">Flexible</span>
-                      <span className="text-muted-foreground ml-2 text-xs">— re-analyze each time</span>
+                      <span className="font-medium">{t("schemaFlexible")}</span>
+                      <span className="text-muted-foreground ml-2 text-xs">{t("schemaFlexibleDescription")}</span>
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-muted-foreground text-xs">
-                  How to handle schema changes when the source data structure changes.
-                </p>
+                <p className="text-muted-foreground text-xs">{t("schemaChangeHandlingDescription")}</p>
               </div>
             </CardContent>
           )}

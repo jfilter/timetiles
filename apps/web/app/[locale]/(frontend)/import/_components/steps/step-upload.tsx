@@ -22,6 +22,7 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/lib/hooks/use-import-wizard-mutations";
@@ -48,6 +49,7 @@ const ACCEPTED_TYPES = [
 type InputMode = "file" | "url";
 
 export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
+  const t = useTranslations("Import");
   const { state, setFile, setSourceUrl, clearFile } = useWizard();
   const { file, sheets, sourceUrl } = state;
 
@@ -136,13 +138,13 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         data.previewId
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process file");
+      setError(err instanceof Error ? err.message : t("failedToProcessFile"));
     }
   };
 
   const processUrl = async () => {
     if (!urlInput.trim()) {
-      setError("Please enter a URL");
+      setError(t("pleaseEnterUrl"));
       return;
     }
 
@@ -162,7 +164,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         urlInput.trim()
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch URL");
+      setError(err instanceof Error ? err.message : t("failedToFetchUrl"));
     }
   };
 
@@ -188,20 +190,20 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       {uploadMutation.isPending ? (
         <div className="flex flex-col items-center">
           <Loader2Icon className="text-primary h-12 w-12 animate-spin" />
-          <p className="text-muted-foreground mt-4">Processing file...</p>
+          <p className="text-muted-foreground mt-4">{t("processingFile")}</p>
         </div>
       ) : (
         <>
           <UploadIcon className="text-muted-foreground mx-auto h-12 w-12" />
-          <p className="mt-4 text-lg font-medium">Drag and drop your file here</p>
-          <p className="text-muted-foreground mt-2">or</p>
-          <label className="mt-4 inline-block cursor-pointer" aria-label="Browse files">
+          <p className="mt-4 text-lg font-medium">{t("dragAndDrop")}</p>
+          <p className="text-muted-foreground mt-2">{t("or")}</p>
+          <label className="mt-4 inline-block cursor-pointer" aria-label={t("browseFiles")}>
             <input type="file" accept={ACCEPTED_TYPES.join(",")} onChange={handleFileSelect} className="sr-only" />
             <Button type="button" variant="outline" asChild>
-              <span>Browse files</span>
+              <span>{t("browseFiles")}</span>
             </Button>
           </label>
-          <p className="text-muted-foreground mt-4 text-sm">Supported formats: CSV, XLS, XLSX, ODS</p>
+          <p className="text-muted-foreground mt-4 text-sm">{t("supportedFormats")}</p>
         </>
       )}
     </div>
@@ -219,17 +221,17 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         return (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
+              <Label htmlFor="api-key">{t("apiKey")}</Label>
               <Input
                 id="api-key"
                 type="password"
-                placeholder="Your API key"
+                placeholder={t("apiKeyPlaceholder")}
                 value={authConfig.apiKey ?? ""}
                 onChange={handleAuthField("apiKey")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="api-key-header">Header Name</Label>
+              <Label htmlFor="api-key-header">{t("headerName")}</Label>
               <Input
                 id="api-key-header"
                 placeholder="X-API-Key"
@@ -242,11 +244,11 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       case "bearer":
         return (
           <div className="space-y-2">
-            <Label htmlFor="bearer-token">Bearer Token</Label>
+            <Label htmlFor="bearer-token">{t("bearerToken")}</Label>
             <Input
               id="bearer-token"
               type="password"
-              placeholder="Your bearer token"
+              placeholder={t("bearerTokenPlaceholder")}
               value={authConfig.bearerToken ?? ""}
               onChange={handleAuthField("bearerToken")}
             />
@@ -256,20 +258,20 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         return (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">{t("username")}</Label>
               <Input
                 id="username"
-                placeholder="Username"
+                placeholder={t("username")}
                 value={authConfig.username ?? ""}
                 onChange={handleAuthField("username")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("passwordLabel")}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Password"
+                placeholder={t("passwordLabel")}
                 value={authConfig.password ?? ""}
                 onChange={handleAuthField("password")}
               />
@@ -286,7 +288,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     <div className="space-y-4">
       {/* URL Input */}
       <div className="space-y-2">
-        <Label htmlFor="source-url">Data URL</Label>
+        <Label htmlFor="source-url">{t("dataUrl")}</Label>
         <div className="flex gap-2">
           <Input
             id="source-url"
@@ -298,12 +300,10 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
             className="flex-1"
           />
           <Button type="button" onClick={handleFetchClick} disabled={urlMutation.isPending || !urlInput.trim()}>
-            {urlMutation.isPending ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Fetch"}
+            {urlMutation.isPending ? <Loader2Icon className="h-4 w-4 animate-spin" /> : t("fetch")}
           </Button>
         </div>
-        <p className="text-muted-foreground text-sm">
-          Enter a URL that returns CSV, Excel, or ODS data. You can set up automatic scheduled imports after review.
-        </p>
+        <p className="text-muted-foreground text-sm">{t("dataUrlDescription")}</p>
       </div>
 
       {/* Auth Configuration Toggle */}
@@ -315,7 +315,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         className="text-muted-foreground hover:text-foreground gap-1"
       >
         {showAuthConfig ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
-        Authentication settings
+        {t("authSettings")}
       </Button>
 
       {/* Auth Configuration Form */}
@@ -323,16 +323,16 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         <Card className="p-4">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="auth-type">Authentication Type</Label>
+              <Label htmlFor="auth-type">{t("authType")}</Label>
               <Select value={authConfig.type} onValueChange={handleAuthTypeChange}>
                 <SelectTrigger id="auth-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No authentication</SelectItem>
-                  <SelectItem value="api-key">API Key</SelectItem>
-                  <SelectItem value="bearer">Bearer Token</SelectItem>
-                  <SelectItem value="basic">Basic Auth (username/password)</SelectItem>
+                  <SelectItem value="none">{t("authNone")}</SelectItem>
+                  <SelectItem value="api-key">{t("apiKey")}</SelectItem>
+                  <SelectItem value="bearer">{t("bearerToken")}</SelectItem>
+                  <SelectItem value="basic">{t("authBasic")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -351,7 +351,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         <div className="flex items-center gap-2">
           <CheckCircle2Icon className="text-cartographic-forest h-4 w-4" />
           <span className="text-cartographic-forest text-sm font-medium">
-            {sourceUrl ? "URL data ready for import" : "File ready for import"}
+            {sourceUrl ? t("urlDataReady") : t("fileReady")}
           </span>
         </div>
       </div>
@@ -378,9 +378,9 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
                   </>
                 )}
                 {sheets.length === 1 ? (
-                  <span>{sheets[0]?.rowCount.toLocaleString()} rows</span>
+                  <span>{t("rowCount", { count: sheets[0]?.rowCount.toLocaleString() ?? "0" })}</span>
                 ) : (
-                  <span>{sheets.length} sheets</span>
+                  <span>{t("sheetCount", { count: sheets.length })}</span>
                 )}
               </div>
             </div>
@@ -392,7 +392,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
             variant="ghost"
             size="icon"
             onClick={handleRemoveFile}
-            aria-label="Remove file"
+            aria-label={t("removeFile")}
             className="text-cartographic-navy/50 hover:text-cartographic-charcoal shrink-0"
           >
             <XIcon className="h-4 w-4" />
@@ -402,7 +402,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         {/* Multi-sheet details */}
         {sheets.length > 1 && (
           <div className="border-cartographic-navy/10 mt-4 border-t pt-4">
-            <p className="text-cartographic-charcoal mb-2 text-sm font-medium">Sheets</p>
+            <p className="text-cartographic-charcoal mb-2 text-sm font-medium">{t("sheets")}</p>
             <ul className="space-y-1">
               {sheets.map((sheet) => (
                 <li
@@ -411,7 +411,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
                 >
                   <span className="text-cartographic-charcoal text-sm">{sheet.name}</span>
                   <span className="text-cartographic-navy/70 font-mono text-xs">
-                    {sheet.rowCount.toLocaleString()} rows
+                    {t("rowCount", { count: sheet.rowCount.toLocaleString() })}
                   </span>
                 </li>
               ))}
@@ -425,10 +425,8 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   return (
     <div className={cn("space-y-6", className)}>
       <div className="text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Upload your data</h2>
-        <p className="text-cartographic-navy/70 mt-2">
-          Upload a file or fetch data from a URL containing your event data.
-        </p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("uploadTitle")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("uploadDescription")}</p>
       </div>
 
       {/* Show preview if file is already loaded */}
@@ -439,11 +437,11 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="file" className="gap-2">
               <UploadIcon className="h-4 w-4" />
-              File Upload
+              {t("fileUpload")}
             </TabsTrigger>
             <TabsTrigger value="url" className="gap-2">
               <GlobeIcon className="h-4 w-4" />
-              From URL
+              {t("fromUrl")}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="file" className="mt-4">

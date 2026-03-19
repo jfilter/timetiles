@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircle2Icon, Loader2Icon, MailIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 import { AuthTabs } from "@/components/auth";
@@ -26,6 +27,7 @@ export interface StepAuthProps {
 }
 
 export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
+  const t = useTranslations("Import");
   const { nextStep } = useWizard();
   const { isAuthenticated, isEmailVerified, isLoading: isCheckingAuth } = useAuthState();
   const queryClient = useQueryClient();
@@ -48,7 +50,7 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
       <div className={cn("flex flex-col items-center justify-center py-12", className)}>
         <div className="text-center">
           <Loader2Icon className="text-primary mx-auto mb-4 h-12 w-12 animate-spin" />
-          <p className="text-muted-foreground">Checking authentication...</p>
+          <p className="text-muted-foreground">{t("checkingAuth")}</p>
         </div>
       </div>
     );
@@ -63,13 +65,11 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
             <div className="bg-warning/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <MailIcon className="text-warning h-8 w-8" />
             </div>
-            <CardTitle>Verify Your Email</CardTitle>
-            <CardDescription>Please check your inbox and click the verification link to continue.</CardDescription>
+            <CardTitle>{t("verifyEmailTitle")}</CardTitle>
+            <CardDescription>{t("verifyEmailDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-muted-foreground text-center text-sm">
-              Haven&apos;t received the email? Check your spam folder or request a new verification link.
-            </p>
+            <p className="text-muted-foreground text-center text-sm">{t("verifyEmailHint")}</p>
           </CardContent>
         </Card>
       </div>
@@ -82,8 +82,8 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
       <div className={cn("flex flex-col items-center justify-center py-12", className)}>
         <div className="text-center">
           <CheckCircle2Icon className="text-primary mx-auto mb-4 h-16 w-16" />
-          <h2 className="text-xl font-semibold">You&apos;re signed in</h2>
-          <p className="text-muted-foreground mt-2">Continuing to upload...</p>
+          <h2 className="text-xl font-semibold">{t("signedIn")}</h2>
+          <p className="text-muted-foreground mt-2">{t("continuingToUpload")}</p>
         </div>
       </div>
     );
@@ -93,8 +93,8 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
   return (
     <div className={cn("flex flex-col items-center justify-center py-8", className)}>
       <div className="mb-8 text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Sign in to continue</h2>
-        <p className="text-cartographic-navy/70 mt-2">Create an account or sign in to import your data.</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("signInTitle")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("signInDescription")}</p>
       </div>
 
       <AuthTabs onSuccess={handleAuthSuccess} />

@@ -12,6 +12,7 @@
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { STEP_NAV_CONFIGS } from "./step-nav-configs";
@@ -22,6 +23,8 @@ export interface WizardNavigationProps {
 }
 
 export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>) => {
+  const t = useTranslations("Import");
+  const tCommon = useTranslations("Common");
   const { state, nextStep, prevStep, reset, canProceed } = useWizard();
   const { currentStep, startedAuthenticated, navigationConfig } = state;
 
@@ -60,9 +63,9 @@ export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>)
   // Determine next button label
   const buttonLabel = (() => {
     if (configNextLabel) return configNextLabel;
-    if (currentStep === 5) return "Start Import";
-    if (currentStep === 6) return "Done";
-    return "Continue";
+    if (currentStep === 5) return t("startImport");
+    if (currentStep === 6) return tCommon("done");
+    return tCommon("continue");
   })();
 
   // Determine next button icon
@@ -91,19 +94,19 @@ export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>)
         {showBack && !isFirstVisibleStep && (
           <Button type="button" variant="outline" onClick={handleBack} disabled={isLoading}>
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
-            Back
+            {tCommon("back")}
           </Button>
         )}
         {currentStep > 2 && !isLastStep && (
           <>
             {showResetConfirm ? (
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-sm">Reset wizard?</span>
+                <span className="text-muted-foreground text-sm">{t("resetWizardConfirm")}</span>
                 <Button type="button" variant="destructive" size="sm" onClick={handleReset}>
-                  Yes
+                  {t("yes")}
                 </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={hideConfirmDialog}>
-                  No
+                  {t("no")}
                 </Button>
               </div>
             ) : (
@@ -116,7 +119,7 @@ export const WizardNavigation = ({ className }: Readonly<WizardNavigationProps>)
                 className="text-muted-foreground hover:text-foreground"
               >
                 <RotateCcwIcon className="mr-1 h-3 w-3" />
-                Start Over
+                {tCommon("startOver")}
               </Button>
             )}
           </>

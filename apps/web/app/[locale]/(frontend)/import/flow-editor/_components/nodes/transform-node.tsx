@@ -13,10 +13,11 @@
 import { cn } from "@timetiles/ui/lib/utils";
 import { Handle, Position } from "@xyflow/react";
 import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, RefreshCw, Scissors, Type } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { memo } from "react";
 
 import type { TransformNodeData } from "@/lib/types/flow-mapping";
-import { TRANSFORM_TYPE_LABELS, type TransformType } from "@/lib/types/import-transforms";
+import type { TransformType } from "@/lib/types/import-transforms";
 
 interface TransformNodeProps {
   data: TransformNodeData;
@@ -48,6 +49,15 @@ const TRANSFORM_COLORS: Record<TransformType, { bg: string; border: string; text
   split: { bg: "bg-purple-500/5", border: "border-purple-500/50", text: "text-purple-600" },
   "type-cast": { bg: "bg-amber-500/5", border: "border-amber-500/50", text: "text-amber-600" },
 };
+
+const TRANSFORM_LABEL_KEYS = {
+  rename: "flowTransformRename",
+  "date-parse": "flowTransformDateParse",
+  "string-op": "flowTransformStringOp",
+  concatenate: "flowTransformConcatenate",
+  split: "flowTransformSplit",
+  "type-cast": "flowTransformTypeCast",
+} as const;
 
 /**
  * Get a summary of the transform configuration for display
@@ -94,9 +104,11 @@ const getSourceFields = (data: TransformNodeData): string[] => {
 };
 
 const TransformNodeComponent = ({ data, selected }: Readonly<TransformNodeProps>) => {
+  const t = useTranslations("Import");
   const { transform, isEditing } = data;
   const Icon = TRANSFORM_ICONS[transform.type];
   const colors = TRANSFORM_COLORS[transform.type];
+  const labelKey = TRANSFORM_LABEL_KEYS[transform.type];
   const summary = getTransformSummary(data);
   const sourceFields = getSourceFields(data);
 
@@ -126,13 +138,17 @@ const TransformNodeComponent = ({ data, selected }: Readonly<TransformNodeProps>
         )}
       >
         <Icon className={cn("h-3.5 w-3.5", colors.text)} />
-        <span className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">Transform</span>
-        {!transform.active && <span className="text-muted-foreground ml-auto text-[9px] uppercase">disabled</span>}
+        <span className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">
+          {t("flowTransform")}
+        </span>
+        {!transform.active && (
+          <span className="text-muted-foreground ml-auto text-[9px] uppercase">{t("flowDisabled")}</span>
+        )}
       </div>
 
       {/* Content */}
       <div className="bg-white px-3 py-2">
-        <h4 className="text-foreground font-serif font-semibold">{TRANSFORM_TYPE_LABELS[transform.type]}</h4>
+        <h4 className="text-foreground font-serif font-semibold">{t(labelKey)}</h4>
 
         {summary && (
           <p className={cn("mt-1 truncate font-mono text-xs", colors.text)} title={summary}>

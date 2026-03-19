@@ -10,6 +10,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef } from "react";
 
 import type { MapPosition } from "@/lib/hooks/use-filters";
@@ -52,6 +53,7 @@ interface MapExplorerContentProps {
 }
 
 const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorerContentProps) => {
+  const t = useTranslations("Explore");
   const { explorer, filterPanel } = chrome;
   const { map, filters: filterState, selection, data } = explorer;
   const { filters } = filterState;
@@ -132,7 +134,15 @@ const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorer
 
           <div className="border-t pt-6">
             <p className="text-muted-foreground mb-4 text-sm">
-              {buildEventsDescription(events.length, totalEventsData?.total, filterLabels, simpleBounds != null)}
+              {buildEventsDescription(
+                events.length,
+                totalEventsData?.total,
+                filterLabels,
+                simpleBounds != null,
+                (k, v) =>
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bridge next-intl Translator to plain fn
+                  (t as any)(k, v)
+              )}
             </p>
             <EventsList
               events={events}
