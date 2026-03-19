@@ -353,8 +353,7 @@ export const matchFieldNamePatterns = (
   fieldType: FieldType,
   language: string
 ): FieldPatternMatch | null => {
-  const typePatterns = FIELD_PATTERNS[fieldType];
-  const primaryPatterns = typePatterns[language as keyof typeof typePatterns] ?? typePatterns.eng;
+  const primaryPatterns = getFieldPatterns(fieldType, language);
 
   // Try primary language patterns
   for (let i = 0; i < primaryPatterns.length; i++) {
@@ -368,7 +367,7 @@ export const matchFieldNamePatterns = (
 
   // Fallback to English if primary language isn't English
   if (language !== "eng") {
-    const engPatterns = typePatterns.eng;
+    const engPatterns = getFieldPatterns(fieldType, "eng");
     for (let i = 0; i < engPatterns.length; i++) {
       const pattern = engPatterns[i];
       if (!pattern) continue;
@@ -383,9 +382,13 @@ export const matchFieldNamePatterns = (
 };
 
 /**
- * Get patterns for a field type and language.
+ * Get patterns for a field type and language, falling back to English.
+ *
+ * Single source of truth for pattern selection. Used by matchFieldNamePatterns
+ * (preview detection) and by field-mapping-detection.ts (background detection)
+ * to ensure consistent language fallback behavior.
  */
-const getPatterns = (fieldType: FieldType, language: string): readonly RegExp[] => {
+export const getFieldPatterns = (fieldType: FieldType, language: string): readonly RegExp[] => {
   const typePatterns = FIELD_PATTERNS[fieldType];
   const langPatterns = typePatterns[language as keyof typeof typePatterns];
   const engPatterns = typePatterns.eng;
@@ -647,10 +650,10 @@ export const detectFieldMappings = (
   fieldStats: Record<string, FieldStatistics>,
   language: string
 ): FieldMappingsResult => {
-  const title = findFieldByPattern(fieldStats, getPatterns("title", language), isTextField);
-  const description = findFieldByPattern(fieldStats, getPatterns("description", language), isTextField);
-  const timestamp = findFieldByPattern(fieldStats, getPatterns("timestamp", language), isDateField);
-  const locationName = findFieldByPattern(fieldStats, getPatterns("locationName", language), isTextField);
+  const title = findFieldByPattern(fieldStats, getFieldPatterns("title", language), isTextField);
+  const description = findFieldByPattern(fieldStats, getFieldPatterns("description", language), isTextField);
+  const timestamp = findFieldByPattern(fieldStats, getFieldPatterns("timestamp", language), isDateField);
+  const locationName = findFieldByPattern(fieldStats, getFieldPatterns("locationName", language), isTextField);
   const geo = detectGeoFields(fieldStats);
 
   return { title, description, timestamp, locationName, geo };

@@ -19,14 +19,16 @@ import { createMockDataset, createMockImportJob, createMockPayload } from "@/tes
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   const geocode = vi.fn();
-  return { streamBatchesFromFile: vi.fn(), cleanupSidecarFiles: vi.fn(), geocode };
+  const MockGeocodingService = class {
+    geocode = geocode;
+  };
+  return { streamBatchesFromFile: vi.fn(), cleanupSidecarFiles: vi.fn(), geocode, MockGeocodingService };
 });
 
 // Mock external dependencies
 vi.mock("@/lib/services/geocoding", () => ({
-  GeocodingService: class MockGeocodingService {
-    geocode = mocks.geocode;
-  },
+  GeocodingService: mocks.MockGeocodingService,
+  createGeocodingService: () => new mocks.MockGeocodingService(),
 }));
 
 vi.mock("@/lib/import/file-readers", () => ({

@@ -66,18 +66,34 @@ vi.mock("@/lib/services/schema-builder/language-detection", () => ({
   detectLanguageFromSamples: mocks.mockDetectLanguageFromSamples,
 }));
 
-vi.mock("@timetiles/payload-schema-detection", async () => {
-  const actual = await vi.importActual("@timetiles/payload-schema-detection");
+vi.mock("@timetiles/payload-schema-detection", () => {
+  const TEST_FIELD_PATTERNS: Record<string, Record<string, RegExp[]>> = {
+    title: { eng: [/^title$/i] },
+    description: { eng: [/^description$/i] },
+    timestamp: { eng: [/^date$/i] },
+    location: { eng: [/^location$/i] },
+  };
+
+  const getFieldPatterns = (fieldType: string, language: string): readonly RegExp[] => {
+    const typePatterns = TEST_FIELD_PATTERNS[fieldType];
+    return typePatterns?.[language] ?? typePatterns?.eng ?? [];
+  };
+
+  const matchFieldNamePatterns = (names: string[], fieldType: string, language: string) => {
+    const patterns = getFieldPatterns(fieldType, language);
+    for (let i = 0; i < patterns.length; i++) {
+      const match = names.find((n) => patterns[i]!.test(n));
+      if (match) return { name: match, patternIndex: i, patternCount: patterns.length, isFallback: false };
+    }
+    return null;
+  };
+
   return {
-    ...(actual as Record<string, unknown>),
-    FIELD_PATTERNS: {
-      title: { eng: [/^title$/i] },
-      description: { eng: [/^description$/i] },
-      timestamp: { eng: [/^date$/i] },
-      location: { eng: [/^location$/i] },
-    },
+    FIELD_PATTERNS: TEST_FIELD_PATTERNS,
     LATITUDE_PATTERNS: [/^lat$/i, /^latitude$/i],
     LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
+    getFieldPatterns,
+    matchFieldNamePatterns,
   };
 });
 

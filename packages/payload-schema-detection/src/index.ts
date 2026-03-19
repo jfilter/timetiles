@@ -56,6 +56,7 @@ export {
   detectFieldMappings,
   detectGeoFields,
   FIELD_PATTERNS,
+  getFieldPatterns,
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
   matchFieldNamePatterns,

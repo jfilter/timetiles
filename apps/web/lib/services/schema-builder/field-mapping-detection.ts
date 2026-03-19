@@ -9,7 +9,11 @@
  * @category Services/SchemaBuilder
  */
 
-import { detectGeoFields as detectGeoFieldsFromPlugin, FIELD_PATTERNS } from "@timetiles/payload-schema-detection";
+import {
+  type FIELD_PATTERNS,
+  detectGeoFields as detectGeoFieldsFromPlugin,
+  getFieldPatterns,
+} from "@timetiles/payload-schema-detection";
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
@@ -66,16 +70,15 @@ const detectField = (
   fieldType: keyof typeof FIELD_PATTERNS,
   language: string
 ): string | null => {
-  // Get patterns for language, fallback to English (same logic as matchFieldNamePatterns)
-  const primaryPatterns =
-    FIELD_PATTERNS[fieldType][language as keyof typeof FIELD_PATTERNS.title] ?? FIELD_PATTERNS[fieldType].eng;
+  // Use shared pattern selection (same as matchFieldNamePatterns in the plugin)
+  const primaryPatterns = getFieldPatterns(fieldType, language);
 
   // Try primary language patterns first
   let bestMatch = findBestMatch(fieldStats, primaryPatterns, fieldType);
 
   // If no match found and language is not English, try English patterns as fallback
   if (!bestMatch && language !== "eng") {
-    bestMatch = findBestMatch(fieldStats, FIELD_PATTERNS[fieldType].eng, fieldType);
+    bestMatch = findBestMatch(fieldStats, getFieldPatterns(fieldType, "eng"), fieldType);
   }
 
   return bestMatch?.path ?? null;
