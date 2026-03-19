@@ -10,35 +10,51 @@
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { MapPosition } from "@/lib/hooks/use-filters";
 import { useMapPosition } from "@/lib/hooks/use-filters";
 
 import { ChartSection } from "./chart-section";
 import { EventsList } from "./events-list";
-import { ExplorerEventModal, ExplorerFilterPanel, ExplorerMobileFilters } from "./explorer-chrome";
+import type { ExplorerChromeElements } from "./explorer-shell";
+import { ExplorerShell } from "./explorer-shell";
 import { buildEventsDescription, getFilterLabels, getInitialViewState, getLoadingStates } from "./map-explorer-helpers";
 import { MapPanel } from "./map-panel";
-import { useExplorerState } from "./use-explorer-state";
 
 export const MapExplorer = () => {
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-
-  // Ref for resize handling
-  const gridRef = useRef<HTMLDivElement>(null);
-
   // Get map position from URL (nuqs)
   const { mapPosition, hasMapPosition, setMapPosition } = useMapPosition();
 
-  const handleMapPositionChange = (center: { lng: number; lat: number }, zoom: number) => {
-    setMapPosition({ latitude: center.lat, longitude: center.lng, zoom });
-  };
+  const handleMapPositionChange = useCallback(
+    (center: { lng: number; lat: number }, zoom: number) => {
+      setMapPosition({ latitude: center.lat, longitude: center.lng, zoom });
+    },
+    [setMapPosition]
+  );
 
-  // Shared explorer state
-  const explorer = useExplorerState({ onMapPositionChange: handleMapPositionChange });
+  return (
+    <ExplorerShell explorerOptions={{ onMapPositionChange: handleMapPositionChange }}>
+      {(chrome) => <MapExplorerContent chrome={chrome} hasMapPosition={hasMapPosition} mapPosition={mapPosition} />}
+    </ExplorerShell>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Inner component — receives explorer state from ExplorerShell and can use hooks
+// ---------------------------------------------------------------------------
+
+interface MapExplorerContentProps {
+  chrome: ExplorerChromeElements;
+  hasMapPosition: boolean;
+  mapPosition: MapPosition;
+}
+
+const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorerContentProps) => {
+  const { explorer, filterPanel, mobileFilters } = chrome;
   const { map, filters: filterState, selection, data, ui } = explorer;
-  const { filters, activeFilterCount } = filterState;
-  const { selectedEventId, openEvent, closeEvent } = selection;
+  const { filters } = filterState;
+  const { openEvent } = selection;
   const {
     catalogs,
     datasets,
@@ -51,7 +67,7 @@ export const MapExplorer = () => {
     eventsLoading,
     totalEventsData,
   } = data;
-  const { isFilterDrawerOpen, toggleFilterDrawer, setFilterDrawerOpen } = ui;
+  const { setFilterDrawerOpen } = ui;
   const {
     ref: mapRef,
     simpleBounds,
@@ -60,6 +76,9 @@ export const MapExplorer = () => {
     handleZoomToData,
     handleBoundsChange,
   } = map;
+
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // Close filter drawer on mobile on first mount for better UX
   useEffect(() => {
@@ -103,7 +122,7 @@ export const MapExplorer = () => {
   const filterLabels = getFilterLabels(filters, catalogs, datasets);
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] flex-col">
+    <>
       {/* Desktop: Flex layout - both map and list shrink proportionally when filters open */}
       <div ref={gridRef} className="hidden flex-1 overflow-hidden md:flex">
         {/* Map Panel - takes half of available space */}
@@ -144,7 +163,7 @@ export const MapExplorer = () => {
         </div>
 
         {/* Filter Panel - fixed width with slide animation */}
-        <ExplorerFilterPanel isOpen={isFilterDrawerOpen} className="bg-background h-full overflow-hidden" />
+        {filterPanel("bg-background h-full overflow-hidden")}
       </div>
 
       {/* Mobile: Stacked layout with overlay filter drawer */}
@@ -184,15 +203,8 @@ export const MapExplorer = () => {
         </div>
 
         {/* Mobile: Bottom sheet filter drawer */}
-        <ExplorerMobileFilters
-          isOpen={isFilterDrawerOpen}
-          onToggle={toggleFilterDrawer}
-          activeFilterCount={activeFilterCount}
-        />
+        {mobileFilters}
       </div>
-
-      {/* Event Detail Modal */}
-      <ExplorerEventModal selectedEventId={selectedEventId} onClose={closeEvent} />
-    </div>
+    </>
   );
 };

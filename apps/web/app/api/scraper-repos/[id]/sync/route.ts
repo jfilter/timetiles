@@ -9,27 +9,14 @@
  */
 import { z } from "zod";
 
-import { apiRoute, ForbiddenError, safeFindByID } from "@/lib/api";
-import { canManageResource, requireScrapersEnabled } from "@/lib/api/auth-helpers";
-import { extractRelationId } from "@/lib/utils/relation-id";
-import type { ScraperRepo } from "@/payload-types";
+import { apiRoute } from "@/lib/api";
+import { loadManageableScraperRepo } from "@/lib/api/scraper-helpers";
 
 export const POST = apiRoute({
   auth: "required",
   params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ user, payload, params }) => {
-    await requireScrapersEnabled(payload);
-
-    const repo = await safeFindByID<ScraperRepo>(payload, {
-      collection: "scraper-repos",
-      id: params.id,
-      overrideAccess: true,
-    });
-
-    const repoOwnerId = extractRelationId(repo.createdBy);
-    if (!canManageResource(user, repoOwnerId)) {
-      throw new ForbiddenError("Not authorized");
-    }
+    const repo = await loadManageableScraperRepo(payload, user, params.id);
 
     // Queue sync job
     await payload.jobs.queue({ task: "scraper-repo-sync", input: { scraperRepoId: repo.id } });

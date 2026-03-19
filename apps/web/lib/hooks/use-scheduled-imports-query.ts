@@ -8,9 +8,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { ScheduledImport } from "@/payload-types";
 
-import { fetchCollectionDocs } from "./use-payload-collection-query";
 import { scheduledImportKeys } from "./use-scheduled-import-mutations";
 
 export const useScheduledImportsQuery = (initialData?: ScheduledImport[]) =>

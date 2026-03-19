@@ -11,6 +11,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Loader2, Mail } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
 
@@ -22,6 +23,7 @@ interface ChangeEmailFormProps {
 }
 
 export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProps) => {
+  const t = useTranslations("Account");
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
   const { status, error, isPending, mutate, reset } = useMutation({
@@ -58,9 +60,9 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
-          Change Email
+          {t("changeEmail")}
         </CardTitle>
-        <CardDescription>Update the email address associated with your account</CardDescription>
+        <CardDescription>{t("changeEmailDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -69,43 +71,43 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
           {status === "success" && (
             <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
               <Check className="h-4 w-4" />
-              Email changed. Please check your new email for a verification link.
+              {t("emailChangedSuccess")}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="current-email">Current Email</Label>
+            <Label htmlFor="current-email">{t("currentEmail")}</Label>
             <Input id="current-email" type="email" value={currentEmail} disabled className="bg-muted" />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="new-email">New Email</Label>
+            <Label htmlFor="new-email">{t("newEmail")}</Label>
             <Input
               id="new-email"
               type="email"
               value={newEmail}
               onChange={fieldHandler(setNewEmail)}
-              placeholder="Enter new email"
+              placeholder={t("newEmailPlaceholder")}
               disabled={isPending}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email-password">Password</Label>
+            <Label htmlFor="email-password">{t("emailPassword")}</Label>
             <Input
               id="email-password"
               type="password"
               value={password}
               onChange={fieldHandler(setPassword)}
-              placeholder="Confirm with your password"
+              placeholder={t("emailPasswordPlaceholder")}
               disabled={isPending}
             />
-            <p className="text-muted-foreground text-xs">Enter your password to confirm this change</p>
+            <p className="text-muted-foreground text-xs">{t("emailPasswordHint")}</p>
           </div>
 
           <Button type="submit" disabled={isPending || !newEmail || !password}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Change Email
+            {t("changeEmail")}
           </Button>
         </form>
       </CardContent>

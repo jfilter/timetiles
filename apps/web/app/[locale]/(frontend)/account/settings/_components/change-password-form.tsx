@@ -11,6 +11,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Key, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
 
@@ -18,6 +19,7 @@ import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validati
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
 
 export const ChangePasswordForm = () => {
+  const t = useTranslations("Account");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -52,9 +54,9 @@ export const ChangePasswordForm = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Key className="h-5 w-5" />
-          Change Password
+          {t("changePassword")}
         </CardTitle>
-        <CardDescription>Update your password to keep your account secure</CardDescription>
+        <CardDescription>{t("changePasswordDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,50 +65,50 @@ export const ChangePasswordForm = () => {
           {status === "success" && (
             <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
               <Check className="h-4 w-4" />
-              Password changed successfully
+              {t("passwordChangedSuccess")}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="current-password">Current Password</Label>
+            <Label htmlFor="current-password">{t("currentPassword")}</Label>
             <Input
               id="current-password"
               type="password"
               value={currentPassword}
               onChange={fieldHandler(setCurrentPassword)}
-              placeholder="Enter current password"
+              placeholder={t("currentPasswordPlaceholder")}
               disabled={isPending}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="new-password">New Password</Label>
+            <Label htmlFor="new-password">{t("newPassword")}</Label>
             <Input
               id="new-password"
               type="password"
               value={newPassword}
               onChange={fieldHandler(setNewPassword)}
-              placeholder="Enter new password"
+              placeholder={t("newPasswordPlaceholder")}
               disabled={isPending}
             />
-            <p className="text-muted-foreground text-xs">Must be at least {MIN_PASSWORD_LENGTH} characters</p>
+            <p className="text-muted-foreground text-xs">{t("passwordMinLength", { length: MIN_PASSWORD_LENGTH })}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <Label htmlFor="confirm-password">{t("confirmNewPassword")}</Label>
             <Input
               id="confirm-password"
               type="password"
               value={confirmPassword}
               onChange={fieldHandler(setConfirmPassword)}
-              placeholder="Confirm new password"
+              placeholder={t("confirmPasswordPlaceholder")}
               disabled={isPending}
             />
           </div>
 
           <Button type="submit" disabled={isPending || !currentPassword || !newPassword || !confirmPassword}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Change Password
+            {t("changePassword")}
           </Button>
         </form>
       </CardContent>

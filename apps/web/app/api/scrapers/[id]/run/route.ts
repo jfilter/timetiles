@@ -9,31 +9,16 @@
  */
 import { z } from "zod";
 
-import { apiRoute, AppError, ConflictError, ForbiddenError, safeFindByID } from "@/lib/api";
-import { canManageResource, requireScrapersEnabled } from "@/lib/api/auth-helpers";
+import { apiRoute, AppError, ConflictError } from "@/lib/api";
+import { loadManageableScraper } from "@/lib/api/scraper-helpers";
 import { logError } from "@/lib/logger";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
-import { extractRelationId } from "@/lib/utils/relation-id";
-import type { Scraper, ScraperRepo } from "@/payload-types";
 
 export const POST = apiRoute({
   auth: "required",
   params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ user, payload, params }) => {
-    await requireScrapersEnabled(payload);
-
-    const scraper = await safeFindByID<Scraper>(payload, {
-      collection: "scrapers",
-      id: params.id,
-      depth: 1,
-      overrideAccess: true,
-    });
-
-    const repo = scraper.repo as ScraperRepo;
-    const repoOwnerId = repo ? extractRelationId(repo.createdBy) : null;
-    if (!canManageResource(user, repoOwnerId)) {
-      throw new ForbiddenError("Not authorized");
-    }
+    const scraper = await loadManageableScraper(payload, user, params.id);
 
     // Atomically claim running status to prevent concurrent triggers
     const claimed = await claimScraperRunning(payload, scraper.id);

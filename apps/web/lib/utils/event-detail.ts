@@ -60,7 +60,7 @@ export const getDatasetInfo = (dataset: unknown): { name: string; id: number } |
 };
 
 /** Format start/end dates into a human-readable range string */
-export const formatDateRange = (startDate: unknown, endDate: unknown): string | null => {
+export const formatDateRange = (startDate: unknown, endDate: unknown, locale: string = "en-US"): string | null => {
   const hasStart = startDate != null && safeToString(startDate) !== "";
   const hasEnd = endDate != null && safeToString(endDate) !== "";
 
@@ -68,10 +68,10 @@ export const formatDateRange = (startDate: unknown, endDate: unknown): string | 
 
   const parts: string[] = [];
   if (hasStart) {
-    parts.push(new Date(safeToString(startDate)).toLocaleDateString("en-US"));
+    parts.push(new Date(safeToString(startDate)).toLocaleDateString(locale));
   }
   if (hasEnd && safeToString(startDate) !== safeToString(endDate)) {
-    parts.push(new Date(safeToString(endDate)).toLocaleDateString("en-US"));
+    parts.push(new Date(safeToString(endDate)).toLocaleDateString(locale));
   }
 
   return parts.join(" - ");

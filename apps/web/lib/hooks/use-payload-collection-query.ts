@@ -1,21 +1,11 @@
 /**
- * Shared utility for fetching Payload CMS collection documents.
+ * Re-export from canonical location.
  *
- * Eliminates the repeated `fetchJson<{ docs: T[] }>(url).docs` pattern
- * across collection query hooks.
+ * This module is not a React hook — the utility now lives in `lib/api/payload-collection.ts`.
+ * This re-export exists for backward compatibility.
  *
  * @module
  * @category Hooks
+ * @deprecated Import from `@/lib/api/payload-collection` instead.
  */
-import { fetchJson } from "@/lib/api/http-error";
-
-/**
- * Fetch documents from a Payload CMS collection endpoint.
- *
- * @param url - API URL including query parameters (e.g., "/api/scrapers?sort=-updatedAt&limit=200")
- * @returns Array of documents from the `docs` field
- */
-export const fetchCollectionDocs = async <T>(url: string): Promise<T[]> => {
-  const data = await fetchJson<{ docs: T[] }>(url, { credentials: "include" });
-  return data.docs;
-};
+export { fetchCollectionDocs } from "@/lib/api/payload-collection";

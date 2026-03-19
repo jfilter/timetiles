@@ -15,25 +15,35 @@ import { useState } from "react";
 
 import { ChartSection } from "./chart-section";
 import { EventsListPaginated } from "./events-list-paginated";
-import { ExplorerEventModal, ExplorerFilterPanel, ExplorerMobileFilters } from "./explorer-chrome";
+import type { ExplorerChromeElements } from "./explorer-shell";
+import { ExplorerShell } from "./explorer-shell";
 import { formatDateRange, getDatasetName } from "./map-explorer-helpers";
 import { MapPanel } from "./map-panel";
 import { MobileTabs } from "./mobile-tabs";
-import { useExplorerState } from "./use-explorer-state";
 
 type MobileTab = "map" | "chart" | "list";
 
-export const ListExplorer = () => {
-  const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
+export const ListExplorer = () => (
+  <ExplorerShell className="overflow-x-hidden">{(chrome) => <ListExplorerContent chrome={chrome} />}</ExplorerShell>
+);
 
-  // Shared explorer state
-  const explorer = useExplorerState();
-  const { map, filters: filterState, selection, data, ui } = explorer;
-  const { filters, activeFilterCount } = filterState;
-  const { selectedEventId, openEvent, closeEvent } = selection;
+// ---------------------------------------------------------------------------
+// Inner component — receives explorer state from ExplorerShell and can use hooks
+// ---------------------------------------------------------------------------
+
+interface ListExplorerContentProps {
+  chrome: ExplorerChromeElements;
+}
+
+const ListExplorerContent = ({ chrome }: ListExplorerContentProps) => {
+  const { explorer, filterPanel, mobileFilters } = chrome;
+  const { map, filters: filterState, selection, data } = explorer;
+  const { filters } = filterState;
+  const { openEvent } = selection;
   const { datasets, clusters, clusterStats, boundsData, isLoadingInitialBounds } = data;
-  const { isFilterDrawerOpen, toggleFilterDrawer } = ui;
   const { ref: mapRef, debouncedSimpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
+
+  const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
 
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
@@ -72,7 +82,7 @@ export const ListExplorer = () => {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] flex-col overflow-x-hidden">
+    <>
       {/* Desktop Layout - everything scrolls together */}
       <div className="hidden flex-1 overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable] md:block">
         <div className="flex min-h-full">
@@ -114,7 +124,7 @@ export const ListExplorer = () => {
           </div>
 
           {/* Filter Panel - slides in, scrolls with page, ends with content */}
-          <ExplorerFilterPanel isOpen={isFilterDrawerOpen} className="self-start" />
+          {filterPanel("self-start")}
         </div>
       </div>
 
@@ -130,15 +140,8 @@ export const ListExplorer = () => {
         />
 
         {/* Mobile: Bottom sheet filter drawer */}
-        <ExplorerMobileFilters
-          isOpen={isFilterDrawerOpen}
-          onToggle={toggleFilterDrawer}
-          activeFilterCount={activeFilterCount}
-        />
+        {mobileFilters}
       </div>
-
-      {/* Event Detail Modal */}
-      <ExplorerEventModal selectedEventId={selectedEventId} onClose={closeEvent} />
-    </div>
+    </>
   );
 };

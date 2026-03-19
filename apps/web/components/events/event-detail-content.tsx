@@ -14,7 +14,7 @@
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, ExternalLink, MapPin, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
@@ -61,6 +61,7 @@ export const EventDetailContent = ({
   error,
   onRetry,
 }: EventDetailContentProps) => {
+  const locale = useLocale();
   const t = useTranslations("Events");
   const tCommon = useTranslations("Common");
 
@@ -80,7 +81,7 @@ export const EventDetailContent = ({
   const eventData = getEventData(event);
   const title = getEventTitle(eventData);
   const description = safeToString(eventData.description);
-  const dateRange = formatDateRange(eventData.startDate, eventData.endDate);
+  const dateRange = formatDateRange(eventData.startDate, eventData.endDate, locale);
   const locationDisplay = getLocationDisplay(event, eventData);
   const datasetInfo = getDatasetInfo(event.dataset);
 

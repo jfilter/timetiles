@@ -4,13 +4,14 @@
  * Extracts fetch logic from wizard step components into reusable
  * mutation hooks following the project convention. All request/response
  * types are imported from the canonical `import-wizard` types module.
+ * Query hooks live in `use-import-wizard-queries.ts`.
  *
  * @module
  * @category Hooks
  */
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
 import type {
   ConfigureImportRequest,
@@ -18,10 +19,12 @@ import type {
   PreviewSchemaUploadResponse,
   PreviewSchemaUrlRequest,
   PreviewSchemaUrlResponse,
-  SheetInfo,
 } from "@/lib/types/import-wizard";
 
 import { fetchJson } from "../api/http-error";
+
+// Re-export query for backward compatibility. New code should import from use-import-wizard-queries.
+export { usePreviewSheetsQuery } from "./use-import-wizard-queries";
 
 export const previewSchemaUpload = async (formData: FormData): Promise<PreviewSchemaUploadResponse> => {
   return fetchJson<PreviewSchemaUploadResponse>("/api/import/preview-schema/upload", {
@@ -65,16 +68,4 @@ export const usePreviewSchemaUrlMutation = () => {
  */
 export const useImportConfigureMutation = () => {
   return useMutation({ mutationFn: importConfigure });
-};
-
-/**
- * Query hook for loading preview sheet data by previewId.
- * Used by the flow editor to load preview data for visual field mapping.
- */
-export const usePreviewSheetsQuery = (previewId: string | null) => {
-  return useQuery({
-    queryKey: ["preview-sheets", previewId],
-    queryFn: () => fetchJson<{ sheets: SheetInfo[] }>(`/api/import/preview-schema?previewId=${previewId}`),
-    enabled: !!previewId,
-  });
 };

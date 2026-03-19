@@ -8,9 +8,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { Scraper, ScraperRepo, ScraperRun } from "@/payload-types";
 
-import { fetchCollectionDocs } from "./use-payload-collection-query";
 import { scraperKeys } from "./use-scraper-mutations";
 
 export const useScraperReposQuery = (initialData?: ScraperRepo[]) =>

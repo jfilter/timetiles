@@ -20,7 +20,7 @@ import { isDataBoundsOutsideViewport, shouldShowZoomToData } from "./map-explore
 import { useExplorerQueries } from "./use-explorer-queries";
 import { useExplorerViewport } from "./use-explorer-viewport";
 
-interface UseExplorerStateOptions {
+export interface UseExplorerStateOptions {
   /** Called on bounds change with center and zoom for URL persistence */
   onMapPositionChange?: (center: { lng: number; lat: number }, zoom: number) => void;
 }
