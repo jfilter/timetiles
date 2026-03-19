@@ -40,10 +40,14 @@ export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) =>
     void refetch();
   };
 
-  // Compute dialog title without nested ternary
+  // Compute dialog title using dataset field mappings for correct extraction
   const dialogTitle = (() => {
     if (isLoading) return t("loadingEventDetails");
-    if (event) return getEventTitle(getEventData(event));
+    if (event) {
+      const fieldMappings =
+        typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
+      return getEventTitle(getEventData(event), fieldMappings);
+    }
     return t("eventDetails");
   })();
 

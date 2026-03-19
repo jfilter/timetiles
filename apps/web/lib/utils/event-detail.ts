@@ -20,6 +20,54 @@ export interface EventData {
   [key: string]: unknown;
 }
 
+// ---------------------------------------------------------------------------
+// Field extraction
+// ---------------------------------------------------------------------------
+
+/** Extract a non-empty string value from a data object by field path. Returns null if missing, empty, or non-primitive. */
+export const extractFieldFromData = (data: unknown, path: string | null | undefined): string | null => {
+  if (!path || typeof data !== "object" || data === null || Array.isArray(data)) return null;
+  const value = (data as Record<string, unknown>)[path];
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") return value || null;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return null;
+};
+
+/** Field mappings from a dataset's fieldMappingOverrides */
+interface FieldMappingPaths {
+  titlePath?: string | null;
+  descriptionPath?: string | null;
+}
+
+/**
+ * Extract title and description from event data using dataset field mappings.
+ *
+ * Single source of truth for field extraction — used by both the v1 API
+ * (transformEvent) and client-side components (event detail modal, events list).
+ * Tries the mapped field path first, then common fallback names.
+ */
+export const extractEventFields = (
+  eventData: unknown,
+  fieldMappings?: FieldMappingPaths | null,
+  eventId?: number
+): { title: string; description: string | null } => {
+  const title =
+    extractFieldFromData(eventData, fieldMappings?.titlePath) ??
+    extractFieldFromData(eventData, "title") ??
+    extractFieldFromData(eventData, "name") ??
+    (eventId != null ? `Event ${eventId}` : "Untitled Event");
+
+  const description =
+    extractFieldFromData(eventData, fieldMappings?.descriptionPath) ?? extractFieldFromData(eventData, "description");
+
+  return { title, description };
+};
+
+// ---------------------------------------------------------------------------
+// Type coercion
+// ---------------------------------------------------------------------------
+
 /** Safely convert an unknown value to a string, returning empty string for unsupported types */
 export const safeToString = (value: unknown): string => {
   if (value == null) return "";
@@ -36,16 +84,16 @@ export const getEventData = (event: { data: unknown }): EventData => {
     : {};
 };
 
-/** Get event title from data, falling back to name then "Untitled Event" */
-export const getEventTitle = (eventData: EventData): string => {
-  return safeToString(eventData.title) || safeToString(eventData.name) || "Untitled Event";
+/** Get event title from data, using field mappings when available. */
+export const getEventTitle = (eventData: EventData, fieldMappings?: FieldMappingPaths | null): string => {
+  return extractEventFields(eventData, fieldMappings).title;
 };
 
 /** Extract dataset name and ID from a dataset relation value */
 export const getDatasetInfo = (dataset: unknown): { name: string; id: number } | null => {
   if (typeof dataset === "object" && dataset != null && "id" in dataset) {
     const d = dataset as Record<string, unknown>;
-    // API returns 'title', Payload returns 'name'
+    // v1 API returns 'title' (renamed from .name), Payload REST returns 'name'
     let name: string | null = null;
     if (typeof d.title === "string") {
       name = d.title;

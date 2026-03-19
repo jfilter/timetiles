@@ -79,7 +79,9 @@ export const EventDetailContent = ({
   }
 
   const eventData = getEventData(event);
-  const title = getEventTitle(eventData);
+  const fieldMappings =
+    typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
+  const title = getEventTitle(eventData, fieldMappings);
   const description = safeToString(eventData.description);
   const dateRange = formatDateRange(eventData.startDate, eventData.endDate, locale);
   const locationDisplay = getLocationDisplay(event, eventData);

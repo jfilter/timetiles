@@ -17,19 +17,7 @@ import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import type { Event, User } from "@/payload-types";
-
-const extractFieldFromData = (data: unknown, path: string | null | undefined): string | null => {
-  if (!path || typeof data !== "object" || data === null || Array.isArray(data)) {
-    return null;
-  }
-  const value = (data as Record<string, unknown>)[path];
-  if (value === null || value === undefined) return null;
-  // Only convert primitives to string, not objects
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  return null;
-};
+import { extractEventFields, extractFieldFromData } from "@/lib/utils/event-detail";
 
 const getDatasetInfo = (dataset: Event["dataset"]) => {
   if (typeof dataset !== "object" || dataset == null) {
@@ -41,39 +29,22 @@ const getDatasetInfo = (dataset: Event["dataset"]) => {
   return { id: dataset.id, title: dataset.name, catalog: catalogName };
 };
 
-const enrichEventData = (
-  eventData: Event["data"],
-  title: string | null,
-  description: string | null,
-  id: string | null
-): { [k: string]: unknown } => {
-  // Event data should always be an object from CSV/Excel import
-  if (typeof eventData !== "object" || eventData == null || Array.isArray(eventData)) {
-    throw new Error(`Invalid event data: expected object, got ${typeof eventData}`);
-  }
-
-  return { ...eventData, title, description, id };
-};
-
 export const transformEvent = (event: Event): EventListItem => {
   // Extract field mappings from dataset
   const fieldMappings =
     typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
 
-  // Extract title, description, and id using field mappings
+  // Extract title, description, and id using shared normalization
   const eventData = event.data;
-  const title =
-    extractFieldFromData(eventData, fieldMappings?.titlePath) ??
-    extractFieldFromData(eventData, "title") ??
-    extractFieldFromData(eventData, "name") ??
-    `Event ${event.id}`;
-  const description =
-    extractFieldFromData(eventData, fieldMappings?.descriptionPath) ?? extractFieldFromData(eventData, "description");
+  const { title, description } = extractEventFields(eventData, fieldMappings, event.id);
   const id = extractFieldFromData(eventData, "id");
 
   // Enrich data with extracted fields so UI can always access title/description/id
   // regardless of original field names (e.g., "titel" in German data becomes "title")
-  const enrichedData = enrichEventData(eventData, title, description, id);
+  if (typeof eventData !== "object" || eventData == null || Array.isArray(eventData)) {
+    throw new Error(`Invalid event data: expected object, got ${typeof eventData}`);
+  }
+  const enrichedData = { ...eventData, title, description, id };
 
   return {
     id: event.id,

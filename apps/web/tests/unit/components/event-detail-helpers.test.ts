@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import type { EventData } from "@/lib/utils/event-detail";
 import {
+  extractEventFields,
   formatDateRange,
   getDatasetInfo,
   getEventData,
@@ -107,6 +108,36 @@ describe("getEventTitle", () => {
 
   it("should handle non-string title gracefully", () => {
     expect(getEventTitle({ title: 123 as unknown as string })).toBe("123");
+  });
+
+  it("should use titlePath from field mappings when provided", () => {
+    expect(getEventTitle({ Veranstaltungstitel: "Konzert" }, { titlePath: "Veranstaltungstitel" })).toBe("Konzert");
+  });
+
+  it("should fall back to title/name when titlePath field is empty", () => {
+    expect(getEventTitle({ Veranstaltungstitel: "", name: "Fallback" }, { titlePath: "Veranstaltungstitel" })).toBe(
+      "Fallback"
+    );
+  });
+});
+
+describe("extractEventFields", () => {
+  it("should extract title and description using field mappings", () => {
+    const data = { Titel: "Berlin Konzert", Beschreibung: "Live-Musik" };
+    const result = extractEventFields(data, { titlePath: "Titel", descriptionPath: "Beschreibung" });
+    expect(result.title).toBe("Berlin Konzert");
+    expect(result.description).toBe("Live-Musik");
+  });
+
+  it("should fall back to common field names without mappings", () => {
+    const result = extractEventFields({ title: "My Event", description: "Details" });
+    expect(result.title).toBe("My Event");
+    expect(result.description).toBe("Details");
+  });
+
+  it("should use eventId in fallback title", () => {
+    const result = extractEventFields({}, null, 42);
+    expect(result.title).toBe("Event 42");
   });
 });
 
