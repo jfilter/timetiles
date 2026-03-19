@@ -2,8 +2,8 @@
  * Mobile tab navigation for list explore view.
  *
  * Provides bottom tab bar navigation between Map, Chart, and List views
- * on mobile devices. Uses opacity/pointer-events for state preservation
- * instead of conditional rendering.
+ * on mobile devices. Only the active tab is mounted to avoid unnecessary
+ * queries and rendering from hidden panels.
  *
  * @module
  * @category Components
@@ -96,23 +96,16 @@ export const MobileTabs = ({ activeTab, onTabChange, mapContent, chartContent, l
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] flex-col">
-      {/* Tab panels - use opacity/pointer-events for state preservation */}
+      {/* Active tab panel — only the selected tab is mounted */}
       <div className="relative flex-1 overflow-hidden">
-        {TAB_CONFIG.map(({ id }) => (
-          <div
-            key={id}
-            id={`panel-${id}`}
-            role="tabpanel"
-            aria-labelledby={`tab-${id}`}
-            className={cn(
-              "absolute inset-0 transition-opacity duration-200",
-              activeTab === id ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0",
-              id !== "map" && "overflow-y-auto"
-            )}
-          >
-            {contentMap[id]}
-          </div>
-        ))}
+        <div
+          id={`panel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`tab-${activeTab}`}
+          className={cn("absolute inset-0", activeTab !== "map" && "overflow-y-auto")}
+        >
+          {contentMap[activeTab]}
+        </div>
       </div>
 
       {/* Tab bar - sticky at bottom for thumb reach */}

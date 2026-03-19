@@ -13,6 +13,8 @@
 
 import { useState } from "react";
 
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+
 import { ChartSection } from "./chart-section";
 import { EventsListPaginated } from "./events-list-paginated";
 import type { ExplorerChromeElements } from "./explorer-shell";
@@ -44,75 +46,38 @@ const ListExplorerContent = ({ chrome }: ListExplorerContentProps) => {
   const { ref: mapRef, debouncedSimpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
 
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
   const dateRangeLabel = formatDateRange(filters.startDate, filters.endDate);
 
-  // Content for mobile tabs
-  const mobileMapContent = (
-    <MapPanel
-      mapRef={mapRef}
-      clusters={clusters}
-      clusterStats={clusterStats}
-      onBoundsChange={handleBoundsChange}
-      initialBounds={boundsData?.bounds}
-      isLoadingBounds={isLoadingInitialBounds}
-      showZoomToData={showZoomToData}
-      onZoomToData={handleZoomToData}
-    />
-  );
-
-  const mobileChartContent = (
-    <div className="flex h-full flex-col p-4">
-      <ChartSection bounds={debouncedSimpleBounds} fillHeight />
-    </div>
-  );
-
-  const mobileListContent = (
-    <div className="p-4">
-      <EventsListPaginated
-        filters={filters}
-        bounds={debouncedSimpleBounds}
-        datasetNames={getDatasetNames()}
-        dateRangeLabel={dateRangeLabel}
-        onEventClick={openEvent}
-      />
-    </div>
-  );
-
-  return (
-    <>
-      {/* Desktop Layout - everything scrolls together */}
-      <div className="hidden flex-1 overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable] md:block">
-        <div className="flex min-h-full">
-          {/* Main content */}
-          <div className="min-w-0 flex-1">
-            {/* Top Section - 2 Column Layout (Map | Chart) */}
-            <div className="grid h-[50vh] min-h-[300px] grid-cols-2 gap-0 border-b">
-              {/* Map Column */}
-              <MapPanel
-                mapRef={mapRef}
-                clusters={clusters}
-                clusterStats={clusterStats}
-                onBoundsChange={handleBoundsChange}
-                initialBounds={boundsData?.bounds}
-                isLoadingBounds={isLoadingInitialBounds}
-                showZoomToData={showZoomToData}
-                onZoomToData={handleZoomToData}
-                className="relative overflow-hidden"
-              />
-
-              {/* Chart Column */}
-              <div className="overflow-hidden border-l">
-                <div className="flex h-full flex-col p-6">
-                  <ChartSection bounds={debouncedSimpleBounds} fillHeight />
-                </div>
-              </div>
+  if (isDesktop === false) {
+    // Mobile Layout — only the active tab is mounted
+    return (
+      <div className="flex flex-1 flex-col">
+        <MobileTabs
+          activeTab={mobileActiveTab}
+          onTabChange={setMobileActiveTab}
+          mapContent={
+            <MapPanel
+              mapRef={mapRef}
+              clusters={clusters}
+              clusterStats={clusterStats}
+              onBoundsChange={handleBoundsChange}
+              initialBounds={boundsData?.bounds}
+              isLoadingBounds={isLoadingInitialBounds}
+              showZoomToData={showZoomToData}
+              onZoomToData={handleZoomToData}
+            />
+          }
+          chartContent={
+            <div className="flex h-full flex-col p-4">
+              <ChartSection bounds={debouncedSimpleBounds} fillHeight />
             </div>
-
-            {/* Main Content - Centered List */}
-            <div className="mx-auto max-w-2xl px-4 py-6">
+          }
+          listContent={
+            <div className="p-4">
               <EventsListPaginated
                 filters={filters}
                 bounds={debouncedSimpleBounds}
@@ -121,27 +86,52 @@ const ListExplorerContent = ({ chrome }: ListExplorerContentProps) => {
                 onEventClick={openEvent}
               />
             </div>
-          </div>
-
-          {/* Filter Panel - slides in, scrolls with page, ends with content */}
-          {filterPanel("self-start")}
-        </div>
-      </div>
-
-      {/* Mobile Layout */}
-      <div className="flex flex-1 flex-col md:hidden">
-        {/* Tab Navigation */}
-        <MobileTabs
-          activeTab={mobileActiveTab}
-          onTabChange={setMobileActiveTab}
-          mapContent={mobileMapContent}
-          chartContent={mobileChartContent}
-          listContent={mobileListContent}
+          }
         />
-
-        {/* Mobile: Bottom sheet filter drawer */}
         {mobileFilters}
       </div>
-    </>
+    );
+  }
+
+  // Desktop Layout — all panels visible, everything scrolls together
+  return (
+    <div className="flex-1 overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]">
+      <div className="flex min-h-full">
+        <div className="min-w-0 flex-1">
+          {/* Top Section - 2 Column Layout (Map | Chart) */}
+          <div className="grid h-[50vh] min-h-[300px] grid-cols-2 gap-0 border-b">
+            <MapPanel
+              mapRef={mapRef}
+              clusters={clusters}
+              clusterStats={clusterStats}
+              onBoundsChange={handleBoundsChange}
+              initialBounds={boundsData?.bounds}
+              isLoadingBounds={isLoadingInitialBounds}
+              showZoomToData={showZoomToData}
+              onZoomToData={handleZoomToData}
+              className="relative overflow-hidden"
+            />
+            <div className="overflow-hidden border-l">
+              <div className="flex h-full flex-col p-6">
+                <ChartSection bounds={debouncedSimpleBounds} fillHeight />
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content - Centered List */}
+          <div className="mx-auto max-w-2xl px-4 py-6">
+            <EventsListPaginated
+              filters={filters}
+              bounds={debouncedSimpleBounds}
+              datasetNames={getDatasetNames()}
+              dateRangeLabel={dateRangeLabel}
+              onEventClick={openEvent}
+            />
+          </div>
+        </div>
+
+        {filterPanel("self-start")}
+      </div>
+    </div>
   );
 };
