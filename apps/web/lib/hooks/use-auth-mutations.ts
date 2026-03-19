@@ -1,28 +1,28 @@
 /**
- * React Query hooks for authentication operations.
+ * React Query mutation hooks for authentication operations.
  *
- * Provides request functions and React Query mutations for authentication
- * operations, plus a query for the current user session.
+ * Provides request functions and React Query mutations for login, register,
+ * password reset, and logout. Auth queries live in `use-auth-queries.ts`.
  *
  * @module
  * @category Hooks
  */
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
 import type { User } from "@/payload-types";
 
 import { fetchJson, HttpError, postJson } from "../api/http-error";
 
+// Re-export queries for backward compatibility with existing importers.
+// New code should import directly from `use-auth-queries`.
+export type { CurrentUserResponse } from "./use-auth-queries";
+export { authKeys, useAuthState, useCurrentUserQuery } from "./use-auth-queries";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-/** Payload CMS `/api/users/me` response shape. */
-export interface CurrentUserResponse {
-  user: User | null;
-}
 
 /** Payload CMS `/api/users/login` response shape. */
 interface LoginResponse {
@@ -59,55 +59,6 @@ export interface ResetPasswordInput {
   token: string;
   password: string;
 }
-
-// ---------------------------------------------------------------------------
-// Query keys
-// ---------------------------------------------------------------------------
-
-export const authKeys = { currentUser: ["auth", "current-user"] as const };
-
-// ---------------------------------------------------------------------------
-// Queries
-// ---------------------------------------------------------------------------
-
-/**
- * Fetch the current authenticated user via `/api/users/me`.
- *
- * Disabled by default -- callers opt in via `enabled`.
- */
-export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
-  return useQuery({
-    queryKey: authKeys.currentUser,
-    queryFn: async (): Promise<CurrentUserResponse> => {
-      try {
-        return await fetchJson<CurrentUserResponse>("/api/users/me", { credentials: "include" });
-      } catch {
-        return { user: null };
-      }
-    },
-    enabled: options?.enabled ?? true,
-    staleTime: 0,
-  });
-};
-
-/**
- * Derive auth booleans from the current user query.
- *
- * Single source of truth for client-side auth state. Components should
- * use this instead of maintaining their own auth state copies.
- */
-export const useAuthState = () => {
-  const { data, isLoading } = useCurrentUserQuery();
-  const user = data?.user ?? null;
-
-  return {
-    isAuthenticated: user != null,
-    isEmailVerified: user?._verified === true,
-    userId: user?.id ?? null,
-    isLoading,
-    user,
-  };
-};
 
 // ---------------------------------------------------------------------------
 // Mutations

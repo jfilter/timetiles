@@ -46,7 +46,7 @@
 
 import { createContext, useContext, useReducer } from "react";
 
-import { useAuthState } from "@/lib/hooks/use-auth-mutations";
+import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 

@@ -17,7 +17,7 @@ import { CheckCircle2Icon, Loader2Icon, MailIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { AuthTabs } from "@/components/auth";
-import { useAuthState } from "@/lib/hooks/use-auth-mutations";
+import { useAuthState } from "@/lib/hooks/use-auth-queries";
 
 import { useWizard } from "../wizard-context";
 

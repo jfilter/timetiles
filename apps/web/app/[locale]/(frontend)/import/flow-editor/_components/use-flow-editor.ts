@@ -10,12 +10,12 @@
 "use client";
 
 import { addEdge, type Connection, type Edge, type Node, useEdgesState, useNodesState } from "@xyflow/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { usePreviewSheetsQuery } from "@/lib/hooks/use-import-wizard-mutations";
-import { createEmptyFieldMapping } from "@/lib/import/field-mapping-utils";
+import { usePreviewSheetsQuery } from "@/lib/hooks/use-import-wizard-queries";
+import { createEmptyFieldMapping, setMappingField } from "@/lib/import/field-mapping-utils";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/types/flow-mapping";
-import { createSourceNodes, createTargetNodes, TARGET_FIELD_DEFINITIONS } from "@/lib/types/flow-mapping";
+import { createSourceNodes, createTargetNodes } from "@/lib/types/flow-mapping";
 import {
   createTransform,
   type ImportTransform,
@@ -32,23 +32,9 @@ const NODE_TYPE_TARGET = "target-field";
 const NODE_TYPE_TRANSFORM = "transform";
 
 /**
- * Set a field mapping value if the target field key is valid
- */
-const setMappingField = (mapping: FieldMapping, fieldKey: string, value: string, validKeys: string[]): void => {
-  if (validKeys.includes(fieldKey)) {
-    (mapping as unknown as Record<string, string | null>)[fieldKey] = value;
-  }
-};
-
-/**
  * Process transform chains (source→transform→target) and collect valid transforms
  */
-const collectTransformChains = (
-  nodes: FlowNode[],
-  edges: FlowEdge[],
-  mapping: FieldMapping,
-  validKeys: string[]
-): ImportTransform[] => {
+const collectTransformChains = (nodes: FlowNode[], edges: FlowEdge[], mapping: FieldMapping): ImportTransform[] => {
   const transforms: ImportTransform[] = [];
   const transformNodes = nodes.filter((n) => n.type === NODE_TYPE_TRANSFORM);
 
@@ -80,7 +66,7 @@ const collectTransformChains = (
 
     transforms.push(transform);
     const mappedColumn = transform.type === "rename" ? transform.to : sourceData.columnName;
-    setMappingField(mapping, targetData.fieldKey, mappedColumn, validKeys);
+    setMappingField(mapping, targetData.fieldKey, mappedColumn);
   }
 
   return transforms;
@@ -155,6 +141,16 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([]);
   const hasInitializedRef = useRef(false);
+  const initKeyRef = useRef<string | null>(null);
+
+  // Reset initialization when preview or sheet changes so nodes/edges are rebuilt
+  const initKey = useMemo(() => `${previewId ?? ""}-${sheetIndex}`, [previewId, sheetIndex]);
+  useEffect(() => {
+    if (initKeyRef.current !== null && initKeyRef.current !== initKey) {
+      hasInitializedRef.current = false;
+    }
+    initKeyRef.current = initKey;
+  }, [initKey]);
 
   // Load preview data via React Query
   const { data: previewData, isLoading: queryLoading, error: queryError } = usePreviewSheetsQuery(previewId);
@@ -327,7 +323,6 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
   // Convert flow state to FieldMapping + ImportTransforms
   const serializeFlowState = useCallback((): FlowEditorResult => {
     const mapping: FieldMapping = createEmptyFieldMapping(sheetIndex);
-    const validKeys = TARGET_FIELD_DEFINITIONS.map((d) => d.fieldKey);
 
     // Process direct source→target edges
     for (const edge of edges) {
@@ -337,12 +332,12 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       if (sourceNode?.type === NODE_TYPE_SOURCE && targetNode?.type === NODE_TYPE_TARGET) {
         const sourceData = sourceNode.data as SourceColumnNodeData;
         const targetData = targetNode.data as TargetFieldNodeData;
-        setMappingField(mapping, targetData.fieldKey, sourceData.columnName, validKeys);
+        setMappingField(mapping, targetData.fieldKey, sourceData.columnName);
       }
     }
 
     // Process transform chains: source→transform→target
-    const transforms = collectTransformChains(nodes, edges, mapping, validKeys);
+    const transforms = collectTransformChains(nodes, edges, mapping);
 
     return { fieldMapping: mapping, transforms };
   }, [nodes, edges, sheetIndex]);
