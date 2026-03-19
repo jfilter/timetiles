@@ -6,7 +6,7 @@
  *
  * @module
  */
-export { GeocodingService } from "./geocoding/geocoding-service";
+export { createGeocodingService, GeocodingService } from "./geocoding/geocoding-service";
 
 // Re-export the geocoding result type
 export type { GeocodingResult } from "./geocoding/types";

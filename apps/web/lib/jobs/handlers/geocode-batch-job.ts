@@ -18,7 +18,7 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/import/file-readers";
 import { ProgressTrackingService } from "@/lib/import/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { GeocodingService } from "@/lib/services/geocoding";
+import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
 import type { ImportGeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import type { ImportJob } from "@/payload-types";
@@ -137,7 +137,7 @@ export const geocodeBatchJob = {
 
     try {
       // Create a geocoding service scoped to this job invocation
-      const geocodingService = new GeocodingService(payload);
+      const geocodingService = createGeocodingService(payload);
 
       const { job, importFile } = await loadJobResources(payload, importJobId);
 

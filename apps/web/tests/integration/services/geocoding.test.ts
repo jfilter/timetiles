@@ -18,7 +18,11 @@
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { GeocodingError, GeocodingService } from "../../../lib/services/geocoding/geocoding-service";
+import {
+  createGeocodingService,
+  GeocodingError,
+  type GeocodingService,
+} from "../../../lib/services/geocoding/geocoding-service";
 import { ProviderManager } from "../../../lib/services/geocoding/provider-manager";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
@@ -86,7 +90,7 @@ describe("GeocodingService", () => {
         },
       });
 
-      const service = new GeocodingService(payload);
+      const service = createGeocodingService(payload);
 
       // Verify service initializes successfully and loads providers
       await service.initialize();
@@ -123,7 +127,7 @@ describe("GeocodingService", () => {
         },
       });
 
-      const service = new GeocodingService(payload);
+      const service = createGeocodingService(payload);
 
       // Verify service initializes successfully
       await service.initialize();
@@ -214,7 +218,7 @@ describe("GeocodingService", () => {
       this.configureRateLimiter();
       return Promise.resolve(providers);
     });
-    geocodingService = new GeocodingService(payload);
+    geocodingService = createGeocodingService(payload);
     return providerNames;
   };
 
