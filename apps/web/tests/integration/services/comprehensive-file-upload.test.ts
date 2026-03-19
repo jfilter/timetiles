@@ -74,22 +74,31 @@ describe.sequential("Comprehensive File Upload Tests", () => {
   });
 
   beforeEach(async () => {
-    // Re-apply spies each test (global afterEach restores all mocks)
-    vi.spyOn(geocodingModule, "GeocodingService").mockImplementation(
-      class MockGeocodingService {
-        geocode = vi
-          .fn()
-          .mockResolvedValue({
-            latitude: 40.7128,
-            longitude: -74.006,
-            confidence: 0.9,
-            normalizedAddress: "New York, NY, USA",
-            provider: "mock",
-            components: {},
-            metadata: {},
-          });
-      } as unknown as typeof geocodingModule.GeocodingService
-    );
+    // Mock the factory function (not the class) so the internal binding is intercepted
+    const mockGeocodingResult = {
+      latitude: 40.7128,
+      longitude: -74.006,
+      confidence: 0.9,
+      normalizedAddress: "New York, NY, USA",
+      provider: "mock",
+      components: {},
+      metadata: {},
+    };
+
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      geocode: vi.fn().mockResolvedValue(mockGeocodingResult),
+      batchGeocode: vi.fn().mockImplementation((addresses: string[]) => {
+        const results = new Map();
+        for (const addr of addresses) {
+          results.set(addr, mockGeocodingResult);
+        }
+        return Promise.resolve({
+          results,
+          summary: { total: addresses.length, successful: addresses.length, failed: 0, cached: 0 },
+        });
+      }),
+      testConfiguration: vi.fn().mockResolvedValue({}),
+    } as unknown as geocodingModule.GeocodingService);
 
     await testEnv.seedManager.truncate(collectionsToReset);
   });

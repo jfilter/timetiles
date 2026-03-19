@@ -13,6 +13,7 @@
  *
  * @module
  */
+import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
@@ -22,6 +23,24 @@ import type { GeocodingResult, GeocodingSettings } from "./types";
 import { LOCATION_CACHE_COLLECTION } from "./types";
 
 const logger = createLogger("geocoding-cache-manager");
+
+/**
+ * Normalize an address string for cache deduplication.
+ *
+ * Lowercases, trims, collapses whitespace, and strips special characters
+ * so that variants like "123 Main St", "  123 main st  ", and "123 MAIN ST"
+ * map to the same cache key.
+ */
+export const normalizeGeocodingAddress = (address: string): string =>
+  address
+    .toLowerCase()
+    .trim()
+    .replaceAll(/\s+/g, " ")
+    .replaceAll(/[^\w\s,.-]/g, "")
+    .replaceAll(/,{2,}/g, ",")
+    .replace(/^[\s,]+/, "")
+    .trimEnd()
+    .replace(/,$/, "");
 
 export class CacheManager {
   private readonly payload: Payload;
@@ -68,6 +87,68 @@ export class CacheManager {
     } catch (error) {
       logger.warn("Failed to retrieve cached result", { error, address: normalizedAddress });
       return null;
+    }
+  }
+
+  /**
+   * Batch lookup of multiple addresses in a single query.
+   *
+   * Normalizes all addresses, queries the cache with an `in` clause,
+   * filters expired entries, and batch-updates hit counts for all hits.
+   */
+  async getCachedResults(addresses: string[]): Promise<Map<string, GeocodingResult>> {
+    if (this.settings?.caching?.enabled !== true || addresses.length === 0) {
+      return new Map();
+    }
+
+    // Build a map from normalized address back to the original address
+    const normalizedMap = new Map<string, string>();
+    for (const addr of addresses) {
+      normalizedMap.set(this.normalizeAddress(addr), addr);
+    }
+    const normalizedAddresses = Array.from(normalizedMap.keys());
+
+    try {
+      const results = await this.payload.find({
+        collection: LOCATION_CACHE_COLLECTION,
+        where: { normalizedAddress: { in: normalizedAddresses } },
+        limit: normalizedAddresses.length,
+        pagination: false,
+      });
+
+      const cachedResults = new Map<string, GeocodingResult>();
+      const hitIds: number[] = [];
+      const expiredIds: number[] = [];
+
+      for (const cached of results.docs) {
+        const doc = cached;
+
+        if (this.isCacheExpired(doc)) {
+          expiredIds.push(doc.id);
+          continue;
+        }
+
+        const originalAddress = normalizedMap.get(doc.normalizedAddress);
+        if (originalAddress) {
+          cachedResults.set(originalAddress, this.convertCachedResult(doc));
+          hitIds.push(doc.id);
+        }
+      }
+
+      // Batch update hit counts for all cache hits
+      if (hitIds.length > 0) {
+        await this.batchUpdateHitCounts(hitIds);
+      }
+
+      // Clean up expired entries in the background (fire-and-forget)
+      if (expiredIds.length > 0) {
+        void this.batchDeleteExpired(expiredIds);
+      }
+
+      return cachedResults;
+    } catch (error) {
+      logger.warn("Failed to batch retrieve cached results", { error, addressCount: addresses.length });
+      return new Map();
     }
   }
 
@@ -126,15 +207,7 @@ export class CacheManager {
   }
 
   private normalizeAddress(address: string): string {
-    return address
-      .toLowerCase()
-      .trim()
-      .replaceAll(/\s+/g, " ") // Replace multiple spaces with single space
-      .replaceAll(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
-      .replaceAll(/,{2,}/g, ",") // Replace multiple commas with single comma (more specific regex)
-      .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
-      .trimEnd()
-      .replace(/,$/, ""); // Remove single trailing comma
+    return normalizeGeocodingAddress(address);
   }
 
   private isCacheExpired(cached: LocationCache): boolean {
@@ -171,5 +244,44 @@ export class CacheManager {
       },
       fromCache: true,
     };
+  }
+
+  /**
+   * Batch update hit counts and last-used timestamps for multiple cache entries
+   * in a single SQL statement.
+   */
+  private async batchUpdateHitCounts(ids: number[]): Promise<void> {
+    try {
+      const db = this.payload.db.drizzle;
+      await db.execute(sql`
+        UPDATE payload.location_cache
+        SET hit_count = COALESCE(hit_count, 0) + 1,
+            last_used = NOW()
+        WHERE id IN (${sql.join(
+          ids.map((id) => sql`${id}`),
+          sql`, `
+        )})
+      `);
+    } catch (error) {
+      logger.warn("Failed to batch update hit counts", { error, count: ids.length });
+    }
+  }
+
+  /**
+   * Batch delete expired cache entries in a single SQL statement.
+   */
+  private async batchDeleteExpired(ids: number[]): Promise<void> {
+    try {
+      const db = this.payload.db.drizzle;
+      await db.execute(sql`
+        DELETE FROM payload.location_cache
+        WHERE id IN (${sql.join(
+          ids.map((id) => sql`${id}`),
+          sql`, `
+        )})
+      `);
+    } catch (error) {
+      logger.warn("Failed to batch delete expired cache entries", { error, count: ids.length });
+    }
   }
 }

@@ -13,8 +13,10 @@
  * @module
  * @category Jobs
  */
+import { eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
+import { extractDenormalizedAccessFields } from "@/lib/collections/catalog-ownership";
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/import/file-readers";
 import { ProgressTrackingService } from "@/lib/import/progress-tracking";
@@ -24,9 +26,12 @@ import { createQuotaService } from "@/lib/services/quota-service";
 import { getImportGeocodingResults } from "@/lib/types/geocoding";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
+import { _events_v, events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
+import type { BulkEventData } from "../utils/bulk-event-insert";
+import { bulkInsertEvents } from "../utils/bulk-event-insert";
 import { createEventData } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
 import { extractDuplicateRows, failImportJob, loadJobResources } from "../utils/resource-loading";
@@ -83,23 +88,69 @@ const getNewValuePath = (t: ImportTransform): string => {
   return "";
 };
 
+/** Denormalized access fields computed once per job. */
+interface AccessFields {
+  datasetIsPublic: boolean;
+  catalogOwnerId: number | undefined;
+}
+
+interface ProcessBatchContext {
+  payload: Payload;
+  job: ImportJob;
+  dataset: Dataset;
+  importJobId: string | number;
+  accessFields: AccessFields;
+  logger: ReturnType<typeof createJobLogger>;
+}
+
+/** Apply transforms to a row and build the corresponding BulkEventData. */
+const buildBulkEventFromRow = (
+  row: Record<string, unknown>,
+  transforms: ImportTransform[],
+  ctx: ProcessBatchContext,
+  geocodingResults: ReturnType<typeof getImportGeocodingResults>
+): BulkEventData => {
+  const { dataset, importJobId, accessFields, logger: log } = ctx;
+
+  const transformedRow = transforms.length > 0 ? applyTransforms(row, transforms) : row;
+
+  const transformationChanges =
+    transforms.length > 0
+      ? transforms.map((t) => ({
+          path: getTransformPath(t),
+          oldValue: "from" in t ? (row[t.from] ?? null) : (null as unknown),
+          newValue: (transformedRow[getNewValuePath(t)] ?? null) as unknown,
+        }))
+      : null;
+
+  if (transformationChanges) {
+    log.debug("Applied transforms", { transformCount: transforms.length });
+  }
+
+  const eventData = createEventData(
+    transformedRow,
+    dataset,
+    importJobId,
+    ctx.job,
+    geocodingResults,
+    transformationChanges
+  );
+
+  return { ...eventData, datasetIsPublic: accessFields.datasetIsPublic, catalogOwnerId: accessFields.catalogOwnerId };
+};
+
 const processEventBatch = async (
-  payload: Payload,
+  ctx: ProcessBatchContext,
   rows: Record<string, unknown>[],
-  job: ImportJob,
-  dataset: Dataset,
-  importJobId: string | number,
-  globalRowOffset: number,
-  logger: ReturnType<typeof createJobLogger>
+  globalRowOffset: number
 ) => {
+  const { payload, job, dataset, logger: log } = ctx;
   const duplicateRows = extractDuplicateRows(job);
   const geocodingResults = getImportGeocodingResults(job);
-
-  // Build transforms once per batch, not per row (they're dataset-level config)
   const transforms = buildTransformsFromDataset(dataset);
 
-  let eventsCreated = 0;
   let eventsSkipped = 0;
+  const eventsToInsert: BulkEventData[] = [];
   const errors: Array<{ row: number; error: string }> = [];
 
   for (const [index, row] of rows.entries()) {
@@ -111,39 +162,24 @@ const processEventBatch = async (
     }
 
     try {
-      // Apply all transforms in one pass
-      const transformedRow = transforms.length > 0 ? applyTransforms(row, transforms) : row;
-
-      // Track what transforms changed
-      const transformationChanges =
-        transforms.length > 0
-          ? transforms.map((t) => ({
-              path: getTransformPath(t),
-              oldValue: "from" in t ? (row[t.from] ?? null) : (null as unknown),
-              newValue: (transformedRow[getNewValuePath(t)] ?? null) as unknown,
-            }))
-          : null;
-
-      if (transformationChanges) {
-        logger.debug("Applied transforms", { transformCount: transforms.length });
-      }
-
-      // Create event with coordinates from field mappings or geocoded locations
-      const eventData = createEventData(
-        transformedRow,
-        dataset,
-        importJobId,
-        job,
-        geocodingResults,
-        transformationChanges
-      );
-
-      await payload.create({ collection: COLLECTION_NAMES.EVENTS, data: eventData });
-
-      eventsCreated++;
+      eventsToInsert.push(buildBulkEventFromRow(row, transforms, ctx, geocodingResults));
     } catch (error) {
-      logger.warn("Failed to create event", { rowNumber, error });
+      log.warn("Failed to create event data", { rowNumber, error });
       errors.push({ row: rowNumber, error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  }
+
+  // Bulk insert all collected events in one operation
+  let eventsCreated = 0;
+  if (eventsToInsert.length > 0) {
+    try {
+      eventsCreated = await bulkInsertEvents(payload, eventsToInsert);
+    } catch (error) {
+      log.error("Bulk insert failed for batch", { globalRowOffset, count: eventsToInsert.length, error });
+      const msg = error instanceof Error ? error.message : "Bulk insert failed";
+      for (let i = 0; i < eventsToInsert.length; i++) {
+        errors.push({ row: globalRowOffset + i, error: msg });
+      }
     }
   }
 
@@ -293,6 +329,40 @@ const checkEventQuotaBeforeProcessing = async (
   }
 };
 
+/** Delete events and their versions left by a prior failed attempt, in small chunks to avoid table locks. */
+const cleanupPriorAttempt = async (
+  payload: Payload,
+  importJobId: string | number,
+  logger: ReturnType<typeof createJobLogger>
+): Promise<void> => {
+  const DELETE_CHUNK_SIZE = 5000;
+  const db = payload.db.drizzle;
+
+  // Gather IDs of events to delete, then remove versions + events in chunks
+  let deletedTotal = 0;
+  let idsToDelete: number[];
+  do {
+    const rows = await db
+      .select({ id: eventsTable.id })
+      .from(eventsTable)
+      .where(eq(eventsTable.importJob, Number(importJobId)))
+      .limit(DELETE_CHUNK_SIZE);
+    idsToDelete = rows.map((r) => r.id);
+
+    if (idsToDelete.length > 0) {
+      // Delete versions first (FK references events.id)
+      await db.delete(_events_v).where(inArray(_events_v.parent, idsToDelete));
+      // Then events
+      await db.delete(eventsTable).where(inArray(eventsTable.id, idsToDelete));
+      deletedTotal += idsToDelete.length;
+    }
+  } while (idsToDelete.length >= DELETE_CHUNK_SIZE);
+
+  if (deletedTotal > 0) {
+    logger.info("Cleaned up events from prior attempt", { importJobId, deletedTotal });
+  }
+};
+
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
   handler: async (context: JobHandlerContext) => {
@@ -313,17 +383,12 @@ export const createEventsBatchJob = {
       filePath = getImportFilePath(importFile.filename ?? "");
       sheetIndex = job.sheetIndex ?? 0;
 
-      // Clean slate: delete events from any prior failed attempt of this job.
-      // This is safe because the job is only marked COMPLETED after all events are created.
-      const existingEvents = await payload.count({
-        collection: COLLECTION_NAMES.EVENTS,
-        where: { importJob: { equals: importJobId } },
-      });
+      // Compute denormalized access fields once (replaces per-row hook logic)
+      const datasetWithCatalog = await payload.findByID({ collection: "datasets", id: dataset.id, depth: 1 });
+      const accessFields = extractDenormalizedAccessFields(datasetWithCatalog);
 
-      if (existingEvents.totalDocs > 0) {
-        logger.info("Cleaning up events from prior attempt", { importJobId, existingEvents: existingEvents.totalDocs });
-        await payload.delete({ collection: COLLECTION_NAMES.EVENTS, where: { importJob: { equals: importJobId } } });
-      }
+      // Clean slate: delete events from any prior failed attempt of this job.
+      await cleanupPriorAttempt(payload, importJobId, logger);
 
       // Start CREATE_EVENTS stage with total file rows (stream iterates all rows, including duplicates)
       const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;
@@ -333,52 +398,58 @@ export const createEventsBatchJob = {
       await checkEventQuotaBeforeProcessing(payload, importFile, job);
 
       const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
+      /** Write progress to DB every N batches instead of every batch. */
+      const PROGRESS_WRITE_INTERVAL = 10;
+
       let batchNumber = 0;
       let totalRowsProcessed = 0;
       let totalEventsCreated = 0;
       let totalEventsSkipped = 0;
       let totalErrors = 0;
-      let storedErrorCount = 0;
+      const allErrors: Array<{ row: number; error: string }> = [];
 
       for await (const rows of streamBatchesFromFile(filePath, {
         sheetIndex: job.sheetIndex ?? undefined,
         batchSize: BATCH_SIZE,
       })) {
-        const { eventsCreated, eventsSkipped, errors } = await processEventBatch(
-          payload,
-          rows,
-          job,
-          dataset,
-          importJobId,
-          totalRowsProcessed,
-          logger
-        );
+        const batchCtx: ProcessBatchContext = { payload, job, dataset, importJobId, accessFields, logger };
+        const { eventsCreated, eventsSkipped, errors } = await processEventBatch(batchCtx, rows, totalRowsProcessed);
 
         totalRowsProcessed += rows.length;
         totalEventsCreated += eventsCreated;
         totalEventsSkipped += eventsSkipped;
         totalErrors += errors.length;
+        if (errors.length > 0) {
+          allErrors.push(...errors);
+        }
 
-        // Calculate cumulative rows processed (created + skipped + errored)
-        const batchRowsProcessed = eventsCreated + eventsSkipped + errors.length;
+        batchNumber++;
 
-        // Update stage progress
-        await ProgressTrackingService.updateStageProgress(
+        // Throttle progress DB writes: only every N batches
+        if (batchNumber % PROGRESS_WRITE_INTERVAL === 0) {
+          await ProgressTrackingService.updateAndCompleteBatch(
+            payload,
+            job,
+            PROCESSING_STAGE.CREATE_EVENTS,
+            totalRowsProcessed,
+            batchNumber
+          );
+        }
+      }
+
+      // Final progress write for any remaining batches since the last interval
+      if (batchNumber % PROGRESS_WRITE_INTERVAL !== 0) {
+        await ProgressTrackingService.updateAndCompleteBatch(
           payload,
           job,
           PROCESSING_STAGE.CREATE_EVENTS,
           totalRowsProcessed,
-          batchRowsProcessed
+          batchNumber
         );
-
-        // Complete this batch
-        await ProgressTrackingService.completeBatch(payload, job, PROCESSING_STAGE.CREATE_EVENTS, batchNumber + 1);
-
-        // Update job errors (tracks count to enforce MAX_STORED_ERRORS across batches)
-        storedErrorCount = await updateJobErrors(payload, importJobId, storedErrorCount, errors);
-
-        batchNumber++;
       }
+
+      // Write all accumulated errors in a single DB operation
+      await updateJobErrors(payload, importJobId, 0, allErrors);
 
       // Complete the stage
       await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_EVENTS);

@@ -11,6 +11,7 @@
  *
  * @module
  */
+import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
@@ -18,6 +19,7 @@ import { cleanupSidecarFiles, getFileRowCount, streamBatchesFromFile } from "@/l
 import { ProgressTrackingService } from "@/lib/import/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
+import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
@@ -119,20 +121,25 @@ const analyzeExternalDuplicates = async (
   const uniqueIds = Array.from(uniqueIdMap.keys());
   const externalDuplicates: DuplicateAnalysisResult["externalDuplicates"] = [];
 
+  if (uniqueIds.length === 0) return externalDuplicates;
+
+  const db = payload.db.drizzle;
+
+  // Chunk to stay within PostgreSQL parameter limits
   const CHUNK_SIZE = BATCH_SIZES.DATABASE_CHUNK;
   for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
     const chunk = uniqueIds.slice(i, i + CHUNK_SIZE);
 
-    const existingEvents = await payload.find({
-      collection: COLLECTION_NAMES.EVENTS,
-      where: { dataset: { equals: dataset.id }, uniqueId: { in: chunk } },
-      limit: chunk.length,
-    });
+    const rows = await db
+      .select({ id: eventsTable.id, uniqueId: eventsTable.uniqueId })
+      .from(eventsTable)
+      .where(and(eq(eventsTable.dataset, dataset.id), inArray(eventsTable.uniqueId, chunk)));
 
-    for (const event of existingEvents.docs) {
-      const rowNumber = uniqueIdMap.get(event.uniqueId);
+    for (const row of rows) {
+      if (!row.uniqueId) continue;
+      const rowNumber = uniqueIdMap.get(row.uniqueId);
       if (rowNumber !== undefined) {
-        externalDuplicates.push({ rowNumber, uniqueId: event.uniqueId, existingEventId: event.id });
+        externalDuplicates.push({ rowNumber, uniqueId: row.uniqueId, existingEventId: row.id });
       }
     }
   }

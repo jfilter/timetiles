@@ -268,6 +268,71 @@ export class ProgressTrackingService {
   }
 
   /**
+   * Combine updateStageProgress and completeBatch into a single DB write.
+   *
+   * This avoids two separate read-deserialize-serialize-write cycles per batch.
+   * Use this in hot loops (e.g., create-events-batch) where batches are frequent.
+   *
+   * @param payload - Payload instance
+   * @param job - Import job (used for progress data; DB is re-read only if stage is missing)
+   * @param stage - Processing stage name
+   * @param rowsProcessed - Total rows processed so far in this stage
+   * @param batchNumber - Batch number just completed (1-indexed)
+   */
+  static async updateAndCompleteBatch(
+    payload: Payload,
+    job: ImportJob,
+    stage: ProcessingStage,
+    rowsProcessed: number,
+    batchNumber: number
+  ): Promise<void> {
+    const normalizedJobId = normalizeJobId(job.id);
+
+    let stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
+    let stageData = stages[stage];
+
+    // If the passed job has stale progress (e.g., loaded before initializeStageProgress), re-fetch
+    if (!stageData) {
+      const freshJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: normalizedJobId });
+      stages = freshJob.progress?.stages ? this.deserializeStages(freshJob.progress.stages) : {};
+      stageData = stages[stage];
+      if (!stageData) {
+        throw new Error(`Stage ${stage} not initialized`);
+      }
+    }
+
+    // Calculate processing rate (same as updateStageProgress)
+    const timeElapsed = stageData.startedAt ? (Date.now() - new Date(stageData.startedAt).getTime()) / 1000 : 0;
+    const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
+
+    // Estimate time remaining
+    const rowsRemaining = stageData.rowsTotal - rowsProcessed;
+    const estimatedSecondsRemaining = rowsPerSecond && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
+
+    // Merge both updates: progress fields + batch completion fields
+    stages[stage] = {
+      ...stageData,
+      rowsProcessed,
+      currentBatchRows: 0, // Reset (batch is complete)
+      rowsPerSecond,
+      estimatedSecondsRemaining,
+      batchesProcessed: batchNumber,
+    };
+
+    await payload.update({
+      collection: COLLECTION_NAMES.IMPORT_JOBS,
+      id: normalizedJobId,
+      data: {
+        progress: {
+          stages: this.serializeStages(stages),
+          overallPercentage: this.calculateWeightedProgress(stages),
+          estimatedCompletionTime: this.estimateCompletionTime(stages)?.toISOString() ?? null,
+        },
+      },
+    });
+  }
+
+  /**
    * Mark a batch as completed within a stage.
    *
    * This should be called after each batch is fully processed to:

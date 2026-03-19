@@ -20,8 +20,11 @@ const mocks = vi.hoisted(() => {
     getGeocodingResultForRow: vi.fn(),
     startStage: vi.fn(),
     updateStageProgress: vi.fn(),
+    updateAndCompleteBatch: vi.fn(),
     completeBatch: vi.fn(),
     completeStage: vi.fn(),
+    bulkInsertEvents: vi.fn(),
+    extractDenormalizedAccessFields: vi.fn(),
   };
 });
 
@@ -42,6 +45,7 @@ vi.mock("@/lib/import/progress-tracking", () => ({
   ProgressTrackingService: {
     startStage: mocks.startStage,
     updateStageProgress: mocks.updateStageProgress,
+    updateAndCompleteBatch: mocks.updateAndCompleteBatch,
     completeBatch: mocks.completeBatch,
     completeStage: mocks.completeStage,
   },
@@ -57,6 +61,18 @@ vi.mock("@/lib/services/quota-service", () => ({
     incrementUsage: vi.fn().mockResolvedValue(undefined),
   })),
 }));
+
+vi.mock("@/lib/jobs/utils/bulk-event-insert", () => ({ bulkInsertEvents: mocks.bulkInsertEvents }));
+
+vi.mock("@/lib/collections/catalog-ownership", () => ({
+  extractDenormalizedAccessFields: mocks.extractDenormalizedAccessFields,
+}));
+
+/** Get the events array from the Nth call to bulkInsertEvents (0-indexed). */
+const getBulkInsertedEvents = (callIndex = 0): unknown[] => {
+  const call = mocks.bulkInsertEvents.mock.calls[callIndex] as [unknown, unknown[]];
+  return call[1];
+};
 
 /** Helper to create a mock async iterable from arrays of batches. */
 const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
@@ -74,9 +90,45 @@ const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
   },
 });
 
+/**
+ * Creates a Drizzle-style chainable mock where every method returns the same
+ * object (enabling chaining) and the object is also a thenable so `await`
+ * resolves to the configured value.
+ *
+ * Each call to `select()` or `delete()` on the root mock creates a fresh
+ * sub-chain so that sequential queries can resolve to different values.
+ */
+const createDrizzleMock = () => {
+  /** Build a sub-chain that is both chainable and thenable. */
+  const buildChain = (resolveValue: unknown = []) => {
+    const chain: Record<string, any> = {};
+    for (const m of ["select", "from", "where", "limit", "insert", "values", "returning", "delete"]) {
+      chain[m] = vi.fn().mockReturnValue(chain);
+    }
+    // eslint-disable-next-line unicorn/no-thenable -- intentional thenable for Drizzle mock
+    chain.then = (resolve: any, reject?: any) => Promise.resolve(resolveValue).then(resolve, reject);
+    return chain;
+  };
+
+  // The root mock: `select` and `delete` each create a fresh sub-chain
+  // whose resolve value can be configured via the `queuedResults` array.
+  const queuedResults: unknown[] = [];
+  const mock: Record<string, any> = {
+    /** Push a resolve value for the next `select` or `delete` chain. */
+    _enqueue: (value: unknown) => {
+      queuedResults.push(value);
+    },
+    select: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
+    delete: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
+    insert: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
+  };
+  return mock;
+};
+
 describe.sequential("CreateEventsBatchJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
+  let drizzleMock: ReturnType<typeof createDrizzleMock>;
 
   beforeEach(() => {
     // Reset all mocks
@@ -85,8 +137,18 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     // Setup ProgressTrackingService mocks to return resolved promises
     mocks.startStage.mockResolvedValue(undefined);
     mocks.updateStageProgress.mockResolvedValue(undefined);
+    mocks.updateAndCompleteBatch.mockResolvedValue(undefined);
     mocks.completeBatch.mockResolvedValue(undefined);
     mocks.completeStage.mockResolvedValue(undefined);
+
+    // Default mock for bulkInsertEvents: return the number of events passed in
+    // eslint-disable-next-line @typescript-eslint/require-await
+    mocks.bulkInsertEvents.mockImplementation(async (_payload: unknown, events: unknown[]) => events.length);
+
+    // Default mock for extractDenormalizedAccessFields
+    mocks.extractDenormalizedAccessFields.mockReturnValue({ datasetIsPublic: false, catalogOwnerId: undefined });
+
+    drizzleMock = createDrizzleMock();
 
     // Mock payload
     mockPayload = {
@@ -97,7 +159,11 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       delete: vi.fn().mockResolvedValue({ docs: [] }),
       count: vi.fn().mockResolvedValue({ totalDocs: 2 }),
       jobs: { queue: vi.fn().mockResolvedValue({}) },
+      db: { drizzle: drizzleMock },
     };
+
+    // By default, cleanupPriorAttempt finds no events (select returns [])
+    // — no enqueue needed since the default is already []
 
     // Mock context — no batchNumber needed
     mockContext = createMockContext(mockPayload, { importJobId: "import-123" });
@@ -150,7 +216,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValueOnce({});
 
       // Mock find for updateImportFileStatusIfAllJobsComplete - no pending jobs
@@ -168,16 +233,17 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         batchSize: expect.any(Number),
       });
 
-      // Verify events were created
-      expect(mockPayload.create).toHaveBeenCalledTimes(2);
-      expect(mockPayload.create).toHaveBeenNthCalledWith(1, {
-        collection: "events",
-        data: expect.objectContaining({
+      // Verify events were bulk-inserted (not created individually)
+      expect(mocks.bulkInsertEvents).toHaveBeenCalledTimes(1);
+      const insertedEvents = getBulkInsertedEvents();
+      expect(insertedEvents).toHaveLength(2);
+      expect(insertedEvents[0]).toEqual(
+        expect.objectContaining({
           dataset: "dataset-456",
           uniqueId: "dataset-456:ext:1",
           data: expect.objectContaining({ id: "1", title: "Event 1", address: "123 Main St" }),
-        }),
-      });
+        })
+      );
 
       // Verify progress tracking service was called (updates happen via ProgressTrackingService)
       expect(mockPayload.update).toHaveBeenCalled();
@@ -212,7 +278,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValue({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
@@ -265,7 +330,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValueOnce({});
 
       // Mock find for updateImportFileStatusIfAllJobsComplete - no pending jobs
@@ -282,8 +346,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         },
       });
 
-      // Should only create one event (for the non-duplicate row)
-      expect(mockPayload.create).toHaveBeenCalledTimes(1);
+      // Should only bulk-insert one event (for the non-duplicate row)
+      expect(mocks.bulkInsertEvents).toHaveBeenCalledTimes(1);
+      expect(getBulkInsertedEvents()).toHaveLength(1);
 
       // Verify progress tracking service was called (updates happen via ProgressTrackingService)
       expect(mockPayload.update).toHaveBeenCalled();
@@ -324,7 +389,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValue({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
@@ -333,8 +397,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Should indicate all batches processed
       expect(result).toEqual({ output: { totalBatches: 2, eventsCreated: 4, eventsSkipped: 0, errors: 0 } });
 
-      // Should create 4 events
-      expect(mockPayload.create).toHaveBeenCalledTimes(4);
+      // Should bulk-insert events in 2 batches (2 events each)
+      expect(mocks.bulkInsertEvents).toHaveBeenCalledTimes(2);
+      expect(getBulkInsertedEvents(0)).toHaveLength(2);
+      expect(getBulkInsertedEvents(1)).toHaveLength(2);
 
       // Should NOT queue any follow-up jobs (single job handles everything)
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
@@ -433,7 +499,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValue({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
@@ -461,7 +526,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockImportFile = createMockImportFile();
 
-      // 5 rows in a single batch — the 3rd row (index 2) will fail
+      // 5 rows in a single batch — the 3rd row (index 2) will fail during data building
       const mockFileData = [
         { id: "1", title: "Event 1" },
         { id: "2", title: "Event 2" },
@@ -478,40 +543,40 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       });
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
-      mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
+      // 3rd call throws during data building (e.g. unique ID generation fails)
+      mocks.generateUniqueId
+        .mockReturnValueOnce("dataset-456:ext:1")
+        .mockReturnValueOnce("dataset-456:ext:2")
+        .mockImplementationOnce(() => {
+          throw new Error("ID generation error");
+        })
+        .mockReturnValueOnce("dataset-456:ext:4")
+        .mockReturnValueOnce("dataset-456:ext:5");
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
-
-      // 3rd call throws, rest succeed
-      mockPayload.create
-        .mockResolvedValueOnce({ id: "event-1" })
-        .mockResolvedValueOnce({ id: "event-2" })
-        .mockRejectedValueOnce(new Error("DB error"))
-        .mockResolvedValueOnce({ id: "event-4" })
-        .mockResolvedValueOnce({ id: "event-5" });
 
       mockPayload.update.mockResolvedValue({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // 4 created, 0 skipped (no duplicates), 1 error — no double-counting
+      // 4 created (bulk inserted), 0 skipped (no duplicates), 1 error — no double-counting
       expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 4, eventsSkipped: 0, errors: 1 } });
 
-      // batchRowsProcessed = eventsCreated + eventsSkipped + errors.length = 4 + 0 + 1 = 5
-      // Before the fix, eventsSkipped was incremented in the catch block too, giving 6
-      expect(mocks.updateStageProgress).toHaveBeenCalledWith(
+      // Uses updateAndCompleteBatch (combined progress + batch completion in a single DB write).
+      // Single batch (batchNumber=1), so the final write after the loop fires.
+      expect(mocks.updateAndCompleteBatch).toHaveBeenCalledWith(
         mockPayload,
         expect.objectContaining({ id: "import-123" }),
         "create-events",
         5, // totalRowsProcessed (rows.length)
-        5 // batchRowsProcessed (4 created + 0 skipped + 1 error = 5, not 6)
+        1 // batchNumber
       );
     });
   });
 
   describe("Retry Idempotency", () => {
-    it("should delete events from prior attempt on retry", async () => {
+    it("should delete events from prior attempt on retry using chunked SQL", async () => {
       const mockImportJob: any = {
         id: "import-123",
         dataset: "dataset-456",
@@ -531,29 +596,28 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      // First count call (clean-slate check) returns 5 existing events from prior attempt,
-      // subsequent count calls (e.g., markJobCompleted) return 2
-      mockPayload.count.mockResolvedValueOnce({ totalDocs: 5 }).mockResolvedValue({ totalDocs: 2 });
-
-      // Add delete mock for cleaning up prior events
-      mockPayload.delete = vi.fn().mockResolvedValue({ docs: [] });
+      // Simulate chunked delete: first select returns 5000 IDs, then delete versions,
+      // delete events, second select returns [] (done).
+      const fakeIds = Array.from({ length: 5000 }, (_, i) => ({ id: i + 1 }));
+      drizzleMock._enqueue(fakeIds); // 1st select: 5000 rows found
+      drizzleMock._enqueue(undefined); // 1st delete(_events_v)
+      drizzleMock._enqueue(undefined); // 1st delete(events)
+      drizzleMock._enqueue([]); // 2nd select: no more rows
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1", title: "Event 1" }]]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValue({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // Verify prior events were deleted before streaming began
-      expect(mockPayload.delete).toHaveBeenCalledWith({
-        collection: "events",
-        where: { importJob: { equals: "import-123" } },
-      });
+      // Verify chunked delete was called (Drizzle typed API, not payload.delete)
+      // 2 selects (first finds rows, second finds none) + 2 deletes (versions + events)
+      expect(drizzleMock.select).toHaveBeenCalledTimes(2);
+      expect(drizzleMock.delete).toHaveBeenCalledTimes(2);
 
       // Verify the handler continued normally and produced a result
       expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 1, eventsSkipped: 0, errors: 0 } });
@@ -640,7 +704,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValue({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
@@ -750,21 +813,20 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValueOnce({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       await createEventsBatchJob.handler(mockContext);
 
-      // Verify age is still string (transform is inactive)
-      expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "events",
-        data: expect.objectContaining({
-          data: expect.objectContaining({ age: "25" }), // Still string
+      // Verify age is still string (transform is inactive) via bulk insert
+      const insertedEvents = getBulkInsertedEvents();
+      expect(insertedEvents[0]).toEqual(
+        expect.objectContaining({
+          data: expect.objectContaining({ age: "25" }),
           validationStatus: "pending",
           transformations: null,
-        }),
-      });
+        })
+      );
     });
 
     it("should apply type transformations and mark event as transformed", async () => {
@@ -809,23 +871,20 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValueOnce({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       await createEventsBatchJob.handler(mockContext);
 
-      // Verify transformation was applied
-      expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "events",
-        data: expect.objectContaining({
-          data: expect.objectContaining({
-            age: 25, // Transformed to number
-          }),
+      // Verify transformation was applied via bulk insert
+      const insertedEvents = getBulkInsertedEvents();
+      expect(insertedEvents[0]).toEqual(
+        expect.objectContaining({
+          data: expect.objectContaining({ age: 25 }),
           validationStatus: "transformed",
           transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
-        }),
-      });
+        })
+      );
     });
 
     it("should handle empty transformations array", async () => {
@@ -860,17 +919,16 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValueOnce({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       await createEventsBatchJob.handler(mockContext);
 
       // No transformations applied
-      expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "events",
-        data: expect.objectContaining({ validationStatus: "pending", transformations: null }),
-      });
+      const insertedEvents = getBulkInsertedEvents();
+      expect(insertedEvents[0]).toEqual(
+        expect.objectContaining({ validationStatus: "pending", transformations: null })
+      );
     });
 
     it("should apply multiple transformations to different fields", async () => {
@@ -924,22 +982,21 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValueOnce({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       await createEventsBatchJob.handler(mockContext);
 
-      expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "events",
-        data: expect.objectContaining({
+      const insertedEvents = getBulkInsertedEvents();
+      expect(insertedEvents[0]).toEqual(
+        expect.objectContaining({
           data: expect.objectContaining({ age: 25, active: true }),
           transformations: expect.arrayContaining([
             expect.objectContaining({ path: "age" }),
             expect.objectContaining({ path: "active" }),
           ]),
-        }),
-      });
+        })
+      );
     });
 
     it("should skip disabled transformation rules", async () => {
@@ -984,19 +1041,18 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValueOnce({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       await createEventsBatchJob.handler(mockContext);
 
-      expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "events",
-        data: expect.objectContaining({
+      const insertedEvents = getBulkInsertedEvents();
+      expect(insertedEvents[0]).toEqual(
+        expect.objectContaining({
           data: expect.objectContaining({ age: "25" }), // Still string
           validationStatus: "pending",
-        }),
-      });
+        })
+      );
     });
 
     it("should handle transformation errors gracefully", async () => {
@@ -1042,7 +1098,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mocks.getImportGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
 
-      mockPayload.create.mockResolvedValue({ id: "event-1" });
       mockPayload.update.mockResolvedValueOnce({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
@@ -1050,14 +1105,14 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Event should still be created with original value preserved (transform failed)
       // But transformations array tracks what was attempted (not what succeeded)
-      expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "events",
-        data: expect.objectContaining({
+      const insertedEvents = getBulkInsertedEvents();
+      expect(insertedEvents[0]).toEqual(
+        expect.objectContaining({
           data: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
           validationStatus: "transformed", // Marks as transformed (attempted)
           transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
-        }),
-      });
+        })
+      );
     });
   });
 });

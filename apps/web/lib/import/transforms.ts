@@ -57,8 +57,8 @@ export const applyTransforms = (
   data: Record<string, unknown>,
   transforms: ImportTransform[]
 ): Record<string, unknown> => {
-  // Clone to avoid mutating input
-  const result = structuredClone(data);
+  // Shallow copy to avoid mutating input (safe: CSV/Excel rows are flat string/number maps)
+  const result = { ...data };
 
   // Apply only active transforms
   const activeTransforms = transforms.filter((t) => t.active);

@@ -10,6 +10,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as geocodingModule from "@/lib/services/geocoding";
+import { GeocodingError } from "@/lib/services/geocoding/types";
 
 import {
   createIntegrationTestEnvironment,
@@ -19,6 +20,62 @@ import {
   withImportFile,
   withUsers,
 } from "../../setup/integration/environment";
+
+/**
+ * Helper to create a mock batchGeocode that rejects all addresses.
+ */
+const createAllFailBatchGeocode = () =>
+  vi.fn().mockImplementation((addresses: string[]) => {
+    const results = new Map<string, any>();
+    for (const address of addresses) {
+      results.set(address, new GeocodingError("Geocoding API unavailable", "ALL_PROVIDERS_FAILED"));
+    }
+    return { results, summary: { total: addresses.length, successful: 0, failed: addresses.length, cached: 0 } };
+  });
+
+/**
+ * Helper to create a mock batchGeocode with partial success.
+ * Succeeds for Berlin and Hamburg, fails for Munich.
+ */
+const createPartialSuccessBatchGeocode = () =>
+  vi.fn().mockImplementation((addresses: string[]) => {
+    const results = new Map<string, any>();
+    let successful = 0;
+    let failed = 0;
+    for (const address of addresses) {
+      // Addresses are normalized (lowercased) by the job before geocoding
+      if (address.includes("munich")) {
+        results.set(address, new GeocodingError("Geocoding failed for Munich", "GEOCODING_FAILED"));
+        failed++;
+      } else if (address.includes("berlin")) {
+        results.set(address, {
+          latitude: 52.52,
+          longitude: 13.405,
+          normalizedAddress: "Berlin, Germany",
+          confidence: 0.9,
+          provider: "mock",
+          components: {},
+          metadata: {},
+        });
+        successful++;
+      } else if (address.includes("hamburg")) {
+        results.set(address, {
+          latitude: 53.55,
+          longitude: 9.993,
+          normalizedAddress: "Hamburg, Germany",
+          confidence: 0.9,
+          provider: "mock",
+          components: {},
+          metadata: {},
+        });
+        successful++;
+      } else {
+        results.set(address, new GeocodingError("Unknown address", "GEOCODING_FAILED"));
+        failed++;
+      }
+    }
+    return { results, summary: { total: addresses.length, successful, failed, cached: 0 } };
+  });
 
 describe.sequential("Geocode Batch Job - Failure Handling", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -38,13 +95,13 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
   });
 
   beforeEach(async () => {
-    // Re-apply spies each test (global afterEach restores all mocks)
-    // Spy on createGeocodingService (not GeocodingService) because the factory
-    // function closes over the local class reference and won't see a spy on the
-    // re-exported class.
+    // Mock createGeocodingService to return a service where all geocoding fails.
+    // We mock createGeocodingService (not GeocodingService) because the job calls
+    // createGeocodingService, which references the class via a module-internal binding
+    // that vi.spyOn on the class export cannot intercept.
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
-      geocode: vi.fn().mockRejectedValue(new Error("Geocoding API unavailable")),
-    } as unknown as ReturnType<typeof geocodingModule.createGeocodingService>);
+      batchGeocode: createAllFailBatchGeocode(),
+    } as unknown as geocodingModule.GeocodingService);
 
     await testEnv.seedManager.truncate([
       "users",
@@ -90,24 +147,13 @@ Event 3,2024-01-03,Hamburg Germany
       additionalData: { originalName: "geocode-failure-test.csv" },
     });
 
-    const stageResult = await runJobsUntilImportJobStage(
+    await runJobsUntilImportJobStage(
       payload,
       importFile.id,
       (importJob) =>
         importJob.stage === "failed" || importJob.stage === "completed" || importJob.stage === "create-events",
-      {
-        maxIterations: 30,
-        onPending: ({ iteration, importJob }) => {
-          if (importJob != null) {
-            console.log(`[GEOCODE-FAILURE] Iteration ${iteration}: Stage: ${importJob.stage}`);
-          }
-        },
-      }
+      { maxIterations: 50 }
     );
-
-    if (stageResult.importJob != null) {
-      console.log(`[GEOCODE-FAILURE] Iteration ${stageResult.iterations}: Stage: ${stageResult.importJob.stage}`);
-    }
 
     // Verify the import job is marked as failed
     const importJobs = await payload.find({
@@ -139,25 +185,9 @@ Event 3,2024-01-03,Hamburg Germany
 
   it("should continue if some geocoding succeeds", async () => {
     // Override beforeEach all-reject mock with partial success
-    const mockGeocode = vi
-      .fn()
-      .mockResolvedValueOnce({
-        latitude: 52.52,
-        longitude: 13.405,
-        normalizedAddress: "Berlin, Germany",
-        confidence: 0.9,
-      })
-      .mockRejectedValueOnce(new Error("Geocoding failed for Munich"))
-      .mockResolvedValueOnce({
-        latitude: 53.55,
-        longitude: 9.993,
-        normalizedAddress: "Hamburg, Germany",
-        confidence: 0.9,
-      });
-
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
-      geocode: mockGeocode,
-    } as unknown as ReturnType<typeof geocodingModule.createGeocodingService>);
+      batchGeocode: createPartialSuccessBatchGeocode(),
+    } as unknown as geocodingModule.GeocodingService);
 
     const csvContent = `name,date,location
 Event 1,2024-01-01,Berlin Germany
@@ -196,12 +226,12 @@ Event 3,2024-01-03,Hamburg Germany
     // Partial success should NOT fail — job should reach completed
     expect(importJob.stage).toBe("completed");
 
-    // Geocoding results should contain only the 2 successful locations
+    // Geocoding results should contain only the 2 successful locations (addresses are normalized)
     expect(importJob.geocodingResults).toBeDefined();
     expect(Object.keys(importJob.geocodingResults)).toHaveLength(2);
-    expect(importJob.geocodingResults["Berlin Germany"]).toBeDefined();
-    expect(importJob.geocodingResults["Hamburg Germany"]).toBeDefined();
-    expect(importJob.geocodingResults["Munich Germany"]).toBeUndefined();
+    expect(importJob.geocodingResults["berlin germany"]).toBeDefined();
+    expect(importJob.geocodingResults["hamburg germany"]).toBeDefined();
+    expect(importJob.geocodingResults["munich germany"]).toBeUndefined();
 
     // Events should be created for all 3 rows
     const events = await payload.find({ collection: "events", where: { importJob: { equals: importJob.id } } });

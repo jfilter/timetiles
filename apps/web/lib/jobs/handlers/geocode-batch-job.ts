@@ -19,6 +19,7 @@ import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/import/file-re
 import { ProgressTrackingService } from "@/lib/import/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
+import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import type { ImportGeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import type { ImportJob } from "@/payload-types";
@@ -30,6 +31,8 @@ import { getImportFilePath } from "../utils/upload-path";
 
 /**
  * Stream through file batches to extract unique location values without loading all rows into memory.
+ * Normalizes addresses so variants like "123 Main St" and "123 MAIN ST" are deduplicated.
+ * Returns the normalized forms (which the geocoding cache also uses as keys).
  */
 const extractUniqueLocations = async (
   filePath: string,
@@ -44,9 +47,9 @@ const extractUniqueLocations = async (
     for (const row of rows) {
       const location = row[locationField];
       if (location && typeof location === "string") {
-        const trimmed = location.trim();
-        if (trimmed) {
-          uniqueLocations.add(trimmed);
+        const normalized = normalizeGeocodingAddress(location);
+        if (normalized) {
+          uniqueLocations.add(normalized);
         }
       }
     }
@@ -65,8 +68,14 @@ interface GeocodingFailure {
   error: string;
 }
 
+/** Chunk size for progress tracking granularity within batchGeocode calls. */
+const PROGRESS_CHUNK_SIZE = 50;
+
+/** Concurrency level passed to batchGeocode (processes this many addresses in parallel). */
+const BATCH_CONCURRENCY = 10;
+
 /**
- * Geocode unique locations with progress tracking.
+ * Geocode unique locations in parallel using batchGeocode with progress tracking.
  */
 const geocodeUniqueLocations = async (
   geocodingService: GeocodingService,
@@ -86,35 +95,41 @@ const geocodeUniqueLocations = async (
   let failureCount = 0;
   let processed = 0;
 
-  for (const location of locations) {
-    try {
-      const result = await geocodingService.geocode(location);
-      results[location] = {
-        coordinates: { lat: result.latitude, lng: result.longitude },
-        confidence: result.confidence ?? 0,
-        formattedAddress: result.normalizedAddress,
-      };
-      successCount++;
-      logger.debug("Geocoded location", { location, result });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      logger.warn("Geocoding failed", { location, error: errorMessage });
-      failures.push({ location, error: errorMessage });
-      failureCount++;
+  const allLocations = Array.from(locations);
+
+  // Split into chunks for progress tracking granularity
+  for (let i = 0; i < allLocations.length; i += PROGRESS_CHUNK_SIZE) {
+    const chunk = allLocations.slice(i, i + PROGRESS_CHUNK_SIZE);
+
+    // batchGeocode processes BATCH_CONCURRENCY addresses in parallel via Promise.allSettled
+    const batchResult = await geocodingService.batchGeocode(chunk, BATCH_CONCURRENCY);
+
+    // Convert BatchGeocodingResult to ImportGeocodingResultsMap format
+    for (const [address, resultOrError] of batchResult.results) {
+      if (resultOrError instanceof Error) {
+        const errorMessage = resultOrError.message;
+        logger.warn("Geocoding failed", { location: address, error: errorMessage });
+        failures.push({ location: address, error: errorMessage });
+        failureCount++;
+      } else {
+        results[address] = {
+          coordinates: { lat: resultOrError.latitude, lng: resultOrError.longitude },
+          confidence: resultOrError.confidence ?? 0,
+          formattedAddress: resultOrError.normalizedAddress,
+        };
+        successCount++;
+      }
     }
 
-    processed++;
+    processed += chunk.length;
 
-    // Update progress every 10 locations or on completion
-    if (processed % 10 === 0 || processed === locations.size) {
-      await ProgressTrackingService.updateStageProgress(
-        payload,
-        job,
-        PROCESSING_STAGE.GEOCODE_BATCH,
-        processed,
-        Math.min(10, locations.size - processed + 10)
-      );
-    }
+    await ProgressTrackingService.updateStageProgress(
+      payload,
+      job,
+      PROCESSING_STAGE.GEOCODE_BATCH,
+      processed,
+      Math.min(PROGRESS_CHUNK_SIZE, locations.size - processed + PROGRESS_CHUNK_SIZE)
+    );
   }
 
   logger.info("Geocoding completed", { total: locations.size, success: successCount, failed: failureCount });

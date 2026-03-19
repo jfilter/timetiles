@@ -47,8 +47,9 @@ describe("extractCoordinates", () => {
     it("should extract geocoded coordinates with normalizedAddress", () => {
       const row = { location: "Berlin Germany" };
       const fieldMappings = { locationPath: "location" };
+      // Results are keyed by normalized address (lowercase, trimmed)
       const geocodingResults = {
-        "Berlin Germany": {
+        "berlin germany": {
           coordinates: { lat: 52.52, lng: 13.405 },
           confidence: 0.9,
           formattedAddress: "Berlin, Germany",
@@ -66,8 +67,9 @@ describe("extractCoordinates", () => {
     it("should trim whitespace from location values", () => {
       const row = { location: "  Munich Germany  " };
       const fieldMappings = { locationPath: "location" };
+      // Results keyed by normalized form (whitespace trimmed + lowercased)
       const geocodingResults = {
-        "Munich Germany": {
+        "munich germany": {
           coordinates: { lat: 48.137, lng: 11.576 },
           confidence: 0.85,
           formattedAddress: "Munich, Bavaria, Germany",

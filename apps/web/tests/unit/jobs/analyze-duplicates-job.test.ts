@@ -61,17 +61,61 @@ const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
   },
 });
 
+/**
+ * Creates a Drizzle-style chainable mock where every method returns the same
+ * object (enabling chaining) and the object is also a thenable so `await`
+ * resolves to the configured value.
+ *
+ * Each call to `select()` or `delete()` on the root mock creates a fresh
+ * sub-chain so that sequential queries can resolve to different values.
+ */
+const createDrizzleMock = () => {
+  /** Build a sub-chain that is both chainable and thenable. */
+  const buildChain = (resolveValue: unknown = []) => {
+    const chain: Record<string, any> = {};
+    for (const m of ["select", "from", "where", "limit", "insert", "values", "returning", "delete"]) {
+      chain[m] = vi.fn().mockReturnValue(chain);
+    }
+    // eslint-disable-next-line unicorn/no-thenable -- intentional thenable for Drizzle mock
+    chain.then = (resolve: any, reject?: any) => Promise.resolve(resolveValue).then(resolve, reject);
+    return chain;
+  };
+
+  // The root mock: `select` and `delete` each create a fresh sub-chain
+  // whose resolve value can be configured via the `queuedResults` array.
+  const queuedResults: unknown[] = [];
+  const mock: Record<string, any> = {
+    /** Push a resolve value for the next `select` or `delete` chain. */
+    _enqueue: (value: unknown) => {
+      queuedResults.push(value);
+    },
+    select: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
+    delete: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
+    insert: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
+  };
+  return mock;
+};
+
 describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
+  let drizzleMock: ReturnType<typeof createDrizzleMock>;
 
   beforeEach(() => {
     // Reset all mocks (clearAllMocks resets call history/return values;
     // do NOT use restoreAllMocks as it undoes vi.mock module-level mocks)
     vi.clearAllMocks();
 
+    drizzleMock = createDrizzleMock();
+
     // Mock payload
-    mockPayload = { findByID: vi.fn(), update: vi.fn(), find: vi.fn(), jobs: { queue: vi.fn().mockResolvedValue({}) } };
+    mockPayload = {
+      findByID: vi.fn(),
+      update: vi.fn(),
+      find: vi.fn(),
+      db: { drizzle: drizzleMock },
+      jobs: { queue: vi.fn().mockResolvedValue({}) },
+    };
 
     // Mock context
     mockContext = {
@@ -184,8 +228,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockReturnValueOnce("dataset-456:ext:2")
         .mockReturnValueOnce("dataset-456:ext:3");
 
-      // Mock no existing events (no external duplicates)
-      mockPayload.find.mockResolvedValueOnce({ docs: [] });
+      // Mock no existing events (no external duplicates) — Drizzle chain resolves to []
+      drizzleMock._enqueue([]);
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -211,15 +255,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         { type: "external", externalIdPath: "id" }
       );
 
-      // Verify external duplicate check
-      expect(mockPayload.find).toHaveBeenCalledWith({
-        collection: "events",
-        where: {
-          dataset: { equals: "dataset-456" },
-          uniqueId: { in: ["dataset-456:ext:1", "dataset-456:ext:2", "dataset-456:ext:3"] },
-        },
-        limit: 3,
-      });
+      // Verify external duplicate check via Drizzle typed API
+      expect(drizzleMock.select).toHaveBeenCalledTimes(1);
     });
 
     it("should identify internal duplicates", async () => {
@@ -266,7 +303,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockReturnValueOnce("dataset-456:ext:2")
         .mockReturnValueOnce("dataset-456:ext:1"); // Same as first
 
-      mockPayload.find.mockResolvedValueOnce({ docs: [] });
+      // Mock no existing events (no external duplicates) — Drizzle chain resolves to []
+      drizzleMock._enqueue([]);
       mockPayload.update.mockResolvedValueOnce({});
 
       // Execute job
@@ -311,9 +349,6 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         { id: "2", title: "Event 2" },
       ];
 
-      // Mock existing event (external duplicate)
-      const mockExistingEvent = { id: "existing-event-123", uniqueId: "dataset-456:ext:1" };
-
       // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job
       mockPayload.findByID
         .mockResolvedValueOnce(mockImportJob)
@@ -326,8 +361,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1").mockReturnValueOnce("dataset-456:ext:2");
 
-      // Mock existing event found
-      mockPayload.find.mockResolvedValueOnce({ docs: [mockExistingEvent] });
+      // Mock existing event found via Drizzle typed API — resolves to array of matching rows
+      drizzleMock._enqueue([{ id: 123, uniqueId: "dataset-456:ext:1" }]);
       mockPayload.update.mockResolvedValueOnce({});
 
       // Execute job
@@ -464,7 +499,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockReturnValueOnce("dataset-456:ext:2")
         .mockReturnValueOnce("dataset-456:ext:3");
 
-      mockPayload.find.mockResolvedValueOnce({ docs: [] });
+      // Mock no existing events — Drizzle chain resolves to []
+      drizzleMock._enqueue([]);
       mockPayload.update.mockResolvedValueOnce({});
 
       // Execute job
@@ -514,8 +550,8 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify result for empty file
       expect(result).toEqual({ output: { totalRows: 0, uniqueRows: 0, internalDuplicates: 0, externalDuplicates: 0 } });
 
-      // Verify no external duplicate check was made
-      expect(mockPayload.find).not.toHaveBeenCalled();
+      // Verify no external duplicate check was made (Drizzle select not called for empty file)
+      expect(drizzleMock.select).not.toHaveBeenCalled();
     });
   });
 });

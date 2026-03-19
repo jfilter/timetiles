@@ -33,8 +33,33 @@ const mocks = vi.hoisted(() => {
 
 // Mock external dependencies
 vi.mock("@/lib/services/geocoding", () => ({
-  GeocodingService: mocks.MockGeocodingService,
-  createGeocodingService: () => new mocks.MockGeocodingService(),
+  GeocodingService: class MockGeocodingService {
+    geocode = mocks.geocode;
+  },
+  createGeocodingService: () => ({
+    geocode: mocks.geocode,
+    /**
+     * Mock batchGeocode that delegates to the mocked geocode function,
+     * mirroring the real GeocodingOperations.batchGeocode behavior.
+     */
+    batchGeocode: async (addresses: string[], _batchSize: number = 10) => {
+      const results = new Map();
+      const summary = { total: addresses.length, successful: 0, failed: 0, cached: 0 };
+
+      for (const address of addresses) {
+        try {
+          const result = await mocks.geocode(address);
+          results.set(address, result);
+          summary.successful++;
+        } catch (error) {
+          results.set(address, error);
+          summary.failed++;
+        }
+      }
+
+      return { results, summary };
+    },
+  }),
 }));
 
 vi.mock("@/lib/import/file-readers", () => ({
@@ -112,8 +137,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should only geocode unique locations (2 unique, not 3 total)
       expect(mocks.geocode).toHaveBeenCalledTimes(2);
-      expect(mocks.geocode).toHaveBeenCalledWith("123 Main St");
-      expect(mocks.geocode).toHaveBeenCalledWith("456 Oak Ave");
+      expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
+      expect(mocks.geocode).toHaveBeenCalledWith("456 oak ave");
 
       // Should store results as location → coordinates map
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -121,12 +146,12 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         id: 123,
         data: {
           geocodingResults: {
-            "123 Main St": {
+            "123 main st": {
               coordinates: { lat: 40.7128, lng: -74.006 },
               confidence: 0.9,
               formattedAddress: "123 Main St, New York, NY",
             },
-            "456 Oak Ave": {
+            "456 oak ave": {
               coordinates: { lat: 34.0522, lng: -118.2437 },
               confidence: 0.8,
               formattedAddress: "456 Oak Ave, Los Angeles, CA",
@@ -165,7 +190,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should only geocode the one valid location
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
-      expect(mocks.geocode).toHaveBeenCalledWith("123 Main St");
+      expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
       expect(result.output).toEqual({ totalRows: 4, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
@@ -202,7 +227,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             geocodingResults: {
-              "123 Main St": expect.objectContaining({ coordinates: { lat: 40.7128, lng: -74.006 } }),
+              "123 main st": expect.objectContaining({ coordinates: { lat: 40.7128, lng: -74.006 } }),
             },
           }),
         })
@@ -282,7 +307,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should only geocode once (trimmed values are identical)
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
-      expect(mocks.geocode).toHaveBeenCalledWith("123 Main St");
+      expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
       expect(result.output).toEqual({ totalRows: 2, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
@@ -381,7 +406,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should only geocode the valid string location
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
-      expect(mocks.geocode).toHaveBeenCalledWith("123 Main St");
+      expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
       expect(result.output).toEqual({ totalRows: 4, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
     });
@@ -425,8 +450,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
             context: "geocode-batch",
             failedLocations: 2,
             failures: expect.arrayContaining([
-              expect.objectContaining({ location: "Invalid 1", error: expect.any(String) }),
-              expect.objectContaining({ location: "Invalid 2", error: expect.any(String) }),
+              expect.objectContaining({ location: "invalid 1", error: expect.any(String) }),
+              expect.objectContaining({ location: "invalid 2", error: expect.any(String) }),
             ]),
           },
         },

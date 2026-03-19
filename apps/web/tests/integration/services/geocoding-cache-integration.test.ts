@@ -294,13 +294,13 @@ describe.sequential("Geocoding Cache Integration", () => {
       // Verify only 5 new API calls (for new locations)
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(5);
 
-      // Verify specific calls were for new locations
-      const callAddresses = mockGoogleGeocode.mock.calls.map((call) => call[0]);
-      expect(callAddresses).toContain("111 Broadway New York NY");
-      expect(callAddresses).toContain("222 Market St San Francisco CA");
-      expect(callAddresses).toContain("333 Sunset Blvd Los Angeles CA");
-      expect(callAddresses).toContain("444 Michigan Ave Chicago IL");
-      expect(callAddresses).toContain("555 Newbury St Boston MA");
+      // Verify specific calls were for new locations (normalized before geocoding)
+      const callAddresses = mockGoogleGeocode.mock.calls.map((call: unknown[]) => call[0]);
+      expect(callAddresses).toContain("111 broadway new york ny");
+      expect(callAddresses).toContain("222 market st san francisco ca");
+      expect(callAddresses).toContain("333 sunset blvd los angeles ca");
+      expect(callAddresses).toContain("444 michigan ave chicago il");
+      expect(callAddresses).toContain("555 newbury st boston ma");
 
       // Verify cache now has 15 total entries (10 original + 5 new)
       const cacheAfterMixed = await payload.find({ collection: "location-cache", limit: 100 });
@@ -342,11 +342,11 @@ describe.sequential("Geocoding Cache Integration", () => {
       // Verify only 3 API calls (for 3 unique locations, not 10 total rows)
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(3);
 
-      // Verify specific calls
-      const callAddresses = mockGoogleGeocode.mock.calls.map((call) => call[0]);
-      expect(callAddresses).toContain("Same Location Street");
-      expect(callAddresses).toContain("Another Location Ave");
-      expect(callAddresses).toContain("Third Location Blvd");
+      // Verify specific calls (normalized before geocoding)
+      const callAddresses = mockGoogleGeocode.mock.calls.map((call: unknown[]) => call[0]);
+      expect(callAddresses).toContain("same location street");
+      expect(callAddresses).toContain("another location ave");
+      expect(callAddresses).toContain("third location blvd");
 
       // Verify cache has 3 entries
       const locationCache = await payload.find({ collection: "location-cache", limit: 100 });
@@ -398,14 +398,14 @@ describe.sequential("Geocoding Cache Integration", () => {
 
       await runJobsUntilComplete(importFile.id);
 
-      // Should only geocode 2 unique locations (normalized)
+      // Addresses are normalized before geocoding: "  123 Main St", "123 Main St",
+      // and "123 MAIN ST" all normalize to "123 main st" → only 2 unique locations.
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(2);
 
       const locationCache = await payload.find({ collection: "location-cache", limit: 100 });
 
       expect(locationCache.docs).toHaveLength(2);
 
-      // Verify normalized addresses are stored
       const normalizedAddresses = locationCache.docs.map((doc: any) => doc.normalizedAddress);
       expect(normalizedAddresses).toContain("123 main st");
       expect(normalizedAddresses).toContain("456 oak ave");

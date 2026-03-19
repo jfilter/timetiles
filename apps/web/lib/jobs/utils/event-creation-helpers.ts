@@ -8,6 +8,7 @@
  * @category Jobs
  */
 import { createLogger } from "@/lib/logger";
+import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import type { getImportGeocodingResults } from "@/lib/types/geocoding";
 import { parseDateInput } from "@/lib/utils/date";
@@ -41,12 +42,12 @@ export const extractCoordinates = (
     }
   }
 
-  // Try to lookup geocoded location
+  // Try to lookup geocoded location (results are keyed by normalized address)
   if (locationPath && geocodingResults) {
     const locationValue = row[locationPath];
     if (typeof locationValue === "string") {
       const trimmed = locationValue.trim();
-      const geocoded = geocodingResults[trimmed];
+      const geocoded = geocodingResults[normalizeGeocodingAddress(trimmed)];
       if (geocoded) {
         return {
           location: { latitude: geocoded.coordinates.lat, longitude: geocoded.coordinates.lng },
