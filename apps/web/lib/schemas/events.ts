@@ -54,7 +54,7 @@ export type EventListQuery = z.infer<typeof EventListQuerySchema>;
 export const EventItemSchema = z
   .object({
     id: z.number(),
-    dataset: z.object({ id: z.number(), title: z.string().optional(), catalog: z.string().optional() }),
+    dataset: z.object({ id: z.number(), name: z.string().optional(), catalog: z.string().optional() }),
     data: z.record(z.string(), z.unknown()),
     location: z.object({ longitude: z.number(), latitude: z.number() }).nullable(),
     eventTimestamp: z.string(),

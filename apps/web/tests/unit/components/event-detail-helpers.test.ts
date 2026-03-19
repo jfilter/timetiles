@@ -142,19 +142,19 @@ describe("extractEventFields", () => {
 });
 
 describe("getDatasetInfo", () => {
-  it("should extract dataset info when title and id are present", () => {
-    const dataset = { title: "Test Dataset", id: 42 };
-    expect(getDatasetInfo(dataset)).toEqual({ name: "Test Dataset", id: 42 });
-  });
-
   it("should extract dataset info when name and id are present", () => {
     const dataset = { name: "Test Dataset", id: 42 };
     expect(getDatasetInfo(dataset)).toEqual({ name: "Test Dataset", id: 42 });
   });
 
-  it("should prefer title over name", () => {
+  it("should use name field (canonical Payload field)", () => {
     const dataset = { title: "Title", name: "Name", id: 1 };
-    expect(getDatasetInfo(dataset)).toEqual({ name: "Title", id: 1 });
+    expect(getDatasetInfo(dataset)).toEqual({ name: "Name", id: 1 });
+  });
+
+  it("should return null when only title is present (no name)", () => {
+    const dataset = { title: "Title", id: 1 };
+    expect(getDatasetInfo(dataset)).toBeNull();
   });
 
   it("should return null for null dataset", () => {
@@ -170,7 +170,7 @@ describe("getDatasetInfo", () => {
   });
 
   it("should convert string id to number", () => {
-    const dataset = { title: "Test", id: "42" };
+    const dataset = { name: "Test", id: "42" };
     expect(getDatasetInfo(dataset)).toEqual({ name: "Test", id: 42 });
   });
 });

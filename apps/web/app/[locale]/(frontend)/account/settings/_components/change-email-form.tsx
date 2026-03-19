@@ -10,11 +10,13 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
-import { Check, Loader2, Mail } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { changeEmailRequest } from "@/lib/hooks/use-account-mutations";
 import { useInputState } from "@/lib/hooks/use-input-state";
+
+import { FormError, FormSuccess } from "./form-feedback";
 
 interface ChangeEmailFormProps {
   currentEmail: string;
@@ -60,14 +62,8 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error?.message}</div>}
-
-          {status === "success" && (
-            <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
-              <Check className="h-4 w-4" />
-              {t("emailChangedSuccess")}
-            </div>
-          )}
+          <FormError error={error} />
+          <FormSuccess show={status === "success"} message={t("emailChangedSuccess")} />
 
           <div className="space-y-2">
             <Label htmlFor="current-email">{t("currentEmail")}</Label>

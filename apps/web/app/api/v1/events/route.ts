@@ -21,12 +21,12 @@ import type { Event, User } from "@/payload-types";
 
 const getDatasetInfo = (dataset: Event["dataset"]) => {
   if (typeof dataset !== "object" || dataset == null) {
-    return { id: dataset, title: undefined, catalog: undefined };
+    return { id: dataset, name: undefined, catalog: undefined };
   }
 
   const catalogName = typeof dataset.catalog === "object" && dataset.catalog != null ? dataset.catalog.name : undefined;
 
-  return { id: dataset.id, title: dataset.name, catalog: catalogName };
+  return { id: dataset.id, name: dataset.name, catalog: catalogName };
 };
 
 export const transformEvent = (event: Event): EventListItem => {

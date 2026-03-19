@@ -14,6 +14,34 @@ export const STORAGE_EXPIRY_HOURS = 24;
 /** Bump when WizardState shape changes to auto-discard incompatible drafts. */
 const STORAGE_VERSION = 1;
 
+/**
+ * Compile-time enforcement: if WizardState gains or loses a field, this
+ * object literal will fail to type-check, reminding you to bump STORAGE_VERSION.
+ */
+const _wizardStateShapeCheck: Record<keyof WizardState, true> = {
+  currentStep: true,
+  startedAuthenticated: true,
+  previewId: true,
+  file: true,
+  sheets: true,
+  sourceUrl: true,
+  authConfig: true,
+  selectedCatalogId: true,
+  newCatalogName: true,
+  sheetMappings: true,
+  fieldMappings: true,
+  transforms: true,
+  deduplicationStrategy: true,
+  geocodingEnabled: true,
+  scheduleConfig: true,
+  importFileId: true,
+  scheduledImportId: true,
+  error: true,
+  navigationConfig: true,
+};
+// Prevent unused-variable warning (compile-time check only)
+export type { _wizardStateShapeCheck as _WizardStateShapeCheck };
+
 export const saveToStorage = (state: WizardState): void => {
   try {
     const data = {

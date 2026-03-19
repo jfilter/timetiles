@@ -10,12 +10,14 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
-import { Check, Key, Loader2 } from "lucide-react";
+import { Key, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
 import { useInputState } from "@/lib/hooks/use-input-state";
+
+import { FormError, FormSuccess } from "./form-feedback";
 
 export const ChangePasswordForm = () => {
   const t = useTranslations("Account");
@@ -54,14 +56,8 @@ export const ChangePasswordForm = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error?.message}</div>}
-
-          {status === "success" && (
-            <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
-              <Check className="h-4 w-4" />
-              {t("passwordChangedSuccess")}
-            </div>
-          )}
+          <FormError error={error} />
+          <FormSuccess show={status === "success"} message={t("passwordChangedSuccess")} />
 
           <div className="space-y-2">
             <Label htmlFor="current-password">{t("currentPassword")}</Label>

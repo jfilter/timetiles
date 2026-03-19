@@ -93,13 +93,7 @@ export const getEventTitle = (eventData: EventData, fieldMappings?: FieldMapping
 export const getDatasetInfo = (dataset: unknown): { name: string; id: number } | null => {
   if (typeof dataset === "object" && dataset != null && "id" in dataset) {
     const d = dataset as Record<string, unknown>;
-    // v1 API returns 'title' (renamed from .name), Payload REST returns 'name'
-    let name: string | null = null;
-    if (typeof d.title === "string") {
-      name = d.title;
-    } else if (typeof d.name === "string") {
-      name = d.name;
-    }
+    const name = typeof d.name === "string" ? d.name : null;
     if (name) {
       return { name, id: Number(d.id) };
     }
