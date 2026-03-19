@@ -14,11 +14,10 @@ import { expect, test } from "../fixtures";
 /** Read the MapLibre map's actual zoom level from the page */
 const getMapZoom = (page: Page) =>
   page.evaluate(() => {
-    const canvas = document.querySelector(".maplibregl-canvas") as HTMLCanvasElement | null;
+    const canvas = document.querySelector(".maplibregl-canvas");
     const container = canvas?.closest(".maplibregl-map");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing MapLibre internal
-    const map = (container as any)?._map ?? (container as any)?.__map;
-    return map?.getZoom() ?? null;
+    const map = (container as never as Record<string, { getZoom?: () => number }>)?._map;
+    return map?.getZoom?.() ?? null;
   });
 
 /** Wait for the map to be loaded and stable */
