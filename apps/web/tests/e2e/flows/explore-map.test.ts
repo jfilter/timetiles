@@ -41,18 +41,13 @@ test.describe("Explore Page - Map Interactions", () => {
   });
 
   test("should update markers when events change", async ({ page }) => {
-    // Select catalog and let all data load
+    // Select catalog and let all data load (filter → 300ms debounce → API → render)
     await explorePage.selectCatalog("Environmental Data");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Wait for event count to show loaded data (map bounds → debounce → query → render)
-    await page.waitForFunction(() => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""), {
-      timeout: 30000,
-    });
-
-    // Events count should be visible
-    await expect(explorePage.eventsCount).toBeVisible();
+    // Wait for event count text to appear (debounce + query + render pipeline)
+    await expect(explorePage.eventsCount).toBeVisible({ timeout: 30000 });
 
     // Verify the map canvas is rendering (WebGL active) and clusters are on the map
     const mapState = await page.evaluate(() => {

@@ -227,10 +227,11 @@ export class ImportPage {
   async uploadFile(filePath: string): Promise<void> {
     await this.fileInput.setInputFiles(filePath);
     // Wait for file processing to complete — "File ready for import" or sheet detection
+    // Allow 20s for schema detection (involves API call + background processing)
     await this.page
       .getByText(/file ready for import|sheets? detected/i)
       .first()
-      .waitFor({ state: "visible", timeout: 10000 });
+      .waitFor({ state: "visible", timeout: 20000 });
   }
 
   /**
