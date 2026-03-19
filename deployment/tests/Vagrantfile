@@ -30,16 +30,14 @@ Vagrant.configure("2") do |config|
                      "uploads/", "backups/", ".vagrant/",
                      ".claude/", ".agents/", ".gemini/", ".opencode/"]
 
-  # Pre-bootstrap: configure build mode BEFORE bootstrap runs so step 07 can build locally
-  # Set LOCAL_BUILD=true (default) to build images from source, or false to pull from GHCR
-  config.vm.provision "pre-bootstrap", type: "shell", inline: <<-SHELL
+  # Provision: set up build mode, install bats — bootstrap runs from run-vm.sh
+  # (not as a provisioner, because Docker builds drop SSH connections)
+  config.vm.provision "setup", type: "shell", inline: <<-SHELL
     LOCAL_BUILD="${LOCAL_BUILD:-true}"
 
     if [[ "$LOCAL_BUILD" == "true" ]]; then
       echo "==> Configuring local build mode (docker compose build)"
 
-      # Create docker-compose.override.yml so `timetiles build` builds locally
-      # Use network=host to avoid VirtualBox NAT connection limits during pnpm install
       cat > /opt/timetiles/docker-compose.override.yml << 'EOF'
 services:
   web:
@@ -49,50 +47,24 @@ services:
       network: host
 EOF
 
-      # Symlink apps/ so step 13's scraper fallback finds the source at
-      # $install_dir/apps/scraper/ (same path as a full git clone)
       ln -sfn /opt/timetiles-src/apps /opt/timetiles/apps
     else
       echo "==> Configuring GHCR pull mode (docker compose pull)"
       rm -f /opt/timetiles/docker-compose.override.yml
     fi
 
-    # Fix ownership and ensure readable for Docker build context
-    chmod -R a+rX /opt/timetiles
-    chmod -R a+rX /opt/timetiles-src 2>/dev/null || true
-  SHELL
-
-  # Bootstrap: run bootstrap.sh to set up the deployment environment
-  # With LOCAL_BUILD=true, step 07 builds locally (override exists) and step 13 runs
-  config.vm.provision "bootstrap", type: "shell", inline: <<-SHELL
-    cd /opt/timetiles/bootstrap
-    ./bootstrap.sh --non-interactive --config /opt/timetiles/tests/bootstrap.test.conf || true
-  SHELL
-
-  # Post-bootstrap: fix permissions, tear down partial deploy, install bats
-  config.vm.provision "test-setup", type: "shell", inline: <<-SHELL
-    LOCAL_BUILD="${LOCAL_BUILD:-true}"
-
-    # In GHCR mode, set edge version (built daily by release-images.yml)
+    # In GHCR mode, set edge version
     if [[ "$LOCAL_BUILD" != "true" ]]; then
-      ENV_FILE="/opt/timetiles/.env.production"
-      if [[ -f "$ENV_FILE" ]]; then
-        sed -i 's/^TIMETILES_VERSION=.*/TIMETILES_VERSION=edge/' "$ENV_FILE"
+      if [[ -f /opt/timetiles/.env.production ]]; then
+        sed -i 's/^TIMETILES_VERSION=.*/TIMETILES_VERSION=edge/' /opt/timetiles/.env.production
       fi
     fi
 
-    # Rsync creates files as vagrant:vagrant. Give timetiles user ownership
-    # so tests (running as timetiles) can write nginx-test/, ssl/, etc.
-    chown -R timetiles:timetiles /opt/timetiles
-    chown -R timetiles:timetiles /opt/timetiles-src 2>/dev/null || true
+    # Fix permissions
+    chmod -R a+rX /opt/timetiles
+    chmod -R a+rX /opt/timetiles-src 2>/dev/null || true
 
-    # Tear down containers left by bootstrap step 07 (which may have partially
-    # started services before postgres was healthy). setup-test-env.sh will
-    # start fresh with the correct test overrides.
-    cd /opt/timetiles
-    docker compose -f docker-compose.prod.yml --env-file .env.production down -v 2>/dev/null || true
-
-    # Install bats for test execution
+    # Install bats
     apt-get install -y -qq bats
   SHELL
 end

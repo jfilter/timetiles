@@ -7,6 +7,8 @@
 #   ./run-vm.sh --fresh      # Destroy and recreate VM from scratch
 #   ./run-vm.sh --shell      # Shell into existing VM
 #   ./run-vm.sh --destroy    # Destroy test VM
+#   ./run-vm.sh --local      # Build images from source (default)
+#   ./run-vm.sh --ghcr       # Pull images from GHCR
 #
 # Requirements:
 #   - Vagrant: brew install --cask vagrant
@@ -66,6 +68,51 @@ setup_path() {
             export PATH="/Applications/VirtualBox.app/Contents/MacOS:$PATH"
         fi
     fi
+}
+
+# Run a command in the VM via nohup, poll for completion.
+# This survives SSH disconnects during long Docker builds.
+# Usage: run_in_vm "description" "command"
+run_in_vm() {
+    local desc="$1"
+    local cmd="$2"
+    local log="/tmp/timetiles-vm-cmd.log"
+    local exitfile="/tmp/timetiles-vm-cmd.exit"
+
+    print_step "$desc"
+
+    # Start command in background inside VM, write exit code to file when done
+    vagrant ssh -c "sudo bash -c '
+        rm -f $exitfile
+        nohup bash -c \"$cmd; echo \\\$? > $exitfile\" > $log 2>&1 &
+    '" 2>/dev/null
+
+    # Poll until exit file appears (reconnects if SSH drops)
+    while true; do
+        if vagrant ssh -c "test -f $exitfile" 2>/dev/null; then
+            break
+        fi
+        # Print progress to keep user informed
+        local progress
+        progress=$(vagrant ssh -c "tail -1 $log 2>/dev/null" 2>/dev/null | tr -d '\r')
+        if [[ -n "$progress" ]]; then
+            printf "\r  %-80s" "${progress:0:80}"
+        fi
+        sleep 10
+    done
+    echo ""
+
+    # Read exit code
+    local exit_code
+    exit_code=$(vagrant ssh -c "cat $exitfile 2>/dev/null" 2>/dev/null | tr -d '\r\n ')
+
+    if [[ "$exit_code" != "0" ]]; then
+        echo -e "${RED}Failed: $desc${NC}"
+        vagrant ssh -c "tail -30 $log 2>/dev/null" 2>/dev/null
+        return 1
+    fi
+
+    echo -e "${GREEN}✓ $desc${NC}"
 }
 
 setup_path
@@ -131,9 +178,23 @@ else
     echo -e "${GREEN}✓ Reusing existing VM${NC}"
     print_step "Syncing codebase..."
     vagrant rsync
-    # Rsync creates files as vagrant:vagrant — fix ownership for timetiles user
     vagrant ssh -c "sudo chown -R timetiles:timetiles /opt/timetiles" 2>/dev/null
 fi
+
+# Run bootstrap in the VM (via nohup to survive SSH disconnects during Docker builds)
+print_header "Bootstrap"
+run_in_vm "Running bootstrap" \
+    "/opt/timetiles/bootstrap/bootstrap.sh --non-interactive --config /opt/timetiles/tests/bootstrap.test.conf"
+
+# Post-bootstrap setup
+print_step "Post-bootstrap setup..."
+vagrant ssh -c "sudo bash -c '
+    chown -R timetiles:timetiles /opt/timetiles
+    chown -R timetiles:timetiles /opt/timetiles-src 2>/dev/null || true
+    cd /opt/timetiles
+    docker compose -f docker-compose.prod.yml --env-file .env.production down -v 2>/dev/null || true
+'" 2>/dev/null
+echo -e "${GREEN}✓ Post-bootstrap setup${NC}"
 
 # Run tests
 print_header "Running Tests"

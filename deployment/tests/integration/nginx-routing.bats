@@ -44,22 +44,19 @@ setup() {
 @test "X-Frame-Options header present" {
     # Must use the configured domain to hit the main server block (not a redirect)
     local domain
-    domain=$(grep "^DOMAIN_NAME=" "$DEPLOY_DIR/.env.production" 2>/dev/null | cut -d= -f2 || echo "localhost")
-    run curl -skI --resolve "${domain}:443:127.0.0.1" "https://${domain}/api/health"
+    run curl -skI https://localhost/api/health
     [[ "$output" == *"X-Frame-Options"* ]] || [[ "$output" == *"x-frame-options"* ]]
 }
 
 @test "X-Content-Type-Options header present" {
     local domain
-    domain=$(grep "^DOMAIN_NAME=" "$DEPLOY_DIR/.env.production" 2>/dev/null | cut -d= -f2 || echo "localhost")
-    run curl -skI --resolve "${domain}:443:127.0.0.1" "https://${domain}/api/health"
+    run curl -skI https://localhost/api/health
     [[ "$output" == *"X-Content-Type-Options"* ]] || [[ "$output" == *"x-content-type-options"* ]]
 }
 
 @test "Strict-Transport-Security header present" {
     local domain
-    domain=$(grep "^DOMAIN_NAME=" "$DEPLOY_DIR/.env.production" 2>/dev/null | cut -d= -f2 || echo "localhost")
-    run curl -skI --resolve "${domain}:443:127.0.0.1" "https://${domain}/api/health"
+    run curl -skI https://localhost/api/health
     # HSTS might not be set for localhost/self-signed
     [[ "$output" == *"Strict-Transport-Security"* ]] || \
     [[ "$output" == *"strict-transport-security"* ]] || \
