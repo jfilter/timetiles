@@ -17,6 +17,7 @@ import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledImport } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
+import { isResourceStuck } from "../utils/stuck-detection";
 
 export interface CleanupStuckScheduledImportsJobInput {
   /** Hours after which a running import is considered stuck (default: 2) */
@@ -24,30 +25,6 @@ export interface CleanupStuckScheduledImportsJobInput {
   /** Whether to run in dry-run mode (default: false) */
   dryRun?: boolean;
 }
-
-/**
- * Determines if an import is stuck based on last run time.
- */
-const isImportStuck = (scheduledImport: ScheduledImport, currentTime: Date, thresholdHours: number): boolean => {
-  if (scheduledImport.lastStatus !== "running") {
-    return false;
-  }
-
-  if (!scheduledImport.lastRun) {
-    // If status is running but no lastRun, it's definitely stuck
-    return true;
-  }
-
-  const lastRunTime = parseDateInput(scheduledImport.lastRun);
-  if (!lastRunTime) {
-    return true;
-  }
-
-  const timeDiffMs = currentTime.getTime() - lastRunTime.getTime();
-  const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
-
-  return timeDiffHours >= thresholdHours;
-};
 
 /**
  * Resets a stuck import to failed status.
@@ -177,7 +154,9 @@ const processStuckImports = async (
 
   for (const scheduledImport of imports) {
     try {
-      if (isImportStuck(scheduledImport, currentTime, thresholdHours)) {
+      if (
+        isResourceStuck(scheduledImport.lastStatus, "running", scheduledImport.lastRun, currentTime, thresholdHours)
+      ) {
         stuckCount++;
 
         const lastRunTime = scheduledImport.lastRun ? parseDateInput(scheduledImport.lastRun) : null;

@@ -13,6 +13,7 @@ import type { Payload, PayloadRequest } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
+import { getBaseUrl } from "@/lib/utils/base-url";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
 
@@ -213,7 +214,7 @@ export class AccountDeletionService {
 
     // Send confirmation email — best-effort, state change already succeeded
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+      const baseUrl = getBaseUrl();
       const cancelUrl = `${baseUrl}/account/settings`;
       await sendDeletionScheduledEmail(
         this.payload,

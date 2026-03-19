@@ -17,7 +17,6 @@ import { z } from "zod";
 
 import { apiRoute, AppError, NotFoundError, requireOwnerOrAdmin } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { apiSuccess } from "@/lib/utils/api-response";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
@@ -119,7 +118,10 @@ export const GET = apiRoute({
 
     // Check status
     if (exportRecord.status === "pending" || exportRecord.status === "processing") {
-      return apiSuccess({ status: exportRecord.status, message: "Export is still processing. Please wait." }, 202);
+      return Response.json(
+        { status: exportRecord.status, message: "Export is still processing. Please wait." },
+        { status: 202 }
+      );
     }
 
     if (exportRecord.status === "failed") {

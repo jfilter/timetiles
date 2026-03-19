@@ -12,8 +12,9 @@
 
 import { useEffect, useState } from "react";
 
-import { fetchJson } from "@/lib/api/http-error";
 import type { FeatureFlags } from "@/lib/services/feature-flag-service";
+
+import { fetchFeatureFlags } from "./use-feature-flags";
 
 /**
  * Fetches a single feature flag value for use in Payload admin components.
@@ -34,7 +35,7 @@ export const useAdminFeatureFlag = (flag: keyof FeatureFlags) => {
   useEffect(() => {
     const fetchFlag = async () => {
       try {
-        const flags = await fetchJson<FeatureFlags>("/api/feature-flags");
+        const flags = await fetchFeatureFlags();
         setIsEnabled(flags[flag] ?? false);
       } catch {
         // Fail closed: disable feature if fetch fails

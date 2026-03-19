@@ -17,7 +17,6 @@ import { queueWebhookImport } from "@/lib/import/trigger-service";
 import { logger } from "@/lib/logger";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
 import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
-import { methodNotAllowed } from "@/lib/utils/api-response";
 import type { ScheduledImport } from "@/payload-types";
 
 interface RateLimitResponse {
@@ -146,4 +145,8 @@ const handleScraperTrigger = async (
   }
 };
 
-export const GET = () => methodNotAllowed("Method not allowed. Use POST to trigger webhooks.");
+export const GET = () =>
+  Response.json(
+    { error: "Method not allowed. Use POST to trigger webhooks.", code: "METHOD_NOT_ALLOWED" },
+    { status: 405 }
+  );

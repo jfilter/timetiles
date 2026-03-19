@@ -13,11 +13,10 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { Key, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { FormError, FormSuccess } from "@/components/auth/form-feedback";
 import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
 import { useInputState } from "@/lib/hooks/use-input-state";
-
-import { FormError, FormSuccess } from "./form-feedback";
 
 export const ChangePasswordForm = () => {
   const t = useTranslations("Account");

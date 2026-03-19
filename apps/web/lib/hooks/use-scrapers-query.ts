@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { Scraper, ScraperRepo, ScraperRun } from "@/payload-types";
 
+import { QUERY_PRESETS } from "./query-presets";
 import { scraperKeys } from "./use-scraper-mutations";
 
 export const useScraperReposQuery = (initialData?: ScraperRepo[]) =>
@@ -18,7 +19,7 @@ export const useScraperReposQuery = (initialData?: ScraperRepo[]) =>
     queryKey: scraperKeys.repos,
     queryFn: () => fetchCollectionDocs<ScraperRepo>("/api/scraper-repos?sort=-updatedAt&limit=200"),
     initialData,
-    staleTime: 60_000,
+    ...QUERY_PRESETS.standard,
   });
 
 export const useScrapersQuery = (repoId?: number, initialData?: Scraper[]) =>
@@ -31,7 +32,7 @@ export const useScrapersQuery = (repoId?: number, initialData?: Scraper[]) =>
       return fetchCollectionDocs<Scraper>(url);
     },
     initialData,
-    staleTime: 60_000,
+    ...QUERY_PRESETS.standard,
   });
 
 export const useScraperRunsQuery = (scraperId?: number) =>
@@ -44,5 +45,5 @@ export const useScraperRunsQuery = (scraperId?: number) =>
       return fetchCollectionDocs<ScraperRun>(url);
     },
     enabled: scraperId != null,
-    staleTime: 30_000,
+    ...QUERY_PRESETS.frequent,
   });

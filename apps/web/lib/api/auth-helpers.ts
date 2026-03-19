@@ -59,15 +59,26 @@ export const requireOwnerOrAdmin = (
 };
 
 /**
+ * Require that a feature flag is enabled.
+ * @throws ForbiddenError if the feature is disabled
+ */
+export const requireFeatureEnabled = async (
+  payload: Payload,
+  flag: Parameters<typeof isFeatureEnabled>[1],
+  message = "Feature is not enabled"
+): Promise<void> => {
+  const enabled = await isFeatureEnabled(payload, flag);
+  if (!enabled) {
+    throw new ForbiddenError(message);
+  }
+};
+
+/**
  * Require that the scrapers feature flag is enabled.
  * @throws ForbiddenError if the feature is disabled
  */
-export const requireScrapersEnabled = async (payload: Payload): Promise<void> => {
-  const enabled = await isFeatureEnabled(payload, "enableScrapers");
-  if (!enabled) {
-    throw new ForbiddenError("Scraper feature is not enabled");
-  }
-};
+export const requireScrapersEnabled = async (payload: Payload): Promise<void> =>
+  requireFeatureEnabled(payload, "enableScrapers", "Scraper feature is not enabled");
 
 /**
  * Verify a user's password by attempting a login.

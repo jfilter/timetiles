@@ -11,6 +11,8 @@
 
 import type { Field } from "payload";
 
+import { getBaseUrl } from "@/lib/utils/base-url";
+
 // ---------------------------------------------------------------------------
 // Execution tracking fields
 // ---------------------------------------------------------------------------
@@ -222,7 +224,7 @@ const webhookFields: Field[] = [
       afterRead: [
         ({ data }) => {
           if (data?.webhookEnabled && data?.webhookToken) {
-            const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+            const baseUrl = getBaseUrl();
             return `${baseUrl}/api/webhooks/trigger/${data.webhookToken}`;
           }
           return null;

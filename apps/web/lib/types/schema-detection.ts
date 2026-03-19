@@ -91,18 +91,6 @@ export interface SchemaComparison {
   canAutoApprove: boolean;
 }
 
-export interface DuplicateInfo {
-  existingId: string;
-  existingUniqueId: string;
-  strategy: "uniqueId" | "contentHash";
-}
-
-export interface DuplicateAction {
-  action: "skipped" | "updated" | "versioned";
-  existingId: string;
-  newId?: string;
-}
-
 /**
  * Type guard to check if schema builder state is valid.
  */

@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { fetchJson } from "../api/http-error";
 import type { DataExport, ExportListResponse, RequestExportResponse } from "../types/data-export-api";
+import { QUERY_PRESETS } from "./query-presets";
 
 export type {
   DataExport,
@@ -81,7 +82,7 @@ export const useDataExportsQuery = () => {
   return useQuery({
     queryKey: dataExportKeys.list(),
     queryFn: fetchDataExports,
-    staleTime: 30 * 1000, // 30 seconds
+    ...QUERY_PRESETS.frequent,
     refetchInterval: (query) => getExportPollingInterval(query),
   });
 };

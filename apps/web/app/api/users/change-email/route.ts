@@ -21,8 +21,10 @@ import { safeSendEmail } from "@/lib/email/send";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { hashEmail } from "@/lib/security/hash";
+import { withTimingPad } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
+import { getBaseUrl } from "@/lib/utils/base-url";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,7 +46,7 @@ const updateEmailAndNotify = async (
     data: { email: newEmail, _verified: false, _verificationToken: verificationToken },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+  const baseUrl = getBaseUrl();
   const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
   const firstName = user.firstName ?? "";
   const branding = await getEmailBranding(payload);
@@ -104,33 +106,30 @@ export const POST = apiRoute({
     // Constant-time response: both paths return after the same elapsed time
     // to prevent timing side-channel attacks from distinguishing "email exists"
     // vs "email changed". The minimum floor ensures the fake path isn't instant.
-    const RESPONSE_FLOOR_MS = 1000;
-    const startTime = Date.now();
+    return withTimingPad(1000, async () => {
+      const successResponse = {
+        message: "Email changed successfully. Please check your new email address for a verification link.",
+        verificationRequired: true,
+      };
 
-    const successResponse = {
-      message: "Email changed successfully. Please check your new email address for a verification link.",
-      verificationRequired: true,
-    };
+      // Check if new email is already in use
+      const existingUser = await payload.find({
+        collection: "users",
+        where: { email: { equals: newEmail } },
+        limit: 1,
+      });
 
-    // Check if new email is already in use
-    const existingUser = await payload.find({ collection: "users", where: { email: { equals: newEmail } }, limit: 1 });
+      if (existingUser.docs.length > 0) {
+        // Anti-enumeration: log and pad response time to match the real path
+        logger.info(
+          { userId: user.id, attemptedEmailHash: hashEmail(newEmail) },
+          "Email change blocked - email already in use"
+        );
+      } else {
+        await updateEmailAndNotify(payload, user, newEmail, clientId);
+      }
 
-    if (existingUser.docs.length > 0) {
-      // Anti-enumeration: log and pad response time to match the real path
-      logger.info(
-        { userId: user.id, attemptedEmailHash: hashEmail(newEmail) },
-        "Email change blocked - email already in use"
-      );
-    } else {
-      await updateEmailAndNotify(payload, user, newEmail, clientId);
-    }
-
-    // Pad both paths to the same minimum duration
-    const elapsed = Date.now() - startTime;
-    if (elapsed < RESPONSE_FLOOR_MS) {
-      await new Promise((resolve) => setTimeout(resolve, RESPONSE_FLOOR_MS - elapsed));
-    }
-
-    return successResponse;
+      return successResponse;
+    });
   },
 });

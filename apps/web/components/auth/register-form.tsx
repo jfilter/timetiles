@@ -25,6 +25,8 @@ import { registerRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
+import { FormError, FormSuccess } from "./form-feedback";
+
 export interface RegisterFormProps {
   /** Callback fired on successful registration */
   onSuccess?: () => void;
@@ -84,15 +86,13 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   // Show success message after registration
   if (status === "success") {
     return (
-      <div className={cn("space-y-4 text-center", className)}>
-        <div className="bg-primary/10 border-primary/20 rounded-sm border p-6">
-          <Mail className="text-primary mx-auto mb-4 h-12 w-12" />
-          <h3 className="text-lg font-semibold">{t("checkYourEmail")}</h3>
-          <p className="text-muted-foreground mt-2 text-sm">
-            {t.rich("verificationSent", { email, strong: (chunks) => <strong>{chunks}</strong> })}
-          </p>
-        </div>
-      </div>
+      <FormSuccess
+        show
+        icon={Mail}
+        title={t("checkYourEmail")}
+        description={t.rich("verificationSent", { email, strong: (chunks) => <strong>{chunks}</strong> })}
+        className={className}
+      />
     );
   }
 
@@ -141,11 +141,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
         />
       </div>
 
-      {error && (
-        <p className="text-destructive text-sm" role="alert">
-          {error.message}
-        </p>
-      )}
+      <FormError error={error} />
 
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? t("creatingAccount") : t("createAccount")}

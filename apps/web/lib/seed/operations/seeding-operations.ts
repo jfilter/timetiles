@@ -411,9 +411,8 @@ export class SeedingOperations {
       }
     } else if (collectionName === "users") {
       // Disable verification email for seeded users (they're already pre-verified).
-      // Payload's create() types don't include disableVerificationEmail, but it's supported at runtime.
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- disableVerificationEmail is an undocumented Payload option
-      await (payload.create as any)({ collection: "users", data: resolvedItem, disableVerificationEmail: true });
+      // @ts-expect-error -- disableVerificationEmail is a valid runtime option for auth collections but not in Payload's types
+      await payload.create({ collection: "users", data: resolvedItem, disableVerificationEmail: true });
     } else {
       await payload.create({ collection: collectionName as keyof Config["collections"], data: resolvedItem });
     }

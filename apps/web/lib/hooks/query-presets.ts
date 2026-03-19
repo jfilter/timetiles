@@ -12,4 +12,6 @@ export const QUERY_PRESETS = {
   expensive: { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000, refetchOnWindowFocus: false as const },
   /** Stable data: 5 min stale, 30 min cache. For metadata that rarely changes. */
   stable: { staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000, refetchOnWindowFocus: false as const },
+  /** Frequently-updated data: 30s stale, 2 min cache. For active monitoring views. */
+  frequent: { staleTime: 30 * 1000, gcTime: 2 * 60 * 1000, refetchOnWindowFocus: false as const },
 } as const;

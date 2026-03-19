@@ -10,6 +10,18 @@ import { z } from "zod";
 import { logError } from "@/lib/logger";
 import type { User } from "@/payload-types";
 
+/**
+ * Standard error response format for all API routes.
+ */
+export interface ErrorResponse {
+  /** Human-readable error message */
+  error: string;
+  /** Optional error code for programmatic handling (e.g., "INVALID_BOUNDS", "UNAUTHORIZED") */
+  code?: string;
+  /** Optional additional error context or details */
+  details?: unknown;
+}
+
 export class AppError extends Error {
   constructor(
     public readonly statusCode: number,

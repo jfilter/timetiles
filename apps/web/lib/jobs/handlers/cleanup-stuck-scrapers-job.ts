@@ -18,6 +18,7 @@ import { parseDateInput } from "@/lib/utils/date";
 import type { Scraper } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
+import { isResourceStuck } from "../utils/stuck-detection";
 
 export interface CleanupStuckScrapersJobInput {
   /** Hours after which a running scraper is considered stuck (default: 2) */
@@ -25,30 +26,6 @@ export interface CleanupStuckScrapersJobInput {
   /** Whether to run in dry-run mode (default: false) */
   dryRun?: boolean;
 }
-
-/**
- * Determines if a scraper is stuck based on last run time.
- */
-const isScraperStuck = (scraper: Scraper, currentTime: Date, thresholdHours: number): boolean => {
-  if (scraper.lastRunStatus !== "running") {
-    return false;
-  }
-
-  if (!scraper.lastRunAt) {
-    // If status is running but no lastRunAt, it's definitely stuck
-    return true;
-  }
-
-  const lastRunTime = parseDateInput(scraper.lastRunAt);
-  if (!lastRunTime) {
-    return true;
-  }
-
-  const timeDiffMs = currentTime.getTime() - lastRunTime.getTime();
-  const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
-
-  return timeDiffHours >= thresholdHours;
-};
 
 /**
  * Resets a stuck scraper to failed status.
@@ -116,7 +93,7 @@ export const cleanupStuckScrapersJob = {
 
       for (const scraper of runningScrapers.docs) {
         try {
-          if (isScraperStuck(scraper, currentTime, stuckThresholdHours)) {
+          if (isResourceStuck(scraper.lastRunStatus, "running", scraper.lastRunAt, currentTime, stuckThresholdHours)) {
             stuckCount++;
 
             if (!dryRun) {

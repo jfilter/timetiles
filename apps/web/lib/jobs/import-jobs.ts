@@ -9,7 +9,6 @@
  */
 // New simplified job handlers
 export { analyzeDuplicatesJob } from "./handlers/analyze-duplicates-job";
-export { cleanupApprovalLocksJob } from "./handlers/cleanup-approval-locks-job";
 export { createEventsBatchJob } from "./handlers/create-events-batch-job";
 export { createSchemaVersionJob } from "./handlers/create-schema-version-job";
 export { datasetDetectionJob } from "./handlers/dataset-detection-job";

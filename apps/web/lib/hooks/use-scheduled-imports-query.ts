@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { ScheduledImport } from "@/payload-types";
 
+import { QUERY_PRESETS } from "./query-presets";
 import { scheduledImportKeys } from "./use-scheduled-import-mutations";
 
 export const useScheduledImportsQuery = (initialData?: ScheduledImport[]) =>
@@ -18,5 +19,5 @@ export const useScheduledImportsQuery = (initialData?: ScheduledImport[]) =>
     queryKey: scheduledImportKeys.all,
     queryFn: () => fetchCollectionDocs<ScheduledImport>("/api/scheduled-imports?sort=-updatedAt&limit=200"),
     initialData,
-    staleTime: 60_000,
+    ...QUERY_PRESETS.standard,
   });

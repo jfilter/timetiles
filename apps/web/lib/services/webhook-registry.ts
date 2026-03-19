@@ -14,6 +14,7 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/utils/base-url";
 
 const logger = createLogger("webhook-registry");
 
@@ -65,7 +66,7 @@ export const handleWebhookTokenLifecycle = (
 export const computeWebhookUrl = (data: Record<string, unknown> | undefined): string | null => {
   const token = data?.webhookToken;
   if (data?.webhookEnabled && typeof token === "string") {
-    const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+    const baseUrl = getBaseUrl();
     return `${baseUrl}/api/webhooks/trigger/${token}`;
   }
   return null;

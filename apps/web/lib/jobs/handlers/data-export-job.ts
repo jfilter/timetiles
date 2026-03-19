@@ -13,6 +13,7 @@ import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails
 import { createDataExportService } from "@/lib/export/service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/utils/base-url";
 import { requireRelationId } from "@/lib/utils/relation-id";
 
 /** Expiry time in milliseconds (7 days) */
@@ -128,9 +129,8 @@ export const dataExportJob = {
       });
 
       // Generate download URL
-      const baseUrl =
-        process.env.NEXT_PUBLIC_PAYLOAD_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-      if (!process.env.NEXT_PUBLIC_PAYLOAD_URL) {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? getBaseUrl();
+      if (!process.env.NEXT_PUBLIC_PAYLOAD_URL && !process.env.NEXT_PUBLIC_SITE_URL) {
         logger.warn("NEXT_PUBLIC_PAYLOAD_URL not set, using fallback for export download URL");
       }
       const downloadUrl = `${baseUrl}/api/data-exports/${exportId}/download`;

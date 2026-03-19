@@ -25,6 +25,7 @@ import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
+import { getBaseUrl } from "@/lib/utils/base-url";
 
 import { createCommonConfig } from "./shared-fields";
 
@@ -67,7 +68,7 @@ const Users: CollectionConfig = {
         const payload = args?.req?.payload;
         const branding = payload ? await getEmailBranding(payload) : { siteName: "TimeTiles", logoUrl: null };
         const t = getEmailTranslations(user?.locale, { siteName: branding.siteName });
-        const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+        const baseUrl = getBaseUrl();
         const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
         return emailLayout(
           `
@@ -97,7 +98,7 @@ const Users: CollectionConfig = {
         const payload = args?.req?.payload;
         const branding = payload ? await getEmailBranding(payload) : { siteName: "TimeTiles", logoUrl: null };
         const t = getEmailTranslations(user?.locale, { siteName: branding.siteName });
-        const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "http://localhost:3000";
+        const baseUrl = getBaseUrl();
         const resetUrl = `${baseUrl}/reset-password?token=${token}`;
         return emailLayout(
           `

@@ -4,10 +4,10 @@
  * @module
  * @category API
  */
-export { apiSuccess } from "../utils/api-response";
 export {
   canManageResource,
   requireAdmin,
+  requireFeatureEnabled,
   requireOwnerOrAdmin,
   requirePrivileged,
   requireScrapersEnabled,
@@ -15,6 +15,7 @@ export {
 export {
   AppError,
   ConflictError,
+  type ErrorResponse,
   ForbiddenError,
   handleError,
   NotFoundError,

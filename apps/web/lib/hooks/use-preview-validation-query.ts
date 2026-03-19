@@ -10,6 +10,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchJson } from "../api/http-error";
+import { QUERY_PRESETS } from "./query-presets";
 
 interface PreviewValidationResponse {
   valid: boolean;
@@ -28,5 +29,5 @@ export const usePreviewValidationQuery = (previewId: string | null, enabled: boo
     queryKey: previewValidationQueryKeys.byId(previewId ?? ""),
     queryFn: () => fetchPreviewValidation(previewId!),
     enabled: enabled && previewId != null,
-    staleTime: 30_000,
+    ...QUERY_PRESETS.frequent,
   });

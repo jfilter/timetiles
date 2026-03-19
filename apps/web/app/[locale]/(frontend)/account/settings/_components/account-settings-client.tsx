@@ -41,14 +41,6 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
     router.refresh();
   };
 
-  const handleOpenDeleteModal = () => {
-    setShowDeleteModal(true);
-  };
-
-  const handleModalOpenChange = (open: boolean) => {
-    setShowDeleteModal(open);
-  };
-
   return (
     <div className="space-y-6">
       {/* Pending Deletion Banner */}
@@ -115,7 +107,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
 
           <Button
             variant="destructive"
-            onClick={handleOpenDeleteModal}
+            onClick={() => setShowDeleteModal(true)}
             disabled={user.deletionStatus === "pending_deletion"}
           >
             {user.deletionStatus === "pending_deletion" ? t("deletionScheduled") : t("deleteAccount")}
@@ -126,7 +118,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
       {/* Delete Account Modal */}
       <DeleteAccountModal
         open={showDeleteModal}
-        onOpenChange={handleModalOpenChange}
+        onOpenChange={setShowDeleteModal}
         onDeletionScheduled={handleDeletionScheduled}
       />
     </div>

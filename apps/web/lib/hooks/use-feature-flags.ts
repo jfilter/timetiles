@@ -19,7 +19,7 @@ const FEATURE_FLAGS_QUERY_KEY = ["feature-flags"] as const;
 /**
  * Fetches feature flags from the API.
  */
-const fetchFeatureFlags = async (): Promise<FeatureFlags> => {
+export const fetchFeatureFlags = async (): Promise<FeatureFlags> => {
   return fetchJson<FeatureFlags>("/api/feature-flags");
 };
 
