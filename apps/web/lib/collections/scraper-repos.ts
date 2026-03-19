@@ -11,6 +11,7 @@
 import type { CollectionConfig, Where } from "payload";
 
 import { createLogger } from "@/lib/logger";
+import { isPrivateUrl } from "@/lib/security/url-validation";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 
@@ -78,6 +79,8 @@ const ScraperRepos: CollectionConfig = {
       validate: (value: unknown, { data }: { data: Record<string, unknown> }) => {
         if (data?.sourceType === "git" && !value) return "Git URL is required for git source type";
         if (value && typeof value === "string" && !value.startsWith("https://")) return "Only HTTPS URLs are allowed";
+        if (value && typeof value === "string" && isPrivateUrl(value))
+          return "URLs pointing to private or internal networks are not allowed";
         return true;
       },
     },
