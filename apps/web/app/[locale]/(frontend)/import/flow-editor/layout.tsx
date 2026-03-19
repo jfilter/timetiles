@@ -8,5 +8,5 @@
  */
 
 export default function FlowEditorLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <div className="flex h-screen flex-col overflow-hidden">{children}</div>;
+  return <div className="bg-background fixed inset-0 z-[60] flex flex-col overflow-hidden">{children}</div>;
 }
