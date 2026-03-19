@@ -73,6 +73,7 @@ function getExpectedScopes(files) {
     // Apps
     "apps/web/": "web",
     "apps/docs/": "docs",
+    "apps/scraper/": "scraper",
 
     // Packages
     "packages/ui/": "ui",
@@ -331,6 +332,8 @@ export default {
         "assets", // Shared assets package (logos, images)
         "config", // Configuration changes (Payload, ESLint, TypeScript, Prettier packages, etc.)
 
+        "scraper", // TimeScrape runner and scraper system (apps/scraper)
+
         // Core features
         "explore", // Explore page and data exploration UI
         "import", // File import system (manual, scheduled, webhook)
@@ -421,6 +424,8 @@ export default {
           ui: "Shared UI components",
           assets: "Shared assets (logos, images)",
           config: "Configuration changes (Payload, ESLint, TypeScript, Prettier)",
+
+          scraper: "TimeScrape runner and scraper system",
 
           // Features
           explore: "Explore page and data exploration UI",

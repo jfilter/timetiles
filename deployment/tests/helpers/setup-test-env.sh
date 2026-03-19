@@ -63,6 +63,7 @@ fi
 echo "Preparing nginx configuration..."
 mkdir -p "$DEPLOY_DIR/nginx-test/sites-enabled"
 cp "$DEPLOY_DIR/nginx/nginx.conf" "$DEPLOY_DIR/nginx-test/nginx.conf"
+cp "$DEPLOY_DIR/nginx/proxy-headers.conf" "$DEPLOY_DIR/nginx-test/proxy-headers.conf"
 cp -r "$DEPLOY_DIR/nginx/sites-enabled/"* "$DEPLOY_DIR/nginx-test/sites-enabled/"
 
 # Substitute domain name
@@ -77,6 +78,7 @@ services:
     volumes:
       - $DEPLOY_DIR/nginx-test/nginx.conf:/etc/nginx/nginx.conf:ro
       - $DEPLOY_DIR/nginx-test/sites-enabled:/etc/nginx/sites-enabled:ro
+      - $DEPLOY_DIR/nginx-test/proxy-headers.conf:/etc/nginx/proxy-headers.conf:ro
       - $DEPLOY_DIR/ssl:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot:ro
 

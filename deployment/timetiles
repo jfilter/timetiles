@@ -45,6 +45,12 @@ SSL_OVERRIDE="$SCRIPT_DIR/docker-compose.ssl-override.yml"
 
 # Build compose command with appropriate overrides
 DC_CMD="docker compose -f $COMPOSE_FILE"
+BUILD_OVERRIDE="$SCRIPT_DIR/docker-compose.override.yml"
+
+# Add build override if exists (for local image builds instead of GHCR pull)
+if [ -f "$BUILD_OVERRIDE" ]; then
+    DC_CMD="$DC_CMD -f $BUILD_OVERRIDE"
+fi
 
 # Add SSL override if exists (for self-signed certs when SKIP_SSL=true)
 if [ -f "$SSL_OVERRIDE" ]; then
@@ -162,8 +168,9 @@ print_usage() {
     echo "  up        - Start all services"
     echo "  down      - Stop all services"
     echo "  restart   - Restart all services"
-    echo "  logs      - View logs (follow mode)"
-    echo "  backup    - Backup management (full|db|uploads|auto|list|prune|verify|clean)"
+    echo "  logs         - View logs (follow mode)"
+    echo "  scraper-logs - View scraper runner logs (if configured)"
+    echo "  backup       - Backup management (full|db|uploads|auto|list|prune|verify|clean)"
     echo "  restore   - Restore from backup"
     echo "  status    - Check service status"
     echo "  ssl       - Initialize Let's Encrypt SSL certificate"
@@ -243,9 +250,12 @@ case "$1" in
         
     build)
         check_env
-        if [ -f "$SCRIPT_DIR/docker-compose.override.yml" ]; then
+        if [ -f "$BUILD_OVERRIDE" ]; then
             echo -e "${YELLOW}Building Docker images locally (override detected)...${NC}"
-            $DC_CMD build
+            if ! $DC_CMD build; then
+                echo -e "${RED}Local build failed!${NC}"
+                exit 1
+            fi
             echo -e "${GREEN}Build complete!${NC}"
         else
             echo -e "${YELLOW}Pulling Docker images from registry...${NC}"
@@ -706,6 +716,16 @@ EOF
             echo -e "${RED}✗ Unhealthy${NC}"
         fi
 
+        # Check Scraper Runner (if configured)
+        if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
+            echo -n "Scraper Runner: "
+            if curl -f -s http://localhost:4000/health > /dev/null 2>&1; then
+                echo -e "${GREEN}✓ Healthy${NC}"
+            else
+                echo -e "${RED}✗ Unhealthy${NC}"
+            fi
+        fi
+
         echo ""
         $DC_CMD ps
         ;;
@@ -826,6 +846,48 @@ EOF
             print_warn "Skipping container checks (no config)"
         fi
 
+        # Check scraper runner if configured
+        if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
+            print_section "Scraper Runner"
+
+            # Check Podman installed
+            if command -v podman &>/dev/null; then
+                print_ok "Podman installed ($(podman --version | head -1))"
+            else
+                print_fail "Podman not installed"
+            fi
+
+            # Check base images (as deploy user)
+            for img in timescrape-python timescrape-node; do
+                if sudo -u "$DEPLOY_USER" podman images --format '{{.Repository}}' 2>/dev/null | grep -q "$img"; then
+                    print_ok "Base image: $img"
+                else
+                    print_fail "Base image missing: $img"
+                fi
+            done
+
+            # Check sandbox network
+            if sudo -u "$DEPLOY_USER" podman network ls --format '{{.Name}}' 2>/dev/null | grep -q "^scraper-sandbox$"; then
+                print_ok "Scraper sandbox network exists"
+            else
+                print_fail "Scraper sandbox network missing"
+            fi
+
+            # Check systemd service
+            if systemctl is-active --quiet timescrape-runner.service 2>/dev/null; then
+                print_ok "TimeScrape runner service running"
+            else
+                print_fail "TimeScrape runner service not running"
+            fi
+
+            # Check health endpoint
+            if curl -f -s --max-time 5 http://localhost:4000/health > /dev/null 2>&1; then
+                print_ok "Runner health endpoint responding"
+            else
+                print_fail "Runner health endpoint not responding"
+            fi
+        fi
+
         print_section "SSL"
 
         # Check SSL certificate (inline - requires DC_CMD and DOMAIN_NAME)
@@ -902,9 +964,66 @@ EOF
             $DC_CMD pull
         fi
         $DC_CMD up -d --no-deps web
-        echo -e "${GREEN}Update complete! Migrations will run automatically.${NC}"
+        echo -e "${GREEN}Web app updated! Migrations will run automatically.${NC}"
+
+        # Update scraper runner if configured
+        if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
+            source "$ENV_FILE"
+            local version="${TIMETILES_VERSION:-latest}"
+            local runner_dir="$SCRIPT_DIR/../scraper-runner"
+
+            echo -e "${YELLOW}Updating scraper runner...${NC}"
+
+            # Update runner: try GHCR image first, fall back to local build
+            local image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-scraper}:$version"
+            rm -rf "${runner_dir:?}/dist" "${runner_dir:?}/node_modules" "${runner_dir:?}/package.json"
+
+            if docker pull "$image" 2>/dev/null; then
+                docker rm -f tt-scraper-extract 2>/dev/null || true
+                docker create --name tt-scraper-extract "$image"
+                docker cp tt-scraper-extract:/app/dist "$runner_dir/dist"
+                docker cp tt-scraper-extract:/app/node_modules "$runner_dir/node_modules"
+                docker cp tt-scraper-extract:/app/package.json "$runner_dir/package.json"
+                docker rm tt-scraper-extract
+            elif [[ -f "$SCRIPT_DIR/../apps/scraper/Dockerfile" ]]; then
+                echo -e "${YELLOW}Registry pull failed, building runner locally...${NC}"
+                docker build -t timescrape-runner-local -f "$SCRIPT_DIR/../apps/scraper/Dockerfile" "$SCRIPT_DIR/.."
+                docker rm -f tt-scraper-extract 2>/dev/null || true
+                docker create --name tt-scraper-extract timescrape-runner-local
+                docker cp tt-scraper-extract:/app/dist "$runner_dir/dist"
+                docker cp tt-scraper-extract:/app/node_modules "$runner_dir/node_modules"
+                docker cp tt-scraper-extract:/app/package.json "$runner_dir/package.json"
+                docker rm tt-scraper-extract
+            else
+                echo -e "${RED}Cannot pull or build scraper runner${NC}"
+            fi
+            chown -R "$DEPLOY_USER:$DEPLOY_USER" "$runner_dir"
+
+            # Update base images: try GHCR first, fall back to local build
+            local python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
+            local node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
+
+            if sudo -u "$DEPLOY_USER" podman pull "$python_image" 2>/dev/null; then
+                sudo -u "$DEPLOY_USER" podman tag "$python_image" timescrape-python
+            elif [[ -f "$SCRIPT_DIR/../apps/scraper/images/python/Dockerfile" ]]; then
+                sudo -u "$DEPLOY_USER" podman build -t timescrape-python "$SCRIPT_DIR/../apps/scraper/images/python/"
+            fi
+
+            if sudo -u "$DEPLOY_USER" podman pull "$node_image" 2>/dev/null; then
+                sudo -u "$DEPLOY_USER" podman tag "$node_image" timescrape-node
+            elif [[ -f "$SCRIPT_DIR/../apps/scraper/images/node/Dockerfile" ]]; then
+                sudo -u "$DEPLOY_USER" podman build -t timescrape-node "$SCRIPT_DIR/../apps/scraper/images/node/"
+            fi
+
+            systemctl restart timescrape-runner
+            echo -e "${GREEN}Scraper runner updated!${NC}"
+        fi
         ;;
-        
+
+    scraper-logs)
+        journalctl -u timescrape-runner -f --no-pager -n 100
+        ;;
+
     *)
         print_usage
         exit 1

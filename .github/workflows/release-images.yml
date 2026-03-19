@@ -131,6 +131,162 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  build-scraper:
+    name: Build Scraper Image (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/scraper/Dockerfile
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=scraper-${{ matrix.platform }}
+          cache-to: type=gha,mode=min,scope=scraper-${{ matrix.platform }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-scraper-${{ matrix.runner }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  build-scraper-python:
+    name: Build Scraper Python Base (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: apps/scraper/images/python
+          file: apps/scraper/images/python/Dockerfile
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper-python,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=scraper-python-${{ matrix.platform }}
+          cache-to: type=gha,mode=min,scope=scraper-python-${{ matrix.platform }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-scraper-python-${{ matrix.runner }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  build-scraper-node:
+    name: Build Scraper Node Base (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: apps/scraper/images/node
+          file: apps/scraper/images/node/Dockerfile
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper-node,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=scraper-node-${{ matrix.platform }}
+          cache-to: type=gha,mode=min,scope=scraper-node-${{ matrix.platform }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-scraper-node-${{ matrix.runner }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
   test-deployment:
     name: Test Production Deployment
     runs-on: ubuntu-24.04
@@ -314,10 +470,169 @@ jobs:
           TAG=$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
           docker buildx imagetools inspect "$TAG"
 
+  merge-scraper:
+    name: Create Scraper Multi-Arch Manifest
+    runs-on: ubuntu-latest
+    needs: [build-scraper]
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digests-scraper-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=edge,enable=${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '') }}
+
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          COUNT=$(ls | wc -l)
+          if [ "$COUNT" -ne 2 ]; then
+            echo "ERROR: Expected 2 platform digests, got $COUNT"
+            ls -la
+            exit 1
+          fi
+
+          DIGESTS=$(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper@sha256:%s ' *)
+          TAG_ARGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools create $TAG_ARGS $DIGESTS
+
+      - name: Inspect manifest
+        run: |
+          TAG=$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools inspect "$TAG"
+
+  merge-scraper-python:
+    name: Create Scraper Python Multi-Arch Manifest
+    runs-on: ubuntu-latest
+    needs: [build-scraper-python]
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digests-scraper-python-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper-python
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=edge,enable=${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '') }}
+
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          COUNT=$(ls | wc -l)
+          if [ "$COUNT" -ne 2 ]; then
+            echo "ERROR: Expected 2 platform digests, got $COUNT"
+            ls -la
+            exit 1
+          fi
+
+          DIGESTS=$(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper-python@sha256:%s ' *)
+          TAG_ARGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools create $TAG_ARGS $DIGESTS
+
+      - name: Inspect manifest
+        run: |
+          TAG=$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools inspect "$TAG"
+
+  merge-scraper-node:
+    name: Create Scraper Node Multi-Arch Manifest
+    runs-on: ubuntu-latest
+    needs: [build-scraper-node]
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digests-scraper-node-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper-node
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=edge,enable=${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '') }}
+
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          COUNT=$(ls | wc -l)
+          if [ "$COUNT" -ne 2 ]; then
+            echo "ERROR: Expected 2 platform digests, got $COUNT"
+            ls -la
+            exit 1
+          fi
+
+          DIGESTS=$(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper-node@sha256:%s ' *)
+          TAG_ARGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools create $TAG_ARGS $DIGESTS
+
+      - name: Inspect manifest
+        run: |
+          TAG=$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools inspect "$TAG"
+
   smoke-test:
     name: Smoke Test
     runs-on: ubuntu-latest
-    needs: [merge-main, merge-allinone]
+    needs: [merge-main, merge-allinone, merge-scraper]
     timeout-minutes: 15
 
     steps:
@@ -416,6 +731,35 @@ jobs:
           docker logs timetiles
           exit 1
 
+      - name: Smoke test scraper image
+        run: |
+          echo "Testing scraper runner image..."
+          docker run -d \
+            --name scraper-test \
+            -p 4000:4000 \
+            -e SCRAPER_API_KEY=test1234567890abcdef \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper:${{ steps.tag.outputs.version }}
+
+          echo "Waiting for scraper runner..."
+          for i in {1..15}; do
+            if curl -f --max-time 5 http://localhost:4000/health 2>/dev/null; then
+              echo ""
+              echo "Scraper health check passed!"
+              break
+            fi
+            echo "Waiting... ($i/15)"
+            sleep 2
+          done
+
+          # Verify health response
+          if ! curl -f --max-time 5 http://localhost:4000/health 2>/dev/null; then
+            echo "Scraper health check failed"
+            docker logs scraper-test
+            exit 1
+          fi
+
+          docker stop scraper-test && docker rm scraper-test
+
       - name: Collect logs on failure
         if: failure()
         run: |
@@ -426,9 +770,13 @@ jobs:
           echo "=== PostgreSQL Logs ==="
           docker logs postgres 2>&1 || true
 
+          echo ""
+          echo "=== Scraper Logs ==="
+          docker logs scraper-test 2>&1 || true
+
       - name: Cleanup
         if: always()
         run: |
-          docker stop timetiles postgres 2>/dev/null || true
-          docker rm timetiles postgres 2>/dev/null || true
+          docker stop timetiles postgres scraper-test 2>/dev/null || true
+          docker rm timetiles postgres scraper-test 2>/dev/null || true
           docker network rm timetiles-test 2>/dev/null || true

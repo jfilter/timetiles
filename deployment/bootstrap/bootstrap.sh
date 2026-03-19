@@ -47,6 +47,7 @@ STEPS=(
     "10-ssh-hardening"
     "11-fail2ban"
     "12-alerting"
+    "13-scraper-setup"
 )
 
 # ============================================================================
@@ -82,6 +83,7 @@ Steps:
   10-ssh-hardening  Secure SSH (disable root, password auth)
   11-fail2ban       Brute force protection
   12-alerting       Email alerts for failures
+  13-scraper-setup  Podman + TimeScrape runner (optional, requires SKIP_SCRAPER=false)
 
 Examples:
   # Interactive installation

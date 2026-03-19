@@ -19,15 +19,15 @@ run_step() {
     # Nginx requires SSL certs to start - Let's Encrypt (Step 08) will replace these if DNS is configured
     setup_self_signed_ssl "$install_dir" "$user"
 
-    # Pull Docker images from registry
-    print_step "Pulling Docker images from registry..."
+    # Build or pull Docker images (uses local build if docker-compose.override.yml exists)
+    print_step "Preparing Docker images..."
     print_info "This may take a few minutes on first run..."
 
-    if ! run_as_user "./timetiles pull"; then
-        die "Failed to pull Docker images"
+    if ! run_as_user "./timetiles build"; then
+        die "Failed to build/pull Docker images"
     fi
 
-    print_success "Docker images pulled"
+    print_success "Docker images ready"
 
     # Start services
     print_step "Starting services..."
@@ -44,8 +44,8 @@ run_step() {
     # Initial delay for containers to start
     sleep 15
 
-    # Wait for health check
-    if ! wait_for_health "http://localhost:3000/api/health" 300 10; then
+    # Wait for health check (via nginx on port 80, not direct port 3000 which is container-only)
+    if ! wait_for_health "http://localhost/api/health" 300 10; then
         print_error "Application failed to become healthy"
         print_info "Checking logs..."
         run_as_user "./timetiles logs 2>&1 | tail -50"

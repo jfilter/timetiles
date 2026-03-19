@@ -56,6 +56,9 @@ services:
     # No ports exposed directly - nginx handles this
     expose:
       - "${CONTAINER_PORT:-3000}"
+    # Allow the web container to reach host-native services (e.g., scraper runner)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
@@ -78,6 +81,10 @@ services:
       EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
       EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
       EMAIL_FROM: ${EMAIL_FROM}
+
+      # Scraper runner (optional - leave empty to disable)
+      SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

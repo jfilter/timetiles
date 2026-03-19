@@ -35,6 +35,14 @@ run_step() {
         save_config_to_state "RESTIC_PASSWORD" "$RESTIC_PASSWORD"
     fi
 
+    if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
+        if [[ -z "${SCRAPER_API_KEY:-}" ]]; then
+            SCRAPER_API_KEY=$(generate_secret 32)
+            print_info "Generated scraper API key"
+            save_config_to_state "SCRAPER_API_KEY" "$SCRAPER_API_KEY"
+        fi
+    fi
+
     # Create .env.production from template
     print_step "Creating .env.production..."
     cp "$env_template" "$env_file"
@@ -53,6 +61,15 @@ run_step() {
 
     # Set NEXT_PUBLIC_PAYLOAD_URL (derived from domain)
     sed -i "s|NEXT_PUBLIC_PAYLOAD_URL=.*|NEXT_PUBLIC_PAYLOAD_URL=https://$DOMAIN_NAME|" "$env_file"
+
+    # Pre-configure scraper API key (if enabled). SCRAPER_RUNNER_URL is set later
+    # by step 13 after the runner is installed, so the health check doesn't fail
+    # during step 07 when the runner isn't running yet.
+    if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
+        print_step "Configuring scraper API key..."
+        sed -i "s|# SCRAPER_API_KEY=.*|SCRAPER_API_KEY=$SCRAPER_API_KEY|" "$env_file"
+        sed -i "s|# SCRAPER_PORT=.*|SCRAPER_PORT=4000|" "$env_file"
+    fi
 
     # Set secure file permissions
     chmod 600 "$env_file"
@@ -126,6 +143,14 @@ Let's Encrypt:
 Backup Encryption:
   Password: $RESTIC_PASSWORD
   CRITICAL: Without this password, backups cannot be restored!
+$(if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then cat << SCRAPER_CREDS
+
+Scraper Runner:
+  API Key: $SCRAPER_API_KEY
+  URL: http://localhost:4000
+  Health: http://localhost:4000/health
+SCRAPER_CREDS
+fi)
 
 # ============================================================================
 # After first login, create an admin user at:

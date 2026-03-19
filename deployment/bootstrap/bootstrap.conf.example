@@ -106,6 +106,10 @@ APP_USER="timetiles"
 # Useful for testing with local codebase
 # SKIP_CLONE="false"
 
+# Skip scraper runner setup (Podman + TimeScrape runner)
+# Set to "false" to install Podman, pull base images, and start the scraper runner
+# SKIP_SCRAPER="true"
+
 # Enable non-interactive mode (fails if required values missing)
 # NON_INTERACTIVE="false"
 

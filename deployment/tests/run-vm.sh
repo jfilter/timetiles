@@ -28,12 +28,15 @@ NC='\033[0m'
 FRESH_MODE=false
 SHELL_MODE=false
 DESTROY_MODE=false
+export LOCAL_BUILD="${LOCAL_BUILD:-true}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --fresh) FRESH_MODE=true; shift ;;
         --shell) SHELL_MODE=true; shift ;;
         --destroy) DESTROY_MODE=true; shift ;;
+        --local) LOCAL_BUILD=true; shift ;;
+        --ghcr) LOCAL_BUILD=false; shift ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
@@ -104,6 +107,7 @@ fi
 # Main test flow
 print_header "TimeTiles Deployment Tests (Vagrant)"
 echo "Mode: $(if $FRESH_MODE; then echo 'fresh (recreate VM)'; else echo 'reuse existing VM'; fi)"
+echo "Build: $(if [[ "$LOCAL_BUILD" == "true" ]]; then echo 'local (docker compose build)'; else echo 'GHCR (docker compose pull)'; fi)"
 echo ""
 
 # Check VM status

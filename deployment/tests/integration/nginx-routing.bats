@@ -42,17 +42,18 @@ setup() {
 # =============================================================================
 
 @test "X-Frame-Options header present" {
-    run curl -skI https://localhost/
+    # Use /api/health to ensure we hit the main server block (not a redirect)
+    run curl -skI https://localhost/api/health
     [[ "$output" == *"X-Frame-Options"* ]] || [[ "$output" == *"x-frame-options"* ]]
 }
 
 @test "X-Content-Type-Options header present" {
-    run curl -skI https://localhost/
+    run curl -skI https://localhost/api/health
     [[ "$output" == *"X-Content-Type-Options"* ]] || [[ "$output" == *"x-content-type-options"* ]]
 }
 
 @test "Strict-Transport-Security header present" {
-    run curl -skI https://localhost/
+    run curl -skI https://localhost/api/health
     # HSTS might not be set for localhost/self-signed
     [[ "$output" == *"Strict-Transport-Security"* ]] || \
     [[ "$output" == *"strict-transport-security"* ]] || \

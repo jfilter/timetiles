@@ -74,6 +74,14 @@ if [[ $failures -ge $MAX_FAILURES ]]; then
     systemctl restart timetiles.service
     echo "0" > "$FAILURE_COUNT_FILE"
 fi
+
+# Check scraper runner (if configured as a systemd service)
+if systemctl is-active --quiet timescrape-runner.service 2>/dev/null; then
+    if ! curl -sf --max-time 5 "http://localhost:4000/health" >/dev/null 2>&1; then
+        logger -t timescrape "Scraper runner health check failed, restarting"
+        systemctl restart timescrape-runner.service
+    fi
+fi
 EOF
 
     chmod +x "$script"
