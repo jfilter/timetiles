@@ -155,8 +155,16 @@ install_runner() {
         docker rm -f tt-scraper-extract 2>/dev/null || true
         docker create --name tt-scraper-extract "$img"
         # Use tar to extract — docker cp preserves symlinks which break outside the container
-        docker export tt-scraper-extract | tar -xf - -C "$runner_dir" --strip-components=1 app/dist app/node_modules app/package.json
+        if ! docker export tt-scraper-extract | tar -xf - -C "$runner_dir" --strip-components=1 app/dist app/node_modules app/package.json; then
+            docker rm -f tt-scraper-extract 2>/dev/null || true
+            die "Failed to extract runner from image $img"
+        fi
         docker rm tt-scraper-extract
+
+        # Verify extraction
+        if [[ ! -f "$runner_dir/dist/index.js" ]]; then
+            die "Runner extraction failed — dist/index.js not found"
+        fi
     }
 
     if docker pull "$image" 2>/dev/null; then
@@ -166,7 +174,13 @@ install_runner() {
     # Needs repo root as context for turbo prune (monorepo workspace resolution)
     elif [[ -f "$install_dir/apps/scraper/Dockerfile" ]]; then
         print_info "Registry pull failed, building runner image locally..."
-        docker build -t timescrape-runner-local -f "$install_dir/apps/scraper/Dockerfile" "$install_dir"
+        # Find the repo root — apps/scraper/Dockerfile may be a symlink to another location
+        local dockerfile="$install_dir/apps/scraper/Dockerfile"
+        local repo_root
+        repo_root="$(cd "$(dirname "$(readlink -f "$dockerfile")")" && cd ../.. && pwd)"
+        if ! docker build -t timescrape-runner-local -f "$dockerfile" "$repo_root"; then
+            die "Failed to build scraper runner image"
+        fi
         extract_from_image timescrape-runner-local
         print_success "Built runner locally"
     else
