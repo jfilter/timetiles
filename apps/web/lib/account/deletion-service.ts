@@ -12,6 +12,7 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
 
@@ -574,25 +575,8 @@ export class AccountDeletionService {
     }
   }
 
-  /**
-   * Get the transaction-aware drizzle instance.
-   *
-   * When called with a `req` that has a `transactionID`, returns the drizzle
-   * client bound to that transaction. Otherwise returns the default drizzle client.
-   */
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Payload's internal session/drizzle types aren't publicly exported
-  private async getTransactionAwareDrizzle(req?: TransactionReq): Promise<any> {
-    const db = this.payload.db;
-    if (req?.transactionID && "sessions" in db) {
-      const sessions = (db as unknown as Record<string, unknown>).sessions as
-        | Record<string, { db: unknown } | undefined>
-        | undefined;
-      if (sessions) {
-        const transactionID = req.transactionID instanceof Promise ? await req.transactionID : req.transactionID;
-        return sessions[String(transactionID)]?.db ?? db.drizzle;
-      }
-    }
-    return db.drizzle;
+  private getTransactionAwareDrizzle(req?: TransactionReq) {
+    return getTransactionAwareDrizzle(this.payload, req);
   }
 
   /**

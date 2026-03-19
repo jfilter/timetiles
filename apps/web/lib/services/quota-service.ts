@@ -116,14 +116,8 @@ const DAILY_USAGE_FIELDS: Array<keyof Omit<UserUsage, "lastResetDate">> = Object
 /** Precomputed reset payload for daily counters (e.g. { urlFetchesToday: 0, ... }) */
 const DAILY_RESET_DATA = Object.fromEntries(DAILY_USAGE_FIELDS.map((f) => [f, 0]));
 
-/**
- * Opaque handle for the Drizzle ORM instance returned by Payload's database adapter.
- * Payload's internal session/drizzle types aren't publicly exported, so we
- * type it as a record with an `update` method. Callers rely on Drizzle's
- * inferred return types so this is intentionally loose.
- */
-// oxlint-disable-next-line @typescript-eslint/no-explicit-any -- Payload's internal Drizzle type isn't publicly exported
-type DrizzleInstance = Record<string, any>;
+import type { DrizzleInstance } from "@/lib/database/drizzle-transaction";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 
 type UserIdentifier = number | string | Pick<User, "id"> | null | undefined;
 
@@ -186,26 +180,8 @@ export class QuotaService {
     this.payload = payload;
   }
 
-  /**
-   * Get the transaction-aware drizzle instance.
-   * When called from a hook with `req`, reuses the hook's transaction connection
-   * instead of grabbing a new pool connection (which can cause pool exhaustion).
-   *
-   * Returns the Drizzle ORM instance typed as `Record<string, unknown>` because
-   * Payload's internal session/drizzle types aren't publicly exported.
-   */
-  private async getDrizzle(req?: Partial<PayloadRequest>): Promise<DrizzleInstance> {
-    const db = this.payload.db;
-    if (req?.transactionID && "sessions" in db) {
-      const sessions = (db as unknown as Record<string, unknown>).sessions as
-        | Record<string, { db: unknown } | undefined>
-        | undefined;
-      if (sessions) {
-        const transactionID = req.transactionID instanceof Promise ? await req.transactionID : req.transactionID;
-        return sessions[transactionID]?.db ?? db.drizzle;
-      }
-    }
-    return db.drizzle;
+  private getDrizzle(req?: Partial<PayloadRequest>): Promise<DrizzleInstance> {
+    return getTransactionAwareDrizzle(this.payload, req);
   }
 
   /**

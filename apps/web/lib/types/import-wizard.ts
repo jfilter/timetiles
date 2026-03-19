@@ -87,6 +87,15 @@ export interface FieldMapping {
   longitudeField: string | null;
 }
 
+/** Keys of FieldMapping that hold `string | null` column names (excludes sheetIndex and idStrategy). */
+export type FieldMappingStringField = {
+  [K in keyof FieldMapping]: [FieldMapping[K]] extends [string | null]
+    ? [string | null] extends [FieldMapping[K]]
+      ? K
+      : never
+    : never;
+}[keyof FieldMapping];
+
 /**
  * Check if a field mapping has all required fields filled in.
  *

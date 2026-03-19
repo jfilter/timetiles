@@ -7,7 +7,7 @@
  * @module
  * @category Import
  */
-import type { FieldMapping, SuggestedMappings } from "@/lib/types/import-wizard";
+import type { FieldMapping, FieldMappingStringField, SuggestedMappings } from "@/lib/types/import-wizard";
 
 /** Create a FieldMapping with all fields set to null/defaults. */
 export const createEmptyFieldMapping = (sheetIndex: number): FieldMapping => ({
@@ -22,6 +22,25 @@ export const createEmptyFieldMapping = (sheetIndex: number): FieldMapping => ({
   latitudeField: null,
   longitudeField: null,
 });
+
+/** All FieldMapping keys that hold `string | null` column names. */
+const FIELD_MAPPING_STRING_KEYS: readonly FieldMappingStringField[] = [
+  "titleField",
+  "descriptionField",
+  "locationNameField",
+  "dateField",
+  "idField",
+  "locationField",
+  "latitudeField",
+  "longitudeField",
+] as const;
+
+/** Type-safe setter: assigns `value` to `fieldKey` only if it's a valid string field. */
+export const setMappingField = (mapping: FieldMapping, fieldKey: string, value: string): void => {
+  if ((FIELD_MAPPING_STRING_KEYS as readonly string[]).includes(fieldKey)) {
+    mapping[fieldKey as FieldMappingStringField] = value;
+  }
+};
 
 /** Create a FieldMapping pre-filled from auto-detected suggestions. */
 export const createFieldMappingFromSuggestions = (
