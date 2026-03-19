@@ -35,25 +35,31 @@ export const authKeys = { currentUser: ["auth", "current-user"] as const };
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch the current authenticated user via `/api/users/me`.
+ * Fetch the current user from `/api/users/me`.
+ *
+ * Swallows expected auth failures (401/403) as `{ user: null }`.
+ * Rethrows transport and server errors so React Query surfaces them.
+ */
+export const fetchCurrentUser = async (): Promise<CurrentUserResponse> => {
+  try {
+    return await fetchJson<CurrentUserResponse>("/api/users/me", { credentials: "include" });
+  } catch (error) {
+    if (error instanceof HttpError && (error.status === 401 || error.status === 403)) {
+      return { user: null };
+    }
+    throw error;
+  }
+};
+
+/**
+ * Query hook for the current authenticated user.
  *
  * Disabled by default -- callers opt in via `enabled`.
  */
 export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: authKeys.currentUser,
-    queryFn: async (): Promise<CurrentUserResponse> => {
-      try {
-        return await fetchJson<CurrentUserResponse>("/api/users/me", { credentials: "include" });
-      } catch (error) {
-        // Expected auth failures (not logged in, insufficient permissions) → treat as no user
-        if (error instanceof HttpError && (error.status === 401 || error.status === 403)) {
-          return { user: null };
-        }
-        // Network errors, 500s, etc. should surface via React Query's error state
-        throw error;
-      }
-    },
+    queryFn: fetchCurrentUser,
     enabled: options?.enabled ?? true,
     staleTime: 0,
   });
