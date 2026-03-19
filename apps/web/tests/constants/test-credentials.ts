@@ -45,7 +45,7 @@ export const TEST_CREDENTIALS = {
     user: "UserPassword123!",
   },
   // Seed passwords for development/test environments
-  seed: { admin: "admin123", editor: "editor123", demo: "demo" },
+  seed: { admin: "admin123", editor: "editor123", demo: "demo", adminApiKey: "dev-admin-api-key-timetiles" },
   // Intentionally weak/invalid passwords for security tests
   security: { hacked: "hacked123", localApi: "localapi123", temp: "temp123", short: "short", wrong: "wrongpassword" },
 } as const;

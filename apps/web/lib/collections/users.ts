@@ -55,6 +55,7 @@ const Users: CollectionConfig = {
   // Disable versioning for users to avoid session clearing issues during user updates
   ...createCommonConfig({ versions: false, drafts: false }),
   auth: {
+    useAPIKey: true,
     // Enable email verification using Payload's built-in feature
     // This auto-adds _verified and _verificationToken fields
     // Payload v3 does not expire verification tokens natively (no beforeOperation

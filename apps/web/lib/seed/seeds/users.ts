@@ -35,8 +35,9 @@ export const userSeeds = (environment: string): UserSeed[] => {
   const baseUsers: UserSeed[] = [
     {
       email: "admin@example.com",
-
       password: TEST_CREDENTIALS.seed.admin, // Development seed password only
+      enableAPIKey: true,
+      apiKey: TEST_CREDENTIALS.seed.adminApiKey,
       firstName: "Admin",
       lastName: "User",
       role: "admin",
