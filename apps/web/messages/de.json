@@ -496,7 +496,16 @@
     "flowTargetField": "Zielfeld",
     "flowTransform": "Transformation",
     "flowDisabled": "deaktiviert",
-    "flowTransformTypeCast": "Typ konvertieren"
+    "flowTransformTypeCast": "Typ konvertieren",
+    "fieldRequired": "Pflichtfeld",
+    "allRequiredFieldsMapped": "Alle Pflichtfelder zugeordnet",
+    "requiredFieldsRemaining": "{count} {count, plural, one {Pflichtfeld fehlt} other {Pflichtfelder fehlen}} noch",
+    "noPreviewYet": "Ordnen Sie Felder zu, um eine Vorschau zu sehen",
+    "readyToContinue": "Bereit zum Fortfahren",
+    "completeRequiredFields": "Pflichtfelder ausfuellen, um fortzufahren",
+    "locationTypeAddress": "Adresse",
+    "locationTypeCoordinates": "Koordinaten",
+    "advancedSettings": "Erweiterte Einstellungen"
   },
   "Schedules": {
     "title": "Geplante Importe",

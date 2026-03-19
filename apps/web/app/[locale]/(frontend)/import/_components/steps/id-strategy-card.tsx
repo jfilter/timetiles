@@ -20,6 +20,8 @@ export interface IdStrategyCardProps {
   deduplicationStrategy: string;
   onFieldChange: (field: keyof FieldMapping, value: string | null) => void;
   onDeduplicationChange: (value: string) => void;
+  /** Render without Card/CardHeader wrapper (for embedding inside another container) */
+  bare?: boolean;
 }
 
 export const IdStrategyCard = ({
@@ -29,6 +31,7 @@ export const IdStrategyCard = ({
   deduplicationStrategy,
   onFieldChange,
   onDeduplicationChange,
+  bare = false,
 }: Readonly<IdStrategyCardProps>) => {
   const t = useTranslations("Import");
 
@@ -51,6 +54,71 @@ export const IdStrategyCard = ({
 
   const handleIdFieldChange = (val: string) => onFieldChange("idField", val === "__none__" ? null : val);
 
+  const content = (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="id-strategy" className="text-cartographic-charcoal">
+            {t("idGeneration")}
+          </Label>
+          <Select value={idStrategy} onValueChange={handleStrategyChange}>
+            <SelectTrigger id="id-strategy" className="h-11">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ID_STRATEGIES.map((strategy) => (
+                <SelectItem key={strategy.value} value={strategy.value}>
+                  {strategy.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="dedup-strategy" className="text-cartographic-charcoal">
+            {t("duplicateHandling")}
+          </Label>
+          <Select value={deduplicationStrategy} onValueChange={onDeduplicationChange}>
+            <SelectTrigger id="dedup-strategy" className="h-11">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DEDUP_STRATEGIES.map((strategy) => (
+                <SelectItem key={strategy.value} value={strategy.value}>
+                  {strategy.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {showIdField && (
+        <div className="space-y-2">
+          <Label htmlFor="id-field" className="text-cartographic-charcoal">
+            {t("idField")}
+          </Label>
+          <Select value={idField ?? "__none__"} onValueChange={handleIdFieldChange}>
+            <SelectTrigger id="id-field" className="h-11">
+              <SelectValue placeholder={t("selectColumn")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">{t("selectColumn")}</SelectItem>
+              {headers.map((header) => (
+                <SelectItem key={header} value={header}>
+                  {header}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
+
+  if (bare) return content;
+
   return (
     <Card className="overflow-hidden">
       <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
@@ -66,66 +134,7 @@ export const IdStrategyCard = ({
           </div>
         </div>
       </div>
-      <CardContent className="space-y-4 p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="id-strategy" className="text-cartographic-charcoal">
-              {t("idGeneration")}
-            </Label>
-            <Select value={idStrategy} onValueChange={handleStrategyChange}>
-              <SelectTrigger id="id-strategy" className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ID_STRATEGIES.map((strategy) => (
-                  <SelectItem key={strategy.value} value={strategy.value}>
-                    {strategy.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dedup-strategy" className="text-cartographic-charcoal">
-              {t("duplicateHandling")}
-            </Label>
-            <Select value={deduplicationStrategy} onValueChange={onDeduplicationChange}>
-              <SelectTrigger id="dedup-strategy" className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DEDUP_STRATEGIES.map((strategy) => (
-                  <SelectItem key={strategy.value} value={strategy.value}>
-                    {strategy.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {showIdField && (
-          <div className="space-y-2">
-            <Label htmlFor="id-field" className="text-cartographic-charcoal">
-              {t("idField")}
-            </Label>
-            <Select value={idField ?? "__none__"} onValueChange={handleIdFieldChange}>
-              <SelectTrigger id="id-field" className="h-11">
-                <SelectValue placeholder={t("selectColumn")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">{t("selectColumn")}</SelectItem>
-                {headers.map((header) => (
-                  <SelectItem key={header} value={header}>
-                    {header}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-      </CardContent>
+      <CardContent className="p-6">{content}</CardContent>
     </Card>
   );
 };

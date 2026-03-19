@@ -59,6 +59,8 @@ export interface FieldSelectProps {
   confidenceLevel?: ConfidenceLevel;
   /** Whether the current value matches the auto-detected suggestion */
   isAutoDetected?: boolean;
+  /** Inline validation message shown below the select */
+  validationMessage?: string;
 }
 
 export const FieldSelect = ({
@@ -73,6 +75,7 @@ export const FieldSelect = ({
   disabled = false,
   confidenceLevel,
   isAutoDetected = false,
+  validationMessage,
 }: Readonly<FieldSelectProps>) => {
   const t = useTranslations("Import");
   const handleValueChange = (val: string) => onFieldChange(field, val === "__none__" ? null : val);
@@ -106,6 +109,7 @@ export const FieldSelect = ({
           ))}
         </SelectContent>
       </Select>
+      {validationMessage && <p className="text-cartographic-terracotta text-xs">{validationMessage}</p>}
     </div>
   );
 };

@@ -496,7 +496,16 @@
     "flowTargetField": "Target Field",
     "flowTransform": "Transform",
     "flowDisabled": "disabled",
-    "flowTransformTypeCast": "Convert Type"
+    "flowTransformTypeCast": "Convert Type",
+    "fieldRequired": "Required",
+    "allRequiredFieldsMapped": "All required fields mapped",
+    "requiredFieldsRemaining": "{count} required {count, plural, one {field} other {fields}} remaining",
+    "noPreviewYet": "Map some fields to see a preview",
+    "readyToContinue": "Ready to continue",
+    "completeRequiredFields": "Complete required fields to continue",
+    "locationTypeAddress": "Address",
+    "locationTypeCoordinates": "Coordinates",
+    "advancedSettings": "Advanced Settings"
   },
   "Schedules": {
     "title": "Scheduled Imports",
