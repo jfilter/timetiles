@@ -9,9 +9,9 @@
  */
 "use client";
 
-import { Card, CardContent, Input, Label } from "@timetiles/ui";
+import { Button, Card, CardContent, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "lucide-react";
+import { ArrowRight, DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
@@ -91,7 +91,7 @@ const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetN
 // oxlint-disable-next-line eslint(complexity) -- wizard step with many conditional UI branches
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
   const t = useTranslations("Import");
-  const { state, setCatalog, setSheetMapping } = useWizard();
+  const { state, nextStep, canProceed, setCatalog, setSheetMapping } = useWizard();
   const { sheets, selectedCatalogId, newCatalogName, sheetMappings } = state;
 
   const { data: catalogsData, isLoading, error: queryError } = useCatalogsQuery();
@@ -301,6 +301,16 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Continue button */}
+      {canProceed && (
+        <div className="flex justify-end pt-4">
+          <Button size="lg" onClick={nextStep} className="gap-2">
+            {t("continue")}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
       )}
     </div>
   );

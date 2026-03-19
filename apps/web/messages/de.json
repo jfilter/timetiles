@@ -280,6 +280,7 @@
     "stepOfTotal": "Schritt {current} von {total}",
     "exitWizard": "Beenden",
     "back": "Zurück",
+    "continue": "Weiter",
     "continueToReview": "Weiter zur Übersicht",
     "backToMapping": "Zurück zur Zuordnung",
     "resetWizardConfirm": "Assistent zuruecksetzen?",

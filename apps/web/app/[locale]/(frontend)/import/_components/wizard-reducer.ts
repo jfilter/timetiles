@@ -63,9 +63,6 @@ export interface WizardState {
   /** ID of the created scheduled import (if schedule was created) */
   scheduledImportId: number | null;
   error: string | null;
-
-  /** Set to true when user navigates back; prevents auto-advance until they make a change */
-  userNavigatedBack: boolean;
 }
 
 // Initial state
@@ -88,7 +85,6 @@ export const initialState: WizardState = {
   importFileId: null,
   scheduledImportId: null,
   error: null,
-  userNavigatedBack: false,
 };
 
 // Action types
@@ -136,13 +132,13 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
   return (() => {
     switch (action.type) {
       case "SET_STEP":
-        return { ...state, currentStep: action.step, userNavigatedBack: action.step < state.currentStep };
+        return { ...state, currentStep: action.step };
 
       case "NEXT_STEP":
-        return { ...state, currentStep: Math.min(state.currentStep + 1, 6) as WizardStep, userNavigatedBack: false };
+        return { ...state, currentStep: Math.min(state.currentStep + 1, 6) as WizardStep };
 
       case "PREV_STEP":
-        return { ...state, currentStep: Math.max(state.currentStep - 1, 1) as WizardStep, userNavigatedBack: true };
+        return { ...state, currentStep: Math.max(state.currentStep - 1, 1) as WizardStep };
 
       case "SET_FILE": {
         // For single-sheet files (like CSV), use the file name instead of "Sheet1"
@@ -155,7 +151,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
 
         return {
           ...state,
-          userNavigatedBack: false,
+
           file: action.file,
           sheets: action.sheets,
           previewId: action.previewId,
@@ -183,7 +179,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
       case "CLEAR_FILE":
         return {
           ...state,
-          userNavigatedBack: false,
+
           file: null,
           sheets: [],
           previewId: null,
@@ -198,7 +194,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
       case "SET_CATALOG":
         return {
           ...state,
-          userNavigatedBack: false,
+
           selectedCatalogId: action.catalogId,
           newCatalogName: action.newCatalogName ?? state.newCatalogName,
         };

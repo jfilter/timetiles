@@ -61,7 +61,7 @@ import {
   type WizardState,
   type WizardStep,
 } from "./wizard-reducer";
-import { canProceedFromStep, getStepTitle, shouldAutoAdvance as shouldAutoAdvanceSelector } from "./wizard-selectors";
+import { canProceedFromStep, getStepTitle } from "./wizard-selectors";
 
 // Re-export types so index.ts doesn't need to change
 export type { CatalogSelection, ScheduleConfig, WizardState, WizardStep };
@@ -92,7 +92,6 @@ interface WizardContextValue {
   reset: () => void;
   // Computed
   canProceed: boolean;
-  shouldAutoAdvance: boolean;
   stepTitle: string;
 }
 
@@ -210,10 +209,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
     () => canProceedFromStep(state, isAuthenticated, isEmailVerified),
     [state, isAuthenticated, isEmailVerified]
   );
-  const shouldAutoAdvance = useMemo(
-    () => shouldAutoAdvanceSelector(state, isAuthenticated, isEmailVerified),
-    [state, isAuthenticated, isEmailVerified]
-  );
   const stepTitle = useMemo(() => getStepTitle(state.currentStep), [state.currentStep]);
 
   const value = useMemo(
@@ -237,7 +232,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       complete,
       reset,
       canProceed,
-      shouldAutoAdvance,
       stepTitle,
     }),
     [
@@ -260,7 +254,6 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       complete,
       reset,
       canProceed,
-      shouldAutoAdvance,
       stepTitle,
     ]
   );

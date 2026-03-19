@@ -13,6 +13,7 @@ import { Button, Card, CardContent, Input, Label, Tabs, TabsContent, TabsList, T
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
+  ArrowRight,
   CheckCircle2Icon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -50,7 +51,7 @@ type InputMode = "file" | "url";
 
 export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const t = useTranslations("Import");
-  const { state, setFile, setSourceUrl, clearFile } = useWizard();
+  const { state, nextStep, canProceed, setFile, setSourceUrl, clearFile } = useWizard();
   const { file, sheets, sourceUrl } = state;
 
   // Input mode - file upload or URL
@@ -455,6 +456,16 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
       {/* Error message */}
       {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
+
+      {/* Continue button — visible once file is uploaded */}
+      {canProceed && (
+        <div className="flex justify-end pt-4">
+          <Button size="lg" onClick={nextStep} className="gap-2">
+            {t("continue")}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

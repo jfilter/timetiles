@@ -38,19 +38,6 @@ export const canProceedFromStep = (state: WizardState, isAuthenticated: boolean,
   }
 };
 
-/** Steps that auto-advance when their requirements are met (no Continue button needed) */
-const AUTO_ADVANCE_STEPS = new Set<WizardStep>([1, 2, 3]);
-
-/**
- * Whether the wizard should auto-advance from the current step.
- * Only fires for auto-advance steps, when the step is complete, and the user hasn't navigated back.
- */
-export const shouldAutoAdvance = (state: WizardState, isAuthenticated: boolean, isEmailVerified: boolean): boolean => {
-  if (!AUTO_ADVANCE_STEPS.has(state.currentStep)) return false;
-  if (state.userNavigatedBack) return false;
-  return canProceedFromStep(state, isAuthenticated, isEmailVerified);
-};
-
 /**
  * Get the display title for a wizard step.
  */

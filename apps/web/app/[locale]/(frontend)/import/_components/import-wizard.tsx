@@ -11,7 +11,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import { retrieveMappingData } from "@/lib/import/mapping-transfer";
@@ -25,11 +25,10 @@ export interface ImportWizardProps {
 }
 
 export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
-  const { state, nextStep, setFieldMapping, setTransforms, goToStep, shouldAutoAdvance } = useWizard();
+  const { state, setFieldMapping, setTransforms, goToStep } = useWizard();
   const { currentStep } = state;
   const searchParams = useSearchParams();
   const router = useRouter();
-  const prevShouldAdvance = useRef(false);
 
   // Apply field mappings returned from the visual flow editor via sessionStorage
   useEffect(() => {
@@ -55,16 +54,6 @@ export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
     // Clean URL to prevent re-application on re-render
     router.replace("/import", { scroll: false });
   }, [searchParams, setFieldMapping, setTransforms, goToStep, router]);
-
-  // Auto-advance: when step requirements are met, move to the next step
-  // Only fires on false→true transition to prevent loops
-  useEffect(() => {
-    if (shouldAutoAdvance && !prevShouldAdvance.current) {
-      const timer = setTimeout(() => nextStep(), 400);
-      return () => clearTimeout(timer);
-    }
-    prevShouldAdvance.current = shouldAutoAdvance;
-  }, [shouldAutoAdvance, nextStep]);
 
   // Scroll to top when step changes
   useEffect(() => {

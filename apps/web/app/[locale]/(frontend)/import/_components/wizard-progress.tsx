@@ -53,7 +53,7 @@ export const WizardHeader = () => {
 
         {/* Close button */}
         <div className="flex w-20 justify-end">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/explore")} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8">
             <X className="h-4 w-4" />
             <span className="sr-only">{t("exitWizard")}</span>
           </Button>
