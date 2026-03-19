@@ -6,6 +6,21 @@ setup() {
     init_docker
     skip_if_no_docker
     skip_if_services_not_running
+
+    # Read the configured domain from .env.production (e.g., localhost.test)
+    # All HTTPS tests use --resolve to send the correct Host header
+    DOMAIN=$(grep "^DOMAIN_NAME=" "$DEPLOY_DIR/.env.production" 2>/dev/null | cut -d= -f2)
+    DOMAIN="${DOMAIN:-localhost}"
+    export DOMAIN
+}
+
+# Helper: curl HTTPS with the correct domain resolved to 127.0.0.1
+curl_https() {
+    curl -sk --resolve "${DOMAIN}:443:127.0.0.1" "https://${DOMAIN}$1"
+}
+
+curl_https_head() {
+    curl -skI --resolve "${DOMAIN}:443:127.0.0.1" "https://${DOMAIN}$1"
 }
 
 # =============================================================================
@@ -27,14 +42,13 @@ setup() {
 # =============================================================================
 
 @test "HTTPS health endpoint returns 200" {
-    run curl -sfk https://localhost/api/health
+    run curl_https /api/health
     [ "$status" -eq 0 ]
 }
 
 @test "HTTPS explore page returns HTML" {
-    # Capture both HTTP status and body — if this fails, the output shows why
     local http_code body
-    http_code=$(curl -sk -o /tmp/explore-test.html -w "%{http_code}" https://localhost/explore)
+    http_code=$(curl -sk --resolve "${DOMAIN}:443:127.0.0.1" -o /tmp/explore-test.html -w "%{http_code}" "https://${DOMAIN}/explore")
     body=$(cat /tmp/explore-test.html)
 
     # Show diagnostics on failure
@@ -51,22 +65,17 @@ setup() {
 # =============================================================================
 
 @test "X-Frame-Options header present" {
-    # Must use the configured domain to hit the main server block (not a redirect)
-    local domain
-    run curl -skI https://localhost/api/health
+    run curl_https_head /api/health
     [[ "$output" == *"X-Frame-Options"* ]] || [[ "$output" == *"x-frame-options"* ]]
 }
 
 @test "X-Content-Type-Options header present" {
-    local domain
-    run curl -skI https://localhost/api/health
+    run curl_https_head /api/health
     [[ "$output" == *"X-Content-Type-Options"* ]] || [[ "$output" == *"x-content-type-options"* ]]
 }
 
 @test "Strict-Transport-Security header present" {
-    local domain
-    run curl -skI https://localhost/api/health
-    # HSTS might not be set for localhost/self-signed
+    run curl_https_head /api/health
     [[ "$output" == *"Strict-Transport-Security"* ]] || \
     [[ "$output" == *"strict-transport-security"* ]] || \
     skip "HSTS not enabled (expected for test environment)"
@@ -91,15 +100,12 @@ setup() {
 # =============================================================================
 
 @test "nginx proxies to web container" {
-    # Check that nginx is actually proxying, not serving directly
-    run curl -skI https://localhost/api/health
+    run curl_https_head /api/health
     [ "$status" -eq 0 ]
-    # Should have response from Next.js app
 }
 
 @test "static files served correctly" {
-    # Try to fetch a static asset (may not exist in minimal setup)
-    run curl -skI https://localhost/_next/static/
+    run curl_https_head /_next/static/
     # Either 200 or 404 is fine, but not 502 (bad gateway)
     [[ "$output" != *"502"* ]]
 }

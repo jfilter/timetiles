@@ -29,7 +29,7 @@ import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree
 
 // Store processes globally for teardown
 let serverProcess: ChildProcess | null = null;
-const workerProcesses: ChildProcess[] = [];
+let workerProcess: ChildProcess | null = null;
 
 /**
  * Wait for a server to become available at a URL.
@@ -185,65 +185,57 @@ export default async function globalSetup(): Promise<void> {
   await waitForServer(`${baseURL}/api/health`, 30000);
   console.log(`✅ Server ready at ${baseURL}`);
 
-  // Start job worker processes (2 workers to handle parallel test imports)
+  // Start job worker process
   const workerPath = path.join(__dirname, "utils", "job-worker.ts");
-  const JOB_WORKER_COUNT = 2;
-  console.log(`⚙️ Starting ${JOB_WORKER_COUNT} job workers...`);
+  console.log(`⚙️ Starting job worker...`);
 
-  for (let i = 0; i < JOB_WORKER_COUNT; i++) {
-    // eslint-disable-next-line sonarjs/no-os-command-from-path -- Running tsx in controlled test setup environment
-    const wp = spawn("npx", ["tsx", workerPath], {
-      env: { ...serverEnv, JOB_WORKER_ID: String(i + 1) },
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: true,
-      cwd: webDir,
-    });
+  // eslint-disable-next-line sonarjs/no-os-command-from-path -- Running tsx in controlled test setup environment
+  const wp = spawn("npx", ["tsx", workerPath], {
+    env: serverEnv,
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
+    cwd: webDir,
+  });
 
-    workerProcesses.push(wp);
+  workerProcess = wp;
+
+  wp.stdout?.on("data", (data: Buffer) => {
+    const message = data.toString().trim();
+    if (message) console.log(message);
+  });
+
+  wp.stderr?.on("data", (data: Buffer) => {
+    const message = data.toString().trim();
+    if (message && !message.includes("ExperimentalWarning")) console.error(message);
+  });
+
+  // Wait for worker to signal readiness (falls back to 15s timeout)
+  await new Promise<void>((resolve) => {
+    const timeout = setTimeout(() => {
+      console.log(`   ⚠️ Job worker readiness timeout, continuing anyway...`);
+      resolve();
+    }, 15000);
 
     wp.stdout?.on("data", (data: Buffer) => {
-      const message = data.toString().trim();
-      if (message) console.log(message);
+      if (data.toString().includes("starting job loop")) {
+        clearTimeout(timeout);
+        resolve();
+      }
     });
 
-    wp.stderr?.on("data", (data: Buffer) => {
-      const message = data.toString().trim();
-      if (message && !message.includes("ExperimentalWarning")) console.error(message);
+    wp.on("exit", (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) console.error(`   ⚠️ Job worker exited with code ${code}`);
+      resolve();
     });
-  }
-
-  // Wait for all workers to signal readiness (falls back to 15s timeout)
-  await Promise.all(
-    workerProcesses.map(
-      (wp) =>
-        new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => {
-            console.log(`   ⚠️ Job worker readiness timeout, continuing anyway...`);
-            resolve();
-          }, 15000);
-
-          wp.stdout?.on("data", (data: Buffer) => {
-            if (data.toString().includes("starting job loop")) {
-              clearTimeout(timeout);
-              resolve();
-            }
-          });
-
-          wp.on("exit", (code) => {
-            clearTimeout(timeout);
-            if (code !== 0) console.error(`   ⚠️ Job worker exited with code ${code}`);
-            resolve();
-          });
-        })
-    )
-  );
-  console.log(`✅ ${JOB_WORKER_COUNT} job workers started`);
+  });
+  console.log(`✅ Job worker started`);
 
   // Store server info for teardown and workers
   /* eslint-disable turbo/no-undeclared-env-vars -- E2E test environment variables set dynamically */
   process.env.E2E_SERVER_PORT = String(serverPort);
   process.env.E2E_SERVER_PID = String(serverProcess?.pid ?? "");
-  process.env.E2E_WORKER_PIDS = workerProcesses.map((wp) => wp.pid).join(",");
+  process.env.E2E_WORKER_PID = String(workerProcess?.pid ?? "");
   process.env.E2E_DATABASE_NAME = databaseName;
   process.env.E2E_BASE_URL = baseURL;
   /* eslint-enable turbo/no-undeclared-env-vars */

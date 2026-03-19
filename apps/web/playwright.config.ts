@@ -33,8 +33,10 @@ export default defineConfig({
   /* Retry flaky tests caused by import pipeline and map rendering timing */
   retries: isCI ? 2 : 1,
 
-  /* Enable parallel workers: 4 in CI, 4 locally */
-  workers: 4,
+  /* Limit parallel workers to avoid job queue starvation.
+   * Payload's job runner has no row-level locking, so only 1 worker process
+   * is safe. With 2 browser workers, at most 2 imports compete for the queue. */
+  workers: 2,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [

@@ -25,12 +25,12 @@ export default async function globalTeardown(): Promise<void> {
   // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const serverPid = process.env.E2E_SERVER_PID;
   // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
-  const workerPids = (process.env.E2E_WORKER_PIDS ?? "").split(",").filter(Boolean);
+  const workerPid = process.env.E2E_WORKER_PID;
   // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const databaseName = process.env.E2E_DATABASE_NAME ?? getWorktreeDatabasePrefix();
 
-  // Kill worker processes first (they have DB connections)
-  for (const workerPid of workerPids) {
+  // Kill worker process first (it has DB connections)
+  if (workerPid) {
     console.log(`🧹 Stopping job worker (PID: ${workerPid})...`);
     try {
       process.kill(-Number(workerPid), "SIGTERM");

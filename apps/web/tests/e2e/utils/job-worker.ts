@@ -42,21 +42,18 @@ process.on("SIGINT", () => {
 });
 
 const main = async () => {
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- Set by E2E global-setup, not a turbo pipeline variable
-  const workerId = process.env.JOB_WORKER_ID ?? "1";
-  const tag = `[job-worker-${workerId}]`;
-  console.log(`${tag} Starting job worker...`);
+  console.log("[job-worker] Starting job worker...");
   // Log database URL (redacted) to verify correct database
   const dbUrl = process.env.DATABASE_URL ?? "";
   const dbName = dbUrl.split("/").pop()?.split("?")[0] ?? "unknown";
-  console.log(`${tag} Using database: ${dbName}`);
+  console.log(`[job-worker] Using database: ${dbName}`);
 
   // Dynamic import AFTER environment is configured
   const { getPayload } = await import("payload");
   const { default: config } = await import("../../../payload.config");
 
   const payload = await getPayload({ config });
-  console.log(`${tag} Connected to Payload, starting job loop...`);
+  console.log("[job-worker] Connected to Payload, starting job loop...");
 
   while (isRunning) {
     try {
@@ -66,12 +63,12 @@ const main = async () => {
       await new Promise((resolve) => setTimeout(resolve, hadWork ? BUSY_POLL_MS : IDLE_POLL_MS));
     } catch (error) {
       // Log but don't crash - jobs may fail for valid reasons
-      console.error(`${tag} Error running jobs:`, error);
+      console.error("[job-worker] Error running jobs:", error);
       await new Promise((resolve) => setTimeout(resolve, IDLE_POLL_MS));
     }
   }
 
-  console.log(`${tag} Shutting down...`);
+  console.log("[job-worker] Shutting down...");
   process.exit(0);
 };
 
