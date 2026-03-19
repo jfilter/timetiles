@@ -19,6 +19,7 @@ export const validatePasswords = (password: string, confirmPassword: string): vo
     throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
 
+  // eslint-disable-next-line security/detect-possible-timing-attacks -- Client-side form validation, not cryptographic comparison
   if (password !== confirmPassword) {
     throw new Error("Passwords do not match");
   }

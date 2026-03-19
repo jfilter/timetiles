@@ -8,12 +8,11 @@
  */
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Loader2, Mail } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
-
-import { useMutation } from "@tanstack/react-query";
 
 import { changeEmailRequest } from "@/lib/hooks/use-account-mutations";
 

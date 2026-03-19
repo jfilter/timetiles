@@ -12,12 +12,12 @@
  */
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
 
 import { clearStorage, loadFromStorage, saveToStorage } from "./use-wizard-storage";
-import type { WizardAction, WizardState, WizardStep } from "./wizard-reducer";
+import type { WizardAction, WizardState } from "./wizard-reducer";
 import { getPreviewInvalidatedStep, getRestoredStep } from "./wizard-selectors";
 
 interface UseWizardPersistenceOptions {
@@ -41,23 +41,22 @@ export const useWizardPersistence = ({
   wasAuthenticatedOnStart,
   isCurrentlyAuthenticated,
 }: UseWizardPersistenceOptions): void => {
-  // 1. Restore from localStorage on mount
+  // 1. Restore from localStorage on mount (once only)
+  const hasRestoredRef = useRef(false);
   useEffect(() => {
+    if (hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+
     const saved = loadFromStorage();
     if (saved) {
       const restoredState = {
         ...saved,
         startedAuthenticated: wasAuthenticatedOnStart,
-        currentStep: getRestoredStep(
-          saved.currentStep as WizardStep | undefined,
-          wasAuthenticatedOnStart,
-          isCurrentlyAuthenticated
-        ),
+        currentStep: getRestoredStep(saved.currentStep, wasAuthenticatedOnStart, isCurrentlyAuthenticated),
       };
       dispatch({ type: "RESTORE", state: restoredState });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only run once on mount
-  }, []);
+  }, [dispatch, wasAuthenticatedOnStart, isCurrentlyAuthenticated]);
 
   // 2. Save to localStorage on state changes (debounced)
   useEffect(() => {

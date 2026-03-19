@@ -37,9 +37,9 @@ import { useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 import {
-  isFieldMappingComplete,
   type ConfidenceLevel,
   type FieldMapping,
+  isFieldMappingComplete,
   type SuggestedMappings,
 } from "@/lib/types/import-wizard";
 

@@ -43,7 +43,8 @@ export const extractRelationId = <TId = number>(value: { id: TId } | TId | null 
 export const requireRelationId = <TId = number>(value: { id: TId } | TId | null | undefined, context?: string): TId => {
   const id = extractRelationId(value);
   if (id === undefined) {
-    throw new Error(`Required relation ID is missing${context ? `: ${context}` : ""}`);
+    const message = context ? `Required relation ID is missing: ${context}` : "Required relation ID is missing";
+    throw new Error(message);
   }
   return id;
 };

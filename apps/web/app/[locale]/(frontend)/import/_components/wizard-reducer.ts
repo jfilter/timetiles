@@ -148,7 +148,7 @@ export const STEP_TITLES: Record<WizardStep, string> = Object.fromEntries(
 /* oxlint-disable complexity -- Complex reducer with many action types */
 /* eslint-disable sonarjs/max-lines-per-function -- Complex reducer with many action types */
 export const wizardReducer = (state: WizardState, action: WizardAction): WizardState => {
-  const newState = (() => {
+  return (() => {
     switch (action.type) {
       case "SET_STEP":
         return { ...state, currentStep: action.step };
@@ -272,8 +272,6 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
         return state;
     }
   })();
-
-  return newState;
 };
 /* eslint-enable sonarjs/max-lines-per-function */
 /* oxlint-enable complexity */

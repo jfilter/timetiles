@@ -8,12 +8,11 @@
  */
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Key, Loader2 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
-
-import { useMutation } from "@tanstack/react-query";
 
 import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";

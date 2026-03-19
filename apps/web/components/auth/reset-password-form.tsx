@@ -9,11 +9,10 @@
  */
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { Button, Input, Label } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
-
-import { useMutation } from "@tanstack/react-query";
 
 import { validatePasswords } from "@/lib/constants/validation";
 import { resetPasswordRequest } from "@/lib/hooks/use-auth-mutations";

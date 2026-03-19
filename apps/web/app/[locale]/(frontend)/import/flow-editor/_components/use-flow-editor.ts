@@ -164,15 +164,12 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
 
   // Derive loading and error states
   const isLoading = !previewId ? false : queryLoading;
-  const error = !previewId
-    ? "No preview ID provided. Please start from the import wizard."
-    : queryError
-      ? queryError instanceof Error
-        ? queryError.message
-        : "Failed to load data"
-      : sheet === null && !queryLoading
-        ? `Sheet ${sheetIndex} not found`
-        : null;
+  const error = (() => {
+    if (!previewId) return "No preview ID provided. Please start from the import wizard.";
+    if (queryError) return queryError instanceof Error ? queryError.message : "Failed to load data";
+    if (sheet === null && !queryLoading) return `Sheet ${sheetIndex} not found`;
+    return null;
+  })();
 
   // Initialize nodes/edges when preview data arrives (once per query result)
   useEffect(() => {
@@ -189,28 +186,26 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       setEdges(initialEdges);
 
       // Update node connection states
-      setNodes((nds) =>
-        // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
-        nds.map((node) => {
-          if (node.type === NODE_TYPE_SOURCE) {
-            const isConnected = initialEdges.some((e) => e.source === node.id);
-            return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected } } as FlowNode;
-          }
-          if (node.type === NODE_TYPE_TARGET) {
-            const edge = initialEdges.find((e) => e.target === node.id);
-            const sourceNode = edge ? sourceNodes.find((n) => n.id === edge.source) : null;
-            return {
-              ...node,
-              data: {
-                ...(node.data as TargetFieldNodeData),
-                isConnected: !!edge,
-                connectedColumn: sourceNode?.data.columnName ?? null,
-              },
-            } as FlowNode;
-          }
-          return node;
-        })
-      );
+      const applyConnectionState = (node: FlowNode): FlowNode => {
+        if (node.type === NODE_TYPE_SOURCE) {
+          const isConnected = initialEdges.some((e) => e.source === node.id);
+          return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected } } as FlowNode;
+        }
+        if (node.type === NODE_TYPE_TARGET) {
+          const edge = initialEdges.find((e) => e.target === node.id);
+          const sourceNode = edge ? sourceNodes.find((n) => n.id === edge.source) : null;
+          return {
+            ...node,
+            data: {
+              ...(node.data as TargetFieldNodeData),
+              isConnected: !!edge,
+              connectedColumn: sourceNode?.data.columnName ?? null,
+            },
+          } as FlowNode;
+        }
+        return node;
+      };
+      setNodes((nds) => nds.map(applyConnectionState));
     }
   }, [sheet, sheetIndex, setNodes, setEdges]);
 
