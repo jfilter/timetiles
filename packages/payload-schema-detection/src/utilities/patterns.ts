@@ -327,6 +327,61 @@ export const ADDRESS_PATTERNS = [/^(address|addr|location|place|street|city|stat
 
 type FieldType = "title" | "description" | "locationName" | "timestamp" | "location";
 
+/** Result of matching a name against field patterns. */
+export interface FieldPatternMatch {
+  /** The name that matched */
+  name: string;
+  /** Index of the matched pattern (lower = more specific) */
+  patternIndex: number;
+  /** Total patterns checked */
+  patternCount: number;
+  /** Whether the match came from the primary language or the English fallback */
+  isFallback: boolean;
+}
+
+/**
+ * Match a list of field/column names against FIELD_PATTERNS for a given field type and language.
+ *
+ * Tries language-specific patterns first, then falls back to English.
+ * Returns the first (most specific) match found, or null if no match.
+ *
+ * Used by both preview-time detection and background job detection to ensure
+ * the pattern-matching portion of field detection uses consistent logic.
+ */
+export const matchFieldNamePatterns = (
+  names: string[],
+  fieldType: FieldType,
+  language: string
+): FieldPatternMatch | null => {
+  const typePatterns = FIELD_PATTERNS[fieldType];
+  const primaryPatterns = typePatterns[language as keyof typeof typePatterns] ?? typePatterns.eng;
+
+  // Try primary language patterns
+  for (let i = 0; i < primaryPatterns.length; i++) {
+    const pattern = primaryPatterns[i];
+    if (!pattern) continue;
+    const match = names.find((n) => pattern.test(n));
+    if (match) {
+      return { name: match, patternIndex: i, patternCount: primaryPatterns.length, isFallback: false };
+    }
+  }
+
+  // Fallback to English if primary language isn't English
+  if (language !== "eng") {
+    const engPatterns = typePatterns.eng;
+    for (let i = 0; i < engPatterns.length; i++) {
+      const pattern = engPatterns[i];
+      if (!pattern) continue;
+      const match = names.find((n) => pattern.test(n));
+      if (match) {
+        return { name: match, patternIndex: i, patternCount: engPatterns.length, isFallback: true };
+      }
+    }
+  }
+
+  return null;
+};
+
 /**
  * Get patterns for a field type and language.
  */

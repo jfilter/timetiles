@@ -50,7 +50,11 @@ export const detectFieldMappings = (fieldStats: Record<string, FieldStatistics>,
 };
 
 /**
- * Detects a specific field type based on language patterns
+ * Detects a specific field type based on language patterns + statistical validation.
+ *
+ * Uses the same `FIELD_PATTERNS` and language-fallback logic as the shared
+ * `matchFieldNamePatterns` helper, but scores ALL matching fields against
+ * combined pattern + validation scores to find the best candidate.
  *
  * @param fieldStats - Statistics for all fields
  * @param fieldType - Type of field to detect ('title', 'description', 'timestamp')
@@ -62,7 +66,7 @@ const detectField = (
   fieldType: keyof typeof FIELD_PATTERNS,
   language: string
 ): string | null => {
-  // Get patterns for language, fallback to English
+  // Get patterns for language, fallback to English (same logic as matchFieldNamePatterns)
   const primaryPatterns =
     FIELD_PATTERNS[fieldType][language as keyof typeof FIELD_PATTERNS.title] ?? FIELD_PATTERNS[fieldType].eng;
 
@@ -78,12 +82,10 @@ const detectField = (
 };
 
 /**
- * Finds the best matching field for a set of patterns
+ * Finds the best matching field for a set of patterns.
  *
- * @param fieldStats - Statistics for all fields
- * @param patterns - Patterns to match against
- * @param fieldType - Type of field to detect
- * @returns Best match with path and score, or null if no match
+ * Scores each field using combined pattern position (60%) and statistical
+ * validation (40%) to find the most likely match.
  */
 const findBestMatch = (
   fieldStats: Record<string, FieldStatistics>,
@@ -92,25 +94,20 @@ const findBestMatch = (
 ): { path: string; score: number } | null => {
   let bestMatch: { path: string; score: number } | null = null;
 
-  // Score each field
   for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const fieldName = fieldPath.split(".").pop() ?? "";
 
-    // Calculate pattern match score
     const patternIndex = patterns.findIndex((pattern) => pattern.test(fieldName));
     if (patternIndex === -1) continue;
 
-    // Calculate base score from pattern match (higher for earlier/more specific patterns)
     const patternScore = 1 - patternIndex / patterns.length;
     let score = patternScore * 0.6;
 
-    // Additional validation and scoring based on field type
     const validationScore = validateFieldType(stats, fieldType);
-    if (validationScore === 0) continue; // Field doesn't meet basic requirements
+    if (validationScore === 0) continue;
 
     score += validationScore * 0.4;
 
-    // Update best match
     if (!bestMatch || score > bestMatch.score) {
       bestMatch = { path: fieldPath, score };
     }

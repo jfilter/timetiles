@@ -11,7 +11,7 @@
  */
 import fs from "node:fs";
 
-import { FIELD_PATTERNS, LATITUDE_PATTERNS, LONGITUDE_PATTERNS } from "@timetiles/payload-schema-detection";
+import { LATITUDE_PATTERNS, LONGITUDE_PATTERNS, matchFieldNamePatterns } from "@timetiles/payload-schema-detection";
 import Papa from "papaparse";
 import { read, utils } from "xlsx";
 
@@ -46,56 +46,37 @@ const getConfidenceLevel = (confidence: number): ConfidenceLevel => {
   return "none";
 };
 
-type FieldPatternType = keyof typeof FIELD_PATTERNS;
-
-const matchPatternsToHeaders = (
-  headers: string[],
-  patterns: readonly RegExp[],
-  baseConfidence: number,
-  decrement: number,
-  minConfidence: number
-): FieldMappingSuggestion | null => {
-  for (let i = 0; i < patterns.length; i++) {
-    const pattern = patterns[i];
-    if (!pattern) continue;
-    const match = headers.find((h) => pattern.test(h));
-    if (match) {
-      const confidence = Math.max(minConfidence, baseConfidence - i * decrement);
-      return { path: match, confidence, confidenceLevel: getConfidenceLevel(confidence) };
-    }
-  }
-  return null;
-};
-
 /**
  * Detect a field mapping from headers based on patterns.
- * Uses patterns from the schema detection plugin.
+ *
+ * Uses the shared `matchFieldNamePatterns` from the schema detection plugin
+ * for pattern matching and language fallback. Confidence is computed from
+ * the match position: earlier (more specific) patterns score higher.
  *
  * NOTE: This detection is intentionally separate from `detectFieldMappings`
  * in `field-mapping-detection.ts`. The preview operates on raw headers + a
  * few sample rows available immediately at upload time, while the background
- * job detector operates on full-file `FieldStatistics` (type distributions,
- * average lengths, date parsing) computed after a complete file scan. Forcing
- * the preview to use the stats-based engine with synthetic data would produce
- * worse results than this simpler pattern-only matching.
+ * job detector layers statistical validation on top of the same pattern match.
  */
 const detectFieldFromHeaders = (headers: string[], fieldType: string, language: string): FieldMappingSuggestion => {
   if (fieldType === "latitude") return detectCoordinateField(headers, LATITUDE_PATTERNS);
   if (fieldType === "longitude") return detectCoordinateField(headers, LONGITUDE_PATTERNS);
 
-  const fieldPatterns = FIELD_PATTERNS[fieldType as FieldPatternType];
-  if (!fieldPatterns) return { path: null, confidence: 0, confidenceLevel: "none" };
+  const match = matchFieldNamePatterns(
+    headers,
+    fieldType as "title" | "description" | "locationName" | "timestamp" | "location",
+    language
+  );
+  if (!match) return { path: null, confidence: 0, confidenceLevel: "none" };
 
-  const langPatterns = fieldPatterns[language as keyof typeof fieldPatterns] ?? fieldPatterns.eng;
-  const langResult = matchPatternsToHeaders(headers, langPatterns, 0.9, 0.1, 0.5);
-  if (langResult) return langResult;
+  // Position-based confidence: earlier patterns = higher confidence
+  // Fallback matches are penalized (0.7 base instead of 0.9)
+  const baseConfidence = match.isFallback ? 0.7 : 0.9;
+  const decrement = 0.1;
+  const minConfidence = match.isFallback ? 0.3 : 0.5;
+  const confidence = Math.max(minConfidence, baseConfidence - match.patternIndex * decrement);
 
-  if (language !== "eng") {
-    const engResult = matchPatternsToHeaders(headers, fieldPatterns.eng, 0.7, 0.1, 0.3);
-    if (engResult) return engResult;
-  }
-
-  return { path: null, confidence: 0, confidenceLevel: "none" };
+  return { path: match.name, confidence, confidenceLevel: getConfidenceLevel(confidence) };
 };
 
 /**

@@ -47,7 +47,8 @@ export { defaultDetector } from "./detectors/default-detector";
 // Payload plugin
 export { schemaDetectionPlugin } from "./plugin";
 
-// Pattern constants for external use
+// Pattern constants and matching utilities for external use
+export type { FieldPatternMatch } from "./utilities/patterns";
 export {
   ADDRESS_PATTERNS,
   COMBINED_COORDINATE_PATTERNS,
@@ -57,6 +58,7 @@ export {
   FIELD_PATTERNS,
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
+  matchFieldNamePatterns,
 } from "./utilities/patterns";
 
 // Language detection utility

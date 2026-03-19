@@ -66,16 +66,20 @@ vi.mock("@/lib/services/schema-builder/language-detection", () => ({
   detectLanguageFromSamples: mocks.mockDetectLanguageFromSamples,
 }));
 
-vi.mock("@timetiles/payload-schema-detection", () => ({
-  FIELD_PATTERNS: {
-    title: { eng: [/^title$/i] },
-    description: { eng: [/^description$/i] },
-    timestamp: { eng: [/^date$/i] },
-    location: { eng: [/^location$/i] },
-  },
-  LATITUDE_PATTERNS: [/^lat$/i, /^latitude$/i],
-  LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
-}));
+vi.mock("@timetiles/payload-schema-detection", async () => {
+  const actual = await vi.importActual("@timetiles/payload-schema-detection");
+  return {
+    ...(actual as Record<string, unknown>),
+    FIELD_PATTERNS: {
+      title: { eng: [/^title$/i] },
+      description: { eng: [/^description$/i] },
+      timestamp: { eng: [/^date$/i] },
+      location: { eng: [/^location$/i] },
+    },
+    LATITUDE_PATTERNS: [/^lat$/i, /^latitude$/i],
+    LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
+  };
+});
 
 vi.mock("@/lib/security/url-validation", () => ({
   isPrivateUrl: mocks.mockIsPrivateUrl,
