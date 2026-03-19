@@ -13,6 +13,7 @@
 import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 
+import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
 import { ListExplorer } from "./list-explorer";
@@ -20,7 +21,7 @@ import { MapExplorer } from "./map-explorer";
 
 export const ExploreContent = () => {
   const t = useTranslations("Explore");
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMediaQuery(BREAKPOINT_MD);
 
   const loadingElement = <div>{t("loadingExplorer")}</div>;
 

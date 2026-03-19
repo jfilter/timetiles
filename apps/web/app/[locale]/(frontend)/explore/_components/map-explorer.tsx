@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
+import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
 import type { MapPosition } from "@/lib/hooks/use-filters";
 import { useMapPosition } from "@/lib/hooks/use-filters";
 import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
@@ -80,7 +81,7 @@ const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorer
   } = map;
 
   const gridRef = useRef<HTMLDivElement>(null);
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMediaQuery(BREAKPOINT_MD);
 
   // Close filter drawer on mobile on first mount for better UX
   useEffect(() => {

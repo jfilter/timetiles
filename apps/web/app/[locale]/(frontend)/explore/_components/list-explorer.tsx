@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 
+import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
 import { ChartSection } from "./chart-section";
@@ -46,7 +47,7 @@ const ListExplorerContent = ({ chrome }: ListExplorerContentProps) => {
   const { ref: mapRef, debouncedSimpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
 
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMediaQuery(BREAKPOINT_MD);
 
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
