@@ -26,3 +26,24 @@ export const extractRelationId = <TId = number>(value: { id: TId } | TId | null 
   if (typeof value === "object") return (value as { id: TId }).id;
   return value;
 };
+
+/**
+ * Extract the ID from a Payload relationship field, throwing if missing.
+ *
+ * Use this instead of `extractRelationId(value)!` to get a clear error
+ * message when a required relationship is unexpectedly null.
+ *
+ * @throws {Error} If the relationship value is null/undefined
+ *
+ * @example
+ * ```typescript
+ * const userId = requireRelationId(doc.createdBy, "doc.createdBy");
+ * ```
+ */
+export const requireRelationId = <TId = number>(value: { id: TId } | TId | null | undefined, context?: string): TId => {
+  const id = extractRelationId(value);
+  if (id === undefined) {
+    throw new Error(`Required relation ID is missing${context ? `: ${context}` : ""}`);
+  }
+  return id;
+};

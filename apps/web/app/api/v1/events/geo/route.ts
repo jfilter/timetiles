@@ -47,6 +47,15 @@ export const GET = apiRoute({
   },
 });
 
+interface ClusterRow {
+  longitude: string | number;
+  latitude: string | number;
+  event_count: string | number;
+  cluster_id: string | number | null;
+  event_id: string | number | null;
+  event_title: string | null;
+}
+
 const executeClusteringQuery = async (
   payload: Payload,
   bounds: MapBounds,
@@ -62,9 +71,9 @@ const executeClusteringQuery = async (
       ${zoom}::integer,
       ${toClusteringJsonb(filters)}::jsonb
     )
-  `)) as { rows: Array<Record<string, unknown>> };
+  `)) as unknown as { rows: ClusterRow[] };
 
-const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
+const transformResultToClusters = (rows: ClusterRow[]) =>
   rows
     .filter((row) => {
       // Skip rows with missing or non-numeric coordinates instead of defaulting to (0, 0)
@@ -72,7 +81,7 @@ const transformResultToClusters = (rows: Array<Record<string, unknown>>) =>
       const hasLat = typeof row.latitude === "string" || typeof row.latitude === "number";
       return hasLon && hasLat;
     })
-    .map((row: Record<string, unknown>) => {
+    .map((row) => {
       const isCluster = Number(row.event_count) > 1;
       const featureId = row.cluster_id ?? row.event_id;
 

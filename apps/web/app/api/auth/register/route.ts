@@ -45,6 +45,12 @@ export const POST = apiRoute({
 
     const { email: normalizedEmail, password } = body;
 
+    // Prevent timing side-channel from distinguishing "email exists" vs "new registration"
+    const RESPONSE_FLOOR_MS = 1500;
+    const startTime = Date.now();
+
+    const successResponse = { message: "Please check your email to verify your account." };
+
     // Check if user already exists
     const existingUser = await payload.find({
       collection: "users",
@@ -75,46 +81,47 @@ export const POST = apiRoute({
       );
 
       logger.info({ email: maskEmail(normalizedEmail) }, "Sent account exists notification");
+    } else {
+      // Create new user - Payload will automatically send verification email
+      try {
+        await payload.create({
+          collection: "users",
+          data: {
+            email: normalizedEmail,
+            password,
+            // Self-registration defaults (matches beforeChange hook logic for REST API)
+            role: "user",
+            trustLevel: String(TRUST_LEVELS.BASIC) as "1",
+            registrationSource: "self",
+            isActive: true,
+          },
+          // Note: Verification email is sent automatically by Payload
+          // based on the auth.verify configuration in users collection
+        });
 
-      // Return same success response as new registration
-      return { message: "Please check your email to verify your account." };
-    }
+        logger.info({ email: maskEmail(normalizedEmail) }, "New user registered");
+      } catch (createError) {
+        // Handle potential race condition where user was created between our check and create
+        // This could happen under high concurrency
+        const errorMessage = createError instanceof Error ? createError.message : String(createError);
 
-    // Create new user - Payload will automatically send verification email
-    try {
-      await payload.create({
-        collection: "users",
-        data: {
-          email: normalizedEmail,
-          password,
-          // Self-registration defaults (matches beforeChange hook logic for REST API)
-          role: "user",
-          trustLevel: String(TRUST_LEVELS.BASIC) as "1",
-          registrationSource: "self",
-          isActive: true,
-        },
-        // Note: Verification email is sent automatically by Payload
-        // based on the auth.verify configuration in users collection
-      });
-
-      logger.info({ email: maskEmail(normalizedEmail) }, "New user registered");
-
-      return { message: "Please check your email to verify your account." };
-    } catch (createError) {
-      // Handle potential race condition where user was created between our check and create
-      // This could happen under high concurrency
-      const errorMessage = createError instanceof Error ? createError.message : String(createError);
-
-      if (errorMessage.includes("unique") || errorMessage.includes("duplicate")) {
-        // Race condition - user was created between check and create
-        // Return success to prevent enumeration
-        logger.warn({ email: maskEmail(normalizedEmail) }, "Race condition during registration");
-
-        return { message: "Please check your email to verify your account." };
+        if (errorMessage.includes("unique") || errorMessage.includes("duplicate")) {
+          // Race condition - user was created between check and create
+          // Fall through to timing pad + return
+          logger.warn({ email: maskEmail(normalizedEmail) }, "Race condition during registration");
+        } else {
+          // Re-throw non-race errors immediately
+          throw createError;
+        }
       }
-
-      // Re-throw other errors
-      throw createError;
     }
+
+    // Pad both paths to the same minimum duration
+    const elapsed = Date.now() - startTime;
+    if (elapsed < RESPONSE_FLOOR_MS) {
+      await new Promise((resolve) => setTimeout(resolve, RESPONSE_FLOOR_MS - elapsed));
+    }
+
+    return successResponse;
   },
 });

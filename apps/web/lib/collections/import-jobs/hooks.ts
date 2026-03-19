@@ -19,7 +19,7 @@ import { StageTransitionService } from "@/lib/import/stage-transition";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
 
 import { getImportFilePath } from "../../jobs/utils/upload-path";
@@ -202,12 +202,12 @@ const auditAdminStageOverride = async (req: PayloadRequest, doc: ImportJob, prev
 };
 
 const trackImportJobQuota = async (req: PayloadRequest, doc: ImportJob): Promise<void> => {
-  const importFileId = extractRelationId(doc.importFile)!;
+  const importFileId = requireRelationId(doc.importFile, "importJob.importFile");
   const importFile = await req.payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: importFileId });
 
   if (!importFile?.user) return;
 
-  const userId = extractRelationId(importFile.user)!;
+  const userId = requireRelationId(importFile.user, "importFile.user");
   const quotaService = createQuotaService(req.payload);
   await quotaService.incrementUsage(userId, "IMPORT_JOBS_PER_DAY", 1, req);
   logger.info("Import job creation tracked for quota", { userId, importJobId: doc.id });

@@ -16,7 +16,7 @@ import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { loadDataset, loadImportJob } from "../utils/resource-loading";
+import { failImportJob, loadDataset, loadImportJob } from "../utils/resource-loading";
 
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
@@ -135,19 +135,7 @@ export const createSchemaVersionJob = {
     } catch (error) {
       logError(error, "Failed to create schema version", { importJobId });
 
-      // Update job to failed state
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            error: error instanceof Error ? error.message : "Unknown error",
-            context: "schema version creation",
-            timestamp: new Date().toISOString(),
-          },
-        },
-      });
+      await failImportJob(payload, importJobId, error, "schema-version-creation");
 
       throw error;
     }

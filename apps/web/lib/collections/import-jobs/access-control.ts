@@ -5,7 +5,7 @@
  */
 import type { Access } from "payload";
 
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 
 import { isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
@@ -57,7 +57,7 @@ export const importJobsAccess = {
         const existingJob = await req.payload.findByID({ collection: "import-jobs", id, overrideAccess: true });
 
         if (existingJob?.importFile) {
-          const importFileId = extractRelationId(existingJob.importFile)!;
+          const importFileId = requireRelationId(existingJob.importFile, "importJob.importFile");
           const importFile = await req.payload.findByID({
             collection: "import-files",
             id: importFileId,

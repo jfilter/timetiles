@@ -29,7 +29,7 @@ import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { extractDuplicateRows, loadJobAndFilePath } from "../utils/resource-loading";
+import { extractDuplicateRows, failImportJob, loadJobAndFilePath } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 
 // Helper to load dataset and extract active transforms
@@ -295,14 +295,7 @@ export const schemaDetectionJob = {
         // Best-effort cleanup — don't mask the original error
       }
 
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errors: [{ row: 0, error: error instanceof Error ? error.message : "Unknown error" }],
-        },
-      });
+      await failImportJob(payload, importJobId, error, "schema-detection");
 
       throw error;
     }

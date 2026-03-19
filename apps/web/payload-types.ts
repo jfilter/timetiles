@@ -160,6 +160,7 @@ export interface Config {
       'url-fetch': TaskUrlFetch;
       'schedule-manager': TaskScheduleManager;
       'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
+      'cleanup-stuck-scrapers': TaskCleanupStuckScrapers;
       'process-pending-retries': TaskProcessPendingRetries;
       'quota-reset': TaskQuotaReset;
       'cache-cleanup': TaskCacheCleanup;
@@ -3597,6 +3598,7 @@ export interface PayloadJob {
           | 'url-fetch'
           | 'schedule-manager'
           | 'cleanup-stuck-scheduled-imports'
+          | 'cleanup-stuck-scrapers'
           | 'process-pending-retries'
           | 'quota-reset'
           | 'cache-cleanup'
@@ -3653,6 +3655,7 @@ export interface PayloadJob {
         | 'url-fetch'
         | 'schedule-manager'
         | 'cleanup-stuck-scheduled-imports'
+        | 'cleanup-stuck-scrapers'
         | 'process-pending-retries'
         | 'quota-reset'
         | 'cache-cleanup'
@@ -5621,6 +5624,14 @@ export interface TaskScheduleManager {
  * via the `definition` "TaskCleanup-stuck-scheduled-imports".
  */
 export interface TaskCleanupStuckScheduledImports {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCleanup-stuck-scrapers".
+ */
+export interface TaskCleanupStuckScrapers {
   input?: unknown;
   output?: unknown;
 }

@@ -3,10 +3,10 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { generateUniqueId, IdGenerationService } from "../../../lib/services/id-generation";
+import { generateEventId, generateUniqueId } from "../../../lib/services/id-generation";
 import type { Dataset } from "../../../payload-types";
 
-describe("IdGenerationService", () => {
+describe("id-generation", () => {
   const mockDatasetId = 123;
 
   describe("generateEventId", () => {
@@ -19,7 +19,7 @@ describe("IdGenerationService", () => {
       it("generates ID from external field", () => {
         const data = { id: "ext-123", name: "Test Event" };
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.uniqueId).toBe("123:ext:ext-123");
         expect(result.sourceId).toBe("ext-123");
@@ -35,7 +35,7 @@ describe("IdGenerationService", () => {
 
         const data = { name: "Test", metadata: { uuid: "uuid-789" } };
 
-        const result = IdGenerationService.generateEventId(data, datasetWithNestedPath as Dataset);
+        const result = generateEventId(data, datasetWithNestedPath as Dataset);
 
         expect(result.uniqueId).toBe("123:ext:uuid-789");
         expect(result.sourceId).toBe("uuid-789");
@@ -44,7 +44,7 @@ describe("IdGenerationService", () => {
       it("returns error for missing external ID", () => {
         const data = { name: "Test Event" }; // Missing 'id' field
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:error:\d+$/);
         expect(result.error).toBe("Missing external ID at path: id");
@@ -59,7 +59,7 @@ describe("IdGenerationService", () => {
 
         for (const testCase of testCases) {
           const data = { id: testCase.input };
-          const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+          const result = generateEventId(data, mockDataset as Dataset);
 
           expect(result.sourceId).toBe(testCase.expected);
         }
@@ -70,7 +70,7 @@ describe("IdGenerationService", () => {
 
         for (const id of validCases) {
           const data = { id };
-          const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+          const result = generateEventId(data, mockDataset as Dataset);
 
           expect(result.error).toBeUndefined();
           expect(result.sourceId).toBe(id);
@@ -92,7 +92,7 @@ describe("IdGenerationService", () => {
         ];
 
         for (const testCase of invalidCases) {
-          const result = IdGenerationService.generateEventId(testCase, mockDataset as Dataset);
+          const result = generateEventId(testCase, mockDataset as Dataset);
 
           expect(result.uniqueId).toMatch(/^123:error:\d+$/);
           expect(result.error).toContain(testCase.error);
@@ -113,7 +113,7 @@ describe("IdGenerationService", () => {
       it("generates hash from specified fields", () => {
         const data = { title: "Test Event", date: "2024-03-15", description: "Should not be included" };
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:comp:[a-f0-9]{16}$/);
         expect(result.strategy).toBe("computed");
@@ -124,8 +124,8 @@ describe("IdGenerationService", () => {
         const data1 = { title: "Event", date: "2024-03-15" };
         const data2 = { title: "Event", date: "2024-03-15", extra: "ignored" };
 
-        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
-        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+        const result1 = generateEventId(data1, mockDataset as Dataset);
+        const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.uniqueId).toBe(result2.uniqueId);
       });
@@ -134,8 +134,8 @@ describe("IdGenerationService", () => {
         const data1 = { title: "Event1", date: "2024-03-15" };
         const data2 = { title: "Event2", date: "2024-03-15" };
 
-        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
-        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+        const result1 = generateEventId(data1, mockDataset as Dataset);
+        const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.uniqueId).not.toBe(result2.uniqueId);
       });
@@ -152,7 +152,7 @@ describe("IdGenerationService", () => {
 
         const data = { metadata: { id: "meta-123" }, location: { name: "NYC" } };
 
-        const result = IdGenerationService.generateEventId(data, datasetWithNestedFields as Dataset);
+        const result = generateEventId(data, datasetWithNestedFields as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:comp:[a-f0-9]{16}$/);
         expect(result.error).toBeUndefined();
@@ -161,7 +161,7 @@ describe("IdGenerationService", () => {
       it("returns error for missing required fields", () => {
         const data = { title: "Test Event" }; // Missing 'date' field
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:error:\d+$/);
         expect(result.error).toBe("Missing required fields for computed ID: date");
@@ -170,7 +170,7 @@ describe("IdGenerationService", () => {
       it("handles null and undefined values", () => {
         const data = { title: null, date: undefined };
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.error).toContain("Missing required fields");
       });
@@ -182,7 +182,7 @@ describe("IdGenerationService", () => {
         };
 
         const data = { title: "Event A", date: "2024-01-01" };
-        const result = IdGenerationService.generateEventId(data, emptyFieldsDataset as Dataset);
+        const result = generateEventId(data, emptyFieldsDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:error:\d+$/);
         expect(result.error).toContain("computedIdFields must not be empty");
@@ -198,7 +198,7 @@ describe("IdGenerationService", () => {
       it("generates unique auto ID with content hash", () => {
         const data = { title: "Test Event", date: "2024-03-15" };
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:auto:\d+:[a-f0-9]{8}$/); // 4 bytes = 8 hex chars
         expect(result.contentHash).toMatch(/^[a-f0-9]{64}$/); // SHA256 hash
@@ -208,8 +208,8 @@ describe("IdGenerationService", () => {
       it("generates consistent content hash for same data", () => {
         const data = { title: "Test", value: 123 };
 
-        const result1 = IdGenerationService.generateEventId(data, mockDataset as Dataset);
-        const result2 = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result1 = generateEventId(data, mockDataset as Dataset);
+        const result2 = generateEventId(data, mockDataset as Dataset);
 
         expect(result1.contentHash).toBe(result2.contentHash);
         expect(result1.uniqueId).not.toBe(result2.uniqueId); // Unique IDs differ
@@ -219,8 +219,8 @@ describe("IdGenerationService", () => {
         const data1 = { title: "Event1" };
         const data2 = { title: "Event2" };
 
-        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
-        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+        const result1 = generateEventId(data1, mockDataset as Dataset);
+        const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.contentHash).not.toBe(result2.contentHash);
       });
@@ -229,8 +229,8 @@ describe("IdGenerationService", () => {
         const data1 = { b: 2, a: 1, c: 3 };
         const data2 = { a: 1, c: 3, b: 2 };
 
-        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
-        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+        const result1 = generateEventId(data1, mockDataset as Dataset);
+        const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.contentHash).toBe(result2.contentHash);
       });
@@ -239,8 +239,8 @@ describe("IdGenerationService", () => {
         const data1 = { name: "X", meta: { priority: "high" } };
         const data2 = { name: "X", meta: { priority: "low" } };
 
-        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
-        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+        const result1 = generateEventId(data1, mockDataset as Dataset);
+        const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.contentHash).not.toBe(result2.contentHash);
       });
@@ -249,8 +249,8 @@ describe("IdGenerationService", () => {
         const data1 = { a: { b: { c: { d: 1 } } } };
         const data2 = { a: { b: { c: { d: 2 } } } };
 
-        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
-        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+        const result1 = generateEventId(data1, mockDataset as Dataset);
+        const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.contentHash).not.toBe(result2.contentHash);
       });
@@ -259,8 +259,8 @@ describe("IdGenerationService", () => {
         const data1 = { z: { b: 2, a: 1 }, m: "val" };
         const data2 = { m: "val", z: { a: 1, b: 2 } };
 
-        const result1 = IdGenerationService.generateEventId(data1, mockDataset as Dataset);
-        const result2 = IdGenerationService.generateEventId(data2, mockDataset as Dataset);
+        const result1 = generateEventId(data1, mockDataset as Dataset);
+        const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.contentHash).toBe(result2.contentHash);
       });
@@ -280,7 +280,7 @@ describe("IdGenerationService", () => {
       it("uses external ID when available", () => {
         const data = { id: "ext-123", title: "Test Event", date: "2024-03-15" };
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.uniqueId).toBe("123:ext:ext-123");
         expect(result.strategy).toBe("external");
@@ -289,7 +289,7 @@ describe("IdGenerationService", () => {
       it("falls back to computed ID when external missing", () => {
         const data = { title: "Test Event", date: "2024-03-15" };
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:comp:[a-f0-9]{16}$/);
         expect(result.strategy).toBe("computed");
@@ -301,7 +301,7 @@ describe("IdGenerationService", () => {
           // Missing both 'id' and 'date'
         };
 
-        const result = IdGenerationService.generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId(data, mockDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:error:\d+$/);
         expect(result.error).toContain("Hybrid ID generation failed");
@@ -317,7 +317,7 @@ describe("IdGenerationService", () => {
           idStrategy: { type: "unknown" as any, duplicateStrategy: "skip" },
         };
 
-        const result = IdGenerationService.generateEventId({ id: 1 }, mockDataset as Dataset);
+        const result = generateEventId({ id: 1 }, mockDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:error:\d+$/);
         expect(result.error).toBe("Unknown ID strategy: unknown");
@@ -328,7 +328,7 @@ describe("IdGenerationService", () => {
       it("throws error when idStrategy is null or undefined", () => {
         const mockDataset: Partial<Dataset> = { id: mockDatasetId, idStrategy: null as any };
 
-        expect(() => IdGenerationService.generateEventId({ id: 1 }, mockDataset as Dataset)).toThrow(
+        expect(() => generateEventId({ id: 1 }, mockDataset as Dataset)).toThrow(
           "Dataset idStrategy is required but was undefined"
         );
       });
@@ -345,7 +345,7 @@ describe("IdGenerationService", () => {
         idStrategy: { type: "external", externalIdPath: "level1.level2.level3", duplicateStrategy: "skip" },
       };
 
-      expect(IdGenerationService.generateEventId(data, mockDataset as Dataset)).toMatchObject({ sourceId: "value" });
+      expect(generateEventId(data, mockDataset as Dataset)).toMatchObject({ sourceId: "value" });
     });
 
     it("handles array notation in paths", () => {
@@ -356,7 +356,7 @@ describe("IdGenerationService", () => {
         idStrategy: { type: "external", externalIdPath: "items.0.id", duplicateStrategy: "skip" },
       };
 
-      expect(IdGenerationService.generateEventId(data, mockDataset as Dataset)).toMatchObject({ sourceId: "first" });
+      expect(generateEventId(data, mockDataset as Dataset)).toMatchObject({ sourceId: "first" });
     });
   });
 

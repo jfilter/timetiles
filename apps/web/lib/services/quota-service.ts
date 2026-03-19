@@ -97,6 +97,14 @@ import type { User, UserUsage as UserUsageRecord } from "@/payload-types";
 
 const logger = createLogger("quota-service");
 
+/**
+ * Drizzle table schemas have typed column properties but don't support
+ * runtime string indexing. This single cast concentrates the type workaround
+ * instead of repeating `as unknown as Record<string, unknown>` at each call site.
+ * @see https://github.com/drizzle-team/drizzle-orm/issues/1510
+ */
+const userUsageColumns: Record<string, unknown> = user_usage as unknown as Record<string, unknown>;
+
 /** Collection slug for user usage tracking */
 const USER_USAGE_COLLECTION = "user-usage";
 
@@ -439,7 +447,7 @@ export class QuotaService {
 
         const setClauses: Record<string, unknown> = {};
         for (const field of DAILY_USAGE_FIELDS) {
-          const col = (user_usage as unknown as Record<string, unknown>)[field];
+          const col = userUsageColumns[field];
           const increment = field === usageField ? amount : 0;
           setClauses[field] = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${col}, 0) END + ${increment}`;
         }
@@ -449,7 +457,7 @@ export class QuotaService {
         await drizzle.update(user_usage).set(setClauses).where(eq(user_usage.user, normalizedUserId));
       } else {
         // For non-daily types, simple atomic increment
-        const col = (user_usage as unknown as Record<string, unknown>)[usageField];
+        const col = userUsageColumns[usageField];
         await drizzle
           .update(user_usage)
           .set({ [usageField]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
@@ -489,7 +497,7 @@ export class QuotaService {
       await this.getOrCreateUsageRecord(normalizedUserId, req);
 
       const drizzle = await this.getDrizzle(req);
-      const col = (user_usage as unknown as Record<string, unknown>)[usageField];
+      const col = userUsageColumns[usageField];
       await drizzle
         .update(user_usage)
         .set({ [usageField]: sql`GREATEST(0, COALESCE(${col}, 0) - ${amount})`, updatedAt: sql`NOW()` })
@@ -652,7 +660,7 @@ export class QuotaService {
     await this.getOrCreateUsageRecord(normalizedUserId, req);
 
     const drizzle = await this.getDrizzle(req);
-    const col = (user_usage as unknown as Record<string, unknown>)[usageField];
+    const col = userUsageColumns[usageField];
 
     // Atomic: increment only if current value + amount <= limit
     const result = await drizzle

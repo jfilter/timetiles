@@ -7,7 +7,7 @@ import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
 import { logger } from "@/lib/logger";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { requireRelationId } from "@/lib/utils/relation-id";
 import type { ImportJob } from "@/payload-types";
 
 export const isJobCompleted = (doc: ImportJob): boolean => {
@@ -16,7 +16,7 @@ export const isJobCompleted = (doc: ImportJob): boolean => {
 
 export const handleJobCompletion = async (payload: Payload, doc: ImportJob, req?: PayloadRequest): Promise<void> => {
   // Extract import file ID, handling both relationship object and direct ID cases
-  const importFileId = extractRelationId(doc.importFile)!;
+  const importFileId = requireRelationId(doc.importFile, "importJob.importFile");
 
   // Check if all jobs for this import file are completed before marking file as completed
   const allJobs = await payload.find({

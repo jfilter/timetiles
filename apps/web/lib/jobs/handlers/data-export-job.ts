@@ -13,7 +13,7 @@ import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails
 import { createDataExportService } from "@/lib/export/service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { requireRelationId } from "@/lib/utils/relation-id";
 
 /** Expiry time in milliseconds (7 days) */
 const EXPORT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -34,7 +34,7 @@ const handleExportFailure = async (payload: Payload, exportId: number, error: un
 
     if (!exportRecord) return;
 
-    const userId = extractRelationId(exportRecord.user)!;
+    const userId = requireRelationId(exportRecord.user, "exportRecord.user");
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await payload.update({
@@ -96,7 +96,7 @@ export const dataExportJob = {
         throw new Error(`Export record not found: ${exportId}`);
       }
 
-      const userId = extractRelationId(exportRecord.user)!;
+      const userId = requireRelationId(exportRecord.user, "exportRecord.user");
 
       // Fetch user for email
       const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });

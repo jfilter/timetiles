@@ -22,7 +22,7 @@ import type { Dataset, ImportJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { loadJobResources } from "../utils/resource-loading";
+import { failImportJob, loadJobResources } from "../utils/resource-loading";
 import { getImportFilePath } from "../utils/upload-path";
 
 interface DuplicateAnalysisResult {
@@ -305,14 +305,7 @@ export const analyzeDuplicatesJob = {
         // Best-effort cleanup — don't mask the original error
       }
 
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errors: [{ row: 0, error: error instanceof Error ? error.message : "Unknown error" }],
-        },
-      });
+      await failImportJob(payload, importJobId, error, "analyze-duplicates");
 
       throw error;
     }

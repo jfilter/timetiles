@@ -16,7 +16,7 @@ import { isPrivileged } from "@/lib/collections/shared-fields";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
 /** Check if private imports are allowed */
@@ -62,7 +62,7 @@ const processCatalogValidation = async (
   operation: "create" | "update",
   originalDoc?: Partial<Dataset>
 ): Promise<CatalogFields> => {
-  const catalogId = extractRelationId(catalogRef)!;
+  const catalogId = requireRelationId(catalogRef, "dataset.catalog");
   const catalog = await safeFetchRecord<Catalog>(req, "catalogs", catalogId);
 
   if (!catalog) {

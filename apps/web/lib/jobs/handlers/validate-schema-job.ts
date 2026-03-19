@@ -30,7 +30,7 @@ import type { ImportJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { loadJobResources } from "../utils/resource-loading";
+import { failImportJob, loadJobResources } from "../utils/resource-loading";
 import { getImportFilePath } from "../utils/upload-path";
 
 // Helper function to get schema from cached builder state
@@ -205,11 +205,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   if (!eventQuotaCheck.allowed) {
     const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
 
-    await payload.update({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: jobIdTyped,
-      data: { stage: PROCESSING_STAGE.FAILED, errors: [{ row: 0, error: errorMessage }] },
-    });
+    await failImportJob(payload, jobIdTyped, errorMessage, "validate-schema-quota");
 
     throw new Error(errorMessage);
   }
@@ -220,11 +216,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   if (!totalEventsCheck.allowed) {
     const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;
 
-    await payload.update({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: jobIdTyped,
-      data: { stage: PROCESSING_STAGE.FAILED, errors: [{ row: 0, error: errorMessage }] },
-    });
+    await failImportJob(payload, jobIdTyped, errorMessage, "validate-schema-quota");
 
     throw new Error(errorMessage);
   }
@@ -468,14 +460,7 @@ export const validateSchemaJob = {
 
       await cleanupSidecarsOnError(payload, jobIdTyped);
 
-      await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: jobIdTyped,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errors: [{ row: 0, error: error instanceof Error ? error.message : "Unknown error" }],
-        },
-      });
+      await failImportJob(payload, jobIdTyped, error, "validate-schema");
 
       throw error;
     }

@@ -15,7 +15,7 @@ import path from "node:path";
 import archiver from "archiver";
 import type { Payload } from "payload";
 
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { requireRelationId } from "@/lib/utils/relation-id";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { Catalog, Dataset, Event, ImportFile, ImportJob, Media, ScheduledImport } from "@/payload-types";
 
@@ -159,7 +159,7 @@ export class DataExportService {
         slug: d.slug,
         isPublic: d.isPublic ?? false,
         language: d.language,
-        catalogId: extractRelationId(d.catalog)!,
+        catalogId: requireRelationId(d.catalog, "dataset.catalog"),
         schemaConfig: d.schemaConfig,
         createdAt: d.createdAt,
         updatedAt: d.updatedAt,
@@ -190,7 +190,7 @@ export class DataExportService {
 
       const events: EventExportData[] = result.docs.map((e: Event) => ({
         id: e.id,
-        datasetId: extractRelationId(e.dataset)!,
+        datasetId: requireRelationId(e.dataset, "event.dataset"),
         eventTimestamp: e.eventTimestamp,
         data: e.data,
         location: e.location ? { latitude: e.location.latitude, longitude: e.location.longitude } : null,
@@ -239,8 +239,8 @@ export class DataExportService {
 
     return result.docs.map((j: ImportJob) => ({
       id: j.id,
-      importFileId: extractRelationId(j.importFile)!,
-      datasetId: extractRelationId(j.dataset)!,
+      importFileId: requireRelationId(j.importFile, "importJob.importFile"),
+      datasetId: requireRelationId(j.dataset, "importJob.dataset"),
       stage: j.stage,
       progress: j.progress,
       createdAt: j.createdAt,
@@ -437,7 +437,7 @@ export class DataExportService {
       throw new Error(`Export record not found: ${exportId}`);
     }
 
-    const userId = extractRelationId(exportRecord.user)!;
+    const userId = requireRelationId(exportRecord.user, "exportRecord.user");
 
     logger.info({ exportId, userId }, "Starting data export");
 
