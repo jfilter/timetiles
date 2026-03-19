@@ -11,24 +11,39 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
+import type { MapPosition } from "@/lib/hooks/use-filters";
+import { useMapPosition } from "@/lib/hooks/use-filters";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
 import { ChartSection } from "./chart-section";
 import { EventsListPaginated } from "./events-list-paginated";
 import type { ExplorerChromeElements } from "./explorer-shell";
 import { ExplorerShell } from "./explorer-shell";
-import { formatDateRange, getDatasetName } from "./map-explorer-helpers";
+import { formatDateRange, getDatasetName, getInitialViewState } from "./map-explorer-helpers";
 import { MapPanel } from "./map-panel";
 import { MobileTabs } from "./mobile-tabs";
 
 type MobileTab = "map" | "chart" | "list";
 
-export const ListExplorer = () => (
-  <ExplorerShell className="overflow-x-hidden">{(chrome) => <ListExplorerContent chrome={chrome} />}</ExplorerShell>
-);
+export const ListExplorer = () => {
+  const { mapPosition, hasMapPosition, setMapPosition } = useMapPosition();
+
+  const handleMapPositionChange = useCallback(
+    (center: { lng: number; lat: number }, zoom: number) => {
+      setMapPosition({ latitude: center.lat, longitude: center.lng, zoom });
+    },
+    [setMapPosition]
+  );
+
+  return (
+    <ExplorerShell className="overflow-x-hidden" explorerOptions={{ onMapPositionChange: handleMapPositionChange }}>
+      {(chrome) => <ListExplorerContent chrome={chrome} hasMapPosition={hasMapPosition} mapPosition={mapPosition} />}
+    </ExplorerShell>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Inner component — receives explorer state from ExplorerShell and can use hooks
@@ -36,9 +51,11 @@ export const ListExplorer = () => (
 
 interface ListExplorerContentProps {
   chrome: ExplorerChromeElements;
+  hasMapPosition: boolean;
+  mapPosition: MapPosition;
 }
 
-const ListExplorerContent = ({ chrome }: ListExplorerContentProps) => {
+const ListExplorerContent = ({ chrome, hasMapPosition, mapPosition }: ListExplorerContentProps) => {
   const { explorer, filterPanel, mobileFilters } = chrome;
   const { map, filters: filterState, selection, data } = explorer;
   const { filters } = filterState;
@@ -48,6 +65,7 @@ const ListExplorerContent = ({ chrome }: ListExplorerContentProps) => {
 
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
   const isDesktop = useMediaQuery(BREAKPOINT_MD);
+  const initialViewState = getInitialViewState(hasMapPosition, mapPosition);
 
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
@@ -67,6 +85,7 @@ const ListExplorerContent = ({ chrome }: ListExplorerContentProps) => {
               clusterStats={clusterStats}
               onBoundsChange={handleBoundsChange}
               initialBounds={boundsData?.bounds}
+              initialViewState={initialViewState}
               isLoadingBounds={isLoadingInitialBounds}
               showZoomToData={showZoomToData}
               onZoomToData={handleZoomToData}
@@ -107,6 +126,7 @@ const ListExplorerContent = ({ chrome }: ListExplorerContentProps) => {
               clusterStats={clusterStats}
               onBoundsChange={handleBoundsChange}
               initialBounds={boundsData?.bounds}
+              initialViewState={initialViewState}
               isLoadingBounds={isLoadingInitialBounds}
               showZoomToData={showZoomToData}
               onZoomToData={handleZoomToData}
