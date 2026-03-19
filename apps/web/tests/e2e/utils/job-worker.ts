@@ -42,6 +42,7 @@ process.on("SIGINT", () => {
 });
 
 const main = async () => {
+  // eslint-disable-next-line turbo/no-undeclared-env-vars -- Set by E2E global-setup, not a turbo pipeline variable
   const workerId = process.env.JOB_WORKER_ID ?? "1";
   const tag = `[job-worker-${workerId}]`;
   console.log(`${tag} Starting job worker...`);
