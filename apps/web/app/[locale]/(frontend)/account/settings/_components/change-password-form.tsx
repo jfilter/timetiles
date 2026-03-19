@@ -12,17 +12,13 @@ import { useMutation } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Key, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { Dispatch, SetStateAction } from "react";
-import { useState } from "react";
 
 import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
+import { useInputState } from "@/lib/hooks/use-input-state";
 
 export const ChangePasswordForm = () => {
   const t = useTranslations("Account");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const { status, error, isPending, mutate, reset } = useMutation({
     mutationFn: async (input: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
       validatePasswords(input.newPassword, input.confirmPassword);
@@ -35,11 +31,9 @@ export const ChangePasswordForm = () => {
       setConfirmPassword("");
     },
   });
-
-  const fieldHandler = (setter: Dispatch<SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setter(e.target.value);
-    reset();
-  };
+  const [currentPassword, onCurrentPasswordChange, setCurrentPassword] = useInputState("", reset);
+  const [newPassword, onNewPasswordChange, setNewPassword] = useInputState("", reset);
+  const [confirmPassword, onConfirmPasswordChange, setConfirmPassword] = useInputState("", reset);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -75,7 +69,7 @@ export const ChangePasswordForm = () => {
               id="current-password"
               type="password"
               value={currentPassword}
-              onChange={fieldHandler(setCurrentPassword)}
+              onChange={onCurrentPasswordChange}
               placeholder={t("currentPasswordPlaceholder")}
               disabled={isPending}
             />
@@ -87,7 +81,7 @@ export const ChangePasswordForm = () => {
               id="new-password"
               type="password"
               value={newPassword}
-              onChange={fieldHandler(setNewPassword)}
+              onChange={onNewPasswordChange}
               placeholder={t("newPasswordPlaceholder")}
               disabled={isPending}
             />
@@ -100,7 +94,7 @@ export const ChangePasswordForm = () => {
               id="confirm-password"
               type="password"
               value={confirmPassword}
-              onChange={fieldHandler(setConfirmPassword)}
+              onChange={onConfirmPasswordChange}
               placeholder={t("confirmPasswordPlaceholder")}
               disabled={isPending}
             />

@@ -13,14 +13,24 @@ import { useState } from "react";
 /**
  * Returns a [value, onChange, setValue] tuple for a text input field.
  *
+ * @param initialValue - Initial field value (default: "")
+ * @param onValueChange - Optional callback fired on every change (e.g., mutation `reset` to clear error/success state)
+ *
  * @example
  * ```tsx
+ * // Basic usage (auth forms)
  * const [email, onEmailChange] = useInputState();
- * return <Input value={email} onChange={onEmailChange} />;
+ *
+ * // With reset callback (account forms)
+ * const { reset } = useMutation({ ... });
+ * const [email, onEmailChange, setEmail] = useInputState("", reset);
  * ```
  */
-export const useInputState = (initialValue = "") => {
+export const useInputState = (initialValue = "", onValueChange?: () => void) => {
   const [value, setValue] = useState(initialValue);
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value);
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+    onValueChange?.();
+  };
   return [value, onChange, setValue] as const;
 };

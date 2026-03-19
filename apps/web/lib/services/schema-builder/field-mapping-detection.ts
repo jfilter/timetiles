@@ -10,8 +10,8 @@
  */
 
 import {
-  type FIELD_PATTERNS,
   detectGeoFields as detectGeoFieldsFromPlugin,
+  type FIELD_PATTERNS,
   getFieldPatterns,
 } from "@timetiles/payload-schema-detection";
 

@@ -16,8 +16,8 @@ import { toPayloadWhere } from "@/lib/filters/to-payload-where";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
 import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
-import type { Event, User } from "@/payload-types";
 import { extractEventFields, extractFieldFromData } from "@/lib/utils/event-detail";
+import type { Event, User } from "@/payload-types";
 
 const getDatasetInfo = (dataset: Event["dataset"]) => {
   if (typeof dataset !== "object" || dataset == null) {

@@ -12,10 +12,9 @@ import { useMutation } from "@tanstack/react-query";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@timetiles/ui";
 import { Check, Loader2, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { Dispatch, SetStateAction } from "react";
-import { useState } from "react";
 
 import { changeEmailRequest } from "@/lib/hooks/use-account-mutations";
+import { useInputState } from "@/lib/hooks/use-input-state";
 
 interface ChangeEmailFormProps {
   currentEmail: string;
@@ -24,8 +23,6 @@ interface ChangeEmailFormProps {
 
 export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProps) => {
   const t = useTranslations("Account");
-  const [newEmail, setNewEmail] = useState("");
-  const [password, setPassword] = useState("");
   const { status, error, isPending, mutate, reset } = useMutation({
     mutationFn: async (input: { newEmail: string; password: string; currentEmail: string }) => {
       const emailLower = input.newEmail.trim().toLowerCase();
@@ -41,11 +38,8 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
       onSuccess?.();
     },
   });
-
-  const fieldHandler = (setter: Dispatch<SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setter(e.target.value);
-    reset();
-  };
+  const [newEmail, onNewEmailChange, setNewEmail] = useInputState("", reset);
+  const [password, onPasswordChange, setPassword] = useInputState("", reset);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -86,7 +80,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
               id="new-email"
               type="email"
               value={newEmail}
-              onChange={fieldHandler(setNewEmail)}
+              onChange={onNewEmailChange}
               placeholder={t("newEmailPlaceholder")}
               disabled={isPending}
             />
@@ -98,7 +92,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
               id="email-password"
               type="password"
               value={password}
-              onChange={fieldHandler(setPassword)}
+              onChange={onPasswordChange}
               placeholder={t("emailPasswordPlaceholder")}
               disabled={isPending}
             />
