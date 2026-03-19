@@ -149,25 +149,25 @@ install_runner() {
     # Strategy 1: Extract pre-built runner from GHCR Docker image (no build tools needed)
     local image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-scraper}:$version"
 
+    # Helper: extract /app from a Docker image into runner_dir using tar (resolves symlinks)
+    extract_from_image() {
+        local img="$1"
+        docker rm -f tt-scraper-extract 2>/dev/null || true
+        docker create --name tt-scraper-extract "$img"
+        # Use tar to extract — docker cp preserves symlinks which break outside the container
+        docker export tt-scraper-extract | tar -xf - -C "$runner_dir" --strip-components=1 app/dist app/node_modules app/package.json
+        docker rm tt-scraper-extract
+    }
+
     if docker pull "$image" 2>/dev/null; then
         print_info "Extracting runner from image: $image"
-        docker rm -f tt-scraper-extract 2>/dev/null || true
-        docker create --name tt-scraper-extract "$image"
-        docker cp tt-scraper-extract:/app/dist "$runner_dir/dist"
-        docker cp tt-scraper-extract:/app/node_modules "$runner_dir/node_modules"
-        docker cp tt-scraper-extract:/app/package.json "$runner_dir/package.json"
-        docker rm tt-scraper-extract
+        extract_from_image "$image"
     # Strategy 2: Build via Docker and extract (same as strategy 1, but build locally)
     # Needs repo root as context for turbo prune (monorepo workspace resolution)
     elif [[ -f "$install_dir/apps/scraper/Dockerfile" ]]; then
         print_info "Registry pull failed, building runner image locally..."
         docker build -t timescrape-runner-local -f "$install_dir/apps/scraper/Dockerfile" "$install_dir"
-        docker rm -f tt-scraper-extract 2>/dev/null || true
-        docker create --name tt-scraper-extract timescrape-runner-local
-        docker cp tt-scraper-extract:/app/dist "$runner_dir/dist"
-        docker cp tt-scraper-extract:/app/node_modules "$runner_dir/node_modules"
-        docker cp tt-scraper-extract:/app/package.json "$runner_dir/package.json"
-        docker rm tt-scraper-extract
+        extract_from_image timescrape-runner-local
         print_success "Built runner locally"
     else
         die "Cannot pull or build scraper runner"

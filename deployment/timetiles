@@ -978,22 +978,21 @@ EOF
             local image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-scraper}:$version"
             rm -rf "${runner_dir:?}/dist" "${runner_dir:?}/node_modules" "${runner_dir:?}/package.json"
 
-            if docker pull "$image" 2>/dev/null; then
+            # Helper: extract /app from image using tar (docker cp breaks pnpm symlinks)
+            extract_runner() {
+                local img="$1"
                 docker rm -f tt-scraper-extract 2>/dev/null || true
-                docker create --name tt-scraper-extract "$image"
-                docker cp tt-scraper-extract:/app/dist "$runner_dir/dist"
-                docker cp tt-scraper-extract:/app/node_modules "$runner_dir/node_modules"
-                docker cp tt-scraper-extract:/app/package.json "$runner_dir/package.json"
+                docker create --name tt-scraper-extract "$img"
+                docker export tt-scraper-extract | tar -xf - -C "$runner_dir" --strip-components=1 app/dist app/node_modules app/package.json
                 docker rm tt-scraper-extract
+            }
+
+            if docker pull "$image" 2>/dev/null; then
+                extract_runner "$image"
             elif [[ -f "$SCRIPT_DIR/../apps/scraper/Dockerfile" ]]; then
                 echo -e "${YELLOW}Registry pull failed, building runner locally...${NC}"
                 docker build -t timescrape-runner-local -f "$SCRIPT_DIR/../apps/scraper/Dockerfile" "$SCRIPT_DIR/.."
-                docker rm -f tt-scraper-extract 2>/dev/null || true
-                docker create --name tt-scraper-extract timescrape-runner-local
-                docker cp tt-scraper-extract:/app/dist "$runner_dir/dist"
-                docker cp tt-scraper-extract:/app/node_modules "$runner_dir/node_modules"
-                docker cp tt-scraper-extract:/app/package.json "$runner_dir/package.json"
-                docker rm tt-scraper-extract
+                extract_runner timescrape-runner-local
             else
                 echo -e "${RED}Cannot pull or build scraper runner${NC}"
             fi
