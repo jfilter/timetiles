@@ -40,8 +40,7 @@ interface UseExplorerStateOptions {
 // eslint-disable-next-line sonarjs/max-lines-per-function -- explorer hook centralises shared state for both layouts
 export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const [mapZoom, setMapZoom] = useState(9);
-  const [hasUserPanned, setHasUserPanned] = useState(false);
-  const [isInitialBoundsApplied, setIsInitialBoundsApplied] = useState(false);
+  const [boundsState, setBoundsState] = useState<"initial" | "bounds-applied" | "user-panned">("initial");
 
   const mapRef = useRef<ClusteredMapHandle>(null);
 
@@ -108,16 +107,16 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   useEffect(() => {
     if (prevFilterKeyRef.current !== filterKey) {
       prevFilterKeyRef.current = filterKey;
-      setHasUserPanned(false);
+      setBoundsState((prev) => (prev === "user-panned" ? "bounds-applied" : prev));
     }
   }, [filterKey]);
 
-  const isLoadingInitialBounds = boundsLoading && !isInitialBoundsApplied;
+  const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
 
   const handleZoomToData = () => {
     if (boundsData?.bounds && mapRef.current) {
       mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
-      setHasUserPanned(false);
+      setBoundsState("bounds-applied");
     }
   };
 
@@ -138,10 +137,10 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
         onMapPositionChangeRef.current(center, zoom);
       }
 
-      if (isInitialBoundsApplied) {
-        setHasUserPanned(true);
-      } else {
-        setIsInitialBoundsApplied(true);
+      if (boundsState === "initial") {
+        setBoundsState("bounds-applied");
+      } else if (boundsState === "bounds-applied") {
+        setBoundsState("user-panned");
       }
     } else {
       setMapBounds(null);
@@ -151,7 +150,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   // Shared zoom-to-data logic (both MapExplorer and ListExplorer)
   const dataBoundsOutsideViewport = isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds);
   const showZoomToData = shouldShowZoomToData(
-    hasUserPanned,
+    boundsState === "user-panned",
     dataBoundsOutsideViewport,
     boundsData?.bounds != null,
     boundsLoading
@@ -164,8 +163,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
       bounds: mapBounds,
       simpleBounds,
       debouncedSimpleBounds,
-      hasUserPanned,
-      isInitialBoundsApplied,
+      boundsState,
       showZoomToData,
       handleBoundsChange,
       handleZoomToData,

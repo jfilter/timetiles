@@ -19,8 +19,9 @@ export const GET = apiRoute({
   query: z.object({ previewId: z.uuid() }),
   handler: ({ query, user }) => {
     const previewMeta = loadPreviewMetadata(query.previewId);
-    const error = validateRequest(previewMeta, user);
-    if (error) {
+    try {
+      validateRequest(previewMeta, user);
+    } catch {
       return { valid: false };
     }
     return { valid: true };

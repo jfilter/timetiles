@@ -53,10 +53,7 @@ export const POST = apiRoute({
       const previewMeta = loadPreviewMetadata(body.previewId);
 
       // Validate business-logic constraints (preview exists, not expired, user owns it)
-      const validationError = validateRequest(previewMeta, user);
-      if (validationError) {
-        return validationError;
-      }
+      validateRequest(previewMeta, user);
 
       // Get or create catalog
       const finalCatalogId = await getOrCreateCatalog(payload, req, body.catalogId, body.newCatalogName, user);

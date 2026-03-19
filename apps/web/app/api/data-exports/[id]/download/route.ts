@@ -15,7 +15,7 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 import { z } from "zod";
 
-import { apiRoute, AppError, ForbiddenError, NotFoundError } from "@/lib/api";
+import { apiRoute, AppError, NotFoundError, requireOwnerOrAdmin } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { apiSuccess } from "@/lib/utils/api-response";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -115,9 +115,7 @@ export const GET = apiRoute({
     // Verify ownership
     const ownerId = extractRelationId(exportRecord.user);
 
-    if (user.id !== ownerId && user.role !== "admin") {
-      throw new ForbiddenError("Access denied");
-    }
+    requireOwnerOrAdmin(user, ownerId);
 
     // Check status
     if (exportRecord.status === "pending" || exportRecord.status === "processing") {

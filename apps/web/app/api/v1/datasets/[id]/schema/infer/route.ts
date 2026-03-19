@@ -14,7 +14,7 @@
  */
 import { z } from "zod";
 
-import { apiRoute, ForbiddenError, NotFoundError, ValidationError } from "@/lib/api";
+import { apiRoute, NotFoundError, requirePrivileged, ValidationError } from "@/lib/api";
 import { SchemaInferenceService } from "@/lib/import/schema-inference";
 import { logger } from "@/lib/logger";
 import type { SchemaInferenceResponse } from "@/lib/types/schema-inference";
@@ -40,9 +40,7 @@ export const POST = apiRoute({
     }
 
     // Check user permissions - only editors and admins can infer schema
-    if (user.role !== "editor" && user.role !== "admin") {
-      throw new ForbiddenError("Only editors and admins can trigger schema inference");
-    }
+    requirePrivileged(user);
 
     // Verify dataset exists and user has access
     const dataset = await payload

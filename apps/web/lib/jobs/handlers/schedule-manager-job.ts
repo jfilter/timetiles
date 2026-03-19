@@ -21,11 +21,6 @@ import { getDatePartsInTimezone, wallClockToUtc } from "@/lib/utils/timezone";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledImport, Scraper } from "@/payload-types";
 
-// Unused but kept for future expansion
-// interface ScheduleManagerJobInput {
-//   scanAll?: boolean; // Optionally scan all schedules instead of just due ones
-// }
-
 /**
  * Gets the next execution time based on frequency.
  *

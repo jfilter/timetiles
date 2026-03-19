@@ -12,7 +12,7 @@
  */
 import { z } from "zod";
 
-import { apiRoute, AppError, ValidationError } from "@/lib/api";
+import { apiRoute, AppError } from "@/lib/api";
 import { logError, logger } from "@/lib/logger";
 
 interface Settings {
@@ -25,12 +25,6 @@ export const POST = apiRoute({
   body: z.object({ email: z.email() }),
   handler: async ({ body, payload }) => {
     const { email } = body;
-
-    // Additional email format validation (belt and suspenders with zod)
-    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      throw new ValidationError("Invalid email address");
-    }
 
     // Get newsletter service configuration from Payload settings
     const settings = (await payload.findGlobal({ slug: "settings" })) as Settings;

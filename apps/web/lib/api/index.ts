@@ -6,6 +6,13 @@
  */
 export { apiSuccess } from "../utils/api-response";
 export {
+  canManageResource,
+  requireAdmin,
+  requireOwnerOrAdmin,
+  requirePrivileged,
+  requireScrapersEnabled,
+} from "./auth-helpers";
+export {
   AppError,
   ConflictError,
   ForbiddenError,

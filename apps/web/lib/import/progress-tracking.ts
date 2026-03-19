@@ -134,7 +134,7 @@ export class ProgressTrackingService {
 
     for (const stage of allStages) {
       const batchSize = this.getBatchSizeForStage(stage);
-      const estimatedBatches = batchSize ? Math.ceil(totalRows / batchSize) : 1;
+      const estimatedBatches = this.calculateEstimatedBatches(totalRows, batchSize);
 
       stages[stage] = {
         status: "pending",
@@ -180,7 +180,7 @@ export class ProgressTrackingService {
 
     const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
     const batchSize = this.getBatchSizeForStage(stage);
-    const estimatedBatches = batchSize ? Math.ceil(rowsTotal / batchSize) : 1;
+    const estimatedBatches = this.calculateEstimatedBatches(rowsTotal, batchSize);
 
     stages[stage] = {
       ...stages[stage],
@@ -512,6 +512,11 @@ export class ProgressTrackingService {
     }
   }
 
+  /** Calculate the estimated number of batches for a given total and batch size. */
+  private static calculateEstimatedBatches(totalRows: number, batchSize: number | null): number {
+    return batchSize ? Math.ceil(totalRows / batchSize) : 1;
+  }
+
   /**
    * Update row totals for post-deduplication stages.
    *
@@ -544,7 +549,7 @@ export class ProgressTrackingService {
     for (const stage of postDeduplicationStages) {
       if (stages[stage]) {
         const batchSize = this.getBatchSizeForStage(stage);
-        const estimatedBatches = batchSize ? Math.ceil(uniqueRows / batchSize) : 1;
+        const estimatedBatches = this.calculateEstimatedBatches(uniqueRows, batchSize);
 
         stages[stage] = { ...stages[stage], rowsTotal: uniqueRows, batchesTotal: estimatedBatches };
       }

@@ -24,8 +24,7 @@ export const GET = apiRoute({
   query: z.object({ previewId: z.uuid() }),
   handler: ({ query, user }) => {
     const meta = loadPreviewMetadata(query.previewId);
-    const error = validateRequest(meta, user);
-    if (error) return error;
+    validateRequest(meta, user);
 
     const fileExtension = path.extname(meta!.filePath).toLowerCase();
     const sheets = parseFileSheets(meta!.filePath, fileExtension);

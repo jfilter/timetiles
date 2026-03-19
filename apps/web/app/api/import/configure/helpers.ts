@@ -13,8 +13,8 @@ import fs from "node:fs";
 
 import { z } from "zod";
 
+import { AppError, ValidationError } from "@/lib/api/errors";
 import type { PreviewMetadata } from "@/lib/types/import-wizard";
-import { badRequest, unauthorized } from "@/lib/utils/api-response";
 import type { User } from "@/payload-types";
 
 export { cleanupPreview, loadPreviewMetadata } from "@/lib/import/preview-store";
@@ -122,23 +122,21 @@ export const ConfigureImportBodySchema = z.object({
  * by {@link ConfigureImportBodySchema}. This function checks that the preview
  * exists on disk, is not expired, and belongs to the requesting user.
  */
-export const validateRequest = (previewMeta: PreviewMetadata | null, user: User): Response | null => {
+export const validateRequest = (previewMeta: PreviewMetadata | null, user: User): void => {
   if (!previewMeta) {
-    return badRequest("Preview not found or expired. Please upload the file again.");
+    throw new ValidationError("Preview not found or expired. Please upload the file again.");
   }
 
   // Bug 27 fix: reject expired previews
   if (previewMeta.expiresAt && new Date(previewMeta.expiresAt) < new Date()) {
-    return badRequest("Preview has expired. Please upload the file again.");
+    throw new ValidationError("Preview has expired. Please upload the file again.");
   }
 
   if (previewMeta.userId !== user.id) {
-    return unauthorized("You do not have access to this preview");
+    throw new AppError(401, "You do not have access to this preview");
   }
 
   if (!fs.existsSync(previewMeta.filePath)) {
-    return badRequest("Preview file not found. Please upload the file again.");
+    throw new ValidationError("Preview file not found. Please upload the file again.");
   }
-
-  return null;
 };

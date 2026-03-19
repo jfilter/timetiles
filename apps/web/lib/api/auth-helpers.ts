@@ -26,6 +26,39 @@ export const canManageResource = (
 };
 
 /**
+ * Require that the user has admin role.
+ * @throws ForbiddenError if user is not an admin
+ */
+export const requireAdmin = (user: { role?: string | null }): void => {
+  if (user.role !== "admin") {
+    throw new ForbiddenError("Admin access required");
+  }
+};
+
+/**
+ * Require that the user has editor or admin role.
+ * @throws ForbiddenError if user is not privileged
+ */
+export const requirePrivileged = (user: { role?: string | null }): void => {
+  if (!isPrivileged(user)) {
+    throw new ForbiddenError("Editor or admin access required");
+  }
+};
+
+/**
+ * Require that the user owns the resource or is an admin.
+ * @throws ForbiddenError if neither condition is met
+ */
+export const requireOwnerOrAdmin = (
+  user: { id: number; role?: string | null },
+  ownerId: number | string | null | undefined
+): void => {
+  if (user.role === "admin") return;
+  if (ownerId != null && ownerId === user.id) return;
+  throw new ForbiddenError("Access denied");
+};
+
+/**
  * Require that the scrapers feature flag is enabled.
  * @throws ForbiddenError if the feature is disabled
  */
