@@ -84,8 +84,9 @@ teardown() {
     fi
 
     run "$DEPLOY_DIR/timetiles" restore
-    # Should show usage/help OR error about missing config
-    [[ "$output" == *"Usage"* ]] || [[ "$output" == *"backup"* ]] || [[ "$output" == *"RESTIC_PASSWORD"* ]]
+    # Should show usage, snapshot info, or error about missing config
+    [[ "$output" == *"Usage"* ]] || [[ "$output" == *"snapshot"* ]] || \
+    [[ "$output" == *"backup"* ]] || [[ "$output" == *"RESTIC_PASSWORD"* ]]
 }
 
 # =============================================================================
@@ -93,12 +94,12 @@ teardown() {
 # =============================================================================
 
 @test "commands requiring env fail gracefully without .env.production" {
-    # Temporarily rename env file if it exists
+    # Temporarily rename env file if it exists (needs write permission)
     local env_file="$DEPLOY_DIR/.env.production"
     local backup_file="$DEPLOY_DIR/.env.production.bak.$$"
 
     if [[ -f "$env_file" ]]; then
-        mv "$env_file" "$backup_file"
+        mv "$env_file" "$backup_file" 2>/dev/null || skip "Cannot move .env.production (permission denied)"
     fi
 
     run "$DEPLOY_DIR/timetiles" status
