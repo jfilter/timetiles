@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/no-duplicate-string -- Config file with inherent path repetition */
 /**
  * This file contains the base ESLint configuration for the entire monorepo.
  *
