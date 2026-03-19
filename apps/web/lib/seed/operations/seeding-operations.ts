@@ -506,10 +506,10 @@ export class SeedingOperations {
  * Blocks are matched by index; nested arrays (buttons, features, stats, items)
  * also get their IDs merged.
  */
-function mergeBlockIds(
+const mergeBlockIds = (
   createdBlocks: Record<string, unknown>[],
   seedBlocks: Record<string, unknown>[]
-): Record<string, unknown>[] {
+): Record<string, unknown>[] => {
   return seedBlocks.map((seedBlock, i) => {
     const created = createdBlocks[i];
     if (!created) return seedBlock;
@@ -533,4 +533,4 @@ function mergeBlockIds(
 
     return merged;
   });
-}
+};
