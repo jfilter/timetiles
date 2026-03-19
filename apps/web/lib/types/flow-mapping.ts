@@ -176,7 +176,7 @@ export const createTargetNodes = (startY: number = 50): TargetFieldNode[] => {
   return TARGET_FIELD_DEFINITIONS.map((def, index) => ({
     id: `target-${def.fieldKey}`,
     type: "target-field" as const,
-    position: { x: 500, y: startY + index * 80 },
+    position: { x: 500, y: startY + index * 120 },
     data: { ...def, isConnected: false, connectedColumn: null },
   }));
 };
