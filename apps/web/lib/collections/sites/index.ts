@@ -14,7 +14,14 @@ import type { CollectionConfig } from "payload";
 
 import { createCommonConfig, createCreatedByField, createIsPublicField, createSlugField } from "../shared-fields";
 import * as access from "./access";
-import { createDefaultView, enforceSingleDefault, invalidateSiteCache, setCreatedBy } from "./hooks";
+import {
+  createDefaultView,
+  enforceSingleDefault,
+  invalidateSiteCache,
+  restrictDomainField,
+  sanitizeCustomCode,
+  setCreatedBy,
+} from "./hooks";
 
 const Sites: CollectionConfig = {
   slug: "sites",
@@ -32,7 +39,10 @@ const Sites: CollectionConfig = {
     delete: access.deleteAccess,
     readVersions: access.readVersions,
   },
-  hooks: { beforeChange: [setCreatedBy, enforceSingleDefault], afterChange: [invalidateSiteCache, createDefaultView] },
+  hooks: {
+    beforeChange: [setCreatedBy, enforceSingleDefault, restrictDomainField, sanitizeCustomCode],
+    afterChange: [invalidateSiteCache, createDefaultView],
+  },
   fields: [
     // ============ IDENTITY ============
     {
@@ -147,6 +157,7 @@ const Sites: CollectionConfig = {
       name: "customCode",
       label: "Custom Code",
       admin: { description: "Custom CSS and HTML injection (scoped to this site)" },
+      access: { update: ({ req: { user } }) => user?.role === "admin" },
       fields: [
         {
           name: "headHtml",

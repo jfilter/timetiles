@@ -14,6 +14,7 @@ import "@/tests/mocks/services/logger";
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockRunHealthChecks: vi.fn(),
+  mockRunLivenessCheck: vi.fn(),
   mockCheckQuota: vi.fn(),
   mockGetEffectiveQuotas: vi.fn(),
   mockGetQuotaHeaders: vi.fn(),
@@ -25,7 +26,10 @@ vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
-vi.mock("@/lib/health", () => ({ runHealthChecks: mocks.mockRunHealthChecks }));
+vi.mock("@/lib/health", () => ({
+  runHealthChecks: mocks.mockRunHealthChecks,
+  runLivenessCheck: mocks.mockRunLivenessCheck,
+}));
 
 vi.mock("@/lib/services/quota-service", () => ({
   createQuotaService: vi
@@ -67,6 +71,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   // Reset implementations that vi.clearAllMocks does not clear
   mocks.mockRunHealthChecks.mockReset();
+  mocks.mockRunLivenessCheck.mockReset();
 
   mockPayload = { auth: vi.fn().mockResolvedValue({ user: mockUser }), find: vi.fn().mockResolvedValue({ docs: [] }) };
   mocks.mockGetPayload.mockResolvedValue(mockPayload);
@@ -84,57 +89,32 @@ beforeEach(() => {
 });
 
 describe.sequential("Health Route", () => {
-  it("returns 200 with healthy results", async () => {
-    const healthyResults = {
-      env: { status: "healthy", message: "All good" },
-      cms: { status: "healthy", message: "CMS running" },
-      postgis: { status: "healthy", message: "PostGIS available" },
-    };
-    mocks.mockRunHealthChecks.mockResolvedValue(healthyResults);
+  it("returns 200 with ok status", async () => {
+    mocks.mockRunLivenessCheck.mockResolvedValue({ status: "ok", database: "connected" });
 
     const response = await healthGET(new NextRequest("http://localhost/api/health"), { params: Promise.resolve({}) });
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.env.status).toBe("healthy");
-    expect(body.cms.status).toBe("healthy");
+    expect(body.status).toBe("ok");
   });
 
-  it("returns 503 when any check has error status", async () => {
-    const errorResults = {
-      env: { status: "healthy", message: "OK" },
-      cms: { status: "error", message: "DB unavailable" },
-      postgis: { status: "healthy", message: "PostGIS available" },
-    };
-    mocks.mockRunHealthChecks.mockResolvedValue(errorResults);
+  it("returns 503 when database is unreachable", async () => {
+    mocks.mockRunLivenessCheck.mockResolvedValue({ status: "error", database: "error" });
 
     const response = await healthGET(new NextRequest("http://localhost/api/health"), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(503);
   });
 
-  it("returns 200 with warnings (degraded/pending)", async () => {
-    const degradedResults = {
-      env: { status: "healthy", message: "OK" },
-      cms: { status: "warning", message: "Slow" },
-      migrations: { status: "pending", message: "Pending migrations" },
-      postgis: { status: "healthy", message: "PostGIS available" },
-    };
-    mocks.mockRunHealthChecks.mockResolvedValue(degradedResults);
-
-    const response = await healthGET(new NextRequest("http://localhost/api/health"), { params: Promise.resolve({}) });
-
-    expect(response.status).toBe(200);
-  });
-
-  it("returns 500 when health checks throw", async () => {
-    mocks.mockRunHealthChecks.mockRejectedValue(new Error("Unexpected failure"));
+  it("returns 500 when liveness check throws", async () => {
+    mocks.mockRunLivenessCheck.mockRejectedValue(new Error("Unexpected failure"));
 
     const response = await healthGET(new NextRequest("http://localhost/api/health"), { params: Promise.resolve({}) });
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Health check failed");
+    expect(body.status).toBe("error");
   });
 });
 

@@ -13,6 +13,8 @@
  * @category Services
  */
 
+import { Parser } from "expr-eval";
+
 import type {
   CastableType,
   ConcatenateTransform,
@@ -420,26 +422,59 @@ const castValue = (value: unknown, toType: CastableType): unknown => {
 };
 
 /**
- * Run a custom transformation function.
+ * Create a safe expression parser with predefined helper functions.
+ *
+ * Uses expr-eval instead of new Function() to prevent arbitrary code execution.
+ * Only supports mathematical and string expressions — no access to require,
+ * process, global, or any Node.js APIs.
  */
-const runCustomTransform = (value: unknown, customCode: string): unknown => {
+const createSafeParser = (): Parser => {
+  const parser = new Parser({ allowMemberAccess: false });
+
+  // String functions
+  parser.functions.upper = (v: unknown) => String(v).toUpperCase();
+  parser.functions.lower = (v: unknown) => String(v).toLowerCase();
+  parser.functions.trim = (v: unknown) => String(v).trim();
+  parser.functions.len = (v: unknown) => String(v).length;
+  parser.functions.concat = (...args: unknown[]) => args.map(String).join("");
+  parser.functions.toString = (v: unknown) => String(v);
+  parser.functions.replace = (v: unknown, pattern: unknown, replacement: unknown) =>
+    String(v).replaceAll(String(pattern), String(replacement));
+  parser.functions.substring = (v: unknown, start: unknown, end?: unknown) =>
+    end !== undefined ? String(v).substring(Number(start), Number(end)) : String(v).substring(Number(start));
+  parser.functions.includes = (v: unknown, search: unknown) => (String(v).includes(String(search)) ? 1 : 0);
+  parser.functions.startsWith = (v: unknown, search: unknown) => (String(v).startsWith(String(search)) ? 1 : 0);
+  parser.functions.endsWith = (v: unknown, search: unknown) => (String(v).endsWith(String(search)) ? 1 : 0);
+
+  // Type conversion functions
+  parser.functions.toNumber = (v: unknown) => Number(v);
+  parser.functions.parseNumber = (v: unknown) => parseValue(v, "number") as number;
+  parser.functions.parseDate = (v: unknown) => parseValue(v, "date") as string;
+  parser.functions.parseBool = (v: unknown) => parseValue(v, "boolean") as number;
+
+  // Conditional
+  parser.functions.ifEmpty = (v: unknown, fallback: unknown) => {
+    const s = String(v).trim();
+    return s === "" || s === "null" || s === "undefined" ? fallback : v;
+  };
+
+  return parser;
+};
+
+/** Singleton parser instance — safe to reuse across calls. */
+const safeParser = createSafeParser();
+
+/**
+ * Run a custom transformation expression.
+ *
+ * Uses expr-eval to evaluate the expression in a sandboxed context.
+ * The expression has access to `value` and predefined helper functions only.
+ * No access to require, process, global, or any Node.js APIs.
+ */
+const runCustomTransform = (value: unknown, expression: string): unknown => {
   try {
-    // Create a simple function context (synchronous for performance)
-    // SAFETY: This is intentional - custom transforms are user-defined code that dataset
-    // administrators configure. The transform code runs in a limited context with only
-    // the value and helper functions available (no access to globals, DOM, or Node APIs).
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval, sonarjs/code-eval
-    const fn = new Function("value", "context", customCode) as (value: unknown, context: unknown) => unknown;
-
-    const context = {
-      parse: {
-        date: (v: unknown) => parseValue(v, "date"),
-        number: (v: unknown) => parseValue(v, "number"),
-        boolean: (v: unknown) => parseValue(v, "boolean"),
-      },
-    };
-
-    return fn(value, context);
+    const parsed = safeParser.parse(expression);
+    return parsed.evaluate({ value: value as string | number });
   } catch (error) {
     throw new Error(`Custom transform failed: ${error instanceof Error ? error.message : String(error)}`);
   }

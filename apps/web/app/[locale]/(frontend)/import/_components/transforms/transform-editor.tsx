@@ -502,14 +502,17 @@ const TypeCastEditor = ({
       </div>
       {strategy === "custom" && (
         <div className="space-y-2">
-          <Label htmlFor="customFunction">Custom Function</Label>
+          <Label htmlFor="customFunction">Custom Expression</Label>
           <Input
             id="customFunction"
             value={customFunction ?? ""}
             onChange={handleCustomFunctionChange}
-            placeholder="return value.toString();"
+            placeholder="upper(value)"
           />
-          <p className="text-muted-foreground text-xs">JavaScript code: (value, context) =&gt; transformedValue</p>
+          <p className="text-muted-foreground text-xs">
+            Expression with value variable. Functions: upper, lower, trim, concat, replace, substring, toNumber,
+            parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty
+          </p>
         </div>
       )}
     </div>

@@ -37,6 +37,7 @@ const logger = createLogger("api-preview-schema-upload");
  */
 export const POST = apiRoute({
   auth: "required",
+  rateLimit: { configName: "FILE_UPLOAD", keyPrefix: (u) => `preview-upload:${u!.id}` },
   handler: async ({ req, user }) => {
     const formData = await req.formData();
     const file = formData.get("file");

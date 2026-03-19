@@ -638,7 +638,7 @@ export interface Dataset {
          */
         strategy?: ('parse' | 'cast' | 'custom' | 'reject') | null;
         /**
-         * Custom JavaScript: (value, context) => transformedValue
+         * Safe expression using the value variable. Available functions: upper, lower, trim, concat, replace, substring, toNumber, parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty. Example: upper(value) or round(toNumber(value), 2)
          */
         customFunction?: string | null;
         /**

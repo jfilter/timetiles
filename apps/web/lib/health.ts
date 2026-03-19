@@ -402,6 +402,22 @@ const createHealthSummary = (results: {
   scraperRunner: results.scraperRunner.status,
 });
 
+/**
+ * Minimal liveness check that only verifies database connectivity.
+ *
+ * Used by the public health endpoint to confirm the service is alive
+ * without exposing any internal diagnostic details.
+ */
+export const runLivenessCheck = async (): Promise<{ status: "ok" | "error"; database: "connected" | "error" }> => {
+  try {
+    const payload = await getPayload({ config });
+    await payload.db.drizzle.execute(sql`SELECT 1`);
+    return { status: "ok", database: "connected" };
+  } catch {
+    return { status: "error", database: "error" };
+  }
+};
+
 export const runHealthChecks = async () => {
   logger.info("Starting health checks");
   const startTime = Date.now();

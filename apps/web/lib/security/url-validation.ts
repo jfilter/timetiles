@@ -51,7 +51,7 @@ const PRIVATE_IPV6_PATTERNS = [
  */
 export const isPrivateUrl = (url: string): boolean => {
   // Allow private URLs when explicitly opted in (e.g., integration tests with local test servers)
-  if (process.env.ALLOW_PRIVATE_URLS === "true") {
+  if (process.env.ALLOW_PRIVATE_URLS === "true" && process.env.NODE_ENV !== "production") {
     return false;
   }
 

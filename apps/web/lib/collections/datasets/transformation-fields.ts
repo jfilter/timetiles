@@ -228,10 +228,10 @@ export const transformationFields: Field[] = [
       },
       {
         name: "customFunction",
-        type: "code",
+        type: "textarea",
         admin: {
-          language: "javascript",
-          description: "Custom JavaScript: (value, context) => transformedValue",
+          description:
+            "Safe expression using the value variable. Available functions: upper, lower, trim, concat, replace, substring, toNumber, parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty. Example: upper(value) or round(toNumber(value), 2)",
           condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST && data?.strategy === "custom",
         },
       },

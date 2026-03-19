@@ -1,12 +1,19 @@
 /**
  * Access control logic for the Sites collection.
  *
- * Uses the shared public-ownership factory since Sites follows the standard
- * pattern: public items visible to all, private items visible to owner/admin.
+ * Sites creation is restricted to editors/admins to prevent domain
+ * takeover attacks (where any user could claim a production domain).
+ * Read/update/delete follow the standard public-ownership pattern.
  *
  * @module
  * @category Collections
  */
-import { createPublicOwnershipAccess } from "../shared-fields";
+import { createPublicOwnershipAccess, isEditorOrAdmin } from "../shared-fields";
 
-export const { read, create, update, deleteAccess, readVersions } = createPublicOwnershipAccess();
+const ownershipAccess = createPublicOwnershipAccess();
+
+export const read = ownershipAccess.read;
+export const create = isEditorOrAdmin;
+export const update = ownershipAccess.update;
+export const deleteAccess = ownershipAccess.deleteAccess;
+export const readVersions = ownershipAccess.readVersions;

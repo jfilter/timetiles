@@ -8,7 +8,7 @@
  * @category Utils
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 
 import { createDatabaseClient } from "./client";
 import { parseDatabaseUrl } from "./url";
@@ -115,19 +115,32 @@ const executeQueryViaShell = (databaseName: string, sql: string, isCI: boolean, 
 
   const { username, password, host } = parseDatabaseUrl(DATABASE_URL);
 
-  let command: string;
   if (isCI) {
-    // In CI, use direct psql commands
-    command = `PGPASSWORD=${password} psql -h ${host} -U ${username} -d ${databaseName} -t -c "${sql}"`;
-  } else {
-    // Local development - use make commands with Docker
-    // Escape SQL for shell
-    const escapedSql = sql.replaceAll('"', String.raw`\"`);
-    command = `cd ../.. && make db-query DB_NAME=${databaseName} SQL="${escapedSql}"`;
+    // In CI, use execFileSync with args array to avoid shell injection
+    try {
+      // eslint-disable-next-line sonarjs/no-os-command-from-path -- psql is a trusted system binary
+      const result = execFileSync("psql", ["-h", host, "-U", username, "-d", databaseName, "-t", "-c", sql], {
+        stdio: "pipe",
+        encoding: "utf8",
+        env: { ...process.env, PGPASSWORD: password },
+      });
+      return result.trim();
+    } catch (error) {
+      if (description) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`${description} failed: ${message}`);
+      }
+      throw error;
+    }
   }
 
+  // Local development - use make commands with Docker
+  // Escape SQL for shell
+  const escapedSql = sql.replaceAll('"', String.raw`\"`);
+  const command = `cd ../.. && make db-query DB_NAME=${databaseName} SQL="${escapedSql}"`;
+
   try {
-    // eslint-disable-next-line sonarjs/os-command -- Safe database query execution
+    // eslint-disable-next-line sonarjs/os-command -- Local dev path: command built from trusted make targets, not user input
     const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
     return result.trim();
   } catch (error) {

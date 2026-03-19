@@ -17,5 +17,9 @@ import path from "node:path";
  */
 export const getImportFilePath = (filename: string): string => {
   const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
-  return path.join(uploadDir, filename);
+  const resolved = path.resolve(uploadDir, filename);
+  if (!resolved.startsWith(uploadDir + path.sep)) {
+    throw new Error("Invalid filename: path traversal detected");
+  }
+  return resolved;
 };

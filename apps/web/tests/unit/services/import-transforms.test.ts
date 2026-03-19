@@ -258,7 +258,7 @@ describe("applyTransforms", () => {
         fromType: "string",
         toType: "boolean",
         strategy: "custom",
-        customFunction: "return context.parse.boolean(value);",
+        customFunction: "parseBool(value)",
         active: true,
         autoDetected: false,
       },

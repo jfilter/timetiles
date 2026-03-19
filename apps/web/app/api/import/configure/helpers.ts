@@ -85,7 +85,19 @@ export const ConfigureImportBodySchema = z.object({
             fromType: z.enum(["string", "number", "boolean", "date", "array", "object", "null"]).optional(),
             toType: z.enum(["string", "number", "boolean", "date", "array", "object", "null"]).optional(),
             strategy: z.enum(["parse", "cast", "custom", "reject"]).optional(),
-            customFunction: z.string().optional(),
+            customFunction: z
+              .string()
+              .refine(
+                (code) => {
+                  const blocked = /\b(require|import|process|global|eval|Function|__proto__|constructor|prototype)\b/i;
+                  return !blocked.test(code);
+                },
+                {
+                  message:
+                    "Expression contains blocked keywords. Use safe expression functions like upper(), round(), concat().",
+                }
+              )
+              .optional(),
           })
         ),
       })

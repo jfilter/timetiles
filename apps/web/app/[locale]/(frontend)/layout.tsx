@@ -43,6 +43,7 @@ import { SiteBranding } from "@/components/site-branding";
 import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
 import { SiteProvider } from "@/lib/context/site-context";
+import { sanitizeHTML } from "@/lib/security/html-sanitizer";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import config from "@/payload.config";
 import type { Branding, Footer as FooterType } from "@/payload-types";
@@ -180,8 +181,12 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
   const site = await resolveSite(payload, host);
 
   // Pre-build dangerouslySetInnerHTML objects outside JSX to satisfy react-perf/jsx-no-new-object-as-prop
-  const bodyStartHtmlContent = site?.customCode?.bodyStartHtml ? { __html: site.customCode.bodyStartHtml } : undefined;
-  const bodyEndHtmlContent = site?.customCode?.bodyEndHtml ? { __html: site.customCode.bodyEndHtml } : undefined;
+  const bodyStartHtmlContent = site?.customCode?.bodyStartHtml
+    ? { __html: sanitizeHTML(site.customCode.bodyStartHtml) }
+    : undefined;
+  const bodyEndHtmlContent = site?.customCode?.bodyEndHtml
+    ? { __html: sanitizeHTML(site.customCode.bodyEndHtml) }
+    : undefined;
 
   return (
     <html lang={locale} suppressHydrationWarning>

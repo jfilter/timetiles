@@ -27,6 +27,14 @@ const DANGEROUS_PATTERNS = [
   /<\s*\/?script/gi,
   /<\s*\/?style/gi,
   /<\s*\/?link/gi,
+  // Font probing (local() can detect installed fonts for fingerprinting)
+  /@font-face\b/gi,
+  // Data exfiltration via attr() reading DOM attributes
+  /content\s*:[^;]*\battr\s*\(/gi,
+  // Vendor-prefixed variants of blocked properties
+  /-webkit-binding\s*:/gi,
+  // CSS unicode escapes that could bypass other patterns (e.g. \6a avascript:)
+  /\\[0-9a-f]{1,6}/gi,
 ];
 
 /**
