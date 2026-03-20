@@ -93,10 +93,18 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 5000 });
 
-    // Verify the transform node appears in the flow editor
-    // Transform nodes show their type label as "Transform" in the header
-    // and the specific label (e.g., "String Operation") in the body
-    await expect(page.getByText("Transform").first()).toBeVisible({ timeout: 5000 });
+    // Verify the transform node appears in the flow editor with correct content
+    // The node shows "uppercase" as the summary and "title" as the source field badge
+    await expect(page.locator(".react-flow__node-transform")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(".react-flow__node-transform").getByText("uppercase")).toBeVisible();
+
+    // Verify the transform node is connected with edges (source → transform → target)
+    // ReactFlow renders edges as SVG elements with class "react-flow__edge"
+    const edges = page.locator(".react-flow__edge");
+    await expect(edges.first()).toBeVisible({ timeout: 5000 });
+    const edgeCount = await edges.count();
+    // Expect at least: source→transform + transform→target + other auto-detected edges
+    expect(edgeCount).toBeGreaterThanOrEqual(2);
 
     // Click "Apply & Return" to go back
     const saveButton = page.getByRole("button", { name: /apply.*return/i });

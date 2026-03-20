@@ -137,6 +137,71 @@ const createInitialEdges = (mappingPairs: MappingPair[], sheetIndex: number): Fl
   return edges;
 };
 
+/**
+ * Create transform nodes and wiring edges from wizard state.
+ */
+const createTransformNodesFromWizard = (
+  wizardState: { fieldMapping: FieldMapping; transforms: ImportTransform[] },
+  sheetIndex: number,
+  sourceX: number,
+  targetX: number
+): { nodes: FlowNode[]; edges: FlowEdge[]; replacedTargets: Set<string> } => {
+  const nodes: FlowNode[] = [];
+  const edges: FlowEdge[] = [];
+  const replacedTargets = new Set<string>();
+  const transformX = sourceX + (targetX - sourceX) / 2;
+
+  // Build reverse map: source column → target fieldKey
+  const columnToTargetField = new Map<string, string>();
+  const fm = wizardState.fieldMapping;
+  const fieldKeys: Array<{ key: string; value: string | null }> = [
+    { key: "titleField", value: fm.titleField },
+    { key: "dateField", value: fm.dateField },
+    { key: "descriptionField", value: fm.descriptionField },
+    { key: "locationField", value: fm.locationField },
+    { key: "locationNameField", value: fm.locationNameField },
+    { key: "latitudeField", value: fm.latitudeField },
+    { key: "longitudeField", value: fm.longitudeField },
+  ];
+  for (const entry of fieldKeys) {
+    if (entry.value) columnToTargetField.set(entry.value, entry.key);
+  }
+
+  for (let i = 0; i < wizardState.transforms.length; i++) {
+    const transform = wizardState.transforms[i]!;
+    const nodeId = `transform-${transform.id}`;
+    const y = 50 + i * 120;
+
+    nodes.push({
+      id: nodeId,
+      type: NODE_TYPE_TRANSFORM,
+      position: { x: transformX, y },
+      data: { transform, isEditing: false } as TransformNodeData,
+    });
+
+    // Wire edges: source → transform → target
+    const sourceColumn = "from" in transform ? transform.from : null;
+    if (!sourceColumn) continue;
+
+    const sourceNodeId = `source-${sheetIndex}-${sourceColumn}`;
+    edges.push({ id: `edge-${sourceNodeId}-${nodeId}`, source: sourceNodeId, target: nodeId, data: { isValid: true } });
+
+    const targetFieldKey = columnToTargetField.get(sourceColumn);
+    if (targetFieldKey) {
+      const targetNodeId = `target-${targetFieldKey}`;
+      replacedTargets.add(targetNodeId);
+      edges.push({
+        id: `edge-${nodeId}-${targetNodeId}`,
+        source: nodeId,
+        target: targetNodeId,
+        data: { isValid: true },
+      });
+    }
+  }
+
+  return { nodes, edges, replacedTargets };
+};
+
 // eslint-disable-next-line sonarjs/max-lines-per-function -- Complex hook managing flow editor state; splitting would reduce cohesion
 export const useFlowEditor = (previewId: string | null, sheetIndex: number): UseFlowEditorResult => {
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
@@ -187,24 +252,19 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       allInitEdges.push(...suggestedEdges);
     }
 
-    // Create transform nodes from wizard state
+    // Create transform nodes + edges from wizard state
     if (wizardState?.transforms.length) {
-      const TARGET_X = targetNodes[0]?.position.x ?? 700;
-      const SOURCE_X = sourceNodes[0]?.position.x ?? 0;
-      const TRANSFORM_X = SOURCE_X + (TARGET_X - SOURCE_X) / 2;
-
-      for (let i = 0; i < wizardState.transforms.length; i++) {
-        const transform = wizardState.transforms[i]!;
-        const nodeId = `transform-${transform.id}`;
-        const y = 50 + i * 120;
-
-        allInitNodes.push({
-          id: nodeId,
-          type: NODE_TYPE_TRANSFORM,
-          position: { x: TRANSFORM_X, y },
-          data: { transform, isEditing: false } as TransformNodeData,
-        });
-      }
+      const result = createTransformNodesFromWizard(
+        wizardState,
+        sheetIndex,
+        sourceNodes[0]?.position.x ?? 0,
+        targetNodes[0]?.position.x ?? 700
+      );
+      allInitNodes.push(...result.nodes);
+      // Remove direct edges that transforms replace, then add transform edges
+      const filteredEdges = allInitEdges.filter((e) => !result.replacedTargets.has(e.target));
+      allInitEdges.length = 0;
+      allInitEdges.push(...filteredEdges, ...result.edges);
     }
 
     setNodes(allInitNodes);
