@@ -57,6 +57,8 @@ const main = async () => {
 
   while (isRunning) {
     try {
+      // Queue any due scheduled jobs before running.
+      await payload.jobs.handleSchedules({ allQueues: true });
       const result = await payload.jobs.run({ limit: MAX_JOBS_PER_RUN });
       // If jobs were processed, loop immediately to pick up chained jobs
       const hadWork = result?.jobStatus && Object.keys(result.jobStatus).length > 0;

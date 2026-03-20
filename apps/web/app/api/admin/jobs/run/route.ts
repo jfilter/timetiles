@@ -64,6 +64,10 @@ export const POST = apiRoute({
       "Jobs run starting"
     );
 
+    // Queue any due scheduled jobs (e.g. schedule-manager, cleanup crons).
+    // Without this, task `schedule` definitions are passive — nothing queues them.
+    await payload.jobs.handleSchedules({ allQueues: true });
+
     let iterationsRun = 0;
     for (let i = 0; i < iterations; i++) {
       iterationsRun++;

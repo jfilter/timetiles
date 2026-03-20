@@ -203,6 +203,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     globals: ALL_GLOBALS,
     jobs: {
       tasks: ALL_JOBS,
+      enableConcurrencyControl: true,
       // In development, run `make jobs` to process jobs
       // In production, use external worker or Vercel Cron to call payload.jobs.run()
       // In E2E tests, a job worker process runs alongside the server
