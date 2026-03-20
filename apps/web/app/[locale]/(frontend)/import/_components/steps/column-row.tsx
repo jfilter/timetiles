@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { Checkbox } from "@timetiles/ui";
+import { Checkbox, ConfirmDialog } from "@timetiles/ui";
 import { Button } from "@timetiles/ui/components/button";
 import {
   DropdownMenu,
@@ -64,6 +64,75 @@ const formatSampleValue = (value: unknown): string => {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (value instanceof Date) return value.toISOString();
   return JSON.stringify(value).slice(0, 40);
+};
+
+// ---------------------------------------------------------------------------
+// useTransformEditing — shared hook for expand/draft/delete/save/cancel
+// ---------------------------------------------------------------------------
+
+const useTransformEditing = (
+  columnName: string,
+  transforms: ImportTransform[],
+  onTransformRemove: (columnName: string, transformId: string) => void,
+  onTransformUpdate: (columnName: string, transformId: string, updates: Partial<ImportTransform>) => void
+) => {
+  const [expandedTransformId, setExpandedTransformId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [draftTransform, setDraftTransform] = useState<ImportTransform | null>(null);
+
+  const handleToggleExpand = useCallback(
+    (transformId: string) => {
+      if (expandedTransformId === transformId) {
+        setExpandedTransformId(null);
+        setDraftTransform(null);
+      } else {
+        setExpandedTransformId(transformId);
+        const tf = transforms.find((t) => t.id === transformId);
+        if (tf) setDraftTransform({ ...tf } as ImportTransform);
+      }
+    },
+    [expandedTransformId, transforms]
+  );
+
+  const handleConfirmRemove = useCallback(() => {
+    if (!deleteTargetId) return;
+    onTransformRemove(columnName, deleteTargetId);
+    if (expandedTransformId === deleteTargetId) {
+      setExpandedTransformId(null);
+      setDraftTransform(null);
+    }
+    setDeleteTargetId(null);
+  }, [columnName, deleteTargetId, onTransformRemove, expandedTransformId]);
+
+  const handleDraftChange = useCallback((updates: Partial<ImportTransform>) => {
+    setDraftTransform((prev) => (prev ? ({ ...prev, ...updates } as ImportTransform) : null));
+  }, []);
+
+  const handleSave = useCallback(() => {
+    if (!draftTransform || !expandedTransformId) return;
+    onTransformUpdate(columnName, expandedTransformId, draftTransform);
+    setExpandedTransformId(null);
+    setDraftTransform(null);
+  }, [columnName, draftTransform, expandedTransformId, onTransformUpdate]);
+
+  const handleCancel = useCallback(() => {
+    setExpandedTransformId(null);
+    setDraftTransform(null);
+  }, []);
+
+  const expandedTransform = draftTransform && expandedTransformId ? draftTransform : null;
+
+  return {
+    expandedTransformId,
+    expandedTransform,
+    deleteTargetId,
+    setDeleteTargetId,
+    handleToggleExpand,
+    handleConfirmRemove,
+    handleDraftChange,
+    handleSave,
+    handleCancel,
+  };
 };
 
 /** Short label for a transform chip. */
@@ -209,30 +278,7 @@ const SplitChildRow = ({
   sourceColumns,
 }: Readonly<SplitChildRowProps>) => {
   const t = useTranslations("Import");
-  const [expandedTransformId, setExpandedTransformId] = useState<string | null>(null);
-
-  const handleToggleExpand = useCallback((transformId: string) => {
-    setExpandedTransformId((prev) => (prev === transformId ? null : transformId));
-  }, []);
-
-  const handleRemoveTransform = useCallback(
-    (transformId: string) => {
-      onTransformRemove(childName, transformId);
-      if (expandedTransformId === transformId) {
-        setExpandedTransformId(null);
-      }
-    },
-    [childName, onTransformRemove, expandedTransformId]
-  );
-
-  const handleUpdateTransform = useCallback(
-    (transformId: string, updates: Partial<ImportTransform>) => {
-      onTransformUpdate(childName, transformId, updates);
-    },
-    [childName, onTransformUpdate]
-  );
-
-  const expandedTransform = transforms.find((tf) => tf.id === expandedTransformId);
+  const editing = useTransformEditing(childName, transforms, onTransformRemove, onTransformUpdate);
 
   return (
     <>
@@ -259,9 +305,9 @@ const SplitChildRow = ({
                   <TransformChip
                     key={transform.id}
                     transform={transform}
-                    isExpanded={expandedTransformId === transform.id}
-                    onToggle={() => handleToggleExpand(transform.id)}
-                    onRemove={() => handleRemoveTransform(transform.id)}
+                    isExpanded={editing.expandedTransformId === transform.id}
+                    onToggle={() => editing.handleToggleExpand(transform.id)}
+                    onRemove={() => editing.setDeleteTargetId(transform.id)}
                   />
                 ))}
                 <span className="text-cartographic-navy/30 mx-0.5 text-xs" aria-hidden="true">
@@ -292,32 +338,82 @@ const SplitChildRow = ({
       </tr>
 
       {/* Expanded transform editor row for split child */}
-      {expandedTransform && (
-        <tr className="border-cartographic-navy/5 border-b bg-purple-50/20 last:border-0 dark:bg-purple-950/5">
-          <td colSpan={4} className="bg-muted/30 px-6 py-4">
-            <div className="max-w-2xl">
-              <div className="mb-2 flex items-center gap-2">
-                {(() => {
-                  const Icon = TRANSFORM_ICONS[expandedTransform.type];
-                  return <Icon className={cn("h-4 w-4", TRANSFORM_COLORS[expandedTransform.type])} />;
-                })()}
-                <span className="text-foreground text-sm font-medium">
-                  {TRANSFORM_TYPE_LABELS[expandedTransform.type]}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {t("flowSourceColumn")}: {childName}
-                </span>
-              </div>
-              <TransformEditor
-                transform={expandedTransform}
-                onChange={(updates) => handleUpdateTransform(expandedTransform.id, updates)}
-                sourceColumns={sourceColumns}
-              />
-            </div>
-          </td>
-        </tr>
-      )}
+      <ExpandedEditorRow
+        expandedTransform={editing.expandedTransform}
+        columnName={childName}
+        sourceColumns={sourceColumns}
+        onDraftChange={editing.handleDraftChange}
+        onSave={editing.handleSave}
+        onCancel={editing.handleCancel}
+        bgClass="bg-purple-50/20 dark:bg-purple-950/5"
+      />
+
+      <ConfirmDialog
+        open={!!editing.deleteTargetId}
+        onOpenChange={(open) => !open && editing.setDeleteTargetId(null)}
+        title={t("confirmDeleteTransform")}
+        description={t("confirmDeleteTransformDescription")}
+        confirmLabel={t("confirm")}
+        cancelLabel={t("cancelEdit")}
+        variant="destructive"
+        onConfirm={editing.handleConfirmRemove}
+      />
     </>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// ExpandedEditorRow — shared editor row with save/cancel
+// ---------------------------------------------------------------------------
+
+interface ExpandedEditorRowProps {
+  expandedTransform: ImportTransform | null;
+  columnName: string;
+  sourceColumns: string[];
+  onDraftChange: (updates: Partial<ImportTransform>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  bgClass?: string;
+}
+
+const ExpandedEditorRow = ({
+  expandedTransform,
+  columnName,
+  sourceColumns,
+  onDraftChange,
+  onSave,
+  onCancel,
+  bgClass,
+}: Readonly<ExpandedEditorRowProps>) => {
+  const t = useTranslations("Import");
+
+  if (!expandedTransform) return null;
+
+  const Icon = TRANSFORM_ICONS[expandedTransform.type];
+
+  return (
+    <tr className={cn("border-cartographic-navy/5 border-b last:border-0", bgClass)}>
+      <td colSpan={4} className="bg-muted/30 px-6 py-4">
+        <div className="max-w-2xl">
+          <div className="mb-2 flex items-center gap-2">
+            <Icon className={cn("h-4 w-4", TRANSFORM_COLORS[expandedTransform.type])} />
+            <span className="text-foreground text-sm font-medium">{TRANSFORM_TYPE_LABELS[expandedTransform.type]}</span>
+            <span className="text-muted-foreground text-xs">
+              {t("flowSourceColumn")}: {columnName}
+            </span>
+          </div>
+          <TransformEditor transform={expandedTransform} onChange={onDraftChange} sourceColumns={sourceColumns} />
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={onCancel}>
+              {t("cancelEdit")}
+            </Button>
+            <Button size="sm" onClick={onSave}>
+              {t("saveTransform")}
+            </Button>
+          </div>
+        </div>
+      </td>
+    </tr>
   );
 };
 
@@ -346,30 +442,7 @@ export const ColumnRow = ({
   onGeocodingChange,
 }: Readonly<ColumnRowProps>) => {
   const t = useTranslations("Import");
-  const [expandedTransformId, setExpandedTransformId] = useState<string | null>(null);
-
-  const handleToggleExpand = useCallback((transformId: string) => {
-    setExpandedTransformId((prev) => (prev === transformId ? null : transformId));
-  }, []);
-
-  const handleRemoveTransform = useCallback(
-    (transformId: string) => {
-      onTransformRemove(columnName, transformId);
-      if (expandedTransformId === transformId) {
-        setExpandedTransformId(null);
-      }
-    },
-    [columnName, onTransformRemove, expandedTransformId]
-  );
-
-  const handleUpdateTransform = useCallback(
-    (transformId: string, updates: Partial<ImportTransform>) => {
-      onTransformUpdate(columnName, transformId, updates);
-    },
-    [columnName, onTransformUpdate]
-  );
-
-  const expandedTransform = transforms.find((t) => t.id === expandedTransformId);
+  const editing = useTransformEditing(columnName, transforms, onTransformRemove, onTransformUpdate);
 
   return (
     <>
@@ -402,9 +475,9 @@ export const ColumnRow = ({
                   <TransformChip
                     key={transform.id}
                     transform={transform}
-                    isExpanded={expandedTransformId === transform.id}
-                    onToggle={() => handleToggleExpand(transform.id)}
-                    onRemove={() => handleRemoveTransform(transform.id)}
+                    isExpanded={editing.expandedTransformId === transform.id}
+                    onToggle={() => editing.handleToggleExpand(transform.id)}
+                    onRemove={() => editing.setDeleteTargetId(transform.id)}
                   />
                 ))}
                 {/* Arrow indicator when transforms exist */}
@@ -446,31 +519,25 @@ export const ColumnRow = ({
       </tr>
 
       {/* Expanded transform editor row */}
-      {expandedTransform && (
-        <tr className="border-cartographic-navy/5 border-b last:border-0">
-          <td colSpan={4} className="bg-muted/30 px-6 py-4">
-            <div className="max-w-2xl">
-              <div className="mb-2 flex items-center gap-2">
-                {(() => {
-                  const Icon = TRANSFORM_ICONS[expandedTransform.type];
-                  return <Icon className={cn("h-4 w-4", TRANSFORM_COLORS[expandedTransform.type])} />;
-                })()}
-                <span className="text-foreground text-sm font-medium">
-                  {TRANSFORM_TYPE_LABELS[expandedTransform.type]}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {t("flowSourceColumn")}: {columnName}
-                </span>
-              </div>
-              <TransformEditor
-                transform={expandedTransform}
-                onChange={(updates) => handleUpdateTransform(expandedTransform.id, updates)}
-                sourceColumns={sourceColumns}
-              />
-            </div>
-          </td>
-        </tr>
-      )}
+      <ExpandedEditorRow
+        expandedTransform={editing.expandedTransform}
+        columnName={columnName}
+        sourceColumns={sourceColumns}
+        onDraftChange={editing.handleDraftChange}
+        onSave={editing.handleSave}
+        onCancel={editing.handleCancel}
+      />
+
+      <ConfirmDialog
+        open={!!editing.deleteTargetId}
+        onOpenChange={(open) => !open && editing.setDeleteTargetId(null)}
+        title={t("confirmDeleteTransform")}
+        description={t("confirmDeleteTransformDescription")}
+        confirmLabel={t("confirm")}
+        cancelLabel={t("cancelEdit")}
+        variant="destructive"
+        onConfirm={editing.handleConfirmRemove}
+      />
 
       {/* Split child rows — interactive with transforms + target assignment */}
       {isSplitParent &&

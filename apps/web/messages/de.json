@@ -533,6 +533,11 @@
     "addTransformToColumn": "Transformation hinzufuegen",
     "combineColumns": "Spalten kombinieren",
     "removeTransform": "Transformation entfernen",
+    "confirmDeleteTransform": "Transformation entfernen?",
+    "confirmDeleteTransformDescription": "Die Transformation wird entfernt. Sie kann spaeter erneut hinzugefuegt werden.",
+    "saveTransform": "Speichern",
+    "cancelEdit": "Abbrechen",
+    "confirm": "Bestaetigen",
     "splitResult": "Split-Ergebnis",
     "dataPreview": "Datenvorschau"
   },

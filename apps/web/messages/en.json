@@ -533,6 +533,11 @@
     "addTransformToColumn": "Add transform",
     "combineColumns": "Combine columns",
     "removeTransform": "Remove transform",
+    "confirmDeleteTransform": "Remove this transform?",
+    "confirmDeleteTransformDescription": "This will remove the transform. You can add it back later.",
+    "saveTransform": "Save",
+    "cancelEdit": "Cancel",
+    "confirm": "Confirm",
     "splitResult": "Split result",
     "dataPreview": "Data Preview"
   },

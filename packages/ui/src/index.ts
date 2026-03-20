@@ -23,6 +23,8 @@ export {
 } from "./components/card";
 export { Checkbox } from "./components/checkbox";
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/collapsible";
+export type { ConfirmDialogProps } from "./components/confirm-dialog";
+export { ConfirmDialog } from "./components/confirm-dialog";
 export type { ContentStateProps } from "./components/content-state";
 export { ContentState } from "./components/content-state";
 export {

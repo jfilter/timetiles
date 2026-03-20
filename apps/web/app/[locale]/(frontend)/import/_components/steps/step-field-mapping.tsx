@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
+import type { ImportTransform } from "@/lib/types/import-transforms";
 import { type ConfigSuggestion, type FieldMapping, isFieldMappingComplete } from "@/lib/types/import-wizard";
 
 import { useWizardCanProceed } from "../use-wizard-effects";
@@ -58,6 +59,59 @@ const useConfigSuggestion = (
   }, [activeSheetIndex, sheetMappings, bestSuggestion, applyDatasetConfig]);
 
   return { dismissed, applied, setDismissed, setApplied };
+};
+
+/** Apply a string operation transform for preview. */
+const applyStringOp = (result: Record<string, unknown>, tf: ImportTransform & { type: "string-op" }): void => {
+  const v = result[tf.from];
+  if (typeof v !== "string") return;
+  if (tf.operation === "uppercase") result[tf.from] = v.toUpperCase();
+  else if (tf.operation === "lowercase") result[tf.from] = v.toLowerCase();
+  else if (tf.operation === "trim") result[tf.from] = v.trim();
+  else if (tf.operation === "replace" && tf.pattern !== undefined)
+    result[tf.from] = v.replaceAll(tf.pattern, tf.replacement ?? "");
+};
+
+/** Apply a single transform to a preview row (client-safe, no server deps). */
+const applyOneTransform = (result: Record<string, unknown>, tf: ImportTransform): void => {
+  if (tf.type === "string-op") return applyStringOp(result, tf);
+  if (tf.type === "rename") {
+    const v = result[tf.from];
+    if (v !== undefined) {
+      result[tf.to] = v;
+      delete result[tf.from];
+    }
+    return;
+  }
+  if (tf.type === "concatenate") {
+    const parts = tf.fromFields.map((f) => result[f]).filter((v) => v != null);
+    if (parts.length > 0) result[tf.to] = parts.map(String).join(tf.separator);
+    return;
+  }
+  if (tf.type === "split") {
+    const v = result[tf.from];
+    if (typeof v !== "string") return;
+    const parts = v.split(tf.delimiter);
+    for (let i = 0; i < tf.toFields.length && i < parts.length; i++) {
+      const field = tf.toFields[i];
+      if (field && parts[i] !== undefined) result[field] = parts[i]!.trim();
+    }
+  }
+};
+
+/** Apply transforms to sample data for preview. */
+const applyPreviewTransforms = (
+  dataArray: Record<string, unknown>[],
+  transforms: ImportTransform[]
+): Record<string, unknown>[] => {
+  const active = transforms.filter((t) => t.active);
+  if (active.length === 0) return dataArray;
+
+  return dataArray.map((row) => {
+    const result = { ...row };
+    for (const tf of active) applyOneTransform(result, tf);
+    return result;
+  });
 };
 
 /** Check whether the active sheet maps to an existing dataset, locking ID strategy controls. */
@@ -123,8 +177,18 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   const isComplete = activeMapping ? isFieldMappingComplete(activeMapping) : false;
 
-  // Build preview fields from all headers for the data preview table
-  const allPreviewFields = useMemo(() => headers.map((h) => ({ label: h, columnKey: h })), [headers]);
+  // Apply transforms to preview data
+  const sheetTransforms = transforms[activeSheetIndex];
+  const transformedSampleData = useMemo(
+    () => applyPreviewTransforms(activeSheet?.sampleData ?? [], sheetTransforms ?? []),
+    [activeSheet?.sampleData, sheetTransforms]
+  );
+
+  // Build preview fields from transformed data (includes new columns from transforms)
+  const allPreviewFields = useMemo(() => {
+    const allKeys = new Set([...headers, ...transformedSampleData.flatMap(Object.keys)]);
+    return [...allKeys].map((h) => ({ label: h, columnKey: h }));
+  }, [headers, transformedSampleData]);
 
   if (!activeSheet || !activeMapping) {
     return (
@@ -227,11 +291,11 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
         onGeocodingChange={(enabled) => setImportOptions({ geocodingEnabled: enabled })}
       />
 
-      {/* Data preview */}
+      {/* Data preview — shows transformed sample data */}
       {activeSheet.sampleData.length > 0 && (
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <DataPreviewSection fields={allPreviewFields} sampleData={activeSheet.sampleData} />
+            <DataPreviewSection fields={allPreviewFields} sampleData={transformedSampleData} />
           </CardContent>
         </Card>
       )}

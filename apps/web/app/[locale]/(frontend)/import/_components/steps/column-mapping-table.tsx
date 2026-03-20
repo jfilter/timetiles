@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { Label, Table, TableBody, TableHead, TableHeader, TableRow } from "@timetiles/ui";
+import { ConfirmDialog, Label, Table, TableBody, TableHead, TableHeader, TableRow } from "@timetiles/ui";
 import { Button } from "@timetiles/ui/components/button";
 import { Input } from "@timetiles/ui/components/input";
 import { cn } from "@timetiles/ui/lib/utils";
@@ -203,6 +203,7 @@ const CombinedRow = ({
 }: Readonly<CombinedRowProps>) => {
   const t = useTranslations("Import");
   const [expanded, setExpanded] = useState(autoExpand || transform.fromFields.length === 0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const targetField = transform.to ? findTargetForColumn(transform.to, fieldMapping) : null;
   const summary =
@@ -252,7 +253,7 @@ const CombinedRow = ({
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
-            onClick={() => onRemove(transform.id)}
+            onClick={() => setConfirmDelete(true)}
             aria-label={t("removeTransform")}
           >
             <span aria-hidden="true">&times;</span>
@@ -308,6 +309,17 @@ const CombinedRow = ({
           </td>
         </tr>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={t("confirmDeleteTransform")}
+        description={t("confirmDeleteTransformDescription")}
+        confirmLabel={t("confirm")}
+        cancelLabel={t("cancelEdit")}
+        variant="destructive"
+        onConfirm={() => onRemove(transform.id)}
+      />
     </>
   );
 };
