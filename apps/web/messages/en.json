@@ -582,7 +582,6 @@
     "tfSelectOperation": "Select operation",
     "tfOpUppercase": "Uppercase",
     "tfOpLowercase": "Lowercase",
-    "tfOpTrim": "Trim Whitespace",
     "tfOpReplace": "Replace",
     "tfFindPattern": "Find Pattern",
     "tfFindPatternPlaceholder": "Text to find",

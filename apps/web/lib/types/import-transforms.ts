@@ -15,7 +15,7 @@
  * Supported types:
  * - rename: Map source field path to target field path
  * - date-parse: Parse date strings into standardized format
- * - string-op: Apply string operations (uppercase, lowercase, trim, replace)
+ * - string-op: Apply string operations (uppercase, lowercase, replace)
  * - concatenate: Combine multiple fields into one
  * - split: Split one field into multiple fields
  * - type-cast: Convert field values from one type to another
@@ -89,7 +89,7 @@ export interface StringOpTransform extends BaseTransform {
   /** Source field to transform */
   from: string;
   /** Operation to apply */
-  operation: "uppercase" | "lowercase" | "trim" | "replace";
+  operation: "uppercase" | "lowercase" | "replace";
   /** Pattern for replace operation */
   pattern?: string;
   /** Replacement string for replace operation */
@@ -310,7 +310,7 @@ export const createTransform = (type: TransformType): ImportTransform => {
     case "date-parse":
       return { ...base, type: "date-parse", from: "", inputFormat: "", outputFormat: "YYYY-MM-DD" };
     case "string-op":
-      return { ...base, type: "string-op", from: "", operation: "trim" };
+      return { ...base, type: "string-op", from: "", operation: "uppercase" };
     case "concatenate":
       return { ...base, type: "concatenate", fromFields: [], separator: " ", to: "" };
     case "split":

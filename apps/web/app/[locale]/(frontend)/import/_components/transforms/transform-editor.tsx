@@ -234,7 +234,7 @@ const DateParseEditor = ({
 
 interface StringOpEditorProps {
   from: string;
-  operation: "uppercase" | "lowercase" | "trim" | "replace";
+  operation: "uppercase" | "lowercase" | "replace";
   pattern?: string;
   replacement?: string;
   sourceColumns: string[];
@@ -274,7 +274,6 @@ const StringOpEditor = ({
             <SelectContent>
               <SelectItem value="uppercase">{t("tfOpUppercase")}</SelectItem>
               <SelectItem value="lowercase">{t("tfOpLowercase")}</SelectItem>
-              <SelectItem value="trim">{t("tfOpTrim")}</SelectItem>
               <SelectItem value="replace">{t("tfOpReplace")}</SelectItem>
             </SelectContent>
           </Select>

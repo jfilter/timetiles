@@ -101,7 +101,7 @@ describe("import-transforms", () => {
         id: "1",
         type: "string-op",
         from: "name",
-        operation: "" as "trim",
+        operation: "" as "uppercase",
         active: true,
         autoDetected: false,
       };
@@ -260,7 +260,7 @@ describe("import-transforms", () => {
       const t = createTransform("string-op");
       expect(t.type).toBe("string-op");
       if (t.type === "string-op") {
-        expect(t.operation).toBe("trim");
+        expect(t.operation).toBe("uppercase");
       }
     });
 

@@ -34,7 +34,7 @@ const buildStringOpTransform = (t: DatasetTransformEntry, base: TransformBase): 
         ...base,
         type: "string-op",
         from: t.from,
-        operation: t.operation,
+        operation: t.operation === "trim" ? "uppercase" : t.operation,
         pattern: t.pattern ?? undefined,
         replacement: t.replacement ?? undefined,
       }

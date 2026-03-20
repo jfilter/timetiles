@@ -67,7 +67,6 @@ const applyStringOp = (result: Record<string, unknown>, tf: ImportTransform & { 
   if (typeof v !== "string") return;
   if (tf.operation === "uppercase") result[tf.from] = v.toUpperCase();
   else if (tf.operation === "lowercase") result[tf.from] = v.toLowerCase();
-  else if (tf.operation === "trim") result[tf.from] = v.trim();
   else if (tf.operation === "replace" && tf.pattern !== undefined)
     result[tf.from] = v.replaceAll(tf.pattern, tf.replacement ?? "");
 };

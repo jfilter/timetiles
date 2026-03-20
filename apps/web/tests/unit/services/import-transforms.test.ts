@@ -305,15 +305,6 @@ describe("applyTransforms", () => {
     expect(result.title).toBe("hello world");
   });
 
-  it("should apply trim string-op transform", () => {
-    const data = { title: "  hello world  " };
-    const transforms: ImportTransform[] = [
-      { id: "1", type: "string-op", from: "title", operation: "trim", active: true, autoDetected: false },
-    ];
-    const result = applyTransforms(data, transforms);
-    expect(result.title).toBe("hello world");
-  });
-
   it("should apply replace string-op transform", () => {
     const data = { title: "hello-world-2024" };
     const transforms: ImportTransform[] = [
@@ -468,9 +459,9 @@ describe("applyTransforms", () => {
   });
 
   it("should chain multiple transform types together", () => {
-    const data = { full_name: "  john doe  ", date: "15/03/2024" };
+    const data = { full_name: "john doe", date: "15/03/2024" };
     const transforms: ImportTransform[] = [
-      { id: "1", type: "string-op", from: "full_name", operation: "trim", active: true, autoDetected: false },
+      { id: "1", type: "string-op", from: "full_name", operation: "uppercase", active: true, autoDetected: false },
       {
         id: "2",
         type: "split",
@@ -491,8 +482,8 @@ describe("applyTransforms", () => {
       },
     ];
     const result = applyTransforms(data, transforms);
-    expect(result.first).toBe("john");
-    expect(result.last).toBe("doe");
+    expect(result.first).toBe("JOHN");
+    expect(result.last).toBe("DOE");
     expect(result.date).toBe("2024-03-15");
   });
 });

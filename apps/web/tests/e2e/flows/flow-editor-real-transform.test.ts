@@ -68,23 +68,18 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     await expect(stringOpItem).toBeVisible({ timeout: 5000 });
     await stringOpItem.click();
 
-    // The transform chip appears in the title row (default operation is "trim")
+    // The transform chip appears in the title row (default operation is "uppercase")
     // Click the chip to expand the inline editor below the row
-    const transformChip = titleRow.getByText("Trim");
+    const transformChip = titleRow.getByText("Uppercase");
     await expect(transformChip).toBeVisible({ timeout: 5000 });
     await transformChip.click();
 
     // The editor expands below the row — source field is already set to "title"
-    // Change the operation from "trim" (default) to "uppercase"
+    // Verify the operation is "uppercase" (the default)
     const operationTrigger = page.locator("#operation");
     await expect(operationTrigger).toBeVisible({ timeout: 5000 });
-    await operationTrigger.click();
 
-    const uppercaseOption = page.getByRole("option", { name: /uppercase/i });
-    await expect(uppercaseOption).toBeVisible({ timeout: 5000 });
-    await uppercaseOption.click();
-
-    // Verify the chip updated to show "Uppercase" after changing the operation
+    // Verify the chip shows "Uppercase"
     await expect(titleRow.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
   };
 

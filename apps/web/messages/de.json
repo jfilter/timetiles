@@ -582,7 +582,6 @@
     "tfSelectOperation": "Operation auswählen",
     "tfOpUppercase": "Grossbuchstaben",
     "tfOpLowercase": "Kleinbuchstaben",
-    "tfOpTrim": "Leerzeichen entfernen",
     "tfOpReplace": "Ersetzen",
     "tfFindPattern": "Suchmuster",
     "tfFindPatternPlaceholder": "Zu suchender Text",
