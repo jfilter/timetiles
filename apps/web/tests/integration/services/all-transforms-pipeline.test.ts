@@ -1,7 +1,7 @@
 /**
  * Integration tests for all 6 import transform types working through the real pipeline.
  *
- * Verifies that rename, date-parse, concatenate, string-op, split, and type-cast
+ * Verifies that rename, date-parse, concatenate, string-op, split, and expression
  * transforms are applied correctly in order when processing a CSV import through
  * the full Payload CMS job pipeline.
  *
@@ -26,7 +26,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("All 6 Transform Types Pipeline", () => {
+describe.sequential("All Transform Types Pipeline", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let approverUser: any;
@@ -106,10 +106,10 @@ describe.sequential("All 6 Transform Types Pipeline", () => {
   };
 
   /**
-   * Build the standard set of 6 transforms used across tests.
+   * Build the standard set of transforms used across tests.
    * The order is critical: concatenate runs BEFORE string-op uppercase.
    */
-  const buildAllSixTransforms = () => [
+  const buildAllTransforms = () => [
     { id: "t-rename", type: "rename", from: "event_name", to: "title", active: true, autoDetected: false },
     {
       id: "t-date",
@@ -141,11 +141,10 @@ describe.sequential("All 6 Transform Types Pipeline", () => {
     },
     {
       id: "t-cast",
-      type: "type-cast",
+      type: "string-op",
       from: "attendees",
-      fromType: "string",
-      toType: "number",
-      strategy: "parse",
+      operation: "expression",
+      expression: "toNumber(value)",
       active: true,
       autoDetected: false,
     },
@@ -180,12 +179,12 @@ describe.sequential("All 6 Transform Types Pipeline", () => {
 
   // --- Test 1: All 6 transforms applied correctly ---
 
-  it("should apply all 6 transform types correctly through the import pipeline", async () => {
+  it("should apply all transform types correctly through the import pipeline", async () => {
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `All Transforms Dataset ${Date.now()}`,
       language: "eng",
       schemaConfig: { allowTransformations: true },
-      importTransforms: buildAllSixTransforms(),
+      importTransforms: buildAllTransforms(),
       idStrategy: { type: "auto" },
     });
 
@@ -213,9 +212,9 @@ describe.sequential("All 6 Transform Types Pipeline", () => {
     expect(firstData.street_number).toBe("1");
     expect(firstData.split_city).toBe("Berlin");
 
-    // type-cast: attendees should be a number
+    // expression: attendees should be a number
     // Papa Parse with dynamicTyping may already parse "150" as number,
-    // so the type-cast from "string" to "number" may be a no-op.
+    // so the expression toNumber() may be a no-op.
     // Either way, the result must be the number 150.
     expect(typeof firstData.attendees).toBe("number");
     expect(firstData.attendees).toBe(150);
@@ -253,7 +252,7 @@ describe.sequential("All 6 Transform Types Pipeline", () => {
 
   it("should skip inactive transforms while applying active ones", async () => {
     const transforms = [
-      ...buildAllSixTransforms(),
+      ...buildAllTransforms(),
       // 7th transform: lowercase venue_country, but INACTIVE
       {
         id: "t-lower-inactive",
@@ -295,7 +294,7 @@ describe.sequential("All 6 Transform Types Pipeline", () => {
       name: `Order Verification Dataset ${Date.now()}`,
       language: "eng",
       schemaConfig: { allowTransformations: true },
-      importTransforms: buildAllSixTransforms(),
+      importTransforms: buildAllTransforms(),
       idStrategy: { type: "auto" },
     });
 

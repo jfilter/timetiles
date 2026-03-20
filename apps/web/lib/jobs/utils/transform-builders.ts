@@ -34,9 +34,11 @@ const buildStringOpTransform = (t: DatasetTransformEntry, base: TransformBase): 
         ...base,
         type: "string-op",
         from: t.from,
-        operation: t.operation === "trim" ? "uppercase" : t.operation,
+        // Cast needed: Payload-generated enum hasn't been regenerated to include "expression" yet
+        operation: t.operation as "uppercase" | "lowercase" | "replace" | "expression",
         pattern: t.pattern ?? undefined,
         replacement: t.replacement ?? undefined,
+        expression: (t as Record<string, unknown>).expression as string | undefined,
       }
     : null;
 
@@ -50,26 +52,12 @@ const buildSplitTransform = (t: DatasetTransformEntry, base: TransformBase): Imp
     ? { ...base, type: "split", from: t.from, delimiter: t.delimiter, toFields: t.toFields as string[] }
     : null;
 
-const buildTypeCastTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
-  t.from && t.fromType && t.toType && t.strategy
-    ? {
-        ...base,
-        type: "type-cast",
-        from: t.from,
-        fromType: t.fromType,
-        toType: t.toType as "string" | "number" | "boolean" | "date" | "array" | "object" | "null",
-        strategy: t.strategy,
-        customFunction: t.customFunction ?? undefined,
-      }
-    : null;
-
 const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: TransformBase) => ImportTransform | null> = {
   rename: buildRenameTransform,
   "date-parse": buildDateParseTransform,
   "string-op": buildStringOpTransform,
   concatenate: buildConcatenateTransform,
   split: buildSplitTransform,
-  "type-cast": buildTypeCastTransform,
 };
 
 /** Build typed ImportTransform[] from a dataset's importTransforms configuration. */

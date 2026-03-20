@@ -18,17 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@timetiles/ui/components/dropdown-menu";
 import { cn } from "@timetiles/ui/lib/utils";
-import {
-  ArrowLeftRight,
-  Calendar,
-  CaseSensitive,
-  type LucideIcon,
-  Plus,
-  RefreshCw,
-  Scissors,
-  Trash2,
-  Type,
-} from "lucide-react";
+import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, Plus, Scissors, Trash2, Type } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -54,7 +44,6 @@ const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
   "string-op": CaseSensitive,
   concatenate: ArrowLeftRight,
   split: Scissors,
-  "type-cast": RefreshCw,
 };
 
 const TRANSFORM_COLORS: Record<TransformType, string> = {
@@ -63,7 +52,6 @@ const TRANSFORM_COLORS: Record<TransformType, string> = {
   "string-op": "text-cartographic-forest",
   concatenate: "text-cartographic-navy",
   split: "text-purple-600",
-  "type-cast": "text-amber-600",
 };
 
 // Separate component for dropdown menu items
@@ -268,10 +256,6 @@ const getTransformSummary = (transform: ImportTransform, t: (...args: any[]) => 
       return transform.from && transform.toFields.length > 0
         ? t("tfSplitFieldInto", { field: transform.from, count: transform.toFields.length })
         : t("tfConfigureSplit");
-    case "type-cast":
-      return transform.from && transform.fromType && transform.toType
-        ? `${transform.from}: ${transform.fromType} → ${transform.toType}`
-        : t("tfConfigureTypeCast");
   }
 };
 

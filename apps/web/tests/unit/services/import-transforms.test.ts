@@ -192,35 +192,34 @@ describe("applyTransforms", () => {
     expect(getByPath(result, "event.location.coords.lat")).toBeUndefined();
   });
 
-  it("should leave blank strings unchanged when parsing numbers", () => {
-    const data = { count: "" };
+  it("should apply expression string-op to convert string to number", () => {
+    const data = { count: "42" };
     const transforms: ImportTransform[] = [
       {
         id: "1",
-        type: "type-cast",
+        type: "string-op",
         from: "count",
-        fromType: "string",
-        toType: "number",
-        strategy: "parse",
+        operation: "expression",
+        expression: "toNumber(value)",
         active: true,
         autoDetected: false,
       },
     ];
 
     const result = applyTransforms(data, transforms);
-    expect(result.count).toBe("");
+    expect(result.count).toBe(42);
+    expect(typeof result.count).toBe("number");
   });
 
-  it("should trim boolean strings before parsing", () => {
-    const data = { active: " yes " };
+  it("should apply expression string-op to convert string to boolean", () => {
+    const data = { active: "true" };
     const transforms: ImportTransform[] = [
       {
         id: "1",
-        type: "type-cast",
+        type: "string-op",
         from: "active",
-        fromType: "string",
-        toType: "boolean",
-        strategy: "parse",
+        operation: "expression",
+        expression: "parseBool(value)",
         active: true,
         autoDetected: false,
       },
@@ -228,6 +227,25 @@ describe("applyTransforms", () => {
 
     const result = applyTransforms(data, transforms);
     expect(result.active).toBe(true);
+    expect(typeof result.active).toBe("boolean");
+  });
+
+  it("should keep original value when expression fails", () => {
+    const data = { value: "not-a-number" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "value",
+        operation: "expression",
+        expression: "parseNumber(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms(data, transforms);
+    expect(result.value).toBe("not-a-number");
   });
 
   it("should leave impossible ISO dates unchanged", () => {
@@ -239,45 +257,6 @@ describe("applyTransforms", () => {
         from: "date",
         inputFormat: "YYYY-MM-DD",
         outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-
-    const result = applyTransforms(data, transforms);
-    expect(result.date).toBe("2024-02-30");
-  });
-
-  it("should parse custom boolean helpers consistently", () => {
-    const data = { active: "false" };
-    const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "type-cast",
-        from: "active",
-        fromType: "string",
-        toType: "boolean",
-        strategy: "custom",
-        customFunction: "parseBool(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-
-    const result = applyTransforms(data, transforms);
-    expect(result.active).toBe(false);
-  });
-
-  it("should leave impossible dates unchanged when type-casting to date", () => {
-    const data = { date: "2024-02-30" };
-    const transforms: ImportTransform[] = [
-      {
-        id: "1",
-        type: "type-cast",
-        from: "date",
-        fromType: "string",
-        toType: "date",
-        strategy: "parse",
         active: true,
         autoDetected: false,
       },

@@ -9,7 +9,7 @@
 "use client";
 
 import { cn } from "@timetiles/ui/lib/utils";
-import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, RefreshCw, Scissors, Type } from "lucide-react";
+import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, Scissors, Type } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { TransformType } from "@/lib/types/import-transforms";
@@ -25,7 +25,6 @@ export const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
   "string-op": CaseSensitive,
   concatenate: ArrowLeftRight,
   split: Scissors,
-  "type-cast": RefreshCw,
 };
 
 export const TRANSFORM_COLORS: Record<TransformType, string> = {
@@ -34,7 +33,6 @@ export const TRANSFORM_COLORS: Record<TransformType, string> = {
   "string-op": "text-cartographic-forest",
   concatenate: "text-cartographic-navy",
   split: "text-purple-600",
-  "type-cast": "text-amber-600",
 };
 
 // ---------------------------------------------------------------------------

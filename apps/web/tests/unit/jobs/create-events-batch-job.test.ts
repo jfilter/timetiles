@@ -787,11 +787,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         importTransforms: [
           {
             id: "transform-age",
-            type: "type-cast",
+            type: "string-op",
             from: "age",
-            fromType: "string",
-            toType: "number",
-            strategy: "parse",
+            operation: "expression",
+            expression: "toNumber(value)",
             active: false,
           },
         ],
@@ -845,11 +844,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         importTransforms: [
           {
             id: "transform-age",
-            type: "type-cast",
+            type: "string-op",
             from: "age",
-            fromType: "string",
-            toType: "number",
-            strategy: "parse",
+            operation: "expression",
+            expression: "toNumber(value)",
             active: true,
           },
         ],
@@ -947,20 +945,18 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         importTransforms: [
           {
             id: "transform-age",
-            type: "type-cast",
+            type: "string-op",
             from: "age",
-            fromType: "string",
-            toType: "number",
-            strategy: "parse",
+            operation: "expression",
+            expression: "toNumber(value)",
             active: true,
           },
           {
             id: "transform-active",
-            type: "type-cast",
+            type: "string-op",
             from: "active",
-            fromType: "string",
-            toType: "boolean",
-            strategy: "parse",
+            operation: "expression",
+            expression: "parseBool(value)",
             active: true,
           },
         ],
@@ -1015,11 +1011,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         importTransforms: [
           {
             id: "transform-age",
-            type: "type-cast",
+            type: "string-op",
             from: "age",
-            fromType: "string",
-            toType: "number",
-            strategy: "parse",
+            operation: "expression",
+            expression: "toNumber(value)",
             active: false, // Disabled
           },
         ],
@@ -1071,11 +1066,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         importTransforms: [
           {
             id: "transform-age",
-            type: "type-cast",
+            type: "string-op",
             from: "age",
-            fromType: "string",
-            toType: "number",
-            strategy: "parse",
+            operation: "expression",
+            expression: "parseNumber(value)",
             active: true,
           },
         ],

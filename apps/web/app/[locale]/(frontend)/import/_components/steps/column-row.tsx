@@ -149,8 +149,6 @@ const getTransformChipLabel = (transform: ImportTransform, t: (...args: any[]) =
       return t("tfChipJoin", { count: transform.fromFields.length });
     case "split":
       return t("tfChipSplit", { count: transform.toFields.length });
-    case "type-cast":
-      return transform.toType ? t("tfChipCast", { type: transform.toType }) : t("tfChipCastDefault");
   }
 };
 
@@ -212,7 +210,7 @@ interface AddTransformMenuProps {
   types?: TransformType[];
 }
 
-const DEFAULT_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "split", "type-cast"];
+const DEFAULT_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "split"];
 
 /** Dropdown that adds a new transform to a column. Subset of types via `types` prop. */
 const AddTransformMenu = ({ columnName, onAdd, types = DEFAULT_TRANSFORM_TYPES }: Readonly<AddTransformMenuProps>) => {
@@ -264,7 +262,7 @@ interface SplitChildRowProps {
 }
 
 /** Transform types available for split child fields (no split or concatenate). */
-const CHILD_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "type-cast"];
+const CHILD_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op"];
 
 const SplitChildRow = ({
   parentColumn,

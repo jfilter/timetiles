@@ -1,5 +1,5 @@
 /**
- * Integration tests for type transformation feature in import pipeline.
+ * Integration tests for expression transform feature in import pipeline.
  *
  * Tests the transformation workflow by directly calling the job handler
  * with mock data, bypassing CSV file parsing to avoid Papa Parse's
@@ -46,7 +46,7 @@ const mockStreamBatch = (rows: Record<string, unknown>[]) => ({
   },
 });
 
-describe.sequential("Type Transformations Integration", () => {
+describe.sequential("Expression Transforms Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;
@@ -90,26 +90,26 @@ describe.sequential("Type Transformations Integration", () => {
         catalog: testCatalog.id,
         language: "eng",
         schemaConfig: { allowTransformations: true },
+        /* eslint-disable @typescript-eslint/no-explicit-any -- Payload-generated types not yet regenerated */
         importTransforms: [
           {
             id: "transform-age",
-            type: "type-cast",
+            type: "string-op",
             from: "age",
-            fromType: "string",
-            toType: "number",
-            strategy: "parse",
+            operation: "expression",
+            expression: "toNumber(value)",
             active: true,
           },
           {
             id: "transform-temperature",
-            type: "type-cast",
+            type: "string-op",
             from: "temperature",
-            fromType: "string",
-            toType: "number",
-            strategy: "parse",
+            operation: "expression",
+            expression: "toNumber(value)",
             active: true,
           },
-        ],
+        ] as any,
+        /* eslint-enable @typescript-eslint/no-explicit-any */
         idStrategy: { type: "external", externalIdPath: "id" },
       },
     });
@@ -164,17 +164,18 @@ describe.sequential("Type Transformations Integration", () => {
         catalog: testCatalog.id,
         language: "eng",
         schemaConfig: { allowTransformations: false },
+        /* eslint-disable @typescript-eslint/no-explicit-any -- Payload-generated types not yet regenerated */
         importTransforms: [
           {
             id: "transform-age-disabled",
-            type: "type-cast",
+            type: "string-op",
             from: "age",
-            fromType: "string",
-            toType: "number",
-            strategy: "parse",
+            operation: "expression",
+            expression: "toNumber(value)",
             active: false,
           },
-        ],
+        ] as any,
+        /* eslint-enable @typescript-eslint/no-explicit-any */
         idStrategy: { type: "external", externalIdPath: "id" },
       },
     });

@@ -17,6 +17,13 @@ import type { Dataset } from "@/payload-types";
 
 const logger = createLogger("event-creation-helpers");
 
+/** Parse a coordinate value from number or string to a finite number, or NaN. */
+const parseCoordinate = (value: unknown): number => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number(value);
+  return NaN;
+};
+
 /**
  * Extract coordinates from a row based on field mappings and geocoding results.
  * Priority: import coordinates from data > geocoded location > none
@@ -33,12 +40,20 @@ export const extractCoordinates = (
   const { latitudePath, longitudePath, locationPath } = fieldMappings;
 
   if (latitudePath && longitudePath) {
-    const lat = row[latitudePath];
-    const lng = row[longitudePath];
+    // Parse string coordinates (e.g. from split transforms)
+    const parsedLat = parseCoordinate(row[latitudePath]);
+    const parsedLng = parseCoordinate(row[longitudePath]);
 
     // Validate both type and coordinate bounds
-    if (typeof lat === "number" && typeof lng === "number" && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      return { location: { latitude: lat, longitude: lng }, coordinateSource: { type: "import" as const } };
+    if (
+      !isNaN(parsedLat) &&
+      !isNaN(parsedLng) &&
+      parsedLat >= -90 &&
+      parsedLat <= 90 &&
+      parsedLng >= -180 &&
+      parsedLng <= 180
+    ) {
+      return { location: { latitude: parsedLat, longitude: parsedLng }, coordinateSource: { type: "import" as const } };
     }
   }
 

@@ -62,7 +62,7 @@ export const ConfigureImportBodySchema = z.object({
         transforms: z.array(
           z.object({
             id: z.string(),
-            type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split", "type-cast"]),
+            type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split"]),
             active: z.boolean(),
             autoDetected: z.boolean(),
             from: z.string().optional(),
@@ -70,29 +70,14 @@ export const ConfigureImportBodySchema = z.object({
             inputFormat: z.string().optional(),
             outputFormat: z.string().optional(),
             timezone: z.string().optional(),
-            operation: z.enum(["uppercase", "lowercase", "trim", "replace"]).optional(),
+            operation: z.enum(["uppercase", "lowercase", "trim", "replace", "expression"]).optional(),
             pattern: z.string().optional(),
             replacement: z.string().optional(),
+            expression: z.string().optional(),
             fromFields: z.array(z.string()).optional(),
             separator: z.string().optional(),
             delimiter: z.string().optional(),
             toFields: z.array(z.string()).optional(),
-            fromType: z.enum(["string", "number", "boolean", "date", "array", "object", "null"]).optional(),
-            toType: z.enum(["string", "number", "boolean", "date", "array", "object", "null"]).optional(),
-            strategy: z.enum(["parse", "cast", "custom", "reject"]).optional(),
-            customFunction: z
-              .string()
-              .refine(
-                (code) => {
-                  const blocked = /\b(require|import|process|global|eval|Function|__proto__|constructor|prototype)\b/i;
-                  return !blocked.test(code);
-                },
-                {
-                  message:
-                    "Expression contains blocked keywords. Use safe expression functions like upper(), round(), concat().",
-                }
-              )
-              .optional(),
           })
         ),
       })

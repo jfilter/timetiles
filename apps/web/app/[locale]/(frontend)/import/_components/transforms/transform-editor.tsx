@@ -17,8 +17,6 @@ import { useState } from "react";
 
 import { DATE_FORMAT_OPTIONS, type ImportTransform } from "@/lib/types/import-transforms";
 
-import { TypeCastEditor } from "./type-cast-editor";
-
 interface TransformEditorProps {
   transform: ImportTransform;
   onChange: (updates: Partial<ImportTransform>) => void;
@@ -49,6 +47,7 @@ export const TransformEditor = ({ transform, onChange, sourceColumns }: Readonly
           operation={transform.operation}
           pattern={transform.pattern}
           replacement={transform.replacement}
+          expression={transform.expression}
           sourceColumns={sourceColumns}
           onChange={onChange}
         />
@@ -69,18 +68,6 @@ export const TransformEditor = ({ transform, onChange, sourceColumns }: Readonly
           from={transform.from}
           delimiter={transform.delimiter}
           toFields={transform.toFields}
-          sourceColumns={sourceColumns}
-          onChange={onChange}
-        />
-      );
-    case "type-cast":
-      return (
-        <TypeCastEditor
-          from={transform.from}
-          fromType={transform.fromType}
-          toType={transform.toType}
-          strategy={transform.strategy}
-          customFunction={transform.customFunction}
           sourceColumns={sourceColumns}
           onChange={onChange}
         />
@@ -234,9 +221,10 @@ const DateParseEditor = ({
 
 interface StringOpEditorProps {
   from: string;
-  operation: "uppercase" | "lowercase" | "replace";
+  operation: "uppercase" | "lowercase" | "replace" | "expression";
   pattern?: string;
   replacement?: string;
+  expression?: string;
   sourceColumns: string[];
   onChange: (updates: Partial<ImportTransform>) => void;
 }
@@ -246,6 +234,7 @@ const StringOpEditor = ({
   operation,
   pattern,
   replacement,
+  expression,
   sourceColumns,
   onChange,
 }: Readonly<StringOpEditorProps>) => {
@@ -254,6 +243,7 @@ const StringOpEditor = ({
   const handleOperationChange = (value: string) => onChange({ operation: value as StringOpEditorProps["operation"] });
   const handlePatternChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ pattern: e.target.value });
   const handleReplacementChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ replacement: e.target.value });
+  const handleExpressionChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ expression: e.target.value });
 
   return (
     <div className="space-y-4">
@@ -275,6 +265,7 @@ const StringOpEditor = ({
               <SelectItem value="uppercase">{t("tfOpUppercase")}</SelectItem>
               <SelectItem value="lowercase">{t("tfOpLowercase")}</SelectItem>
               <SelectItem value="replace">{t("tfOpReplace")}</SelectItem>
+              <SelectItem value="expression">{t("tfOpExpression")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -299,6 +290,18 @@ const StringOpEditor = ({
               placeholder={t("tfReplacePlaceholder")}
             />
           </div>
+        </div>
+      )}
+      {operation === "expression" && (
+        <div className="space-y-2">
+          <Label htmlFor="expression">{t("tfCustomExpression")}</Label>
+          <Input
+            id="expression"
+            value={expression ?? ""}
+            onChange={handleExpressionChange}
+            placeholder={t("tfCustomExpressionPlaceholder")}
+          />
+          <p className="text-muted-foreground text-xs">{t("tfCustomExpressionHint")}</p>
         </div>
       )}
     </div>

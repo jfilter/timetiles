@@ -1,11 +1,10 @@
 /**
  * Integration tests for combined transformation types working together.
  *
- * This test suite verifies that all three transformation types work harmoniously
+ * This test suite verifies that import transformations work harmoniously
  * in a single import pipeline:
  * 1. Field Mappings - Language-aware semantic field detection
- * 2. Import Transforms - Field renames/mappings applied during import
- * 3. Type Transformations - Data type conversions
+ * 2. Import Transforms - Field renames, string operations, and expressions applied during import
  *
  * Tests ensure proper order of operations and interaction between transformation types.
  *
@@ -122,11 +121,11 @@ describe.sequential("Combined Transformations Integration", () => {
 
   // Test 1: All three transformations applied together
 
-  it("should apply field mappings, import transforms, and type transformations together", async () => {
+  it("should apply field mappings and import transforms together", async () => {
     /**
      * This test uses German CSV with:
      * - Ereignis_Titel: Needs import transform to "titel", then field mapping detects it
-     * - Teilnehmer_Anzahl: String number needing type transformation to number
+     * - Teilnehmer_Anzahl: String number needing expression transform to number
      * - Datum_Start: German date field for field mapping detection
      * - Beschreibung: German description field for field mapping detection
      */
@@ -140,11 +139,10 @@ describe.sequential("Combined Transformations Integration", () => {
         { id: "transform-1", type: "rename", from: "Ereignis_Titel", to: "titel", active: true, autoDetected: false },
         {
           id: "transform-2",
-          type: "type-cast",
+          type: "string-op",
           from: "Teilnehmer_Anzahl",
-          fromType: "string",
-          toType: "number",
-          strategy: "parse",
+          operation: "expression",
+          expression: "toNumber(value)",
           active: true,
         },
       ],
@@ -196,8 +194,8 @@ describe.sequential("Combined Transformations Integration", () => {
     expect(firstEventData.titel).toBe("Technische Konferenz");
     expect(firstEventData.Ereignis_Titel).toBeUndefined(); // Original field removed
 
-    // 2. Type transformation resulted in number (Papa Parse auto-converted)
-    // Note: CSV parser with dynamicTyping=true converts "150" to 150 before type transformation runs
+    // 2. Expression transform resulted in number (Papa Parse auto-converted)
+    // Note: CSV parser with dynamicTyping=true converts "150" to 150 before expression runs
     expect(firstEventData.Teilnehmer_Anzahl).toBe(150);
     expect(typeof firstEventData.Teilnehmer_Anzahl).toBe("number");
 
@@ -227,11 +225,11 @@ describe.sequential("Combined Transformations Integration", () => {
 
   // Test 2: Transformation order verification
 
-  it("should apply transformations in correct order: import transforms → type transforms", async () => {
+  it("should apply transformations in correct order: rename → expression", async () => {
     /**
      * This test verifies the order of operations:
      * 1. Import transform renames field
-     * 2. Type transformation operates on renamed field
+     * 2. Expression transform operates on renamed field
      */
 
     const { dataset } = await withDataset(testEnv, testCatalogId, {
@@ -250,11 +248,10 @@ describe.sequential("Combined Transformations Integration", () => {
         },
         {
           id: "transform-2",
-          type: "type-cast",
+          type: "string-op",
           from: "Teilnehmer_Anzahl",
-          fromType: "string",
-          toType: "number",
-          strategy: "parse",
+          operation: "expression",
+          expression: "toNumber(value)",
           active: true,
         },
       ],
@@ -348,11 +345,11 @@ Workshop,Learning session,2024-02-20`;
 
   // Test 4: Import transform + type transform interaction
 
-  it("should apply type transformations to import-transformed fields", async () => {
+  it("should apply expression transforms to import-transformed fields", async () => {
     /**
-     * Tests that type transformations work on fields that were renamed by import transforms:
+     * Tests that expression transforms work on fields that were renamed by import transforms:
      * - Import transform: count → anzahl
-     * - Type transform: anzahl string → number
+     * - Expression transform: anzahl string → number
      */
 
     const { dataset } = await withDataset(testEnv, testCatalogId, {
@@ -363,11 +360,10 @@ Workshop,Learning session,2024-02-20`;
         { id: "transform-1", type: "rename", from: "count", to: "anzahl", active: true, autoDetected: false },
         {
           id: "transform-2",
-          type: "type-cast",
+          type: "string-op",
           from: "anzahl", // Transformed field name
-          fromType: "string",
-          toType: "number",
-          strategy: "parse",
+          operation: "expression",
+          expression: "toNumber(value)",
           active: true,
         },
       ],

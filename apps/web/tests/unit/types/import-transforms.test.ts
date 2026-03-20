@@ -8,8 +8,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import {
-  CAST_STRATEGY_LABELS,
-  CASTABLE_TYPE_LABELS,
   createTransform,
   DATE_FORMAT_OPTIONS,
   isTransformValid,
@@ -186,43 +184,25 @@ describe("import-transforms", () => {
       expect(isTransformValid(invalid)).toBe(false);
     });
 
-    it("should validate type-cast with parse strategy", () => {
+    it("should validate string-op expression with expression field", () => {
       const valid: ImportTransform = {
         id: "1",
-        type: "type-cast",
+        type: "string-op",
         from: "amount",
-        fromType: "string",
-        toType: "number",
-        strategy: "parse",
+        operation: "expression",
+        expression: "toNumber(value)",
         active: true,
         autoDetected: false,
       };
       expect(isTransformValid(valid)).toBe(true);
     });
 
-    it("should validate type-cast with custom strategy and function", () => {
-      const valid: ImportTransform = {
-        id: "1",
-        type: "type-cast",
-        from: "amount",
-        fromType: "string",
-        toType: "number",
-        strategy: "custom",
-        customFunction: "(v) => parseInt(v)",
-        active: true,
-        autoDetected: false,
-      };
-      expect(isTransformValid(valid)).toBe(true);
-    });
-
-    it("should reject type-cast with custom strategy but no function", () => {
+    it("should reject string-op expression with missing expression field", () => {
       const invalid: ImportTransform = {
         id: "1",
-        type: "type-cast",
+        type: "string-op",
         from: "amount",
-        fromType: "string",
-        toType: "number",
-        strategy: "custom",
+        operation: "expression",
         active: true,
         autoDetected: false,
       };
@@ -281,35 +261,16 @@ describe("import-transforms", () => {
         expect(t.toFields).toEqual([]);
       }
     });
-
-    it("should create type-cast transform with defaults", () => {
-      const t = createTransform("type-cast");
-      expect(t.type).toBe("type-cast");
-      if (t.type === "type-cast") {
-        expect(t.fromType).toBe("string");
-        expect(t.toType).toBe("number");
-        expect(t.strategy).toBe("parse");
-      }
-    });
   });
 
   describe("constants", () => {
     it("should have labels for all transform types", () => {
-      expect(Object.keys(TRANSFORM_TYPE_LABELS)).toHaveLength(6);
+      expect(Object.keys(TRANSFORM_TYPE_LABELS)).toHaveLength(5);
       expect(TRANSFORM_TYPE_LABELS.rename).toBe("Rename Field");
     });
 
     it("should have descriptions for all transform types", () => {
-      expect(Object.keys(TRANSFORM_TYPE_DESCRIPTIONS)).toHaveLength(6);
-    });
-
-    it("should have labels for all castable types", () => {
-      expect(Object.keys(CASTABLE_TYPE_LABELS)).toHaveLength(7);
-      expect(CASTABLE_TYPE_LABELS.string).toBe("Text");
-    });
-
-    it("should have labels for all cast strategies", () => {
-      expect(Object.keys(CAST_STRATEGY_LABELS)).toHaveLength(4);
+      expect(Object.keys(TRANSFORM_TYPE_DESCRIPTIONS)).toHaveLength(5);
     });
 
     it("should have date format options", () => {

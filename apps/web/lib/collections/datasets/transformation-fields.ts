@@ -3,9 +3,8 @@
  *
  * Unified transformation system for all data processing during import:
  * - Structural transforms: rename, concatenate, split
- * - String operations: uppercase, lowercase, trim, replace
+ * - String operations: uppercase, lowercase, trim, replace, expression
  * - Date parsing: format conversion
- * - Type casting: parse/cast values between types
  *
  * @module
  */
@@ -20,7 +19,6 @@ const TRANSFORM_TYPES = {
   STRING_OP: "string-op",
   CONCATENATE: "concatenate",
   SPLIT: "split",
-  TYPE_CAST: "type-cast",
 } as const;
 
 export const transformationFields: Field[] = [
@@ -50,12 +48,11 @@ export const transformationFields: Field[] = [
           { label: "String Operation", value: TRANSFORM_TYPES.STRING_OP },
           { label: "Concatenate Fields", value: TRANSFORM_TYPES.CONCATENATE },
           { label: "Split Field", value: TRANSFORM_TYPES.SPLIT },
-          { label: "Convert Type", value: TRANSFORM_TYPES.TYPE_CAST },
         ],
         defaultValue: TRANSFORM_TYPES.RENAME,
         admin: { description: "Type of transformation to apply" },
       },
-      // Common source field - used by rename, date-parse, string-op, split, type-cast
+      // Common source field - used by rename, date-parse, string-op, split
       {
         name: "from",
         type: "text",
@@ -67,7 +64,6 @@ export const transformationFields: Field[] = [
               TRANSFORM_TYPES.DATE_PARSE,
               TRANSFORM_TYPES.STRING_OP,
               TRANSFORM_TYPES.SPLIT,
-              TRANSFORM_TYPES.TYPE_CAST,
             ].includes(data?.type),
         },
       },
@@ -125,6 +121,7 @@ export const transformationFields: Field[] = [
           { label: "Lowercase", value: "lowercase" },
           { label: "Trim Whitespace", value: "trim" },
           { label: "Find & Replace", value: "replace" },
+          { label: "Custom Expression", value: "expression" },
         ],
         admin: {
           description: "String operation to apply",
@@ -145,6 +142,15 @@ export const transformationFields: Field[] = [
         admin: {
           description: "Replacement text",
           condition: (data) => data?.type === TRANSFORM_TYPES.STRING_OP && data?.operation === "replace",
+        },
+      },
+      {
+        name: "expression",
+        type: "text",
+        admin: {
+          description:
+            "Safe expression using the value variable. Functions: upper, lower, trim, concat, replace, substring, toNumber, parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty. Example: upper(value) or toNumber(value)",
+          condition: (data) => data?.type === TRANSFORM_TYPES.STRING_OP && data?.operation === "expression",
         },
       },
       // Concatenate specific fields
@@ -178,61 +184,6 @@ export const transformationFields: Field[] = [
         admin: {
           description: 'Array of target field names for split values (e.g., ["first_name", "last_name"])',
           condition: (data) => data?.type === TRANSFORM_TYPES.SPLIT,
-        },
-      },
-      // Type-cast specific fields
-      {
-        name: "fromType",
-        type: "select",
-        options: [
-          { label: "Text", value: "string" },
-          { label: "Number", value: "number" },
-          { label: "Boolean", value: "boolean" },
-          { label: "Date", value: "date" },
-          { label: "Array", value: "array" },
-          { label: "Object", value: "object" },
-          { label: "Null", value: "null" },
-        ],
-        admin: { description: "Expected source type", condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST },
-      },
-      {
-        name: "toType",
-        type: "select",
-        options: [
-          { label: "Text", value: "string" },
-          { label: "Number", value: "number" },
-          { label: "Boolean", value: "boolean" },
-          { label: "Date", value: "date" },
-          { label: "Array", value: "array" },
-          { label: "Object", value: "object" },
-        ],
-        admin: {
-          description: "Target type to convert to",
-          condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST,
-        },
-      },
-      {
-        name: "strategy",
-        type: "select",
-        options: [
-          { label: "Parse (intelligent conversion)", value: "parse" },
-          { label: "Cast (direct coercion)", value: "cast" },
-          { label: "Custom Function", value: "custom" },
-          { label: "Reject (fail on mismatch)", value: "reject" },
-        ],
-        defaultValue: "parse",
-        admin: {
-          description: "Strategy for performing the conversion",
-          condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST,
-        },
-      },
-      {
-        name: "customFunction",
-        type: "textarea",
-        admin: {
-          description:
-            "Safe expression using the value variable. Available functions: upper, lower, trim, concat, replace, substring, toNumber, parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty. Example: upper(value) or round(toNumber(value), 2)",
-          condition: (data) => data?.type === TRANSFORM_TYPES.TYPE_CAST && data?.strategy === "custom",
         },
       },
       {

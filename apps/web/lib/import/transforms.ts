@@ -16,19 +16,15 @@
 import { Parser } from "expr-eval";
 
 import type {
-  CastableType,
   ConcatenateTransform,
   DateParseTransform,
   ImportTransform,
   RenameTransform,
   SplitTransform,
   StringOpTransform,
-  TypeCastTransform,
 } from "@/lib/types/import-transforms";
 import { isValidDate } from "@/lib/utils/date";
 import { deleteByPath, getByPath, setByPath } from "@/lib/utils/object-path";
-
-import { logger } from "../logger";
 
 const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -79,9 +75,6 @@ export const applyTransforms = (
         break;
       case "split":
         applySplitTransform(result, transform);
-        break;
-      case "type-cast":
-        applyTypeCastTransform(result, transform);
         break;
     }
   }
@@ -257,6 +250,22 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
         result = value.replaceAll(transform.pattern, transform.replacement ?? "");
       }
       break;
+    case "expression":
+      if (transform.expression) {
+        try {
+          const exprResult = runCustomTransform(value, transform.expression);
+          if (typeof exprResult === "number" || typeof exprResult === "boolean") {
+            setByPath(data, transform.from, exprResult);
+            return;
+          }
+          result = String(exprResult);
+        } catch {
+          result = value;
+        }
+      } else {
+        result = value;
+      }
+      break;
     default:
       result = value;
   }
@@ -302,59 +311,6 @@ const applySplitTransform = (data: Record<string, unknown>, transform: SplitTran
   }
 };
 
-/**
- * Apply a type-cast transform to convert values from one type to another.
- */
-const applyTypeCastTransform = (data: Record<string, unknown>, transform: TypeCastTransform): void => {
-  const value = getByPath(data, transform.from);
-
-  // Skip null/undefined values
-  if (value === undefined || value === null) return;
-
-  // Check if value matches expected source type
-  const actualType = getActualType(value);
-  if (actualType !== transform.fromType) return;
-
-  try {
-    let newValue: unknown;
-
-    switch (transform.strategy) {
-      case "parse":
-        newValue = parseValue(value, transform.toType);
-        break;
-      case "cast":
-        newValue = castValue(value, transform.toType);
-        break;
-      case "custom":
-        newValue = runCustomTransform(value, transform.customFunction ?? "");
-        break;
-      case "reject":
-        throw new Error(`Type mismatch: expected ${transform.toType}, got ${actualType}`);
-      default:
-        return;
-    }
-
-    setByPath(data, transform.from, newValue);
-  } catch (error) {
-    // Log but don't throw - keep original value
-    logger.warn({ error, transform }, "Type cast transform failed");
-  }
-};
-
-/**
- * Get the actual type of a value for type casting.
- */
-const getActualType = (value: unknown): CastableType => {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "array";
-  if (value instanceof Date) return "date";
-  const type = typeof value;
-  if (type === "string" || type === "number" || type === "boolean" || type === "object") {
-    return type as CastableType;
-  }
-  return "string"; // Default fallback
-};
-
 const parseAsDate = (value: unknown): string => {
   const stringValue = String(value).trim();
   const date = new Date(stringValue);
@@ -375,47 +331,6 @@ const parseAsBoolean = (value: unknown): boolean => {
     if (lower === "false" || lower === "0" || lower === "no") return false;
   }
   throw new Error(`Cannot parse "${String(value)}" as boolean`);
-};
-
-/**
- * Parse a value intelligently to a target type.
- */
-const parseValue = (value: unknown, toType: CastableType): unknown => {
-  switch (toType) {
-    case "number": {
-      if (typeof value === "string" && value.trim() === "") {
-        throw new Error(`Cannot parse "${value}" as number`);
-      }
-
-      const num = Number(typeof value === "string" ? value.trim() : value);
-      if (Number.isNaN(num)) throw new Error(`Cannot parse "${String(value)}" as number`);
-      return num;
-    }
-    case "boolean":
-      return parseAsBoolean(value);
-    case "date":
-      return parseAsDate(value);
-    case "string":
-      return String(value);
-    default:
-      throw new Error(`Cannot parse to type: ${toType}`);
-  }
-};
-
-/**
- * Cast a value directly to a target type.
- */
-const castValue = (value: unknown, toType: CastableType): unknown => {
-  switch (toType) {
-    case "string":
-      return String(value);
-    case "number":
-      return Number(value);
-    case "boolean":
-      return Boolean(value);
-    default:
-      throw new Error(`Cannot cast to type: ${toType}`);
-  }
 };
 
 /**
@@ -445,9 +360,14 @@ const createSafeParser = (): Parser => {
 
   // Type conversion functions
   parser.functions.toNumber = (v: unknown) => Number(v);
-  parser.functions.parseNumber = (v: unknown) => parseValue(v, "number") as number;
-  parser.functions.parseDate = (v: unknown) => parseValue(v, "date") as string;
-  parser.functions.parseBool = (v: unknown) => parseValue(v, "boolean") as number;
+  parser.functions.parseNumber = (v: unknown) => {
+    if (typeof v === "string" && v.trim() === "") throw new Error(`Cannot parse "${v}" as number`);
+    const num = Number(typeof v === "string" ? v.trim() : v);
+    if (Number.isNaN(num)) throw new Error(`Cannot parse "${String(v)}" as number`);
+    return num;
+  };
+  parser.functions.parseDate = (v: unknown) => parseAsDate(v);
+  parser.functions.parseBool = (v: unknown) => parseAsBoolean(v);
 
   // Conditional
   parser.functions.ifEmpty = (v: unknown, fallback: unknown) => {

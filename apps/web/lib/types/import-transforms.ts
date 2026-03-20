@@ -15,22 +15,11 @@
  * Supported types:
  * - rename: Map source field path to target field path
  * - date-parse: Parse date strings into standardized format
- * - string-op: Apply string operations (uppercase, lowercase, replace)
+ * - string-op: Apply string operations (uppercase, lowercase, replace, expression)
  * - concatenate: Combine multiple fields into one
  * - split: Split one field into multiple fields
- * - type-cast: Convert field values from one type to another
  */
-export type TransformType = "rename" | "date-parse" | "string-op" | "concatenate" | "split" | "type-cast";
-
-/**
- * Data types supported for type casting
- */
-export type CastableType = "string" | "number" | "boolean" | "date" | "array" | "object" | "null";
-
-/**
- * Strategies for type casting
- */
-export type CastStrategy = "parse" | "cast" | "custom" | "reject";
+export type TransformType = "rename" | "date-parse" | "string-op" | "concatenate" | "split";
 
 /**
  * Base properties shared by all transform rules.
@@ -89,11 +78,13 @@ export interface StringOpTransform extends BaseTransform {
   /** Source field to transform */
   from: string;
   /** Operation to apply */
-  operation: "uppercase" | "lowercase" | "replace";
+  operation: "uppercase" | "lowercase" | "replace" | "expression";
   /** Pattern for replace operation */
   pattern?: string;
   /** Replacement string for replace operation */
   replacement?: string;
+  /** Expression for expression operation (uses expr-eval) */
+  expression?: string;
 }
 
 /**
@@ -123,29 +114,6 @@ export interface SplitTransform extends BaseTransform {
 }
 
 /**
- * Type cast transform - converts field values from one type to another.
- *
- * Supports multiple strategies:
- * - parse: Intelligently parse value (e.g., "123" → 123, "true" → true)
- * - cast: Direct type coercion (e.g., String(value), Number(value))
- * - custom: User-defined JavaScript function
- * - reject: Throw error on type mismatch
- */
-export interface TypeCastTransform extends BaseTransform {
-  type: "type-cast";
-  /** Field path to transform (e.g., "temperature" or "location.altitude") */
-  from: string;
-  /** Expected source type */
-  fromType: CastableType;
-  /** Target type to convert to */
-  toType: CastableType;
-  /** Strategy for performing the conversion */
-  strategy: CastStrategy;
-  /** Custom JavaScript function for 'custom' strategy: (value, context) => transformedValue */
-  customFunction?: string;
-}
-
-/**
  * Union of all transform types.
  *
  * Applied before schema validation and event creation to normalize
@@ -156,8 +124,7 @@ export type ImportTransform =
   | DateParseTransform
   | StringOpTransform
   | ConcatenateTransform
-  | SplitTransform
-  | TypeCastTransform;
+  | SplitTransform;
 
 /**
  * A suggested transform detected by comparing schema versions.
@@ -216,7 +183,6 @@ export const TRANSFORM_TYPE_LABELS: Record<TransformType, string> = {
   "string-op": "String Operation",
   concatenate: "Concatenate Fields",
   split: "Split Field",
-  "type-cast": "Convert Type",
 };
 
 /**
@@ -225,33 +191,9 @@ export const TRANSFORM_TYPE_LABELS: Record<TransformType, string> = {
 export const TRANSFORM_TYPE_DESCRIPTIONS: Record<TransformType, string> = {
   rename: "Change the name of a field",
   "date-parse": "Parse date strings into a standardized format",
-  "string-op": "Apply string operations like uppercase, lowercase, or replace",
+  "string-op": "Apply string operations like uppercase, lowercase, replace, or expression",
   concatenate: "Join multiple fields together with a separator",
   split: "Split a field into multiple fields using a delimiter",
-  "type-cast": "Convert field values from one type to another (e.g., string to number)",
-};
-
-/**
- * Display labels for castable types
- */
-export const CASTABLE_TYPE_LABELS: Record<CastableType, string> = {
-  string: "Text",
-  number: "Number",
-  boolean: "Boolean",
-  date: "Date",
-  array: "Array",
-  object: "Object",
-  null: "Null",
-};
-
-/**
- * Display labels for cast strategies
- */
-export const CAST_STRATEGY_LABELS: Record<CastStrategy, string> = {
-  parse: "Parse (intelligent conversion)",
-  cast: "Cast (direct coercion)",
-  custom: "Custom Function",
-  reject: "Reject (fail on mismatch)",
 };
 
 /**
@@ -279,20 +221,15 @@ export const isTransformValid = (transform: ImportTransform): boolean => {
     case "date-parse":
       return Boolean(transform.from && transform.inputFormat && transform.outputFormat);
     case "string-op":
+      if (transform.operation === "expression") {
+        return Boolean(transform.from && transform.expression);
+      }
       return Boolean(transform.from && transform.operation);
     case "concatenate":
       // separator is always a string per the type definition, so we just validate the other required fields
       return Boolean(transform.fromFields.length >= 2 && transform.to);
     case "split":
       return Boolean(transform.from && transform.delimiter && transform.toFields.length >= 1);
-    case "type-cast":
-      return Boolean(
-        transform.from &&
-        transform.fromType &&
-        transform.toType &&
-        transform.strategy &&
-        (transform.strategy !== "custom" || transform.customFunction)
-      );
     default:
       return false;
   }
@@ -315,7 +252,5 @@ export const createTransform = (type: TransformType): ImportTransform => {
       return { ...base, type: "concatenate", fromFields: [], separator: " ", to: "" };
     case "split":
       return { ...base, type: "split", from: "", delimiter: ",", toFields: [] };
-    case "type-cast":
-      return { ...base, type: "type-cast", from: "", fromType: "string", toType: "number", strategy: "parse" };
   }
 };

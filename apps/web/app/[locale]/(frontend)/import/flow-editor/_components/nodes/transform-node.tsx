@@ -12,7 +12,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { Handle, Position } from "@xyflow/react";
-import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, RefreshCw, Scissors, Type } from "lucide-react";
+import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, Scissors, Type } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { memo } from "react";
 
@@ -30,7 +30,6 @@ const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
   "string-op": CaseSensitive,
   concatenate: ArrowLeftRight,
   split: Scissors,
-  "type-cast": RefreshCw,
 };
 
 const TRANSFORM_COLORS: Record<TransformType, { bg: string; border: string; text: string }> = {
@@ -47,7 +46,6 @@ const TRANSFORM_COLORS: Record<TransformType, { bg: string; border: string; text
   },
   concatenate: { bg: "bg-cartographic-navy/5", border: "border-cartographic-navy/50", text: "text-cartographic-navy" },
   split: { bg: "bg-purple-500/5", border: "border-purple-500/50", text: "text-purple-600" },
-  "type-cast": { bg: "bg-amber-500/5", border: "border-amber-500/50", text: "text-amber-600" },
 };
 
 const TRANSFORM_LABEL_KEYS = {
@@ -56,7 +54,6 @@ const TRANSFORM_LABEL_KEYS = {
   "string-op": "flowTransformStringOp",
   concatenate: "flowTransformConcatenate",
   split: "flowTransformSplit",
-  "type-cast": "flowTransformTypeCast",
 } as const;
 
 /**
@@ -76,8 +73,6 @@ const getTransformSummary = (data: TransformNodeData): string => {
       return `${transform.fromFields.length} fields → ${transform.to}`;
     case "split":
       return `"${transform.delimiter}" → ${transform.toFields.length} fields`;
-    case "type-cast":
-      return `${transform.fromType} → ${transform.toType}`;
     default:
       return "";
   }
@@ -94,7 +89,6 @@ const getSourceFields = (data: TransformNodeData): string[] => {
     case "date-parse":
     case "string-op":
     case "split":
-    case "type-cast":
       return [transform.from];
     case "concatenate":
       return transform.fromFields;
