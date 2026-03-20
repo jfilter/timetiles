@@ -889,7 +889,126 @@ describe("getSampleValue", () => {
 
   it("should return null for missing column", () => {
     const sampleData = [{ other: "value" }];
-    // Column not in any row, fallback returns sampleData[0]?.[col] ?? null => null
     expect(getSampleValue("name", sampleData)).toBeNull();
+  });
+
+  it("should return false as valid value", () => {
+    const sampleData = [{ active: false }];
+    expect(getSampleValue("active", sampleData)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G. Edge Cases — probing for bugs
+// ---------------------------------------------------------------------------
+
+describe("edge cases", () => {
+  describe("isFieldMappingComplete with empty strings", () => {
+    it("should treat empty string titleField as incomplete", () => {
+      // Empty string is not a valid column selection
+      expect(
+        isFieldMappingComplete(createFieldMapping({ titleField: "", dateField: "date", locationField: "loc" }))
+      ).toBe(false);
+    });
+
+    it("should treat empty string dateField as incomplete", () => {
+      expect(
+        isFieldMappingComplete(createFieldMapping({ titleField: "name", dateField: "", locationField: "loc" }))
+      ).toBe(false);
+    });
+
+    it("should treat empty string locationField as incomplete", () => {
+      expect(
+        isFieldMappingComplete(createFieldMapping({ titleField: "name", dateField: "date", locationField: "" }))
+      ).toBe(false);
+    });
+  });
+
+  describe("findTargetForColumn with empty strings", () => {
+    it("should not match empty string column to empty string field", () => {
+      // If a field is accidentally set to "", looking up "" should not match
+      const mapping = createFieldMapping({ titleField: "" });
+      expect(findTargetForColumn("", mapping)).toBeNull();
+    });
+  });
+
+  describe("buildColumnView with duplicate headers", () => {
+    it("should handle duplicate column names", () => {
+      const headers = ["name", "name"];
+      const sampleData = [{ name: "Berlin" }];
+      const fieldMapping = createFieldMapping({ titleField: "name" });
+      const rows = buildColumnView(headers, sampleData, fieldMapping, []);
+      // Both rows get the same target — this is a data quality issue, not a crash
+      expect(rows).toHaveLength(2);
+      expect(rows[0]!.targetField).toBe("titleField");
+      expect(rows[1]!.targetField).toBe("titleField");
+    });
+  });
+
+  describe("applyPreviewTransforms edge cases", () => {
+    it("should handle replace with undefined pattern gracefully", () => {
+      const data = [{ text: "hello" }];
+      const transforms: ImportTransform[] = [
+        {
+          id: "1",
+          type: "string-op",
+          from: "text",
+          operation: "replace",
+          // pattern is undefined — should skip replace
+          active: true,
+          autoDetected: false,
+        },
+      ];
+      const result = applyPreviewTransforms(data, transforms);
+      expect(result[0]!.text).toBe("hello");
+    });
+
+    it("should handle concatenate with single field", () => {
+      const data = [{ name: "Berlin" }];
+      const transforms: ImportTransform[] = [
+        {
+          id: "1",
+          type: "concatenate",
+          fromFields: ["name"],
+          separator: ",",
+          to: "combined",
+          active: true,
+          autoDetected: false,
+        },
+      ];
+      const result = applyPreviewTransforms(data, transforms);
+      expect(result[0]!.combined).toBe("Berlin");
+    });
+
+    it("should handle split with empty delimiter", () => {
+      const data = [{ text: "abc" }];
+      const transforms: ImportTransform[] = [
+        {
+          id: "1",
+          type: "split",
+          from: "text",
+          delimiter: "",
+          toFields: ["a", "b", "c"],
+          active: true,
+          autoDetected: false,
+        },
+      ];
+      const result = applyPreviewTransforms(data, transforms);
+      // Empty delimiter splits every character
+      expect(result[0]!.a).toBe("a");
+      expect(result[0]!.b).toBe("b");
+      expect(result[0]!.c).toBe("c");
+    });
+
+    it("should handle rename overwriting existing field", () => {
+      const data = [{ old: "old_value", new_name: "existing_value" }];
+      const transforms: ImportTransform[] = [
+        { id: "1", type: "rename", from: "old", to: "new_name", active: true, autoDetected: false },
+      ];
+      const result = applyPreviewTransforms(data, transforms);
+      // Rename should overwrite the existing field
+      expect(result[0]!.new_name).toBe("old_value");
+      expect(result[0]!.old).toBeUndefined();
+    });
   });
 });

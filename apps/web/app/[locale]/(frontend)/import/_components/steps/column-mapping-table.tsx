@@ -91,6 +91,7 @@ const FIELD_MAPPING_STRING_KEYS: FieldMappingStringField[] = [
 
 /** Find which target field a source column is currently assigned to. */
 export const findTargetForColumn = (columnName: string, fieldMapping: FieldMapping): FieldMappingStringField | null => {
+  if (!columnName) return null;
   for (const key of FIELD_MAPPING_STRING_KEYS) {
     if (fieldMapping[key] === columnName) return key;
   }

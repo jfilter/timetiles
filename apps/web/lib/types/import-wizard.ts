@@ -104,9 +104,9 @@ export type FieldMappingStringField = {
 export const isFieldMappingComplete = (mapping: FieldMapping | undefined): boolean => {
   if (!mapping) return false;
   return (
-    mapping.titleField !== null &&
-    mapping.dateField !== null &&
-    (mapping.locationField !== null || (mapping.latitudeField !== null && mapping.longitudeField !== null))
+    !!mapping.titleField &&
+    !!mapping.dateField &&
+    (!!mapping.locationField || (!!mapping.latitudeField && !!mapping.longitudeField))
   );
 };
 
