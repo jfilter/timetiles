@@ -12,7 +12,7 @@ catalog:
   # Type definitions
   "@types/react": ^19.2.14
   "@types/react-dom": ^19.2.3
-  "@types/node": ^25.1.0
+  "@types/node": ^25.5.0
   # Build tooling
   typescript: ^5.9.3
   eslint: ^9.39.2
