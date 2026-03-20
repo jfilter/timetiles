@@ -59,6 +59,7 @@ const resetStuckScraper = async (payload: Payload, scraper: Scraper, currentTime
 export const cleanupStuckScrapersJob = {
   slug: "cleanup-stuck-scrapers",
   schedule: [{ cron: "0 * * * *", queue: "maintenance" as const }],
+  concurrency: () => "cleanup-stuck-scrapers",
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CleanupStuckScrapersJobInput;

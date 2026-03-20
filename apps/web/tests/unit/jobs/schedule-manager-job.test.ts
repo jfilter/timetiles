@@ -38,8 +38,9 @@ describe.sequential("scheduleManagerJob", () => {
       const mockPayload = {
         find: vi.fn(),
         findByID: vi.fn(),
-        // triggerScheduledImport uses conditional WHERE update that expects { docs: [...] }
         update: vi.fn().mockResolvedValue({ docs: [{ id: "claimed" }] }),
+        // triggerScheduledImport uses atomic SQL claim via drizzle
+        db: { drizzle: { execute: vi.fn().mockResolvedValue({ rows: [{ id: 1 }] }) } },
         jobs: { queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-123" }) },
       };
 
@@ -279,28 +280,15 @@ describe.sequential("scheduleManagerJob", () => {
 
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-      // triggerScheduledImport uses a conditional WHERE update to atomically
-      // claim "running" status and set nextRun in a single operation.
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "scheduled-imports",
-        where: { id: { equals: "import-1" }, lastStatus: { not_equals: "running" } },
-        data: expect.objectContaining({
-          lastRun: currentTime.toISOString(),
-          nextRun: new Date("2024-01-15 11:00:00").toISOString(), // Next hour
-          lastStatus: "running",
-          currentRetries: 0,
-        }),
-      });
+      // triggerScheduledImport uses atomic SQL via drizzle to claim "running" status.
+      expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
 
       // totalRuns is NOT incremented at queue time — only on job completion.
-      // Execution history should also NOT be recorded at queue time.
-      const claimUpdate = mockPayload.update.mock.calls.find(
-        (call: unknown[]) => (call[0] as { data: Record<string, unknown> }).data?.nextRun
+      // The atomic SQL claim sets lastStatus, lastRun, currentRetries, nextRun
+      // but never executionHistory or statistics.
+      expect(mockPayload.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ executionHistory: expect.anything() }) })
       );
-      expect(claimUpdate).toBeDefined();
-      const claimData = (claimUpdate![0] as { data: Record<string, unknown> }).data;
-      expect(claimData.executionHistory).toBeUndefined();
-      expect(claimData.statistics).toBeUndefined();
     });
 
     it("should handle errors gracefully", async () => {
@@ -390,12 +378,9 @@ describe.sequential("scheduleManagerJob", () => {
 
         await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-        // triggerScheduledImport uses conditional WHERE update
-        expect(mockPayload.update).toHaveBeenCalledWith({
-          collection: "scheduled-imports",
-          where: { id: { equals: `${testCase.frequency}-import` }, lastStatus: { not_equals: "running" } },
-          data: expect.objectContaining({ nextRun: testCase.expectedNext.toISOString() }),
-        });
+        // triggerScheduledImport uses atomic SQL claim via drizzle
+        expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
+        expect(mockPayload.jobs.queue).toHaveBeenCalled();
       }
     });
 
@@ -459,13 +444,13 @@ describe.sequential("scheduleManagerJob", () => {
 
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-      // Execution history should NOT be included in the update at queue time.
-      // It's managed by the url-fetch job handler on completion.
-      const claimUpdate = mockPayload.update.mock.calls.find(
-        (call: unknown[]) => (call[0] as { where?: unknown; data: Record<string, unknown> }).where != null
+      // The atomic SQL claim only sets lastStatus, lastRun, currentRetries,
+      // and nextRun. It never touches executionHistory or statistics — those
+      // are managed by the url-fetch job handler on completion.
+      // Verify that no payload.update call includes executionHistory.
+      expect(mockPayload.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ executionHistory: expect.anything() }) })
       );
-      expect(claimUpdate).toBeDefined();
-      expect((claimUpdate![0] as { data: Record<string, unknown> }).data.executionHistory).toBeUndefined();
     });
   });
 });

@@ -8,6 +8,7 @@
  * @module
  * @category Services
  */
+import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/import-constants";
@@ -66,8 +67,8 @@ export const triggerScheduledImport = async (
   const importName = generateImportName(scheduledImport, currentTime);
 
   // Atomically claim "running" status to prevent overlapping triggers.
-  // The conditional WHERE prevents a race where two schedule-manager
-  // instances both see lastStatus != "running" and double-queue.
+  // Uses raw SQL UPDATE with a WHERE guard — PostgreSQL row-level locking
+  // ensures only one concurrent caller succeeds even under `read committed`.
   // For webhooks, the route already claimed "running" via raw SQL,
   // so we skip the claim and only update metadata.
   if (options.alreadyClaimed) {
@@ -84,18 +85,34 @@ export const triggerScheduledImport = async (
       },
     });
   } else {
-    const claimResult = await payload.update({
-      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
-      where: { id: { equals: scheduledImport.id }, lastStatus: { not_equals: "running" } },
-      data: {
-        lastStatus: "running",
-        lastRun: currentTime.toISOString(),
-        currentRetries: 0,
-        ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
-      },
-    });
+    // Atomic SQL claim: a single UPDATE that only succeeds if not already running.
+    // Under read committed, the row-level lock from UPDATE prevents a second
+    // concurrent transaction from seeing the old status — it blocks until the
+    // first commits, then re-evaluates the WHERE and gets 0 rows.
+    const claimResult = (await payload.db.drizzle.execute(
+      options.nextRun != null
+        ? sql`
+            UPDATE payload.scheduled_imports
+            SET last_status = 'running',
+                last_run = ${currentTime.toISOString()},
+                current_retries = 0,
+                next_run = ${options.nextRun}
+            WHERE id = ${scheduledImport.id}
+              AND (last_status IS NULL OR last_status != 'running')
+            RETURNING id
+          `
+        : sql`
+            UPDATE payload.scheduled_imports
+            SET last_status = 'running',
+                last_run = ${currentTime.toISOString()},
+                current_retries = 0
+            WHERE id = ${scheduledImport.id}
+              AND (last_status IS NULL OR last_status != 'running')
+            RETURNING id
+          `
+    )) as { rows: Array<{ id: number }> };
 
-    if (claimResult.docs.length === 0) {
+    if (claimResult.rows.length === 0) {
       throw new Error("Scheduled import is already running (concurrent trigger rejected)");
     }
   }

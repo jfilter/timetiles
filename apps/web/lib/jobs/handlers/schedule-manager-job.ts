@@ -240,7 +240,8 @@ const processScheduledImport = async (
     return false;
   }
 
-  // CRITICAL: Check if already running BEFORE queuing
+  // Quick in-memory check before attempting the atomic claim.
+  // Not a guarantee (stale data), but avoids unnecessary SQL round-trips.
   if (scheduledImport.lastStatus === "running") {
     logger.info("Skipping scheduled import - already running", {
       scheduledImportId: scheduledImport.id,
@@ -251,10 +252,23 @@ const processScheduledImport = async (
 
   const nextRun = calculateNextRun(scheduledImport, currentTime);
 
-  await triggerScheduledImport(payload, scheduledImport, currentTime, {
-    triggeredBy: "schedule",
-    nextRun: nextRun.toISOString(),
-  });
+  try {
+    await triggerScheduledImport(payload, scheduledImport, currentTime, {
+      triggeredBy: "schedule",
+      nextRun: nextRun.toISOString(),
+    });
+  } catch (error) {
+    // Concurrency rejection from the atomic SQL claim means another worker
+    // already claimed this import. This is expected, not an error.
+    if (error instanceof Error && error.message.includes("concurrent trigger rejected")) {
+      logger.info("Skipping scheduled import - claimed by another worker", {
+        scheduledImportId: scheduledImport.id,
+        name: scheduledImport.name,
+      });
+      return false;
+    }
+    throw error; // Re-throw real errors for handleImportError
+  }
 
   return true;
 };
@@ -416,6 +430,9 @@ const processScheduledScrapers = async (
 export const scheduleManagerJob = {
   slug: "schedule-manager",
   schedule: [{ cron: "* * * * *", queue: "default" as const }],
+  // Only one schedule-manager may run at a time across all workers.
+  // Without this, two workers could both trigger the same scheduled import.
+  concurrency: () => "schedule-manager",
   handler: async ({ job, req }: JobHandlerContext) => {
     const { payload } = req;
 

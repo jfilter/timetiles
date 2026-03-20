@@ -80,17 +80,16 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     /**
      * Tests true concurrent execution of schedule managers.
      *
-     * The concurrency protection mechanism:
-     * 1. Before queuing, checks if lastStatus === "running"
-     * 2. If running, skips to prevent duplicates
-     * 3. Sets lastStatus to "running" BEFORE queuing
+     * The concurrency protection has two layers:
+     * 1. Job-level: Payload concurrency key "schedule-manager" prevents two
+     *    schedule-manager jobs from running in parallel via the job queue.
+     * 2. Handler-level: triggerScheduledImport uses an atomic SQL
+     *    `UPDATE ... WHERE last_status != 'running' RETURNING id` to claim
+     *    the scheduled import. PostgreSQL row locking ensures only one
+     *    concurrent transaction succeeds.
      *
-     * Expected behavior:
-     * - Best case: One manager updates first, second sees "running" and skips → 1 trigger
-     * - Race condition: Both read simultaneously before either writes → 2 triggers
-     *
-     * This test verifies the protection exists and reduces duplicates, though it
-     * cannot guarantee zero duplicates due to database-level race conditions.
+     * This test bypasses layer 1 (calling the handler directly) to verify
+     * that layer 2 alone prevents duplicate triggers.
      */
 
     // Use fake timers to control execution time
@@ -139,20 +138,10 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     // At least one should have triggered the schedule
     expect(totalTriggered).toBeGreaterThanOrEqual(1);
 
-    // IDEAL: Due to concurrency protection, only 1 should trigger
-    // REALITY: Race condition may cause both to trigger (both read before either writes)
-    // We verify protection exists, but accept that it's not 100% guaranteed
-    expect(totalTriggered).toBeLessThanOrEqual(2);
-
-    // Log the result for visibility in test output
-    if (totalTriggered === 1) {
-      // Protection worked! One manager saw "running" status and skipped
-      expect(totalTriggered).toBe(1);
-    } else if (totalTriggered === 2) {
-      // Race condition occurred - both managers read simultaneously
-      // This documents that database-level protection would be needed for 100% guarantee
-      expect(totalTriggered).toBe(2);
-    }
+    // With the atomic SQL claim, exactly 1 should trigger.
+    // The second handler's SQL UPDATE returns 0 rows (row already claimed),
+    // so it throws and is counted as an error, not a trigger.
+    expect(totalTriggered).toBe(1);
 
     // Verify the scheduled import was updated
     const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
