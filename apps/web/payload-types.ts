@@ -1049,6 +1049,18 @@ export interface ImportJob {
      */
     locationPath?: string | null;
   };
+  /**
+   * Snapshot of dataset config (field mappings, transforms, ID strategy, etc.) at import creation time
+   */
+  configSnapshot?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   schemaValidation?: {
     /**
      * Whether schema is compatible with dataset schema
@@ -3671,6 +3683,10 @@ export interface PayloadJob {
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
+  /**
+   * Used for concurrency control. Jobs with the same key are subject to exclusive/supersedes rules.
+   */
+  concurrencyKey?: string | null;
   meta?:
     | {
         [k: string]: unknown;
@@ -4115,6 +4131,7 @@ export interface ImportJobsSelect<T extends boolean = true> {
         longitudePath?: T;
         locationPath?: T;
       };
+  configSnapshot?: T;
   schemaValidation?:
     | T
     | {
@@ -5153,6 +5170,7 @@ export interface PayloadJobsSelect<T extends boolean = true> {
   queue?: T;
   waitUntil?: T;
   processing?: T;
+  concurrencyKey?: T;
   meta?: T;
   updatedAt?: T;
   createdAt?: T;

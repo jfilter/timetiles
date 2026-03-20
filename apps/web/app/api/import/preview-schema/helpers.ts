@@ -14,6 +14,7 @@ import fs from "node:fs";
 import Papa from "papaparse";
 import { read, utils } from "xlsx";
 
+import { ValidationError } from "@/lib/api";
 import {
   detectLanguage,
   LATITUDE_PATTERNS,
@@ -24,8 +25,10 @@ import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappi
 
 export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
 
+import { getPreviewDir, savePreviewMetadata } from "@/lib/import/preview-store";
+
 // Re-export preview storage functions for use by upload/url routes
-export { getPreviewDir, savePreviewMetadata } from "@/lib/import/preview-store";
+export { getPreviewDir, savePreviewMetadata };
 
 export const ALLOWED_MIME_TYPES = [
   "text/csv",
@@ -226,6 +229,8 @@ export const parseFileSheets = (filePath: string, fileExtension: string): SheetI
 import type { Payload } from "payload";
 
 import { findConfigSuggestions } from "@/lib/import/config-matcher";
+import type { SavePreviewMetadataOpts } from "@/lib/import/preview-store";
+import { logError } from "@/lib/logger";
 import type { ConfigSuggestion } from "@/lib/types/import-wizard";
 
 /**
@@ -263,4 +268,48 @@ export const findConfigSuggestionsForUser = async (
   }));
 
   return findConfigSuggestions(allHeaders, datasets);
+};
+
+// ---------------------------------------------------------------------------
+// Shared preview pipeline (used by both upload and URL routes)
+// ---------------------------------------------------------------------------
+
+interface BuildPreviewResultParams {
+  previewFilePath: string;
+  fileExtension: string;
+  metadata: SavePreviewMetadataOpts;
+  logContext: string;
+  payload: Payload;
+  userId: number;
+}
+
+/**
+ * Shared pipeline for both upload and URL preview routes.
+ *
+ * Parses the saved file, stores metadata, finds config suggestions,
+ * and returns sheets with suggestions. Cleans up the file on parse errors.
+ */
+export const buildPreviewResult = async ({
+  previewFilePath,
+  fileExtension,
+  metadata,
+  logContext,
+  payload,
+  userId,
+}: BuildPreviewResultParams): Promise<{ sheets: SheetInfo[]; configSuggestions: ConfigSuggestion[] }> => {
+  let sheets: SheetInfo[];
+  try {
+    sheets = parseFileSheets(previewFilePath, fileExtension);
+  } catch (parseError) {
+    fs.unlinkSync(previewFilePath);
+    logError(parseError, `preview-schema-${logContext}-parse`);
+    throw new ValidationError("Failed to parse file. Please check the file format.");
+  }
+
+  savePreviewMetadata(metadata);
+
+  const allHeaders = sheets.flatMap((s) => s.headers);
+  const configSuggestions = await findConfigSuggestionsForUser(payload, userId, allHeaders);
+
+  return { sheets, configSuggestions };
 };

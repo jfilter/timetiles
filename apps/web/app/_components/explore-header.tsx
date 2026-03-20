@@ -102,18 +102,18 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const { data: totalEventsData } = useEventsTotalQuery(filters);
 
-  // Delay showing the filter icon until closing animation completes
+  // Delay showing the filter icon until the filter drawer closing animation completes.
+  // Must stay in sync with the CSS `duration-500` on the filter area div below.
+  const FILTER_DRAWER_ANIMATION_MS = 500;
   const [showFilterIcon, setShowFilterIcon] = useState(!isFilterDrawerOpen);
 
   useEffect(() => {
     if (isFilterDrawerOpen) {
-      // Immediately hide icon when opening
       setShowFilterIcon(false);
     } else {
-      // Delay showing icon until animation completes (500ms = duration-500)
       const timer = setTimeout(() => {
         setShowFilterIcon(true);
-      }, 500);
+      }, FILTER_DRAWER_ANIMATION_MS);
       return () => clearTimeout(timer);
     }
   }, [isFilterDrawerOpen]);
@@ -190,7 +190,8 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
         )}
       </div>
 
-      {/* Filter area - matches sidebar width, shows clickable "Filters" label when open */}
+      {/* Filter area - matches sidebar width, shows clickable "Filters" label when open.
+          duration-500 must match FILTER_DRAWER_ANIMATION_MS above. */}
       <div
         className={`flex items-center justify-center border-l transition-all duration-500 ease-in-out ${
           isFilterDrawerOpen ? "w-80 pr-8" : "w-0 overflow-hidden"

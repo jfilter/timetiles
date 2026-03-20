@@ -17,6 +17,7 @@ import { getBaseUrl } from "@/lib/utils/base-url";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
 
+import { DELETION_GRACE_PERIOD_DAYS } from "../constants/account-constants";
 import { PROCESSING_STAGE } from "../constants/import-constants";
 import { createLogger, logError } from "../logger";
 import { AUDIT_ACTIONS, auditLog } from "../services/audit-log-service";
@@ -36,8 +37,7 @@ export type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleD
 
 const logger = createLogger("account-deletion-service");
 
-/** Grace period in days before account is permanently deleted. */
-export const DELETION_GRACE_PERIOD_DAYS = 30;
+export { DELETION_GRACE_PERIOD_DAYS } from "@/lib/constants/account-constants";
 
 /** Error message for user not found. */
 const USER_NOT_FOUND = "User not found";

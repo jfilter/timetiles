@@ -23,6 +23,7 @@ import { AlertTriangle, Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { DELETION_GRACE_PERIOD_DAYS } from "@/lib/constants/account-constants";
 import { useDeletionSummaryQuery, useScheduleDeletionMutation } from "@/lib/hooks/use-account-mutations";
 
 interface DeleteAccountModalProps {
@@ -272,7 +273,9 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
           <div className="space-y-4">
             <p className="text-muted-foreground">
               {t.rich("deletionScheduledFor", {
-                date: deletionScheduledAt ? new Date(deletionScheduledAt).toLocaleDateString() : t("sevenDaysFromNow"),
+                date: new Date(
+                  deletionScheduledAt ?? Date.now() + DELETION_GRACE_PERIOD_DAYS * 86_400_000
+                ).toLocaleDateString(),
                 strong: (chunks) => <strong>{chunks}</strong>,
               })}
             </p>

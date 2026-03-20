@@ -15,18 +15,9 @@ import path from "node:path";
 import { v4 as uuidv4 } from "uuid";
 
 import { apiRoute, ValidationError } from "@/lib/api";
-import { createLogger, logError } from "@/lib/logger";
+import { createLogger } from "@/lib/logger";
 
-import {
-  ALLOWED_MIME_TYPES,
-  FILE_EXTENSION_REGEX,
-  findConfigSuggestionsForUser,
-  getPreviewDir,
-  MAX_FILE_SIZE,
-  parseFileSheets,
-  savePreviewMetadata,
-  type SheetInfo,
-} from "../helpers";
+import { ALLOWED_MIME_TYPES, buildPreviewResult, FILE_EXTENSION_REGEX, getPreviewDir, MAX_FILE_SIZE } from "../helpers";
 
 const logger = createLogger("api-preview-schema-upload");
 
@@ -70,41 +61,21 @@ export const POST = apiRoute({
 
     logger.info({ previewId, fileName: file.name, fileSize: file.size, userId: user.id }, "File saved for preview");
 
-    // Parse file to get sheet info
-    let sheets: SheetInfo[];
-    try {
-      sheets = parseFileSheets(previewFilePath, fileExtension);
-    } catch (parseError) {
-      // Clean up temp file on parse error
-      fs.unlinkSync(previewFilePath);
-      logError(parseError, "preview-schema-upload-parse");
-      throw new ValidationError("Failed to parse file. Please check the file format.");
-    }
-
-    // Store preview metadata (intentionally omit authConfig to avoid persisting secrets to disk)
-    savePreviewMetadata({
-      previewId,
-      userId: user.id,
-      originalName: file.name,
-      filePath: previewFilePath,
-      mimeType: file.type,
-      fileSize: file.size,
-    });
-
-    // Find config suggestions from user's existing datasets
-    const allHeaders = sheets.flatMap((s) => s.headers);
-    const configSuggestions = await findConfigSuggestionsForUser(payload, user.id, allHeaders);
-
-    logger.info(
-      {
+    const { sheets, configSuggestions } = await buildPreviewResult({
+      previewFilePath,
+      fileExtension,
+      metadata: {
         previewId,
-        sheetsCount: sheets.length,
-        totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
-        isUrlSource: false,
-        configSuggestionsCount: configSuggestions.length,
+        userId: user.id,
+        originalName: file.name,
+        filePath: previewFilePath,
+        mimeType: file.type,
+        fileSize: file.size,
       },
-      "Preview schema generated"
-    );
+      logContext: "upload",
+      payload,
+      userId: user.id,
+    });
 
     return { previewId, sheets, configSuggestions };
   },

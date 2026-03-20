@@ -14,14 +14,14 @@ import { ArrowLeft, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { useWizard } from "./wizard-context";
-import { WIZARD_STEPS } from "./wizard-reducer";
+import { useWizardStore, WIZARD_STEPS } from "./wizard-store";
 
 export const WizardHeader = () => {
   const t = useTranslations("Import");
   const router = useRouter();
-  const { state, prevStep } = useWizard();
-  const { currentStep, startedAuthenticated } = state;
+  const currentStep = useWizardStore((s) => s.currentStep);
+  const startedAuthenticated = useWizardStore((s) => s.startedAuthenticated);
+  const prevStep = useWizardStore((s) => s.prevStep);
 
   const skipAuthStep = startedAuthenticated;
   const visibleSteps = skipAuthStep ? WIZARD_STEPS.filter((s) => s.step !== 1) : WIZARD_STEPS;
@@ -70,7 +70,3 @@ export const WizardHeader = () => {
     </header>
   );
 };
-
-// Keep old export name for backward compat during transition
-export { WizardHeader as WizardProgress };
-export type WizardProgressProps = Record<string, never>;

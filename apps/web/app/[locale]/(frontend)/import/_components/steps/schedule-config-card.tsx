@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClockIcon, GlobeIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { ScheduleConfig } from "../wizard-context";
+import type { ScheduleConfig } from "../wizard-store";
 
 export interface ScheduleConfigCardProps {
   sourceUrl: string;

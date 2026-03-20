@@ -245,8 +245,7 @@
     "cancelDeletion": "Loeschung abbrechen",
     "failedToLoad": "Daten konnten nicht geladen werden",
     "cannotDelete": "Konto kann nicht geloescht werden",
-    "failedToScheduleDeletion": "Loeschung konnte nicht geplant werden",
-    "sevenDaysFromNow": "7 Tage ab heute"
+    "failedToScheduleDeletion": "Loeschung konnte nicht geplant werden"
   },
   "DataExport": {
     "title": "Meine Daten herunterladen",

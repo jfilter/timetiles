@@ -2,58 +2,61 @@
  * Integration-style unit tests for the StepUpload component.
  *
  * Tests the full upload flow (file + URL) with mocked fetch()
- * and mocked wizard context. Tests run sequentially because they
- * share mutable state (fetch mock, wizard state).
+ * and Zustand wizard store. Tests run sequentially because they
+ * share mutable state (fetch mock, wizard store).
  *
  * @module
  */
 /* eslint-disable @typescript-eslint/require-await -- act(async () => ...) is the standard React 19 pattern for flushing state updates */
 import { StepUpload } from "@/app/[locale]/(frontend)/import/_components/steps/step-upload";
-import type { WizardState } from "@/app/[locale]/(frontend)/import/_components/wizard-context";
+import {
+  initialState,
+  useWizardStore,
+  type WizardState,
+} from "@/app/[locale]/(frontend)/import/_components/wizard-store";
 
 import { act, fireEvent, renderWithProviders, screen, waitFor } from "../../setup/unit/react-render";
 
 // ---------------------------------------------------------------------------
-// Mock wizard context
+// Mock use-wizard-effects (useWizardCanProceed depends on useAuthState)
+// ---------------------------------------------------------------------------
+vi.mock("@/app/[locale]/(frontend)/import/_components/use-wizard-effects", () => ({ useWizardCanProceed: () => true }));
+
+// ---------------------------------------------------------------------------
+// Mock localStorage for Zustand persist middleware
+// ---------------------------------------------------------------------------
+const mockStorage = new Map<string, string>();
+vi.stubGlobal("localStorage", {
+  getItem: (key: string) => mockStorage.get(key) ?? null,
+  setItem: (key: string, value: string) => mockStorage.set(key, value),
+  removeItem: (key: string) => mockStorage.delete(key),
+  clear: () => mockStorage.clear(),
+});
+
+// ---------------------------------------------------------------------------
+// Action spies — track calls to store actions
 // ---------------------------------------------------------------------------
 const mockSetFile = vi.fn();
 const mockSetSourceUrl = vi.fn();
 const mockClearFile = vi.fn();
 const mockNextStep = vi.fn();
 
-const baseWizardState: WizardState = {
-  currentStep: 2,
-  startedAuthenticated: true,
-  previewId: null,
-  file: null,
-  sheets: [],
-  sourceUrl: null,
-  authConfig: null,
-  selectedCatalogId: null,
-  newCatalogName: "",
-  sheetMappings: [],
-  fieldMappings: [],
-  transforms: {},
-  deduplicationStrategy: "skip",
-  geocodingEnabled: true,
-  scheduleConfig: null,
-  configSuggestions: [],
-  importFileId: null,
-  scheduledImportId: null,
-  error: null,
-};
-
-let wizardState = { ...baseWizardState };
-
-vi.mock("@/app/[locale]/(frontend)/import/_components/wizard-context", () => ({
-  useWizard: () => ({
-    state: wizardState,
+/** Reset the store to a specific state with action spies */
+const resetStore = (overrides?: Partial<WizardState>) => {
+  useWizardStore.setState({
+    ...initialState,
+    _initialized: true,
+    _savedAt: 0,
+    currentStep: 2,
+    startedAuthenticated: true,
+    ...overrides,
+    // Override actions with spies (must be after ...overrides)
     setFile: mockSetFile,
     setSourceUrl: mockSetSourceUrl,
     clearFile: mockClearFile,
     nextStep: mockNextStep,
-  }),
-}));
+  });
+};
 
 // ---------------------------------------------------------------------------
 // Fetch mock
@@ -79,7 +82,8 @@ const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  wizardState = { ...baseWizardState };
+  mockStorage.clear();
+  resetStore();
   fetchMock = vi.fn<typeof globalThis.fetch>(() => jsonResponse(apiSuccess));
   globalThis.fetch = fetchMock;
 });
@@ -98,7 +102,7 @@ const findFetchButton = () =>
   Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find((b) => b.textContent?.trim() === "Fetch");
 
 // ---------------------------------------------------------------------------
-// All tests run sequentially (shared mutable state: fetch mock, wizard state)
+// All tests run sequentially (shared mutable state: fetch mock, wizard store)
 // ---------------------------------------------------------------------------
 describe.sequential("StepUpload", () => {
   // -------------------------------------------------------------------------
@@ -209,7 +213,7 @@ describe.sequential("StepUpload", () => {
   describe("URL fetch flow", () => {
     /** Activate URL tab by setting a sourceUrl (component reads inputMode from it) */
     const activateUrlTab = () => {
-      wizardState = { ...baseWizardState, sourceUrl: "https://placeholder.test" };
+      resetStore({ sourceUrl: "https://placeholder.test" });
     };
 
     test("user types URL, clicks Fetch — calls setSourceUrl + setFile", async () => {
@@ -306,11 +310,10 @@ describe.sequential("StepUpload", () => {
   // -------------------------------------------------------------------------
   describe("preview state", () => {
     test("shows file preview when wizard state has a file", () => {
-      wizardState = {
-        ...baseWizardState,
+      resetStore({
         file: { name: "events.csv", size: 51200, mimeType: "text/csv" },
         sheets: [{ index: 0, name: "Sheet1", rowCount: 150, headers: [], sampleData: [] }],
-      };
+      });
 
       const { container } = renderWithProviders(<StepUpload />);
 
@@ -320,12 +323,11 @@ describe.sequential("StepUpload", () => {
     });
 
     test("shows URL preview when sourceUrl is set", () => {
-      wizardState = {
-        ...baseWizardState,
+      resetStore({
         file: { name: "remote.csv", size: 2048, mimeType: "text/csv" },
         sheets: [{ index: 0, name: "Sheet1", rowCount: 75, headers: [], sampleData: [] }],
         sourceUrl: "https://example.com/remote.csv",
-      };
+      });
 
       const { container } = renderWithProviders(<StepUpload />);
 
@@ -334,11 +336,10 @@ describe.sequential("StepUpload", () => {
     });
 
     test("calls clearFile when remove button is clicked", () => {
-      wizardState = {
-        ...baseWizardState,
+      resetStore({
         file: { name: "events.csv", size: 1024, mimeType: "text/csv" },
         sheets: [{ index: 0, name: "Sheet1", rowCount: 10, headers: [], sampleData: [] }],
-      };
+      });
 
       const { container } = renderWithProviders(<StepUpload />);
 
@@ -350,11 +351,10 @@ describe.sequential("StepUpload", () => {
     });
 
     test("hides upload tabs when file is loaded", () => {
-      wizardState = {
-        ...baseWizardState,
+      resetStore({
         file: { name: "events.csv", size: 1024, mimeType: "text/csv" },
         sheets: [{ index: 0, name: "Sheet1", rowCount: 10, headers: [], sampleData: [] }],
-      };
+      });
 
       renderWithProviders(<StepUpload />);
 
