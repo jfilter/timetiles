@@ -502,7 +502,7 @@ export const ColumnRow = ({
             assignedTargets={assignedTargets}
             onTargetChange={onTargetChange}
           />
-          {targetField === "locationField" && onGeocodingChange && (
+          {(targetField === "locationField" || targetField === "locationNameField") && onGeocodingChange && (
             <label className="mt-2 flex items-center gap-2 text-xs">
               <Checkbox
                 checked={geocodingEnabled}
