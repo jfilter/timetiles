@@ -6,17 +6,17 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FieldStatistics } from "../types";
+import type { FieldStatistics } from "@/lib/services/schema-detection/types";
+import { detectGeoFields } from "@/lib/services/schema-detection/utilities/coordinates";
 import {
   ADDRESS_PATTERNS,
   COMBINED_COORDINATE_PATTERNS,
   COORDINATE_BOUNDS,
   detectFieldMappings,
-  detectGeoFields,
   FIELD_PATTERNS,
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
-} from "./patterns";
+} from "@/lib/services/schema-detection/utilities/patterns";
 
 const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatistics => ({
   path: "test",

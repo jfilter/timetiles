@@ -269,9 +269,6 @@ importers:
       '@timetiles/assets':
         specifier: workspace:*
         version: link:../../packages/assets
-      '@timetiles/payload-schema-detection':
-        specifier: workspace:*
-        version: link:../../packages/payload-schema-detection
       '@timetiles/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -580,37 +577,6 @@ importers:
       typescript-eslint:
         specifier: ^8.56.1
         version: 8.56.1(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
-
-  packages/payload-schema-detection:
-    dependencies:
-      franc:
-        specifier: 'catalog:'
-        version: 6.2.0
-    devDependencies:
-      '@timetiles/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@timetiles/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/node':
-        specifier: 'catalog:'
-        version: 25.1.0
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 4.0.18(vitest@4.0.18)
-      eslint:
-        specifier: 'catalog:'
-        version: 9.39.2(jiti@2.6.1)
-      payload:
-        specifier: 3.75.0
-        version: 3.75.0(graphql@16.13.0)(typescript@5.9.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-      vitest:
-        specifier: 'catalog:'
-        version: 4.0.18(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.8.3)(jiti@2.6.1)(jsdom@28.1.0)(lightningcss@1.31.1)(msw@2.12.10(@types/node@25.1.0)(typescript@5.9.3))(sass@1.77.4)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/typescript-config:
     devDependencies:

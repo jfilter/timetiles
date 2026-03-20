@@ -6,8 +6,14 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FieldStatistics } from "../types";
-import { detectEnumFields, detectIdFields, detectPatterns, looksLikeCoordinate, looksLikeId } from "./geo";
+import type { FieldStatistics } from "@/lib/services/schema-detection/types";
+import {
+  detectEnumFields,
+  detectIdFields,
+  detectPatterns,
+  looksLikeCoordinate,
+  looksLikeId,
+} from "@/lib/services/schema-detection/utilities/geo";
 
 const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatistics => ({
   path: "test",

@@ -62,7 +62,7 @@ vi.mock("@/lib/jobs/handlers/url-fetch-job/fetch-utils", () => ({
   detectFileTypeFromResponse: mocks.mockDetectFileTypeFromResponse,
 }));
 
-vi.mock("@timetiles/payload-schema-detection", () => {
+vi.mock("@/lib/services/schema-detection", () => {
   const TEST_FIELD_PATTERNS: Record<string, Record<string, RegExp[]>> = {
     title: { eng: [/^title$/i] },
     description: { eng: [/^description$/i] },

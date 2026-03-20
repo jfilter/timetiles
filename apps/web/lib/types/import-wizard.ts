@@ -9,12 +9,12 @@
  * @category Types
  */
 
-import type { LanguageResult } from "@timetiles/payload-schema-detection";
+import type { LanguageResult } from "@/lib/services/schema-detection";
 
 import type { ImportTransform } from "./import-transforms";
 
 export type { ImportTransform } from "./import-transforms";
-export type { LanguageResult } from "@timetiles/payload-schema-detection";
+export type { LanguageResult } from "@/lib/services/schema-detection";
 
 /** Confidence level for a field mapping suggestion */
 export type ConfidenceLevel = "high" | "medium" | "low" | "none";

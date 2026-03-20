@@ -6,8 +6,8 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SchemaDetectionService } from "./service";
-import type { DetectionContext, FieldStatistics, SchemaDetector } from "./types";
+import { SchemaDetectionService } from "@/lib/services/schema-detection/service";
+import type { DetectionContext, FieldStatistics, SchemaDetector } from "@/lib/services/schema-detection/types";
 
 // Factory functions to create fresh mocks for each test
 const createMockDefaultDetector = (): SchemaDetector => ({

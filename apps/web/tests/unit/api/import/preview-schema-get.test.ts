@@ -45,7 +45,7 @@ vi.mock("node:fs", () => ({
 vi.mock("papaparse", () => ({ default: { parse: mocks.mockPapaParse } }));
 vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_json: mocks.mockSheetToJson } }));
 
-vi.mock("@timetiles/payload-schema-detection", () => {
+vi.mock("@/lib/services/schema-detection", () => {
   const TEST_FIELD_PATTERNS: Record<string, Record<string, RegExp[]>> = {
     title: { eng: [/^title$/i] },
     description: { eng: [/^description$/i] },

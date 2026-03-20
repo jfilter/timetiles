@@ -17,13 +17,13 @@ import { nodemailerAdapter } from "@payloadcms/email-nodemailer";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { de } from "@payloadcms/translations/languages/de";
 import { en } from "@payloadcms/translations/languages/en";
-import { schemaDetectionPlugin } from "@timetiles/payload-schema-detection";
 import nodemailer from "nodemailer";
 import type { Config, Plugin } from "payload";
 import { buildConfig } from "payload";
 import sharp from "sharp";
 
 import Users from "@/lib/collections/users";
+import { schemaDetectionPlugin } from "@/lib/services/schema-detection";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import type { CollectionName } from "./payload-shared-config";

@@ -22,7 +22,7 @@ import { ProgressTrackingService } from "@/lib/import/progress-tracking";
 import { applyTransformsBatch } from "@/lib/import/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
-import { detectFieldMappings } from "@/lib/services/schema-builder/field-mapping-detection";
+import { detectFlatFieldMappings } from "@/lib/services/schema-detection/utilities";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
 import type { Dataset, ImportJob } from "@/payload-types";
@@ -121,7 +121,7 @@ const finalizeSchemaDetection = async (
   });
 
   // Detect field mappings or use overrides
-  const detectedMappings = detectFieldMappings(finalState.fieldStats, dataset?.language ?? "eng");
+  const detectedMappings = detectFlatFieldMappings(finalState.fieldStats, dataset?.language ?? "eng");
   const fieldMappings = mergeFieldMappings(detectedMappings, dataset);
 
   logger.info("Field mappings detected", {

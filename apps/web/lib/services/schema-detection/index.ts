@@ -1,25 +1,12 @@
 /**
- * Schema Detection Plugin for Payload CMS.
+ * Schema detection service for import workflows.
  *
- * A Payload CMS plugin that provides language-aware schema detection
- * for import workflows. Supports custom detectors for domain-specific
- * data formats with automatic fallback to a default detector.
- *
- * @example
- * ```typescript
- * import { schemaDetectionPlugin, defaultDetector } from '@timetiles/payload-schema-detection';
- *
- * export default buildConfig({
- *   plugins: [
- *     schemaDetectionPlugin({
- *       detectors: [myCustomDetector, defaultDetector],
- *     }),
- *   ],
- * });
- * ```
+ * Provides language-aware schema detection with support for custom detectors
+ * and automatic fallback to a default detector. Includes field mapping
+ * detection, language detection, and structural pattern analysis.
  *
  * @module
- * @category Plugins
+ * @category Services
  */
 
 // Core types
@@ -47,14 +34,14 @@ export { defaultDetector } from "./detectors/default-detector";
 // Payload plugin
 export { schemaDetectionPlugin } from "./plugin";
 
-// Pattern constants and matching utilities for external use
+// Pattern constants and matching utilities
+export { detectGeoFields } from "./utilities/coordinates";
 export type { FieldPatternMatch } from "./utilities/patterns";
 export {
   ADDRESS_PATTERNS,
   COMBINED_COORDINATE_PATTERNS,
   COORDINATE_BOUNDS,
   detectFieldMappings,
-  detectGeoFields,
   FIELD_PATTERNS,
   getFieldPatterns,
   LATITUDE_PATTERNS,

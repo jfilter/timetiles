@@ -13,7 +13,7 @@ import {
   isSupportedLanguage,
   LANGUAGE_NAMES,
   SUPPORTED_LANGUAGES,
-} from "./language";
+} from "@/lib/services/schema-detection/utilities/language";
 
 describe("extractTextForLanguageDetection", () => {
   it("extracts text values from sample data", () => {

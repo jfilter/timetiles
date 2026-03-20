@@ -9,7 +9,12 @@
  * @category Utilities
  */
 
-import type { FieldMapping, FieldMappingsResult, FieldStatistics, GeoFieldMapping } from "../types";
+import type { FieldMapping, FieldMappingsResult, FieldStatistics } from "../types";
+import { validateFieldType } from "./validators";
+
+// ---------------------------------------------------------------------------
+// Field name patterns
+// ---------------------------------------------------------------------------
 
 /**
  * Language-specific field name patterns.
@@ -250,6 +255,10 @@ export const FIELD_PATTERNS = {
   },
 } as const;
 
+// ---------------------------------------------------------------------------
+// Coordinate patterns
+// ---------------------------------------------------------------------------
+
 /**
  * Latitude patterns for coordinate detection.
  *
@@ -339,6 +348,10 @@ export interface FieldPatternMatch {
   isFallback: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Pattern matching
+// ---------------------------------------------------------------------------
+
 /**
  * Match a list of field/column names against FIELD_PATTERNS for a given field type and language.
  *
@@ -384,9 +397,7 @@ export const matchFieldNamePatterns = (
 /**
  * Get patterns for a field type and language, falling back to English.
  *
- * Single source of truth for pattern selection. Used by matchFieldNamePatterns
- * (preview detection) and by field-mapping-detection.ts (background detection)
- * to ensure consistent language fallback behavior.
+ * Single source of truth for pattern selection.
  */
 export const getFieldPatterns = (fieldType: FieldType, language: string): readonly RegExp[] => {
   const typePatterns = FIELD_PATTERNS[fieldType];
@@ -395,34 +406,35 @@ export const getFieldPatterns = (fieldType: FieldType, language: string): readon
   return langPatterns ?? engPatterns;
 };
 
-/**
- * Calculate confidence score for a pattern match.
- */
-const _calculatePatternConfidence = (fieldName: string, patterns: RegExp[]): number => {
-  const patternIndex = patterns.findIndex((p) => p.test(fieldName));
-  if (patternIndex === -1) return 0;
-  // Earlier patterns are more specific, higher score
-  return 1 - patternIndex / patterns.length;
-};
+// ---------------------------------------------------------------------------
+// Field matching with combined pattern + validation scoring
+// ---------------------------------------------------------------------------
 
 /**
- * Find the best matching field for a given type.
+ * Finds the best matching field for a set of patterns using combined scoring.
+ *
+ * Scores each field using pattern position (60%) and statistical
+ * validation (40%) to find the most likely match. Fields where
+ * validation returns 0 are skipped.
  */
 const findFieldByPattern = (
   fieldStats: Record<string, FieldStatistics>,
   patterns: readonly RegExp[],
-  validateFn?: (stats: FieldStatistics) => boolean
+  fieldType: FieldType
 ): FieldMapping | null => {
   let bestMatch: FieldMapping | null = null;
 
   for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const fieldName = fieldPath.split(".").pop() ?? "";
-    const matchIndex = patterns.findIndex((p) => p.test(fieldName));
+    const patternIndex = patterns.findIndex((p) => p.test(fieldName));
 
-    if (matchIndex === -1) continue;
-    if (validateFn && !validateFn(stats)) continue;
+    if (patternIndex === -1) continue;
 
-    const confidence = 0.5 + (1 - matchIndex / patterns.length) * 0.5;
+    const patternScore = 1 - patternIndex / patterns.length;
+    const validationScore = validateFieldType(stats, fieldType);
+    if (validationScore === 0) continue;
+
+    const confidence = patternScore * 0.6 + validationScore * 0.4;
 
     if (!bestMatch || confidence > bestMatch.confidence) {
       bestMatch = { path: fieldPath, confidence };
@@ -432,228 +444,45 @@ const findFieldByPattern = (
   return bestMatch;
 };
 
-/**
- * Validate that a field looks like it contains text content.
- */
-const isTextField = (stats: FieldStatistics): boolean => {
-  return (stats.typeDistribution["string"] ?? 0) > 0;
-};
+// oxlint-disable-next-line import/no-cycle -- Constants-only cycle with coordinates.ts; no runtime risk
+import { detectGeoFields } from "./coordinates";
+
+// ---------------------------------------------------------------------------
+// Field mapping detection
+// ---------------------------------------------------------------------------
 
 /**
- * Validate that a field looks like it contains date/time values.
+ * Find the best field match, trying primary language patterns first then English fallback.
  */
-const isDateField = (stats: FieldStatistics): boolean => {
-  const hasDateFormat = (stats.formats.date ?? 0) > 0 || (stats.formats.dateTime ?? 0) > 0;
-  const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
-  return hasDateFormat || hasStringType;
-};
-
-/**
- * Parse a coordinate string value.
- */
-const parseCoordinate = (value: string): number | null => {
-  const trimmed = value.trim();
-  const parsed = Number.parseFloat(trimmed);
-  return isNaN(parsed) ? null : parsed;
-};
-
-/**
- * Check if a field contains valid coordinate values.
- */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Coordinate validation requires checking multiple conditions
-const isValidCoordinateField = (stats: FieldStatistics, bounds: { min: number; max: number }): boolean => {
-  const hasNumericType = (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
-
-  if (hasNumericType && stats.numericStats) {
-    return stats.numericStats.min >= bounds.min && stats.numericStats.max <= bounds.max;
-  }
-
-  const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
-  if (hasStringType && stats.uniqueSamples && stats.uniqueSamples.length > 0) {
-    let validCount = 0;
-    let totalCount = 0;
-
-    for (const sample of stats.uniqueSamples.slice(0, 10)) {
-      if (typeof sample === "string" && sample.trim() !== "") {
-        const parsed = parseCoordinate(sample);
-        if (parsed !== null) {
-          totalCount++;
-          if (parsed >= bounds.min && parsed <= bounds.max) {
-            validCount++;
-          }
-        }
-      }
-    }
-
-    return totalCount > 0 && validCount / totalCount >= 0.7;
-  }
-
-  return false;
-};
-
-/**
- * Find a coordinate field (latitude or longitude).
- */
-const findCoordinateField = (
+const findFieldWithFallback = (
   fieldStats: Record<string, FieldStatistics>,
-  patterns: RegExp[],
-  bounds: { min: number; max: number }
+  fieldType: FieldType,
+  language: string
 ): FieldMapping | null => {
-  let bestMatch: FieldMapping | null = null;
-
-  for (const [fieldPath, stats] of Object.entries(fieldStats)) {
-    const fieldName = fieldPath.split(".").pop() ?? "";
-    const matchIndex = patterns.findIndex((p) => p.test(fieldName));
-
-    if (matchIndex === -1) continue;
-    if (!isValidCoordinateField(stats, bounds)) continue;
-
-    const confidence = 0.5 + (1 - matchIndex / patterns.length) * 0.5;
-
-    if (!bestMatch || confidence > bestMatch.confidence) {
-      bestMatch = { path: fieldPath, confidence };
-    }
-  }
-
-  return bestMatch;
-};
-
-/**
- * Check if samples contain comma-separated coordinates.
- */
-const checkCommaFormat = (samples: unknown[]): { format: string; confidence: number } | null => {
-  let matches = 0;
-  let latLngOrder = 0;
-  let lngLatOrder = 0;
-
-  for (const sample of samples) {
-    if (typeof sample !== "string") continue;
-    const parts = sample.split(",").map((p) => Number.parseFloat(p.trim()));
-    if (parts.length === 2 && parts.every((p) => !isNaN(p))) {
-      matches++;
-      const [first, second] = parts as [number, number];
-      if (Math.abs(first) <= 90 && Math.abs(second) <= 180) {
-        latLngOrder++;
-      }
-      if (Math.abs(first) <= 180 && Math.abs(second) <= 90) {
-        lngLatOrder++;
-      }
-    }
-  }
-
-  if (matches === 0) return null;
-
-  const confidence = matches / samples.length;
-  if (confidence < 0.7) return null;
-
-  const format = latLngOrder >= lngLatOrder ? "lat,lng" : "lng,lat";
-  return { format, confidence };
-};
-
-/**
- * Find a combined coordinate field.
- */
-const findCombinedCoordinateField = (
-  fieldStats: Record<string, FieldStatistics>
-): { path: string; format: string; confidence: number } | null => {
-  for (const [fieldPath, stats] of Object.entries(fieldStats)) {
-    const fieldName = fieldPath.split(".").pop() ?? "";
-
-    if (!COMBINED_COORDINATE_PATTERNS.some((p) => p.test(fieldName))) continue;
-    if (!stats.uniqueSamples || stats.uniqueSamples.length === 0) continue;
-
-    const samples = stats.uniqueSamples.slice(0, 10).filter((s) => s != null && s !== "");
-    const formatResult = checkCommaFormat(samples);
-
-    if (formatResult && formatResult.confidence >= 0.7) {
-      return { path: fieldPath, format: formatResult.format, confidence: formatResult.confidence };
-    }
-  }
-
-  return null;
-};
-
-/**
- * Find an address/location field for geocoding.
- */
-const findLocationField = (fieldStats: Record<string, FieldStatistics>): FieldMapping | null => {
-  for (const [fieldPath, stats] of Object.entries(fieldStats)) {
-    const fieldName = fieldPath.split(".").pop() ?? "";
-    const matchesPattern = ADDRESS_PATTERNS.some((pattern) => pattern.test(fieldName));
-    const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
-
-    if (matchesPattern && hasStringType) {
-      // Calculate confidence based on pattern match position
-      const patternIndex = ADDRESS_PATTERNS.findIndex((p) => p.test(fieldName));
-      const confidence = 0.5 + (1 - patternIndex / ADDRESS_PATTERNS.length) * 0.5;
-      return { path: fieldPath, confidence };
-    }
+  const match = findFieldByPattern(fieldStats, getFieldPatterns(fieldType, language), fieldType);
+  if (match) return match;
+  // Fallback to English if primary language didn't match
+  if (language !== "eng") {
+    return findFieldByPattern(fieldStats, getFieldPatterns(fieldType, "eng"), fieldType);
   }
   return null;
 };
 
 /**
- * Detect geo field mappings.
- */
-export const detectGeoFields = (fieldStats: Record<string, FieldStatistics>): GeoFieldMapping | null => {
-  // First try separate lat/lng fields
-  const latitude = findCoordinateField(fieldStats, LATITUDE_PATTERNS, COORDINATE_BOUNDS.latitude);
-  const longitude = findCoordinateField(fieldStats, LONGITUDE_PATTERNS, COORDINATE_BOUNDS.longitude);
-
-  // Also detect location/address field for geocoding fallback
-  const locationField = findLocationField(fieldStats) ?? undefined;
-
-  if (latitude && longitude) {
-    const avgConfidence = (latitude.confidence + longitude.confidence) / 2;
-    return { type: "separate", confidence: avgConfidence, latitude, longitude, locationField };
-  }
-
-  // Try combined coordinate field
-  const combined = findCombinedCoordinateField(fieldStats);
-  if (combined) {
-    return {
-      type: "combined",
-      confidence: combined.confidence,
-      combined: { path: combined.path, format: combined.format },
-      locationField,
-    };
-  }
-
-  // If only one coordinate found, still return it with lower confidence
-  if (latitude ?? longitude) {
-    const field = latitude ?? longitude;
-    return {
-      type: "separate",
-      confidence: (field?.confidence ?? 0) * 0.5,
-      latitude: latitude ?? undefined,
-      longitude: longitude ?? undefined,
-      locationField,
-    };
-  }
-
-  // If only location field found, return with low confidence for geocoding
-  if (locationField) {
-    return { type: "separate", confidence: locationField.confidence * 0.3, locationField };
-  }
-
-  return null;
-};
-
-/**
- * Detect field mappings for all standard fields.
+ * Detect field mappings for all standard fields (structured result with confidence).
  *
  * @param fieldStats - Field statistics from schema builder
  * @param language - ISO 639-3 language code
- * @returns Field mappings result
+ * @returns Field mappings result with confidence scores
  */
 export const detectFieldMappings = (
   fieldStats: Record<string, FieldStatistics>,
   language: string
 ): FieldMappingsResult => {
-  const title = findFieldByPattern(fieldStats, getFieldPatterns("title", language), isTextField);
-  const description = findFieldByPattern(fieldStats, getFieldPatterns("description", language), isTextField);
-  const timestamp = findFieldByPattern(fieldStats, getFieldPatterns("timestamp", language), isDateField);
-  const locationName = findFieldByPattern(fieldStats, getFieldPatterns("locationName", language), isTextField);
+  const title = findFieldWithFallback(fieldStats, "title", language);
+  const description = findFieldWithFallback(fieldStats, "description", language);
+  const timestamp = findFieldWithFallback(fieldStats, "timestamp", language);
+  const locationName = findFieldWithFallback(fieldStats, "locationName", language);
   const geo = detectGeoFields(fieldStats);
 
   return { title, description, timestamp, locationName, geo };

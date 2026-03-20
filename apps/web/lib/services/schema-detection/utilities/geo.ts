@@ -82,6 +82,42 @@ export const detectPatterns = (
 };
 
 /**
+ * Detects enumeration fields and mutates field statistics in place.
+ *
+ * Sets `stats.isEnumCandidate` and `stats.enumValues` directly on the
+ * provided field stats. This is used by the schema builder after all
+ * batches are processed.
+ */
+export const enrichEnumFields = (
+  fieldStats: Record<string, FieldStatistics>,
+  config: { enumThreshold: number; enumMode: "count" | "percentage" }
+): void => {
+  for (const stats of Object.values(fieldStats)) {
+    const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
+    if (hasStringType && stats.uniqueSamples) {
+      const shouldBeEnum =
+        config.enumMode === "count"
+          ? stats.uniqueValues <= config.enumThreshold
+          : stats.uniqueValues / stats.occurrences <= config.enumThreshold / 100;
+
+      if (shouldBeEnum && stats.uniqueValues > 1 && stats.uniqueValues < stats.occurrences) {
+        stats.isEnumCandidate = true;
+        // Create enum values from unique samples
+        const valueCounts = new Map<unknown, number>();
+        for (const sample of stats.uniqueSamples) {
+          valueCounts.set(sample, (valueCounts.get(sample) ?? 0) + 1);
+        }
+        stats.enumValues = Array.from(valueCounts.entries()).map(([value, count]) => ({
+          value,
+          count,
+          percent: (count / stats.occurrences) * 100,
+        }));
+      }
+    }
+  }
+};
+
+/**
  * Checks if a value looks like an ID.
  */
 export const looksLikeId = (value: unknown): boolean => {

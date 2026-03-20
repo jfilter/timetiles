@@ -11,7 +11,7 @@ import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { createFieldStats, updateFieldStats } from "@/lib/services/schema-builder/field-statistics";
-import { detectEnums } from "@/lib/services/schema-builder/pattern-detection";
+import { enrichEnumFields } from "@/lib/services/schema-detection/utilities";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 
 const logger = createLogger("seed:field-metadata");
@@ -54,21 +54,8 @@ const finalizeFieldStats = (fieldStats: Record<string, FieldStatistics>, totalEv
     stats.occurrencePercent = (stats.occurrences / totalEvents) * 100;
   }
 
-  // Detect enum candidates using SchemaBuilderState-like structure
-  const state = {
-    fieldStats,
-    schema: {},
-    version: 1,
-    recordCount: totalEvents,
-    batchCount: 1,
-    lastUpdated: new Date(),
-    dataSamples: [],
-    maxSamples: 100,
-    detectedIdFields: [],
-    detectedGeoFields: { confidence: 0 },
-    typeConflicts: [],
-  };
-  detectEnums(state, ENUM_CONFIG);
+  // Detect enum candidates
+  enrichEnumFields(fieldStats, ENUM_CONFIG);
 
   // Recalculate enum value percentages based on total occurrences (not unique count)
   for (const stats of Object.values(fieldStats)) {

@@ -20,10 +20,10 @@
 import { InputData, jsonInputForTargetLanguage, quicktype } from "quicktype-core";
 
 import { logger } from "@/lib/logger";
+import { enrichEnumFields } from "@/lib/services/schema-detection/utilities";
 import type { FieldStatistics, SchemaBuilderState, SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
 
 import { createFieldStats, getValueType, updateFieldStats } from "./field-statistics";
-import { detectEnums } from "./pattern-detection";
 import { compareSchemas } from "./schema-comparison";
 
 type DataRecord = Record<string, unknown>;
@@ -486,7 +486,7 @@ export class ProgressiveSchemaBuilder {
    * Call once after all batches are processed.
    */
   detectEnumFields(): void {
-    detectEnums(this.state, this.config);
+    enrichEnumFields(this.state.fieldStats, this.config);
   }
 
   getSummary(): { recordCount: number; fieldCount: number; version: number; enumFields: string[] } {

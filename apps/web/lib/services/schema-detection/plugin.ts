@@ -9,7 +9,9 @@
  * @category Plugins
  */
 
-import type { CollectionConfig, Config } from "payload";
+import type { BasePayload, CollectionConfig, Config } from "payload";
+
+import { logger } from "@/lib/logger";
 
 import { createDetectorSelectionField, createSchemaDetectorsCollection } from "./collection";
 import { defaultDetector } from "./detectors/default-detector";
@@ -32,34 +34,34 @@ const chainOnInit = (existingOnInit: Config["onInit"], newOnInit: NonNullable<Co
  * Seed default detector configurations into the database.
  */
 const seedDefaultDetectors = async (
-  payload: { create: Function; find: Function },
+  payload: BasePayload,
   collectionSlug: string,
   detectors: SchemaDetector[]
 ): Promise<void> => {
   try {
     // Check what already exists
-    const existing = await payload.find({ collection: collectionSlug, limit: 100 });
+    const existing = await payload.find({ collection: collectionSlug as never, limit: 100 });
 
-    const existingNames = new Set(existing.docs.map((d: { name: string }) => d.name));
+    const existingNames = new Set(existing.docs.map((d) => (d as { name: string }).name));
 
     // Seed any detectors that don't exist
     for (const detector of detectors) {
       if (!existingNames.has(detector.name)) {
         await payload.create({
-          collection: collectionSlug,
+          collection: collectionSlug as never,
           data: {
             name: detector.name,
             label: detector.label,
             description: detector.description ?? "",
             enabled: true,
             priority: detector.name === "default" ? 1000 : 100,
-          },
+          } as never,
         });
       }
     }
   } catch (error) {
     // Don't fail startup if seeding fails
-    console.warn("[schema-detection] Failed to seed default detectors:", error);
+    logger.warn("[schema-detection] Failed to seed default detectors:", { error });
   }
 };
 
@@ -80,12 +82,11 @@ const extendDatasetsCollection = (collection: CollectionConfig, collectionSlug: 
  *
  * @example
  * ```typescript
- * import { schemaDetectionPlugin, defaultDetector } from '@timetiles/payload-schema-detection';
+ * import { schemaDetectionPlugin } from '@/lib/services/schema-detection';
  *
  * export default buildConfig({
  *   plugins: [
  *     schemaDetectionPlugin({
- *       detectors: [myCustomDetector, defaultDetector],
  *       extendDatasets: true,
  *     }),
  *   ],
@@ -136,7 +137,7 @@ export const schemaDetectionPlugin = (options: SchemaDetectionPluginOptions = {}
     // Chain onInit to seed default detector configs
     config.onInit = chainOnInit(config.onInit, async (payload) => {
       await seedDefaultDetectors(payload, collectionSlug, detectors);
-      console.log(`[schema-detection] Plugin initialized with ${detectors.length} detector(s)`);
+      logger.info(`[schema-detection] Plugin initialized with ${detectors.length} detector(s)`);
     });
 
     return config;
