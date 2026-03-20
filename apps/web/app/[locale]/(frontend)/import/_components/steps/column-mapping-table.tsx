@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { Checkbox, Label, Table, TableBody, TableHead, TableHeader, TableRow } from "@timetiles/ui";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@timetiles/ui";
 import { Button } from "@timetiles/ui/components/button";
 import { ArrowLeftRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -318,16 +318,6 @@ export const ColumnMappingTable = ({
     [transforms, onTransformsChange]
   );
 
-  const handleGeocodingCheckedChange = useCallback(
-    (checked: boolean | "indeterminate") => {
-      onGeocodingChange(checked === true);
-    },
-    [onGeocodingChange]
-  );
-
-  // Show geocoding option when locationField is assigned
-  const showGeocoding = Boolean(fieldMapping.locationField);
-
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto rounded-sm border">
@@ -358,6 +348,8 @@ export const ColumnMappingTable = ({
                 sourceColumns={headers}
                 isSplitParent={row.isSplitParent}
                 splitChildren={row.splitChildren}
+                geocodingEnabled={geocodingEnabled}
+                onGeocodingChange={onGeocodingChange}
               />
             ))}
 
@@ -382,23 +374,7 @@ export const ColumnMappingTable = ({
         {t("combineColumns")}
       </Button>
 
-      {/* Geocoding checkbox */}
-      {showGeocoding && (
-        <div className="border-cartographic-blue/20 bg-cartographic-blue/5 flex items-start gap-3 rounded-sm border p-4">
-          <Checkbox
-            id="geocoding-enabled-table"
-            checked={geocodingEnabled}
-            onCheckedChange={handleGeocodingCheckedChange}
-            className="mt-0.5"
-          />
-          <div>
-            <Label htmlFor="geocoding-enabled-table" className="text-cartographic-charcoal">
-              {t("enableGeocoding")}
-            </Label>
-            <p className="text-cartographic-navy/70 text-sm">{t("enableGeocodingDescription")}</p>
-          </div>
-        </div>
-      )}
+      {/* Geocoding is now inline in the ColumnRow when target is locationField */}
     </div>
   );
 };

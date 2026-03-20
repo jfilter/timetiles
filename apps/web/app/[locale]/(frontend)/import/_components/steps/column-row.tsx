@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { Checkbox } from "@timetiles/ui";
 import { Button } from "@timetiles/ui/components/button";
 import {
   DropdownMenu,
@@ -47,6 +48,8 @@ export interface ColumnRowProps {
   sourceColumns: string[];
   isSplitParent?: boolean;
   splitChildren?: string[];
+  geocodingEnabled?: boolean;
+  onGeocodingChange?: (enabled: boolean) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +188,8 @@ export const ColumnRow = ({
   sourceColumns,
   isSplitParent,
   splitChildren,
+  geocodingEnabled,
+  onGeocodingChange,
 }: Readonly<ColumnRowProps>) => {
   const t = useTranslations("Import");
   const [expandedTransformId, setExpandedTransformId] = useState<string | null>(null);
@@ -270,6 +275,16 @@ export const ColumnRow = ({
             assignedTargets={assignedTargets}
             onTargetChange={onTargetChange}
           />
+          {targetField === "locationField" && onGeocodingChange && (
+            <label className="mt-2 flex items-center gap-2 text-xs">
+              <Checkbox
+                checked={geocodingEnabled}
+                onCheckedChange={(checked) => onGeocodingChange(checked === true)}
+                className="h-3.5 w-3.5"
+              />
+              <span className="text-cartographic-navy/70">{t("enableGeocoding")}</span>
+            </label>
+          )}
         </td>
 
         {/* Spacer cell for visual balance */}
