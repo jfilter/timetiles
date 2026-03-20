@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { usePreviewSheetsQuery } from "@/lib/hooks/use-import-wizard-queries";
 import { createEmptyFieldMapping, setMappingField } from "@/lib/import/field-mapping-utils";
+import { retrieveWizardStateForFlowEditor } from "@/lib/import/mapping-transfer";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/types/flow-mapping";
 import { createSourceNodes, createTargetNodes } from "@/lib/types/flow-mapping";
 import {
@@ -174,28 +175,57 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
 
     const sourceNodes = createSourceNodes(sheet.headers, sheet.sampleData, sheet.index, sheet.name);
     const targetNodes = createTargetNodes();
-    setNodes([...sourceNodes, ...targetNodes] as FlowNode[]);
+    const allInitNodes: FlowNode[] = [...sourceNodes, ...targetNodes];
+    const allInitEdges: FlowEdge[] = [];
+
+    // Check for wizard state forwarded from the inline transform list
+    const wizardState = retrieveWizardStateForFlowEditor();
 
     if (sheet.suggestedMappings?.mappings) {
       const mappingPairs = buildMappingPairs(sheet.suggestedMappings.mappings);
-      const initialEdges = createInitialEdges(mappingPairs, sheetIndex);
-      setEdges(initialEdges);
+      const suggestedEdges = createInitialEdges(mappingPairs, sheetIndex);
+      allInitEdges.push(...suggestedEdges);
+    }
 
-      // Update node connection states
+    // Create transform nodes from wizard state
+    if (wizardState?.transforms.length) {
+      const TARGET_X = targetNodes[0]?.position.x ?? 700;
+      const SOURCE_X = sourceNodes[0]?.position.x ?? 0;
+      const TRANSFORM_X = SOURCE_X + (TARGET_X - SOURCE_X) / 2;
+
+      for (let i = 0; i < wizardState.transforms.length; i++) {
+        const transform = wizardState.transforms[i]!;
+        const nodeId = `transform-${transform.id}`;
+        const y = 50 + i * 120;
+
+        allInitNodes.push({
+          id: nodeId,
+          type: NODE_TYPE_TRANSFORM,
+          position: { x: TRANSFORM_X, y },
+          data: { transform, isEditing: false } as TransformNodeData,
+        });
+      }
+    }
+
+    setNodes(allInitNodes);
+    setEdges(allInitEdges);
+
+    // Update node connection states from edges
+    if (allInitEdges.length > 0) {
       const applyConnectionState = (node: FlowNode): FlowNode => {
         if (node.type === NODE_TYPE_SOURCE) {
-          const isConnected = initialEdges.some((e) => e.source === node.id);
+          const isConnected = allInitEdges.some((e) => e.source === node.id);
           return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected } } as FlowNode;
         }
         if (node.type === NODE_TYPE_TARGET) {
-          const edge = initialEdges.find((e) => e.target === node.id);
-          const sourceNode = edge ? sourceNodes.find((n) => n.id === edge.source) : null;
+          const edge = allInitEdges.find((e) => e.target === node.id);
+          const srcNode = edge ? sourceNodes.find((n) => n.id === edge.source) : null;
           return {
             ...node,
             data: {
               ...(node.data as TargetFieldNodeData),
               isConnected: !!edge,
-              connectedColumn: sourceNode?.data.columnName ?? null,
+              connectedColumn: srcNode?.data.columnName ?? null,
             },
           } as FlowNode;
         }

@@ -16,7 +16,6 @@ import { cn } from "@timetiles/ui/lib/utils";
 import {
   ArrowRight,
   CalendarIcon,
-  CheckCircleIcon,
   ChevronDownIcon,
   FileSpreadsheetIcon,
   MapPinIcon,
@@ -26,7 +25,8 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 
-import { Link } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { storeWizardStateForFlowEditor } from "@/lib/import/mapping-transfer";
 import {
   type ConfidenceLevel,
   type FieldMapping,
@@ -34,11 +34,10 @@ import {
   type SuggestedMappings,
 } from "@/lib/types/import-wizard";
 
-import type { ImportTransform } from "@/lib/types/import-transforms";
-
 import { TransformList } from "../transforms/transform-list";
 import { useWizard } from "../wizard-context";
 import {
+  CompletionStatusBar,
   DataPreviewSection,
   type FieldSuggestionResult,
   LanguageDetectionBanner,
@@ -62,6 +61,7 @@ const deriveLocationMode = (mapping: FieldMapping): LocationMode => {
 
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
   const t = useTranslations("Import");
+  const router = useRouter();
   const { state, nextStep, canProceed, setFieldMapping, setImportOptions, setTransforms } = useWizard();
   const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
 
@@ -95,15 +95,6 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
       setFieldMapping(activeSheetIndex, { [field]: value === "" ? null : value });
     },
     [activeSheetIndex, setFieldMapping]
-  );
-
-  const activeTransforms = state.transforms[activeSheetIndex] ?? [];
-
-  const handleTransformsChange = useCallback(
-    (transforms: ImportTransform[]) => {
-      setTransforms(activeSheetIndex, transforms);
-    },
-    [activeSheetIndex, setTransforms]
   );
 
   const handleDeduplicationChange = (value: string) => {
@@ -206,36 +197,30 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
             </div>
           )}
         </div>
-        {state.previewId && (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/import/flow-editor?previewId=${state.previewId}&sheetIndex=${activeSheetIndex}`}>
-              <WorkflowIcon className="mr-2 h-4 w-4" />
-              {t("openVisualEditor")}
-            </Link>
+        {state.previewId && activeMapping && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              storeWizardStateForFlowEditor({
+                fieldMapping: activeMapping,
+                transforms: state.transforms[activeSheetIndex] ?? [],
+              });
+              router.push(`/import/flow-editor?previewId=${state.previewId}&sheetIndex=${activeSheetIndex}`);
+            }}
+          >
+            <WorkflowIcon className="mr-2 h-4 w-4" />
+            {t("openVisualEditor")}
           </Button>
         )}
       </div>
 
       <LanguageDetectionBanner suggestedMappings={suggestedMappings} />
 
-      {/* Completion status bar */}
-      <div
-        className={cn(
-          "flex items-center gap-2 rounded-sm px-4 py-2 text-sm",
-          isComplete
-            ? "border-cartographic-forest/20 bg-cartographic-forest/5 text-cartographic-forest border"
-            : "border-cartographic-terracotta/20 bg-cartographic-terracotta/5 text-cartographic-terracotta border"
-        )}
-      >
-        {isComplete ? (
-          <>
-            <CheckCircleIcon className="h-4 w-4" />
-            {t("allRequiredFieldsMapped")}
-          </>
-        ) : (
-          t("requiredFieldsRemaining", { count: requiredFieldsCount.total - requiredFieldsCount.mapped })
-        )}
-      </div>
+      <CompletionStatusBar
+        isComplete={isComplete}
+        remainingCount={requiredFieldsCount.total - requiredFieldsCount.mapped}
+      />
 
       {/* Main card with all field sections */}
       <Card className="overflow-hidden">
@@ -326,6 +311,13 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           <DataPreviewSection fields={mappedPreviewFields} sampleData={activeSheet.sampleData} />
         </CardContent>
       </Card>
+
+      {/* Inline transform editing */}
+      <TransformList
+        transforms={state.transforms[activeSheetIndex] ?? []}
+        onTransformsChange={(transforms) => setTransforms(activeSheetIndex, transforms)}
+        sourceColumns={headers}
+      />
 
       {/* Advanced settings collapsible */}
       <Collapsible>

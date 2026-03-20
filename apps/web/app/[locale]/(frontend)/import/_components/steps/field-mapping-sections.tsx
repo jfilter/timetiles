@@ -11,7 +11,7 @@
 
 import { Checkbox, Label, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { MapPinIcon, SparklesIcon } from "lucide-react";
+import { CheckCircleIcon, MapPinIcon, SparklesIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { ConfidenceLevel, FieldMapping, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
@@ -261,6 +261,39 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
             </TableBody>
           </Table>
         </div>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// CompletionStatusBar
+// ---------------------------------------------------------------------------
+
+interface CompletionStatusBarProps {
+  isComplete: boolean;
+  remainingCount: number;
+}
+
+export const CompletionStatusBar = ({ isComplete, remainingCount }: Readonly<CompletionStatusBarProps>) => {
+  const t = useTranslations("Import");
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2 rounded-sm px-4 py-2 text-sm",
+        isComplete
+          ? "border-cartographic-forest/20 bg-cartographic-forest/5 text-cartographic-forest border"
+          : "border-cartographic-terracotta/20 bg-cartographic-terracotta/5 text-cartographic-terracotta border"
+      )}
+    >
+      {isComplete ? (
+        <>
+          <CheckCircleIcon className="h-4 w-4" />
+          {t("allRequiredFieldsMapped")}
+        </>
+      ) : (
+        t("requiredFieldsRemaining", { count: remainingCount })
       )}
     </div>
   );

@@ -505,7 +505,12 @@
     "completeRequiredFields": "Complete required fields to continue",
     "locationTypeAddress": "Address",
     "locationTypeCoordinates": "Coordinates",
-    "advancedSettings": "Advanced Settings"
+    "advancedSettings": "Advanced Settings",
+    "dataTransforms": "Data Transforms",
+    "dataTransformsDescription": "Transform source data before mapping to target fields",
+    "addTransform": "Add Transform",
+    "noTransformsConfigured": "No transforms configured. Add a transform to process your data.",
+    "incomplete": "Incomplete"
   },
   "Schedules": {
     "title": "Scheduled Imports",

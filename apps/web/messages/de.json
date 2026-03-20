@@ -505,7 +505,12 @@
     "completeRequiredFields": "Pflichtfelder ausfuellen, um fortzufahren",
     "locationTypeAddress": "Adresse",
     "locationTypeCoordinates": "Koordinaten",
-    "advancedSettings": "Erweiterte Einstellungen"
+    "advancedSettings": "Erweiterte Einstellungen",
+    "dataTransforms": "Datentransformationen",
+    "dataTransformsDescription": "Quelldaten vor der Zuordnung zu Zielfeldern transformieren",
+    "addTransform": "Transformation hinzufuegen",
+    "noTransformsConfigured": "Keine Transformationen konfiguriert. Fuegen Sie eine Transformation hinzu, um Ihre Daten zu verarbeiten.",
+    "incomplete": "Unvollstaendig"
   },
   "Schedules": {
     "title": "Geplante Importe",
