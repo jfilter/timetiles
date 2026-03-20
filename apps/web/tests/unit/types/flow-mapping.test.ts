@@ -37,7 +37,7 @@ describe("flow-mapping", () => {
       const nodes = createTargetNodes();
       expect(nodes[0]!.position.x).toBe(500);
       expect(nodes[0]!.position.y).toBe(50);
-      expect(nodes[1]!.position.y).toBe(130); // 50 + 1*80
+      expect(nodes[1]!.position.y).toBe(170); // 50 + 1*120
     });
 
     it("should accept custom startY", () => {
@@ -129,8 +129,8 @@ describe("flow-mapping", () => {
       const headers = ["A", "B", "C"];
       const nodes = createSourceNodes(headers, [], 0, "Sheet1");
       expect(nodes[0]!.position).toEqual({ x: 50, y: 50 });
-      expect(nodes[1]!.position).toEqual({ x: 50, y: 150 });
-      expect(nodes[2]!.position).toEqual({ x: 50, y: 250 });
+      expect(nodes[1]!.position).toEqual({ x: 50, y: 170 });
+      expect(nodes[2]!.position).toEqual({ x: 50, y: 290 });
     });
   });
 });

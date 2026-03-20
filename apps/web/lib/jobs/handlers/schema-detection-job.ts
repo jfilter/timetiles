@@ -148,6 +148,17 @@ const finalizeSchemaDetection = async (
 
     detectedMappings = toFlatMappings(result.fieldMappings);
 
+    // When the dataset has an explicit language that differs from the auto-detected
+    // content language, fill any null fields using dataset-language-aware detection.
+    // This handles mixed-language files (e.g., English content with German column names).
+    const datasetLang = dataset?.language;
+    if (datasetLang && datasetLang !== result.language.code) {
+      const datasetLangMappings = detectFlatFieldMappings(finalState.fieldStats, datasetLang);
+      for (const key of Object.keys(detectedMappings) as Array<keyof typeof detectedMappings>) {
+        detectedMappings[key] ??= datasetLangMappings[key];
+      }
+    }
+
     if (result.language.isReliable) {
       detectedLanguage = result.language.code;
     }
