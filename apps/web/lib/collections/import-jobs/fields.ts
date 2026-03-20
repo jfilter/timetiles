@@ -142,6 +142,16 @@ export const importJobFields: Field[] = [
     ],
   },
 
+  // Config snapshot — immutable record of dataset config at import creation time
+  {
+    name: "configSnapshot",
+    type: "json",
+    admin: {
+      readOnly: true,
+      description: "Snapshot of dataset config (field mappings, transforms, ID strategy, etc.) at import creation time",
+    },
+  },
+
   // Schema Validation
   {
     name: "schemaValidation",
