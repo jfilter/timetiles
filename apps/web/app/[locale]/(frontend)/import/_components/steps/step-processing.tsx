@@ -14,10 +14,12 @@ import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { AlertCircleIcon, CheckCircle2Icon, ExternalLinkIcon, Loader2Icon, MapIcon, RefreshCwIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { type ProgressApiResponse, useImportProgressQuery } from "@/lib/hooks/use-import-progress-query";
 
+import { clearStorage } from "../use-wizard-storage";
 import { useWizard } from "../wizard-context";
 
 export interface StepProcessingProps {
@@ -141,6 +143,15 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
 
   const isCompleted = progress?.status === "completed";
   const isFailed = progress?.status === "failed" || !!wizardError;
+
+  // Auto-clear localStorage draft when import completes
+  const hasClearedRef = useRef(false);
+  useEffect(() => {
+    if (isCompleted && !hasClearedRef.current) {
+      hasClearedRef.current = true;
+      clearStorage();
+    }
+  }, [isCompleted]);
   const status: ProcessingStatus = (() => {
     if (isCompleted) return "completed";
     if (isFailed) return "failed";
