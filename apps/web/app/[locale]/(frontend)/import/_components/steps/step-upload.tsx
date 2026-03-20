@@ -9,14 +9,26 @@
  */
 "use client";
 
-import { Button, Card, CardContent, Input, Label, Tabs, TabsContent, TabsList, TabsTrigger } from "@timetiles/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Input,
+  Label,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@timetiles/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   ArrowRight,
   CheckCircle2Icon,
   ChevronDownIcon,
-  ChevronUpIcon,
   FileSpreadsheetIcon,
   GlobeIcon,
   Loader2Icon,
@@ -66,7 +78,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
   // URL input state
   const [urlInput, setUrlInput] = useState(sourceUrl ?? "");
-  const [showAuthConfig, setShowAuthConfig] = useState(false);
   const [authConfig, setAuthConfig] = useState<UrlAuthConfig>({
     type: "none",
     apiKey: "",
@@ -87,10 +98,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
   const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUrlInput(e.target.value);
-  };
-
-  const toggleAuthConfig = () => {
-    setShowAuthConfig((prev) => !prev);
   };
 
   const handleInputModeChange = (value: string) => {
@@ -307,40 +314,34 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         <p className="text-muted-foreground text-sm">{t("dataUrlDescription")}</p>
       </div>
 
-      {/* Auth Configuration Toggle */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={toggleAuthConfig}
-        className="text-muted-foreground hover:text-foreground gap-1"
-      >
-        {showAuthConfig ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
-        {t("authSettings")}
-      </Button>
-
-      {/* Auth Configuration Form */}
-      {showAuthConfig && (
-        <Card className="p-4">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="auth-type">{t("authType")}</Label>
-              <Select value={authConfig.type} onValueChange={handleAuthTypeChange}>
-                <SelectTrigger id="auth-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t("authNone")}</SelectItem>
-                  <SelectItem value="api-key">{t("apiKey")}</SelectItem>
-                  <SelectItem value="bearer">{t("bearerToken")}</SelectItem>
-                  <SelectItem value="basic">{t("authBasic")}</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Auth Configuration */}
+      <Collapsible>
+        <CollapsibleTrigger className="text-cartographic-navy/70 hover:text-cartographic-charcoal py-2 text-sm font-medium">
+          {t("authSettings")}
+          <ChevronDownIcon className="h-4 w-4 transition-transform" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <Card className="p-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="auth-type">{t("authType")}</Label>
+                <Select value={authConfig.type} onValueChange={handleAuthTypeChange}>
+                  <SelectTrigger id="auth-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("authNone")}</SelectItem>
+                    <SelectItem value="api-key">{t("apiKey")}</SelectItem>
+                    <SelectItem value="bearer">{t("bearerToken")}</SelectItem>
+                    <SelectItem value="basic">{t("authBasic")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {renderAuthFields()}
             </div>
-            {renderAuthFields()}
-          </div>
-        </Card>
-      )}
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 
@@ -424,7 +425,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   );
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       <div className="text-center">
         <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("uploadTitle")}</h2>
         <p className="text-cartographic-navy/70 mt-2">{t("uploadDescription")}</p>
@@ -457,15 +458,18 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       {/* Error message */}
       {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
 
-      {/* Continue button — visible once file is uploaded */}
-      {canProceed && (
-        <div className="flex justify-end pt-4">
-          <Button size="lg" onClick={nextStep} className="gap-2">
+      {/* Sticky continue footer */}
+      <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <span className={cn("text-sm", canProceed ? "text-cartographic-forest" : "text-cartographic-navy/50")}>
+            {canProceed ? t("fileReadyToContinue") : t("uploadFileToStart")}
+          </span>
+          <Button size="lg" onClick={nextStep} disabled={!canProceed} className="gap-2">
             {t("continue")}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
-      )}
+      </div>
     </div>
   );
 };

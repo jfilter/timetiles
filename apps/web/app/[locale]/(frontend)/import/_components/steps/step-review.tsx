@@ -11,18 +11,15 @@
 
 "use client";
 
-import { Button, Card, CardContent, Input, Label } from "@timetiles/ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
+import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   ArrowDownIcon,
   ArrowLeft,
   CalendarIcon,
-  ClockIcon,
   DatabaseIcon,
   FingerprintIcon,
   FolderIcon,
-  GlobeIcon,
   Loader2,
   MapPinIcon,
   Rocket,
@@ -34,10 +31,12 @@ import { useCallback } from "react";
 
 import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutations";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
+import { TRANSFORM_TYPE_LABELS } from "@/lib/types/import-transforms";
 import { formatFileSize } from "@/lib/utils/format";
 
 import type { ScheduleConfig } from "../wizard-context";
 import { useWizard } from "../wizard-context";
+import { ScheduleConfigCard } from "./schedule-config-card";
 
 export interface StepReviewProps {
   className?: string;
@@ -229,7 +228,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const totalRows = sheets.reduce((sum, s) => sum + s.rowCount, 0);
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       <div className="text-center">
         <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("reviewTitle")}</h2>
         <p className="text-cartographic-navy/70 mt-2">{t("reviewDescription")}</p>
@@ -300,7 +299,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         </CardContent>
       </Card>
 
-      {/* Field Mappings */}
+      {/* Field Mappings + Record Handling */}
       <Card className="overflow-hidden">
         <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
           <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("fieldMappings")}</h3>
@@ -311,12 +310,10 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               const locationDisplay = getLocationDisplay(mapping);
               return (
                 <div key={mapping.sheetIndex} data-testid={`field-mapping-${mapping.sheetIndex}`}>
-                  {/* Show dataset name header for multi-sheet imports */}
                   {isMultiDataset && (
                     <p className="text-cartographic-charcoal mb-3 font-serif text-sm font-semibold">{datasetName}</p>
                   )}
                   <div className="space-y-3">
-                    {/* Title */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <TextIcon className="text-cartographic-navy/40 h-4 w-4" />
@@ -326,8 +323,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                         {mapping?.titleField ?? "\u2014"}
                       </span>
                     </div>
-
-                    {/* Date */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CalendarIcon className="text-cartographic-navy/40 h-4 w-4" />
@@ -337,8 +332,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                         {mapping?.dateField ?? "\u2014"}
                       </span>
                     </div>
-
-                    {/* Location */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <MapPinIcon className="text-cartographic-navy/40 h-4 w-4" />
@@ -357,7 +350,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                       </div>
                     </div>
                   </div>
-                  {/* Divider between sheets */}
                   {isMultiDataset && idx < mappingsWithDataset.length - 1 && (
                     <div className="border-cartographic-navy/10 mt-4 border-t" />
                   )}
@@ -365,186 +357,133 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               );
             })}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Record Handling: ID Strategy + Duplicates */}
-      <Card className="overflow-hidden">
-        <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
-          <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("recordHandling")}</h3>
-        </div>
-        <CardContent className="p-6">
-          <div className="space-y-6">
-            {/* Per-sheet ID Strategy */}
-            {mappingsWithDataset.map(({ mapping, datasetName }, idx) => (
-              <div key={mapping.sheetIndex} data-testid={`record-handling-${mapping.sheetIndex}`}>
-                {isMultiDataset && (
-                  <p className="text-cartographic-charcoal mb-3 font-serif text-sm font-semibold">{datasetName}</p>
-                )}
+          {/* Record Handling */}
+          <div className="border-cartographic-navy/10 mt-6 border-t pt-6">
+            <h4 className="text-cartographic-charcoal mb-4 font-serif text-base font-semibold">
+              {t("recordHandling")}
+            </h4>
+            <div className="space-y-6">
+              {mappingsWithDataset.map(({ mapping, datasetName }, idx) => (
+                <div key={mapping.sheetIndex} data-testid={`record-handling-${mapping.sheetIndex}`}>
+                  {isMultiDataset && (
+                    <p className="text-cartographic-charcoal mb-3 font-serif text-sm font-semibold">{datasetName}</p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FingerprintIcon className="text-cartographic-navy/40 h-4 w-4" />
+                      <span className="text-cartographic-navy/70 text-sm">{t("identifyBy")}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-cartographic-charcoal font-mono text-sm">
+                        {ID_STRATEGY_LABELS[mapping?.idStrategy ?? "auto"]}
+                      </span>
+                      {mapping?.idStrategy === "external" && mapping?.idField && (
+                        <span className="text-cartographic-navy/50 font-mono text-xs">({mapping.idField})</span>
+                      )}
+                    </div>
+                  </div>
+                  {isMultiDataset && idx < mappingsWithDataset.length - 1 && (
+                    <div className="border-cartographic-navy/10 mt-4 border-t" />
+                  )}
+                </div>
+              ))}
+              <div className="border-cartographic-navy/10 border-t pt-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <FingerprintIcon className="text-cartographic-navy/40 h-4 w-4" />
-                    <span className="text-cartographic-navy/70 text-sm">{t("identifyBy")}</span>
+                    <DatabaseIcon className="text-cartographic-navy/40 h-4 w-4" />
+                    <span className="text-cartographic-navy/70 text-sm">{t("onDuplicate")}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-cartographic-charcoal font-mono text-sm">
-                      {ID_STRATEGY_LABELS[mapping?.idStrategy ?? "auto"]}
-                    </span>
-                    {mapping?.idStrategy === "external" && mapping?.idField && (
-                      <span className="text-cartographic-navy/50 font-mono text-xs">({mapping.idField})</span>
-                    )}
-                  </div>
+                  <span className="text-cartographic-charcoal font-mono text-sm">
+                    {DUPLICATE_LABELS[deduplicationStrategy]}
+                  </span>
                 </div>
-                {isMultiDataset && idx < mappingsWithDataset.length - 1 && (
-                  <div className="border-cartographic-navy/10 mt-4 border-t" />
-                )}
-              </div>
-            ))}
-
-            {/* Duplicate handling (global setting) */}
-            <div className="border-cartographic-navy/10 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <DatabaseIcon className="text-cartographic-navy/40 h-4 w-4" />
-                  <span className="text-cartographic-navy/70 text-sm">{t("onDuplicate")}</span>
-                </div>
-                <span className="text-cartographic-charcoal font-mono text-sm">
-                  {DUPLICATE_LABELS[deduplicationStrategy]}
-                </span>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Transforms summary */}
+      {Object.values(state.transforms).some((transforms) => transforms.length > 0) && (
+        <Card className="overflow-hidden">
+          <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
+            <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("configuredTransforms")}</h3>
+          </div>
+          <CardContent className="p-6">
+            <div className="space-y-2">
+              {Object.entries(state.transforms)
+                .filter(([, transforms]) => transforms.length > 0)
+                .flatMap(([, transforms]) => transforms)
+                .map((transform) => (
+                  <div key={transform.id} className="flex items-center gap-3">
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium",
+                        transform.active
+                          ? "bg-cartographic-blue/10 text-cartographic-blue"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {TRANSFORM_TYPE_LABELS[transform.type]}
+                    </span>
+                    <span className="text-cartographic-navy/70 font-mono text-sm">
+                      {"from" in transform ? transform.from : ""}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Schedule Configuration (only shown when importing from URL) */}
       {sourceUrl && (
-        <Card className="overflow-hidden">
-          <div className="border-cartographic-navy/10 bg-cartographic-cream/30 flex items-center justify-between border-b px-6 py-4">
-            <div className="flex items-center gap-3">
-              <ClockIcon className="text-cartographic-navy h-5 w-5" />
-              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("scheduledImport")}</h3>
-            </div>
-            <Button
-              type="button"
-              variant={activeScheduleConfig.enabled ? "default" : "outline"}
-              size="sm"
-              onClick={handleToggleScheduleEnabled}
-              aria-label={t("enableScheduledImport")}
-            >
-              {activeScheduleConfig.enabled ? t("enabled") : t("disabled")}
-            </Button>
-          </div>
-          {activeScheduleConfig.enabled && (
-            <CardContent className="space-y-6 p-6">
-              {/* Source URL display */}
-              <div className="flex items-start gap-3">
-                <GlobeIcon className="text-cartographic-navy/40 mt-0.5 h-4 w-4" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-cartographic-navy/70 text-xs">{t("sourceUrl")}</p>
-                  <p className="text-cartographic-charcoal truncate font-mono text-sm">{sourceUrl}</p>
-                </div>
-              </div>
-
-              {/* Schedule name */}
-              <div className="space-y-2">
-                <Label htmlFor="schedule-name">{t("scheduleName")}</Label>
-                <Input
-                  id="schedule-name"
-                  placeholder={t("scheduleNamePlaceholder")}
-                  value={activeScheduleConfig.name}
-                  onChange={handleScheduleNameChange}
-                />
-              </div>
-
-              {/* Schedule type and frequency */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="schedule-type">{t("scheduleType")}</Label>
-                  <Select value={activeScheduleConfig.scheduleType} onValueChange={handleScheduleTypeChange}>
-                    <SelectTrigger id="schedule-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="frequency">{t("simpleFrequency")}</SelectItem>
-                      <SelectItem value="cron">{t("cronExpression")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {activeScheduleConfig.scheduleType === "frequency" ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="frequency">{t("frequency")}</Label>
-                    <Select value={activeScheduleConfig.frequency} onValueChange={handleFrequencyChange}>
-                      <SelectTrigger id="frequency">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hourly">{t("hourly")}</SelectItem>
-                        <SelectItem value="daily">{t("daily")}</SelectItem>
-                        <SelectItem value="weekly">{t("weekly")}</SelectItem>
-                        <SelectItem value="monthly">{t("monthly")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="cron-expression">{t("cronExpressionLabel")}</Label>
-                    <Input
-                      id="cron-expression"
-                      placeholder="0 0 * * *"
-                      value={activeScheduleConfig.cronExpression}
-                      onChange={handleCronExpressionChange}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Schema mode */}
-              <div className="space-y-2">
-                <Label htmlFor="schema-mode">{t("schemaChangeHandling")}</Label>
-                <Select value={activeScheduleConfig.schemaMode} onValueChange={handleSchemaModeChange}>
-                  <SelectTrigger id="schema-mode">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="strict">
-                      <span className="font-medium">{t("schemaStrict")}</span>
-                      <span className="text-muted-foreground ml-2 text-xs">{t("schemaStrictDescription")}</span>
-                    </SelectItem>
-                    <SelectItem value="additive">
-                      <span className="font-medium">{t("schemaAdditive")}</span>
-                      <span className="text-muted-foreground ml-2 text-xs">{t("schemaAdditiveDescription")}</span>
-                    </SelectItem>
-                    <SelectItem value="flexible">
-                      <span className="font-medium">{t("schemaFlexible")}</span>
-                      <span className="text-muted-foreground ml-2 text-xs">{t("schemaFlexibleDescription")}</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-muted-foreground text-xs">{t("schemaChangeHandlingDescription")}</p>
-              </div>
-            </CardContent>
-          )}
-        </Card>
+        <ScheduleConfigCard
+          sourceUrl={sourceUrl}
+          activeScheduleConfig={activeScheduleConfig}
+          onToggleEnabled={handleToggleScheduleEnabled}
+          onNameChange={handleScheduleNameChange}
+          onScheduleTypeChange={handleScheduleTypeChange}
+          onFrequencyChange={handleFrequencyChange}
+          onCronExpressionChange={handleCronExpressionChange}
+          onSchemaModeChange={handleSchemaModeChange}
+        />
       )}
 
       {state.error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{state.error}</div>}
 
-      {/* Inline action buttons */}
-      <div className="flex items-center justify-between pt-4">
-        <Button variant="ghost" size="sm" onClick={prevStep} className="gap-1.5">
-          <ArrowLeft className="h-4 w-4" />
-          {t("backToMapping")}
-        </Button>
-        <Button
-          size="lg"
-          onClick={() => void handleStartImport()}
-          disabled={configureMutation.isPending}
-          className="gap-2"
-        >
-          {configureMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-          {t("startImport")}
-        </Button>
+      {/* Sticky footer with Back + Start Import */}
+      <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={prevStep} className="gap-1.5">
+            <ArrowLeft className="h-4 w-4" />
+            {t("backToMapping")}
+          </Button>
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                "text-sm",
+                !configureMutation.isPending ? "text-cartographic-forest" : "text-cartographic-navy/50"
+              )}
+            >
+              {t("readyToStart")}
+            </span>
+            <Button
+              size="lg"
+              onClick={() => void handleStartImport()}
+              disabled={configureMutation.isPending}
+              className="gap-2"
+            >
+              {configureMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Rocket className="h-4 w-4" />
+              )}
+              {t("startImport")}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

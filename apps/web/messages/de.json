@@ -502,6 +502,8 @@
     "requiredFieldsRemaining": "{count} {count, plural, one {Pflichtfeld fehlt} other {Pflichtfelder fehlen}} noch",
     "noPreviewYet": "Ordnen Sie Felder zu, um eine Vorschau zu sehen",
     "readyToContinue": "Bereit zum Fortfahren",
+    "selectCatalogToContinue": "Katalog auswaehlen, um fortzufahren",
+    "configureDatasetToContinue": "Datensatz konfigurieren, um fortzufahren",
     "completeRequiredFields": "Pflichtfelder ausfuellen, um fortzufahren",
     "locationTypeAddress": "Adresse",
     "locationTypeCoordinates": "Koordinaten",
@@ -510,7 +512,11 @@
     "dataTransformsDescription": "Quelldaten vor der Zuordnung zu Zielfeldern transformieren",
     "addTransform": "Transformation hinzufuegen",
     "noTransformsConfigured": "Keine Transformationen konfiguriert. Fuegen Sie eine Transformation hinzu, um Ihre Daten zu verarbeiten.",
-    "incomplete": "Unvollstaendig"
+    "incomplete": "Unvollstaendig",
+    "uploadFileToStart": "Laden Sie eine Datei hoch, um fortzufahren",
+    "fileReadyToContinue": "Datei bereit",
+    "readyToStart": "Bereit zum Starten",
+    "configuredTransforms": "Transformationen"
   },
   "Schedules": {
     "title": "Geplante Importe",

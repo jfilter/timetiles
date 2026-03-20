@@ -10,8 +10,9 @@
 "use client";
 
 import { Button, Card, CardContent, Input, Label } from "@timetiles/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
-import { ArrowRight, DatabaseIcon, FileSpreadsheetIcon, FolderIcon, Loader2Icon } from "lucide-react";
+import { ArrowRight, FileSpreadsheetIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
@@ -31,32 +32,33 @@ interface DatasetSelectProps {
   sheetIndex: number;
   value: number | "new";
   datasets: Array<{ id: number; name: string }>;
+  disabled?: boolean;
   onDatasetChange: (sheetIndex: number, value: string) => void;
 }
 
-const DatasetSelect = ({ sheetIndex, value, datasets, onDatasetChange }: Readonly<DatasetSelectProps>) => {
+const DatasetSelect = ({ sheetIndex, value, datasets, disabled, onDatasetChange }: Readonly<DatasetSelectProps>) => {
   const t = useTranslations("Import");
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onDatasetChange(sheetIndex, e.target.value);
+  const handleChange = (selected: string) => {
+    onDatasetChange(sheetIndex, selected);
   };
 
   return (
     <div className="space-y-2">
       <Label htmlFor={`dataset-${sheetIndex}`}>{t("targetDataset")}</Label>
-      <select
-        id={`dataset-${sheetIndex}`}
-        value={value === "new" ? "new" : value}
-        onChange={handleChange}
-        className="border-input bg-background flex h-11 w-full rounded-sm border px-4 py-2 text-sm"
-      >
-        {datasets.map((dataset) => (
-          <option key={dataset.id} value={dataset.id}>
-            {dataset.name}
-          </option>
-        ))}
-        <option value="new">{t("createNewDataset")}</option>
-      </select>
+      <Select value={value === "new" ? "new" : String(value)} onValueChange={handleChange} disabled={disabled}>
+        <SelectTrigger id={`dataset-${sheetIndex}`} className="h-11">
+          <SelectValue placeholder={t("createNewDataset")} />
+        </SelectTrigger>
+        <SelectContent>
+          {datasets.map((dataset) => (
+            <SelectItem key={dataset.id} value={String(dataset.id)}>
+              {dataset.name}
+            </SelectItem>
+          ))}
+          <SelectItem value="new">{t("createNewDataset")}</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   );
 };
@@ -64,10 +66,11 @@ const DatasetSelect = ({ sheetIndex, value, datasets, onDatasetChange }: Readonl
 interface DatasetNameInputProps {
   sheetIndex: number;
   value: string;
+  disabled?: boolean;
   onNameChange: (sheetIndex: number, name: string) => void;
 }
 
-const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetNameInputProps>) => {
+const DatasetNameInput = ({ sheetIndex, value, disabled, onNameChange }: Readonly<DatasetNameInputProps>) => {
   const t = useTranslations("Import");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,6 +86,7 @@ const DatasetNameInput = ({ sheetIndex, value, onNameChange }: Readonly<DatasetN
         value={value}
         onChange={handleChange}
         placeholder={t("enterDatasetName")}
+        disabled={disabled}
       />
     </div>
   );
@@ -109,8 +113,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     }
   }, [catalogs.length, selectedCatalogId, isLoading, setCatalog, suggestedCatalogName]);
 
-  const handleCatalogChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
+  const handleCatalogChange = (value: string) => {
     if (value === "new") {
       setCatalog("new");
     } else {
@@ -136,6 +139,11 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   };
 
   const selectedCatalog = catalogs.find((c) => c.id === selectedCatalogId);
+  const noCatalogSelected = selectedCatalogId === null;
+
+  // Status message for the sticky footer
+  const pendingStatusKey = noCatalogSelected ? "selectCatalogToContinue" : "configureDatasetToContinue";
+  const statusMessageKey = canProceed ? "readyToContinue" : pendingStatusKey;
 
   if (isLoading) {
     return (
@@ -146,7 +154,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       <div className="text-center">
         <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("selectDestination")}</h2>
         <p className="text-cartographic-navy/70 mt-2">{t("selectDestinationDescription")}</p>
@@ -154,81 +162,70 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
       {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
 
-      {/* Catalog selection */}
+      {/* Combined catalog + dataset card */}
       <Card className="overflow-hidden">
-        <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-cartographic-terracotta/10 flex h-10 w-10 items-center justify-center rounded-sm">
-              <FolderIcon className="text-cartographic-terracotta h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("catalog")}</h3>
-              <p className="text-cartographic-navy/70 text-sm">
-                {catalogs.length === 0 ? t("createCatalogPrompt") : t("selectOrCreateCatalog")}
-              </p>
+        <CardContent className="p-0">
+          {/* Catalog section */}
+          <div className="border-cartographic-terracotta/30 border-l-4 p-6">
+            <h3 className="text-cartographic-charcoal mb-1 font-serif text-lg font-semibold">{t("catalog")}</h3>
+            <p className="text-cartographic-navy/70 mb-4 text-sm">
+              {catalogs.length === 0 ? t("createCatalogPrompt") : t("selectOrCreateCatalog")}
+            </p>
+
+            <div className="space-y-4">
+              {/* Show dropdown only if user has existing catalogs */}
+              {catalogs.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="catalog-select" className="text-cartographic-charcoal">
+                    {t("selectCatalog")}
+                  </Label>
+                  <Select
+                    value={selectedCatalogId === "new" ? "new" : String(selectedCatalogId ?? "")}
+                    onValueChange={handleCatalogChange}
+                  >
+                    <SelectTrigger id="catalog-select" className="h-11">
+                      <SelectValue placeholder={t("chooseCatalog")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {catalogs.map((catalog) => (
+                        <SelectItem key={catalog.id} value={String(catalog.id)}>
+                          {catalog.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="new">{t("createNewCatalog")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedCatalogId === "new" && (
+                <div className="space-y-2">
+                  <Label htmlFor="new-catalog-name" className="text-cartographic-charcoal">
+                    {t("catalogName")}
+                  </Label>
+                  <Input
+                    id="new-catalog-name"
+                    type="text"
+                    value={newCatalogName}
+                    onChange={handleNewCatalogNameChange}
+                    placeholder={t("enterCatalogName")}
+                  />
+                </div>
+              )}
             </div>
           </div>
-        </div>
-        <CardContent className="space-y-4 p-6">
-          {/* Show dropdown only if user has existing catalogs */}
-          {catalogs.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="catalog-select" className="text-cartographic-charcoal">
-                {t("selectCatalog")}
-              </Label>
-              <select
-                id="catalog-select"
-                value={selectedCatalogId === "new" ? "new" : (selectedCatalogId ?? "")}
-                onChange={handleCatalogChange}
-                className="border-cartographic-navy/20 text-cartographic-charcoal focus:border-cartographic-blue focus:ring-cartographic-blue/20 flex h-11 w-full rounded-sm border bg-white px-4 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
-              >
-                <option value="">{t("chooseCatalog")}</option>
-                {catalogs.map((catalog) => (
-                  <option key={catalog.id} value={catalog.id}>
-                    {catalog.name}
-                  </option>
-                ))}
-                <option value="new">{t("createNewCatalog")}</option>
-              </select>
-            </div>
-          )}
 
-          {selectedCatalogId === "new" && (
-            <div className="space-y-2">
-              <Label htmlFor="new-catalog-name" className="text-cartographic-charcoal">
-                {t("catalogName")}
-              </Label>
-              <Input
-                id="new-catalog-name"
-                type="text"
-                value={newCatalogName}
-                onChange={handleNewCatalogNameChange}
-                placeholder={t("enterCatalogName")}
-                className="border-cartographic-navy/20 focus:border-cartographic-blue focus:ring-cartographic-blue/20"
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          {/* Divider */}
+          <div className="border-cartographic-navy/10 border-t" />
 
-      {/* Dataset selection */}
-      {selectedCatalogId !== null && sheets.length > 0 && (
-        <Card className="overflow-hidden">
-          <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-cartographic-blue/10 flex h-10 w-10 items-center justify-center rounded-sm">
-                <DatabaseIcon className="text-cartographic-blue h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("dataset")}</h3>
-                <p className="text-cartographic-navy/70 text-sm">
-                  {sheets.length === 1 ? t("nameYourDataset") : t("mapSheetsToDatasets")}
-                </p>
-              </div>
-            </div>
-          </div>
-          <CardContent className="p-6">
-            {sheets.length === 1 ? (
+          {/* Dataset section */}
+          <div className={cn("p-6", noCatalogSelected && "opacity-50")}>
+            <h3 className="text-cartographic-charcoal mb-1 font-serif text-lg font-semibold">{t("dataset")}</h3>
+            <p className="text-cartographic-navy/70 mb-4 text-sm">
+              {sheets.length <= 1 ? t("nameYourDataset") : t("mapSheetsToDatasets")}
+            </p>
+
+            {sheets.length <= 1 ? (
               // Simplified single-sheet view
               <div className="space-y-2">
                 <Label htmlFor="dataset-name-0" className="text-cartographic-charcoal">
@@ -240,11 +237,13 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                   value={sheetMappings[0]?.newDatasetName ?? ""}
                   onChange={handleSingleSheetNameChange}
                   placeholder={t("enterDatasetName")}
-                  className="border-cartographic-navy/20 focus:border-cartographic-blue focus:ring-cartographic-blue/20"
+                  disabled={noCatalogSelected}
                 />
-                <p className="text-cartographic-navy/50 font-mono text-xs">
-                  {t("rowsWillBeImported", { count: sheets[0]?.rowCount.toLocaleString() ?? "0" })}
-                </p>
+                {sheets[0] && (
+                  <p className="text-cartographic-navy/50 font-mono text-xs">
+                    {t("rowsWillBeImported", { count: sheets[0].rowCount.toLocaleString() })}
+                  </p>
+                )}
               </div>
             ) : (
               // Multi-sheet view
@@ -273,6 +272,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                           sheetIndex={sheet.index}
                           value={mapping?.datasetId === "new" ? "new" : (mapping?.datasetId ?? "new")}
                           datasets={datasets}
+                          disabled={noCatalogSelected}
                           onDatasetChange={handleDatasetChange}
                         />
 
@@ -280,6 +280,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                           <DatasetNameInput
                             sheetIndex={sheet.index}
                             value={mapping.newDatasetName}
+                            disabled={noCatalogSelected}
                             onNameChange={handleNewDatasetNameChange}
                           />
                         )}
@@ -299,19 +300,22 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                 })}
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Continue button */}
-      {canProceed && (
-        <div className="flex justify-end pt-4">
-          <Button size="lg" onClick={nextStep} className="gap-2">
+      {/* Sticky continue button */}
+      <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <span className={cn("text-sm", canProceed ? "text-cartographic-forest" : "text-cartographic-navy/50")}>
+            {t(statusMessageKey)}
+          </span>
+          <Button size="lg" onClick={nextStep} disabled={!canProceed} className="gap-2">
             {t("continue")}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
-      )}
+      </div>
     </div>
   );
 };

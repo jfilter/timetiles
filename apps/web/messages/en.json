@@ -502,6 +502,8 @@
     "requiredFieldsRemaining": "{count} required {count, plural, one {field} other {fields}} remaining",
     "noPreviewYet": "Map some fields to see a preview",
     "readyToContinue": "Ready to continue",
+    "selectCatalogToContinue": "Select a catalog to continue",
+    "configureDatasetToContinue": "Configure dataset to continue",
     "completeRequiredFields": "Complete required fields to continue",
     "locationTypeAddress": "Address",
     "locationTypeCoordinates": "Coordinates",
@@ -510,7 +512,11 @@
     "dataTransformsDescription": "Transform source data before mapping to target fields",
     "addTransform": "Add Transform",
     "noTransformsConfigured": "No transforms configured. Add a transform to process your data.",
-    "incomplete": "Incomplete"
+    "incomplete": "Incomplete",
+    "uploadFileToStart": "Upload a file to continue",
+    "fileReadyToContinue": "File ready",
+    "readyToStart": "Ready to start import",
+    "configuredTransforms": "Transforms"
   },
   "Schedules": {
     "title": "Scheduled Imports",
