@@ -183,9 +183,24 @@ const StageDetails = ({ stage }: { stage: FormattedStage }) => {
   );
 };
 
+/** Map API stage names to i18n keys for display. */
+const STAGE_I18N_KEYS: Record<string, string> = {
+  ANALYZE_DUPLICATES: "stageAnalyzingDuplicates",
+  DETECT_SCHEMA: "stageDetectingSchema",
+  VALIDATE_SCHEMA: "stageValidating",
+  AWAIT_APPROVAL: "stageAwaitingApproval",
+  CREATE_SCHEMA_VERSION: "stageSettingUpDataset",
+  GEOCODE_BATCH: "stageGeocoding",
+  CREATE_EVENTS: "stageCreatingEvents",
+  COMPLETED: "stageComplete",
+};
+
 const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean }) => {
   const t = useTranslations("Import");
   const duration = formatDuration(stage.startedAt, stage.completedAt);
+  const i18nKey = STAGE_I18N_KEYS[stage.name];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key lookup from API stage name
+  const stageName = i18nKey ? t(i18nKey as any) : stage.displayName;
 
   // Determine the line segment style: solid for completed/in_progress, dashed for pending
   const lineBelow = !isLast;
@@ -214,7 +229,7 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
               stage.status === "skipped" && "text-cartographic-navy/40 line-through"
             )}
           >
-            {stage.displayName}
+            {stageName}
           </span>
           {stage.status === "completed" && duration && (
             <span className="text-cartographic-navy/50 shrink-0 font-mono text-xs">{duration}</span>
@@ -292,16 +307,6 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
   const progress = progressData ? transformProgressResponse(progressData) : null;
   const pollError = progressError instanceof Error ? progressError.message : null;
 
-  const STAGE_LABELS: Record<string, string> = {
-    UPLOAD: t("stageUploading"),
-    SCHEMA_DETECTION: t("stageDetectingSchema"),
-    DATASET_DETECTION: t("stageSettingUpDataset"),
-    VALIDATION: t("stageValidating"),
-    CREATE_EVENTS: t("stageCreatingEvents"),
-    GEOCODING: t("stageGeocoding"),
-    COMPLETED: t("stageComplete"),
-  };
-
   const handleComplete = () => {
     complete();
   };
@@ -329,7 +334,9 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
 
   const errorMessage = progress?.error ?? wizardError ?? pollError;
   const progressPercent = calculateProgressPercent(progress);
-  const stageLabel = STAGE_LABELS[progress?.currentStage ?? ""] ?? progress?.currentStage ?? t("processingLabel");
+  const currentStageKey = STAGE_I18N_KEYS[progress?.currentStage ?? ""];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key lookup from API stage name
+  const stageLabel = currentStageKey ? t(currentStageKey as any) : (progress?.currentStage ?? t("processingLabel"));
   const progressBarStyle = { width: `${progressPercent}%` };
 
   return (
