@@ -140,6 +140,48 @@ describe.sequential("Dataset Detection Job", () => {
     expect(usedDataset.language).toBe("deu");
   });
 
+  it("should use wizard fast-path and skip file re-parsing", async () => {
+    const csvContent = "name,date\nEvent 1,2024-01-01\n";
+
+    // Pre-create a dataset that the wizard has already configured
+    const { dataset: wizardDataset } = await withDataset(testEnv, testCatalogId, {
+      name: "Wizard Events",
+      language: "eng",
+    });
+
+    // Create import file with wizard metadata including datasetMapping
+    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "wizard-test.csv",
+      mimeType: "text/csv",
+      user: uploadUserId,
+      additionalData: {
+        metadata: {
+          source: "import-wizard",
+          datasetMapping: { mappingType: "single", singleDataset: wizardDataset.id },
+          wizardConfig: { sheetMappings: [{ sheetIndex: 0, newDatasetName: "Wizard Events" }], fieldMappings: [] },
+        },
+      },
+    });
+
+    // Run the dataset-detection job (automatically queued by import-files hook)
+    await payload.jobs.run({ allQueues: true, limit: 10 });
+
+    // Check that import-job was created pointing to the wizard's pre-created dataset
+    const importJobs = await payload.find({
+      collection: "import-jobs",
+      where: { importFile: { equals: importFile.id } },
+      depth: 1,
+    });
+
+    expect(importJobs.docs).toHaveLength(1);
+    const importJob = importJobs.docs[0];
+    expect(importJob.stage).toBe("analyze-duplicates");
+
+    // Should use the dataset the wizard configured, not auto-create a new one
+    const datasetId = extractRelationId(importJob.dataset);
+    expect(datasetId).toBe(wizardDataset.id);
+  });
+
   it("should create new dataset when originalName is missing", async () => {
     const csvContent = "name,date\nEvent 1,2024-01-01\n";
 

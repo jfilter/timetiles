@@ -98,6 +98,37 @@ const processExcelFile = (filePath: string): { sheets: SheetInfo[]; workbook: un
 };
 
 /**
+ * Build minimal SheetInfo from wizard metadata, skipping file I/O.
+ * Returns null if metadata is incomplete (falls through to normal parsing).
+ */
+const buildSheetsFromWizardMetadata = (metadata: Record<string, unknown>): SheetInfo[] | null => {
+  if (metadata.source !== "import-wizard") return null;
+
+  const datasetMapping = metadata.datasetMapping as
+    | { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] }
+    | undefined;
+  if (!datasetMapping) return null;
+
+  if (datasetMapping.mappingType === "single") {
+    return [{ name: "Sheet 1", index: 0, rowCount: 0 }];
+  }
+
+  const wizardConfig = metadata.wizardConfig as
+    | { sheetMappings?: Array<{ sheetIndex: number; newDatasetName?: string }> }
+    | undefined;
+
+  if (datasetMapping.mappingType === "multiple" && wizardConfig?.sheetMappings?.length) {
+    return wizardConfig.sheetMappings.map((sm) => ({
+      name: sm.newDatasetName ?? `Sheet ${sm.sheetIndex + 1}`,
+      index: sm.sheetIndex,
+      rowCount: 0,
+    }));
+  }
+
+  return null;
+};
+
+/**
  * Validates that a user has access to the dataset's catalog.
  * Throws if the user does not own the catalog and it is not public.
  */
@@ -273,9 +304,20 @@ export const datasetDetectionJob = {
         throw new Error(`Cannot access file ${filePath}`);
       }
 
-      const fileExtension = path.extname(filePath).toLowerCase();
-      // xlsx library handles .xls, .xlsx, and .ods files
-      const { sheets } = fileExtension === ".csv" ? processCSVFile(filePath) : processExcelFile(filePath);
+      // Fast-path: skip file I/O for wizard imports that already have complete metadata
+      const wizardSheets = buildSheetsFromWizardMetadata((importFile.metadata as Record<string, unknown>) ?? {});
+
+      let sheets: SheetInfo[];
+
+      if (wizardSheets) {
+        sheets = wizardSheets;
+        logger.info("Using wizard metadata fast-path", { importFileId, sheetCount: sheets.length });
+      } else {
+        const fileExtension = path.extname(filePath).toLowerCase();
+        // xlsx library handles .xls, .xlsx, and .ods files
+        const result = fileExtension === ".csv" ? processCSVFile(filePath) : processExcelFile(filePath);
+        sheets = result.sheets;
+      }
 
       if (sheets.length === 0) {
         throw new Error("No valid sheets found in file");

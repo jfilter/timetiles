@@ -562,4 +562,155 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       });
     });
   });
+
+  describe("Wizard Fast-Path", () => {
+    it("should skip file parsing for wizard single-sheet import", async () => {
+      const mockImportFile = {
+        id: 123,
+        filename: "test.csv",
+        filePath: "/tmp/test.csv",
+        catalog: 456,
+        originalName: "test.csv",
+        metadata: {
+          source: "import-wizard",
+          datasetMapping: { mappingType: "single", singleDataset: "dataset-42" },
+          wizardConfig: { sheetMappings: [{ sheetIndex: 0, newDatasetName: "Events" }], fieldMappings: [] },
+        },
+      };
+
+      const mockDataset = { id: "dataset-42", name: "Events", catalog: 456 };
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportFile) // importFile lookup
+        .mockResolvedValueOnce(mockDataset); // dataset lookup in handleSingleSheet
+
+      mockPayload.create.mockResolvedValueOnce({ id: "import-job-1" });
+
+      await datasetDetectionJob.handler(mockContext);
+
+      // File should NOT be read — fast-path skips parsing
+      expect(mocks.fs.readFileSync).not.toHaveBeenCalled();
+
+      // Import job should still be created with correct dataset
+      expect(mockPayload.create).toHaveBeenCalledTimes(1);
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        data: expect.objectContaining({
+          dataset: "dataset-42",
+          importFile: 123,
+          sheetIndex: 0,
+          stage: "analyze-duplicates",
+        }),
+      });
+    });
+
+    it("should skip file parsing for wizard multi-sheet import", async () => {
+      const mockImportFile = {
+        id: 123,
+        filename: "multi.xlsx",
+        filePath: "/tmp/multi.xlsx",
+        catalog: 456,
+        originalName: "multi.xlsx",
+        metadata: {
+          source: "import-wizard",
+          datasetMapping: {
+            mappingType: "multiple",
+            sheetMappings: [
+              { sheetIdentifier: "0", dataset: "ds-1", skipIfMissing: false },
+              { sheetIdentifier: "1", dataset: "ds-2", skipIfMissing: false },
+            ],
+          },
+          wizardConfig: {
+            sheetMappings: [
+              { sheetIndex: 0, newDatasetName: "Events" },
+              { sheetIndex: 1, newDatasetName: "Locations" },
+            ],
+            fieldMappings: [],
+          },
+        },
+      };
+
+      const mockDataset1 = { id: "ds-1", name: "Events", catalog: 456 };
+      const mockDataset2 = { id: "ds-2", name: "Locations", catalog: 456 };
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockImportFile) // importFile lookup
+        .mockResolvedValueOnce(mockDataset1) // dataset lookup for sheet 0
+        .mockResolvedValueOnce(mockDataset2); // dataset lookup for sheet 1
+
+      mockPayload.create.mockResolvedValueOnce({ id: "job-1" }).mockResolvedValueOnce({ id: "job-2" });
+
+      await datasetDetectionJob.handler(mockContext);
+
+      // File should NOT be read
+      expect(mocks.fs.readFileSync).not.toHaveBeenCalled();
+
+      // Two import jobs should be created
+      expect(mockPayload.create).toHaveBeenCalledTimes(2);
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        data: expect.objectContaining({ dataset: "ds-1", sheetIndex: 0 }),
+      });
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "import-jobs",
+        data: expect.objectContaining({ dataset: "ds-2", sheetIndex: 1 }),
+      });
+    });
+
+    it("should fall back to parsing when datasetMapping is missing", async () => {
+      const mockImportFile = {
+        id: 123,
+        filename: "test.csv",
+        filePath: "/tmp/test.csv",
+        catalog: 456,
+        originalName: "test.csv",
+        metadata: { source: "import-wizard" }, // No datasetMapping
+      };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockResolvedValue({ id: "test-id" });
+
+      await datasetDetectionJob.handler(mockContext);
+
+      // Should fall back to reading the file
+      expect(mocks.fs.readFileSync).toHaveBeenCalled();
+    });
+
+    it("should fall back to parsing for non-wizard imports", async () => {
+      const mockImportFile = {
+        id: 123,
+        filename: "test.csv",
+        filePath: "/tmp/test.csv",
+        catalog: 456,
+        originalName: "test.csv",
+        metadata: { source: "url-fetch" },
+      };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockResolvedValue({ id: "test-id" });
+
+      await datasetDetectionJob.handler(mockContext);
+
+      // Should read the file since it's not a wizard import
+      expect(mocks.fs.readFileSync).toHaveBeenCalled();
+    });
+
+    it("should still verify file exists on disk for wizard imports", async () => {
+      const mockImportFile = {
+        id: 123,
+        filename: "test.csv",
+        filePath: "/tmp/test.csv",
+        catalog: 456,
+        originalName: "test.csv",
+        metadata: { source: "import-wizard", datasetMapping: { mappingType: "single", singleDataset: "dataset-42" } },
+      };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mocks.fs.existsSync.mockReturnValue(false);
+
+      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Cannot access file");
+    });
+  });
 });
