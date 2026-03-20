@@ -40,17 +40,28 @@ The map component (`components/maps/clustered-map.tsx`) exposes a `ClusteredMapH
 
 **Reference:** `components/maps/clustered-map.tsx`, `components/maps/clustered-map-helpers.ts`, `lib/constants/map.ts`
 
-### State Management: Three Layers
+### State Management: Four Layers
 
-| Layer        | Tool              | What It Stores                                        | Persistence                                  |
-| ------------ | ----------------- | ----------------------------------------------------- | -------------------------------------------- |
-| Server state | React Query       | Events, datasets, catalogs, import jobs               | In-memory cache with configurable stale time |
-| UI state     | Zustand           | Filter drawer open, theme, map bounds, selected event | localStorage (drawer + theme only)           |
-| Filter state | nuqs (URL params) | Catalog, datasets, date range, field filters          | URL search params                            |
+| Layer           | Tool              | What It Stores                                        | Persistence                                  |
+| --------------- | ----------------- | ----------------------------------------------------- | -------------------------------------------- |
+| Server state    | React Query       | Events, datasets, catalogs, import jobs               | In-memory cache with configurable stale time |
+| Client state    | Zustand           | Filter drawer open, theme, map bounds, selected event | localStorage (drawer + theme only)           |
+| Filter state    | nuqs (URL params) | Catalog, datasets, date range, field filters          | URL search params                            |
+| Server-resolved | React Context     | Site branding, View configuration                     | None (set once from server, read-only)       |
 
 **Why URL-based filters:** Shareable links. A user can copy the URL with active filters and share it. The View system can also set `defaultFilters` that pre-populate on load.
 
-**Reference:** `lib/store.ts`, `lib/context/view-context.tsx`
+**Guidelines — choosing the right tool:**
+
+- **Zustand** for client-side state that changes (UI toggles, map viewport, wizard form state)
+- **React Context** for dependency injection of server-resolved, read-only data (`SiteContext`, `ViewContext`) and compound component patterns (`packages/ui`)
+- **React Query** for server state with caching and polling
+- **nuqs** for filter state that should be shareable via URL
+- **Never** use Context + `useReducer` for complex changing state — use Zustand instead
+
+Context is a dependency injection mechanism, not a state management tool. It works well for data that is resolved once (typically server-side) and doesn't change. For state that updates frequently, Context causes unnecessary re-renders of all consumers — Zustand's selective subscriptions avoid this.
+
+**Reference:** `lib/store.ts`, `lib/context/site-context.tsx`, `lib/context/view-context.tsx`
 
 ### Component Architecture: Two Tiers
 
