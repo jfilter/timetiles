@@ -163,7 +163,10 @@ describe.sequential("POST /api/import/preview-schema/upload", () => {
       fn.mockReset();
     }
 
-    mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
+    mocks.mockGetPayload.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({ user: mockUser }),
+      find: vi.fn().mockResolvedValue({ docs: [] }),
+    });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockDetectLanguage.mockReturnValue({ code: "eng", confidence: 0.9 });
     mocks.mockIsPrivateUrl.mockReturnValue(false);
@@ -350,7 +353,10 @@ describe.sequential("POST /api/import/preview-schema/url", () => {
       fn.mockReset();
     }
 
-    mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: mockUser }) });
+    mocks.mockGetPayload.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({ user: mockUser }),
+      find: vi.fn().mockResolvedValue({ docs: [] }),
+    });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockBuildAuthHeaders.mockReturnValue({});
     mocks.mockDetectLanguage.mockReturnValue({ code: "eng", confidence: 0.9 });

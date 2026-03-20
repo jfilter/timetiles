@@ -14,7 +14,7 @@ import "@/tests/mocks/services/logger";
 
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => ({
-  mockPayload: { create: vi.fn(), update: vi.fn(), find: vi.fn() },
+  mockPayload: { create: vi.fn(), update: vi.fn(), find: vi.fn(), count: vi.fn() },
   mockGetPayload: vi.fn(),
   mockExistsSync: vi.fn(),
   mockReadFileSync: vi.fn(),
@@ -147,6 +147,9 @@ describe.sequential("POST /api/import/configure", () => {
 
     // Default: catalog ownership check passes (Bug 13)
     mocks.mockPayload.find.mockResolvedValue({ docs: [{ id: 1 }], totalDocs: 1 });
+
+    // Default: dataset has no events (so idStrategy updates proceed)
+    mocks.mockPayload.count.mockResolvedValue({ totalDocs: 0 });
 
     // Default: quota check passes (Bug 15)
     mocks.mockValidateQuota.mockResolvedValue(undefined);
@@ -396,6 +399,26 @@ describe.sequential("POST /api/import/configure", () => {
           data: expect.objectContaining({ fieldMappingOverrides: expect.objectContaining({ titlePath: "title" }) }),
         })
       );
+    });
+
+    it("should preserve idStrategy when existing dataset has events", async () => {
+      // Dataset has events — idStrategy must NOT be overwritten
+      mocks.mockPayload.count.mockResolvedValueOnce({ totalDocs: 50 });
+
+      const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
+
+      const response = await POST(req, {} as never);
+
+      expect(response.status).toBe(200);
+
+      // The dataset update should NOT contain idStrategy
+      const datasetUpdateCalls = mocks.mockPayload.update.mock.calls.filter(
+        (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "datasets"
+      );
+      expect(datasetUpdateCalls).toHaveLength(1);
+      const updateData = (datasetUpdateCalls[0]![0] as Record<string, unknown>).data as Record<string, unknown>;
+      expect(updateData).not.toHaveProperty("idStrategy");
+      expect(updateData).toHaveProperty("fieldMappingOverrides"); // Other config still updated
     });
   });
 
