@@ -45,7 +45,7 @@ const normalizeImportFileRelationId = (importFileId: string | number): number =>
 };
 
 // Extract file processing functions
-const processCSVFile = (filePath: string): { sheets: SheetInfo[]; workbook: unknown } => {
+const processCSVFile = (filePath: string): SheetInfo[] => {
   logger.info("Processing CSV file", { filePath });
   const csvContent = fs.readFileSync(filePath, "utf8");
 
@@ -56,7 +56,7 @@ const processCSVFile = (filePath: string): { sheets: SheetInfo[]; workbook: unkn
     throw new Error("No data rows found in file");
   }
 
-  const sheets: SheetInfo[] = [
+  return [
     {
       name: "CSV Data",
       index: 0,
@@ -65,13 +65,9 @@ const processCSVFile = (filePath: string): { sheets: SheetInfo[]; workbook: unkn
       headers: rows[0] ?? [],
     },
   ];
-
-  const workbook = { SheetNames: ["Sheet1"], Sheets: { Sheet1: utils.aoa_to_sheet(rows) } };
-
-  return { sheets, workbook };
 };
 
-const processExcelFile = (filePath: string): { sheets: SheetInfo[]; workbook: unknown } => {
+const processExcelFile = (filePath: string): SheetInfo[] => {
   logger.info("Processing Excel file", { filePath });
   const fileBuffer = fs.readFileSync(filePath);
   const workbook = read(fileBuffer, { type: "buffer" });
@@ -94,7 +90,7 @@ const processExcelFile = (filePath: string): { sheets: SheetInfo[]; workbook: un
     }
   }
 
-  return { sheets, workbook };
+  return sheets;
 };
 
 /**
@@ -128,6 +124,16 @@ const buildSheetsFromWizardMetadata = (metadata: Record<string, unknown>): Sheet
   return null;
 };
 
+/** Build an immutable config snapshot from a dataset for the import job record. */
+const buildConfigSnapshot = (dataset: Dataset) => ({
+  fieldMappingOverrides: dataset.fieldMappingOverrides ?? null,
+  idStrategy: dataset.idStrategy ?? null,
+  deduplicationConfig: dataset.deduplicationConfig ?? null,
+  geoFieldDetection: dataset.geoFieldDetection ?? null,
+  schemaConfig: dataset.schemaConfig ?? null,
+  importTransforms: dataset.importTransforms ?? [],
+});
+
 /**
  * Validates that a user has access to the dataset's catalog.
  * Throws if the user does not own the catalog and it is not public.
@@ -157,7 +163,6 @@ const validateDatasetAccessForUser = async (
 const handleSingleSheet = async (
   payload: Payload,
   importFile: { id: string | number; originalName?: string | null; metadata?: unknown },
-  _sheet: SheetInfo,
   catalogId?: string | number,
   datasetMapping?: { mappingType: string; singleDataset?: unknown },
   userId?: number
@@ -191,6 +196,7 @@ const handleSingleSheet = async (
       sheetIndex: 0,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
       progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      configSnapshot: buildConfigSnapshot(dataset),
     },
   });
 };
@@ -274,6 +280,7 @@ const processSheetWithMapping = async (
       sheetIndex: sheet.index,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
       progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      configSnapshot: buildConfigSnapshot(dataset),
     },
   });
 };
@@ -315,8 +322,7 @@ export const datasetDetectionJob = {
       } else {
         const fileExtension = path.extname(filePath).toLowerCase();
         // xlsx library handles .xls, .xlsx, and .ods files
-        const result = fileExtension === ".csv" ? processCSVFile(filePath) : processExcelFile(filePath);
-        sheets = result.sheets;
+        sheets = fileExtension === ".csv" ? processCSVFile(filePath) : processExcelFile(filePath);
       }
 
       if (sheets.length === 0) {
@@ -332,7 +338,7 @@ export const datasetDetectionJob = {
       await payload.update({
         collection: COLLECTION_NAMES.IMPORT_FILES,
         id: importFileId,
-        data: { datasetsCount: sheets.length, sheetMetadata: sheets },
+        data: { ...(!wizardSheets && { datasetsCount: sheets.length }), sheetMetadata: sheets },
       });
 
       const datasetMapping = (importFile.metadata as Record<string, unknown>)?.datasetMapping as
@@ -344,7 +350,7 @@ export const datasetDetectionJob = {
 
       const createdJobs =
         sheets.length === 1
-          ? [await handleSingleSheet(payload, importFile, sheets[0]!, catalogId, datasetMapping, userId)]
+          ? [await handleSingleSheet(payload, importFile, catalogId, datasetMapping, userId)]
           : await handleMultipleSheets(payload, importFile, sheets, catalogId, datasetMapping, userId);
 
       logger.info("Created import jobs", {
