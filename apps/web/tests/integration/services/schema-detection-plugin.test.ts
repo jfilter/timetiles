@@ -14,9 +14,9 @@ import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { logger } from "@/lib/logger";
 import { SchemaDetectionService } from "@/lib/services/schema-detection/service";
 import type { DetectionContext, FieldStatistics } from "@/lib/services/schema-detection/types";
-import { logger } from "@/lib/logger";
 
 import {
   createIntegrationTestEnvironment,
