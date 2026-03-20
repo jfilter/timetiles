@@ -8,6 +8,7 @@
  * @category Utilities
  */
 
+export type { DetectionOptions, ValidatorConfig } from "../types";
 export { detectGeoFields } from "./coordinates";
 export type { FieldMappings } from "./flat-mappings";
 export { detectFlatFieldMappings, toFlatMappings } from "./flat-mappings";
@@ -36,5 +37,4 @@ export {
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
 } from "./patterns";
-export type { DetectionOptions, ValidatorConfig } from "../types";
 export { validateFieldType } from "./validators";

@@ -11,12 +11,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FieldStatistics } from "@/lib/types/schema-detection";
+import { createDefaultDetector, mergeDetectionOptions } from "@/lib/services/schema-detection/detectors";
 import type { DetectionContext, DetectionOptions, LanguageResult } from "@/lib/services/schema-detection/types";
-import { detectFieldMappings } from "@/lib/services/schema-detection/utilities/patterns";
 import { detectGeoFields } from "@/lib/services/schema-detection/utilities/coordinates";
 import { detectEnumFields, detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
-import { createDefaultDetector, mergeDetectionOptions } from "@/lib/services/schema-detection/detectors";
+import { detectFieldMappings } from "@/lib/services/schema-detection/utilities/patterns";
+import type { FieldStatistics } from "@/lib/types/schema-detection";
 
 // ---------------------------------------------------------------------------
 // Test data helpers
@@ -104,7 +104,6 @@ const makeEnumFieldStats = (uniqueValues: number, occurrences: number = 100): Fi
 // 1. Language overrides
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line sonarjs/max-lines-per-function -- TDD test suite with comprehensive coverage
 describe("DetectionOptions: language overrides", () => {
   it("forces a specific language code with language option", async () => {
     const detector = createDefaultDetector({ language: "deu" });
@@ -190,7 +189,6 @@ describe("DetectionOptions: language overrides", () => {
 // 2. Field pattern overrides
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line sonarjs/max-lines-per-function -- TDD test suite
 describe("DetectionOptions: field pattern overrides", () => {
   it("returns null for a non-standard column name without custom patterns", () => {
     const fieldStats: Record<string, FieldStatistics> = { EVENT_HEADLINE: makeTitleFieldStats() };
@@ -385,7 +383,6 @@ describe("DetectionOptions: validator overrides", () => {
 // 5. Coordinate overrides
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line sonarjs/max-lines-per-function -- TDD test suite
 describe("DetectionOptions: coordinate overrides", () => {
   it("default patterns do not detect Dutch latitude column name", () => {
     const fieldStats: Record<string, FieldStatistics> = {
@@ -616,7 +613,6 @@ describe("DetectionOptions: ID detection overrides", () => {
 // 8. Pipeline skip flags
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line sonarjs/max-lines-per-function -- TDD test suite
 describe("DetectionOptions: pipeline skip flags", () => {
   it("skip.language returns default English", async () => {
     const detector = createDefaultDetector({ skip: { language: true } });
@@ -770,7 +766,7 @@ describe("DetectionOptions: additional field types", () => {
 
     // The additional field type should appear in fieldMappings
     expect(result.fieldMappings).toHaveProperty("category");
-    const categoryMapping = (result.fieldMappings as Record<string, unknown>)["category"];
+    const categoryMapping = (result.fieldMappings as unknown as Record<string, unknown>)["category"];
     expect(categoryMapping).not.toBeNull();
     expect((categoryMapping as { path: string }).path).toBe("category");
   });
@@ -829,7 +825,7 @@ describe("DetectionOptions: additional field types", () => {
     const result = await detector.detect(context);
 
     expect(result.fieldMappings).toHaveProperty("category");
-    const categoryMapping = (result.fieldMappings as Record<string, unknown>)["category"];
+    const categoryMapping = (result.fieldMappings as unknown as Record<string, unknown>)["category"];
     expect((categoryMapping as { path: string }).path).toBe("kategorie");
   });
 });
@@ -919,7 +915,6 @@ describe("DetectionOptions: createDefaultDetector factory", () => {
 // 11. Options merging
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line sonarjs/max-lines-per-function -- TDD test suite
 describe("DetectionOptions: mergeDetectionOptions", () => {
   it("returns empty options when merging two empty objects", () => {
     const result = mergeDetectionOptions({}, {});

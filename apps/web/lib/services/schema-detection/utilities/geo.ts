@@ -22,11 +22,10 @@ export const detectIdFields = (fieldStats: Record<string, FieldStatistics>, opti
   if (options?.skip?.ids) return [];
 
   // Build effective ID patterns
-  const effectivePatterns = options?.idPatterns
-    ? options.replaceIdPatterns
-      ? [...options.idPatterns]
-      : [...options.idPatterns, ...ID_PATTERNS]
-    : ID_PATTERNS;
+  let effectivePatterns = ID_PATTERNS;
+  if (options?.idPatterns) {
+    effectivePatterns = options.replaceIdPatterns ? [...options.idPatterns] : [...options.idPatterns, ...ID_PATTERNS];
+  }
 
   const idFields: string[] = [];
 

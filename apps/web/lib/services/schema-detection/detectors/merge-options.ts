@@ -76,11 +76,11 @@ const mergePatternArrays = (result: DetectionOptions, base: DetectionOptions, ov
 
 /** Merge string-list options (concatenate and deduplicate). */
 const mergeStringLists = (result: DetectionOptions, base: DetectionOptions, override: DetectionOptions): void => {
-  if (base.replacePatterns || override.replacePatterns) {
+  if (base.replacePatterns ?? override.replacePatterns) {
     result.replacePatterns = [...new Set([...(base.replacePatterns ?? []), ...(override.replacePatterns ?? [])])];
   }
 
-  if (base.additionalLanguages || override.additionalLanguages) {
+  if (base.additionalLanguages ?? override.additionalLanguages) {
     result.additionalLanguages = [
       ...new Set([...(base.additionalLanguages ?? []), ...(override.additionalLanguages ?? [])]),
     ];
@@ -138,22 +138,22 @@ const mergeFieldPatterns = (result: DetectionOptions, base: DetectionOptions, ov
 
 /** Merge nested object options (shallow merge -- override wins per key). */
 const mergeNestedObjects = (result: DetectionOptions, base: DetectionOptions, override: DetectionOptions): void => {
-  if (base.validatorOverrides || override.validatorOverrides) {
+  if (base.validatorOverrides ?? override.validatorOverrides) {
     result.validatorOverrides = { ...base.validatorOverrides, ...override.validatorOverrides };
   }
 
-  if (base.customValidators || override.customValidators) {
+  if (base.customValidators ?? override.customValidators) {
     result.customValidators = { ...base.customValidators, ...override.customValidators };
   }
 
-  if (base.coordinateBounds || override.coordinateBounds) {
+  if (base.coordinateBounds ?? override.coordinateBounds) {
     result.coordinateBounds = {
       latitude: override.coordinateBounds?.latitude ?? base.coordinateBounds?.latitude,
       longitude: override.coordinateBounds?.longitude ?? base.coordinateBounds?.longitude,
     };
   }
 
-  if (base.additionalFieldTypes || override.additionalFieldTypes) {
+  if (base.additionalFieldTypes ?? override.additionalFieldTypes) {
     result.additionalFieldTypes = { ...base.additionalFieldTypes, ...override.additionalFieldTypes };
   }
 };

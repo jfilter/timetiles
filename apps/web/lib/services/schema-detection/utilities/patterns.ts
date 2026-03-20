@@ -403,7 +403,7 @@ export const matchFieldNamePatterns = (
  * Single source of truth for pattern selection.
  */
 export const getFieldPatterns = (
-  fieldType: FieldType | string,
+  fieldType: string,
   language: string,
   options?: DetectionOptions
 ): readonly RegExp[] => {
@@ -438,7 +438,7 @@ export const getFieldPatterns = (
 const findFieldByPattern = (
   fieldStats: Record<string, FieldStatistics>,
   patterns: readonly RegExp[],
-  fieldType: FieldType | string,
+  fieldType: string,
   options?: DetectionOptions
 ): FieldMapping | null => {
   let bestMatch: FieldMapping | null = null;
@@ -482,7 +482,7 @@ import { detectGeoFields } from "./coordinates";
  */
 const findFieldWithFallback = (
   fieldStats: Record<string, FieldStatistics>,
-  fieldType: FieldType | string,
+  fieldType: string,
   language: string,
   options?: DetectionOptions
 ): FieldMapping | null => {
