@@ -238,7 +238,7 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
             <TableHeader>
               <TableRow className="border-cartographic-navy/10 bg-cartographic-cream/20">
                 {fields.map((f) => (
-                  <TableHead key={f.columnKey} className="text-cartographic-charcoal font-medium">
+                  <TableHead key={`${f.label}-${f.columnKey}`} className="text-cartographic-charcoal font-medium">
                     {f.label}
                   </TableHead>
                 ))}
@@ -250,7 +250,7 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
                 <TableRow key={`preview-row-${i}`} className="border-cartographic-navy/5 last:border-0">
                   {fields.map((f) => (
                     <TableCell
-                      key={f.columnKey}
+                      key={`${f.label}-${f.columnKey}`}
                       className={cn(f.mono ? "text-cartographic-navy/70 font-mono" : "text-cartographic-charcoal")}
                     >
                       {formatCellValue(row[f.columnKey])}
