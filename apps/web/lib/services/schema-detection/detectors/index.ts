@@ -5,4 +5,5 @@
  * @category Detectors
  */
 
-export { defaultDetector } from "./default-detector";
+export { createDefaultDetector, defaultDetector } from "./default-detector";
+export { mergeDetectionOptions } from "./merge-options";

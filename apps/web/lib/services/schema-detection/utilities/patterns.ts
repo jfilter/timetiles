@@ -9,7 +9,7 @@
  * @category Utilities
  */
 
-import type { FieldMapping, FieldMappingsResult, FieldStatistics } from "../types";
+import type { DetectionOptions, FieldMapping, FieldMappingsResult, FieldStatistics } from "../types";
 import { validateFieldType } from "./validators";
 
 // ---------------------------------------------------------------------------
@@ -397,13 +397,31 @@ export const matchFieldNamePatterns = (
 /**
  * Get patterns for a field type and language, falling back to English.
  *
+ * When options provide fieldPatterns for the given field type and language,
+ * they are prepended to defaults (or replace them if the field type is in replacePatterns).
+ *
  * Single source of truth for pattern selection.
  */
-export const getFieldPatterns = (fieldType: FieldType, language: string): readonly RegExp[] => {
-  const typePatterns = FIELD_PATTERNS[fieldType];
-  const langPatterns = typePatterns[language as keyof typeof typePatterns];
-  const engPatterns = typePatterns.eng;
-  return langPatterns ?? engPatterns;
+export const getFieldPatterns = (
+  fieldType: string,
+  language: string,
+  options?: DetectionOptions
+): readonly RegExp[] => {
+  // For standard field types, use the built-in FIELD_PATTERNS
+  const builtinType = FIELD_PATTERNS[fieldType as FieldType];
+  const defaultPatterns: readonly RegExp[] = builtinType
+    ? ((builtinType[language as keyof typeof builtinType] ?? builtinType.eng) as readonly RegExp[])
+    : [];
+
+  // Check for custom patterns from options
+  const customPatterns = options?.fieldPatterns?.[fieldType]?.[language];
+  if (!customPatterns) return defaultPatterns;
+
+  // Replace or prepend
+  if (options?.replacePatterns?.includes(fieldType)) {
+    return customPatterns;
+  }
+  return [...defaultPatterns, ...customPatterns];
 };
 
 // ---------------------------------------------------------------------------
@@ -420,9 +438,12 @@ export const getFieldPatterns = (fieldType: FieldType, language: string): readon
 const findFieldByPattern = (
   fieldStats: Record<string, FieldStatistics>,
   patterns: readonly RegExp[],
-  fieldType: FieldType
+  fieldType: string,
+  options?: DetectionOptions
 ): FieldMapping | null => {
   let bestMatch: FieldMapping | null = null;
+
+  const [patternWeight, validationWeight] = options?.scoringWeights ?? [0.6, 0.4];
 
   for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const fieldName = fieldPath.split(".").pop() ?? "";
@@ -431,10 +452,15 @@ const findFieldByPattern = (
     if (patternIndex === -1) continue;
 
     const patternScore = 1 - patternIndex / patterns.length;
-    const validationScore = validateFieldType(stats, fieldType);
+    const validationScore = validateFieldType(
+      stats,
+      fieldType,
+      options?.validatorOverrides?.[fieldType],
+      options?.customValidators?.[fieldType]
+    );
     if (validationScore === 0) continue;
 
-    const confidence = patternScore * 0.6 + validationScore * 0.4;
+    const confidence = patternScore * patternWeight + validationScore * validationWeight;
 
     if (!bestMatch || confidence > bestMatch.confidence) {
       bestMatch = { path: fieldPath, confidence };
@@ -456,14 +482,15 @@ import { detectGeoFields } from "./coordinates";
  */
 const findFieldWithFallback = (
   fieldStats: Record<string, FieldStatistics>,
-  fieldType: FieldType,
-  language: string
+  fieldType: string,
+  language: string,
+  options?: DetectionOptions
 ): FieldMapping | null => {
-  const match = findFieldByPattern(fieldStats, getFieldPatterns(fieldType, language), fieldType);
+  const match = findFieldByPattern(fieldStats, getFieldPatterns(fieldType, language, options), fieldType, options);
   if (match) return match;
   // Fallback to English if primary language didn't match
   if (language !== "eng") {
-    return findFieldByPattern(fieldStats, getFieldPatterns(fieldType, "eng"), fieldType);
+    return findFieldByPattern(fieldStats, getFieldPatterns(fieldType, "eng", options), fieldType, options);
   }
   return null;
 };
@@ -473,17 +500,39 @@ const findFieldWithFallback = (
  *
  * @param fieldStats - Field statistics from schema builder
  * @param language - ISO 639-3 language code
+ * @param options - Optional detection options for customizing behavior
  * @returns Field mappings result with confidence scores
  */
 export const detectFieldMappings = (
   fieldStats: Record<string, FieldStatistics>,
-  language: string
+  language: string,
+  options?: DetectionOptions
 ): FieldMappingsResult => {
-  const title = findFieldWithFallback(fieldStats, "title", language);
-  const description = findFieldWithFallback(fieldStats, "description", language);
-  const timestamp = findFieldWithFallback(fieldStats, "timestamp", language);
-  const locationName = findFieldWithFallback(fieldStats, "locationName", language);
-  const geo = detectGeoFields(fieldStats);
+  // Skip all field mapping if requested
+  if (options?.skip?.fieldMapping) {
+    return { title: null, description: null, timestamp: null, locationName: null, geo: null };
+  }
 
-  return { title, description, timestamp, locationName, geo };
+  const title = findFieldWithFallback(fieldStats, "title", language, options);
+  const description = findFieldWithFallback(fieldStats, "description", language, options);
+  const timestamp = findFieldWithFallback(fieldStats, "timestamp", language, options);
+  const locationName = findFieldWithFallback(fieldStats, "locationName", language, options);
+  const geo = options?.skip?.coordinates ? null : detectGeoFields(fieldStats, options);
+
+  // Use a plain object so additional field types can be added dynamically
+  const result: Record<string, unknown> = { title, description, timestamp, locationName, geo };
+
+  // Detect additional field types if configured
+  if (options?.additionalFieldTypes) {
+    for (const [typeName, typeConfig] of Object.entries(options.additionalFieldTypes)) {
+      const additionalOptions: DetectionOptions = {
+        ...options,
+        fieldPatterns: { ...options.fieldPatterns, [typeName]: typeConfig.patterns },
+        customValidators: { ...options.customValidators, [typeName]: typeConfig.validator },
+      };
+      result[typeName] = findFieldWithFallback(fieldStats, typeName, language, additionalOptions);
+    }
+  }
+
+  return result as unknown as FieldMappingsResult;
 };
