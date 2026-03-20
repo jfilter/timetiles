@@ -28,7 +28,17 @@ export interface ProgressApiResponse {
     datasetName?: string;
     currentStage: string;
     overallProgress: number;
-    stages?: Array<{ name: string; status: string; progress: number }>;
+    stages?: Array<{
+      name: string;
+      displayName: string;
+      status: "pending" | "in_progress" | "completed" | "skipped";
+      progress: number;
+      startedAt: string | null;
+      completedAt: string | null;
+      batches: { current: number; total: number };
+      currentBatch: { rowsProcessed: number; rowsTotal: number; percentage: number };
+      performance: { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null };
+    }>;
     results?: { totalEvents?: number };
   }>;
   errorLog?: string | null;

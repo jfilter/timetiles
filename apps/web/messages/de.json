@@ -524,7 +524,11 @@
     "noConfigToCopy": "Keine (neu starten)",
     "similarConfig": "Aehnlich wie \"{name}\" ({score}% Uebereinstimmung)",
     "useThisConfig": "Diese Konfiguration verwenden",
-    "ignoreSuggestion": "Ignorieren"
+    "ignoreSuggestion": "Ignorieren",
+    "stageBatchProgress": "Stapel {current} von {total}",
+    "stageRowsPerSecond": "{count} Zeilen/Sek.",
+    "stageTimeRemaining": "{time} verbleibend",
+    "stageSkipped": "uebersprungen"
   },
   "Schedules": {
     "title": "Geplante Importe",

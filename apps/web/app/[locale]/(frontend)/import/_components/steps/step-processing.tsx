@@ -1,7 +1,7 @@
 /**
  * Processing step for the import wizard.
  *
- * Shows real-time progress of the import job.
+ * Shows real-time progress of the import job via a vertical stage timeline.
  * Displays completion summary and links to view data.
  *
  * @module
@@ -12,7 +12,16 @@
 
 import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { AlertCircleIcon, CheckCircle2Icon, ExternalLinkIcon, Loader2Icon, MapIcon, RefreshCwIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CheckCircle2Icon,
+  CircleIcon,
+  ExternalLinkIcon,
+  Loader2Icon,
+  MapIcon,
+  MinusIcon,
+  RefreshCwIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
@@ -26,6 +35,20 @@ export interface StepProcessingProps {
   className?: string;
 }
 
+type StageStatus = "pending" | "in_progress" | "completed" | "skipped";
+
+interface FormattedStage {
+  name: string;
+  displayName: string;
+  status: StageStatus;
+  progress: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  batches: { current: number; total: number };
+  currentBatch: { rowsProcessed: number; rowsTotal: number; percentage: number };
+  performance: { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null };
+}
+
 // Internal progress state
 interface ImportProgress {
   status: "pending" | "parsing" | "processing" | "completed" | "failed";
@@ -37,7 +60,26 @@ interface ImportProgress {
   completedAt?: string;
   catalogId?: number;
   datasets?: Array<{ id: number; name: string; eventsCount: number }>;
+  stages: FormattedStage[];
 }
+
+const formatDuration = (startedAt: string | null, completedAt: string | null): string | null => {
+  if (!startedAt || !completedAt) return null;
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  const mins = Math.floor(ms / 60000);
+  const secs = Math.round((ms % 60000) / 1000);
+  return `${mins}m ${secs}s`;
+};
+
+const formatTimeRemaining = (seconds: number | null): string | null => {
+  if (seconds == null || seconds <= 0) return null;
+  if (seconds < 60) return `~${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `~${mins}m ${secs}s`;
+};
 
 // Transform API response to internal progress state
 const transformProgressResponse = (data: ProgressApiResponse): ImportProgress => {
@@ -51,6 +93,19 @@ const transformProgressResponse = (data: ProgressApiResponse): ImportProgress =>
     eventsCount: job.results?.totalEvents ?? 0,
   }));
 
+  const firstJob = data.jobs[0];
+  const stages: FormattedStage[] = (firstJob?.stages ?? []).map((s) => ({
+    name: s.name,
+    displayName: s.displayName,
+    status: s.status,
+    progress: s.progress,
+    startedAt: s.startedAt,
+    completedAt: s.completedAt,
+    batches: s.batches,
+    currentBatch: s.currentBatch,
+    performance: s.performance,
+  }));
+
   return {
     status: data.status,
     progress: data.overallProgress,
@@ -61,6 +116,7 @@ const transformProgressResponse = (data: ProgressApiResponse): ImportProgress =>
     completedAt: data.completedAt ?? undefined,
     catalogId: data.catalogId ?? undefined,
     datasets: data.status === "completed" ? datasets : undefined,
+    stages,
   };
 };
 
@@ -73,6 +129,116 @@ const calculateProgressPercent = (progress: ImportProgress | null): number => {
   }
   return progress.progress;
 };
+
+// --- Stage timeline components ---
+
+const StageIndicator = ({ status }: { status: StageStatus }) => {
+  if (status === "completed") {
+    return <CheckCircle2Icon className="text-cartographic-forest h-5 w-5 shrink-0" />;
+  }
+  if (status === "in_progress") {
+    return (
+      <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+        <span className="bg-cartographic-blue/30 absolute h-full w-full animate-ping rounded-full" />
+        <span className="bg-cartographic-blue relative h-3 w-3 rounded-full" />
+      </span>
+    );
+  }
+  if (status === "skipped") {
+    return <MinusIcon className="text-cartographic-navy/40 h-5 w-5 shrink-0" />;
+  }
+  return <CircleIcon className="text-cartographic-navy/30 h-5 w-5 shrink-0" />;
+};
+
+const StageDetails = ({ stage }: { stage: FormattedStage }) => {
+  const t = useTranslations("Import");
+
+  const { batches, performance } = stage;
+  const timeRemaining = formatTimeRemaining(performance.estimatedSecondsRemaining);
+
+  const detailParts: string[] = [];
+  if (batches.total > 0) {
+    detailParts.push(t("stageBatchProgress", { current: batches.current, total: batches.total }));
+  }
+  if (performance.rowsPerSecond != null && performance.rowsPerSecond > 0) {
+    detailParts.push(t("stageRowsPerSecond", { count: Math.round(performance.rowsPerSecond) }));
+  }
+  if (timeRemaining) {
+    detailParts.push(t("stageTimeRemaining", { time: timeRemaining }));
+  }
+
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      {/* Mini progress bar */}
+      <div className="bg-cartographic-navy/10 h-1.5 overflow-hidden rounded-full">
+        <div
+          className="bg-cartographic-blue h-full transition-all duration-300"
+          style={{ width: `${stage.progress}%` }}
+        />
+      </div>
+      {/* Detail text */}
+      {detailParts.length > 0 && (
+        <p className="text-cartographic-navy/50 font-mono text-xs">{detailParts.join(" \u00B7 ")}</p>
+      )}
+    </div>
+  );
+};
+
+const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean }) => {
+  const t = useTranslations("Import");
+  const duration = formatDuration(stage.startedAt, stage.completedAt);
+
+  // Determine the line segment style: solid for completed/in_progress, dashed for pending
+  const lineBelow = !isLast;
+  const lineBelowStyle =
+    stage.status === "completed" || stage.status === "in_progress"
+      ? "border-cartographic-navy/20"
+      : "border-dashed border-cartographic-navy/15";
+
+  return (
+    <div className="flex gap-3">
+      {/* Timeline column: indicator + connecting line */}
+      <div className="flex flex-col items-center">
+        <StageIndicator status={stage.status} />
+        {lineBelow && <div className={cn("mt-1 min-h-4 w-px flex-1 border-l", lineBelowStyle)} />}
+      </div>
+
+      {/* Content column */}
+      <div className={cn("flex-1 pb-3", isLast && "pb-0")}>
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className={cn(
+              "text-sm font-medium",
+              stage.status === "completed" && "text-cartographic-charcoal",
+              stage.status === "in_progress" && "text-cartographic-blue",
+              stage.status === "pending" && "text-cartographic-navy/40",
+              stage.status === "skipped" && "text-cartographic-navy/40 line-through"
+            )}
+          >
+            {stage.displayName}
+          </span>
+          {stage.status === "completed" && duration && (
+            <span className="text-cartographic-navy/50 shrink-0 font-mono text-xs">{duration}</span>
+          )}
+          {stage.status === "skipped" && (
+            <span className="text-cartographic-navy/40 shrink-0 font-mono text-xs">{t("stageSkipped")}</span>
+          )}
+        </div>
+        {stage.status === "in_progress" && <StageDetails stage={stage} />}
+      </div>
+    </div>
+  );
+};
+
+const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => (
+  <div className="space-y-1 px-6 py-4">
+    {stages.map((stage, index) => (
+      <StageRow key={stage.name} stage={stage} isLast={index === stages.length - 1} />
+    ))}
+  </div>
+);
+
+// --- Status header (unchanged) ---
 
 // Helper component to render status header and avoid nested ternaries
 const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
@@ -112,6 +278,8 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
     </>
   );
 };
+
+// --- Main component ---
 
 export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => {
   const t = useTranslations("Import");
@@ -158,24 +326,6 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
     return "processing";
   })();
 
-  // Helper functions to avoid nested ternaries
-  const getStageTitle = (s: ProcessingStatus, stageLabel: string): string => {
-    if (s === "completed") return t("success");
-    if (s === "failed") return tCommon("error");
-    return stageLabel;
-  };
-
-  const getStageDescription = (s: ProcessingStatus, p: ImportProgress | null): string => {
-    if (s === "completed") {
-      return t("eventsImported", { count: p?.eventsCreated?.toLocaleString() ?? "0" });
-    }
-    if (s === "failed") {
-      return t("importCouldNotBeCompleted");
-    }
-    // During processing, just show stage progress without event counts
-    return t("processingYourData");
-  };
-
   const errorMessage = progress?.error ?? wizardError ?? pollError;
   const progressPercent = calculateProgressPercent(progress);
   const stageLabel = STAGE_LABELS[progress?.currentStage ?? ""] ?? progress?.currentStage ?? t("processingLabel");
@@ -191,24 +341,18 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
       {/* Progress card */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* Stage indicator */}
-          <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-cartographic-charcoal font-serif text-lg font-semibold">
-                  {getStageTitle(status, stageLabel)}
-                </p>
-                <p className="text-cartographic-navy/60 text-sm">{getStageDescription(status, progress)}</p>
-              </div>
-              {status === "processing" && (
-                <span className="text-cartographic-charcoal font-mono text-2xl font-semibold">{progressPercent}%</span>
-              )}
-            </div>
-          </div>
+          {/* Stage timeline for processing */}
+          {status === "processing" && progress?.stages && progress.stages.length > 0 && (
+            <StageTimeline stages={progress.stages} />
+          )}
 
-          {/* Progress bar for processing */}
-          {status === "processing" && (
+          {/* Fallback: simple progress for when stages aren't available yet */}
+          {status === "processing" && (!progress?.stages || progress.stages.length === 0) && (
             <div className="px-6 py-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-cartographic-navy/70 text-sm">{stageLabel}</span>
+                <span className="text-cartographic-charcoal font-mono text-sm">{progressPercent}%</span>
+              </div>
               <div className="bg-cartographic-navy/10 h-2 overflow-hidden rounded-full">
                 <div className="bg-cartographic-blue h-full transition-all duration-300" style={progressBarStyle} />
               </div>

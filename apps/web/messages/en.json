@@ -524,7 +524,11 @@
     "noConfigToCopy": "None (start fresh)",
     "similarConfig": "Similar to \"{name}\" ({score}% match)",
     "useThisConfig": "Use this config",
-    "ignoreSuggestion": "Ignore"
+    "ignoreSuggestion": "Ignore",
+    "stageBatchProgress": "Batch {current} of {total}",
+    "stageRowsPerSecond": "{count} rows/sec",
+    "stageTimeRemaining": "{time} remaining",
+    "stageSkipped": "skipped"
   },
   "Schedules": {
     "title": "Scheduled Imports",
