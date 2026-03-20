@@ -4,6 +4,8 @@
  * @module
  * @category Tests
  */
+import { describe, expect, it } from "vitest";
+
 import {
   detectLanguage,
   detectLanguageFromText,
@@ -11,8 +13,7 @@ import {
   isSupportedLanguage,
   LANGUAGE_NAMES,
   SUPPORTED_LANGUAGES,
-} from "@timetiles/payload-schema-detection/utilities";
-import { describe, expect, it } from "vitest";
+} from "@/lib/services/schema-detection/utilities";
 
 describe("language-detection", () => {
   describe("SUPPORTED_LANGUAGES", () => {

@@ -15,4 +15,4 @@ export {
   COORDINATE_BOUNDS,
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
-} from "@timetiles/payload-schema-detection";
+} from "@/lib/services/schema-detection";

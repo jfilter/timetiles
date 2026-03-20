@@ -29,7 +29,7 @@ vi.mock("@payloadcms/email-nodemailer", () => ({ nodemailerAdapter: nodemailerAd
 
 vi.mock("@payloadcms/richtext-lexical", () => ({ lexicalEditor: vi.fn(() => ({ name: "mock-editor" })) }));
 
-vi.mock("@timetiles/payload-schema-detection", () => ({
+vi.mock("@/lib/services/schema-detection", () => ({
   schemaDetectionPlugin: vi.fn(() => ({ name: "mock-schema-plugin" })),
 }));
 

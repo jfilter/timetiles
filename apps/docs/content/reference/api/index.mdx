@@ -17,6 +17,8 @@
 - [app/api/import/\[importId\]/progress/route](app/api/import/[importId]/progress/route.md)
 - [app/api/import/jobs/failed/recommendations/route](app/api/import/jobs/failed/recommendations/route.md)
 - [app/api/newsletter/subscribe/route](app/api/newsletter/subscribe/route.md)
+- [app/api/scraper-repos/\[id\]/sync/route](app/api/scraper-repos/[id]/sync/route.md)
+- [app/api/scrapers/\[id\]/run/route](app/api/scrapers/[id]/run/route.md)
 - [app/api/users/cancel-deletion/route](app/api/users/cancel-deletion/route.md)
 - [app/api/users/change-email/route](app/api/users/change-email/route.md)
 - [app/api/users/change-password/route](app/api/users/change-password/route.md)
@@ -30,6 +32,7 @@
 
 ### API Routes
 
+- [app/api/admin/health/route](app/api/admin/health/route.md)
 - [app/api/admin/jobs/run/route](app/api/admin/jobs/run/route.md)
 - [app/api/catalogs/with-datasets/route](app/api/catalogs/with-datasets/route.md)
 - [app/api/health/route](app/api/health/route.md)
@@ -47,29 +50,30 @@
 ### Collections
 
 - [lib/collections/audit-log](lib/collections/audit-log.md)
+- [lib/collections/catalog-ownership](lib/collections/catalog-ownership.md)
 - [lib/collections/catalogs](lib/collections/catalogs.md)
 - [lib/collections/data-exports](lib/collections/data-exports.md)
 - [lib/collections/datasets/access](lib/collections/datasets/access.md)
 - [lib/collections/datasets/hooks](lib/collections/datasets/hooks.md)
 - [lib/collections/events/hooks](lib/collections/events/hooks.md)
+- [lib/collections/layout-templates](lib/collections/layout-templates.md)
 - [lib/collections/scheduled-imports/fields/core-fields](lib/collections/scheduled-imports/fields/core-fields.md)
 - [lib/collections/scheduled-imports/fields/import-config-fields](lib/collections/scheduled-imports/fields/import-config-fields.md)
 - [lib/collections/scheduled-imports/fields/runtime-fields](lib/collections/scheduled-imports/fields/runtime-fields.md)
 - [lib/collections/scheduled-imports](lib/collections/scheduled-imports.md)
+- [lib/collections/scraper-repos](lib/collections/scraper-repos.md)
+- [lib/collections/scraper-runs](lib/collections/scraper-runs.md)
+- [lib/collections/scrapers](lib/collections/scrapers.md)
 - [lib/collections/shared-hooks](lib/collections/shared-hooks.md)
 - [lib/collections/sites/access](lib/collections/sites/access.md)
 - [lib/collections/sites/hooks](lib/collections/sites/hooks.md)
 - [lib/collections/sites](lib/collections/sites.md)
+- [lib/collections/slug](lib/collections/slug.md)
+- [lib/collections/themes](lib/collections/themes.md)
 - [lib/collections/user-usage](lib/collections/user-usage.md)
 - [lib/collections/views/access](lib/collections/views/access.md)
 - [lib/collections/views/hooks](lib/collections/views/hooks.md)
 - [lib/collections/views](lib/collections/views.md)
-
-### Collections/Scraper
-
-- [lib/collections/scraper-repos](lib/collections/scraper-repos.md)
-- [lib/collections/scrapers](lib/collections/scrapers.md)
-- [lib/collections/scraper-runs](lib/collections/scraper-runs.md)
 
 ### Collections/ScheduledImports
 
@@ -78,10 +82,12 @@
 
 ### Constants
 
+- [lib/constants/breakpoints](lib/constants/breakpoints.md)
 - [lib/constants/dataset-colors](lib/constants/dataset-colors.md)
 - [lib/constants/empty](lib/constants/empty.md)
 - [lib/constants/map](lib/constants/map.md)
 - [lib/constants/rate-limits](lib/constants/rate-limits.md)
+- [lib/constants/stage-graph](lib/constants/stage-graph.md)
 - [lib/constants/stage-time-weights](lib/constants/stage-time-weights.md)
 - [lib/constants/validation](lib/constants/validation.md)
 
@@ -96,16 +102,20 @@
 - [lib/hooks/use-account-mutations](lib/hooks/use-account-mutations.md)
 - [lib/hooks/use-admin-feature-flag](lib/hooks/use-admin-feature-flag.md)
 - [lib/hooks/use-auth-mutations](lib/hooks/use-auth-mutations.md)
-- [lib/hooks/use-chart-filters](lib/hooks/use-chart-filters.md)
+- [lib/hooks/use-auth-queries](lib/hooks/use-auth-queries.md)
 - [lib/hooks/use-chart-query](lib/hooks/use-chart-query.md)
 - [lib/hooks/use-data-export](lib/hooks/use-data-export.md)
 - [lib/hooks/use-feature-flags](lib/hooks/use-feature-flags.md)
-- [lib/hooks/use-form-mutation](lib/hooks/use-form-mutation.md)
 - [lib/hooks/use-geocoding-test](lib/hooks/use-geocoding-test.md)
 - [lib/hooks/use-import-wizard-mutations](lib/hooks/use-import-wizard-mutations.md)
+- [lib/hooks/use-import-wizard-queries](lib/hooks/use-import-wizard-queries.md)
 - [lib/hooks/use-input-state](lib/hooks/use-input-state.md)
+- [lib/hooks/use-loading-phase](lib/hooks/use-loading-phase.md)
+- [lib/hooks/use-loading-states](lib/hooks/use-loading-states.md)
 - [lib/hooks/use-media-query](lib/hooks/use-media-query.md)
 - [lib/hooks/use-scheduled-imports-query](lib/hooks/use-scheduled-imports-query.md)
+- [lib/hooks/use-scraper-mutations](lib/hooks/use-scraper-mutations.md)
+- [lib/hooks/use-scrapers-query](lib/hooks/use-scrapers-query.md)
 - [lib/hooks/use-time-range-slider](lib/hooks/use-time-range-slider.md)
 - [lib/hooks/use-view-scope](lib/hooks/use-view-scope.md)
 
@@ -114,6 +124,7 @@
 - [lib/jobs/handlers/audit-log-ip-cleanup-job](lib/jobs/handlers/audit-log-ip-cleanup-job.md)
 - [lib/jobs/handlers/cache-cleanup-job](lib/jobs/handlers/cache-cleanup-job.md)
 - [lib/jobs/handlers/cleanup-stuck-scheduled-imports-job](lib/jobs/handlers/cleanup-stuck-scheduled-imports-job.md)
+- [lib/jobs/handlers/cleanup-stuck-scrapers-job](lib/jobs/handlers/cleanup-stuck-scrapers-job.md)
 - [lib/jobs/handlers/create-events-batch-job](lib/jobs/handlers/create-events-batch-job.md)
 - [lib/jobs/handlers/data-export-cleanup-job](lib/jobs/handlers/data-export-cleanup-job.md)
 - [lib/jobs/handlers/data-export-job](lib/jobs/handlers/data-export-job.md)
@@ -122,9 +133,13 @@
 - [lib/jobs/handlers/geocode-batch-job](lib/jobs/handlers/geocode-batch-job.md)
 - [lib/jobs/handlers/schedule-manager-job](lib/jobs/handlers/schedule-manager-job.md)
 - [lib/jobs/handlers/schema-maintenance-job](lib/jobs/handlers/schema-maintenance-job.md)
+- [lib/jobs/handlers/scraper-execution-job](lib/jobs/handlers/scraper-execution-job.md)
+- [lib/jobs/handlers/scraper-repo-sync-job](lib/jobs/handlers/scraper-repo-sync-job.md)
 - [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job.md)
 - [lib/jobs/handlers/url-fetch-job](lib/jobs/handlers/url-fetch-job-1.md)
+- [lib/jobs/utils/bulk-event-insert](lib/jobs/utils/bulk-event-insert.md)
 - [lib/jobs/utils/event-creation-helpers](lib/jobs/utils/event-creation-helpers.md)
+- [lib/jobs/utils/stuck-detection](lib/jobs/utils/stuck-detection.md)
 - [lib/jobs/utils/transform-builders](lib/jobs/utils/transform-builders.md)
 
 ### Jobs/UrlFetch
@@ -179,7 +194,6 @@
 - [lib/hooks/use-scheduled-import-mutations](lib/hooks/use-scheduled-import-mutations.md)
 - [lib/hooks/use-theme](lib/hooks/use-theme.md)
 - [lib/jobs/handlers/analyze-duplicates-job](lib/jobs/handlers/analyze-duplicates-job.md)
-- [lib/jobs/handlers/cleanup-approval-locks-job](lib/jobs/handlers/cleanup-approval-locks-job.md)
 - [lib/jobs/handlers/create-schema-version-job](lib/jobs/handlers/create-schema-version-job.md)
 - [lib/jobs/handlers/process-pending-retries-job](lib/jobs/handlers/process-pending-retries-job.md)
 - [lib/jobs/handlers/quota-reset-job](lib/jobs/handlers/quota-reset-job.md)
@@ -187,9 +201,7 @@
 - [lib/jobs/handlers/validate-schema-job](lib/jobs/handlers/validate-schema-job.md)
 - [lib/jobs/import-jobs](lib/jobs/import-jobs.md)
 - [lib/jobs/types/job-inputs](lib/jobs/types/job-inputs.md)
-- [lib/jobs/utils/data-validation](lib/jobs/utils/data-validation.md)
 - [lib/jobs/utils/job-context](lib/jobs/utils/job-context.md)
-- [lib/services/error-recovery](lib/services/error-recovery.md)
 - [lib/services/geocoding](lib/services/geocoding.md)
 - [lib/services/geocoding/cache-manager](lib/services/geocoding/cache-manager.md)
 - [lib/services/geocoding/geocoding-operations](lib/services/geocoding/geocoding-operations.md)
@@ -197,12 +209,9 @@
 - [lib/services/geocoding/provider-manager](lib/services/geocoding/provider-manager.md)
 - [lib/services/geocoding/types](lib/services/geocoding/types.md)
 - [lib/services/id-generation](lib/services/id-generation.md)
-- [lib/services/schema-versioning](lib/services/schema-versioning.md)
-- [lib/services/stage-transition](lib/services/stage-transition.md)
 - [lib/types/geocoding](lib/types/geocoding.md)
 - [lib/types/schema-detection](lib/types/schema-detection.md)
 - [lib/utils/date](lib/utils/date.md)
-- [lib/utils/file-readers](lib/utils/file-readers.md)
 
 ### React Hooks
 
@@ -211,29 +220,17 @@
 ### Services
 
 - [lib/services/access-control](lib/services/access-control.md)
-- [lib/services/account-deletion-emails](lib/services/account-deletion-emails.md)
-- [lib/services/account-deletion-service](lib/services/account-deletion-service.md)
-- [lib/services/account-deletion-types](lib/services/account-deletion-types.md)
 - [lib/services/aggregation-service](lib/services/aggregation-service.md)
 - [lib/services/audit-log-service](lib/services/audit-log-service.md)
-- [lib/services/create-cached-resolver](lib/services/create-cached-resolver.md)
-- [lib/services/data-export-emails](lib/services/data-export-emails.md)
-- [lib/services/data-export-service](lib/services/data-export-service.md)
-- [lib/services/data-export-types](lib/services/data-export-types.md)
 - [lib/services/feature-flag-service](lib/services/feature-flag-service.md)
 - [lib/services/geocoding/provider-rate-limiter](lib/services/geocoding/provider-rate-limiter.md)
-- [lib/services/import-configure-service](lib/services/import-configure-service.md)
-- [lib/services/import-transforms](lib/services/import-transforms.md)
-- [lib/services/progress-tracking](lib/services/progress-tracking.md)
 - [lib/services/quota-service](lib/services/quota-service.md)
 - [lib/services/rate-limit-service](lib/services/rate-limit-service.md)
-- [lib/services/scheduled-import-trigger-service](lib/services/scheduled-import-trigger-service.md)
+- [lib/services/resolution/create-cached-resolver](lib/services/resolution/create-cached-resolver.md)
+- [lib/services/resolution/site-resolver](lib/services/resolution/site-resolver.md)
+- [lib/services/resolution/view-resolver](lib/services/resolution/view-resolver.md)
 - [lib/services/schema-builder](lib/services/schema-builder.md)
-- [lib/services/schema-freshness](lib/services/schema-freshness.md)
-- [lib/services/schema-inference-service](lib/services/schema-inference-service.md)
-- [lib/services/site-resolver](lib/services/site-resolver.md)
-- [lib/services/system-user-service](lib/services/system-user-service.md)
-- [lib/services/view-resolver](lib/services/view-resolver.md)
+- [lib/services/webhook-registry](lib/services/webhook-registry.md)
 
 ### Services/Cache
 
@@ -252,7 +249,6 @@
 
 - [lib/services/schema-builder/field-mapping-detection](lib/services/schema-builder/field-mapping-detection.md)
 - [lib/services/schema-builder/field-statistics](lib/services/schema-builder/field-statistics.md)
-- [lib/services/schema-builder/language-detection](lib/services/schema-builder/language-detection.md)
 - [lib/services/schema-builder/pattern-detection](lib/services/schema-builder/pattern-detection.md)
 - [lib/services/schema-builder/schema-comparison](lib/services/schema-builder/schema-comparison.md)
 
@@ -270,30 +266,14 @@
 - [lib/types/progress-tracking](lib/types/progress-tracking.md)
 - [lib/types/schema-inference](lib/types/schema-inference.md)
 
-### Utilities
-
-- [lib/utils/cron-parser](lib/utils/cron-parser.md)
-- [lib/utils/masking](lib/utils/masking.md)
-- [lib/utils/slug](lib/utils/slug.md)
-
 ### Utils
 
-- [lib/utils/api-response](lib/utils/api-response.md)
-- [lib/utils/auth-helpers](lib/utils/auth-helpers.md)
-- [lib/utils/catalog-ownership](lib/utils/catalog-ownership.md)
-- [lib/utils/coordinates](lib/utils/coordinates.md)
-- [lib/utils/data-export](lib/utils/data-export.md)
-- [lib/utils/date-slider](lib/utils/date-slider.md)
-- [lib/utils/email](lib/utils/email.md)
-- [lib/utils/encryption](lib/utils/encryption.md)
+- [lib/utils/base-url](lib/utils/base-url.md)
 - [lib/utils/event-detail](lib/utils/event-detail.md)
 - [lib/utils/event-params](lib/utils/event-params.md)
 - [lib/utils/format](lib/utils/format.md)
-- [lib/utils/hash](lib/utils/hash.md)
-- [lib/utils/header-utils](lib/utils/header-utils.md)
-- [lib/utils/humanize-file-name](lib/utils/humanize-file-name.md)
-- [lib/utils/mapping-transfer](lib/utils/mapping-transfer.md)
 - [lib/utils/object-path](lib/utils/object-path.md)
 - [lib/utils/relation-id](lib/utils/relation-id.md)
-- [lib/utils/url-validation](lib/utils/url-validation.md)
+- [lib/utils/timezone](lib/utils/timezone.md)
+- [lib/utils/url-sanitize](lib/utils/url-sanitize.md)
 - [lib/utils/user-data](lib/utils/user-data.md)

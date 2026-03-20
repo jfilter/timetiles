@@ -34,6 +34,9 @@ import {
   type SuggestedMappings,
 } from "@/lib/types/import-wizard";
 
+import type { ImportTransform } from "@/lib/types/import-transforms";
+
+import { TransformList } from "../transforms/transform-list";
 import { useWizard } from "../wizard-context";
 import {
   DataPreviewSection,
@@ -59,7 +62,7 @@ const deriveLocationMode = (mapping: FieldMapping): LocationMode => {
 
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
   const t = useTranslations("Import");
-  const { state, nextStep, canProceed, setFieldMapping, setImportOptions } = useWizard();
+  const { state, nextStep, canProceed, setFieldMapping, setImportOptions, setTransforms } = useWizard();
   const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
 
   const [activeSheetIndex, setActiveSheetIndex] = useState(sheets[0]?.index ?? 0);
@@ -92,6 +95,15 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
       setFieldMapping(activeSheetIndex, { [field]: value === "" ? null : value });
     },
     [activeSheetIndex, setFieldMapping]
+  );
+
+  const activeTransforms = state.transforms[activeSheetIndex] ?? [];
+
+  const handleTransformsChange = useCallback(
+    (transforms: ImportTransform[]) => {
+      setTransforms(activeSheetIndex, transforms);
+    },
+    [activeSheetIndex, setTransforms]
   );
 
   const handleDeduplicationChange = (value: string) => {

@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { detectFieldMappings } from "@/lib/services/schema-builder/field-mapping-detection";
+import { detectFlatFieldMappings as detectFieldMappings } from "@/lib/services/schema-detection/utilities";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 
 // Helper to create field stats

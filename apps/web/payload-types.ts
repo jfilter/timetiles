@@ -156,7 +156,6 @@ export interface Config {
       'create-schema-version': TaskCreateSchemaVersion;
       'geocode-batch': TaskGeocodeBatch;
       'create-events': TaskCreateEvents;
-      'cleanup-approval-locks': TaskCleanupApprovalLocks;
       'url-fetch': TaskUrlFetch;
       'schedule-manager': TaskScheduleManager;
       'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
@@ -328,6 +327,9 @@ export interface User {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
+  enableAPIKey?: boolean | null;
+  apiKey?: string | null;
+  apiKeyIndex?: string | null;
   email: string;
   resetPasswordToken?: string | null;
   resetPasswordExpiration?: string | null;
@@ -3594,7 +3596,6 @@ export interface PayloadJob {
           | 'create-schema-version'
           | 'geocode-batch'
           | 'create-events'
-          | 'cleanup-approval-locks'
           | 'url-fetch'
           | 'schedule-manager'
           | 'cleanup-stuck-scheduled-imports'
@@ -3651,7 +3652,6 @@ export interface PayloadJob {
         | 'create-schema-version'
         | 'geocode-batch'
         | 'create-events'
-        | 'cleanup-approval-locks'
         | 'url-fetch'
         | 'schedule-manager'
         | 'cleanup-stuck-scheduled-imports'
@@ -4420,6 +4420,9 @@ export interface UsersSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
+  enableAPIKey?: T;
+  apiKey?: T;
+  apiKeyIndex?: T;
   email?: T;
   resetPasswordToken?: T;
   resetPasswordExpiration?: T;
@@ -5592,14 +5595,6 @@ export interface TaskGeocodeBatch {
  * via the `definition` "TaskCreate-events".
  */
 export interface TaskCreateEvents {
-  input?: unknown;
-  output?: unknown;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskCleanup-approval-locks".
- */
-export interface TaskCleanupApprovalLocks {
   input?: unknown;
   output?: unknown;
 }

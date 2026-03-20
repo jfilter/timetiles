@@ -11,15 +11,15 @@
  */
 import fs from "node:fs";
 
+import Papa from "papaparse";
+import { read, utils } from "xlsx";
+
 import {
   detectLanguage,
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
   matchFieldNamePatterns,
-} from "@timetiles/payload-schema-detection";
-import Papa from "papaparse";
-import { read, utils } from "xlsx";
-
+} from "@/lib/services/schema-detection";
 import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
 
 export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
