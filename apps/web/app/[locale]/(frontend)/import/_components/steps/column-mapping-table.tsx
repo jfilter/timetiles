@@ -53,6 +53,8 @@ export interface ColumnViewRow {
   confidenceLevel: ConfidenceLevel;
   isSplitParent: boolean;
   splitChildren?: string[];
+  splitChildTransforms?: Record<string, ImportTransform[]>;
+  splitChildTargets?: Record<string, FieldMappingStringField | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +142,24 @@ const buildColumnView = (
     const isSplitParent = Boolean(splitTransform);
     const splitChildren = splitTransform?.type === "split" ? splitTransform.toFields : undefined;
 
+    // Compute transforms and targets for each split child field
+    const splitChildTransforms =
+      splitTransform?.type === "split"
+        ? Object.fromEntries(
+            splitTransform.toFields.map((childName) => [
+              childName,
+              transforms.filter((t) => "from" in t && t.from === childName && t.type !== "split"),
+            ])
+          )
+        : undefined;
+
+    const splitChildTargets =
+      splitTransform?.type === "split"
+        ? Object.fromEntries(
+            splitTransform.toFields.map((childName) => [childName, findTargetForColumn(childName, fieldMapping)])
+          )
+        : undefined;
+
     return {
       columnName,
       sampleValue: getSampleValue(columnName, sampleData),
@@ -149,6 +169,8 @@ const buildColumnView = (
       confidenceLevel,
       isSplitParent,
       splitChildren,
+      splitChildTransforms,
+      splitChildTargets,
     };
   });
 
@@ -348,6 +370,8 @@ export const ColumnMappingTable = ({
                 sourceColumns={headers}
                 isSplitParent={row.isSplitParent}
                 splitChildren={row.splitChildren}
+                splitChildTransforms={row.splitChildTransforms}
+                splitChildTargets={row.splitChildTargets}
                 geocodingEnabled={geocodingEnabled}
                 onGeocodingChange={onGeocodingChange}
               />

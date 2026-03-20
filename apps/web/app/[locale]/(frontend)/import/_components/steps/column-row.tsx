@@ -48,6 +48,8 @@ export interface ColumnRowProps {
   sourceColumns: string[];
   isSplitParent?: boolean;
   splitChildren?: string[];
+  splitChildTransforms?: Record<string, ImportTransform[]>;
+  splitChildTargets?: Record<string, FieldMappingStringField | null>;
   geocodingEnabled?: boolean;
   onGeocodingChange?: (enabled: boolean) => void;
 }
@@ -135,11 +137,14 @@ const TransformChip = ({ transform, isExpanded, onToggle, onRemove }: Readonly<T
 interface AddTransformMenuProps {
   columnName: string;
   onAdd: (columnName: string, type: TransformType) => void;
+  /** Subset of transform types to offer. Defaults to all except concatenate. */
+  types?: TransformType[];
 }
 
-const AVAILABLE_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "split", "type-cast"];
+const DEFAULT_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "split", "type-cast"];
 
-const AddTransformMenu = ({ columnName, onAdd }: Readonly<AddTransformMenuProps>) => {
+/** Dropdown that adds a new transform to a column. Subset of types via `types` prop. */
+const AddTransformMenu = ({ columnName, onAdd, types = DEFAULT_TRANSFORM_TYPES }: Readonly<AddTransformMenuProps>) => {
   const t = useTranslations("Import");
 
   return (
@@ -155,7 +160,7 @@ const AddTransformMenu = ({ columnName, onAdd }: Readonly<AddTransformMenuProps>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
-        {AVAILABLE_TRANSFORM_TYPES.map((type) => {
+        {types.map((type) => {
           const Icon = TRANSFORM_ICONS[type];
           return (
             <DropdownMenuItem key={type} onClick={() => onAdd(columnName, type)}>
@@ -166,6 +171,153 @@ const AddTransformMenu = ({ columnName, onAdd }: Readonly<AddTransformMenuProps>
         })}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// SplitChildRow
+// ---------------------------------------------------------------------------
+
+interface SplitChildRowProps {
+  parentColumn: string;
+  childName: string;
+  isLast: boolean;
+  transforms: ImportTransform[];
+  targetField: FieldMappingStringField | null;
+  assignedTargets: Set<string>;
+  onTargetChange: (columnName: string, target: FieldMappingStringField | null) => void;
+  onTransformAdd: (columnName: string, type: TransformType) => void;
+  onTransformRemove: (columnName: string, transformId: string) => void;
+  onTransformUpdate: (columnName: string, transformId: string, updates: Partial<ImportTransform>) => void;
+  sourceColumns: string[];
+}
+
+/** Transform types available for split child fields (no split or concatenate). */
+const CHILD_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "type-cast"];
+
+const SplitChildRow = ({
+  parentColumn,
+  childName,
+  isLast,
+  transforms,
+  targetField,
+  assignedTargets,
+  onTargetChange,
+  onTransformAdd,
+  onTransformRemove,
+  onTransformUpdate,
+  sourceColumns,
+}: Readonly<SplitChildRowProps>) => {
+  const t = useTranslations("Import");
+  const [expandedTransformId, setExpandedTransformId] = useState<string | null>(null);
+
+  const handleToggleExpand = useCallback((transformId: string) => {
+    setExpandedTransformId((prev) => (prev === transformId ? null : transformId));
+  }, []);
+
+  const handleRemoveTransform = useCallback(
+    (transformId: string) => {
+      onTransformRemove(childName, transformId);
+      if (expandedTransformId === transformId) {
+        setExpandedTransformId(null);
+      }
+    },
+    [childName, onTransformRemove, expandedTransformId]
+  );
+
+  const handleUpdateTransform = useCallback(
+    (transformId: string, updates: Partial<ImportTransform>) => {
+      onTransformUpdate(childName, transformId, updates);
+    },
+    [childName, onTransformUpdate]
+  );
+
+  const expandedTransform = transforms.find((tf) => tf.id === expandedTransformId);
+
+  return (
+    <>
+      <tr
+        className="border-cartographic-navy/5 border-b bg-purple-50/30 last:border-0 dark:bg-purple-950/10"
+        data-testid={`split-child-row-${parentColumn}-${childName}`}
+      >
+        {/* Indented source cell with tree connector */}
+        <td className="px-4 py-2 pl-10">
+          <div className="flex items-center gap-2">
+            <span className="text-cartographic-navy/40 text-xs" aria-hidden="true">
+              {isLast ? "\u2514\u2500" : "\u251C\u2500"}
+            </span>
+            <span className="text-cartographic-charcoal font-mono text-sm">{childName}</span>
+          </div>
+        </td>
+
+        {/* Transform chain cell */}
+        <td className="px-4 py-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {transforms.length > 0 ? (
+              <>
+                {transforms.map((transform) => (
+                  <TransformChip
+                    key={transform.id}
+                    transform={transform}
+                    isExpanded={expandedTransformId === transform.id}
+                    onToggle={() => handleToggleExpand(transform.id)}
+                    onRemove={() => handleRemoveTransform(transform.id)}
+                  />
+                ))}
+                <span className="text-cartographic-navy/30 mx-0.5 text-xs" aria-hidden="true">
+                  &rarr;
+                </span>
+              </>
+            ) : (
+              <span className="text-cartographic-navy/20 mr-2 text-xs" aria-hidden="true">
+                &mdash;&mdash;&rarr;
+              </span>
+            )}
+            <AddTransformMenu columnName={childName} onAdd={onTransformAdd} types={CHILD_TRANSFORM_TYPES} />
+          </div>
+        </td>
+
+        {/* Target field cell */}
+        <td className="px-4 py-2">
+          <TargetSelect
+            columnName={childName}
+            targetField={targetField}
+            assignedTargets={assignedTargets}
+            onTargetChange={onTargetChange}
+          />
+        </td>
+
+        {/* Spacer cell */}
+        <td className="px-4 py-2" />
+      </tr>
+
+      {/* Expanded transform editor row for split child */}
+      {expandedTransform && (
+        <tr className="border-cartographic-navy/5 border-b bg-purple-50/20 last:border-0 dark:bg-purple-950/5">
+          <td colSpan={4} className="bg-muted/30 px-6 py-4">
+            <div className="max-w-2xl">
+              <div className="mb-2 flex items-center gap-2">
+                {(() => {
+                  const Icon = TRANSFORM_ICONS[expandedTransform.type];
+                  return <Icon className={cn("h-4 w-4", TRANSFORM_COLORS[expandedTransform.type])} />;
+                })()}
+                <span className="text-foreground text-sm font-medium">
+                  {TRANSFORM_TYPE_LABELS[expandedTransform.type]}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {t("flowSourceColumn")}: {childName}
+                </span>
+              </div>
+              <TransformEditor
+                transform={expandedTransform}
+                onChange={(updates) => handleUpdateTransform(expandedTransform.id, updates)}
+                sourceColumns={sourceColumns}
+              />
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 };
 
@@ -188,6 +340,8 @@ export const ColumnRow = ({
   sourceColumns,
   isSplitParent,
   splitChildren,
+  splitChildTransforms,
+  splitChildTargets,
   geocodingEnabled,
   onGeocodingChange,
 }: Readonly<ColumnRowProps>) => {
@@ -318,27 +472,23 @@ export const ColumnRow = ({
         </tr>
       )}
 
-      {/* Split child rows */}
+      {/* Split child rows — interactive with transforms + target assignment */}
       {isSplitParent &&
         splitChildren?.map((childName, i) => (
-          <tr
+          <SplitChildRow
             key={`${columnName}-split-${childName}`}
-            className="border-cartographic-navy/5 border-b bg-purple-50/30 last:border-0 dark:bg-purple-950/10"
-          >
-            <td className="px-4 py-2 pl-10">
-              <div className="flex items-center gap-2">
-                <span className="text-cartographic-navy/40 text-xs" aria-hidden="true">
-                  {i < splitChildren.length - 1 ? "\u251C\u2500" : "\u2514\u2500"}
-                </span>
-                <span className="text-cartographic-charcoal font-mono text-sm">{childName}</span>
-              </div>
-            </td>
-            <td className="px-4 py-2">
-              <span className="text-muted-foreground text-xs italic">{t("splitResult")}</span>
-            </td>
-            <td className="px-4 py-2" />
-            <td className="px-4 py-2" />
-          </tr>
+            parentColumn={columnName}
+            childName={childName}
+            isLast={i === splitChildren.length - 1}
+            transforms={splitChildTransforms?.[childName] ?? []}
+            targetField={splitChildTargets?.[childName] ?? null}
+            assignedTargets={assignedTargets}
+            onTargetChange={onTargetChange}
+            onTransformAdd={onTransformAdd}
+            onTransformRemove={onTransformRemove}
+            onTransformUpdate={onTransformUpdate}
+            sourceColumns={sourceColumns}
+          />
         ))}
     </>
   );
