@@ -9,11 +9,13 @@
  */
 "use client";
 
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@timetiles/ui";
+import { Label, Table, TableBody, TableHead, TableHeader, TableRow } from "@timetiles/ui";
 import { Button } from "@timetiles/ui/components/button";
+import { Input } from "@timetiles/ui/components/input";
+import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowLeftRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { ConcatenateTransform, TransformType } from "@/lib/types/import-transforms";
 import { createTransform } from "@/lib/types/import-transforms";
@@ -182,59 +184,131 @@ interface CombinedRowProps {
   transform: ConcatenateTransform;
   assignedTargets: Set<string>;
   fieldMapping: FieldMapping;
+  sourceColumns: string[];
   onTargetChange: (columnName: string, target: FieldMappingStringField | null) => void;
+  onUpdate: (transformId: string, updates: Partial<ImportTransform>) => void;
   onRemove: (transformId: string) => void;
+  autoExpand?: boolean;
 }
 
 const CombinedRow = ({
   transform,
   assignedTargets,
   fieldMapping,
+  sourceColumns,
   onTargetChange,
+  onUpdate,
   onRemove,
+  autoExpand = false,
 }: Readonly<CombinedRowProps>) => {
   const t = useTranslations("Import");
+  const [expanded, setExpanded] = useState(autoExpand || transform.fromFields.length === 0);
 
   const targetField = transform.to ? findTargetForColumn(transform.to, fieldMapping) : null;
+  const summary =
+    transform.fromFields.length > 0 ? transform.fromFields.join(` ${transform.separator} `) : t("combineColumns");
+
+  const handleChange = useCallback(
+    (updates: Partial<ImportTransform>) => onUpdate(transform.id, updates),
+    [transform.id, onUpdate]
+  );
+
+  const handleFieldToggle = useCallback(
+    (column: string) => {
+      const current = transform.fromFields;
+      const updated = current.includes(column) ? current.filter((f) => f !== column) : [...current, column];
+      handleChange({ fromFields: updated });
+    },
+    [transform.fromFields, handleChange]
+  );
 
   return (
-    <tr className="border-cartographic-navy/5 border-b bg-amber-50/30 last:border-0 dark:bg-amber-950/10">
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ArrowLeftRight className="text-cartographic-navy h-4 w-4 shrink-0" />
-          <div className="min-w-0">
-            <span className="text-cartographic-charcoal font-mono text-sm font-medium">
-              {transform.to || t("combineColumns")}
-            </span>
-            <p className="text-cartographic-navy/50 truncate text-xs">
-              {transform.fromFields.join(` ${transform.separator} `)}
-            </p>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-muted-foreground text-xs italic">{t("combineColumns")}</span>
-      </td>
-      <td className="px-4 py-3">
-        <TargetSelect
-          columnName={transform.to}
-          targetField={targetField}
-          assignedTargets={assignedTargets}
-          onTargetChange={onTargetChange}
-        />
-      </td>
-      <td className="px-4 py-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
-          onClick={() => onRemove(transform.id)}
-          aria-label={t("removeTransform")}
-        >
-          <span aria-hidden="true">&times;</span>
-        </Button>
-      </td>
-    </tr>
+    <>
+      <tr className="border-cartographic-navy/5 border-b bg-amber-50/30 last:border-0 dark:bg-amber-950/10">
+        <td className="px-4 py-3">
+          <button type="button" className="flex items-center gap-2 text-left" onClick={() => setExpanded(!expanded)}>
+            <ArrowLeftRight className="text-cartographic-navy h-4 w-4 shrink-0" />
+            <div className="min-w-0">
+              <span className="text-cartographic-charcoal font-mono text-sm font-medium">
+                {transform.to || t("combineColumns")}
+              </span>
+              <p className="text-cartographic-navy/50 truncate text-xs">{summary}</p>
+            </div>
+          </button>
+        </td>
+        <td className="px-4 py-3">
+          <span className="text-muted-foreground text-xs italic">{t("combineColumns")}</span>
+        </td>
+        <td className="px-4 py-3">
+          <TargetSelect
+            columnName={transform.to}
+            targetField={targetField}
+            assignedTargets={assignedTargets}
+            onTargetChange={onTargetChange}
+          />
+        </td>
+        <td className="px-4 py-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
+            onClick={() => onRemove(transform.id)}
+            aria-label={t("removeTransform")}
+          >
+            <span aria-hidden="true">&times;</span>
+          </Button>
+        </td>
+      </tr>
+
+      {expanded && (
+        <tr className="border-cartographic-navy/5 border-b bg-amber-50/20 last:border-0">
+          <td colSpan={4} className="px-6 py-4">
+            <div className="max-w-2xl space-y-4">
+              <div className="space-y-2">
+                <Label className="text-cartographic-charcoal text-sm">{t("sourceColumn")} (select multiple)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {sourceColumns.map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => handleFieldToggle(col)}
+                      className={cn(
+                        "rounded-md border px-2 py-1 text-sm transition-colors",
+                        transform.fromFields.includes(col)
+                          ? "border-cartographic-forest bg-cartographic-forest/10 text-cartographic-forest"
+                          : "border-border text-muted-foreground hover:border-cartographic-forest/50"
+                      )}
+                    >
+                      {col}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`separator-${transform.id}`}>Separator</Label>
+                  <Input
+                    id={`separator-${transform.id}`}
+                    value={transform.separator}
+                    onChange={(e) => handleChange({ separator: e.target.value })}
+                    placeholder="e.g., ', ' or ' '"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`to-${transform.id}`}>Target Field Name</Label>
+                  <Input
+                    id={`to-${transform.id}`}
+                    value={transform.to}
+                    onChange={(e) => handleChange({ to: e.target.value })}
+                    placeholder="Name for combined field"
+                  />
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 };
 
@@ -340,6 +414,13 @@ export const ColumnMappingTable = ({
     [transforms, onTransformsChange]
   );
 
+  const handleUpdateConcatenate = useCallback(
+    (transformId: string, updates: Partial<ImportTransform>) => {
+      onTransformsChange(transforms.map((t) => (t.id === transformId ? ({ ...t, ...updates } as ImportTransform) : t)));
+    },
+    [transforms, onTransformsChange]
+  );
+
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto rounded-sm border">
@@ -384,7 +465,9 @@ export const ColumnMappingTable = ({
                 transform={ct}
                 assignedTargets={assignedTargets}
                 fieldMapping={fieldMapping}
+                sourceColumns={headers}
                 onTargetChange={handleTargetChange}
+                onUpdate={handleUpdateConcatenate}
                 onRemove={handleRemoveConcatenate}
               />
             ))}
