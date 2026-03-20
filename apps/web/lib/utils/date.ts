@@ -90,7 +90,7 @@ export const parseDateInput = (date: string | number | Date | null | undefined):
  */
 type DateInput = string | Date | null | undefined;
 
-export const formatDate = (date: DateInput, options?: { includeTime?: boolean }): string => {
+export const formatDate = (date: DateInput, options?: { includeTime?: boolean; locale?: string }): string => {
   if (!date) return "N/A";
 
   try {
@@ -108,7 +108,7 @@ export const formatDate = (date: DateInput, options?: { includeTime?: boolean })
       formatOptions.hour12 = true;
     }
 
-    return new Intl.DateTimeFormat("en-US", formatOptions).format(dateObj);
+    return new Intl.DateTimeFormat(options?.locale, formatOptions).format(dateObj);
   } catch {
     return "Invalid date";
   }
@@ -117,8 +117,8 @@ export const formatDate = (date: DateInput, options?: { includeTime?: boolean })
 /**
  * Format a date for short display (just the date, no time).
  */
-export const formatDateShort = (date: string | Date | null | undefined): string =>
-  formatDate(date, { includeTime: false });
+export const formatDateShort = (date: string | Date | null | undefined, locale?: string): string =>
+  formatDate(date, { includeTime: false, locale });
 
 /**
  * Format a date in long format with weekday, suitable for emails and notifications.
@@ -127,7 +127,11 @@ export const formatDateShort = (date: string | Date | null | undefined): string 
  * @param includeTime - Whether to include hour and minute (default: false)
  * @returns Formatted date string like "Saturday, March 15, 2026" or "Unknown" if invalid
  */
-export const formatLongDate = (date: string | Date | null | undefined, includeTime = false): string => {
+export const formatLongDate = (
+  date: string | Date | null | undefined,
+  includeTime = false,
+  locale?: string
+): string => {
   const dateObj = parseDateInput(date);
   if (!dateObj) return "Unknown";
 
@@ -138,15 +142,15 @@ export const formatLongDate = (date: string | Date | null | undefined, includeTi
     options.minute = "2-digit";
   }
 
-  return dateObj.toLocaleDateString("en-US", options);
+  return dateObj.toLocaleDateString(locale, options);
 };
 
 /**
  * Format a timestamp to a short date string (e.g., "Jan 2024").
  */
-export const formatShortDate = (timestamp: string | number): string => {
+export const formatShortDate = (timestamp: string | number, locale?: string): string => {
   const date = new Date(timestamp);
-  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return date.toLocaleDateString(locale, { month: "short", year: "numeric" });
 };
 
 /**
@@ -168,9 +172,14 @@ export const parseISODate = (dateStr: string): number => {
 /**
  * Format a date range for display with "From"/"Until" prefixes.
  *
- * Returns `undefined` when both dates are empty. Uses en-US locale formatting.
+ * Returns `undefined` when both dates are empty. Uses the runtime default locale
+ * unless an explicit `locale` is provided.
  */
-export const formatDateRangeLabel = (startDate: string | null, endDate: string | null): string | undefined => {
+export const formatDateRangeLabel = (
+  startDate: string | null,
+  endDate: string | null,
+  locale?: string
+): string | undefined => {
   const hasStartDate = startDate != null && startDate !== "";
   const hasEndDate = endDate != null && endDate !== "";
 
@@ -178,8 +187,8 @@ export const formatDateRangeLabel = (startDate: string | null, endDate: string |
     return undefined;
   }
 
-  const start = hasStartDate ? new Date(startDate).toLocaleDateString("en-US") : "Start";
-  const end = hasEndDate ? new Date(endDate).toLocaleDateString("en-US") : "End";
+  const start = hasStartDate ? new Date(startDate).toLocaleDateString(locale) : "Start";
+  const end = hasEndDate ? new Date(endDate).toLocaleDateString(locale) : "End";
 
   if (hasStartDate && hasEndDate) {
     return `${start} - ${end}`;

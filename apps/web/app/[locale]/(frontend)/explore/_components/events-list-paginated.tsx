@@ -20,7 +20,7 @@ import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { EventsList } from "./events-list";
 import { EventsListSkeleton } from "./events-list-skeleton";
-import { buildEventsDescription, type FilterLabels } from "./map-explorer-helpers";
+import { buildEventsDescription, type FilterLabels } from "./explorer-helpers";
 
 interface EventsListPaginatedProps {
   filters: FilterState;

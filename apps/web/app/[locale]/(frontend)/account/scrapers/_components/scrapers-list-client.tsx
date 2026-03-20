@@ -27,6 +27,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { EmptyResourceCard } from "@/app/[locale]/(frontend)/account/_components/empty-resource-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useLoadingStates } from "@/lib/hooks/use-loading-states";
 import {
@@ -307,13 +308,11 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
 
   if (repos.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <CodeIcon className="text-muted-foreground mb-4 h-12 w-12" />
-          <h3 className="text-lg font-medium">{t("noRepos")}</h3>
-          <p className="text-muted-foreground mt-1 text-center text-sm">{t("noReposDescription")}</p>
-        </CardContent>
-      </Card>
+      <EmptyResourceCard
+        icon={<CodeIcon className="text-muted-foreground mb-4 h-12 w-12" />}
+        title={t("noRepos")}
+        description={t("noReposDescription")}
+      />
     );
   }
 

@@ -3,21 +3,16 @@
  *
  * Types are imported from the shared import wizard types module.
  * Preview storage operations are delegated to `@/lib/import/preview-store`.
- * This file contains route-specific utilities: Zod validation schema
- * and business-logic request validation.
+ * Preview validation is delegated to `@/lib/import/preview-validation`.
+ * This file contains the Zod validation schema for the configure-import request body.
  *
  * @module
  * @category API Routes
  */
-import fs from "node:fs";
-
 import { z } from "zod";
 
-import { UnauthorizedError, ValidationError } from "@/lib/api/errors";
-import type { PreviewMetadata } from "@/lib/types/import-wizard";
-import type { User } from "@/payload-types";
-
 export { cleanupPreview, loadPreviewMetadata } from "@/lib/import/preview-store";
+export { validateRequest } from "@/lib/import/preview-validation";
 export type {
   AuthConfig,
   ConfigureImportRequest,
@@ -126,35 +121,3 @@ export const ConfigureImportBodySchema = z.object({
     })
     .optional(),
 });
-
-/**
- * Validate business-logic constraints that Zod cannot check.
- *
- * Shape validation (required fields, types, non-empty arrays) is handled
- * by {@link ConfigureImportBodySchema}. This function checks that the preview
- * exists on disk, is not expired, and belongs to the requesting user.
- *
- * Throws {@link ValidationError} or {@link UnauthorizedError} on failure.
- * After a successful call, `previewMeta` is narrowed to non-null.
- */
-export function validateRequest(
-  previewMeta: PreviewMetadata | null,
-  user: User
-): asserts previewMeta is PreviewMetadata {
-  if (!previewMeta) {
-    throw new ValidationError("Preview not found or expired. Please upload the file again.");
-  }
-
-  // Bug 27 fix: reject expired previews
-  if (previewMeta.expiresAt && new Date(previewMeta.expiresAt) < new Date()) {
-    throw new ValidationError("Preview has expired. Please upload the file again.");
-  }
-
-  if (previewMeta.userId !== user.id) {
-    throw new UnauthorizedError("You do not have access to this preview");
-  }
-
-  if (!fs.existsSync(previewMeta.filePath)) {
-    throw new ValidationError("Preview file not found. Please upload the file again.");
-  }
-}

@@ -16,7 +16,7 @@ import { useFilters, useSelectedEvent } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 import { useUIStore } from "@/lib/store";
 
-import { isDataBoundsOutsideViewport, shouldShowZoomToData } from "./map-explorer-helpers";
+import { isDataBoundsOutsideViewport, shouldShowZoomToData } from "./explorer-helpers";
 import { useExplorerQueries } from "./use-explorer-queries";
 import { useExplorerViewport } from "./use-explorer-viewport";
 
