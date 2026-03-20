@@ -460,6 +460,7 @@
     "dedupUpdateExistingDescription": "Vorhandene Ereignisse mit neuen Daten aktualisieren",
     "dedupCreateVersions": "Versionen erstellen",
     "dedupCreateVersionsDescription": "Alte und neue Versionen beibehalten",
+    "idStrategyLocked": "ID-Strategie ist fuer bestehende Datensaetze gesperrt",
     "idField": "ID-Feld",
     "selectColumn": "Spalte auswaehlen...",
     "confidenceAutoDetected": "Automatisch erkannt",

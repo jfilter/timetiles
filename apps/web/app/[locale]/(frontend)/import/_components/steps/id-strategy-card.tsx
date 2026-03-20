@@ -22,6 +22,8 @@ export interface IdStrategyCardProps {
   onDeduplicationChange: (value: string) => void;
   /** Render without Card/CardHeader wrapper (for embedding inside another container) */
   bare?: boolean;
+  /** Disable all controls when importing into an existing dataset */
+  locked?: boolean;
 }
 
 export const IdStrategyCard = ({
@@ -32,6 +34,7 @@ export const IdStrategyCard = ({
   onFieldChange,
   onDeduplicationChange,
   bare = false,
+  locked = false,
 }: Readonly<IdStrategyCardProps>) => {
   const t = useTranslations("Import");
 
@@ -61,7 +64,7 @@ export const IdStrategyCard = ({
           <Label htmlFor="id-strategy" className="text-cartographic-charcoal">
             {t("idGeneration")}
           </Label>
-          <Select value={idStrategy} onValueChange={handleStrategyChange}>
+          <Select value={idStrategy} onValueChange={handleStrategyChange} disabled={locked}>
             <SelectTrigger id="id-strategy" className="h-11">
               <SelectValue />
             </SelectTrigger>
@@ -79,7 +82,7 @@ export const IdStrategyCard = ({
           <Label htmlFor="dedup-strategy" className="text-cartographic-charcoal">
             {t("duplicateHandling")}
           </Label>
-          <Select value={deduplicationStrategy} onValueChange={onDeduplicationChange}>
+          <Select value={deduplicationStrategy} onValueChange={onDeduplicationChange} disabled={locked}>
             <SelectTrigger id="dedup-strategy" className="h-11">
               <SelectValue />
             </SelectTrigger>
@@ -99,7 +102,7 @@ export const IdStrategyCard = ({
           <Label htmlFor="id-field" className="text-cartographic-charcoal">
             {t("idField")}
           </Label>
-          <Select value={idField ?? "__none__"} onValueChange={handleIdFieldChange}>
+          <Select value={idField ?? "__none__"} onValueChange={handleIdFieldChange} disabled={locked}>
             <SelectTrigger id="id-field" className="h-11">
               <SelectValue placeholder={t("selectColumn")} />
             </SelectTrigger>
@@ -114,6 +117,8 @@ export const IdStrategyCard = ({
           </Select>
         </div>
       )}
+
+      {locked && <p className="text-cartographic-navy/70 text-sm italic">{t("idStrategyLocked")}</p>}
     </div>
   );
 

@@ -36,13 +36,26 @@ export const GET = apiRoute({
       }),
     ]);
 
+    // Count events per dataset
+    const datasetIds = datasetsResult.docs.map((ds) => ds.id);
+    const eventCounts = new Map<number, number>();
+
+    if (datasetIds.length > 0) {
+      await Promise.all(
+        datasetIds.map(async (id) => {
+          const count = await payload.count({ collection: "events", where: { dataset: { equals: id } } });
+          eventCounts.set(id, count.totalDocs);
+        })
+      );
+    }
+
     // Group datasets by catalog ID
-    const datasetsByCatalog = new Map<number, Array<{ id: number; name: string }>>();
+    const datasetsByCatalog = new Map<number, Array<{ id: number; name: string; eventCount: number }>>();
     for (const ds of datasetsResult.docs) {
       const catalogId = typeof ds.catalog === "object" && ds.catalog != null ? ds.catalog.id : null;
       if (catalogId != null) {
         const existing = datasetsByCatalog.get(catalogId) ?? [];
-        existing.push({ id: ds.id, name: ds.name });
+        existing.push({ id: ds.id, name: ds.name, eventCount: eventCounts.get(ds.id) ?? 0 });
         datasetsByCatalog.set(catalogId, existing);
       }
     }

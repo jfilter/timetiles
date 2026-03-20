@@ -59,6 +59,12 @@ const deriveLocationMode = (mapping: FieldMapping): LocationMode => {
   return "address";
 };
 
+/** Check whether the active sheet maps to an existing dataset, locking ID strategy controls. */
+const isIdStrategyLocked = (
+  sheetMappings: { sheetIndex: number; datasetId?: number | "new" }[],
+  activeSheetIndex: number
+): boolean => typeof sheetMappings.find((m) => m.sheetIndex === activeSheetIndex)?.datasetId === "number";
+
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
   const t = useTranslations("Import");
   const router = useRouter();
@@ -69,6 +75,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   const activeSheet = sheets.find((s) => s.index === activeSheetIndex);
   const activeMapping = fieldMappings.find((m) => m.sheetIndex === activeSheetIndex);
+  const idStrategyLocked = isIdStrategyLocked(sheetMappings, activeSheetIndex);
   const suggestedMappings = activeSheet?.suggestedMappings;
 
   const [locationMode, setLocationMode] = useState<LocationMode>(() =>
@@ -329,6 +336,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           <div className="pt-2">
             <IdStrategyCard
               bare
+              locked={idStrategyLocked}
               idStrategy={activeMapping.idStrategy}
               idField={activeMapping.idField}
               headers={headers}

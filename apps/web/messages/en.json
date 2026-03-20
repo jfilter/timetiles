@@ -460,6 +460,7 @@
     "dedupUpdateExistingDescription": "Update existing events with new data",
     "dedupCreateVersions": "Create versions",
     "dedupCreateVersionsDescription": "Keep both old and new versions",
+    "idStrategyLocked": "ID strategy is locked for existing datasets",
     "idField": "ID Field",
     "selectColumn": "Select column...",
     "confidenceAutoDetected": "Auto-detected",

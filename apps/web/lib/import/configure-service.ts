@@ -140,20 +140,32 @@ export const processDataset = async (
     return newDataset.id;
   }
 
-  // Bug 14 fix: pass req so Payload hooks and access control know the acting user
-  await payload.update({
-    collection: "datasets",
-    id: sheetMapping.datasetId,
-    data: {
-      fieldMappingOverrides,
-      idStrategy,
-      deduplicationConfig,
-      geoFieldDetection,
-      schemaConfig,
-      ...(transforms ? { importTransforms: transforms as unknown as NonNullable<Dataset["importTransforms"]> } : {}),
-    },
-    req,
+  // Check if dataset has events — if so, preserve existing idStrategy
+  const eventCount = await payload.count({
+    collection: "events",
+    where: { dataset: { equals: sheetMapping.datasetId } },
   });
+
+  const updateData: Record<string, unknown> = {
+    fieldMappingOverrides,
+    deduplicationConfig,
+    geoFieldDetection,
+    schemaConfig,
+    ...(transforms ? { importTransforms: transforms as unknown as NonNullable<Dataset["importTransforms"]> } : {}),
+  };
+
+  // Only update idStrategy if dataset has no events yet
+  if (eventCount.totalDocs === 0) {
+    updateData.idStrategy = idStrategy;
+  } else {
+    logger.info(
+      { datasetId: sheetMapping.datasetId, eventCount: eventCount.totalDocs },
+      "Preserving existing idStrategy — dataset has events"
+    );
+  }
+
+  // Bug 14 fix: pass req so Payload hooks and access control know the acting user
+  await payload.update({ collection: "datasets", id: sheetMapping.datasetId, data: updateData, req });
 
   logger.info(
     { datasetId: sheetMapping.datasetId, sheetIndex: sheetMapping.sheetIndex },
