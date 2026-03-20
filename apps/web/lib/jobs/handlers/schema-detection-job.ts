@@ -92,6 +92,26 @@ const mergeFieldMappings = (
   locationPath: dataset?.fieldMappingOverrides?.locationPath ?? detectedMappings.locationPath,
 });
 
+/**
+ * Fill null field mappings using the dataset's explicit language.
+ * Handles mixed-language files (e.g., English content with German column names).
+ */
+const applyDatasetLanguageFallback = (
+  detectedMappings: ReturnType<typeof toFlatMappings>,
+  fieldStats: Record<string, unknown>,
+  detectedLang: string,
+  datasetLang: string | null | undefined
+): void => {
+  if (!datasetLang || datasetLang === detectedLang) return;
+  const fallbackMappings = detectFlatFieldMappings(
+    fieldStats as Parameters<typeof detectFlatFieldMappings>[0],
+    datasetLang
+  );
+  for (const key of Object.keys(detectedMappings) as Array<keyof typeof detectedMappings>) {
+    detectedMappings[key] ??= fallbackMappings[key];
+  }
+};
+
 // Helper to finalize schema detection using the pluggable SchemaDetectionService
 const finalizeSchemaDetection = async (
   payload: Payload,
@@ -148,16 +168,8 @@ const finalizeSchemaDetection = async (
 
     detectedMappings = toFlatMappings(result.fieldMappings);
 
-    // When the dataset has an explicit language that differs from the auto-detected
-    // content language, fill any null fields using dataset-language-aware detection.
-    // This handles mixed-language files (e.g., English content with German column names).
-    const datasetLang = dataset?.language;
-    if (datasetLang && datasetLang !== result.language.code) {
-      const datasetLangMappings = detectFlatFieldMappings(finalState.fieldStats, datasetLang);
-      for (const key of Object.keys(detectedMappings) as Array<keyof typeof detectedMappings>) {
-        detectedMappings[key] ??= datasetLangMappings[key];
-      }
-    }
+    // Fill unmapped fields using the dataset's explicit language (for mixed-language files)
+    applyDatasetLanguageFallback(detectedMappings, finalState.fieldStats, result.language.code, dataset?.language);
 
     if (result.language.isReliable) {
       detectedLanguage = result.language.code;
