@@ -143,7 +143,9 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       setFile(
         { name: selectedFile.name, size: selectedFile.size, mimeType: selectedFile.type },
         data.sheets,
-        data.previewId
+        data.previewId,
+        undefined,
+        data.configSuggestions
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : t("failedToProcessFile"));
@@ -169,7 +171,8 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         { name: data.fileName, size: data.contentLength, mimeType: data.contentType },
         data.sheets,
         data.previewId,
-        urlInput.trim()
+        urlInput.trim(),
+        data.configSuggestions
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : t("failedToFetchUrl"));

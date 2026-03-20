@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowRight, FileSpreadsheetIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
@@ -141,6 +141,12 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   const selectedCatalog = catalogs.find((c) => c.id === selectedCatalogId);
   const noCatalogSelected = selectedCatalogId === null;
 
+  // Sibling datasets for the "copy config from" dropdown (only for existing catalogs with datasets)
+  const siblingDatasets = useMemo(() => {
+    if (selectedCatalogId === "new" || selectedCatalogId === null) return [];
+    return selectedCatalog?.datasets ?? [];
+  }, [selectedCatalogId, selectedCatalog]);
+
   // Status message for the sticky footer
   const pendingStatusKey = noCatalogSelected ? "selectCatalogToContinue" : "configureDatasetToContinue";
   const statusMessageKey = canProceed ? "readyToContinue" : pendingStatusKey;
@@ -227,22 +233,56 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
             {sheets.length <= 1 ? (
               // Simplified single-sheet view
-              <div className="space-y-2">
-                <Label htmlFor="dataset-name-0" className="text-cartographic-charcoal">
-                  {t("datasetName")}
-                </Label>
-                <Input
-                  id="dataset-name-0"
-                  type="text"
-                  value={sheetMappings[0]?.newDatasetName ?? ""}
-                  onChange={handleSingleSheetNameChange}
-                  placeholder={t("enterDatasetName")}
-                  disabled={noCatalogSelected}
-                />
-                {sheets[0] && (
-                  <p className="text-cartographic-navy/50 font-mono text-xs">
-                    {t("rowsWillBeImported", { count: sheets[0].rowCount.toLocaleString() })}
-                  </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dataset-name-0" className="text-cartographic-charcoal">
+                    {t("datasetName")}
+                  </Label>
+                  <Input
+                    id="dataset-name-0"
+                    type="text"
+                    value={sheetMappings[0]?.newDatasetName ?? ""}
+                    onChange={handleSingleSheetNameChange}
+                    placeholder={t("enterDatasetName")}
+                    disabled={noCatalogSelected}
+                  />
+                  {sheets[0] && (
+                    <p className="text-cartographic-navy/50 font-mono text-xs">
+                      {t("rowsWillBeImported", { count: sheets[0].rowCount.toLocaleString() })}
+                    </p>
+                  )}
+                </div>
+
+                {/* Copy config from sibling dataset */}
+                {siblingDatasets.length > 0 && sheetMappings[0]?.datasetId === "new" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="copy-config-from" className="text-cartographic-navy/70">
+                      {t("copyConfigFrom")}
+                    </Label>
+                    <Select
+                      value=""
+                      onValueChange={(value) => {
+                        if (value) {
+                          const suggestion = state.configSuggestions.find((s) => s.datasetId === Number(value));
+                          if (suggestion) {
+                            setSheetMapping(0, { similarityScore: suggestion.score / 100 });
+                          }
+                        }
+                      }}
+                      disabled={noCatalogSelected}
+                    >
+                      <SelectTrigger id="copy-config-from" className="h-11">
+                        <SelectValue placeholder={t("noConfigToCopy")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {siblingDatasets.map((ds) => (
+                          <SelectItem key={ds.id} value={String(ds.id)}>
+                            {ds.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
             ) : (

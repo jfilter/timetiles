@@ -37,6 +37,7 @@ const baseWizardState: WizardState = {
   deduplicationStrategy: "skip",
   geocodingEnabled: true,
   scheduleConfig: null,
+  configSuggestions: [],
   importFileId: null,
   scheduledImportId: null,
   error: null,
@@ -125,7 +126,9 @@ describe.sequential("StepUpload", () => {
         expect(mockSetFile).toHaveBeenCalledWith(
           { name: "events.csv", size: expect.any(Number), mimeType: "text/csv" },
           apiSuccess.sheets,
-          "preview-abc123"
+          "preview-abc123",
+          undefined,
+          undefined
         );
       });
     });
@@ -237,7 +240,8 @@ describe.sequential("StepUpload", () => {
           { name: "remote-data.csv", size: 2048, mimeType: "text/csv" },
           urlApiSuccess.sheets,
           "preview-abc123",
-          "https://example.com/data.csv"
+          "https://example.com/data.csv",
+          undefined
         );
       });
     });

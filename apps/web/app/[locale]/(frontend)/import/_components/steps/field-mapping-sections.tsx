@@ -10,11 +10,18 @@
 "use client";
 
 import { Checkbox, Label, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@timetiles/ui";
+import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircleIcon, MapPinIcon, SparklesIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { ConfidenceLevel, FieldMapping, SheetInfo, SuggestedMappings } from "@/lib/types/import-wizard";
+import type {
+  ConfidenceLevel,
+  ConfigSuggestion,
+  FieldMapping,
+  SheetInfo,
+  SuggestedMappings,
+} from "@/lib/types/import-wizard";
 
 import { FieldSelect } from "./field-select";
 
@@ -295,6 +302,66 @@ export const CompletionStatusBar = ({ isComplete, remainingCount }: Readonly<Com
       ) : (
         t("requiredFieldsRemaining", { count: remainingCount })
       )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// ConfigSuggestionBanner
+// ---------------------------------------------------------------------------
+
+interface ConfigSuggestionBannerProps {
+  suggestion: ConfigSuggestion;
+  isApplied: boolean;
+  onApply: () => void;
+  onReset: () => void;
+  onIgnore: () => void;
+}
+
+export const ConfigSuggestionBanner = ({
+  suggestion,
+  isApplied,
+  onApply,
+  onReset,
+  onIgnore,
+}: Readonly<ConfigSuggestionBannerProps>) => {
+  const t = useTranslations("Import");
+
+  if (isApplied) {
+    return (
+      <div
+        className="border-cartographic-forest/20 bg-cartographic-forest/5 flex items-center justify-between rounded-sm border px-4 py-3"
+        data-testid="config-suggestion-applied"
+      >
+        <div className="flex items-center gap-2">
+          <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />
+          <span className="text-cartographic-forest text-sm">
+            {t("configLoadedFromDataset", { name: suggestion.datasetName })}
+          </span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onReset}>
+          {t("resetToAutoDetected")}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="border-cartographic-blue/20 bg-cartographic-blue/5 flex items-center justify-between rounded-sm border px-4 py-3"
+      data-testid="config-suggestion-banner"
+    >
+      <span className="text-cartographic-blue text-sm">
+        {t("similarConfig", { name: suggestion.datasetName, score: suggestion.score })}
+      </span>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={onIgnore}>
+          {t("ignoreSuggestion")}
+        </Button>
+        <Button size="sm" onClick={onApply}>
+          {t("useThisConfig")}
+        </Button>
+      </div>
     </div>
   );
 };

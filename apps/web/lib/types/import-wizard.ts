@@ -156,6 +156,30 @@ export interface PreviewMetadata {
   authConfig?: AuthConfig;
 }
 
+/** Config from an existing dataset suggested for reuse */
+export interface ConfigSuggestion {
+  datasetId: number;
+  datasetName: string;
+  catalogName: string;
+  score: number;
+  matchedColumns: string[];
+  config: {
+    fieldMappingOverrides: {
+      titlePath?: string | null;
+      descriptionPath?: string | null;
+      locationNamePath?: string | null;
+      timestampPath?: string | null;
+      latitudePath?: string | null;
+      longitudePath?: string | null;
+      locationPath?: string | null;
+    };
+    importTransforms?: unknown[];
+    idStrategy?: { type?: string; externalIdPath?: string | null; duplicateStrategy?: string | null };
+    deduplicationConfig?: { strategy?: string | null };
+    geocodingEnabled?: boolean;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // API request/response types for import wizard endpoints
 // ---------------------------------------------------------------------------
@@ -164,6 +188,7 @@ export interface PreviewMetadata {
 export interface PreviewSchemaUploadResponse {
   sheets: SheetInfo[];
   previewId: string;
+  configSuggestions?: ConfigSuggestion[];
 }
 
 /** Request body for POST /api/import/preview-schema/url */
@@ -180,6 +205,7 @@ export interface PreviewSchemaUrlResponse {
   fileName: string;
   contentLength: number;
   contentType: string;
+  configSuggestions?: ConfigSuggestion[];
 }
 
 /** Response from POST /api/import/configure */

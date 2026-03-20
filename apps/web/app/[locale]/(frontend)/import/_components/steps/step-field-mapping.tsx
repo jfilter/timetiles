@@ -23,12 +23,13 @@ import {
   WorkflowIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import { storeWizardStateForFlowEditor } from "@/lib/import/mapping-transfer";
 import {
   type ConfidenceLevel,
+  type ConfigSuggestion,
   type FieldMapping,
   isFieldMappingComplete,
   type SuggestedMappings,
@@ -38,6 +39,7 @@ import { TransformList } from "../transforms/transform-list";
 import { useWizard } from "../wizard-context";
 import {
   CompletionStatusBar,
+  ConfigSuggestionBanner,
   DataPreviewSection,
   type FieldSuggestionResult,
   LanguageDetectionBanner,
@@ -53,6 +55,30 @@ export interface StepFieldMappingProps {
   className?: string;
 }
 
+/** Manage config suggestion state (applied/dismissed) with auto-apply for existing datasets. */
+const useConfigSuggestion = (
+  bestSuggestion: ConfigSuggestion | null,
+  sheetMappings: { sheetIndex: number; datasetId?: number | "new" }[],
+  activeSheetIndex: number,
+  applyDatasetConfig: (sheetIndex: number, config: ConfigSuggestion["config"]) => void
+) => {
+  const [dismissed, setDismissed] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const appliedRef = useRef(false);
+
+  useEffect(() => {
+    if (appliedRef.current || !bestSuggestion) return;
+    const mapping = sheetMappings.find((m) => m.sheetIndex === activeSheetIndex);
+    if (typeof mapping?.datasetId === "number") {
+      applyDatasetConfig(activeSheetIndex, bestSuggestion.config);
+      appliedRef.current = true;
+      setApplied(true);
+    }
+  }, [activeSheetIndex, sheetMappings, bestSuggestion, applyDatasetConfig]);
+
+  return { dismissed, applied, setDismissed, setApplied };
+};
+
 /** Derive initial location mode from existing mapping data. */
 const deriveLocationMode = (mapping: FieldMapping): LocationMode => {
   if (mapping.latitudeField ?? mapping.longitudeField) return "coordinates";
@@ -65,10 +91,20 @@ const isIdStrategyLocked = (
   activeSheetIndex: number
 ): boolean => typeof sheetMappings.find((m) => m.sheetIndex === activeSheetIndex)?.datasetId === "number";
 
+// oxlint-disable-next-line eslint(complexity) -- UI component with many conditional rendering branches for multi-sheet, suggestions, and location modes
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
   const t = useTranslations("Import");
   const router = useRouter();
-  const { state, nextStep, canProceed, setFieldMapping, setImportOptions, setTransforms } = useWizard();
+  const {
+    state,
+    nextStep,
+    canProceed,
+    setFieldMapping,
+    setImportOptions,
+    setTransforms,
+    applyDatasetConfig,
+    resetToAutoDetected,
+  } = useWizard();
   const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
 
   const [activeSheetIndex, setActiveSheetIndex] = useState(sheets[0]?.index ?? 0);
@@ -77,6 +113,10 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   const activeMapping = fieldMappings.find((m) => m.sheetIndex === activeSheetIndex);
   const idStrategyLocked = isIdStrategyLocked(sheetMappings, activeSheetIndex);
   const suggestedMappings = activeSheet?.suggestedMappings;
+
+  // Config suggestion state
+  const bestSuggestion = state.configSuggestions.find((s) => s.score >= 60) ?? null;
+  const suggestionState = useConfigSuggestion(bestSuggestion, sheetMappings, activeSheetIndex, applyDatasetConfig);
 
   const [locationMode, setLocationMode] = useState<LocationMode>(() =>
     activeMapping ? deriveLocationMode(activeMapping) : "address"
@@ -223,6 +263,22 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
       </div>
 
       <LanguageDetectionBanner suggestedMappings={suggestedMappings} />
+
+      {bestSuggestion && !suggestionState.dismissed && (
+        <ConfigSuggestionBanner
+          suggestion={bestSuggestion}
+          isApplied={suggestionState.applied}
+          onApply={() => {
+            applyDatasetConfig(activeSheetIndex, bestSuggestion.config);
+            suggestionState.setApplied(true);
+          }}
+          onReset={() => {
+            resetToAutoDetected(activeSheetIndex);
+            suggestionState.setApplied(false);
+          }}
+          onIgnore={() => suggestionState.setDismissed(true)}
+        />
+      )}
 
       <CompletionStatusBar
         isComplete={isComplete}

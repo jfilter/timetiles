@@ -10,7 +10,7 @@
 import { createFieldMappingFromSuggestions } from "@/lib/import/field-mapping-utils";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
 import type { ImportTransform } from "@/lib/types/import-transforms";
-import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
+import type { ConfigSuggestion, FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 
 // Types
 export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -58,6 +58,9 @@ export interface WizardState {
   /** Schedule configuration (only available if sourceUrl is set) */
   scheduleConfig: ScheduleConfig | null;
 
+  // Config suggestions from existing datasets
+  configSuggestions: ConfigSuggestion[];
+
   // Step 6: Processing
   importFileId: number | null;
   /** ID of the created scheduled import (if schedule was created) */
@@ -82,6 +85,7 @@ export const initialState: WizardState = {
   deduplicationStrategy: "skip",
   geocodingEnabled: true,
   scheduleConfig: null,
+  configSuggestions: [],
   importFileId: null,
   scheduledImportId: null,
   error: null,
@@ -92,7 +96,14 @@ export type WizardAction =
   | { type: "SET_STEP"; step: WizardStep }
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
-  | { type: "SET_FILE"; file: WizardState["file"]; sheets: SheetInfo[]; previewId: string; sourceUrl?: string }
+  | {
+      type: "SET_FILE";
+      file: WizardState["file"];
+      sheets: SheetInfo[];
+      previewId: string;
+      sourceUrl?: string;
+      configSuggestions?: ConfigSuggestion[];
+    }
   | { type: "SET_SOURCE_URL"; sourceUrl: string | null; authConfig?: UrlAuthConfig | null }
   | { type: "SET_SCHEDULE_CONFIG"; scheduleConfig: ScheduleConfig | null }
   | { type: "CLEAR_FILE" }
@@ -109,7 +120,9 @@ export type WizardAction =
   | { type: "SET_ERROR"; error: string | null }
   | { type: "COMPLETE" }
   | { type: "RESET" }
-  | { type: "RESTORE"; state: Partial<WizardState> };
+  | { type: "RESTORE"; state: Partial<WizardState> }
+  | { type: "APPLY_DATASET_CONFIG"; sheetIndex: number; config: ConfigSuggestion["config"] }
+  | { type: "RESET_TO_AUTO_DETECTED"; sheetIndex: number };
 
 // Step definitions — single source of truth for titles and labels
 export const WIZARD_STEPS: ReadonlyArray<{ step: WizardStep; title: string; label: string; shortLabel: string }> = [
@@ -156,6 +169,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
           sheets: action.sheets,
           previewId: action.previewId,
           sourceUrl: action.sourceUrl ?? state.sourceUrl, // Preserve or update source URL
+          configSuggestions: action.configSuggestions ?? [],
           // Initialize sheet mappings for each sheet
           sheetMappings: action.sheets.map((sheet) => ({
             sheetIndex: sheet.index,
@@ -188,6 +202,7 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
           sheetMappings: [],
           fieldMappings: [],
           transforms: {},
+          configSuggestions: [],
           scheduleConfig: null,
         };
 
@@ -248,6 +263,63 @@ export const wizardReducer = (state: WizardState, action: WizardAction): WizardS
 
       case "RESTORE":
         return { ...state, ...action.state };
+
+      case "APPLY_DATASET_CONFIG": {
+        const { sheetIndex, config } = action;
+        const overrides = config.fieldMappingOverrides;
+
+        // Update field mappings for the target sheet
+        const updatedFieldMappings = [...state.fieldMappings];
+        const fmIndex = updatedFieldMappings.findIndex((m) => m.sheetIndex === sheetIndex);
+        const currentFm = updatedFieldMappings[fmIndex];
+        if (fmIndex >= 0 && currentFm) {
+          updatedFieldMappings[fmIndex] = {
+            ...currentFm,
+            titleField: overrides.titlePath ?? currentFm.titleField,
+            descriptionField: overrides.descriptionPath ?? currentFm.descriptionField,
+            locationNameField: overrides.locationNamePath ?? currentFm.locationNameField,
+            dateField: overrides.timestampPath ?? currentFm.dateField,
+            locationField: overrides.locationPath ?? currentFm.locationField,
+            latitudeField: overrides.latitudePath ?? currentFm.latitudeField,
+            longitudeField: overrides.longitudePath ?? currentFm.longitudeField,
+            idStrategy: (config.idStrategy?.type as FieldMapping["idStrategy"]) ?? currentFm.idStrategy,
+            idField: config.idStrategy?.externalIdPath ?? currentFm.idField,
+          };
+        }
+
+        // Apply transforms if present
+        const updatedTransforms = { ...state.transforms };
+        if (config.importTransforms && config.importTransforms.length > 0) {
+          updatedTransforms[sheetIndex] = config.importTransforms as ImportTransform[];
+        }
+
+        return {
+          ...state,
+          fieldMappings: updatedFieldMappings,
+          transforms: updatedTransforms,
+          deduplicationStrategy:
+            (config.deduplicationConfig?.strategy as WizardState["deduplicationStrategy"]) ??
+            state.deduplicationStrategy,
+          geocodingEnabled: config.geocodingEnabled ?? state.geocodingEnabled,
+        };
+      }
+
+      case "RESET_TO_AUTO_DETECTED": {
+        const sheet = state.sheets.find((s) => s.index === action.sheetIndex);
+        const resetFieldMappings = [...state.fieldMappings];
+        const resetIndex = resetFieldMappings.findIndex((m) => m.sheetIndex === action.sheetIndex);
+        if (resetIndex >= 0 && sheet) {
+          resetFieldMappings[resetIndex] = createFieldMappingFromSuggestions(
+            action.sheetIndex,
+            sheet.suggestedMappings?.mappings
+          );
+        }
+
+        const resetTransforms = { ...state.transforms };
+        delete resetTransforms[action.sheetIndex];
+
+        return { ...state, fieldMappings: resetFieldMappings, transforms: resetTransforms };
+      }
 
       default:
         return state;

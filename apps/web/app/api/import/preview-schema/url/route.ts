@@ -22,6 +22,7 @@ import { createLogger, logError } from "@/lib/logger";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
 import {
+  findConfigSuggestionsForUser,
   getPreviewDir,
   MAX_FILE_SIZE,
   parseFileSheets,
@@ -56,7 +57,7 @@ export const POST = apiRoute({
   auth: "required",
   rateLimit: { type: "FILE_UPLOAD", keyPrefix: (u) => `preview-url:${u!.id}` },
   body: UrlPreviewBodySchema,
-  handler: async ({ body, user }) => {
+  handler: async ({ body, user, payload }) => {
     const { sourceUrl, authConfig } = body;
 
     // Additional SSRF validation beyond Zod's z.string().url()
@@ -149,12 +150,17 @@ export const POST = apiRoute({
       sourceUrl,
     });
 
+    // Find config suggestions from user's existing datasets
+    const allHeaders = sheets.flatMap((s) => s.headers);
+    const configSuggestions = await findConfigSuggestionsForUser(payload, user.id, allHeaders);
+
     logger.info(
       {
         previewId,
         sheetsCount: sheets.length,
         totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
         isUrlSource: true,
+        configSuggestionsCount: configSuggestions.length,
       },
       "Preview schema generated"
     );
@@ -166,6 +172,7 @@ export const POST = apiRoute({
       fileName: originalName,
       contentLength: fileSize,
       contentType: mimeType,
+      configSuggestions,
     };
   },
 });

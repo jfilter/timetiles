@@ -48,7 +48,7 @@ import { createContext, useCallback, useContext, useMemo, useReducer } from "rea
 
 import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import type { ImportTransform } from "@/lib/types/import-transforms";
-import type { FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
+import type { ConfigSuggestion, FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
 
 import { useWizardPersistence } from "./use-wizard-persistence";
 import { clearStorage } from "./use-wizard-storage";
@@ -74,7 +74,13 @@ interface WizardContextValue {
   goToStep: (step: WizardStep) => void;
   nextStep: () => void;
   prevStep: () => void;
-  setFile: (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => void;
+  setFile: (
+    file: WizardState["file"],
+    sheets: SheetInfo[],
+    previewId: string,
+    sourceUrl?: string,
+    configSuggestions?: ConfigSuggestion[]
+  ) => void;
   setSourceUrl: (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => void;
   setScheduleConfig: (config: ScheduleConfig | null) => void;
   clearFile: () => void;
@@ -88,6 +94,8 @@ interface WizardContextValue {
   }) => void;
   startProcessing: (importFileId: number, scheduledImportId?: number) => void;
   setError: (error: string | null) => void;
+  applyDatasetConfig: (sheetIndex: number, config: ConfigSuggestion["config"]) => void;
+  resetToAutoDetected: (sheetIndex: number) => void;
   complete: () => void;
   reset: () => void;
   // Computed
@@ -128,8 +136,14 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
   const prevStep = useCallback(() => dispatch({ type: "PREV_STEP" }), [dispatch]);
 
   const setFile = useCallback(
-    (file: WizardState["file"], sheets: SheetInfo[], previewId: string, sourceUrl?: string) => {
-      dispatch({ type: "SET_FILE", file, sheets, previewId, sourceUrl });
+    (
+      file: WizardState["file"],
+      sheets: SheetInfo[],
+      previewId: string,
+      sourceUrl?: string,
+      configSuggestions?: ConfigSuggestion[]
+    ) => {
+      dispatch({ type: "SET_FILE", file, sheets, previewId, sourceUrl, configSuggestions });
     },
     [dispatch]
   );
@@ -194,6 +208,20 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
 
   const setError = useCallback((error: string | null) => dispatch({ type: "SET_ERROR", error }), [dispatch]);
 
+  const applyDatasetConfig = useCallback(
+    (sheetIndex: number, config: ConfigSuggestion["config"]) => {
+      dispatch({ type: "APPLY_DATASET_CONFIG", sheetIndex, config });
+    },
+    [dispatch]
+  );
+
+  const resetToAutoDetected = useCallback(
+    (sheetIndex: number) => {
+      dispatch({ type: "RESET_TO_AUTO_DETECTED", sheetIndex });
+    },
+    [dispatch]
+  );
+
   const complete = useCallback(() => {
     clearStorage();
     dispatch({ type: "COMPLETE" });
@@ -229,6 +257,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setImportOptions,
       startProcessing,
       setError,
+      applyDatasetConfig,
+      resetToAutoDetected,
       complete,
       reset,
       canProceed,
@@ -251,6 +281,8 @@ export const WizardProvider = ({ children, initialAuth }: Readonly<WizardProvide
       setImportOptions,
       startProcessing,
       setError,
+      applyDatasetConfig,
+      resetToAutoDetected,
       complete,
       reset,
       canProceed,

@@ -517,7 +517,14 @@
     "uploadFileToStart": "Laden Sie eine Datei hoch, um fortzufahren",
     "fileReadyToContinue": "Datei bereit",
     "readyToStart": "Bereit zum Starten",
-    "configuredTransforms": "Transformationen"
+    "configuredTransforms": "Transformationen",
+    "configLoadedFromDataset": "Konfiguration geladen von \"{name}\"",
+    "resetToAutoDetected": "Auf automatische Erkennung zuruecksetzen",
+    "copyConfigFrom": "Konfiguration kopieren von",
+    "noConfigToCopy": "Keine (neu starten)",
+    "similarConfig": "Aehnlich wie \"{name}\" ({score}% Uebereinstimmung)",
+    "useThisConfig": "Diese Konfiguration verwenden",
+    "ignoreSuggestion": "Ignorieren"
   },
   "Schedules": {
     "title": "Geplante Importe",

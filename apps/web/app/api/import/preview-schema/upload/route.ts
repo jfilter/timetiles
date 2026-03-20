@@ -20,6 +20,7 @@ import { createLogger, logError } from "@/lib/logger";
 import {
   ALLOWED_MIME_TYPES,
   FILE_EXTENSION_REGEX,
+  findConfigSuggestionsForUser,
   getPreviewDir,
   MAX_FILE_SIZE,
   parseFileSheets,
@@ -38,7 +39,7 @@ const logger = createLogger("api-preview-schema-upload");
 export const POST = apiRoute({
   auth: "required",
   rateLimit: { type: "FILE_UPLOAD", keyPrefix: (u) => `preview-upload:${u!.id}` },
-  handler: async ({ req, user }) => {
+  handler: async ({ req, user, payload }) => {
     const formData = await req.formData();
     const file = formData.get("file");
 
@@ -90,16 +91,21 @@ export const POST = apiRoute({
       fileSize: file.size,
     });
 
+    // Find config suggestions from user's existing datasets
+    const allHeaders = sheets.flatMap((s) => s.headers);
+    const configSuggestions = await findConfigSuggestionsForUser(payload, user.id, allHeaders);
+
     logger.info(
       {
         previewId,
         sheetsCount: sheets.length,
         totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
         isUrlSource: false,
+        configSuggestionsCount: configSuggestions.length,
       },
       "Preview schema generated"
     );
 
-    return { previewId, sheets };
+    return { previewId, sheets, configSuggestions };
   },
 });

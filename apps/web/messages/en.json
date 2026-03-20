@@ -517,7 +517,14 @@
     "uploadFileToStart": "Upload a file to continue",
     "fileReadyToContinue": "File ready",
     "readyToStart": "Ready to start import",
-    "configuredTransforms": "Transforms"
+    "configuredTransforms": "Transforms",
+    "configLoadedFromDataset": "Config loaded from \"{name}\"",
+    "resetToAutoDetected": "Reset to auto-detected",
+    "copyConfigFrom": "Copy config from",
+    "noConfigToCopy": "None (start fresh)",
+    "similarConfig": "Similar to \"{name}\" ({score}% match)",
+    "useThisConfig": "Use this config",
+    "ignoreSuggestion": "Ignore"
   },
   "Schedules": {
     "title": "Scheduled Imports",

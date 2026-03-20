@@ -218,3 +218,49 @@ export const parseFileSheets = (filePath: string, fileExtension: string): SheetI
   // xlsx library handles .xls, .xlsx, and .ods files
   return parseExcelPreview(filePath);
 };
+
+// ---------------------------------------------------------------------------
+// Config suggestion helpers
+// ---------------------------------------------------------------------------
+
+import type { Payload } from "payload";
+
+import { findConfigSuggestions } from "@/lib/import/config-matcher";
+import type { ConfigSuggestion } from "@/lib/types/import-wizard";
+
+/**
+ * Query the user's datasets and find config suggestions matching the given headers.
+ *
+ * Fetches datasets owned by the user (via catalog.createdBy) and delegates
+ * matching to the pure `findConfigSuggestions` function.
+ */
+export const findConfigSuggestionsForUser = async (
+  payload: Payload,
+  userId: number,
+  allHeaders: string[]
+): Promise<ConfigSuggestion[]> => {
+  const datasetsResult = await payload.find({
+    collection: "datasets",
+    where: { "catalog.createdBy": { equals: userId } },
+    limit: 100,
+    pagination: false,
+    depth: 1, // Need catalog populated for name
+    select: {
+      id: true,
+      name: true,
+      catalog: true,
+      fieldMappingOverrides: true,
+      importTransforms: true,
+      idStrategy: true,
+      deduplicationConfig: true,
+      geoFieldDetection: true,
+    },
+  });
+
+  const datasets = datasetsResult.docs.map((ds) => ({
+    ...ds,
+    catalogName: ds.catalog && typeof ds.catalog === "object" ? ds.catalog.name : "",
+  }));
+
+  return findConfigSuggestions(allHeaders, datasets);
+};
