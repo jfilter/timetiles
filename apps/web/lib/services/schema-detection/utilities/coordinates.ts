@@ -9,7 +9,7 @@
  * @category Utilities
  */
 
-import type { FieldMapping, FieldStatistics, GeoFieldMapping } from "../types";
+import type { DetectionOptions, FieldMapping, FieldStatistics, GeoFieldMapping } from "../types";
 import {
   ADDRESS_PATTERNS,
   COMBINED_COORDINATE_PATTERNS,
@@ -127,26 +127,51 @@ const findCombinedCoordinateField = (
 };
 
 /** Find an address/location field for geocoding. */
-const findLocationField = (fieldStats: Record<string, FieldStatistics>): FieldMapping | null => {
+const findLocationField = (
+  fieldStats: Record<string, FieldStatistics>,
+  effectiveAddressPatterns: RegExp[]
+): FieldMapping | null => {
   for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const fieldName = fieldPath.split(".").pop() ?? "";
-    const matchesPattern = ADDRESS_PATTERNS.some((pattern) => pattern.test(fieldName));
+    const matchesPattern = effectiveAddressPatterns.some((pattern) => pattern.test(fieldName));
     const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
     if (matchesPattern && hasStringType) {
-      const patternIndex = ADDRESS_PATTERNS.findIndex((p) => p.test(fieldName));
-      const confidence = 0.5 + (1 - patternIndex / ADDRESS_PATTERNS.length) * 0.5;
+      const patternIndex = effectiveAddressPatterns.findIndex((p) => p.test(fieldName));
+      const confidence = 0.5 + (1 - patternIndex / effectiveAddressPatterns.length) * 0.5;
       return { path: fieldPath, confidence };
     }
   }
   return null;
 };
 
-/** Detect geo field mappings. */
-export const detectGeoFields = (fieldStats: Record<string, FieldStatistics>): GeoFieldMapping | null => {
-  const latitude = findCoordinateField(fieldStats, LATITUDE_PATTERNS, COORDINATE_BOUNDS.latitude);
-  const longitude = findCoordinateField(fieldStats, LONGITUDE_PATTERNS, COORDINATE_BOUNDS.longitude);
-  const locationField = findLocationField(fieldStats) ?? undefined;
+/** Build an effective pattern list: merge custom patterns with defaults, or replace them. */
+const buildEffectivePatterns = (defaults: readonly RegExp[], custom?: RegExp[], replace?: boolean): RegExp[] => {
+  if (!custom) return [...defaults];
+  return replace ? [...custom] : [...custom, ...defaults];
+};
 
+/** Build effective geo options from DetectionOptions. */
+const buildGeoConfig = (options?: DetectionOptions) => ({
+  latPatterns: buildEffectivePatterns(LATITUDE_PATTERNS, options?.latitudePatterns, options?.replaceCoordinatePatterns),
+  lngPatterns: buildEffectivePatterns(
+    LONGITUDE_PATTERNS,
+    options?.longitudePatterns,
+    options?.replaceCoordinatePatterns
+  ),
+  addrPatterns: buildEffectivePatterns(ADDRESS_PATTERNS, options?.addressPatterns, options?.replaceAddressPatterns),
+  bounds: {
+    latitude: options?.coordinateBounds?.latitude ?? COORDINATE_BOUNDS.latitude,
+    longitude: options?.coordinateBounds?.longitude ?? COORDINATE_BOUNDS.longitude,
+  },
+});
+
+/** Build a GeoFieldMapping result from detected fields. */
+const buildGeoResult = (
+  latitude: FieldMapping | null,
+  longitude: FieldMapping | null,
+  locationField: FieldMapping | undefined,
+  fieldStats: Record<string, FieldStatistics>
+): GeoFieldMapping | null => {
   if (latitude && longitude) {
     const avgConfidence = (latitude.confidence + longitude.confidence) / 2;
     return { type: "separate", confidence: avgConfidence, latitude, longitude, locationField };
@@ -178,4 +203,19 @@ export const detectGeoFields = (fieldStats: Record<string, FieldStatistics>): Ge
   }
 
   return null;
+};
+
+/** Detect geo field mappings. */
+export const detectGeoFields = (
+  fieldStats: Record<string, FieldStatistics>,
+  options?: DetectionOptions
+): GeoFieldMapping | null => {
+  if (options?.skip?.coordinates) return null;
+
+  const config = buildGeoConfig(options);
+  const latitude = findCoordinateField(fieldStats, config.latPatterns, config.bounds.latitude);
+  const longitude = findCoordinateField(fieldStats, config.lngPatterns, config.bounds.longitude);
+  const locationField = findLocationField(fieldStats, config.addrPatterns) ?? undefined;
+
+  return buildGeoResult(latitude, longitude, locationField, fieldStats);
 };

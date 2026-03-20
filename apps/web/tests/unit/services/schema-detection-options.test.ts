@@ -12,18 +12,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
-import type {
-  DetectionContext,
-  DetectionOptions,
-  DetectionResult,
-  FieldMappingsResult,
-  LanguageResult,
-  PatternResult,
-  ValidatorConfig,
-} from "@/lib/services/schema-detection/types";
+import type { DetectionContext, DetectionOptions, LanguageResult } from "@/lib/services/schema-detection/types";
 import { detectFieldMappings } from "@/lib/services/schema-detection/utilities/patterns";
 import { detectGeoFields } from "@/lib/services/schema-detection/utilities/coordinates";
-import { detectEnumFields, detectIdFields, detectPatterns } from "@/lib/services/schema-detection/utilities/geo";
+import { detectEnumFields, detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
 import { createDefaultDetector, mergeDetectionOptions } from "@/lib/services/schema-detection/detectors";
 
 // ---------------------------------------------------------------------------
@@ -963,7 +955,7 @@ describe("DetectionOptions: mergeDetectionOptions", () => {
     // Dataset patterns should come first (higher priority)
     const titlePatterns = result.fieldPatterns?.title?.eng;
     expect(titlePatterns).toBeDefined();
-    expect(titlePatterns!.length).toBe(2);
+    expect(titlePatterns!).toHaveLength(2);
     expect(titlePatterns![0]!.source).toBe("^headline$");
     expect(titlePatterns![1]!.source).toBe("^heading$");
   });
@@ -1077,7 +1069,7 @@ describe("DetectionOptions: mergeDetectionOptions", () => {
 
     const patterns = result.latitudePatterns;
     expect(patterns).toBeDefined();
-    expect(patterns!.length).toBe(2);
+    expect(patterns!).toHaveLength(2);
     // Dataset pattern should come first (higher priority)
     expect(patterns![0]!.source).toBe("^BREEDTEGRAAD$");
     expect(patterns![1]!.source).toBe("^breitengrad$");

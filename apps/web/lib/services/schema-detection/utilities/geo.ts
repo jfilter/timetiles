@@ -8,7 +8,7 @@
  * @category Utilities
  */
 
-import type { FieldStatistics, PatternResult } from "../types";
+import type { DetectionOptions, FieldStatistics, PatternResult } from "../types";
 
 /**
  * ID field name patterns.
@@ -18,14 +18,23 @@ const ID_PATTERNS = [/^id$/i, /_id$/i, /^uuid$/i, /^guid$/i, /^key$/i, /_key$/i]
 /**
  * Detects potential ID fields based on naming patterns and characteristics.
  */
-export const detectIdFields = (fieldStats: Record<string, FieldStatistics>): string[] => {
+export const detectIdFields = (fieldStats: Record<string, FieldStatistics>, options?: DetectionOptions): string[] => {
+  if (options?.skip?.ids) return [];
+
+  // Build effective ID patterns
+  const effectivePatterns = options?.idPatterns
+    ? options.replaceIdPatterns
+      ? [...options.idPatterns]
+      : [...options.idPatterns, ...ID_PATTERNS]
+    : ID_PATTERNS;
+
   const idFields: string[] = [];
 
   for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const fieldName = fieldPath.split(".").pop() ?? "";
 
     // Check naming patterns
-    const matchesPattern = ID_PATTERNS.some((pattern) => pattern.test(fieldName));
+    const matchesPattern = effectivePatterns.some((pattern) => pattern.test(fieldName));
 
     // Check characteristics: unique values and appropriate type
     const hasIdCharacteristics =
@@ -48,8 +57,10 @@ export const detectIdFields = (fieldStats: Record<string, FieldStatistics>): str
  */
 export const detectEnumFields = (
   fieldStats: Record<string, FieldStatistics>,
-  config: { enumThreshold?: number; enumMode?: "count" | "percentage" } = {}
+  config: { enumThreshold?: number; enumMode?: "count" | "percentage" } | DetectionOptions = {}
 ): string[] => {
+  if ("skip" in config && config.skip?.enums) return [];
+
   const { enumThreshold = 50, enumMode = "count" } = config;
   const enumFields: string[] = [];
 
@@ -76,9 +87,20 @@ export const detectEnumFields = (
  */
 export const detectPatterns = (
   fieldStats: Record<string, FieldStatistics>,
-  config?: { enumThreshold?: number; enumMode?: "count" | "percentage" }
+  config?: { enumThreshold?: number; enumMode?: "count" | "percentage" },
+  options?: DetectionOptions
 ): PatternResult => {
-  return { idFields: detectIdFields(fieldStats), enumFields: detectEnumFields(fieldStats, config) };
+  // When options are provided, merge their enum settings with config
+  const enumConfig: DetectionOptions | { enumThreshold?: number; enumMode?: "count" | "percentage" } | undefined =
+    options
+      ? {
+          ...options,
+          enumThreshold: options.enumThreshold ?? config?.enumThreshold,
+          enumMode: options.enumMode ?? config?.enumMode,
+        }
+      : config;
+
+  return { idFields: detectIdFields(fieldStats, options), enumFields: detectEnumFields(fieldStats, enumConfig) };
 };
 
 /**

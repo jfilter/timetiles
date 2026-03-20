@@ -149,6 +149,74 @@ export interface DetectorConfig {
 }
 
 /**
+ * Configuration for overriding built-in field validators.
+ */
+export interface ValidatorConfig {
+  /** Minimum string percentage threshold (overrides per-field-type defaults like 0.8 for title). */
+  minStringPct?: number;
+  /** Ideal length range [min, max] for full score. */
+  idealLengthRange?: [number, number];
+  /** Acceptable length range [min, max] for partial score. */
+  acceptableLengthRange?: [number, number];
+}
+
+/**
+ * Options to customize schema detection behavior.
+ *
+ * All options are optional. When omitted, detection uses built-in defaults.
+ * Options can be passed to `createDefaultDetector()` or individual utility functions.
+ */
+export interface DetectionOptions {
+  /** Force a specific ISO 639-3 language code (skips language detection). */
+  language?: string;
+  /** Additional languages to check alongside detected language. */
+  additionalLanguages?: string[];
+  /** Confidence threshold; below this the result is marked unreliable. */
+  languageConfidenceThreshold?: number;
+  /** Fully replace the built-in language detector. */
+  customLanguageDetector?: (sampleData: Record<string, unknown>[], headers: string[]) => LanguageResult;
+  /** Extra field-name patterns keyed by field type then language code. */
+  fieldPatterns?: Partial<Record<string, Partial<Record<string, RegExp[]>>>>;
+  /** Field types whose default patterns should be replaced (not appended) by fieldPatterns. */
+  replacePatterns?: string[];
+  /** Scoring weights [patternWeight, validationWeight] (default [0.6, 0.4]). */
+  scoringWeights?: [number, number];
+  /** Per-field-type validator config overrides. */
+  validatorOverrides?: Partial<Record<string, ValidatorConfig>>;
+  /** Per-field-type custom validator functions that fully replace the built-in validator. */
+  customValidators?: Partial<Record<string, (stats: FieldStatistics) => number>>;
+  /** Extra latitude column-name patterns. */
+  latitudePatterns?: RegExp[];
+  /** Extra longitude column-name patterns. */
+  longitudePatterns?: RegExp[];
+  /** Extra combined-coordinate column-name patterns. */
+  combinedCoordinatePatterns?: RegExp[];
+  /** When true, custom coordinate patterns replace defaults instead of prepending. */
+  replaceCoordinatePatterns?: boolean;
+  /** Custom coordinate bounds for validation. */
+  coordinateBounds?: { latitude?: { min: number; max: number }; longitude?: { min: number; max: number } };
+  /** Extra address/location column-name patterns. */
+  addressPatterns?: RegExp[];
+  /** When true, custom address patterns replace defaults instead of prepending. */
+  replaceAddressPatterns?: boolean;
+  /** Enum detection threshold (absolute count or percentage depending on enumMode). */
+  enumThreshold?: number;
+  /** Enum detection mode: "count" uses absolute unique-value count, "percentage" uses ratio. */
+  enumMode?: "count" | "percentage";
+  /** Extra ID column-name patterns. */
+  idPatterns?: RegExp[];
+  /** When true, custom ID patterns replace defaults instead of prepending. */
+  replaceIdPatterns?: boolean;
+  /** Skip individual pipeline stages. */
+  skip?: { language?: boolean; fieldMapping?: boolean; coordinates?: boolean; enums?: boolean; ids?: boolean };
+  /** Register additional field types beyond the standard five. */
+  additionalFieldTypes?: Record<
+    string,
+    { patterns: Partial<Record<string, RegExp[]>>; validator: (stats: FieldStatistics) => number }
+  >;
+}
+
+/**
  * Options for the schema detection Payload plugin.
  */
 export interface SchemaDetectionPluginOptions {

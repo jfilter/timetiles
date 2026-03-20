@@ -36,4 +36,5 @@ export {
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
 } from "./patterns";
+export type { DetectionOptions, ValidatorConfig } from "../types";
 export { validateFieldType } from "./validators";

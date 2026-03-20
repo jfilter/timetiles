@@ -10,7 +10,7 @@
  * @category Utilities
  */
 
-import type { FieldStatistics } from "../types";
+import type { FieldStatistics, ValidatorConfig } from "../types";
 
 // ---------------------------------------------------------------------------
 // Date validation helpers (inlined from lib/utils/date to avoid circular deps)
@@ -43,8 +43,8 @@ const hasInvalidIsoDatePart = (date: string): boolean => {
  * Validates field as a title field.
  * Should be mostly strings with reasonable length and high coverage.
  */
-const validateTitleField = (stats: FieldStatistics, stringPct: number): number => {
-  if (stringPct < 0.8) return 0;
+const validateTitleField = (stats: FieldStatistics, stringPct: number, minStringPct?: number): number => {
+  if (stringPct < (minStringPct ?? 0.8)) return 0;
 
   if (stats.uniqueSamples && stats.uniqueSamples.length > 0) {
     const stringValues = stats.uniqueSamples.filter((v): v is string => typeof v === "string");
@@ -65,8 +65,8 @@ const validateTitleField = (stats: FieldStatistics, stringPct: number): number =
  * Validates field as a description field.
  * Should be mostly strings, typically longer than titles.
  */
-const validateDescriptionField = (stats: FieldStatistics, stringPct: number): number => {
-  if (stringPct < 0.7) return 0;
+const validateDescriptionField = (stats: FieldStatistics, stringPct: number, minStringPct?: number): number => {
+  if (stringPct < (minStringPct ?? 0.7)) return 0;
 
   if (stats.uniqueSamples && stats.uniqueSamples.length > 0) {
     const stringValues = stats.uniqueSamples.filter((v): v is string => typeof v === "string");
@@ -88,8 +88,8 @@ const validateDescriptionField = (stats: FieldStatistics, stringPct: number): nu
  * Validates field as a location name field.
  * Should be mostly strings representing venue/place names.
  */
-const validateLocationNameField = (stats: FieldStatistics, stringPct: number): number => {
-  if (stringPct < 0.7) return 0;
+const validateLocationNameField = (stats: FieldStatistics, stringPct: number, minStringPct?: number): number => {
+  if (stringPct < (minStringPct ?? 0.7)) return 0;
 
   if (stats.uniqueSamples && stats.uniqueSamples.length > 0) {
     const stringValues = stats.uniqueSamples.filter((v): v is string => typeof v === "string");
@@ -201,8 +201,8 @@ const validateTimestampField = (stats: FieldStatistics, stringPct: number): numb
  * Validates field as a location field.
  * Should be mostly strings with typical address/location lengths.
  */
-const validateLocationField = (stats: FieldStatistics, stringPct: number): number => {
-  if (stringPct < 0.7) return 0;
+const validateLocationField = (stats: FieldStatistics, stringPct: number, minStringPct?: number): number => {
+  if (stringPct < (minStringPct ?? 0.7)) return 0;
 
   if (stats.uniqueSamples && stats.uniqueSamples.length > 0) {
     const stringValues = stats.uniqueSamples.filter((v): v is string => typeof v === "string");
@@ -227,22 +227,36 @@ const validateLocationField = (stats: FieldStatistics, stringPct: number): numbe
 /**
  * Validates field statistics match the expected field type.
  *
+ * @param stats - Field statistics to validate
+ * @param fieldType - The field type to validate against
+ * @param overrides - Optional validator configuration overrides
+ * @param customValidator - Optional function that fully replaces the built-in validator
  * @returns Validation score from 0 (invalid) to 1 (perfect match)
  */
-export const validateFieldType = (stats: FieldStatistics, fieldType: string): number => {
+export const validateFieldType = (
+  stats: FieldStatistics,
+  fieldType: string,
+  overrides?: ValidatorConfig,
+  customValidator?: (stats: FieldStatistics) => number
+): number => {
+  if (customValidator) return customValidator(stats);
+
   const stringPct = (stats.typeDistribution.string ?? 0) / stats.occurrences;
+
+  // Apply minStringPct override to fields that have a string-percentage threshold
+  const effectiveStringPct = overrides?.minStringPct;
 
   switch (fieldType) {
     case "title":
-      return validateTitleField(stats, stringPct);
+      return validateTitleField(stats, stringPct, effectiveStringPct);
     case "description":
-      return validateDescriptionField(stats, stringPct);
+      return validateDescriptionField(stats, stringPct, effectiveStringPct);
     case "locationName":
-      return validateLocationNameField(stats, stringPct);
+      return validateLocationNameField(stats, stringPct, effectiveStringPct);
     case "timestamp":
       return validateTimestampField(stats, stringPct);
     case "location":
-      return validateLocationField(stats, stringPct);
+      return validateLocationField(stats, stringPct, effectiveStringPct);
     default:
       return 0;
   }
