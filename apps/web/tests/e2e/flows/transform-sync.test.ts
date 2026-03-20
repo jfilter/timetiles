@@ -1,8 +1,9 @@
 /**
  * E2E tests for transform synchronization between inline editing and flow editor.
  *
- * Verifies that transforms added via the inline TransformList on the field mapping
+ * Verifies that transforms added via the column-centric table on the field mapping
  * step appear as nodes in the visual flow editor, and vice versa.
+ * Uses only real UI interactions — no localStorage injection.
  *
  * @module
  * @category E2E Tests
@@ -10,14 +11,14 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "../fixtures";
 import { ImportPage } from "../pages/import.page";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
-
-const STORAGE_KEY = "timetiles_import_wizard_draft";
 
 test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
   test.describe.configure({ mode: "serial" });
@@ -28,63 +29,59 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     importPage = new ImportPage(page);
   });
 
+  /** Navigate through upload + dataset selection to reach step 4. */
+  const navigateToFieldMapping = async (page: Page, catalogName: string) => {
+    await importPage.goto();
+    await importPage.waitForWizardLoad();
+
+    const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
+    await importPage.uploadFile(csvPath);
+    await importPage.clickNext();
+
+    await expect(page.getByRole("heading", { name: /select destination/i })).toBeVisible({ timeout: 10000 });
+    await importPage.createNewCatalog(catalogName);
+    await importPage.clickNext();
+
+    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
+  };
+
+  /** Add an uppercase transform on the "title" column via the column table UI. */
+  const addUppercaseTransformViaUI = async (page: Page) => {
+    const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
+    const addButton = titleRow.getByRole("button", { name: /add transform/i });
+    await expect(addButton).toBeVisible({ timeout: 5000 });
+    await addButton.click();
+
+    const stringOpItem = page.getByRole("menuitem", { name: /string operation/i });
+    await expect(stringOpItem).toBeVisible({ timeout: 5000 });
+    await stringOpItem.click();
+
+    // Default operation is "trim" — click chip to expand editor, change to "uppercase"
+    const transformChip = titleRow.getByText("Trim");
+    await expect(transformChip).toBeVisible({ timeout: 5000 });
+    await transformChip.click();
+
+    const operationTrigger = page.locator("#operation");
+    await expect(operationTrigger).toBeVisible({ timeout: 5000 });
+    await operationTrigger.click();
+
+    const uppercaseOption = page.getByRole("option", { name: /uppercase/i });
+    await expect(uppercaseOption).toBeVisible({ timeout: 5000 });
+    await uppercaseOption.click();
+
+    await expect(titleRow.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
+  };
+
   test("inline transforms should appear as nodes in the flow editor", async ({ page }) => {
     test.setTimeout(180000);
 
-    // Step 1-3: Navigate to field mapping step
-    await importPage.goto();
-    await importPage.waitForWizardLoad();
-
-    const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
-    await importPage.uploadFile(csvPath);
-    await importPage.clickNext();
-
-    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
-    await expect(destinationHeading).toBeVisible({ timeout: 10000 });
-
     const uniqueId = Date.now();
-    await importPage.createNewCatalog(`E2E Sync Inline→Flow ${uniqueId}`);
-    await importPage.clickNext();
+    await navigateToFieldMapping(page, `E2E Sync Inline→Flow ${uniqueId}`);
 
-    // Step 4: Field mapping
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
+    // Add uppercase transform on title column via real UI
+    await addUppercaseTransformViaUI(page);
 
-    // Wait for localStorage save then inject an inline transform
-    await page.waitForTimeout(1500);
-
-    await page.evaluate(
-      ({ storageKey }) => {
-        const raw = localStorage.getItem(storageKey);
-        if (!raw) throw new Error("No wizard state in localStorage");
-        const data = JSON.parse(raw);
-
-        data.state.transforms = {
-          0: [
-            {
-              id: "e2e-sync-test-uppercase",
-              type: "string-op",
-              active: true,
-              autoDetected: false,
-              from: "title",
-              operation: "uppercase",
-            },
-          ],
-        };
-
-        localStorage.setItem(storageKey, JSON.stringify(data));
-      },
-      { storageKey: STORAGE_KEY }
-    );
-
-    // Reload to restore from localStorage with the injected transform
-    await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 15000 });
-
-    // Verify the inline transform list shows the transform
-    await expect(page.getByText("String Operation")).toBeVisible({ timeout: 5000 });
-
-    // Click "Open Visual Editor" — this should store transforms in sessionStorage
+    // Open visual editor
     const visualEditorButton = page.getByRole("button", { name: /open visual editor/i });
     await expect(visualEditorButton).toBeVisible({ timeout: 10000 });
     await visualEditorButton.click();
@@ -93,133 +90,43 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 5000 });
 
-    // Verify the transform node appears in the flow editor with correct content
-    // The node shows "uppercase" as the summary and "title" as the source field badge
+    // Verify the transform node appears with correct content
     await expect(page.locator(".react-flow__node-transform")).toBeVisible({ timeout: 10000 });
     await expect(page.locator(".react-flow__node-transform").getByText("uppercase")).toBeVisible();
 
-    // Verify the transform node is connected with edges (source → transform → target)
-    // ReactFlow renders edges as SVG elements with class "react-flow__edge"
+    // Verify edges are connected
     const edges = page.locator(".react-flow__edge");
     await expect(edges.first()).toBeVisible({ timeout: 5000 });
     const edgeCount = await edges.count();
-    // Expect at least: source→transform + transform→target + other auto-detected edges
     expect(edgeCount).toBeGreaterThanOrEqual(2);
 
-    // Click "Apply & Return" to go back
+    // Click "Apply & Return"
     const saveButton = page.getByRole("button", { name: /apply.*return/i });
     await saveButton.click();
 
-    // Should be back on field mapping step
+    // Back on step 4 — verify transform chip persists
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
-
-    // Verify the transform is still in the inline list after round-trip
-    await expect(page.getByText("String Operation")).toBeVisible({ timeout: 5000 });
+    const titleRowAfterRT = page.locator("tr").filter({ hasText: "title" }).first();
+    await expect(titleRowAfterRT.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
   });
 
-  test("flow editor transforms should appear in the inline list on return", async ({ page }) => {
+  test("inline transforms should be sent to the import API", async ({ page }) => {
     test.setTimeout(180000);
 
-    // Step 1-3: Navigate to field mapping step
-    await importPage.goto();
-    await importPage.waitForWizardLoad();
-
-    const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
-    await importPage.uploadFile(csvPath);
-    await importPage.clickNext();
-
-    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
-    await expect(destinationHeading).toBeVisible({ timeout: 10000 });
-
     const uniqueId = Date.now();
-    await importPage.createNewCatalog(`E2E Sync Flow→Inline ${uniqueId}`);
-    await importPage.clickNext();
+    await navigateToFieldMapping(page, `E2E Sync API ${uniqueId}`);
 
-    // Step 4: Field mapping — verify no transforms initially
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("No transforms configured")).toBeVisible();
+    // Add uppercase transform via real UI
+    await addUppercaseTransformViaUI(page);
 
-    // Open the flow editor
-    const visualEditorButton = page.getByRole("button", { name: /open visual editor/i });
-    await expect(visualEditorButton).toBeVisible({ timeout: 10000 });
-    await visualEditorButton.click();
-
-    // Wait for flow editor to load
-    await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 5000 });
-
-    // Verify the palette has draggable transform items
-    await expect(page.locator('[data-testid="palette-item-rename"]')).toBeVisible();
-
-    // Click "Apply & Return" — even without adding transforms, this round-trips the data
-    const saveButton = page.getByRole("button", { name: /apply.*return/i });
-    await saveButton.click();
-
-    // Should be back on field mapping step
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
-  });
-
-  test("both inline and flow editor transforms should be sent to the API", async ({ page }) => {
-    test.setTimeout(180000);
-
-    // Step 1-3: Navigate to field mapping step
-    await importPage.goto();
-    await importPage.waitForWizardLoad();
-
-    const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
-    await importPage.uploadFile(csvPath);
-    await importPage.clickNext();
-
-    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
-    await expect(destinationHeading).toBeVisible({ timeout: 10000 });
-
-    const uniqueId = Date.now();
-    await importPage.createNewCatalog(`E2E Sync API ${uniqueId}`);
-    await importPage.clickNext();
-
-    // Step 4: Inject transform via localStorage (simulates inline add)
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
-    await page.waitForTimeout(1500);
-
-    await page.evaluate(
-      ({ storageKey }) => {
-        const raw = localStorage.getItem(storageKey);
-        if (!raw) throw new Error("No wizard state in localStorage");
-        const data = JSON.parse(raw);
-
-        data.state.transforms = {
-          0: [
-            {
-              id: crypto.randomUUID(),
-              type: "string-op",
-              active: true,
-              autoDetected: false,
-              from: "title",
-              operation: "uppercase",
-            },
-          ],
-        };
-
-        localStorage.setItem(storageKey, JSON.stringify(data));
-      },
-      { storageKey: STORAGE_KEY }
-    );
-
-    await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 15000 });
-
-    // Verify the inline transform is visible
-    await expect(page.getByText("String Operation")).toBeVisible({ timeout: 5000 });
-
-    // Proceed to review — use direct button click since sticky button doesn't match clickNext() locator
+    // Proceed to review
     const continueButton = page.getByRole("button", { name: /continue to review/i });
     await continueButton.click();
 
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-    // Intercept the configure API call to verify transforms are sent
+    // Intercept the configure API call
     let capturedRequestBody: Record<string, unknown> | null = null;
     page.on("request", (request) => {
       if (request.url().includes("/api/import/configure") && request.method() === "POST") {
@@ -238,7 +145,7 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     const response = await responsePromise;
     expect(response.status()).toBe(200);
 
-    // Verify transforms were sent in the API request
+    // Verify transforms were sent
     expect(capturedRequestBody).not.toBeNull();
     const transforms = capturedRequestBody!.transforms as Array<{ sheetIndex: number; transforms: unknown[] }>;
     expect(transforms).toBeDefined();

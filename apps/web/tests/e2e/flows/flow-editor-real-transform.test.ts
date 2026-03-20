@@ -51,37 +51,31 @@ test.describe("Flow Editor Real Transform Interactions", () => {
   };
 
   /**
-   * Helper: Add a string-op (uppercase) transform via the inline TransformList UI.
-   * Clicks "Add Transform" dropdown, selects "String Operation", then configures
-   * the source field and operation using real Radix UI Select interactions.
+   * Helper: Add a string-op (uppercase) transform via the column-centric table UI.
+   * Finds the "title" column row, clicks its per-row [+ Add transform] button,
+   * selects "String Operation", then configures the operation (source field is
+   * pre-filled with the column name).
    */
   const addUppercaseTransformViaUI = async (page: Page) => {
-    // Click the "Add Transform" dropdown button
-    const addTransformButton = page.getByRole("button", { name: /add transform/i });
-    await expect(addTransformButton).toBeVisible({ timeout: 5000 });
-    await addTransformButton.click();
+    // Find the row for the "title" column and click its add transform button
+    const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
+    const addButton = titleRow.getByRole("button", { name: /add transform/i });
+    await expect(addButton).toBeVisible({ timeout: 5000 });
+    await addButton.click();
 
     // Select "String Operation" from the dropdown menu
     const stringOpItem = page.getByRole("menuitem", { name: /string operation/i });
     await expect(stringOpItem).toBeVisible({ timeout: 5000 });
     await stringOpItem.click();
 
-    // The transform should now appear in the list with "Incomplete" badge
-    // Wait for dropdown to close, then find "String Operation" in the transform card (not the menu)
-    await expect(page.locator(".rounded-lg.border.p-3").getByText("String Operation")).toBeVisible({ timeout: 5000 });
+    // The transform chip appears in the title row (default operation is "trim")
+    // Click the chip to expand the inline editor below the row
+    const transformChip = titleRow.getByText("Trim");
+    await expect(transformChip).toBeVisible({ timeout: 5000 });
+    await transformChip.click();
 
-    // The editor should open automatically (editingId is set to the new transform)
-    // Configure: select "title" as the source field via the "Source Field" Radix Select
-    const sourceFieldTrigger = page.locator("#from");
-    await expect(sourceFieldTrigger).toBeVisible({ timeout: 5000 });
-    await sourceFieldTrigger.click();
-
-    // Select "title" from the source field dropdown
-    const titleOption = page.getByRole("option", { name: "title", exact: true });
-    await expect(titleOption).toBeVisible({ timeout: 5000 });
-    await titleOption.click();
-
-    // Configure: select "uppercase" as the operation
+    // The editor expands below the row — source field is already set to "title"
+    // Change the operation from "trim" (default) to "uppercase"
     const operationTrigger = page.locator("#operation");
     await expect(operationTrigger).toBeVisible({ timeout: 5000 });
     await operationTrigger.click();
@@ -90,8 +84,8 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     await expect(uppercaseOption).toBeVisible({ timeout: 5000 });
     await uppercaseOption.click();
 
-    // Verify the summary line updated (shows the configured state)
-    await expect(page.getByText(/apply uppercase to title/i)).toBeVisible({ timeout: 5000 });
+    // Verify the chip updated to show "Uppercase" after changing the operation
+    await expect(titleRow.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
   };
 
   test("inline transform should persist through flow editor round-trip", async ({ page }) => {
@@ -103,8 +97,9 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     // Navigate to step 4
     await navigateToFieldMapping(page, catalogName);
 
-    // Verify no transforms initially
-    await expect(page.getByText("No transforms configured")).toBeVisible({ timeout: 5000 });
+    // Verify no transform chips in the title column row initially
+    const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
+    await expect(titleRow.getByText("Uppercase")).not.toBeVisible();
 
     // Add an uppercase transform via real UI interactions
     await addUppercaseTransformViaUI(page);
@@ -140,10 +135,9 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     // Should be back on the field mapping step
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Verify the transform is still present in the inline TransformList after the round-trip
-    // Wait for dropdown to close, then find "String Operation" in the transform card (not the menu)
-    await expect(page.locator(".rounded-lg.border.p-3").getByText("String Operation")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/apply uppercase to title/i)).toBeVisible({ timeout: 5000 });
+    // Verify the transform chip is still visible in the title row after the round-trip
+    const titleRowAfterRT = page.locator("tr").filter({ hasText: "title" }).first();
+    await expect(titleRowAfterRT.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
   });
 
   test("inline transform should reach the import API", async ({ page }) => {

@@ -45,6 +45,8 @@ export interface ColumnRowProps {
   onTransformRemove: (columnName: string, transformId: string) => void;
   onTransformUpdate: (columnName: string, transformId: string, updates: Partial<ImportTransform>) => void;
   sourceColumns: string[];
+  isSplitParent?: boolean;
+  splitChildren?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +183,8 @@ export const ColumnRow = ({
   onTransformRemove,
   onTransformUpdate,
   sourceColumns,
+  isSplitParent,
+  splitChildren,
 }: Readonly<ColumnRowProps>) => {
   const t = useTranslations("Import");
   const [expandedTransformId, setExpandedTransformId] = useState<string | null>(null);
@@ -298,6 +302,29 @@ export const ColumnRow = ({
           </td>
         </tr>
       )}
+
+      {/* Split child rows */}
+      {isSplitParent &&
+        splitChildren?.map((childName, i) => (
+          <tr
+            key={`${columnName}-split-${childName}`}
+            className="border-cartographic-navy/5 border-b bg-purple-50/30 last:border-0 dark:bg-purple-950/10"
+          >
+            <td className="px-4 py-2 pl-10">
+              <div className="flex items-center gap-2">
+                <span className="text-cartographic-navy/40 text-xs" aria-hidden="true">
+                  {i < splitChildren.length - 1 ? "\u251C\u2500" : "\u2514\u2500"}
+                </span>
+                <span className="text-cartographic-charcoal font-mono text-sm">{childName}</span>
+              </div>
+            </td>
+            <td className="px-4 py-2">
+              <span className="text-muted-foreground text-xs italic">{t("splitResult")}</span>
+            </td>
+            <td className="px-4 py-2" />
+            <td className="px-4 py-2" />
+          </tr>
+        ))}
     </>
   );
 };

@@ -532,7 +532,9 @@
     "sourceColumn": "Source Column",
     "addTransformToColumn": "Add transform",
     "combineColumns": "Combine columns",
-    "removeTransform": "Remove transform"
+    "removeTransform": "Remove transform",
+    "splitResult": "Split result",
+    "dataPreview": "Data Preview"
   },
   "Schedules": {
     "title": "Scheduled Imports",

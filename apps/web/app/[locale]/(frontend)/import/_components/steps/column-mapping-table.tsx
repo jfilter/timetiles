@@ -356,6 +356,8 @@ export const ColumnMappingTable = ({
                 onTransformRemove={handleTransformRemove}
                 onTransformUpdate={handleTransformUpdate}
                 sourceColumns={headers}
+                isSplitParent={row.isSplitParent}
+                splitChildren={row.splitChildren}
               />
             ))}
 

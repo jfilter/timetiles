@@ -532,7 +532,9 @@
     "sourceColumn": "Quellspalte",
     "addTransformToColumn": "Transformation hinzufuegen",
     "combineColumns": "Spalten kombinieren",
-    "removeTransform": "Transformation entfernen"
+    "removeTransform": "Transformation entfernen",
+    "splitResult": "Split-Ergebnis",
+    "dataPreview": "Datenvorschau"
   },
   "Schedules": {
     "title": "Geplante Importe",

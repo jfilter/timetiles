@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@timetiles/ui";
+import { Card, CardContent, Collapsible, CollapsibleContent, CollapsibleTrigger } from "@timetiles/ui";
 import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowRight, ChevronDownIcon, FileSpreadsheetIcon, WorkflowIcon } from "lucide-react";
@@ -23,7 +23,12 @@ import { type ConfigSuggestion, type FieldMapping, isFieldMappingComplete } from
 import { useWizardCanProceed } from "../use-wizard-effects";
 import { useWizardStore } from "../wizard-store";
 import { ColumnMappingTable } from "./column-mapping-table";
-import { CompletionStatusBar, ConfigSuggestionBanner, LanguageDetectionBanner } from "./field-mapping-sections";
+import {
+  CompletionStatusBar,
+  ConfigSuggestionBanner,
+  DataPreviewSection,
+  LanguageDetectionBanner,
+} from "./field-mapping-sections";
 import { IdStrategyCard } from "./id-strategy-card";
 import { SheetTabButton } from "./sheet-tab-button";
 
@@ -92,7 +97,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   const bestSuggestion = configSuggestions.find((s) => s.score >= 60) ?? null;
   const suggestionState = useConfigSuggestion(bestSuggestion, sheetMappings, activeSheetIndex, applyDatasetConfig);
 
-  const headers = activeSheet?.headers ?? [];
+  const headers = useMemo(() => activeSheet?.headers ?? [], [activeSheet?.headers]);
 
   const handleFieldChange = useCallback(
     (field: keyof FieldMapping, value: string | null) => {
@@ -117,6 +122,9 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   }, [activeMapping]);
 
   const isComplete = activeMapping ? isFieldMappingComplete(activeMapping) : false;
+
+  // Build preview fields from all headers for the data preview table
+  const allPreviewFields = useMemo(() => headers.map((h) => ({ label: h, columnKey: h })), [headers]);
 
   if (!activeSheet || !activeMapping) {
     return (
@@ -218,6 +226,15 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
         onTransformsChange={(newTransforms) => setTransforms(activeSheetIndex, newTransforms)}
         onGeocodingChange={(enabled) => setImportOptions({ geocodingEnabled: enabled })}
       />
+
+      {/* Data preview */}
+      {activeSheet.sampleData.length > 0 && (
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <DataPreviewSection fields={allPreviewFields} sampleData={activeSheet.sampleData} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Advanced settings collapsible */}
       <Collapsible>
