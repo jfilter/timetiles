@@ -100,7 +100,7 @@ export const TargetSelect = ({
       value={targetField ?? "__none__"}
       onChange={handleChange}
       className={cn(
-        "border-cartographic-navy/20 bg-background text-foreground h-9 w-full max-w-[200px] rounded-sm border px-2 text-sm",
+        "border-cartographic-navy/20 bg-background text-foreground h-9 w-full min-w-[180px] rounded-sm border px-2 text-sm",
         "focus-visible:ring-cartographic-navy/30 focus-visible:ring-2 focus-visible:ring-offset-1",
         targetField && "border-cartographic-forest/40 font-medium"
       )}
