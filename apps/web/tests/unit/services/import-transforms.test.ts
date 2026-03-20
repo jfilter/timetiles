@@ -286,6 +286,215 @@ describe("applyTransforms", () => {
     const result = applyTransforms(data, transforms);
     expect(result.date).toBe("2024-02-30");
   });
+
+  it("should apply uppercase string-op transform", () => {
+    const data = { title: "hello world" };
+    const transforms: ImportTransform[] = [
+      { id: "1", type: "string-op", from: "title", operation: "uppercase", active: true, autoDetected: false },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.title).toBe("HELLO WORLD");
+  });
+
+  it("should apply lowercase string-op transform", () => {
+    const data = { title: "HELLO WORLD" };
+    const transforms: ImportTransform[] = [
+      { id: "1", type: "string-op", from: "title", operation: "lowercase", active: true, autoDetected: false },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.title).toBe("hello world");
+  });
+
+  it("should apply trim string-op transform", () => {
+    const data = { title: "  hello world  " };
+    const transforms: ImportTransform[] = [
+      { id: "1", type: "string-op", from: "title", operation: "trim", active: true, autoDetected: false },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.title).toBe("hello world");
+  });
+
+  it("should apply replace string-op transform", () => {
+    const data = { title: "hello-world-2024" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "title",
+        operation: "replace",
+        pattern: "-",
+        replacement: " ",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.title).toBe("hello world 2024");
+  });
+
+  it("should skip string-op on non-string values", () => {
+    const data = { count: 42 };
+    const transforms: ImportTransform[] = [
+      { id: "1", type: "string-op", from: "count", operation: "uppercase", active: true, autoDetected: false },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.count).toBe(42);
+  });
+
+  it("should apply concatenate transform", () => {
+    const data = { first: "John", last: "Doe", age: 30 };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "concatenate",
+        fromFields: ["first", "last"],
+        separator: " ",
+        to: "fullName",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.fullName).toBe("John Doe");
+    expect(result.first).toBe("John"); // originals preserved
+    expect(result.last).toBe("Doe");
+  });
+
+  it("should concatenate with custom separator", () => {
+    const data = { city: "Berlin", country: "Germany" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "concatenate",
+        fromFields: ["city", "country"],
+        separator: ", ",
+        to: "location",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.location).toBe("Berlin, Germany");
+  });
+
+  it("should skip undefined fields in concatenate", () => {
+    const data = { first: "John" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "concatenate",
+        fromFields: ["first", "middle", "last"],
+        separator: " ",
+        to: "name",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.name).toBe("John");
+  });
+
+  it("should apply split transform", () => {
+    const data = { name: "John Doe" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "split",
+        from: "name",
+        delimiter: " ",
+        toFields: ["firstName", "lastName"],
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.firstName).toBe("John");
+    expect(result.lastName).toBe("Doe");
+  });
+
+  it("should split with custom delimiter", () => {
+    const data = { coords: "40.7128,-74.0060" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "split",
+        from: "coords",
+        delimiter: ",",
+        toFields: ["lat", "lng"],
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.lat).toBe("40.7128");
+    expect(result.lng).toBe("-74.0060");
+  });
+
+  it("should handle split with fewer parts than toFields", () => {
+    const data = { value: "single" };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "split",
+        from: "value",
+        delimiter: ",",
+        toFields: ["a", "b", "c"],
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.a).toBe("single");
+    expect(result.b).toBeUndefined();
+    expect(result.c).toBeUndefined();
+  });
+
+  it("should skip split on non-string values", () => {
+    const data = { count: 42 };
+    const transforms: ImportTransform[] = [
+      {
+        id: "1",
+        type: "split",
+        from: "count",
+        delimiter: ",",
+        toFields: ["a", "b"],
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.count).toBe(42);
+    expect(result.a).toBeUndefined();
+  });
+
+  it("should chain multiple transform types together", () => {
+    const data = { full_name: "  john doe  ", date: "15/03/2024" };
+    const transforms: ImportTransform[] = [
+      { id: "1", type: "string-op", from: "full_name", operation: "trim", active: true, autoDetected: false },
+      {
+        id: "2",
+        type: "split",
+        from: "full_name",
+        delimiter: " ",
+        toFields: ["first", "last"],
+        active: true,
+        autoDetected: false,
+      },
+      {
+        id: "3",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "DD/MM/YYYY",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms(data, transforms);
+    expect(result.first).toBe("john");
+    expect(result.last).toBe("doe");
+    expect(result.date).toBe("2024-03-15");
+  });
 });
 
 describe("applyTransformsBatch", () => {
