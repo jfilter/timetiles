@@ -11,6 +11,7 @@
 import { Input } from "@timetiles/ui/components/input";
 import { Label } from "@timetiles/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
+import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
@@ -229,6 +230,16 @@ interface StringOpEditorProps {
   onChange: (updates: Partial<ImportTransform>) => void;
 }
 
+const EXPRESSION_PRESETS = [
+  { labelKey: "tfPresetToNumber", expression: "toNumber(value)" },
+  { labelKey: "tfPresetToBoolean", expression: "parseBool(value)" },
+  { labelKey: "tfPresetTrim", expression: "trim(value)" },
+  { labelKey: "tfPresetRound", expression: "round(toNumber(value), 2)" },
+  { labelKey: "tfPresetIfEmpty", expression: 'ifEmpty(value, "")' },
+  { labelKey: "tfPresetUppercase", expression: "upper(value)" },
+  { labelKey: "tfPresetLowercase", expression: "lower(value)" },
+] as const;
+
 const StringOpEditor = ({
   from,
   operation,
@@ -293,8 +304,25 @@ const StringOpEditor = ({
         </div>
       )}
       {operation === "expression" && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Label htmlFor="expression">{t("tfCustomExpression")}</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {EXPRESSION_PRESETS.map((preset) => (
+              <button
+                key={preset.expression}
+                type="button"
+                onClick={() => onChange({ expression: preset.expression })}
+                className={cn(
+                  "rounded-sm border px-2 py-0.5 text-xs transition-colors",
+                  expression === preset.expression
+                    ? "border-cartographic-forest bg-cartographic-forest/10 text-cartographic-forest"
+                    : "border-cartographic-navy/15 text-muted-foreground hover:bg-cartographic-cream/60"
+                )}
+              >
+                {t(preset.labelKey)}
+              </button>
+            ))}
+          </div>
           <Input
             id="expression"
             value={expression ?? ""}

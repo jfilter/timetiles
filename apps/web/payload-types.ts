@@ -562,7 +562,7 @@ export interface Dataset {
         /**
          * Type of transformation to apply
          */
-        type: 'rename' | 'date-parse' | 'string-op' | 'concatenate' | 'split' | 'type-cast';
+        type: 'rename' | 'date-parse' | 'string-op' | 'concatenate' | 'split';
         /**
          * Source field path in import file (e.g., 'date' or 'user.email')
          */
@@ -586,7 +586,7 @@ export interface Dataset {
         /**
          * String operation to apply
          */
-        operation?: ('uppercase' | 'lowercase' | 'trim' | 'replace') | null;
+        operation?: ('uppercase' | 'lowercase' | 'trim' | 'replace' | 'expression') | null;
         /**
          * Text pattern to find (for replace operation)
          */
@@ -595,6 +595,10 @@ export interface Dataset {
          * Replacement text
          */
         replacement?: string | null;
+        /**
+         * Safe expression using the value variable. Functions: upper, lower, trim, concat, replace, substring, toNumber, parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty. Example: upper(value) or toNumber(value)
+         */
+        expression?: string | null;
         /**
          * Array of source field paths to concatenate (e.g., ["first_name", "last_name"])
          */
@@ -627,22 +631,6 @@ export interface Dataset {
           | number
           | boolean
           | null;
-        /**
-         * Expected source type
-         */
-        fromType?: ('string' | 'number' | 'boolean' | 'date' | 'array' | 'object' | 'null') | null;
-        /**
-         * Target type to convert to
-         */
-        toType?: ('string' | 'number' | 'boolean' | 'date' | 'array' | 'object') | null;
-        /**
-         * Strategy for performing the conversion
-         */
-        strategy?: ('parse' | 'cast' | 'custom' | 'reject') | null;
-        /**
-         * Safe expression using the value variable. Available functions: upper, lower, trim, concat, replace, substring, toNumber, parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty. Example: upper(value) or round(toNumber(value), 2)
-         */
-        customFunction?: string | null;
         /**
          * Uncheck to disable without deleting
          */
@@ -3934,14 +3922,11 @@ export interface DatasetsSelect<T extends boolean = true> {
         operation?: T;
         pattern?: T;
         replacement?: T;
+        expression?: T;
         fromFields?: T;
         separator?: T;
         delimiter?: T;
         toFields?: T;
-        fromType?: T;
-        toType?: T;
-        strategy?: T;
-        customFunction?: T;
         active?: T;
         addedAt?: T;
         addedBy?: T;
