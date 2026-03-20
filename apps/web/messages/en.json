@@ -527,7 +527,12 @@
     "stageBatchProgress": "Batch {current} of {total}",
     "stageRowsPerSecond": "{count} rows/sec",
     "stageTimeRemaining": "{time} remaining",
-    "stageSkipped": "skipped"
+    "stageSkipped": "skipped",
+    "importedAsIs": "Imported as-is",
+    "sourceColumn": "Source Column",
+    "addTransformToColumn": "Add transform",
+    "combineColumns": "Combine columns",
+    "removeTransform": "Remove transform"
   },
   "Schedules": {
     "title": "Scheduled Imports",

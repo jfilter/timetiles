@@ -10,44 +10,20 @@
  */
 "use client";
 
-import { Card, CardContent, Collapsible, CollapsibleContent, CollapsibleTrigger } from "@timetiles/ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@timetiles/ui";
 import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
-import {
-  ArrowRight,
-  CalendarIcon,
-  ChevronDownIcon,
-  FileSpreadsheetIcon,
-  MapPinIcon,
-  TextIcon,
-  WorkflowIcon,
-} from "lucide-react";
+import { ArrowRight, ChevronDownIcon, FileSpreadsheetIcon, WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
-import {
-  type ConfidenceLevel,
-  type ConfigSuggestion,
-  type FieldMapping,
-  isFieldMappingComplete,
-  type SuggestedMappings,
-} from "@/lib/types/import-wizard";
+import { type ConfigSuggestion, type FieldMapping, isFieldMappingComplete } from "@/lib/types/import-wizard";
 
-import { TransformList } from "../transforms/transform-list";
 import { useWizardCanProceed } from "../use-wizard-effects";
 import { useWizardStore } from "../wizard-store";
-import {
-  CompletionStatusBar,
-  ConfigSuggestionBanner,
-  DataPreviewSection,
-  type FieldSuggestionResult,
-  LanguageDetectionBanner,
-  type LocationMode,
-  LocationSection,
-  type PreviewField,
-} from "./field-mapping-sections";
-import { FieldSelect } from "./field-select";
+import { ColumnMappingTable } from "./column-mapping-table";
+import { CompletionStatusBar, ConfigSuggestionBanner, LanguageDetectionBanner } from "./field-mapping-sections";
 import { IdStrategyCard } from "./id-strategy-card";
 import { SheetTabButton } from "./sheet-tab-button";
 
@@ -77,12 +53,6 @@ const useConfigSuggestion = (
   }, [activeSheetIndex, sheetMappings, bestSuggestion, applyDatasetConfig]);
 
   return { dismissed, applied, setDismissed, setApplied };
-};
-
-/** Derive initial location mode from existing mapping data. */
-const deriveLocationMode = (mapping: FieldMapping): LocationMode => {
-  if (mapping.latitudeField ?? mapping.longitudeField) return "coordinates";
-  return "address";
 };
 
 /** Check whether the active sheet maps to an existing dataset, locking ID strategy controls. */
@@ -122,24 +92,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   const bestSuggestion = configSuggestions.find((s) => s.score >= 60) ?? null;
   const suggestionState = useConfigSuggestion(bestSuggestion, sheetMappings, activeSheetIndex, applyDatasetConfig);
 
-  const [locationMode, setLocationMode] = useState<LocationMode>(() =>
-    activeMapping ? deriveLocationMode(activeMapping) : "address"
-  );
-
   const headers = activeSheet?.headers ?? [];
-
-  const getFieldSuggestion = (fieldName: keyof SuggestedMappings["mappings"]): FieldSuggestionResult => {
-    const suggestion = suggestedMappings?.mappings[fieldName];
-    return {
-      suggestedPath: suggestion?.path ?? null,
-      confidenceLevel: suggestion?.confidenceLevel ?? ("none" as ConfidenceLevel),
-    };
-  };
-
-  const isAutoDetected = (fieldName: keyof SuggestedMappings["mappings"], currentValue: string | null) => {
-    const { suggestedPath } = getFieldSuggestion(fieldName);
-    return currentValue !== null && currentValue === suggestedPath;
-  };
 
   const handleFieldChange = useCallback(
     (field: keyof FieldMapping, value: string | null) => {
@@ -150,20 +103,6 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   const handleDeduplicationChange = (value: string) => {
     setImportOptions({ deduplicationStrategy: value as "skip" | "update" | "version" });
-  };
-
-  const handleGeocodingCheckedChange = (checked: boolean | "indeterminate") => {
-    setImportOptions({ geocodingEnabled: checked === true });
-  };
-
-  const handleLocationModeChange = (mode: LocationMode) => {
-    setLocationMode(mode);
-    if (mode === "address") {
-      setFieldMapping(activeSheetIndex, { latitudeField: null, longitudeField: null });
-    } else {
-      setFieldMapping(activeSheetIndex, { locationField: null });
-      setImportOptions({ geocodingEnabled: false });
-    }
   };
 
   // Completion status
@@ -178,24 +117,6 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   }, [activeMapping]);
 
   const isComplete = activeMapping ? isFieldMappingComplete(activeMapping) : false;
-
-  // Dynamic preview: collect all mapped field labels + column keys
-  const mappedPreviewFields = useMemo((): PreviewField[] => {
-    if (!activeMapping) return [];
-    const fields: PreviewField[] = [];
-    if (activeMapping.titleField) fields.push({ label: t("fieldTitle"), columnKey: activeMapping.titleField });
-    if (activeMapping.dateField) fields.push({ label: t("fieldDate"), columnKey: activeMapping.dateField, mono: true });
-    if (activeMapping.locationField) fields.push({ label: t("location"), columnKey: activeMapping.locationField });
-    if (activeMapping.latitudeField)
-      fields.push({ label: t("latitude"), columnKey: activeMapping.latitudeField, mono: true });
-    if (activeMapping.longitudeField)
-      fields.push({ label: t("longitude"), columnKey: activeMapping.longitudeField, mono: true });
-    if (activeMapping.descriptionField)
-      fields.push({ label: t("fieldDescription"), columnKey: activeMapping.descriptionField });
-    if (activeMapping.locationNameField)
-      fields.push({ label: t("fieldLocationName"), columnKey: activeMapping.locationNameField });
-    return fields;
-  }, [activeMapping, t]);
 
   if (!activeSheet || !activeMapping) {
     return (
@@ -285,101 +206,17 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
         remainingCount={requiredFieldsCount.total - requiredFieldsCount.mapped}
       />
 
-      {/* Main card with all field sections */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          {/* Required fields section */}
-          <div className="border-cartographic-terracotta/30 border-l-4 p-6">
-            <h3 className="text-cartographic-charcoal mb-1 font-serif text-lg font-semibold">{t("requiredFields")}</h3>
-            <p className="text-cartographic-navy/70 mb-4 text-sm">{t("requiredFieldsDescription")}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FieldSelect
-                id="title-field"
-                label={t("fieldTitle")}
-                field="titleField"
-                required
-                icon={<TextIcon className="h-4 w-4" />}
-                value={activeMapping.titleField}
-                headers={headers}
-                onFieldChange={handleFieldChange}
-                confidenceLevel={getFieldSuggestion("titlePath").confidenceLevel}
-                isAutoDetected={isAutoDetected("titlePath", activeMapping.titleField)}
-                validationMessage={!activeMapping.titleField ? t("fieldRequired") : undefined}
-              />
-              <FieldSelect
-                id="date-field"
-                label={t("fieldDate")}
-                field="dateField"
-                required
-                icon={<CalendarIcon className="h-4 w-4" />}
-                value={activeMapping.dateField}
-                headers={headers}
-                onFieldChange={handleFieldChange}
-                confidenceLevel={getFieldSuggestion("timestampPath").confidenceLevel}
-                isAutoDetected={isAutoDetected("timestampPath", activeMapping.dateField)}
-                validationMessage={!activeMapping.dateField ? t("fieldRequired") : undefined}
-              />
-            </div>
-          </div>
-
-          {/* Location fields section */}
-          <div className="border-cartographic-navy/10 border-t" />
-          <LocationSection
-            locationMode={locationMode}
-            onLocationModeChange={handleLocationModeChange}
-            activeMapping={activeMapping}
-            headers={headers}
-            geocodingEnabled={geocodingEnabled}
-            onFieldChange={handleFieldChange}
-            onGeocodingCheckedChange={handleGeocodingCheckedChange}
-            getFieldSuggestion={getFieldSuggestion}
-            isAutoDetected={isAutoDetected}
-          />
-
-          {/* Optional fields section */}
-          <div className="border-cartographic-navy/10 border-t" />
-          <div className="p-6">
-            <h3 className="text-cartographic-charcoal mb-1 font-serif text-lg font-semibold">{t("optionalFields")}</h3>
-            <p className="text-cartographic-navy/70 mb-4 text-sm">{t("optionalFieldsDescription")}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FieldSelect
-                id="description-field"
-                label={t("fieldDescription")}
-                field="descriptionField"
-                required={false}
-                icon={<TextIcon className="h-4 w-4" />}
-                value={activeMapping.descriptionField}
-                headers={headers}
-                onFieldChange={handleFieldChange}
-                confidenceLevel={getFieldSuggestion("descriptionPath").confidenceLevel}
-                isAutoDetected={isAutoDetected("descriptionPath", activeMapping.descriptionField)}
-              />
-              <FieldSelect
-                id="location-name-field"
-                label={t("fieldLocationName")}
-                field="locationNameField"
-                required={false}
-                icon={<MapPinIcon className="h-4 w-4" />}
-                value={activeMapping.locationNameField}
-                headers={headers}
-                onFieldChange={handleFieldChange}
-                confidenceLevel={getFieldSuggestion("locationNamePath").confidenceLevel}
-                isAutoDetected={isAutoDetected("locationNamePath", activeMapping.locationNameField)}
-              />
-            </div>
-          </div>
-
-          {/* Data preview section */}
-          <div className="border-cartographic-navy/10 border-t" />
-          <DataPreviewSection fields={mappedPreviewFields} sampleData={activeSheet.sampleData} />
-        </CardContent>
-      </Card>
-
-      {/* Inline transform editing */}
-      <TransformList
+      {/* Column mapping table — all columns with inline transforms */}
+      <ColumnMappingTable
+        headers={headers}
+        sampleData={activeSheet.sampleData}
+        fieldMapping={activeMapping}
         transforms={transforms[activeSheetIndex] ?? []}
-        onTransformsChange={(transforms) => setTransforms(activeSheetIndex, transforms)}
-        sourceColumns={headers}
+        suggestedMappings={suggestedMappings}
+        geocodingEnabled={geocodingEnabled}
+        onFieldMappingChange={handleFieldChange}
+        onTransformsChange={(newTransforms) => setTransforms(activeSheetIndex, newTransforms)}
+        onGeocodingChange={(enabled) => setImportOptions({ geocodingEnabled: enabled })}
       />
 
       {/* Advanced settings collapsible */}

@@ -527,7 +527,12 @@
     "stageBatchProgress": "Stapel {current} von {total}",
     "stageRowsPerSecond": "{count} Zeilen/Sek.",
     "stageTimeRemaining": "{time} verbleibend",
-    "stageSkipped": "uebersprungen"
+    "stageSkipped": "uebersprungen",
+    "importedAsIs": "Unveraendert importiert",
+    "sourceColumn": "Quellspalte",
+    "addTransformToColumn": "Transformation hinzufuegen",
+    "combineColumns": "Spalten kombinieren",
+    "removeTransform": "Transformation entfernen"
   },
   "Schedules": {
     "title": "Geplante Importe",
