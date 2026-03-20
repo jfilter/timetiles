@@ -42,7 +42,8 @@ import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/l
 import type { UrlAuthConfig } from "@/lib/types/import-wizard";
 import { formatFileSize } from "@/lib/utils/format";
 
-import { useWizard } from "../wizard-context";
+import { useWizardCanProceed } from "../use-wizard-effects";
+import { useWizardStore } from "../wizard-store";
 
 export interface StepUploadProps {
   className?: string;
@@ -63,8 +64,14 @@ type InputMode = "file" | "url";
 
 export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const t = useTranslations("Import");
-  const { state, nextStep, canProceed, setFile, setSourceUrl, clearFile } = useWizard();
-  const { file, sheets, sourceUrl } = state;
+  const file = useWizardStore((s) => s.file);
+  const sheets = useWizardStore((s) => s.sheets);
+  const sourceUrl = useWizardStore((s) => s.sourceUrl);
+  const nextStep = useWizardStore((s) => s.nextStep);
+  const setFile = useWizardStore((s) => s.setFile);
+  const setSourceUrl = useWizardStore((s) => s.setSourceUrl);
+  const clearFile = useWizardStore((s) => s.clearFile);
+  const canProceed = useWizardCanProceed();
 
   // Input mode - file upload or URL
   const [inputMode, setInputMode] = useState<InputMode>(sourceUrl ? "url" : "file");

@@ -26,7 +26,6 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
-import { storeWizardStateForFlowEditor } from "@/lib/import/mapping-transfer";
 import {
   type ConfidenceLevel,
   type ConfigSuggestion,
@@ -36,7 +35,8 @@ import {
 } from "@/lib/types/import-wizard";
 
 import { TransformList } from "../transforms/transform-list";
-import { useWizard } from "../wizard-context";
+import { useWizardCanProceed } from "../use-wizard-effects";
+import { useWizardStore } from "../wizard-store";
 import {
   CompletionStatusBar,
   ConfigSuggestionBanner,
@@ -95,17 +95,21 @@ const isIdStrategyLocked = (
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
   const t = useTranslations("Import");
   const router = useRouter();
-  const {
-    state,
-    nextStep,
-    canProceed,
-    setFieldMapping,
-    setImportOptions,
-    setTransforms,
-    applyDatasetConfig,
-    resetToAutoDetected,
-  } = useWizard();
-  const { sheets, fieldMappings, sheetMappings, deduplicationStrategy, geocodingEnabled } = state;
+  const sheets = useWizardStore((s) => s.sheets);
+  const fieldMappings = useWizardStore((s) => s.fieldMappings);
+  const sheetMappings = useWizardStore((s) => s.sheetMappings);
+  const deduplicationStrategy = useWizardStore((s) => s.deduplicationStrategy);
+  const geocodingEnabled = useWizardStore((s) => s.geocodingEnabled);
+  const previewId = useWizardStore((s) => s.previewId);
+  const transforms = useWizardStore((s) => s.transforms);
+  const configSuggestions = useWizardStore((s) => s.configSuggestions);
+  const nextStep = useWizardStore((s) => s.nextStep);
+  const setFieldMapping = useWizardStore((s) => s.setFieldMapping);
+  const setImportOptions = useWizardStore((s) => s.setImportOptions);
+  const setTransforms = useWizardStore((s) => s.setTransforms);
+  const applyDatasetConfig = useWizardStore((s) => s.applyDatasetConfig);
+  const resetToAutoDetected = useWizardStore((s) => s.resetToAutoDetected);
+  const canProceed = useWizardCanProceed();
 
   const [activeSheetIndex, setActiveSheetIndex] = useState(sheets[0]?.index ?? 0);
 
@@ -115,7 +119,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   const suggestedMappings = activeSheet?.suggestedMappings;
 
   // Config suggestion state
-  const bestSuggestion = state.configSuggestions.find((s) => s.score >= 60) ?? null;
+  const bestSuggestion = configSuggestions.find((s) => s.score >= 60) ?? null;
   const suggestionState = useConfigSuggestion(bestSuggestion, sheetMappings, activeSheetIndex, applyDatasetConfig);
 
   const [locationMode, setLocationMode] = useState<LocationMode>(() =>
@@ -244,16 +248,12 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
             </div>
           )}
         </div>
-        {state.previewId && activeMapping && (
+        {previewId && activeMapping && (
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              storeWizardStateForFlowEditor({
-                fieldMapping: activeMapping,
-                transforms: state.transforms[activeSheetIndex] ?? [],
-              });
-              router.push(`/import/flow-editor?previewId=${state.previewId}&sheetIndex=${activeSheetIndex}`);
+              router.push(`/import/flow-editor?previewId=${previewId}&sheetIndex=${activeSheetIndex}`);
             }}
           >
             <WorkflowIcon className="mr-2 h-4 w-4" />
@@ -377,7 +377,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
       {/* Inline transform editing */}
       <TransformList
-        transforms={state.transforms[activeSheetIndex] ?? []}
+        transforms={transforms[activeSheetIndex] ?? []}
         onTransformsChange={(transforms) => setTransforms(activeSheetIndex, transforms)}
         sourceColumns={headers}
       />

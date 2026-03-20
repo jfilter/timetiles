@@ -199,7 +199,7 @@ export default [
   {
     files: [
       "app/(frontend)/import/_components/steps/step-field-mapping.tsx",
-      "app/(frontend)/import/_components/wizard-context.tsx",
+      "app/(frontend)/import/_components/wizard-store.ts",
       "app/(frontend)/import/_components/transforms/transform-editor.tsx",
       "lib/services/schema-builder/field-mapping-detection.ts",
     ],

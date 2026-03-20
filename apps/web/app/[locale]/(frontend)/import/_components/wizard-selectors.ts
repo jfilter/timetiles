@@ -9,7 +9,7 @@
  */
 import { isFieldMappingComplete } from "@/lib/types/import-wizard";
 
-import { STEP_TITLES, type WizardState, type WizardStep } from "./wizard-reducer";
+import { STEP_TITLES, type WizardState, type WizardStep } from "./wizard-store";
 
 /**
  * Determine whether the user can proceed from the current wizard step.

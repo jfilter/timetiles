@@ -15,8 +15,8 @@ import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { loadPreviewMetadata } from "@/lib/import/preview-store";
+import { validateRequest } from "@/lib/import/preview-validation";
 
-import { validateRequest } from "../configure/helpers";
 import { parseFileSheets } from "./helpers";
 
 export const GET = apiRoute({

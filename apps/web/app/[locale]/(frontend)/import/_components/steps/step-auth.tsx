@@ -20,7 +20,7 @@ import { useEffect } from "react";
 import { AuthTabs } from "@/components/auth";
 import { useAuthState } from "@/lib/hooks/use-auth-queries";
 
-import { useWizard } from "../wizard-context";
+import { useWizardStore } from "../wizard-store";
 
 export interface StepAuthProps {
   className?: string;
@@ -28,7 +28,7 @@ export interface StepAuthProps {
 
 export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
   const t = useTranslations("Import");
-  const { nextStep } = useWizard();
+  const nextStep = useWizardStore((s) => s.nextStep);
   const { isAuthenticated, isEmailVerified, isLoading: isCheckingAuth } = useAuthState();
   const queryClient = useQueryClient();
 

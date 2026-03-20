@@ -18,7 +18,7 @@ import { useFilters } from "@/lib/hooks/use-filters";
 import { useUIStore } from "@/lib/store";
 import { serializeFilterKey } from "@/lib/types/filter-state";
 
-import { simplifyBounds } from "./map-explorer-helpers";
+import { simplifyBounds } from "./explorer-helpers";
 
 export type BoundsState = "initial" | "bounds-applied" | "user-panned";
 

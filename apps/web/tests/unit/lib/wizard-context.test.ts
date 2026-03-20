@@ -1,57 +1,103 @@
 /**
- * Unit tests for the wizard context state management.
+ * Unit tests for the wizard store state management.
  *
- * Tests the wizard reducer logic for the import wizard.
+ * Tests the Zustand store actions for the import wizard.
  *
  * @module
  * @category Tests
  */
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FieldMapping, SheetInfo } from "@/lib/types/import-wizard";
 
+// Mock zustand/middleware so persist and devtools are no-op wrappers.
+// This avoids localStorage/devtools dependencies in the test environment.
+// The persist mock provides the `.persist` API (clearStorage, etc.) that
+// the store's complete()/reset() actions rely on.
+vi.mock("zustand/middleware", async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- vi.mock requires dynamic import
+  const actual = await importOriginal<typeof import("zustand/middleware")>();
+  return {
+    ...actual,
+    devtools: (fn: (...args: unknown[]) => unknown) => fn,
+    persist: (fn: (...args: unknown[]) => unknown, _opts: unknown) => {
+      type AnySet = (...args: unknown[]) => void;
+      type AnyGet = () => unknown;
+      type AnyApi = Record<string, unknown>;
+      return (set: AnySet, get: AnyGet, api: AnyApi) => {
+        api.persist = {
+          clearStorage: () => {},
+          // eslint-disable-next-line promise/prefer-await-to-then -- no-op stub, not a real promise chain
+          rehydrate: () => Promise.resolve(),
+          hasHydrated: () => true,
+          onHydrate: () => () => {},
+          onFinishHydration: () => () => {},
+          getOptions: () => ({}),
+          setOptions: () => {},
+        };
+        return fn(set, get, api);
+      };
+    },
+  };
+});
+
 import {
   initialState,
-  wizardReducer,
+  useWizardStore,
   type WizardState,
   type WizardStep,
-} from "../../../app/[locale]/(frontend)/import/_components/wizard-reducer";
+} from "../../../app/[locale]/(frontend)/import/_components/wizard-store";
 
-describe("Wizard Reducer", () => {
+/** Reset the store to a known state before each test */
+const resetStore = (overrides?: Partial<WizardState>) => {
+  useWizardStore.setState({ ...initialState, _initialized: true, _savedAt: 0, ...overrides });
+};
+
+describe("Wizard Store", () => {
+  // Note: beforeEach provides baseline reset, but each test also calls
+  // resetStore() explicitly because Zustand setState in beforeEach can
+  // be unreliable in non-isolated test environments.
+  beforeEach(() => {
+    resetStore();
+  });
+
   describe("Navigation", () => {
-    it("SET_STEP changes current step", () => {
-      const result = wizardReducer(initialState, { type: "SET_STEP", step: 3 });
-      expect(result.currentStep).toBe(3);
+    it("goToStep changes current step", () => {
+      resetStore();
+      useWizardStore.getState().goToStep(3);
+      expect(useWizardStore.getState().currentStep).toBe(3);
     });
 
-    it("NEXT_STEP increments step", () => {
-      const result = wizardReducer(initialState, { type: "NEXT_STEP" });
-      expect(result.currentStep).toBe(2);
+    it("nextStep increments step", () => {
+      resetStore();
+      useWizardStore.getState().nextStep();
+      expect(useWizardStore.getState().currentStep).toBe(2);
     });
 
-    it("NEXT_STEP does not exceed step 6", () => {
-      const state = { ...initialState, currentStep: 6 as WizardStep };
-      const result = wizardReducer(state, { type: "NEXT_STEP" });
-      expect(result.currentStep).toBe(6);
+    it("nextStep does not exceed step 6", () => {
+      resetStore({ currentStep: 6 as WizardStep });
+      useWizardStore.getState().nextStep();
+      expect(useWizardStore.getState().currentStep).toBe(6);
     });
 
-    it("PREV_STEP decrements step", () => {
-      const state = { ...initialState, currentStep: 3 as WizardStep };
-      const result = wizardReducer(state, { type: "PREV_STEP" });
-      expect(result.currentStep).toBe(2);
+    it("prevStep decrements step", () => {
+      resetStore({ currentStep: 3 as WizardStep });
+      useWizardStore.getState().prevStep();
+      expect(useWizardStore.getState().currentStep).toBe(2);
     });
 
-    it("PREV_STEP does not go below step 1", () => {
-      const result = wizardReducer(initialState, { type: "PREV_STEP" });
-      expect(result.currentStep).toBe(1);
+    it("prevStep does not go below step 1", () => {
+      resetStore();
+      useWizardStore.getState().prevStep();
+      expect(useWizardStore.getState().currentStep).toBe(1);
     });
   });
 
   describe("Authentication", () => {
     it("startedAuthenticated is preserved in state", () => {
-      const state = { ...initialState, startedAuthenticated: true };
-      const result = wizardReducer(state, { type: "SET_STEP", step: 2 as WizardStep });
-      expect(result.startedAuthenticated).toBe(true);
+      resetStore({ startedAuthenticated: true });
+      useWizardStore.getState().goToStep(2 as WizardStep);
+      expect(useWizardStore.getState().startedAuthenticated).toBe(true);
     });
   });
 
@@ -62,35 +108,29 @@ describe("Wizard Reducer", () => {
       { index: 1, name: "Sheet2", rowCount: 50, headers: ["name", "location"], sampleData: [] },
     ];
 
-    it("SET_FILE sets file, sheets, and previewId", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_FILE",
-        file: mockFile,
-        sheets: mockSheets,
-        previewId: "preview-123",
-      });
+    it("setFile sets file, sheets, and previewId", () => {
+      resetStore();
+      useWizardStore.getState().setFile(mockFile, mockSheets, "preview-123");
 
-      expect(result.file).toEqual(mockFile);
-      expect(result.sheets).toEqual(mockSheets);
-      expect(result.previewId).toBe("preview-123");
+      const state = useWizardStore.getState();
+      expect(state.file).toEqual(mockFile);
+      expect(state.sheets).toEqual(mockSheets);
+      expect(state.previewId).toBe("preview-123");
     });
 
-    it("SET_FILE initializes sheetMappings for each sheet", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_FILE",
-        file: mockFile,
-        sheets: mockSheets,
-        previewId: "preview-123",
-      });
+    it("setFile initializes sheetMappings for each sheet", () => {
+      resetStore();
+      useWizardStore.getState().setFile(mockFile, mockSheets, "preview-123");
 
-      expect(result.sheetMappings).toHaveLength(2);
-      expect(result.sheetMappings[0]).toEqual({
+      const state = useWizardStore.getState();
+      expect(state.sheetMappings).toHaveLength(2);
+      expect(state.sheetMappings[0]).toEqual({
         sheetIndex: 0,
         datasetId: "new",
         newDatasetName: "Sheet1",
         similarityScore: null,
       });
-      expect(result.sheetMappings[1]).toEqual({
+      expect(state.sheetMappings[1]).toEqual({
         sheetIndex: 1,
         datasetId: "new",
         newDatasetName: "Sheet2",
@@ -98,23 +138,19 @@ describe("Wizard Reducer", () => {
       });
     });
 
-    it("SET_FILE initializes fieldMappings for each sheet", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_FILE",
-        file: mockFile,
-        sheets: mockSheets,
-        previewId: "preview-123",
-      });
+    it("setFile initializes fieldMappings for each sheet", () => {
+      resetStore();
+      useWizardStore.getState().setFile(mockFile, mockSheets, "preview-123");
 
-      expect(result.fieldMappings).toHaveLength(2);
-      expect(result.fieldMappings[0]?.sheetIndex).toBe(0);
-      expect(result.fieldMappings[0]?.idStrategy).toBe("auto");
-      expect(result.fieldMappings[1]?.sheetIndex).toBe(1);
+      const state = useWizardStore.getState();
+      expect(state.fieldMappings).toHaveLength(2);
+      expect(state.fieldMappings[0]?.sheetIndex).toBe(0);
+      expect(state.fieldMappings[0]?.idStrategy).toBe("auto");
+      expect(state.fieldMappings[1]?.sheetIndex).toBe(1);
     });
 
-    it("CLEAR_FILE resets file-related state", () => {
-      const state = {
-        ...initialState,
+    it("clearFile resets file-related state", () => {
+      resetStore({
         file: mockFile,
         sheets: mockSheets,
         previewId: "preview-123",
@@ -133,60 +169,55 @@ describe("Wizard Reducer", () => {
             longitudeField: null,
           },
         ],
-      };
+      });
 
-      const result = wizardReducer(state, { type: "CLEAR_FILE" });
+      useWizardStore.getState().clearFile();
 
-      expect(result.file).toBeNull();
-      expect(result.sheets).toHaveLength(0);
-      expect(result.previewId).toBeNull();
-      expect(result.sheetMappings).toHaveLength(0);
-      expect(result.fieldMappings).toHaveLength(0);
+      const state = useWizardStore.getState();
+      expect(state.file).toBeNull();
+      expect(state.sheets).toHaveLength(0);
+      expect(state.previewId).toBeNull();
+      expect(state.sheetMappings).toHaveLength(0);
+      expect(state.fieldMappings).toHaveLength(0);
     });
   });
 
   describe("Dataset Selection", () => {
-    it("SET_CATALOG sets catalog ID", () => {
-      const result = wizardReducer(initialState, { type: "SET_CATALOG", catalogId: 42 });
+    it("setCatalog sets catalog ID", () => {
+      resetStore();
+      useWizardStore.getState().setCatalog(42);
 
-      expect(result.selectedCatalogId).toBe(42);
+      expect(useWizardStore.getState().selectedCatalogId).toBe(42);
     });
 
-    it("SET_CATALOG sets new catalog name", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_CATALOG",
-        catalogId: "new",
-        newCatalogName: "My New Catalog",
-      });
+    it("setCatalog sets new catalog name", () => {
+      resetStore();
+      useWizardStore.getState().setCatalog("new", "My New Catalog");
 
-      expect(result.selectedCatalogId).toBe("new");
-      expect(result.newCatalogName).toBe("My New Catalog");
+      const state = useWizardStore.getState();
+      expect(state.selectedCatalogId).toBe("new");
+      expect(state.newCatalogName).toBe("My New Catalog");
     });
 
-    it("SET_SHEET_MAPPING updates specific sheet mapping", () => {
-      const state = {
-        ...initialState,
+    it("setSheetMapping updates specific sheet mapping", () => {
+      resetStore({
         sheetMappings: [
           { sheetIndex: 0, datasetId: "new" as const, newDatasetName: "Sheet1", similarityScore: null },
           { sheetIndex: 1, datasetId: "new" as const, newDatasetName: "Sheet2", similarityScore: null },
         ],
-      };
-
-      const result = wizardReducer(state, {
-        type: "SET_SHEET_MAPPING",
-        sheetIndex: 0,
-        mapping: { datasetId: 123, newDatasetName: "" },
       });
 
-      expect(result.sheetMappings[0]?.datasetId).toBe(123);
-      expect(result.sheetMappings[1]?.datasetId).toBe("new"); // Unchanged
+      useWizardStore.getState().setSheetMapping(0, { datasetId: 123, newDatasetName: "" });
+
+      const state = useWizardStore.getState();
+      expect(state.sheetMappings[0]?.datasetId).toBe(123);
+      expect(state.sheetMappings[1]?.datasetId).toBe("new"); // Unchanged
     });
   });
 
   describe("Field Mapping", () => {
-    it("SET_FIELD_MAPPING updates specific field mapping", () => {
-      const state = {
-        ...initialState,
+    it("setFieldMapping updates specific field mapping", () => {
+      resetStore({
         fieldMappings: [
           {
             sheetIndex: 0,
@@ -201,23 +232,21 @@ describe("Wizard Reducer", () => {
             longitudeField: null,
           },
         ],
-      };
-
-      const result = wizardReducer(state, {
-        type: "SET_FIELD_MAPPING",
-        sheetIndex: 0,
-        mapping: { titleField: "name", dateField: "created_at", locationField: "address" },
       });
 
-      expect(result.fieldMappings[0]?.titleField).toBe("name");
-      expect(result.fieldMappings[0]?.dateField).toBe("created_at");
-      expect(result.fieldMappings[0]?.locationField).toBe("address");
-      expect(result.fieldMappings[0]?.idStrategy).toBe("auto"); // Unchanged
+      useWizardStore
+        .getState()
+        .setFieldMapping(0, { titleField: "name", dateField: "created_at", locationField: "address" });
+
+      const state = useWizardStore.getState();
+      expect(state.fieldMappings[0]?.titleField).toBe("name");
+      expect(state.fieldMappings[0]?.dateField).toBe("created_at");
+      expect(state.fieldMappings[0]?.locationField).toBe("address");
+      expect(state.fieldMappings[0]?.idStrategy).toBe("auto"); // Unchanged
     });
 
-    it("SET_FIELD_MAPPING updates idStrategy", () => {
-      const state = {
-        ...initialState,
+    it("setFieldMapping updates idStrategy", () => {
+      resetStore({
         fieldMappings: [
           {
             sheetIndex: 0,
@@ -232,93 +261,95 @@ describe("Wizard Reducer", () => {
             longitudeField: null,
           },
         ],
-      };
-
-      const result = wizardReducer(state, {
-        type: "SET_FIELD_MAPPING",
-        sheetIndex: 0,
-        mapping: { idStrategy: "external", idField: "uuid" },
       });
 
-      expect(result.fieldMappings[0]?.idStrategy).toBe("external");
-      expect(result.fieldMappings[0]?.idField).toBe("uuid");
+      useWizardStore.getState().setFieldMapping(0, { idStrategy: "external", idField: "uuid" });
+
+      const state = useWizardStore.getState();
+      expect(state.fieldMappings[0]?.idStrategy).toBe("external");
+      expect(state.fieldMappings[0]?.idField).toBe("uuid");
     });
   });
 
   describe("Import Options", () => {
-    it("SET_IMPORT_OPTIONS updates deduplication strategy", () => {
-      const result = wizardReducer(initialState, { type: "SET_IMPORT_OPTIONS", deduplicationStrategy: "update" });
+    it("setImportOptions updates deduplication strategy", () => {
+      resetStore();
+      useWizardStore.getState().setImportOptions({ deduplicationStrategy: "update" });
 
-      expect(result.deduplicationStrategy).toBe("update");
-      expect(result.geocodingEnabled).toBe(true); // Unchanged
+      const state = useWizardStore.getState();
+      expect(state.deduplicationStrategy).toBe("update");
+      expect(state.geocodingEnabled).toBe(true); // Unchanged
     });
 
-    it("SET_IMPORT_OPTIONS updates geocoding toggle", () => {
-      const result = wizardReducer(initialState, { type: "SET_IMPORT_OPTIONS", geocodingEnabled: false });
+    it("setImportOptions updates geocoding toggle", () => {
+      resetStore();
+      useWizardStore.getState().setImportOptions({ geocodingEnabled: false });
 
-      expect(result.geocodingEnabled).toBe(false);
-      expect(result.deduplicationStrategy).toBe("skip"); // Unchanged
+      const state = useWizardStore.getState();
+      expect(state.geocodingEnabled).toBe(false);
+      expect(state.deduplicationStrategy).toBe("skip"); // Unchanged
     });
 
-    it("SET_IMPORT_OPTIONS updates both options", () => {
-      const result = wizardReducer(initialState, {
-        type: "SET_IMPORT_OPTIONS",
-        deduplicationStrategy: "version",
-        geocodingEnabled: false,
-      });
+    it("setImportOptions updates both options", () => {
+      resetStore();
+      useWizardStore.getState().setImportOptions({ deduplicationStrategy: "version", geocodingEnabled: false });
 
-      expect(result.deduplicationStrategy).toBe("version");
-      expect(result.geocodingEnabled).toBe(false);
+      const state = useWizardStore.getState();
+      expect(state.deduplicationStrategy).toBe("version");
+      expect(state.geocodingEnabled).toBe(false);
     });
   });
 
   describe("Processing", () => {
-    it("START_PROCESSING sets processing state", () => {
-      const result = wizardReducer(initialState, { type: "START_PROCESSING", importFileId: 456 });
+    it("startProcessing sets processing state", () => {
+      resetStore();
+      useWizardStore.getState().startProcessing(456);
 
-      expect(result.importFileId).toBe(456);
-      expect(result.error).toBeNull();
+      const state = useWizardStore.getState();
+      expect(state.importFileId).toBe(456);
+      expect(state.error).toBeNull();
     });
 
-    it("SET_ERROR sets error", () => {
-      const result = wizardReducer(initialState, { type: "SET_ERROR", error: "Import failed: invalid data" });
+    it("setError sets error", () => {
+      resetStore();
+      useWizardStore.getState().setError("Import failed: invalid data");
 
-      expect(result.error).toBe("Import failed: invalid data");
+      expect(useWizardStore.getState().error).toBe("Import failed: invalid data");
     });
 
-    it("SET_ERROR clears error when null", () => {
-      const state = { ...initialState, error: "Previous error" };
-      const result = wizardReducer(state, { type: "SET_ERROR", error: null });
+    it("setError clears error when null", () => {
+      resetStore({ error: "Previous error" });
+      useWizardStore.getState().setError(null);
 
-      expect(result.error).toBeNull();
+      expect(useWizardStore.getState().error).toBeNull();
     });
   });
 
   describe("Reset", () => {
-    it("COMPLETE resets to initial state", () => {
-      const state = {
-        ...initialState,
+    it("complete resets to initial state", () => {
+      resetStore({
         currentStep: 5 as WizardStep,
-        isAuthenticated: true,
         file: { name: "test.csv", size: 1024, mimeType: "text/csv" },
         importFileId: 789,
-      };
+      });
 
-      const result = wizardReducer(state, { type: "COMPLETE" });
+      useWizardStore.getState().complete();
 
-      expect(result.currentStep).toBe(1);
-      expect(result.file).toBeNull();
-      expect(result.importFileId).toBeNull();
+      const state = useWizardStore.getState();
+      expect(state.currentStep).toBe(1);
+      expect(state.file).toBeNull();
+      expect(state.importFileId).toBeNull();
     });
 
-    it("RESET resets to initial state", () => {
-      const state = { ...initialState, currentStep: 3 as WizardStep, selectedCatalogId: 42, error: "Some error" };
+    it("reset resets to initial state", () => {
+      resetStore({ currentStep: 3 as WizardStep, selectedCatalogId: 42, error: "Some error" });
 
-      const result = wizardReducer(state, { type: "RESET" });
+      useWizardStore.getState().reset();
 
-      expect(result.currentStep).toBe(1);
-      expect(result.selectedCatalogId).toBeNull();
-      expect(result.error).toBeNull();
+      const state = useWizardStore.getState();
+      expect(state.currentStep).toBe(1);
+      expect(state.selectedCatalogId).toBeNull();
+      expect(state.error).toBeNull();
     });
   });
 });
@@ -331,7 +362,7 @@ describe("Wizard Reducer", () => {
  * requirements that must be met.
  */
 describe("canProceed Validation", () => {
-  // Helper function to compute canProceed (mirrors wizard-context.tsx logic)
+  // Helper function to compute canProceed (mirrors wizard-selectors.ts logic)
   // Auth state is now external (from useAuthState), so step 1 takes explicit booleans
   const computeCanProceed = (
     state: WizardState,

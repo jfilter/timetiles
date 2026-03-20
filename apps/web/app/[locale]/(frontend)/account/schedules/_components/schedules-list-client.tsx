@@ -24,8 +24,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { EmptyResourceCard } from "@/app/[locale]/(frontend)/account/_components/empty-resource-card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Link } from "@/i18n/navigation";
 import { useLoadingStates } from "@/lib/hooks/use-loading-states";
 import {
   useDeleteScheduledImportMutation,
@@ -210,16 +210,12 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
 
   if (schedules.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <ClockIcon className="text-muted-foreground mb-4 h-12 w-12" />
-          <h3 className="text-lg font-medium">{t("noSchedules")}</h3>
-          <p className="text-muted-foreground mt-1 text-center text-sm">{t("noSchedulesDescription")}</p>
-          <Button asChild className="mt-4">
-            <Link href="/import">{tImport("importData")}</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <EmptyResourceCard
+        icon={<ClockIcon className="text-muted-foreground mb-4 h-12 w-12" />}
+        title={t("noSchedules")}
+        description={t("noSchedulesDescription")}
+        action={{ label: tImport("importData"), href: "/import" }}
+      />
     );
   }
 

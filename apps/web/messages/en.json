@@ -245,8 +245,7 @@
     "cancelDeletion": "Cancel Deletion",
     "failedToLoad": "Failed to load data",
     "cannotDelete": "Cannot delete account",
-    "failedToScheduleDeletion": "Failed to schedule deletion",
-    "sevenDaysFromNow": "7 days from now"
+    "failedToScheduleDeletion": "Failed to schedule deletion"
   },
   "DataExport": {
     "title": "Download My Data",

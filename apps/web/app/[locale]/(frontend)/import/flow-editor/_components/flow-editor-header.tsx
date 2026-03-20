@@ -27,7 +27,7 @@ export const FlowEditorHeader = ({ sheetInfo, onSave }: Readonly<FlowEditorHeade
     <div className="border-border bg-background flex items-center justify-between border-b px-4 py-3">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/import?step=4">
+          <Link href="/import">
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t("flowBackToWizard")}
           </Link>

@@ -14,7 +14,6 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { usePreviewSheetsQuery } from "@/lib/hooks/use-import-wizard-queries";
 import { createEmptyFieldMapping, setMappingField } from "@/lib/import/field-mapping-utils";
-import { retrieveWizardStateForFlowEditor } from "@/lib/import/mapping-transfer";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/types/flow-mapping";
 import { createSourceNodes, createTargetNodes } from "@/lib/types/flow-mapping";
 import {
@@ -25,12 +24,17 @@ import {
 } from "@/lib/types/import-transforms";
 import type { FieldMapping, SheetInfo } from "@/lib/types/import-wizard";
 
+import { useWizardStore } from "../../_components/wizard-store";
+
 type FlowNode = Node<SourceColumnNodeData | TargetFieldNodeData | TransformNodeData>;
 type FlowEdge = Edge<{ isValid: boolean; confidence?: number }>;
 
 const NODE_TYPE_SOURCE = "source-column";
 const NODE_TYPE_TARGET = "target-field";
 const NODE_TYPE_TRANSFORM = "transform";
+
+/** Stable reference for empty transforms array to avoid re-render loops in useEffect. */
+const EMPTY_TRANSFORMS: ImportTransform[] = [];
 
 /**
  * Process transform chains (source→transform→target) and collect valid transforms
@@ -209,6 +213,10 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
   const hasInitializedRef = useRef(false);
   const initKeyRef = useRef<string | null>(null);
 
+  // Read wizard state from Zustand store
+  const wizardFieldMapping = useWizardStore((s) => s.fieldMappings.find((fm) => fm.sheetIndex === sheetIndex));
+  const wizardTransforms = useWizardStore((s) => s.transforms[sheetIndex] ?? EMPTY_TRANSFORMS);
+
   // Reset initialization when preview or sheet changes so nodes/edges are rebuilt
   const initKey = useMemo(() => `${previewId ?? ""}-${sheetIndex}`, [previewId, sheetIndex]);
   useEffect(() => {
@@ -243,9 +251,6 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     const allInitNodes: FlowNode[] = [...sourceNodes, ...targetNodes];
     const allInitEdges: FlowEdge[] = [];
 
-    // Check for wizard state forwarded from the inline transform list
-    const wizardState = retrieveWizardStateForFlowEditor();
-
     if (sheet.suggestedMappings?.mappings) {
       const mappingPairs = buildMappingPairs(sheet.suggestedMappings.mappings);
       const suggestedEdges = createInitialEdges(mappingPairs, sheetIndex);
@@ -253,9 +258,9 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     }
 
     // Create transform nodes + edges from wizard state
-    if (wizardState?.transforms.length) {
+    if (wizardFieldMapping && wizardTransforms.length > 0) {
       const result = createTransformNodesFromWizard(
-        wizardState,
+        { fieldMapping: wizardFieldMapping, transforms: wizardTransforms },
         sheetIndex,
         sourceNodes[0]?.position.x ?? 0,
         targetNodes[0]?.position.x ?? 700
@@ -293,7 +298,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       };
       setNodes((nds) => nds.map(applyConnectionState));
     }
-  }, [sheet, sheetIndex, setNodes, setEdges]);
+  }, [sheet, sheetIndex, setNodes, setEdges, wizardFieldMapping, wizardTransforms]);
 
   // Handle new connections (source→target, source→transform, transform→target)
   const onConnect = useCallback(

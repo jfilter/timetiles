@@ -19,7 +19,8 @@ import { useEffect, useMemo } from "react";
 import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
 
-import { useWizard } from "../wizard-context";
+import { useWizardCanProceed } from "../use-wizard-effects";
+import { useWizardStore } from "../wizard-store";
 
 export interface StepDatasetSelectionProps {
   className?: string;
@@ -95,8 +96,16 @@ const DatasetNameInput = ({ sheetIndex, value, disabled, onNameChange }: Readonl
 // oxlint-disable-next-line eslint(complexity) -- wizard step with many conditional UI branches
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
   const t = useTranslations("Import");
-  const { state, nextStep, canProceed, setCatalog, setSheetMapping } = useWizard();
-  const { sheets, selectedCatalogId, newCatalogName, sheetMappings } = state;
+  const sheets = useWizardStore((s) => s.sheets);
+  const selectedCatalogId = useWizardStore((s) => s.selectedCatalogId);
+  const newCatalogName = useWizardStore((s) => s.newCatalogName);
+  const sheetMappings = useWizardStore((s) => s.sheetMappings);
+  const configSuggestions = useWizardStore((s) => s.configSuggestions);
+  const fileName = useWizardStore((s) => s.file?.name);
+  const nextStep = useWizardStore((s) => s.nextStep);
+  const setCatalog = useWizardStore((s) => s.setCatalog);
+  const setSheetMapping = useWizardStore((s) => s.setSheetMapping);
+  const canProceed = useWizardCanProceed();
 
   const { data: catalogsData, isLoading, error: queryError } = useCatalogsQuery();
   const catalogs = catalogsData?.catalogs ?? [];
@@ -104,7 +113,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   const error = queryError ? errorMessage : null;
 
   // Derive a clean catalog name from the uploaded file name
-  const suggestedCatalogName = state.file?.name ? humanizeFileName(state.file.name) : "";
+  const suggestedCatalogName = fileName ? humanizeFileName(fileName) : "";
 
   // Auto-select "new catalog" if user has no existing catalogs
   useEffect(() => {
@@ -263,7 +272,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                       value=""
                       onValueChange={(value) => {
                         if (value) {
-                          const suggestion = state.configSuggestions.find((s) => s.datasetId === Number(value));
+                          const suggestion = configSuggestions.find((s) => s.datasetId === Number(value));
                           if (suggestion) {
                             setSheetMapping(0, { similarityScore: suggestion.score / 100 });
                           }

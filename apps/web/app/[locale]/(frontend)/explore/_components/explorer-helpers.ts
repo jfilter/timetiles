@@ -1,5 +1,5 @@
 /**
- * Helper functions for the MapExplorer component.
+ * Helper functions shared by MapExplorer and ListExplorer.
  *
  * @module
  * @category Components

@@ -13,8 +13,10 @@
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { LayoutList, Map } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+
+import { useRouter } from "@/i18n/navigation";
 
 interface ViewToggleProps {
   currentView: "map" | "list";

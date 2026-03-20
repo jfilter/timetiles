@@ -12,15 +12,10 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } fro
 import { AlertTriangle, Check, Clock, Download, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { formatExportDate, getExportDownloadUrl, getTimeUntilExpiry } from "@/lib/export/formatting";
 import type { DataExport } from "@/lib/hooks/use-data-export";
-import {
-  formatExportDate,
-  formatFileSize,
-  getExportDownloadUrl,
-  getTimeUntilExpiry,
-  useLatestExportQuery,
-  useRequestDataExportMutation,
-} from "@/lib/hooks/use-data-export";
+import { useLatestExportQuery, useRequestDataExportMutation } from "@/lib/hooks/use-data-export";
+import { formatFileSize } from "@/lib/utils/format";
 
 interface ExportStatus {
   isPending: boolean;

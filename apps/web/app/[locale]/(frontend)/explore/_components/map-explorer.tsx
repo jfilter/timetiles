@@ -11,33 +11,24 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-import type { MapPosition } from "@/lib/hooks/use-filters";
-import { useMapPosition } from "@/lib/hooks/use-filters";
 import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
 
 import { ChartSection } from "./chart-section";
 import { EventsList } from "./events-list";
+import { buildEventsDescription, getFilterLabels } from "./explorer-helpers";
 import type { ExplorerChromeElements } from "./explorer-shell";
 import { ExplorerShell } from "./explorer-shell";
-import { buildEventsDescription, getFilterLabels, getInitialViewState } from "./map-explorer-helpers";
 import { MapPanel } from "./map-panel";
+import { useExplorerMapPosition } from "./use-explorer-map-position";
 
 export const MapExplorer = () => {
-  // Get map position from URL (nuqs)
-  const { mapPosition, hasMapPosition, setMapPosition } = useMapPosition();
-
-  const handleMapPositionChange = useCallback(
-    (center: { lng: number; lat: number }, zoom: number) => {
-      setMapPosition({ latitude: center.lat, longitude: center.lng, zoom });
-    },
-    [setMapPosition]
-  );
+  const { initialViewState, explorerOptions } = useExplorerMapPosition();
 
   return (
-    <ExplorerShell explorerOptions={{ onMapPositionChange: handleMapPositionChange }}>
-      {(chrome) => <MapExplorerContent chrome={chrome} hasMapPosition={hasMapPosition} mapPosition={mapPosition} />}
+    <ExplorerShell explorerOptions={explorerOptions}>
+      {(chrome) => <MapExplorerContent chrome={chrome} initialViewState={initialViewState} />}
     </ExplorerShell>
   );
 };
@@ -48,11 +39,10 @@ export const MapExplorer = () => {
 
 interface MapExplorerContentProps {
   chrome: ExplorerChromeElements;
-  hasMapPosition: boolean;
-  mapPosition: MapPosition;
+  initialViewState: { latitude: number; longitude: number; zoom: number } | null;
 }
 
-const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorerContentProps) => {
+const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProps) => {
   const t = useTranslations("Explore");
   const { explorer, filterPanel } = chrome;
   const { map, filters: filterState, selection, data } = explorer;
@@ -80,9 +70,6 @@ const MapExplorerContent = ({ chrome, hasMapPosition, mapPosition }: MapExplorer
   } = map;
 
   const gridRef = useRef<HTMLDivElement>(null);
-
-  // Convert URL map position to initial view state for ClusteredMap
-  const initialViewState = getInitialViewState(hasMapPosition, mapPosition);
 
   // Loading states — shared hook tracks "has loaded at least once"
   const { isInitialLoad, isUpdating } = useLoadingPhase(eventsLoading || clustersLoading);

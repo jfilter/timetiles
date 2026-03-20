@@ -21,16 +21,7 @@ import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { createLogger, logError } from "@/lib/logger";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
-import {
-  findConfigSuggestionsForUser,
-  getPreviewDir,
-  MAX_FILE_SIZE,
-  parseFileSheets,
-  savePreviewMetadata,
-  type SheetInfo,
-  SUPPORTED_EXTENSIONS,
-  validateUrl,
-} from "../helpers";
+import { buildPreviewResult, getPreviewDir, MAX_FILE_SIZE, SUPPORTED_EXTENSIONS, validateUrl } from "../helpers";
 
 const logger = createLogger("api-preview-schema-url");
 
@@ -128,42 +119,14 @@ export const POST = apiRoute({
       throw new ValidationError(`Failed to fetch URL: ${errorMessage}`);
     }
 
-    // Parse file to get sheet info
-    let sheets: SheetInfo[];
-    try {
-      sheets = parseFileSheets(previewFilePath, fileExtension);
-    } catch (parseError) {
-      // Clean up temp file on parse error
-      fs.unlinkSync(previewFilePath);
-      logError(parseError, "preview-schema-url-parse");
-      throw new ValidationError("Failed to parse file. Please check the file format.");
-    }
-
-    // Store preview metadata (intentionally omit authConfig to avoid persisting secrets to disk)
-    savePreviewMetadata({
-      previewId,
+    const { sheets, configSuggestions } = await buildPreviewResult({
+      previewFilePath,
+      fileExtension,
+      metadata: { previewId, userId: user.id, originalName, filePath: previewFilePath, mimeType, fileSize, sourceUrl },
+      logContext: "url",
+      payload,
       userId: user.id,
-      originalName,
-      filePath: previewFilePath,
-      mimeType,
-      fileSize,
-      sourceUrl,
     });
-
-    // Find config suggestions from user's existing datasets
-    const allHeaders = sheets.flatMap((s) => s.headers);
-    const configSuggestions = await findConfigSuggestionsForUser(payload, user.id, allHeaders);
-
-    logger.info(
-      {
-        previewId,
-        sheetsCount: sheets.length,
-        totalRows: sheets.reduce((sum, s) => sum + s.rowCount, 0),
-        isUrlSource: true,
-        configSuggestionsCount: configSuggestions.length,
-      },
-      "Preview schema generated"
-    );
 
     return {
       previewId,

@@ -34,8 +34,7 @@ import { humanizeFileName } from "@/lib/import/humanize-file-name";
 import { TRANSFORM_TYPE_LABELS } from "@/lib/types/import-transforms";
 import { formatFileSize } from "@/lib/utils/format";
 
-import type { ScheduleConfig } from "../wizard-context";
-import { useWizard } from "../wizard-context";
+import { type ScheduleConfig, useWizardStore } from "../wizard-store";
 import { ScheduleConfigCard } from "./schedule-config-card";
 
 export interface StepReviewProps {
@@ -54,20 +53,25 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const t = useTranslations("Import");
-  const { state, prevStep, startProcessing, nextStep, setError, setScheduleConfig } = useWizard();
-  const {
-    file,
-    sheets,
-    selectedCatalogId,
-    newCatalogName,
-    sheetMappings,
-    fieldMappings,
-    deduplicationStrategy,
-    geocodingEnabled,
-    sourceUrl,
-    authConfig,
-    scheduleConfig,
-  } = state;
+  const file = useWizardStore((s) => s.file);
+  const sheets = useWizardStore((s) => s.sheets);
+  const selectedCatalogId = useWizardStore((s) => s.selectedCatalogId);
+  const newCatalogName = useWizardStore((s) => s.newCatalogName);
+  const sheetMappings = useWizardStore((s) => s.sheetMappings);
+  const fieldMappings = useWizardStore((s) => s.fieldMappings);
+  const deduplicationStrategy = useWizardStore((s) => s.deduplicationStrategy);
+  const geocodingEnabled = useWizardStore((s) => s.geocodingEnabled);
+  const sourceUrl = useWizardStore((s) => s.sourceUrl);
+  const authConfig = useWizardStore((s) => s.authConfig);
+  const scheduleConfig = useWizardStore((s) => s.scheduleConfig);
+  const wizardPreviewId = useWizardStore((s) => s.previewId);
+  const wizardTransforms = useWizardStore((s) => s.transforms);
+  const wizardError = useWizardStore((s) => s.error);
+  const prevStep = useWizardStore((s) => s.prevStep);
+  const startProcessing = useWizardStore((s) => s.startProcessing);
+  const nextStep = useWizardStore((s) => s.nextStep);
+  const setError = useWizardStore((s) => s.setError);
+  const setScheduleConfig = useWizardStore((s) => s.setScheduleConfig);
 
   const ID_STRATEGY_LABELS: Record<string, string> = {
     auto: t("idStrategyAuto"),
@@ -144,7 +148,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
           : undefined;
 
       // Build transforms payload from wizard state
-      const transformsPayload = Object.entries(state.transforms)
+      const transformsPayload = Object.entries(wizardTransforms)
         .filter(([, t]) => t.length > 0)
         .map(([idx, transforms]) => ({ sheetIndex: Number(idx), transforms }));
 
@@ -154,7 +158,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       }
 
       const data = await configureMutation.mutateAsync({
-        previewId: state.previewId ?? "",
+        previewId: wizardPreviewId ?? "",
         catalogId: selectedCatalogId,
         newCatalogName: selectedCatalogId === "new" ? newCatalogName : undefined,
         sheetMappings,
@@ -174,8 +178,8 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     sourceUrl,
     activeScheduleConfig,
     authConfig,
-    state.transforms,
-    state.previewId,
+    wizardTransforms,
+    wizardPreviewId,
     configureMutation,
     selectedCatalogId,
     newCatalogName,
@@ -405,14 +409,14 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       </Card>
 
       {/* Transforms summary */}
-      {Object.values(state.transforms).some((transforms) => transforms.length > 0) && (
+      {Object.values(wizardTransforms).some((transforms) => transforms.length > 0) && (
         <Card className="overflow-hidden">
           <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
             <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("configuredTransforms")}</h3>
           </div>
           <CardContent className="p-6">
             <div className="space-y-2">
-              {Object.entries(state.transforms)
+              {Object.entries(wizardTransforms)
                 .filter(([, transforms]) => transforms.length > 0)
                 .flatMap(([, transforms]) => transforms)
                 .map((transform) => (
@@ -451,7 +455,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         />
       )}
 
-      {state.error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{state.error}</div>}
+      {wizardError && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{wizardError}</div>}
 
       {/* Sticky footer with Back + Start Import */}
       <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">

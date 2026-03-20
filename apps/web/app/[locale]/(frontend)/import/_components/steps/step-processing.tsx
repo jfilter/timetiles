@@ -28,8 +28,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "@/i18n/navigation";
 import { type ProgressApiResponse, useImportProgressQuery } from "@/lib/hooks/use-import-progress-query";
 
-import { clearStorage } from "../use-wizard-storage";
-import { useWizard } from "../wizard-context";
+import { useWizardStore } from "../wizard-store";
 
 export interface StepProcessingProps {
   className?: string;
@@ -284,8 +283,10 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
 export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => {
   const t = useTranslations("Import");
   const tCommon = useTranslations("Common");
-  const { state, complete, reset } = useWizard();
-  const { importFileId, error: wizardError } = state;
+  const importFileId = useWizardStore((s) => s.importFileId);
+  const wizardError = useWizardStore((s) => s.error);
+  const complete = useWizardStore((s) => s.complete);
+  const reset = useWizardStore((s) => s.reset);
 
   const { data: progressData, error: progressError } = useImportProgressQuery(importFileId ?? null);
   const progress = progressData ? transformProgressResponse(progressData) : null;
@@ -317,7 +318,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
   useEffect(() => {
     if (isCompleted && !hasClearedRef.current) {
       hasClearedRef.current = true;
-      clearStorage();
+      useWizardStore.persist.clearStorage();
     }
   }, [isCompleted]);
   const status: ProcessingStatus = (() => {

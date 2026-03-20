@@ -25,9 +25,9 @@ import { useTranslations } from "next-intl";
 import { type DragEvent, useCallback, useMemo, useRef } from "react";
 
 import { Link, useRouter } from "@/i18n/navigation";
-import { storeMappingData } from "@/lib/import/mapping-transfer";
 import type { TransformType } from "@/lib/types/import-transforms";
 
+import { useWizardStore } from "../../_components/wizard-store";
 import { FlowEditorHeader } from "./flow-editor-header";
 import { NodePalette } from "./node-palette";
 import { SourceColumnNode } from "./nodes/source-column-node";
@@ -75,9 +75,12 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
   // Save and return to wizard
   const handleSave = useCallback(() => {
     const { fieldMapping, transforms } = serializeFlowState();
-    const mappingKey = storeMappingData({ fieldMapping, transforms });
-    router.push(`/import?step=4&mappingKey=${encodeURIComponent(mappingKey)}`);
-  }, [serializeFlowState, router]);
+    useWizardStore.getState().setFieldMapping(sheetIndex, fieldMapping);
+    if (transforms.length > 0) {
+      useWizardStore.getState().setTransforms(sheetIndex, transforms);
+    }
+    router.push("/import");
+  }, [serializeFlowState, router, sheetIndex]);
 
   // Handle drag over to allow drop
   const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
