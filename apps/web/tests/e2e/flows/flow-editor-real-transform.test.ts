@@ -33,7 +33,7 @@ test.describe("Flow Editor Real Transform Interactions", () => {
    * Helper: Navigate through upload (step 2) and dataset selection (step 3)
    * to reach the field mapping step (step 4).
    */
-  async function navigateToFieldMapping(page: Page, catalogName: string) {
+  const navigateToFieldMapping = async (page: Page, catalogName: string) => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
@@ -48,14 +48,14 @@ test.describe("Flow Editor Real Transform Interactions", () => {
 
     // Step 4: Field mapping
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
-  }
+  };
 
   /**
    * Helper: Add a string-op (uppercase) transform via the inline TransformList UI.
    * Clicks "Add Transform" dropdown, selects "String Operation", then configures
    * the source field and operation using real Radix UI Select interactions.
    */
-  async function addUppercaseTransformViaUI(page: Page) {
+  const addUppercaseTransformViaUI = async (page: Page) => {
     // Click the "Add Transform" dropdown button
     const addTransformButton = page.getByRole("button", { name: /add transform/i });
     await expect(addTransformButton).toBeVisible({ timeout: 5000 });
@@ -92,7 +92,7 @@ test.describe("Flow Editor Real Transform Interactions", () => {
 
     // Verify the summary line updated (shows the configured state)
     await expect(page.getByText(/apply uppercase to title/i)).toBeVisible({ timeout: 5000 });
-  }
+  };
 
   test("inline transform should persist through flow editor round-trip", async ({ page }) => {
     test.setTimeout(180000);
@@ -219,14 +219,12 @@ test.describe("Flow Editor Real Transform Interactions", () => {
 
     // All imported events should have uppercase titles
     const uppercasedEvents = events.filter(
-      (e) => typeof e.data?.title === "string" && e.data.title === (e.data.title as string).toUpperCase()
+      (e) => typeof e.data?.title === "string" && e.data.title === e.data.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBeGreaterThan(0);
 
     // Verify a specific title is uppercased (from valid-events.csv)
-    const techEvent = events.find(
-      (e) => typeof e.data?.title === "string" && (e.data.title as string).includes("TECH CONFERENCE")
-    );
+    const techEvent = events.find((e) => typeof e.data?.title === "string" && e.data.title.includes("TECH CONFERENCE"));
     expect(techEvent).toBeDefined();
   });
 });
