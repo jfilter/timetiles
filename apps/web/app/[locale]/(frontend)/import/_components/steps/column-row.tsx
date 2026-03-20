@@ -136,20 +136,21 @@ const useTransformEditing = (
 };
 
 /** Short label for a transform chip. */
-const getTransformChipLabel = (transform: ImportTransform): string => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts any translation function signature
+const getTransformChipLabel = (transform: ImportTransform, t: (...args: any[]) => string): string => {
   switch (transform.type) {
     case "rename":
-      return transform.to ? `Rename: ${transform.to}` : "Rename";
+      return transform.to ? t("tfChipRename", { name: transform.to }) : t("tfChipRenameDefault");
     case "date-parse":
-      return transform.inputFormat ? `Date: ${transform.inputFormat}` : "Parse Date";
+      return transform.inputFormat ? t("tfChipDate", { format: transform.inputFormat }) : t("tfChipDateDefault");
     case "string-op":
       return transform.operation.charAt(0).toUpperCase() + transform.operation.slice(1);
     case "concatenate":
-      return `Join ${transform.fromFields.length} fields`;
+      return t("tfChipJoin", { count: transform.fromFields.length });
     case "split":
-      return `Split -> ${transform.toFields.length}`;
+      return t("tfChipSplit", { count: transform.toFields.length });
     case "type-cast":
-      return transform.toType ? `Cast: ${transform.toType}` : "Convert";
+      return transform.toType ? t("tfChipCast", { type: transform.toType }) : t("tfChipCastDefault");
   }
 };
 
@@ -165,6 +166,7 @@ interface TransformChipProps {
 }
 
 const TransformChip = ({ transform, isExpanded, onToggle, onRemove }: Readonly<TransformChipProps>) => {
+  const t = useTranslations("Import");
   const Icon = TRANSFORM_ICONS[transform.type];
 
   return (
@@ -185,13 +187,13 @@ const TransformChip = ({ transform, isExpanded, onToggle, onRemove }: Readonly<T
         aria-label={TRANSFORM_TYPE_LABELS[transform.type]}
       >
         <Icon className={cn("h-3 w-3", TRANSFORM_COLORS[transform.type])} />
-        <span className="text-foreground max-w-[120px] truncate">{getTransformChipLabel(transform)}</span>
+        <span className="text-foreground max-w-[120px] truncate">{getTransformChipLabel(transform, t)}</span>
       </button>
       <button
         type="button"
         onClick={onRemove}
         className="text-muted-foreground hover:text-destructive -mr-0.5 ml-0.5 rounded-sm p-0.5"
-        aria-label="Remove transform"
+        aria-label={t("removeTransform")}
       >
         <X className="h-3 w-3" />
       </button>

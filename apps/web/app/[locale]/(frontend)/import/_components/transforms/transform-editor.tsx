@@ -11,17 +11,13 @@
 import { Input } from "@timetiles/ui/components/input";
 import { Label } from "@timetiles/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 
-import {
-  CAST_STRATEGY_LABELS,
-  CASTABLE_TYPE_LABELS,
-  type CastableType,
-  type CastStrategy,
-  DATE_FORMAT_OPTIONS,
-  type ImportTransform,
-} from "@/lib/types/import-transforms";
+import { DATE_FORMAT_OPTIONS, type ImportTransform } from "@/lib/types/import-transforms";
+
+import { TypeCastEditor } from "./type-cast-editor";
 
 interface TransformEditorProps {
   transform: ImportTransform;
@@ -30,6 +26,8 @@ interface TransformEditorProps {
 }
 
 export const TransformEditor = ({ transform, onChange, sourceColumns }: Readonly<TransformEditorProps>) => {
+  const t = useTranslations("Import");
+
   switch (transform.type) {
     case "rename":
       return <RenameEditor from={transform.from} to={transform.to} sourceColumns={sourceColumns} onChange={onChange} />;
@@ -88,45 +86,56 @@ export const TransformEditor = ({ transform, onChange, sourceColumns }: Readonly
         />
       );
     default:
-      return <div className="text-muted-foreground text-sm">Unknown transform type</div>;
+      return <div className="text-muted-foreground text-sm">{t("tfUnknownType")}</div>;
   }
 };
 
-// Shared column select component to reduce repetition
-interface ColumnSelectProps {
+/** Shared column select. */
+const ColumnSelect = ({
+  id,
+  label,
+  value,
+  sourceColumns,
+  onValueChange,
+}: Readonly<{
   id: string;
   label: string;
   value: string;
   sourceColumns: string[];
-  onValueChange: (value: string) => void;
-}
+  onValueChange: (v: string) => void;
+}>) => {
+  const t = useTranslations("Import");
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger id={id} className="h-11">
+          <SelectValue placeholder={t("tfSelectField")} />
+        </SelectTrigger>
+        <SelectContent>
+          {sourceColumns.map((col) => (
+            <SelectItem key={col} value={col}>
+              {col}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
 
-const ColumnSelect = ({ id, label, value, sourceColumns, onValueChange }: Readonly<ColumnSelectProps>) => (
-  <div className="space-y-2">
-    <Label htmlFor={id}>{label}</Label>
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger id={id} className="h-11">
-        <SelectValue placeholder="Select field" />
-      </SelectTrigger>
-      <SelectContent>
-        {sourceColumns.map((col) => (
-          <SelectItem key={col} value={col}>
-            {col}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-);
-
-interface RenameEditorProps {
+const RenameEditor = ({
+  from,
+  to,
+  sourceColumns,
+  onChange,
+}: Readonly<{
   from: string;
   to: string;
   sourceColumns: string[];
-  onChange: (updates: Partial<ImportTransform>) => void;
-}
-
-const RenameEditor = ({ from, to, sourceColumns, onChange }: Readonly<RenameEditorProps>) => {
+  onChange: (u: Partial<ImportTransform>) => void;
+}>) => {
+  const t = useTranslations("Import");
   const handleFromChange = (value: string) => onChange({ from: value });
   const handleToChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ to: e.target.value });
 
@@ -134,14 +143,14 @@ const RenameEditor = ({ from, to, sourceColumns, onChange }: Readonly<RenameEdit
     <div className="grid gap-4 sm:grid-cols-2">
       <ColumnSelect
         id="from"
-        label="Source Field"
+        label={t("tfSourceField")}
         value={from}
         sourceColumns={sourceColumns}
         onValueChange={handleFromChange}
       />
       <div className="space-y-2">
-        <Label htmlFor="to">New Name</Label>
-        <Input id="to" value={to} onChange={handleToChange} placeholder="Enter new name" />
+        <Label htmlFor="to">{t("tfNewName")}</Label>
+        <Input id="to" value={to} onChange={handleToChange} placeholder={t("tfNewNamePlaceholder")} />
       </div>
     </div>
   );
@@ -164,6 +173,7 @@ const DateParseEditor = ({
   sourceColumns,
   onChange,
 }: Readonly<DateParseEditorProps>) => {
+  const t = useTranslations("Import");
   const handleFromChange = (value: string) => onChange({ from: value });
   const handleInputFormatChange = (value: string) => onChange({ inputFormat: value });
   const handleOutputFormatChange = (value: string) => onChange({ outputFormat: value });
@@ -174,16 +184,16 @@ const DateParseEditor = ({
     <div className="grid gap-4 sm:grid-cols-2">
       <ColumnSelect
         id="from"
-        label="Source Field"
+        label={t("tfSourceField")}
         value={from}
         sourceColumns={sourceColumns}
         onValueChange={handleFromChange}
       />
       <div className="space-y-2">
-        <Label htmlFor="inputFormat">Input Format</Label>
+        <Label htmlFor="inputFormat">{t("tfInputFormat")}</Label>
         <Select value={inputFormat} onValueChange={handleInputFormatChange}>
           <SelectTrigger id="inputFormat" className="h-11">
-            <SelectValue placeholder="Select format" />
+            <SelectValue placeholder={t("tfSelectFormat")} />
           </SelectTrigger>
           <SelectContent>
             {DATE_FORMAT_OPTIONS.map((opt) => (
@@ -195,10 +205,10 @@ const DateParseEditor = ({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="outputFormat">Output Format</Label>
+        <Label htmlFor="outputFormat">{t("tfOutputFormat")}</Label>
         <Select value={outputFormat} onValueChange={handleOutputFormatChange}>
           <SelectTrigger id="outputFormat" className="h-11">
-            <SelectValue placeholder="Select format" />
+            <SelectValue placeholder={t("tfSelectFormat")} />
           </SelectTrigger>
           <SelectContent>
             {DATE_FORMAT_OPTIONS.map((opt) => (
@@ -210,12 +220,12 @@ const DateParseEditor = ({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="timezone">Timezone (optional)</Label>
+        <Label htmlFor="timezone">{t("tfTimezone")}</Label>
         <Input
           id="timezone"
           value={timezone ?? ""}
           onChange={handleTimezoneChange}
-          placeholder="e.g., America/New_York"
+          placeholder={t("tfTimezonePlaceholder")}
         />
       </div>
     </div>
@@ -239,6 +249,7 @@ const StringOpEditor = ({
   sourceColumns,
   onChange,
 }: Readonly<StringOpEditorProps>) => {
+  const t = useTranslations("Import");
   const handleFromChange = (value: string) => onChange({ from: value });
   const handleOperationChange = (value: string) => onChange({ operation: value as StringOpEditorProps["operation"] });
   const handlePatternChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ pattern: e.target.value });
@@ -249,22 +260,22 @@ const StringOpEditor = ({
       <div className="grid gap-4 sm:grid-cols-2">
         <ColumnSelect
           id="from"
-          label="Source Field"
+          label={t("tfSourceField")}
           value={from}
           sourceColumns={sourceColumns}
           onValueChange={handleFromChange}
         />
         <div className="space-y-2">
-          <Label htmlFor="operation">Operation</Label>
+          <Label htmlFor="operation">{t("tfOperation")}</Label>
           <Select value={operation} onValueChange={handleOperationChange}>
             <SelectTrigger id="operation" className="h-11">
-              <SelectValue placeholder="Select operation" />
+              <SelectValue placeholder={t("tfSelectOperation")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="uppercase">Uppercase</SelectItem>
-              <SelectItem value="lowercase">Lowercase</SelectItem>
-              <SelectItem value="trim">Trim Whitespace</SelectItem>
-              <SelectItem value="replace">Replace</SelectItem>
+              <SelectItem value="uppercase">{t("tfOpUppercase")}</SelectItem>
+              <SelectItem value="lowercase">{t("tfOpLowercase")}</SelectItem>
+              <SelectItem value="trim">{t("tfOpTrim")}</SelectItem>
+              <SelectItem value="replace">{t("tfOpReplace")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -272,16 +283,21 @@ const StringOpEditor = ({
       {operation === "replace" && (
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="pattern">Find Pattern</Label>
-            <Input id="pattern" value={pattern ?? ""} onChange={handlePatternChange} placeholder="Text to find" />
+            <Label htmlFor="pattern">{t("tfFindPattern")}</Label>
+            <Input
+              id="pattern"
+              value={pattern ?? ""}
+              onChange={handlePatternChange}
+              placeholder={t("tfFindPatternPlaceholder")}
+            />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="replacement">Replace With</Label>
+            <Label htmlFor="replacement">{t("tfReplaceWith")}</Label>
             <Input
               id="replacement"
               value={replacement ?? ""}
               onChange={handleReplacementChange}
-              placeholder="Replacement text"
+              placeholder={t("tfReplacePlaceholder")}
             />
           </div>
         </div>
@@ -290,33 +306,31 @@ const StringOpEditor = ({
   );
 };
 
-interface FieldToggleButtonProps {
+const FieldToggleButton = ({
+  column,
+  isSelected,
+  fromFields,
+  onChange,
+}: Readonly<{
   column: string;
   isSelected: boolean;
   fromFields: string[];
-  onChange: (updates: Partial<ImportTransform>) => void;
-}
-
-const FieldToggleButton = ({ column, isSelected, fromFields, onChange }: Readonly<FieldToggleButtonProps>) => {
-  const handleClick = () => {
-    const newFields = isSelected ? fromFields.filter((f) => f !== column) : [...fromFields, column];
-    onChange({ fromFields: newFields });
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={`rounded-md border px-2 py-1 text-sm transition-colors ${
-        isSelected
-          ? "border-cartographic-forest bg-cartographic-forest/10 text-cartographic-forest"
-          : "border-border text-muted-foreground hover:border-cartographic-forest/50"
-      }`}
-    >
-      {column}
-    </button>
-  );
-};
+  onChange: (u: Partial<ImportTransform>) => void;
+}>) => (
+  <button
+    type="button"
+    onClick={() =>
+      onChange({ fromFields: isSelected ? fromFields.filter((f) => f !== column) : [...fromFields, column] })
+    }
+    className={`rounded-md border px-2 py-1 text-sm transition-colors ${
+      isSelected
+        ? "border-cartographic-forest bg-cartographic-forest/10 text-cartographic-forest"
+        : "border-border text-muted-foreground hover:border-cartographic-forest/50"
+    }`}
+  >
+    {column}
+  </button>
+);
 
 interface ConcatenateEditorProps {
   fromFields: string[];
@@ -333,13 +347,14 @@ const ConcatenateEditor = ({
   sourceColumns,
   onChange,
 }: Readonly<ConcatenateEditorProps>) => {
+  const t = useTranslations("Import");
   const handleSeparatorChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ separator: e.target.value });
   const handleToChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ to: e.target.value });
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Source Fields (select multiple)</Label>
+        <Label>{t("tfSourceFieldsMultiple")}</Label>
         <div className="flex flex-wrap gap-2">
           {sourceColumns.map((col) => (
             <FieldToggleButton
@@ -351,16 +366,23 @@ const ConcatenateEditor = ({
             />
           ))}
         </div>
-        <p className="text-muted-foreground text-xs">Selected: {fromFields.join(", ") || "None"}</p>
+        <p className="text-muted-foreground text-xs">
+          {t("tfSelected", { fields: fromFields.join(", ") || t("tfNone") })}
+        </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="separator">Separator</Label>
-          <Input id="separator" value={separator} onChange={handleSeparatorChange} placeholder="e.g., ' ' or ', '" />
+          <Label htmlFor="separator">{t("tfSeparator")}</Label>
+          <Input
+            id="separator"
+            value={separator}
+            onChange={handleSeparatorChange}
+            placeholder={t("tfSeparatorPlaceholder")}
+          />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="to">Target Field Name</Label>
-          <Input id="to" value={to} onChange={handleToChange} placeholder="Name for combined field" />
+          <Label htmlFor="to">{t("tfTargetFieldName")}</Label>
+          <Input id="to" value={to} onChange={handleToChange} placeholder={t("tfTargetFieldPlaceholder")} />
         </div>
       </div>
     </div>
@@ -376,6 +398,7 @@ interface SplitEditorProps {
 }
 
 const SplitEditor = ({ from, delimiter, toFields, sourceColumns, onChange }: Readonly<SplitEditorProps>) => {
+  const t = useTranslations("Import");
   const [toFieldsText, setToFieldsText] = useState(toFields.join(", "));
   const handleFromChange = (value: string) => onChange({ from: value });
   const handleDelimiterChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ delimiter: e.target.value });
@@ -394,132 +417,32 @@ const SplitEditor = ({ from, delimiter, toFields, sourceColumns, onChange }: Rea
       <div className="grid gap-4 sm:grid-cols-2">
         <ColumnSelect
           id="from"
-          label="Source Field"
+          label={t("tfSourceField")}
           value={from}
           sourceColumns={sourceColumns}
           onValueChange={handleFromChange}
         />
         <div className="space-y-2">
-          <Label htmlFor="delimiter">Delimiter</Label>
-          <Input id="delimiter" value={delimiter} onChange={handleDelimiterChange} placeholder="e.g., ',' or ' '" />
+          <Label htmlFor="delimiter">{t("tfDelimiter")}</Label>
+          <Input
+            id="delimiter"
+            value={delimiter}
+            onChange={handleDelimiterChange}
+            placeholder={t("tfDelimiterPlaceholder")}
+          />
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="toFields">Target Field Names (comma-separated)</Label>
+        <Label htmlFor="toFields">{t("tfTargetFieldNames")}</Label>
         <Input
           id="toFields"
           value={toFieldsText}
           onChange={handleToFieldsTextChange}
           onBlur={handleToFieldsBlur}
-          placeholder="e.g., first_name, last_name"
+          placeholder={t("tfTargetFieldNamesPlaceholder")}
         />
-        <p className="text-muted-foreground text-xs">Enter names for each field after splitting</p>
+        <p className="text-muted-foreground text-xs">{t("tfTargetFieldNamesHint")}</p>
       </div>
-    </div>
-  );
-};
-
-interface TypeCastEditorProps {
-  from: string;
-  fromType: CastableType;
-  toType: CastableType;
-  strategy: CastStrategy;
-  customFunction?: string;
-  sourceColumns: string[];
-  onChange: (updates: Partial<ImportTransform>) => void;
-}
-
-const TypeCastEditor = ({
-  from,
-  fromType,
-  toType,
-  strategy,
-  customFunction,
-  sourceColumns,
-  onChange,
-}: Readonly<TypeCastEditorProps>) => {
-  const handleFromChange = (value: string) => onChange({ from: value });
-  const handleStrategyChange = (value: string) => onChange({ strategy: value as CastStrategy });
-  const handleFromTypeChange = (value: string) => onChange({ fromType: value as CastableType });
-  const handleToTypeChange = (value: string) => onChange({ toType: value as CastableType });
-  const handleCustomFunctionChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    onChange({ customFunction: e.target.value || undefined });
-
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <ColumnSelect
-          id="from"
-          label="Source Field"
-          value={from}
-          sourceColumns={sourceColumns}
-          onValueChange={handleFromChange}
-        />
-        <div className="space-y-2">
-          <Label htmlFor="strategy">Conversion Strategy</Label>
-          <Select value={strategy} onValueChange={handleStrategyChange}>
-            <SelectTrigger id="strategy" className="h-11">
-              <SelectValue placeholder="Select strategy" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(CAST_STRATEGY_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="fromType">From Type</Label>
-          <Select value={fromType} onValueChange={handleFromTypeChange}>
-            <SelectTrigger id="fromType" className="h-11">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(CASTABLE_TYPE_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="toType">To Type</Label>
-          <Select value={toType} onValueChange={handleToTypeChange}>
-            <SelectTrigger id="toType" className="h-11">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(CASTABLE_TYPE_LABELS)
-                .filter(([value]) => value !== "null")
-                .map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      {strategy === "custom" && (
-        <div className="space-y-2">
-          <Label htmlFor="customFunction">Custom Expression</Label>
-          <Input
-            id="customFunction"
-            value={customFunction ?? ""}
-            onChange={handleCustomFunctionChange}
-            placeholder="upper(value)"
-          />
-          <p className="text-muted-foreground text-xs">
-            Expression with value variable. Functions: upper, lower, trim, concat, replace, substring, toNumber,
-            parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty
-          </p>
-        </div>
-      )}
     </div>
   );
 };

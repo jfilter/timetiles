@@ -29,6 +29,7 @@ import {
   Trash2,
   Type,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import {
@@ -103,6 +104,7 @@ const TransformItem = ({
   onDelete,
   onUpdate,
 }: Readonly<TransformItemProps>) => {
+  const t = useTranslations("Import");
   const Icon = TRANSFORM_ICONS[transform.type];
   const isValid = isTransformValid(transform);
 
@@ -138,7 +140,7 @@ const TransformItem = ({
               <span className="text-foreground font-medium">{TRANSFORM_TYPE_LABELS[transform.type]}</span>
               {!isValid && (
                 <span className="bg-cartographic-terracotta/10 text-cartographic-terracotta rounded px-1.5 py-0.5 text-[10px] font-medium">
-                  Incomplete
+                  {t("tfIncomplete")}
                 </span>
               )}
             </div>
@@ -151,7 +153,7 @@ const TransformItem = ({
             size="sm"
             className="h-8 w-8 p-0"
             onClick={handleToggleActive}
-            title={transform.active ? "Disable" : "Enable"}
+            title={transform.active ? t("tfDisable") : t("tfEnable")}
           >
             <span className={cn("h-2 w-2 rounded-full", transform.active ? "bg-cartographic-forest" : "bg-muted")} />
           </Button>
@@ -176,6 +178,7 @@ const TransformItem = ({
 };
 
 export const TransformList = ({ transforms, onTransformsChange, sourceColumns }: Readonly<TransformListProps>) => {
+  const t = useTranslations("Import");
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const addTransform = (type: TransformType) => {
@@ -202,14 +205,14 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="font-serif text-lg">Data Transforms</CardTitle>
-            <CardDescription>Transform source data before mapping to target fields</CardDescription>
+            <CardTitle className="font-serif text-lg">{t("tfDataTransforms")}</CardTitle>
+            <CardDescription>{t("tfDataTransformsDescription")}</CardDescription>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <Plus className="mr-2 h-4 w-4" />
-                Add Transform
+                {t("tfAddTransform")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -223,7 +226,7 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
       <CardContent className="space-y-3">
         {transforms.length === 0 ? (
           <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
-            No transforms configured. Add a transform to process your data.
+            {t("tfNoTransforms")}
           </div>
         ) : (
           transforms.map((transform) => (
@@ -244,31 +247,35 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
   );
 };
 
-const getTransformSummary = (transform: ImportTransform): string => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts any translation function signature
+const getTransformSummary = (transform: ImportTransform, t: (...args: any[]) => string): string => {
   switch (transform.type) {
     case "rename":
-      return transform.from && transform.to ? `${transform.from} → ${transform.to}` : "Select field to rename";
+      return transform.from && transform.to ? `${transform.from} → ${transform.to}` : t("tfSelectFieldToRename");
     case "date-parse":
       return transform.inputFormat && transform.outputFormat
         ? `${transform.inputFormat} → ${transform.outputFormat}`
-        : "Configure date format";
+        : t("tfConfigureDateFormat");
     case "string-op":
-      return transform.from ? `Apply ${transform.operation} to ${transform.from}` : "Select field and operation";
+      return transform.from
+        ? t("tfApplyOpToField", { operation: transform.operation, field: transform.from })
+        : t("tfSelectFieldAndOp");
     case "concatenate":
       return transform.fromFields.length >= 2
-        ? `Join ${transform.fromFields.length} fields → ${transform.to || "?"}`
-        : "Select fields to concatenate";
+        ? t("tfJoinFieldsTo", { count: transform.fromFields.length, target: transform.to || "?" })
+        : t("tfSelectFieldsToConcat");
     case "split":
       return transform.from && transform.toFields.length > 0
-        ? `Split ${transform.from} into ${transform.toFields.length} fields`
-        : "Configure split operation";
+        ? t("tfSplitFieldInto", { field: transform.from, count: transform.toFields.length })
+        : t("tfConfigureSplit");
     case "type-cast":
       return transform.from && transform.fromType && transform.toType
         ? `${transform.from}: ${transform.fromType} → ${transform.toType}`
-        : "Configure type conversion";
+        : t("tfConfigureTypeCast");
   }
 };
 
-const TransformSummary = ({ transform }: { transform: ImportTransform }) => (
-  <p className="text-muted-foreground mt-0.5 truncate text-sm">{getTransformSummary(transform)}</p>
-);
+const TransformSummary = ({ transform }: { transform: ImportTransform }) => {
+  const t = useTranslations("Import");
+  return <p className="text-muted-foreground mt-0.5 truncate text-sm">{getTransformSummary(transform, t)}</p>;
+};

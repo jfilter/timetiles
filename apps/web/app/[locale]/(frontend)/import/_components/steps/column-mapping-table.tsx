@@ -266,7 +266,9 @@ const CombinedRow = ({
           <td colSpan={4} className="px-6 py-4">
             <div className="max-w-2xl space-y-4">
               <div className="space-y-2">
-                <Label className="text-cartographic-charcoal text-sm">{t("sourceColumn")} (select multiple)</Label>
+                <Label className="text-cartographic-charcoal text-sm">
+                  {t("sourceColumn")} {t("tfSelectMultiple")}
+                </Label>
                 <div className="flex flex-wrap gap-2">
                   {sourceColumns.map((col) => (
                     <button
@@ -287,21 +289,21 @@ const CombinedRow = ({
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor={`separator-${transform.id}`}>Separator</Label>
+                  <Label htmlFor={`separator-${transform.id}`}>{t("tfSeparator")}</Label>
                   <Input
                     id={`separator-${transform.id}`}
                     value={transform.separator}
                     onChange={(e) => handleChange({ separator: e.target.value })}
-                    placeholder="e.g., ', ' or ' '"
+                    placeholder={t("tfSeparatorPlaceholder")}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`to-${transform.id}`}>Target Field Name</Label>
+                  <Label htmlFor={`to-${transform.id}`}>{t("tfTargetFieldName")}</Label>
                   <Input
                     id={`to-${transform.id}`}
                     value={transform.to}
                     onChange={(e) => handleChange({ to: e.target.value })}
-                    placeholder="Name for combined field"
+                    placeholder={t("tfTargetFieldPlaceholder")}
                   />
                 </div>
               </div>
