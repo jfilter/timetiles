@@ -28,15 +28,20 @@ const VerifyEmailContent = () => {
 
   const mutation = useVerifyEmailMutation();
 
+  // Trigger verification on mount (one-shot)
   useEffect(() => {
     if (token && !mutation.isPending && !mutation.isSuccess && !mutation.isError) {
-      mutation.mutate(token, {
-        onSuccess: () => {
-          setTimeout(() => router.push("/import"), 3000);
-        },
-      });
+      mutation.mutate(token);
     }
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps -- one-shot on mount
+
+  // Auto-redirect after successful verification
+  useEffect(() => {
+    if (mutation.isSuccess) {
+      const timeout = setTimeout(() => router.push("/import"), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [mutation.isSuccess, router]);
 
   const getStatus = (): VerificationStatus => {
     if (!token) return "no-token";
