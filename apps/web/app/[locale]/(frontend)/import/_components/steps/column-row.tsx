@@ -137,7 +137,7 @@ const useTransformEditing = (
 
 /** Short label for a transform chip. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts any translation function signature
-const getTransformChipLabel = (transform: ImportTransform, t: (...args: any[]) => string): string => {
+export const getTransformChipLabel = (transform: ImportTransform, t: (...args: any[]) => string): string => {
   switch (transform.type) {
     case "rename":
       return transform.to ? t("tfChipRename", { name: transform.to }) : t("tfChipRenameDefault");

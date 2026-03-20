@@ -62,7 +62,7 @@ const useConfigSuggestion = (
 };
 
 /** Apply a string operation transform for preview. */
-const applyStringOp = (result: Record<string, unknown>, tf: ImportTransform & { type: "string-op" }): void => {
+export const applyStringOp = (result: Record<string, unknown>, tf: ImportTransform & { type: "string-op" }): void => {
   const v = result[tf.from];
   if (typeof v !== "string") return;
   if (tf.operation === "uppercase") result[tf.from] = v.toUpperCase();
@@ -72,7 +72,7 @@ const applyStringOp = (result: Record<string, unknown>, tf: ImportTransform & { 
 };
 
 /** Apply a single transform to a preview row (client-safe, no server deps). */
-const applyOneTransform = (result: Record<string, unknown>, tf: ImportTransform): void => {
+export const applyOneTransform = (result: Record<string, unknown>, tf: ImportTransform): void => {
   if (tf.type === "string-op") return applyStringOp(result, tf);
   if (tf.type === "rename") {
     const v = result[tf.from];
@@ -99,7 +99,7 @@ const applyOneTransform = (result: Record<string, unknown>, tf: ImportTransform)
 };
 
 /** Apply transforms to sample data for preview. */
-const applyPreviewTransforms = (
+export const applyPreviewTransforms = (
   dataArray: Record<string, unknown>[],
   transforms: ImportTransform[]
 ): Record<string, unknown>[] => {

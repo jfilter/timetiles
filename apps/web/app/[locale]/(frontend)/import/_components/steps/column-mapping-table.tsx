@@ -90,7 +90,7 @@ const FIELD_MAPPING_STRING_KEYS: FieldMappingStringField[] = [
 ];
 
 /** Find which target field a source column is currently assigned to. */
-const findTargetForColumn = (columnName: string, fieldMapping: FieldMapping): FieldMappingStringField | null => {
+export const findTargetForColumn = (columnName: string, fieldMapping: FieldMapping): FieldMappingStringField | null => {
   for (const key of FIELD_MAPPING_STRING_KEYS) {
     if (fieldMapping[key] === columnName) return key;
   }
@@ -98,7 +98,7 @@ const findTargetForColumn = (columnName: string, fieldMapping: FieldMapping): Fi
 };
 
 /** Get the first non-null sample value for a column. */
-const getSampleValue = (columnName: string, sampleData: Record<string, unknown>[]): unknown => {
+export const getSampleValue = (columnName: string, sampleData: Record<string, unknown>[]): unknown => {
   for (const row of sampleData) {
     const val = row[columnName];
     if (val !== null && val !== undefined && val !== "") return val;
@@ -107,7 +107,7 @@ const getSampleValue = (columnName: string, sampleData: Record<string, unknown>[
 };
 
 /** Build the column-centric view from field mapping + transforms. */
-const buildColumnView = (
+export const buildColumnView = (
   headers: string[],
   sampleData: Record<string, unknown>[],
   fieldMapping: FieldMapping,
