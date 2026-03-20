@@ -22,7 +22,9 @@ import { ProgressTrackingService } from "@/lib/import/progress-tracking";
 import { applyTransformsBatch } from "@/lib/import/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
-import { detectFlatFieldMappings } from "@/lib/services/schema-detection/utilities";
+import type { SchemaDetectionService } from "@/lib/services/schema-detection/service";
+import type { DetectionContext } from "@/lib/services/schema-detection/types";
+import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
 import type { ImportTransform } from "@/lib/types/import-transforms";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
 import type { Dataset, ImportJob } from "@/payload-types";
@@ -90,7 +92,7 @@ const mergeFieldMappings = (
   locationPath: dataset?.fieldMappingOverrides?.locationPath ?? detectedMappings.locationPath,
 });
 
-// Helper to finalize schema detection: runs enum detection, saves state, detects field mappings
+// Helper to finalize schema detection using the pluggable SchemaDetectionService
 const finalizeSchemaDetection = async (
   payload: Payload,
   importJobId: number | string,
@@ -99,7 +101,6 @@ const finalizeSchemaDetection = async (
   logger: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
   if (!schemaBuilder) {
-    // No schema state - just transition
     await payload.update({
       collection: COLLECTION_NAMES.IMPORT_JOBS,
       id: importJobId,
@@ -108,9 +109,61 @@ const finalizeSchemaDetection = async (
     return;
   }
 
-  // Run enum detection once at the true end of schema detection
-  schemaBuilder.detectEnumFields();
   const finalState = schemaBuilder.getState();
+
+  // Try the pluggable detection service (registered by schemaDetectionPlugin)
+  // SchemaDetectionService is registered by the plugin at payload.config.custom.schemaDetection
+  // In unit tests, payload.config may not exist, so access defensively
+  const schemaDetection = payload.config?.custom?.schemaDetection as { service: SchemaDetectionService } | undefined;
+  const service = schemaDetection?.service;
+
+  let detectedMappings;
+  let detectedLanguage: string | null = null;
+
+  if (service) {
+    const context: DetectionContext = {
+      fieldStats: finalState.fieldStats,
+      sampleData: finalState.dataSamples as Record<string, unknown>[],
+      headers: Object.keys(finalState.fieldStats),
+      config: { enabled: true, priority: 1 },
+    };
+
+    const result = await service.detect(null, context);
+
+    // Enrich field stats with enum info from detection results
+    for (const fieldPath of result.patterns.enumFields) {
+      const stats = finalState.fieldStats[fieldPath];
+      if (!stats?.uniqueSamples) continue;
+      stats.isEnumCandidate = true;
+      const valueCounts = new Map<unknown, number>();
+      for (const sample of stats.uniqueSamples) {
+        valueCounts.set(sample, (valueCounts.get(sample) ?? 0) + 1);
+      }
+      stats.enumValues = Array.from(valueCounts.entries()).map(([value, count]) => ({
+        value,
+        count,
+        percent: (count / stats.occurrences) * 100,
+      }));
+    }
+
+    detectedMappings = toFlatMappings(result.fieldMappings);
+
+    if (result.language.isReliable) {
+      detectedLanguage = result.language.code;
+    }
+
+    logger.info("Detection service completed", {
+      detector: "default",
+      language: result.language.code,
+      languageConfidence: result.language.confidence,
+      idFields: result.patterns.idFields.length,
+      enumFields: result.patterns.enumFields.length,
+    });
+  } else {
+    // Fallback: manual detection (for test environments without plugin)
+    schemaBuilder.detectEnumFields();
+    detectedMappings = detectFlatFieldMappings(finalState.fieldStats, dataset?.language ?? "eng");
+  }
 
   // Save final state with enum info to database
   const updatedSchema = await schemaBuilder.getSchema();
@@ -120,13 +173,22 @@ const finalizeSchemaDetection = async (
     data: { schema: updatedSchema, schemaBuilderState: finalState as unknown as Record<string, unknown> },
   });
 
-  // Detect field mappings or use overrides
-  const detectedMappings = detectFlatFieldMappings(finalState.fieldStats, dataset?.language ?? "eng");
+  // Auto-detect language on dataset if not already set
+  if (detectedLanguage && dataset && !dataset.language) {
+    await payload.update({
+      collection: COLLECTION_NAMES.DATASETS,
+      id: typeof dataset.id === "string" ? dataset.id : String(dataset.id),
+      data: { language: detectedLanguage },
+      overrideAccess: true,
+    });
+  }
+
+  // Merge detected mappings with dataset overrides
   const fieldMappings = mergeFieldMappings(detectedMappings, dataset);
 
   logger.info("Field mappings detected", {
     fieldMappings,
-    language: dataset?.language ?? "eng",
+    language: detectedLanguage ?? dataset?.language ?? "eng",
     overridesUsed: {
       title: Boolean(dataset?.fieldMappingOverrides?.titlePath),
       description: Boolean(dataset?.fieldMappingOverrides?.descriptionPath),
