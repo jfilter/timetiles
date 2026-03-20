@@ -12,6 +12,7 @@ import { Input } from "@timetiles/ui/components/input";
 import { Label } from "@timetiles/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import type React from "react";
+import { useState } from "react";
 
 import {
   CAST_STRATEGY_LABELS,
@@ -104,7 +105,7 @@ const ColumnSelect = ({ id, label, value, sourceColumns, onValueChange }: Readon
   <div className="space-y-2">
     <Label htmlFor={id}>{label}</Label>
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger id={id}>
+      <SelectTrigger id={id} className="h-11">
         <SelectValue placeholder="Select field" />
       </SelectTrigger>
       <SelectContent>
@@ -181,7 +182,7 @@ const DateParseEditor = ({
       <div className="space-y-2">
         <Label htmlFor="inputFormat">Input Format</Label>
         <Select value={inputFormat} onValueChange={handleInputFormatChange}>
-          <SelectTrigger id="inputFormat">
+          <SelectTrigger id="inputFormat" className="h-11">
             <SelectValue placeholder="Select format" />
           </SelectTrigger>
           <SelectContent>
@@ -196,7 +197,7 @@ const DateParseEditor = ({
       <div className="space-y-2">
         <Label htmlFor="outputFormat">Output Format</Label>
         <Select value={outputFormat} onValueChange={handleOutputFormatChange}>
-          <SelectTrigger id="outputFormat">
+          <SelectTrigger id="outputFormat" className="h-11">
             <SelectValue placeholder="Select format" />
           </SelectTrigger>
           <SelectContent>
@@ -256,7 +257,7 @@ const StringOpEditor = ({
         <div className="space-y-2">
           <Label htmlFor="operation">Operation</Label>
           <Select value={operation} onValueChange={handleOperationChange}>
-            <SelectTrigger id="operation">
+            <SelectTrigger id="operation" className="h-11">
               <SelectValue placeholder="Select operation" />
             </SelectTrigger>
             <SelectContent>
@@ -375,15 +376,18 @@ interface SplitEditorProps {
 }
 
 const SplitEditor = ({ from, delimiter, toFields, sourceColumns, onChange }: Readonly<SplitEditorProps>) => {
+  const [toFieldsText, setToFieldsText] = useState(toFields.join(", "));
   const handleFromChange = (value: string) => onChange({ from: value });
   const handleDelimiterChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ delimiter: e.target.value });
-  const handleToFieldsChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+  const handleToFieldsTextChange = (e: React.ChangeEvent<HTMLInputElement>) => setToFieldsText(e.target.value);
+  const handleToFieldsBlur = () => {
     onChange({
-      toFields: e.target.value
+      toFields: toFieldsText
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
     });
+  };
 
   return (
     <div className="space-y-4">
@@ -404,8 +408,9 @@ const SplitEditor = ({ from, delimiter, toFields, sourceColumns, onChange }: Rea
         <Label htmlFor="toFields">Target Field Names (comma-separated)</Label>
         <Input
           id="toFields"
-          value={toFields.join(", ")}
-          onChange={handleToFieldsChange}
+          value={toFieldsText}
+          onChange={handleToFieldsTextChange}
+          onBlur={handleToFieldsBlur}
           placeholder="e.g., first_name, last_name"
         />
         <p className="text-muted-foreground text-xs">Enter names for each field after splitting</p>
@@ -453,7 +458,7 @@ const TypeCastEditor = ({
         <div className="space-y-2">
           <Label htmlFor="strategy">Conversion Strategy</Label>
           <Select value={strategy} onValueChange={handleStrategyChange}>
-            <SelectTrigger id="strategy">
+            <SelectTrigger id="strategy" className="h-11">
               <SelectValue placeholder="Select strategy" />
             </SelectTrigger>
             <SelectContent>
@@ -470,7 +475,7 @@ const TypeCastEditor = ({
         <div className="space-y-2">
           <Label htmlFor="fromType">From Type</Label>
           <Select value={fromType} onValueChange={handleFromTypeChange}>
-            <SelectTrigger id="fromType">
+            <SelectTrigger id="fromType" className="h-11">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -485,7 +490,7 @@ const TypeCastEditor = ({
         <div className="space-y-2">
           <Label htmlFor="toType">To Type</Label>
           <Select value={toType} onValueChange={handleToTypeChange}>
-            <SelectTrigger id="toType">
+            <SelectTrigger id="toType" className="h-11">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
