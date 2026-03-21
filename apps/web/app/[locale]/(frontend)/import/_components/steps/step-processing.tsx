@@ -245,7 +245,7 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
 };
 
 const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => {
-  const visible = stages.filter((s) => s.status !== "skipped");
+  const visible = stages.filter((s) => s.status !== "skipped" && s.name !== "await-approval");
   return (
     <div className="space-y-1 px-6 py-4">
       {visible.map((stage, index) => (
