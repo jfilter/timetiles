@@ -481,14 +481,15 @@ GET /api/import/:importId/progress
 
 **Ingestion Stages:**
 
-1. `UPLOAD` - File uploaded successfully
-2. `SCHEMA_DETECTION` - Analyzing file structure
-3. `AWAITING_APPROVAL` - User must approve detected schema
-4. `VALIDATION` - Validating data against schema
-5. `GEOCODING` - Geocoding location fields
-6. `PROCESSING` - Creating events in database
-7. `COMPLETED` - Ingestion finished successfully
-8. `FAILED` - Ingestion failed with errors
+1. `analyze-duplicates` - Finding duplicate rows
+2. `detect-schema` - Analyzing file structure and field types
+3. `validate-schema` - Comparing detected schema with existing dataset schema
+4. `await-approval` - User must approve breaking schema changes
+5. `create-schema-version` - Persisting approved schema
+6. `geocode-batch` - Geocoding location fields
+7. `create-events` - Creating event records in database
+8. `completed` - Ingestion finished successfully
+9. `failed` - Ingestion failed with errors
 
 **Example:**
 

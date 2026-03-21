@@ -24,13 +24,13 @@ These 8 jobs process files through the ingestion pipeline sequentially. See [Dat
 
 ## Scheduled Ingestion Jobs
 
-| Job                               | Purpose                                          | Trigger                     |
-| --------------------------------- | ------------------------------------------------ | --------------------------- |
-| `schedule-manager`                | Check cron schedules, trigger due ingestion runs | Periodic (runs on interval) |
-| `url-fetch`                       | Download file from URL for scheduled ingestion   | Schedule manager            |
-| `cleanup-stuck-scheduled-imports` | Reset imports stuck in processing state          | Periodic                    |
-| `process-pending-retries`         | Retry failed imports with exponential backoff    | Periodic                    |
-| `cleanup-approval-locks`          | Release stale approval locks                     | Periodic                    |
+| Job                               | Purpose                                              | Trigger                     |
+| --------------------------------- | ---------------------------------------------------- | --------------------------- |
+| `schedule-manager`                | Check cron schedules, trigger due ingestion runs     | Periodic (runs on interval) |
+| `url-fetch`                       | Download file from URL for scheduled ingestion       | Schedule manager            |
+| `cleanup-stuck-scheduled-imports` | Reset ingestion jobs stuck in processing state       | Periodic                    |
+| `process-pending-retries`         | Retry failed ingestion jobs with exponential backoff | Periodic                    |
+| `cleanup-approval-locks`          | Release stale approval locks                         | Periodic                    |
 
 ## System Maintenance Jobs
 
