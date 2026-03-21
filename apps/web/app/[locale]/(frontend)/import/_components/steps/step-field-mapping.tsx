@@ -183,11 +183,33 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
     [activeSheet?.sampleData, sheetTransforms]
   );
 
+  // Add ID preview column — shows the *source* of each ID, not the actual hash.
+  // Real ID generation lives in lib/services/id-generation.ts (uses node:crypto, server-only).
+  const previewWithIds = useMemo(() => {
+    if (!activeMapping) return transformedSampleData;
+    const strategy = activeMapping.idStrategy;
+    return transformedSampleData.map((row, i) => {
+      let id: string;
+      if (strategy === "external" && activeMapping.idField) {
+        id = String(row[activeMapping.idField] ?? "");
+      } else if (strategy === "computed") {
+        const parts = [row[activeMapping.titleField ?? ""], row[activeMapping.dateField ?? ""]].filter(Boolean);
+        id = parts.length > 0 ? `hash(${parts.map(String).join(", ")})` : `row-${i + 1}`;
+      } else if (strategy === "hybrid" && activeMapping.idField) {
+        const ext = row[activeMapping.idField];
+        id = ext ? String(ext) : `hash(...)`;
+      } else {
+        id = `auto-${i + 1}`;
+      }
+      return { __id: id, ...row };
+    });
+  }, [transformedSampleData, activeMapping]);
+
   // Build preview fields from transformed data (includes new columns from transforms)
   const allPreviewFields = useMemo(() => {
-    const allKeys = new Set([...headers, ...transformedSampleData.flatMap(Object.keys)]);
-    return [...allKeys].map((h) => ({ label: h, columnKey: h }));
-  }, [headers, transformedSampleData]);
+    const allKeys = new Set([...headers, ...previewWithIds.flatMap(Object.keys)]);
+    return [...allKeys].map((h) => ({ label: h === "__id" ? "ID" : h, columnKey: h, mono: h === "__id" }));
+  }, [headers, previewWithIds]);
 
   if (!activeSheet || !activeMapping) {
     return (
@@ -295,7 +317,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
       {activeSheet.sampleData.length > 0 && (
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <DataPreviewSection fields={allPreviewFields} sampleData={transformedSampleData} />
+            <DataPreviewSection fields={allPreviewFields} sampleData={previewWithIds} />
           </CardContent>
         </Card>
       )}
