@@ -25,7 +25,7 @@
     "@commitlint/config-conventional": "^20.4.3",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
-    "@typescript/native-preview": "7.0.0-dev.20260301.1",
+    "@typescript/native-preview": "7.0.0-dev.20260321.1",
     "chalk": "^5.6.2",
     "eslint-plugin-oxlint": "^1.51.0",
     "glob": "^13.0.6",
