@@ -116,3 +116,7 @@ apps/docs/content/reference/api/**/_meta.js
 .github/skills/
 .opencode/
 tmp/
+
+# Plan files at repo root (implementation plans belong in docs/plans/ or are ephemeral)
+/*_PLAN.md
+/*_PLAN_*.md
