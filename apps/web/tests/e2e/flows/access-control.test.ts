@@ -342,10 +342,6 @@ test.describe("Access Control - Error Handling", () => {
     // Page should have content (didn't crash)
     const bodyText = await page.locator("body").innerText();
     expect(bodyText.length).toBeGreaterThan(0);
-
-    // The page should not show a raw error or blank screen
-    const bodyText = await page.locator("body").innerText();
-    expect(bodyText.length).toBeGreaterThan(0);
     // Should not display raw JSON error to the user
     expect(bodyText).not.toContain('"error":"Forbidden"');
   });
