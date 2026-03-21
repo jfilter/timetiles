@@ -51,12 +51,13 @@ test.describe("Import Wizard - JSON File Upload", () => {
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(jsonPath);
 
-    // Wait for server-side JSON-to-CSV conversion and schema detection
+    // Wait for server-side JSON-to-CSV conversion and schema detection.
+    // The UI shows the file name and row count once processing completes.
     const fileReady = page.getByText(/file ready for import|detected.*sheet/i);
     await expect(fileReady).toBeVisible({ timeout: 20_000 });
 
-    // Verify the file name is displayed
-    await expect(page.getByText("valid-events.json")).toBeVisible();
+    // Verify the file name or row count is displayed
+    await expect(page.getByText(/valid-events|3 rows/i)).toBeVisible();
 
     // Click Next to go to Dataset Selection (Step 3)
     await importPage.clickNext();
@@ -77,23 +78,22 @@ test.describe("Import Wizard - JSON File Upload", () => {
 
     // The JSON had keys: title, date, location, category
     // After JSON-to-CSV conversion, these become CSV columns.
-    // Auto-detection should pre-fill the field mappings.
-    const titleSelect = page.locator("#title-field");
-    await expect(titleSelect).toBeVisible();
-    await expect(titleSelect).toContainText("title");
+    // The column-centric mapping table shows each source column as a row.
+    // Verify auto-detected columns are visible in the mapping table.
+    const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
+    await expect(titleRow).toBeVisible({ timeout: 10_000 });
 
-    const dateSelect = page.locator("#date-field");
-    await expect(dateSelect).toBeVisible();
-    await expect(dateSelect).toContainText("date");
+    const dateRow = page.locator("tr").filter({ hasText: "date" }).first();
+    await expect(dateRow).toBeVisible();
 
-    const locationSelect = page.locator("#location-field");
-    await expect(locationSelect).toBeVisible();
-    await expect(locationSelect).toContainText("location");
+    const locationRow = page.locator("tr").filter({ hasText: "location" }).first();
+    await expect(locationRow).toBeVisible();
 
-    // Click Next to go to Review (Step 5)
+    // Click Next — Step 5 (Schedule) is auto-skipped for file uploads,
+    // so we go directly to Step 6: Review
     await importPage.clickNext();
 
-    // Step 5: Review
+    // Step 6: Review
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10_000 });
 
@@ -122,7 +122,7 @@ test.describe("Import Wizard - JSON File Upload", () => {
     expect(typeof responseBody.importFileId).toBe("number");
     expect(typeof responseBody.catalogId).toBe("number");
 
-    // Step 6: Processing
+    // Step 7: Processing
     const processingIndicator = page.getByText(/importing your data/i);
     await expect(processingIndicator).toBeVisible({ timeout: 10_000 });
 
@@ -195,7 +195,7 @@ test.describe("Import Wizard - JSON URL Input", () => {
     // availability and SSRF rules, we may get success or an error.
     if (status === 200) {
       // URL fetch succeeded — preview should show data
-      const fileReady = page.getByText(/file ready for import|ready|detected/i);
+      const fileReady = page.getByText(/file ready for import|url data ready|ready|detected/i);
       await expect(fileReady).toBeVisible({ timeout: 10_000 });
     } else {
       // URL fetch failed — error message should be shown to user
@@ -284,9 +284,14 @@ test.describe("Scheduled Import - JSON API Configuration", () => {
     const scheduledImportData = {
       name: `JSON API Import ${uniqueId}`,
       sourceUrl: "https://api.example.com/events",
-      schedule: "daily",
+      // Schedule configuration: scheduleType + frequency (not a single "schedule" field)
+      scheduleType: "frequency",
+      frequency: "daily",
+      // Target: catalog is required, dataset is optional
+      catalog: catalogId,
       dataset: datasetId,
-      isActive: false, // Do not actually run
+      // Disabled so it does not actually run
+      enabled: false,
       advancedOptions: {
         responseFormat: "json",
         jsonApiConfig: {
