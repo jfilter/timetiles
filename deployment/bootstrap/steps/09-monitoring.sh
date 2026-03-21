@@ -121,6 +121,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 # Monthly backup cleanup (1st of month at 4 AM)
 0 4 1 * * $user $install_dir/timetiles backup prune >> /var/log/timetiles/backup.log 2>&1
+
+# Reload nginx daily to pick up any renewed SSL certificates
+0 6 * * * $user cd $install_dir && docker compose -f docker-compose.prod.yml --env-file .env.production exec -T nginx nginx -s reload >> /var/log/timetiles/nginx-reload.log 2>&1
 EOF
 
     chmod 644 /etc/cron.d/timetiles

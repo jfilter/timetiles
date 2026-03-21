@@ -9,6 +9,8 @@ services:
     image: ${POSTGRES_IMAGE:-kartoza/postgis}:${POSTGRES_VERSION:-17-3.5}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-postgres
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: "json-file"
       options:
@@ -22,8 +24,8 @@ services:
       # Kartoza image variables (for ARM64 compatibility)
       POSTGRES_DBNAME: ${DB_NAME:-timetiles}
       POSTGRES_PASS: ${DB_PASSWORD}
-      # Kartoza networking - allow connections from Docker network
-      ALLOW_IP_RANGE: "0.0.0.0/0"
+      # Kartoza networking - restrict to Docker bridge subnet
+      ALLOW_IP_RANGE: "172.16.0.0/12"
       # Disable kartoza's SSL (nginx handles SSL termination)
       FORCE_SSL: "false"
       # PostgreSQL tuning via kartoza's EXTRA_CONF
@@ -67,8 +69,16 @@ services:
     expose:
       - "${CONTAINER_PORT:-3000}"
     # Allow the web container to reach host-native services (e.g., scraper runner)
+    # Remove this block if scraper runner is not used
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
     environment:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
@@ -128,6 +138,12 @@ services:
     image: nginx:${NGINX_VERSION:-1.27-alpine}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-nginx
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Required for binding to ports 80/443
     logging:
       driver: "json-file"
       options:
@@ -163,7 +179,7 @@ services:
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot-webroot:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    entrypoint: '/bin/sh -c ''trap exit TERM; while :; do certbot renew --deploy-hook "touch /etc/letsencrypt/.renewed"; sleep 12h & wait $${!}; done;'''
     depends_on:
       - nginx
 

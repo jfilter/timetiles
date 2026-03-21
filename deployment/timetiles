@@ -995,8 +995,9 @@ EOF
             echo -e "${YELLOW}Pulling latest images from registry...${NC}"
             $DC_CMD pull
         fi
-        $DC_CMD up -d --no-deps web
-        echo -e "${GREEN}Web app updated! Migrations will run automatically.${NC}"
+        # Recreate all services to pick up config/image changes
+        $DC_CMD up -d
+        echo -e "${GREEN}Services updated! Migrations will run automatically.${NC}"
 
         # Update scraper runner if configured
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
