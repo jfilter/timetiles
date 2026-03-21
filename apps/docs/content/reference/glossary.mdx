@@ -27,6 +27,9 @@ A file format used to store tabular data. One of the primary import formats supp
 **Data Export**
 A self-service feature allowing users to download all their data (catalogs, datasets, events, import history) as a ZIP archive from Account Settings.
 
+**Data Ingestion**
+The process of bringing external data (CSV, Excel, ODS, JSON API, or scheduled URLs) into TimeTiles. The ingestion pipeline handles schema detection, deduplication, geocoding, and event creation. Called "Import" in the user interface and `import-*` in the codebase. See the [Data Ingestion guide](/user-guide/data-ingestion) and the [developer pipeline documentation](/developer-guide/architecture/data-processing-pipeline).
+
 **Dataset**
 A collection of related events within a catalog. Datasets share a common structure (schema) and represent a specific data source or time period.
 
@@ -63,7 +66,7 @@ A site-wide singleton configuration in Payload CMS. TimeTiles uses four globals:
 A dynamic, explorable timeline that allows users to navigate through time and space to understand how events unfold. The primary output of TimeTiles.
 
 **Import Pipeline**
-The system that processes uploaded data files, validates coordinates, detects schemas, and converts data into the TimeTiles format.
+See **Data Ingestion**. The user interface uses "Import" for this concept; the codebase uses `import-*` collection and variable names.
 
 ## J
 
@@ -93,8 +96,8 @@ A library for managing server state in React applications. Used by TimeTiles for
 
 ## S
 
-**Scheduled Import**
-An automated URL-based import that runs on a cron schedule. TimeTiles fetches data from a URL at configured intervals and processes it through the import pipeline.
+**Scheduled Ingestion**
+An automated URL-based data ingestion that runs on a cron schedule. TimeTiles fetches data from a URL at configured intervals and processes it through the ingestion pipeline. Called "Scheduled Import" in the user interface.
 
 **Schema Detection**
 The automatic process of analyzing uploaded data to identify date fields, coordinate fields, and other important columns without manual configuration.

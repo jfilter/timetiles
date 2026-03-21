@@ -391,7 +391,7 @@ Each runner tracks active runs independently in memory. The concurrency limit (`
 Scraper output is **transient**. The CSV data returned from each run is either:
 
 - Stored as a base64 field in the `scraper-runs` collection (for review), or
-- Fed into the import pipeline, which creates events in the database.
+- Fed into the ingestion pipeline, which creates events in the database.
 
 There is no persistent state on the runner itself. All durable data lives in the TimeTiles PostgreSQL database, which is covered by your standard database backup strategy.
 

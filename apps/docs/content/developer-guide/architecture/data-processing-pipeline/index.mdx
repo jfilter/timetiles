@@ -2,9 +2,11 @@
 asIndexPage: true
 ---
 
-# Data Processing Pipeline
+# Data Ingestion Pipeline
 
-The TimeTiles data processing pipeline is a hook-driven, event-based system that transforms uploaded files into structured events. The pipeline automatically orchestrates a series of processing stages through Payload CMS collection hooks and background jobs.
+> **Terminology**: The ingestion pipeline is called "Import" in the UI and `import-*` in the codebase.
+
+The TimeTiles data ingestion pipeline is a hook-driven, event-based system that transforms uploaded files into structured events. The pipeline automatically orchestrates a series of processing stages through Payload CMS collection hooks and background jobs.
 
 ## Quick Links
 
@@ -16,7 +18,7 @@ The TimeTiles data processing pipeline is a hook-driven, event-based system that
 
 ## Pipeline Overview
 
-The pipeline processes data through eight sequential stages, from file upload to final event creation:
+The pipeline ingests data through eight sequential stages, from file upload to final event creation:
 
 ```mermaid
 graph TD
@@ -36,9 +38,9 @@ graph TD
     M --> N[Completed]
 ```
 
-## Eight Processing Stages
+## Eight Ingestion Stages
 
-1. **Dataset Detection** - Parse file structure and create import jobs (one per sheet for Excel files)
+1. **Dataset Detection** - Parse file structure and create ingestion jobs (one per sheet for Excel files)
 2. **Analyze Duplicates** - Identify internal and external duplicates before processing
 3. **Detect Schema** - Build progressive schema from non-duplicate data
 4. **Validate Schema** - Compare detected schema with existing dataset schema
@@ -57,7 +59,7 @@ graph TD
 
 **Schema Versioning**: Complete version history of all schema changes with audit trail.
 
-**Multi-Sheet Support**: Excel files with multiple sheets create separate import jobs that process independently.
+**Multi-Sheet Support**: Excel files with multiple sheets create separate ingestion jobs that process independently.
 
 ## Core Principles
 
@@ -75,3 +77,5 @@ Working on a specific stage? See [Processing Stages](./stages) for detailed docu
 Need to configure behavior? Check [Configuration](./configuration) for dataset and system options.
 
 Having issues? Visit [Troubleshooting](./troubleshooting) for common problems and solutions.
+
+Looking for the user-facing overview? See the [Data Ingestion guide](/user-guide/data-ingestion).

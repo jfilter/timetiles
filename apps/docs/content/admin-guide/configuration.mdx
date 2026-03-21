@@ -283,30 +283,30 @@ Customize site appearance in Branding (`/dashboard/globals/branding`):
 
 Feature flags are configured in Settings (`/dashboard/globals/settings`) under "Feature Flags":
 
-| Flag                           | Default | Description                                                 |
-| ------------------------------ | ------- | ----------------------------------------------------------- |
-| Allow Private Imports          | On      | Users can create private imports visible only to themselves |
-| Enable Scheduled Imports       | On      | Users can create automated URL-based import schedules       |
-| Enable Public Registration     | On      | New users can self-register accounts                        |
-| Enable Event Creation          | On      | New events can be created via imports or API                |
-| Enable Dataset Creation        | On      | Users can create new datasets                               |
-| Enable Import Creation         | On      | Users can create new import jobs                            |
-| Enable Scheduled Job Execution | On      | Scheduled imports run automatically                         |
-| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests               |
+| Flag                           | Default | Description                                                        |
+| ------------------------------ | ------- | ------------------------------------------------------------------ |
+| Allow Private Ingestion        | On      | Users can create private ingestion runs visible only to themselves |
+| Enable Scheduled Ingestion     | On      | Users can create automated URL-based ingestion schedules           |
+| Enable Public Registration     | On      | New users can self-register accounts                               |
+| Enable Event Creation          | On      | New events can be created via ingestion or API                     |
+| Enable Dataset Creation        | On      | Users can create new datasets                                      |
+| Enable Ingestion Creation      | On      | Users can create new ingestion jobs                                |
+| Enable Scheduled Job Execution | On      | Scheduled ingestion runs automatically                             |
+| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests                      |
 
-## Scheduled Imports
+## Scheduled Ingestion
 
-Users can create automated imports that fetch data from a URL on a cron schedule.
+Users can create automated ingestion schedules that fetch data from a URL on a cron schedule.
 
 ### Configuration
 
-- Enable/disable via the **Enable Scheduled Imports** feature flag
+- Enable/disable via the **Enable Scheduled Ingestion** feature flag
 - Users create schedules at `/dashboard/collections/scheduled-imports`
 - Each schedule specifies: URL, cron expression, target catalog/dataset, authentication (optional)
 
 ### Authentication Options
 
-Scheduled imports support several authentication methods for fetching protected URLs:
+Scheduled ingestion supports several authentication methods for fetching protected URLs:
 
 - **None**: Public URLs with no authentication
 - **API Key**: Header or query parameter API key
@@ -315,13 +315,13 @@ Scheduled imports support several authentication methods for fetching protected 
 
 ### URL Fetch Caching
 
-Scheduled imports use HTTP caching (RFC 7234) to avoid re-downloading unchanged data. See [Usage Limits](./usage-limits#http-caching) for cache configuration.
+Scheduled ingestion uses HTTP caching (RFC 7234) to avoid re-downloading unchanged data. See [Usage Limits](./usage-limits#http-caching) for cache configuration.
 
 ### Monitoring
 
 - View all schedules: `/dashboard/collections/scheduled-imports`
 - Check schedule health: `GET /api/admin/schedule-service`
-- System automatically cleans up stuck imports via background job
+- System automatically cleans up stuck ingestion jobs via background job
 
 ## Audit Log
 

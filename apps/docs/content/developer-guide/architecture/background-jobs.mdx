@@ -8,29 +8,29 @@ TimeTiles uses Payload CMS's built-in job queue for all asynchronous processing.
 - **Hook-driven queueing**: Jobs are queued by collection `afterChange` hooks via `StageTransitionService`, not manually
 - **Single process**: Jobs run in the same Node.js process as the web server (no separate worker)
 
-## Import Pipeline Jobs
+## Ingestion Pipeline Jobs
 
-These 8 jobs process files through the import pipeline sequentially. See [Data Processing Pipeline](./data-processing-pipeline) for detailed stage documentation.
+These 8 jobs process files through the ingestion pipeline sequentially. See [Data Ingestion Pipeline](./data-processing-pipeline) for detailed stage documentation.
 
-| Job                     | Purpose                                  | Trigger                       |
-| ----------------------- | ---------------------------------------- | ----------------------------- |
-| `dataset-detection`     | Parse file, create import jobs per sheet | File upload to `import-files` |
-| `analyze-duplicates`    | Find internal/external duplicate rows    | Stage transition              |
-| `schema-detection`      | Build progressive JSON Schema from data  | Stage transition              |
-| `validate-schema`       | Compare detected vs existing schema      | Stage transition              |
-| `create-schema-version` | Persist approved schema version          | Approval or auto-approve      |
-| `geocode-batch`         | Geocode unique locations via providers   | Stage transition              |
-| `create-events-batch`   | Create event records in database         | Stage transition              |
+| Job                     | Purpose                                     | Trigger                       |
+| ----------------------- | ------------------------------------------- | ----------------------------- |
+| `dataset-detection`     | Parse file, create ingestion jobs per sheet | File upload to `import-files` |
+| `analyze-duplicates`    | Find internal/external duplicate rows       | Stage transition              |
+| `schema-detection`      | Build progressive JSON Schema from data     | Stage transition              |
+| `validate-schema`       | Compare detected vs existing schema         | Stage transition              |
+| `create-schema-version` | Persist approved schema version             | Approval or auto-approve      |
+| `geocode-batch`         | Geocode unique locations via providers      | Stage transition              |
+| `create-events-batch`   | Create event records in database            | Stage transition              |
 
-## Scheduled Import Jobs
+## Scheduled Ingestion Jobs
 
-| Job                               | Purpose                                       | Trigger                     |
-| --------------------------------- | --------------------------------------------- | --------------------------- |
-| `schedule-manager`                | Check cron schedules, trigger due imports     | Periodic (runs on interval) |
-| `url-fetch`                       | Download file from URL for scheduled import   | Schedule manager            |
-| `cleanup-stuck-scheduled-imports` | Reset imports stuck in processing state       | Periodic                    |
-| `process-pending-retries`         | Retry failed imports with exponential backoff | Periodic                    |
-| `cleanup-approval-locks`          | Release stale approval locks                  | Periodic                    |
+| Job                               | Purpose                                          | Trigger                     |
+| --------------------------------- | ------------------------------------------------ | --------------------------- |
+| `schedule-manager`                | Check cron schedules, trigger due ingestion runs | Periodic (runs on interval) |
+| `url-fetch`                       | Download file from URL for scheduled ingestion   | Schedule manager            |
+| `cleanup-stuck-scheduled-imports` | Reset imports stuck in processing state          | Periodic                    |
+| `process-pending-retries`         | Retry failed imports with exponential backoff    | Periodic                    |
+| `cleanup-approval-locks`          | Release stale approval locks                     | Periodic                    |
 
 ## System Maintenance Jobs
 

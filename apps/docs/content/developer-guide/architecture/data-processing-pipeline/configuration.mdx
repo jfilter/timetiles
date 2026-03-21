@@ -1,10 +1,10 @@
 # Configuration
 
-The TimeTiles data processing pipeline provides extensive configuration options at both the dataset and system levels. This document explains all available configuration options and their effects on pipeline behavior.
+The TimeTiles data ingestion pipeline provides extensive configuration options at both the dataset and system levels. This document explains all available configuration options and their effects on pipeline behavior.
 
 ## Dataset Configuration
 
-Each dataset can configure its processing behavior independently. Configuration is stored in the `datasets` collection and affects all imports for that dataset.
+Each dataset can configure its ingestion behavior independently. Configuration is stored in the `datasets` collection and affects all ingestion runs for that dataset.
 
 ### ID Strategy Configuration
 
@@ -154,9 +154,9 @@ Each transformation specifies:
 - Strict type checking with no forgiveness
 - Use for high-quality data where mismatches indicate errors
 
-### Import Transforms
+### Ingestion Transforms
 
-Field renaming and restructuring during import.
+Field renaming and restructuring during ingestion.
 
 **Transform Configuration**:
 
@@ -286,7 +286,7 @@ Controls resource usage and prevents runaway processing.
 
 ## System Configuration
 
-Global pipeline settings that affect all datasets and imports.
+Global pipeline settings that affect all datasets and ingestion runs.
 
 ### File Processing Configuration
 
@@ -346,9 +346,9 @@ Controls how many rows are processed in each batch for various stages.
 
 ### Concurrency Configuration
 
-**Max Concurrent Imports**:
+**Max Concurrent Ingestion Runs**:
 
-- Maximum number of import files processing simultaneously across all datasets
+- Maximum number of files being ingested simultaneously across all datasets
 - Prevents system overload from too many concurrent operations
 - Typical values: 10-50 depending on infrastructure
 

@@ -1,5 +1,5 @@
 export default {
-  "data-processing-pipeline": "Data Processing Pipeline",
+  "data-processing-pipeline": "Data Ingestion Pipeline",
   "background-jobs": "Background Jobs",
   "dynamic-filters": "Dynamic Filters",
   "ui-customization": "UI Customization",

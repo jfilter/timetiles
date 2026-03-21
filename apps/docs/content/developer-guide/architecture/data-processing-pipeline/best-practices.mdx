@@ -1,14 +1,14 @@
 # Best Practices
 
-This guide provides recommendations for different stakeholders working with the TimeTiles data processing pipeline.
+This guide provides recommendations for different stakeholders working with the TimeTiles data ingestion pipeline.
 
 ## For Data Providers
 
-These practices help ensure smooth imports and high-quality event data.
+These practices help ensure smooth ingestion and high-quality event data.
 
 ### Data Structure Consistency
 
-**Keep structure consistent across imports**:
+**Keep structure consistent across ingestion runs**:
 
 - Use the same field names in every import
 - Maintain consistent data types (don't switch between "123" and 123)
@@ -18,7 +18,7 @@ These practices help ensure smooth imports and high-quality event data.
 **Why this matters**:
 
 - Reduces schema conflicts and approval friction
-- Enables auto-approval of imports
+- Enables auto-approval of ingestion runs
 - Makes data more queryable and reliable
 - Reduces processing time and errors
 
@@ -88,7 +88,7 @@ These practices help ensure smooth imports and high-quality event data.
 
 ### Data Validation
 
-**Validate data before importing**:
+**Validate data before ingestion**:
 
 - Check for required fields
 - Verify data types match expected schema
@@ -119,7 +119,7 @@ These practices help maintain a healthy, performant pipeline.
 
 **Why this matters**:
 
-- Prevents import backlogs
+- Prevents ingestion backlogs
 - Catches data quality issues early
 - Maintains data governance
 - Builds institutional knowledge
@@ -138,7 +138,7 @@ These practices help maintain a healthy, performant pipeline.
 - Reduces manual intervention
 - Enables auto-approval
 - Consistent handling of type variations
-- Faster imports
+- Faster ingestion
 
 ### Monitor Field Growth
 
@@ -176,7 +176,7 @@ These practices help maintain a healthy, performant pipeline.
 
 **Tune batch sizes based on infrastructure**:
 
-- Monitor memory usage during imports
+- Monitor memory usage during ingestion
 - Test different batch sizes in staging
 - Adjust based on file sizes and complexity
 - Document why specific sizes were chosen
@@ -213,7 +213,7 @@ Special considerations when processing large files or high-volume imports.
 
 ### Monitor Field Count
 
-**Datasets with >1000 fields may impact performance**:
+**Datasets with >1,000 fields may impact performance**:
 
 - Review schema regularly for bloat
 - Question fields with null rate >95%
@@ -243,7 +243,7 @@ Special considerations when processing large files or high-volume imports.
 - Too loose: creates enums with thousands of values
 - Impacts query performance and UX
 
-### Use Progressive Import
+### Use Progressive Ingestion
 
 **Let schema build incrementally for large files**:
 
@@ -256,7 +256,7 @@ Special considerations when processing large files or high-volume imports.
 
 - Prevents memory exhaustion
 - Allows recovery from interruptions
-- More reliable for very large files
+- More reliable for large files
 - System remains responsive
 
 ### Plan for Geocoding
@@ -286,7 +286,7 @@ Special considerations when processing large files or high-volume imports.
 
 **Why this matters**:
 
-- Smaller imports are more manageable
+- Smaller ingestion runs are more manageable
 - Failures affect smaller portions
 - Parallel processing of partitions
 - Easier to retry failed partitions
@@ -434,4 +434,4 @@ Practices that apply to everyone working with the pipeline.
 - Implement preventive measures
 - Share lessons learned
 
-These best practices will help you run a smooth, efficient, and reliable data processing pipeline.
+These best practices will help you run a smooth, efficient, and reliable data ingestion pipeline.

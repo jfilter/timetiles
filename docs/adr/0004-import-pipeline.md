@@ -1,5 +1,7 @@
 # ADR 0004: Import Pipeline
 
+> **Terminology note**: This pipeline is referred to as the "Data Ingestion Pipeline" in documentation. The UI and codebase use "import."
+
 ## Status
 
 Accepted

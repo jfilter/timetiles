@@ -98,8 +98,10 @@ RUN pnpm exec next build --experimental-build-mode compile --webpack
 # Production stage: final image
 FROM base AS production
 
-# Remove build-time-only packages to reduce image size and attack surface
-RUN apt-get remove -y --purge curl gnupg && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+# Patch OS vulnerabilities and remove build-time-only packages
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get remove -y --purge curl gnupg && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

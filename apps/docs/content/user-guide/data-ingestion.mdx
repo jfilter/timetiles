@@ -1,0 +1,145 @@
+# Data Ingestion
+
+Data ingestion is the process of bringing external data into TimeTiles. You can ingest data from files (CSV, Excel, ODS) or from URLs (including JSON APIs). TimeTiles automatically detects your data structure, geocodes addresses, and creates interactive events.
+
+> In the TimeTiles UI, ingestion is called **"Import"** — the buttons and menus say "Import Data."
+
+## Supported Formats
+
+| Format       | Extensions      | Notes                                                     |
+| ------------ | --------------- | --------------------------------------------------------- |
+| CSV          | `.csv`          | Comma, semicolon, or tab delimited                        |
+| Excel        | `.xlsx`, `.xls` | Multi-sheet files create one dataset per sheet            |
+| OpenDocument | `.ods`          | Spreadsheet format                                        |
+| JSON API     | URL             | Fetched from a remote endpoint, converted to tabular data |
+
+## How Ingestion Works
+
+Every ingestion — whether a one-time file upload or a recurring schedule — follows the same pipeline:
+
+```
+Upload / Fetch
+  → Detect datasets and sheets
+    → Analyze duplicates
+      → Detect schema (field types, dates, locations)
+        → Validate schema against existing dataset
+          → Geocode addresses → coordinates
+            → Create events
+```
+
+### 1. Upload or Fetch
+
+**One-time**: Drag and drop a file into the Import wizard, or paste a URL.
+
+**Scheduled**: Configure a URL and a cron schedule. TimeTiles fetches the data automatically at each interval.
+
+### 2. Schema Detection
+
+TimeTiles analyzes your data to identify:
+
+- **Field types** — strings, numbers, dates, booleans
+- **Date fields** — which column holds the event timestamp
+- **Location fields** — addresses, latitude/longitude pairs, or coordinate columns
+- **Categories** — fields with a small number of unique values (enums)
+
+You can review and adjust the detected mappings before proceeding.
+
+### 3. Deduplication
+
+If your dataset already has events, TimeTiles compares incoming rows against existing data to avoid duplicates. Deduplication strategies include:
+
+- **External ID** — use a unique identifier field from your data
+- **Computed hash** — hash a combination of fields (e.g., name + date + location)
+- **Content hash** — hash the entire row
+
+### 4. Geocoding
+
+Addresses are converted to geographic coordinates so events appear on the map. TimeTiles supports multiple geocoding providers (Nominatim, Google Maps, OpenCage) and caches results to minimize API calls.
+
+If your data already contains latitude and longitude columns, TimeTiles uses those directly.
+
+### 5. Event Creation
+
+Validated, deduplicated, and geocoded rows are stored as events in the dataset. Each event gets:
+
+- A unique ID (based on your chosen strategy)
+- Geographic coordinates (for the map)
+- A timestamp (for the timeline)
+- All original fields from your data
+
+## One-Time Ingestion
+
+1. Navigate to the **Import** page
+2. Choose or create a **catalog** and **dataset**
+3. Upload your file or paste a URL
+4. Review the detected schema and field mappings
+5. Optionally configure transforms (rename fields, adjust types)
+6. Click **Start** to begin processing
+7. Watch the progress tracker until complete
+
+## Scheduled Ingestion
+
+Scheduled ingestion fetches data from a URL on a recurring basis — hourly, daily, weekly, or custom cron expressions.
+
+### Setting Up a Schedule
+
+1. In the Import wizard, choose **URL** as your data source
+2. After configuring field mappings, go to the **Schedule** step
+3. Choose **Repeat on schedule** instead of one-time
+4. Set the frequency (e.g., every 6 hours, daily at midnight)
+5. Optionally configure authentication headers for protected APIs
+6. Save the schedule
+
+### How It Works
+
+- A background job checks for due schedules every few minutes
+- When a schedule is due, it fetches the URL and creates an ingestion job
+- The data goes through the same pipeline as a manual upload
+- If the schema changes between runs, you may be asked to approve
+
+### Managing Schedules
+
+View and manage your schedules from the **Scheduled Imports** section in your account. You can:
+
+- **Pause/resume** a schedule
+- **Trigger** an immediate run
+- **Delete** a schedule
+- **View history** of past runs
+
+## Schema Evolution
+
+As your data changes over time, TimeTiles tracks schema versions:
+
+- **Non-breaking changes** (new optional fields, expanded ranges) can be auto-approved
+- **Breaking changes** (type changes, removed fields) require manual approval
+- **Schema locking** prevents any changes to production datasets
+
+## Monitoring Progress
+
+During ingestion, a progress tracker shows:
+
+- Current stage (schema detection, geocoding, event creation, etc.)
+- Rows processed vs. total
+- Processing speed (rows/second)
+- Estimated time remaining
+- Any errors encountered
+
+## Troubleshooting
+
+Common issues and their solutions:
+
+| Issue                  | Solution                                          |
+| ---------------------- | ------------------------------------------------- |
+| Ingestion stuck        | Check that background workers are running         |
+| Schema approval needed | Review and approve changes in the admin interface |
+| Geocoding failures     | Verify API keys and address formatting            |
+| Duplicate events       | Configure deduplication strategy on the dataset   |
+| Memory errors          | Reduce batch sizes or split large files           |
+
+For detailed technical troubleshooting, see the [developer troubleshooting guide](/developer-guide/architecture/data-processing-pipeline/troubleshooting).
+
+## Next Steps
+
+- [Getting Started](./getting-started) — upload your first file
+- [Core Concepts](/overview/core-concepts) — understand catalogs, datasets, and events
+- [Ingestion Pipeline Architecture](/developer-guide/architecture/data-processing-pipeline) — technical deep-dive for developers

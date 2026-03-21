@@ -43,15 +43,15 @@ TimeTiles uses two categories of API endpoints with different purposes:
 | ----------------------------- | ---------------------------------------------- |
 | `/api/health`                 | System health check                            |
 | `/api/auth/register`          | User registration (enumeration-safe)           |
-| `/api/import/*`               | Import schema preview, configure, validate     |
-| `/api/import-jobs/*`          | Import job management (reset, retry)           |
+| `/api/import/*`               | Ingestion schema preview, configure, validate  |
+| `/api/import-jobs/*`          | Ingestion job management (reset, retry)        |
 | `/api/users/*`                | Account management (password, email, deletion) |
 | `/api/account/*`              | Account deletion summary                       |
 | `/api/admin/*`                | Admin operations (schedule, jobs)              |
 | `/api/quotas`                 | User quota status                              |
 | `/api/feature-flags`          | Feature flag state                             |
 | `/api/data-exports/*`         | Data export request and download               |
-| `/api/scheduled-imports/*`    | Manual trigger for scheduled imports           |
+| `/api/scheduled-imports/*`    | Manual trigger for scheduled ingestion         |
 | `/api/catalogs/with-datasets` | Catalogs with nested datasets                  |
 | `/api/geocoding/test`         | Geocoding provider test                        |
 | `/api/newsletter/*`           | Newsletter subscription                        |
@@ -426,11 +426,11 @@ curl "https://your-instance.com/api/v1/sources/stats"
 
 ---
 
-### Import Progress
+### Ingestion Progress
 
-#### Get Import Progress
+#### Get Ingestion Progress
 
-Retrieve real-time progress information for a file import operation.
+Retrieve real-time progress information for a data ingestion operation.
 
 ```http
 GET /api/import/:importId/progress
@@ -479,7 +479,7 @@ GET /api/import/:importId/progress
 }
 ```
 
-**Import Stages:**
+**Ingestion Stages:**
 
 1. `UPLOAD` - File uploaded successfully
 2. `SCHEMA_DETECTION` - Analyzing file structure
@@ -487,8 +487,8 @@ GET /api/import/:importId/progress
 4. `VALIDATION` - Validating data against schema
 5. `GEOCODING` - Geocoding location fields
 6. `PROCESSING` - Creating events in database
-7. `COMPLETED` - Import finished successfully
-8. `FAILED` - Import failed with errors
+7. `COMPLETED` - Ingestion finished successfully
+8. `FAILED` - Ingestion failed with errors
 
 **Example:**
 

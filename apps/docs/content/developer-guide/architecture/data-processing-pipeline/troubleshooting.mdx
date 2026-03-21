@@ -1,14 +1,14 @@
 # Troubleshooting
 
-This guide helps you diagnose and resolve common issues with the TimeTiles data processing pipeline.
+This guide helps you diagnose and resolve common issues with the TimeTiles data ingestion pipeline.
 
 ## Common Issues
 
-### Import Stuck in Processing
+### Ingestion Stuck in Processing
 
 **Symptoms**:
 
-- Import status shows "processing" for extended period
+- Ingestion status shows "processing" for extended period
 - Progress hasn't updated in hours/days
 - No error messages visible in UI
 
@@ -45,7 +45,7 @@ This guide helps you diagnose and resolve common issues with the TimeTiles data 
 
 **Symptoms**:
 
-- Import pauses at "await-approval" stage
+- Ingestion pauses at "await-approval" stage
 - Notification about schema changes
 - Admin interface shows pending approvals
 
@@ -251,7 +251,7 @@ This guide helps you diagnose and resolve common issues with the TimeTiles data 
 **Symptoms**:
 
 - Out of memory errors
-- Process crashes during import
+- Process crashes during ingestion
 - Slow performance, swapping
 
 **Possible Causes**:
@@ -273,7 +273,7 @@ This guide helps you diagnose and resolve common issues with the TimeTiles data 
 **Resolution**:
 
 1. **Reduce Batch Sizes**: Lower BATCH*SIZE*\* environment variables
-2. **Limit Concurrency**: Reduce max concurrent imports
+2. **Limit Concurrency**: Reduce max concurrent ingestion runs
 3. **Increase System Memory**: Add more RAM to server
 4. **Process Files in Chunks**: Split large files before import
 5. **Restart Workers Periodically**: Mitigate potential memory leaks
@@ -285,7 +285,7 @@ This guide helps you diagnose and resolve common issues with the TimeTiles data 
 
 **Symptoms**:
 
-- Imports taking much longer than before
+- Ingestion taking much longer than before
 - Slow batch processing
 - High database CPU usage
 - API timeouts
@@ -323,7 +323,7 @@ This guide helps you diagnose and resolve common issues with the TimeTiles data 
 
 **Symptoms**:
 
-- Import completes but with errors
+- Ingestion completes but with errors
 - Some rows missing from final events
 - Error details in import-job
 
@@ -563,7 +563,7 @@ TimeTiles includes an automatic error recovery system for failed imports. See th
 
 ### Monitoring
 
-- Set up alerts for stuck imports (>1 hour in same stage)
+- Set up alerts for stuck ingestion jobs (>1 hour in same stage)
 - Monitor error rates and investigate spikes
 - Track performance metrics over time
 - Regular review of pending approvals
@@ -577,7 +577,7 @@ TimeTiles includes an automatic error recovery system for failed imports. See th
 
 ### Data Quality
 
-- Validate data before import when possible
+- Validate data before ingestion when possible
 - Maintain consistent data formats
 - Communicate schema changes in advance
 - Pre-process problematic data
@@ -586,7 +586,7 @@ TimeTiles includes an automatic error recovery system for failed imports. See th
 
 - Monitor resource usage trends
 - Scale before hitting limits
-- Plan for peak import periods
+- Plan for peak ingestion periods
 - Test with production-scale data
 
-These troubleshooting techniques and recovery procedures should help you diagnose and resolve most common pipeline issues effectively.
+These troubleshooting techniques and recovery procedures should help you diagnose and resolve most common ingestion pipeline issues effectively.

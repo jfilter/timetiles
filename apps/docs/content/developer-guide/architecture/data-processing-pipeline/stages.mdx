@@ -57,17 +57,17 @@ Excel files with multiple sheets create separate ingestion jobs:
 
 Each ingestion job progresses through all eight stages independently.
 
-### Import File Status
+### Ingestion File Status
 
 The parent import-file status reflects the aggregate state:
 
-- **Processing**: While ANY import-job is incomplete
-- **Completed**: When ALL import-jobs succeed
-- **Failed**: If ANY import-job fails
+- **Processing**: While ANY ingestion job is incomplete
+- **Completed**: When ALL ingestion jobs succeed
+- **Failed**: If ANY ingestion job fails
 
 ### Next Stage
 
-All created import-jobs automatically begin at Stage 2 (Analyze Duplicates).
+All created ingestion jobs automatically begin at Stage 2 (Analyze Duplicates).
 
 ---
 
@@ -135,7 +135,7 @@ Tries external ID first, falls back to computed hash if external ID is missing. 
 
 ### Output
 
-Creates a duplicate analysis result stored in the import-job:
+Creates a duplicate analysis result stored in the ingestion job:
 
 - List of internal duplicate row numbers with their first occurrence
 - List of external duplicate row numbers with existing event IDs
@@ -250,7 +250,7 @@ Identifies fields suitable for geocoding:
 
 ### Output
 
-Creates a complete JSON Schema stored in the import-job:
+Creates a complete JSON Schema stored in the ingestion job:
 
 - Property definitions for all detected fields
 - Type information with constraints (min/max, format, enum)
@@ -363,7 +363,7 @@ Proceed to Stage 5 (Await Approval) for human review.
 
 ### Output
 
-Creates a validation result stored in the import-job:
+Creates a validation result stored in the ingestion job:
 
 - Complete list of breaking changes with details
 - Complete list of non-breaking changes with details
@@ -386,7 +386,7 @@ Creates a validation result stored in the import-job:
 
 ### Purpose
 
-Pause processing for human review of schema changes that require approval due to breaking changes or policy requirements. This stage ensures data governance and prevents unintended schema modifications.
+Pause ingestion for human review of schema changes that require approval due to breaking changes or policy requirements. This stage ensures data governance and prevents unintended schema modifications.
 
 ### Process Overview
 
@@ -417,7 +417,7 @@ Pause processing for human review of schema changes that require approval due to
 
 ### Approval Data Structure
 
-The import-job stores approval information:
+The ingestion job stores approval information:
 
 - Approval status (pending, approved, rejected)
 - Approving user ID and timestamp
@@ -438,11 +438,11 @@ Administrators can:
 
 **Typical Flow**:
 
-1. Import reaches await-approval stage
+1. Ingestion reaches await-approval stage
 2. Admin receives notification
 3. Admin reviews changes in admin interface
 4. Admin approves or rejects
-5. Approval service updates import-job
+5. Approval service updates ingestion job
 6. Pipeline continues automatically
 
 **Timeout Handling**:
@@ -454,7 +454,7 @@ Administrators can:
 ### Next Stage
 
 - **If approved**: Stage 6 (Create Schema Version)
-- **If rejected**: Import marked as failed (terminal state)
+- **If rejected**: Ingestion marked as failed (terminal state)
 
 ---
 
@@ -677,7 +677,7 @@ Automatically transitions to Stage 8 (Create Events) when complete.
 
 ### Purpose
 
-Create the final event records in the database with all processing results applied. This is the culmination of the entire pipeline, producing the events that users will query and explore.
+Create the final event records in the database with all processing results applied. This is the culmination of the entire ingestion pipeline, producing the events that users will query and explore.
 
 ### Process Overview
 
@@ -803,7 +803,7 @@ When all batches complete, the system:
 
 ### Next Stage
 
-None - this is the final stage. Import transitions to "completed" status.
+None - this is the final stage. Ingestion transitions to "completed" status.
 
 ---
 
@@ -834,7 +834,7 @@ All other transitions are rejected by the `StageTransitionService` to maintain s
 
 ## Summary
 
-These eight stages work together to transform uploaded files into structured, validated, and enriched events:
+These eight stages work together to ingest uploaded files into structured, validated, and enriched events:
 
 1. **Dataset Detection** creates the foundation by parsing files and creating jobs
 2. **Analyze Duplicates** reduces processing load and prevents duplicate events
@@ -845,4 +845,4 @@ These eight stages work together to transform uploaded files into structured, va
 7. **Geocode Batch** enriches data with geographic coordinates
 8. **Create Events** produces the final, queryable event records
 
-Each stage builds on the previous stages' outputs, creating a robust and maintainable pipeline for data processing.
+Each stage builds on the previous stages' outputs, creating a robust and maintainable data ingestion pipeline.

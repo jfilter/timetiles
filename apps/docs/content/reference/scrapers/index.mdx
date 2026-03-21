@@ -1,21 +1,21 @@
 ---
 title: Scrapers
-description: Run user-defined scripts to extract event data from websites and APIs, then feed results into the TimeTiles import pipeline.
+description: Run user-defined scripts to extract event data from websites and APIs, then feed results into the TimeTiles ingestion pipeline.
 asIndexPage: true
 ---
 
 # Scrapers
 
-Scrapers let you write short Python or Node.js scripts that fetch data from websites and APIs, produce CSV output, and optionally feed that output straight into the TimeTiles import pipeline. Events appear on the map without any manual file handling.
+Scrapers let you write short Python or Node.js scripts that fetch data from websites and APIs, produce CSV output, and optionally feed that output straight into the TimeTiles ingestion pipeline. Events appear on the map without any manual file handling.
 
 ## Architecture
 
 The scraper system has two parts:
 
-| Component              | Location       | Responsibility                                                                                                    |
-| ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **TimeScrape Runner**  | `apps/scraper` | Executes user code inside isolated Podman containers. Stateless -- no database, no user management.               |
-| **Scraper Management** | `apps/web`     | Payload CMS collections for repos, scrapers, and runs. Scheduling, auth, quotas, and import pipeline integration. |
+| Component              | Location       | Responsibility                                                                                                       |
+| ---------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **TimeScrape Runner**  | `apps/scraper` | Executes user code inside isolated Podman containers. Stateless -- no database, no user management.                  |
+| **Scraper Management** | `apps/web`     | Payload CMS collections for repos, scrapers, and runs. Scheduling, auth, quotas, and ingestion pipeline integration. |
 
 ```
 TimeTiles (apps/web)                    TimeScrape Runner (apps/scraper)
@@ -29,8 +29,8 @@ TimeTiles (apps/web)                    TimeScrape Runner (apps/scraper)
 |  scraper-execution-job   |            +------------------------+
 |  scraper-repo-sync-job   |
 |                          |            Stateless. No DB. No users.
-| Import Pipeline:         |            Just an API key + Podman.
-|  scraper CSV -> import   |
+| Ingestion Pipeline:      |            Just an API key + Podman.
+|  scraper CSV -> ingest   |
 |  -> existing pipeline    |
 +--------------------------+
 ```
@@ -134,7 +134,7 @@ Or enable a cron schedule in the manifest to run automatically.
 
 ### 7. View results
 
-After a successful run, check the scraper's run history in the dashboard or the management UI at **/account/scrapers**. If `autoImport` is enabled and a `targetDataset` is configured, the CSV flows through the standard import pipeline and events appear on the map.
+After a successful run, check the scraper's run history in the dashboard or the management UI at **/account/scrapers**. If `autoImport` is enabled and a `targetDataset` is configured, the CSV flows through the standard ingestion pipeline and events appear on the map.
 
 ### Management UI
 

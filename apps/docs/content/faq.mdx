@@ -31,7 +31,7 @@ Yes, TimeTiles is **open source** and free to use. You can:
 
 _Note_: Managed hosting options may be available in the future for users who prefer not to self-host.
 
-## Data & Import Questions
+## Data & Ingestion Questions
 
 ### What types of data work best with TimeTiles?
 
@@ -44,14 +44,14 @@ _Note_: Managed hosting options may be available in the future for users who pre
 
 **Examples**: Police incident reports, environmental violations, protest events, accident records, health data with geographic components.
 
-### What file formats can I import?
+### What file formats can I ingest?
 
 Currently supported:
 
 - **CSV files** (most common)
 - **Excel files** (.xlsx, .xls)
 - **ODS files** (OpenDocument Spreadsheet)
-- **Scheduled URL imports** for automated data feeds from external APIs
+- **Scheduled URL ingestion** for automated data feeds from external APIs
 
 Files can be uploaded manually or fetched automatically on a schedule from a URL.
 
@@ -75,7 +75,7 @@ TimeTiles is designed for **large datasets**:
 - **Memory**: Efficient data loading prevents browser crashes with large datasets
 - **Scalability**: PostgreSQL backend handles millions of records
 
-The main limitation is import time for very large files, not runtime performance.
+The main limitation is ingestion time for very large files, not runtime performance.
 
 ## Technical Questions
 
@@ -103,7 +103,7 @@ Yes, several integration options:
 **As a standalone application**:
 
 - Deploy TimeTiles as a complete web application
-- Import data through the admin interface or scheduled URL imports
+- Ingest data through the admin interface or scheduled URL ingestion
 
 **Via API**:
 
@@ -124,7 +124,7 @@ For sensitive data, we recommend self-hosting rather than using managed services
 
 ### Does TimeTiles support multiple languages?
 
-Yes! The user interface is available in **English** (default) and **German**. The import system supports automatic field mapping detection in 7 languages (English, German, French, Spanish, Italian, Dutch, Portuguese).
+Yes! The user interface is available in **English** (default) and **German**. The ingestion system supports automatic field mapping detection in 7 languages (English, German, French, Spanish, Italian, Dutch, Portuguese).
 
 For non-default locales, URLs are prefixed with the locale code (e.g., `/de/explore`). The default locale uses clean URLs with no prefix.
 
@@ -160,12 +160,12 @@ Yes, TimeTiles supports collaborative workflows:
 - **Version control**: Track changes and maintain data provenance
 - **Multi-dataset**: Different team members can work on separate datasets within the same instance
 
-### What happens if I make a mistake importing data?
+### What happens if I make a mistake ingesting data?
 
-- **Preview mode**: Review data before final import
-- **Rollback capability**: Remove or replace incorrectly imported datasets
+- **Preview mode**: Review data before final ingestion
+- **Rollback capability**: Remove or replace incorrectly ingested datasets
 - **Data validation**: Automatic checks catch common formatting issues
-- **Iterative import**: Add new data to existing chronicles without disrupting published versions
+- **Iterative ingestion**: Add new data to existing chronicles without disrupting published versions
 
 ## Troubleshooting
 
@@ -178,18 +178,18 @@ Common solutions:
 3. **Test geocoding**: If using addresses, check that the geocoding service processed them correctly
 4. **Browser console**: Check for JavaScript errors that might indicate configuration issues
 
-### Import is taking a very long time
+### Ingestion is taking a very long time
 
-- **Large files**: Import time scales with dataset size - 10,000+ records may take several minutes
-- **Geocoding**: Address-to-coordinate conversion is the slowest part of import
-- **Server resources**: Ensure adequate RAM and CPU for import processing
-- **Background processing**: Large imports run in the background - you can continue using TimeTiles while they complete
+- **Large files**: Ingestion time scales with dataset size - 10,000+ records may take several minutes
+- **Geocoding**: Address-to-coordinate conversion is the slowest stage
+- **Server resources**: Ensure adequate RAM and CPU for processing
+- **Background processing**: Large ingestion runs happen in the background - you can continue using TimeTiles while they complete
 
 ### I'm getting permission errors
 
 - **File permissions**: Ensure TimeTiles can read uploaded files
 - **Database access**: Verify PostgreSQL connection and permissions
-- **Admin access**: Confirm you have administrator privileges for data import
+- **Admin access**: Confirm you have administrator privileges for data ingestion
 - **CORS issues**: Check cross-origin request settings if integrating with other domains
 
 ## Community & Support

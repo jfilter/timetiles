@@ -1,10 +1,10 @@
 # Error Recovery
 
-TimeTiles includes an automatic error recovery system that intelligently retries failed import jobs based on error classification and recovery strategies.
+TimeTiles includes an automatic error recovery system that intelligently retries failed ingestion jobs based on error classification and recovery strategies.
 
 ## Overview
 
-The `ErrorRecoveryService` automatically handles import failures through:
+The `ErrorRecoveryService` automatically handles ingestion failures through:
 
 - **Error Classification**: Analyzes error patterns to determine retry eligibility
 - **Exponential Backoff**: Prevents overwhelming external services with intelligent retry delays
@@ -14,7 +14,7 @@ The `ErrorRecoveryService` automatically handles import failures through:
 
 ## Error Classification
 
-Import failures are classified into three categories to determine the appropriate recovery strategy.
+Ingestion failures are classified into three categories to determine the appropriate recovery strategy.
 
 ### Recoverable Errors (Automatic Retry)
 
@@ -42,7 +42,7 @@ Errors that won't resolve without intervention:
 
 Errors requiring user decisions but potentially recoverable:
 
-- **Quota Limits**: User exceeded daily import quota (retries after quota reset)
+- **Quota Limits**: User exceeded daily ingestion quota (retries after quota reset)
 - **Schema Changes**: Breaking changes requiring approval (retries after approval)
 - **Validation Failures**: Data validation errors requiring cleanup
 
@@ -99,11 +99,11 @@ The system determines the optimal restart point based on where failure occurred:
 
 ## API Endpoints
 
-### Retry Failed Import
+### Retry Failed Ingestion Job
 
 **Endpoint**: `POST /api/import-jobs/{id}/retry`
 
-**Purpose**: Manually trigger retry for a failed import job
+**Purpose**: Manually trigger retry for a failed ingestion job
 
 **Example Request**:
 
@@ -118,7 +118,7 @@ curl -X POST https://your-domain.com/api/import-jobs/123/retry \
 {
   "success": true,
   "action": "retry_scheduled",
-  "message": "Import job retry scheduled successfully",
+  "message": "Ingestion job retry scheduled successfully",
   "retryScheduled": true,
   "nextRetryAt": "2024-01-15T10:35:00.000Z"
 }
@@ -130,7 +130,7 @@ curl -X POST https://your-domain.com/api/import-jobs/123/retry \
 {
   "success": false,
   "action": "quota_exceeded",
-  "error": "User has exceeded their daily import quota. Retry will be attempted after quota resets.",
+  "error": "User has exceeded their daily ingestion quota. Retry will be attempted after quota resets.",
   "statusCode": 403
 }
 ```
@@ -152,11 +152,11 @@ curl -X POST https://your-domain.com/api/import-jobs/123/retry \
 - Need to retry immediately after fixing underlying issue
 - Testing recovery after configuration changes
 
-### Reset Import Job
+### Reset Ingestion Job
 
 **Endpoint**: `POST /api/import-jobs/{id}/reset`
 
-**Purpose**: Reset import to a specific stage for fresh restart
+**Purpose**: Reset ingestion job to a specific stage for fresh restart
 
 **Example Request**:
 
@@ -170,7 +170,7 @@ curl -X POST https://your-domain.com/api/import-jobs/123/reset \
 **Response**:
 
 ```json
-{ "success": true, "message": "Import job reset successfully", "stage": "ANALYZE_DUPLICATES" }
+{ "success": true, "message": "Ingestion job reset successfully", "stage": "ANALYZE_DUPLICATES" }
 ```
 
 **Available Reset Stages**:
@@ -197,7 +197,7 @@ curl -X POST https://your-domain.com/api/import-jobs/123/reset \
 
 **Endpoint**: `GET /api/import-jobs/failed/recommendations`
 
-**Purpose**: Get actionable recommendations for all failed imports
+**Purpose**: Get actionable recommendations for all failed ingestion jobs
 
 **Example Request**:
 
@@ -248,9 +248,9 @@ curl https://your-domain.com/api/import-jobs/failed/recommendations \
 
 **When to Use**:
 
-- Monitoring dashboard to show failed imports
-- Batch processing recovery for multiple failed imports
-- Generating user notifications about failed imports
+- Monitoring dashboard to show failed ingestion jobs
+- Batch processing recovery for multiple failures
+- Generating user notifications about failed ingestion runs
 
 ## Monitoring
 
@@ -346,17 +346,17 @@ Use `/reset` endpoint when:
 4. **Test Configuration**: Verify fixes in staging before retrying production imports
 5. **Review Error Logs**: Understand why failure occurred before attempting recovery
 
-## Integration with Scheduled Imports
+## Integration with Scheduled Ingestion
 
-For scheduled imports (automated URL-based imports), error recovery is handled automatically:
+For scheduled ingestion (automated URL-based data fetching), error recovery is handled automatically:
 
-1. **Import Fails**: Scheduled import encounters error during processing
+1. **Ingestion Fails**: Scheduled ingestion encounters error during processing
 2. **Classification**: Error is classified (recoverable, permanent, user-action-required)
 3. **Automatic Retry**: If recoverable, system schedules retry with exponential backoff
-4. **Max Retries**: After 3 failed attempts, import is marked as failed
-5. **Next Scheduled Run**: Next scheduled run will attempt import again from scratch
+4. **Max Retries**: After 3 failed attempts, ingestion is marked as failed
+5. **Next Scheduled Run**: Next scheduled run will attempt ingestion again from scratch
 
-**Important**: Retry attempts are separate from scheduled runs. A scheduled import that fails will:
+**Important**: Retry attempts are separate from scheduled runs. A scheduled ingestion that fails will:
 
 - Retry up to 3 times with exponential backoff (if recoverable)
 - Still run again at the next scheduled time regardless of retry outcome
