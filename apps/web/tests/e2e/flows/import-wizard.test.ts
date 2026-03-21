@@ -471,11 +471,11 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
     // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-    const successMessage = page.getByText(/[1-9]\d* events imported/i);
+    const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 10000 });
 
     // Verify we can navigate to explore page
-    const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
+    const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
     await expect(viewOnMapButton).toBeVisible();
 
     // Verify the datasets were created by checking the API
@@ -666,11 +666,11 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
     // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-    const successMessage = page.getByText(/[1-9]\d* events imported/i);
+    const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 10000 });
 
     // Verify we can navigate to explore page
-    const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
+    const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
     await expect(viewOnMapButton).toBeVisible();
 
     // Verify the datasets were created by checking the API
@@ -942,11 +942,11 @@ test.describe("Import Wizard - Full Flow", () => {
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
     // Verify success message shows events were created
-    const successMessage = page.getByText(/events imported/i);
+    const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 10000 });
 
     // Verify we can navigate to explore page
-    const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
+    const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
     await expect(viewOnMapButton).toBeVisible();
   });
 

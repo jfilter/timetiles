@@ -175,11 +175,28 @@ check_env() {
     fi
 }
 
+# Load specific variables from env file without exposing secrets
+# Usage: load_env_vars VAR1 VAR2 ...
+load_env_vars() {
+    local wanted="$*"
+    while IFS='=' read -r key value; do
+        [[ -z "$key" || "$key" == \#* ]] && continue
+        for var in $wanted; do
+            if [[ "$key" == "$var" ]]; then
+                value="${value%\"}"
+                value="${value#\"}"
+                export "$key=$value"
+                break
+            fi
+        done
+    done < "$ENV_FILE"
+}
+
 init_ssl() {
     echo -e "${YELLOW}Initializing SSL certificate with Let's Encrypt...${NC}"
-    
-    # Load domain from env file
-    source "$ENV_FILE"
+
+    # Load only domain/email from env file
+    load_env_vars DOMAIN_NAME LETSENCRYPT_EMAIL
     
     if [ -z "$DOMAIN_NAME" ]; then
         echo -e "${RED}Error: DOMAIN_NAME not set in $ENV_FILE${NC}"
@@ -280,7 +297,7 @@ case "$1" in
 
     up)
         check_env
-        source "$ENV_FILE"
+        load_env_vars UPLOAD_HOST_DIR DB_USER
         # Resolve relative path against deployment dir (cwd is $SCRIPT_DIR/..)
         if [[ -n "${UPLOAD_HOST_DIR:-}" && "${UPLOAD_HOST_DIR:0:1}" != "/" ]]; then
             UPLOAD_HOST_DIR="$SCRIPT_DIR/$UPLOAD_HOST_DIR"
@@ -738,7 +755,7 @@ EOF
         
     status)
         check_env
-        source "$ENV_FILE"
+        load_env_vars DB_USER DB_NAME SCRAPER_RUNNER_URL
         echo -e "${YELLOW}Checking service status...${NC}"
         echo ""
 
@@ -826,9 +843,9 @@ EOF
             fi
         }
 
-        # Load env file if exists
+        # Load only needed vars from env file (not secrets)
         if [[ -f "$ENV_FILE" ]]; then
-            source "$ENV_FILE"
+            load_env_vars DOMAIN_NAME DB_USER DB_NAME SCRAPER_RUNNER_URL SCRAPER_API_KEY DEPLOY_USER
         fi
 
         print_section "System"
@@ -1037,7 +1054,7 @@ EOF
 
         # Update scraper runner if configured
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
-            source "$ENV_FILE"
+            load_env_vars TIMETILES_VERSION SCRAPER_IMAGE SCRAPER_PYTHON_IMAGE SCRAPER_NODE_IMAGE
             version="${TIMETILES_VERSION:-latest}"
             runner_dir="$SCRIPT_DIR/../scraper-runner"
 

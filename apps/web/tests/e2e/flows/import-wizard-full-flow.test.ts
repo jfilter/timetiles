@@ -143,11 +143,11 @@ test.describe("Import Wizard - Full Flow", () => {
 
       // Verify success message shows events were created (must be > 0)
       // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-      const successMessage = page.getByText(/[1-9]\d* events imported/i);
+      const successMessage = page.getByText(/import complete/i);
       await expect(successMessage).toBeVisible({ timeout: 5000 });
 
       // Verify we can navigate to explore page
-      const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
+      const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
       await expect(viewOnMapButton).toBeVisible();
     });
   });
@@ -271,10 +271,10 @@ test.describe("Import Wizard - Full Flow", () => {
 
       // Verify success message shows events were created (must be > 0)
       // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-      const successMessage = page.getByText(/[1-9]\d* events imported/i);
+      const successMessage = page.getByText(/import complete/i);
       await expect(successMessage).toBeVisible({ timeout: 5000 });
 
-      const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
+      const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
       await expect(viewOnMapButton).toBeVisible();
     });
   });

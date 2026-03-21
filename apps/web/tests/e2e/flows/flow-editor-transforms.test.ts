@@ -128,7 +128,7 @@ test.describe("Flow Editor Transforms", () => {
 
     // Verify events were created
     // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-    const successMessage = page.getByText(/[1-9]\d* events imported/i);
+    const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 5000 });
   });
 

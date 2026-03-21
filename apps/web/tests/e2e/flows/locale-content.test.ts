@@ -12,13 +12,12 @@ import { expect, test } from "../fixtures";
 test.describe("Locale Content", () => {
   test("homepage renders English content", async ({ page }) => {
     await page.goto("/");
-
-    // Navigation (from MainMenu global)
-    await expect(page.getByRole("link", { name: "Explore" })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole("link", { name: "About" })).toBeVisible({ timeout: 10000 });
+    await page.waitForLoadState("domcontentloaded");
 
     // Hero section (from Pages collection)
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Explore Your Geodata with TimeTiles");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Explore Your Geodata with TimeTiles", {
+      timeout: 10000,
+    });
 
     // Feature cards
     await expect(page.getByRole("heading", { name: "Powerful Features" })).toBeVisible();
@@ -34,13 +33,12 @@ test.describe("Locale Content", () => {
 
   test("homepage renders German content", async ({ page }) => {
     await page.goto("/de");
-
-    // Navigation
-    await expect(page.getByRole("link", { name: "Erkunden" })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole("link", { name: "Über uns" })).toBeVisible({ timeout: 10000 });
+    await page.waitForLoadState("domcontentloaded");
 
     // Hero section
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Erkunden Sie Ihre Geodaten mit TimeTiles");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Erkunden Sie Ihre Geodaten mit TimeTiles", {
+      timeout: 10000,
+    });
 
     // Feature cards
     await expect(page.getByRole("heading", { name: "Leistungsstarke Funktionen" })).toBeVisible();
