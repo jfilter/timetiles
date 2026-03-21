@@ -351,6 +351,93 @@ describe("Wizard Store", () => {
       expect(state.selectedCatalogId).toBeNull();
       expect(state.error).toBeNull();
     });
+
+    it("reset clears ALL state for a clean second import", () => {
+      // Simulate a completed first import with all fields populated
+      resetStore({
+        currentStep: 6 as WizardStep,
+        file: { name: "events.csv", size: 2048, mimeType: "text/csv" },
+        sheets: [{ index: 0, name: "Sheet1", rowCount: 500, headers: ["title", "date", "location"], sampleData: [] }],
+        previewId: "preview-abc",
+        sourceUrl: "https://example.com/data.csv",
+        selectedCatalogId: 42,
+        newCatalogName: "My Catalog",
+        sheetMappings: [{ sheetIndex: 0, datasetId: 99, newDatasetName: "My Dataset", similarityScore: 85 }],
+        fieldMappings: [
+          {
+            sheetIndex: 0,
+            titleField: "title",
+            dateField: "date",
+            locationField: "location",
+            descriptionField: null,
+            locationNameField: null,
+            idField: null,
+            idStrategy: "external" as const,
+            latitudeField: null,
+            longitudeField: null,
+          },
+        ],
+        transforms: { 0: [] },
+        deduplicationStrategy: "update",
+        geocodingEnabled: false,
+        importFileId: 123,
+        error: null,
+      });
+
+      useWizardStore.getState().reset();
+
+      const state = useWizardStore.getState();
+
+      // Verify every field is back to initial
+      expect(state.currentStep).toBe(1);
+      expect(state.file).toBeNull();
+      expect(state.sheets).toHaveLength(0);
+      expect(state.previewId).toBeNull();
+      expect(state.sourceUrl).toBeNull();
+      expect(state.selectedCatalogId).toBeNull();
+      expect(state.newCatalogName).toBe("");
+      expect(state.sheetMappings).toHaveLength(0);
+      expect(state.fieldMappings).toHaveLength(0);
+      expect(state.transforms).toEqual({});
+      expect(state.deduplicationStrategy).toBe("skip");
+      expect(state.geocodingEnabled).toBe(true);
+      expect(state.importFileId).toBeNull();
+      expect(state.error).toBeNull();
+      expect(state.configSuggestions).toHaveLength(0);
+    });
+
+    it("second import after reset starts completely fresh", () => {
+      // First import
+      resetStore();
+      const { setFile, setCatalog } = useWizardStore.getState();
+      const sheets: SheetInfo[] = [
+        { index: 0, name: "Sheet1", rowCount: 100, headers: ["title", "date"], sampleData: [] },
+      ];
+      setFile({ name: "first.csv", size: 1024, mimeType: "text/csv" }, sheets, "preview-1");
+      setCatalog(42, "First Catalog");
+
+      // Verify first import state
+      expect(useWizardStore.getState().file?.name).toBe("first.csv");
+      expect(useWizardStore.getState().selectedCatalogId).toBe(42);
+
+      // Reset
+      useWizardStore.getState().reset();
+
+      // Second import — set a different file
+      const sheets2: SheetInfo[] = [
+        { index: 0, name: "Data", rowCount: 200, headers: ["name", "location"], sampleData: [] },
+      ];
+      useWizardStore.getState().setFile({ name: "second.csv", size: 2048, mimeType: "text/csv" }, sheets2, "preview-2");
+
+      const state = useWizardStore.getState();
+
+      // Verify second import has NO state from first import
+      expect(state.file?.name).toBe("second.csv");
+      expect(state.selectedCatalogId).toBeNull(); // NOT 42 from first import
+      expect(state.newCatalogName).toBe(""); // NOT "First Catalog"
+      expect(state.sheetMappings[0]?.newDatasetName).toBe("second"); // From filename, not "Sheet1"
+      expect(state.previewId).toBe("preview-2");
+    });
   });
 });
 
