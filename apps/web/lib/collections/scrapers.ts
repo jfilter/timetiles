@@ -238,12 +238,13 @@ const Scrapers: CollectionConfig = {
       max: 4096,
       admin: { description: "Memory limit in MB" },
     },
-    // Environment variables
+    // Environment variables (may contain secrets — field-level access as defense-in-depth)
     {
       name: "envVars",
       type: "json",
       defaultValue: {},
       validate: validateEnvVars,
+      access: { read: ({ req: { user } }) => user?.role === "admin" },
       admin: { description: "Environment variables passed to the scraper" },
     },
     // TimeTiles integration
@@ -287,7 +288,14 @@ const Scrapers: CollectionConfig = {
       defaultValue: false,
       admin: { description: "Enable webhook trigger for this scraper" },
     },
-    { name: "webhookToken", type: "text", maxLength: 64, index: true, admin: { hidden: true } },
+    {
+      name: "webhookToken",
+      type: "text",
+      maxLength: 64,
+      index: true,
+      access: { read: () => false },
+      admin: { hidden: true },
+    },
     {
       name: "webhookUrl",
       type: "text",

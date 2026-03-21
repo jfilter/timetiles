@@ -534,7 +534,11 @@ describe.sequential("Scraper Collections Access Control", () => {
     });
 
     expect(scraper.entrypoint).toBe("src/scraper.py");
-    expect(scraper.envVars).toEqual({ API_KEY: "test123", DEBUG: "true" });
+    // envVars is admin-only readable (field-level access), so verify via overrideAccess
+    const full = await payload.findByID({ collection: "scrapers", id: scraper.id, overrideAccess: true });
+    expect(full.envVars).toEqual({ API_KEY: "test123", DEBUG: "true" });
+    // Non-admin should not see envVars
+    expect(scraper.envVars).toBeUndefined();
   });
 
   it("should allow system operations (overrideAccess) to set repoCreatedBy", async () => {

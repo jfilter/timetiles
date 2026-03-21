@@ -61,6 +61,7 @@ export class CacheManager {
     try {
       const results = await this.payload.find({
         collection: LOCATION_CACHE_COLLECTION,
+        overrideAccess: true,
         where: { normalizedAddress: { equals: normalizedAddress } },
         limit: 1,
       });
@@ -72,13 +73,14 @@ export class CacheManager {
 
       if (this.isCacheExpired(cached)) {
         // Optionally clean up expired entries
-        await this.payload.delete({ collection: LOCATION_CACHE_COLLECTION, id: cached.id });
+        await this.payload.delete({ collection: LOCATION_CACHE_COLLECTION, overrideAccess: true, id: cached.id });
         return null;
       }
 
       // Update hit count and last used timestamp
       await this.payload.update({
         collection: LOCATION_CACHE_COLLECTION,
+        overrideAccess: true,
         id: cached.id,
         data: { hitCount: (cached.hitCount ?? 0) + 1, lastUsed: new Date().toISOString() },
       });
@@ -111,6 +113,7 @@ export class CacheManager {
     try {
       const results = await this.payload.find({
         collection: LOCATION_CACHE_COLLECTION,
+        overrideAccess: true,
         where: { normalizedAddress: { in: normalizedAddresses } },
         limit: normalizedAddresses.length,
         pagination: false,
@@ -162,6 +165,7 @@ export class CacheManager {
     try {
       await this.payload.create({
         collection: LOCATION_CACHE_COLLECTION,
+        overrideAccess: true,
         data: {
           originalAddress: address,
           normalizedAddress: normalizedAddress || address,
@@ -192,12 +196,13 @@ export class CacheManager {
     try {
       const oldEntries = await this.payload.find({
         collection: LOCATION_CACHE_COLLECTION,
+        overrideAccess: true,
         where: { createdAt: { less_than: cutoffDate.toISOString() } },
         limit: 1000,
       });
 
       for (const entry of oldEntries.docs) {
-        await this.payload.delete({ collection: LOCATION_CACHE_COLLECTION, id: entry.id });
+        await this.payload.delete({ collection: LOCATION_CACHE_COLLECTION, overrideAccess: true, id: entry.id });
       }
 
       logger.info(`Cleaned up ${oldEntries.docs.length} expired cache entries`);

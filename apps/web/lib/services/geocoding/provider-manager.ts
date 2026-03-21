@@ -48,6 +48,7 @@ export class ProviderManager {
 
       const providerResults = await this.payload.find({
         collection: COLLECTION_NAMES.GEOCODING_PROVIDERS,
+        overrideAccess: true,
         where: whereClause,
         limit: 100,
         pagination: false,
