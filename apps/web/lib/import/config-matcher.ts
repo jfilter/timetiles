@@ -14,10 +14,16 @@ import type { Dataset } from "@/payload-types";
 const MIN_SCORE = 40;
 const MAX_RESULTS = 3;
 
-/** Collect all column names a dataset "knows about" from its config. */
-const getDatasetKnownColumns = (dataset: Dataset): string[] => {
+/** Collect all column names a dataset "knows about" from schema + config. */
+const getDatasetKnownColumns = (dataset: Dataset & { schemaColumns?: string[] }): string[] => {
   const columns = new Set<string>();
 
+  // Primary source: schema properties from previous imports (most complete)
+  if (dataset.schemaColumns) {
+    for (const col of dataset.schemaColumns) columns.add(col);
+  }
+
+  // Fallback: field mapping overrides (only mapped fields)
   const overrides = dataset.fieldMappingOverrides;
   if (overrides) {
     for (const path of [
@@ -33,7 +39,7 @@ const getDatasetKnownColumns = (dataset: Dataset): string[] => {
     }
   }
 
-  // Collect 'from' fields from transforms
+  // Fallback: 'from' fields from transforms
   const transforms = dataset.importTransforms;
   if (Array.isArray(transforms)) {
     for (const t of transforms) {
@@ -74,7 +80,7 @@ const calculateMatchScore = (headers: string[], knownColumns: string[]): { score
  */
 export const findConfigSuggestions = (
   headers: string[],
-  datasets: Array<Dataset & { catalogName?: string; catalogId?: number }>,
+  datasets: Array<Dataset & { catalogName?: string; catalogId?: number; schemaColumns?: string[] }>,
   maxResults: number = MAX_RESULTS
 ): ConfigSuggestion[] => {
   if (headers.length === 0) return [];

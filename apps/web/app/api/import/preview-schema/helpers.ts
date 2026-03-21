@@ -242,14 +242,14 @@ import type { ConfigSuggestion } from "@/lib/types/import-wizard";
 export const findConfigSuggestionsForUser = async (
   payload: Payload,
   userId: number,
-  allHeaders: string[]
+  headers: string[]
 ): Promise<ConfigSuggestion[]> => {
   const datasetsResult = await payload.find({
     collection: "datasets",
     where: { "catalog.createdBy": { equals: userId } },
     limit: 100,
     pagination: false,
-    depth: 1, // Need catalog populated for name
+    depth: 1,
     select: {
       id: true,
       name: true,
@@ -262,13 +262,32 @@ export const findConfigSuggestionsForUser = async (
     },
   });
 
-  const datasets = datasetsResult.docs.map((ds) => ({
-    ...ds,
-    catalogId: ds.catalog && typeof ds.catalog === "object" ? ds.catalog.id : 0,
-    catalogName: ds.catalog && typeof ds.catalog === "object" ? ds.catalog.name : "",
-  }));
+  // Get schema columns for each dataset (all field names from latest schema version)
+  const datasets = await Promise.all(
+    datasetsResult.docs.map(async (ds) => {
+      const schemaResult = await payload.find({
+        collection: "dataset-schemas",
+        where: { dataset: { equals: ds.id } },
+        sort: "-versionNumber",
+        limit: 1,
+        select: { schema: true },
+      });
+      const schemaProps = schemaResult.docs[0]?.schema;
+      const schemaColumns =
+        schemaProps && typeof schemaProps === "object" && "properties" in schemaProps
+          ? Object.keys((schemaProps as { properties: Record<string, unknown> }).properties)
+          : undefined;
 
-  return findConfigSuggestions(allHeaders, datasets);
+      return {
+        ...ds,
+        catalogId: ds.catalog && typeof ds.catalog === "object" ? ds.catalog.id : 0,
+        catalogName: ds.catalog && typeof ds.catalog === "object" ? ds.catalog.name : "",
+        schemaColumns,
+      };
+    })
+  );
+
+  return findConfigSuggestions(headers, datasets);
 };
 
 // ---------------------------------------------------------------------------
@@ -309,8 +328,19 @@ export const buildPreviewResult = async ({
 
   savePreviewMetadata(metadata);
 
-  const allHeaders = sheets.flatMap((s) => s.headers);
-  const configSuggestions = await findConfigSuggestionsForUser(payload, userId, allHeaders);
+  // Match per-sheet headers (not all combined) to get accurate similarity scores
+  const perSheetSuggestions = await Promise.all(
+    sheets.map((s) => findConfigSuggestionsForUser(payload, userId, s.headers))
+  );
+  // Deduplicate: keep highest-scoring suggestion per datasetId
+  const seen = new Map<number, (typeof perSheetSuggestions)[0][0]>();
+  for (const suggestions of perSheetSuggestions) {
+    for (const s of suggestions) {
+      const existing = seen.get(s.datasetId);
+      if (!existing || s.score > existing.score) seen.set(s.datasetId, s);
+    }
+  }
+  const configSuggestions = [...seen.values()].sort((a, b) => b.score - a.score).slice(0, 3);
 
   return { sheets, configSuggestions };
 };

@@ -14,9 +14,15 @@ import type { Dataset } from "@/payload-types";
 
 /** Create a minimal Dataset stub with only the fields config-matcher inspects. */
 const makeDataset = (
-  overrides: Partial<Dataset> & { id: number; name: string; catalogName?: string; catalogId?: number }
-): Dataset & { catalogName?: string; catalogId?: number } => {
-  const { catalogName, catalogId, ...rest } = overrides;
+  overrides: Partial<Dataset> & {
+    id: number;
+    name: string;
+    catalogName?: string;
+    catalogId?: number;
+    schemaColumns?: string[];
+  }
+): Dataset & { catalogName?: string; catalogId?: number; schemaColumns?: string[] } => {
+  const { catalogName, catalogId, schemaColumns, ...rest } = overrides;
   return {
     catalog: 1,
     language: "eng",
@@ -25,7 +31,8 @@ const makeDataset = (
     ...rest,
     catalogName,
     catalogId: catalogId ?? 1,
-  } as Dataset & { catalogName?: string; catalogId?: number };
+    schemaColumns,
+  } as Dataset & { catalogName?: string; catalogId?: number; schemaColumns?: string[] };
 };
 
 describe("findConfigSuggestions", () => {
@@ -197,5 +204,62 @@ describe("findConfigSuggestions", () => {
 
     expect(results).toHaveLength(1);
     expect(results[0]!.catalogName).toBe("");
+  });
+
+  it("uses schemaColumns for matching when available", () => {
+    const headers = ["title", "event_date", "venue", "city", "description"];
+    const datasets = [
+      makeDataset({
+        id: 1,
+        name: "Events",
+        // Only 2 overrides — would give low score without schemaColumns
+        fieldMappingOverrides: { titlePath: "title", timestampPath: "event_date" },
+        // All 5 columns from the schema
+        schemaColumns: ["title", "event_date", "venue", "city", "description"],
+      }),
+    ];
+
+    const results = findConfigSuggestions(headers, datasets);
+
+    expect(results).toHaveLength(1);
+    // 5 matched out of max(5, 5) = 100%
+    expect(results[0]!.score).toBe(100);
+  });
+
+  it("falls back to overrides when schemaColumns not available", () => {
+    const headers = ["title", "event_date", "venue", "city", "description"];
+    const datasets = [
+      makeDataset({
+        id: 1,
+        name: "Events",
+        fieldMappingOverrides: { titlePath: "title", timestampPath: "event_date" },
+        // No schemaColumns
+      }),
+    ];
+
+    const results = findConfigSuggestions(headers, datasets);
+
+    expect(results).toHaveLength(1);
+    // Only 2 matched out of max(5, 2) = 2/5 = 40%
+    expect(results[0]!.score).toBe(40);
+  });
+
+  it("combines schemaColumns with overrides and transforms", () => {
+    const headers = ["title", "date", "extra_col"];
+    const datasets = [
+      makeDataset({
+        id: 1,
+        name: "Events",
+        fieldMappingOverrides: { titlePath: "title" },
+        schemaColumns: ["title", "date"],
+        importTransforms: [{ id: "1", type: "rename", from: "extra_col", to: "extra", active: true }],
+      }),
+    ];
+
+    const results = findConfigSuggestions(headers, datasets);
+
+    expect(results).toHaveLength(1);
+    // 3 matched (title from schema, date from schema, extra_col from transform) / max(3, 3) = 100%
+    expect(results[0]!.score).toBe(100);
   });
 });
