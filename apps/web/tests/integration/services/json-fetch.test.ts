@@ -315,4 +315,138 @@ describe.sequential("JSON fetch integration", () => {
     expect(csv).toContain("user.name");
     expect(csv).toContain("John");
   });
+
+  // -------------------------------------------------------------------------
+  // 11. responseFormat override: force JSON conversion on text/plain
+  // -------------------------------------------------------------------------
+  it("forces JSON conversion when responseFormat is 'json'", async () => {
+    // Server returns JSON but with text/plain content type
+    server.respond("/api/plain", {
+      body: JSON.stringify([{ name: "Forced" }]),
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    const result = await fetchRemoteData({
+      sourceUrl: server.getUrl("/api/plain"),
+      maxRetries: 0,
+      responseFormat: "json",
+    });
+
+    expect(result.wasConverted).toBe(true);
+    expect(result.mimeType).toBe("text/csv");
+    expect(result.data.toString()).toContain("Forced");
+  });
+
+  // -------------------------------------------------------------------------
+  // 12. responseFormat override: force CSV (suppress JSON conversion)
+  // -------------------------------------------------------------------------
+  it("skips JSON conversion when responseFormat is 'csv' and server returns CSV", async () => {
+    // Server returns CSV with wrong Content-Type — responseFormat: "csv" tells us to trust it
+    server.respond("/api/csv-as-text", {
+      body: "title,date\nEvent 1,2024-01-01",
+      headers: { "Content-Type": "text/plain" },
+    });
+
+    const result = await fetchRemoteData({
+      sourceUrl: server.getUrl("/api/csv-as-text"),
+      maxRetries: 0,
+      responseFormat: "csv",
+    });
+
+    expect(result.wasConverted).toBe(false);
+    expect(result.data.toString()).toContain("title,date");
+  });
+
+  // -------------------------------------------------------------------------
+  // 13. Pagination: stops when records < limitValue (partial last page)
+  // -------------------------------------------------------------------------
+  it("stops pagination when page returns fewer records than limitValue", async () => {
+    // Page 1: full page (2 records, limitValue=2)
+    server.route("/api/partial?limit=2&page=1", (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ items: [{ id: 1 }, { id: 2 }] }));
+    });
+    // Page 2: partial page (1 record — signals end of data)
+    server.route("/api/partial?limit=2&page=2", (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ items: [{ id: 3 }] }));
+    });
+    // Page 3 exists but should NOT be fetched
+    server.route("/api/partial?limit=2&page=3", (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ items: [{ id: 4 }] }));
+    });
+
+    const result = await fetchPaginated(
+      server.getUrl("/api/partial"),
+      { enabled: true, type: "page", limitParam: "limit", limitValue: 2, pageParam: "page", maxPages: 50 },
+      "items",
+      {}
+    );
+
+    expect(result.pagesProcessed).toBe(2);
+    expect(result.totalRecords).toBe(3); // Only pages 1+2, not page 3
+  });
+
+  // -------------------------------------------------------------------------
+  // 14. Pagination: maxPages limit stops fetching
+  // -------------------------------------------------------------------------
+  it("stops at maxPages even when more data is available", async () => {
+    // All pages return 2 records — server has "infinite" data
+    server.setDefaultHandler((_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ items: [{ id: 1 }, { id: 2 }] }));
+    });
+
+    const result = await fetchPaginated(
+      server.getUrl("/api/infinite"),
+      { enabled: true, type: "page", limitParam: "limit", limitValue: 2, pageParam: "page", maxPages: 3 },
+      "items",
+      {}
+    );
+
+    expect(result.pagesProcessed).toBe(3);
+    expect(result.totalRecords).toBe(6); // 3 pages × 2 records
+  });
+
+  // -------------------------------------------------------------------------
+  // 15. JSON with deeply nested objects (MAX_FLATTEN_DEPTH)
+  // -------------------------------------------------------------------------
+  it("serializes objects beyond max flatten depth as JSON strings", async () => {
+    // Build 25 levels of nesting (MAX_FLATTEN_DEPTH is 20)
+    let deep: Record<string, unknown> = { value: "bottom" };
+    for (let i = 24; i >= 0; i--) {
+      deep = { [`level${i}`]: deep };
+    }
+
+    server.respondWithJSON("/api/deep", [deep]);
+
+    const result = await fetchRemoteData({ sourceUrl: server.getUrl("/api/deep"), maxRetries: 0 });
+    const csv = result.data.toString();
+
+    // Should contain flattened keys up to depth 20, then JSON for deeper
+    expect(csv).toContain("level0.");
+    // The deepest levels should be serialized as JSON string (not expanded further)
+    expect(result.wasConverted).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // 16. JSON auto-detect: object with nested array (not top-level array)
+  // -------------------------------------------------------------------------
+  it("auto-detects records array inside a wrapper object", async () => {
+    server.respondWithJSON("/api/wrapped", {
+      status: "ok",
+      count: 2,
+      events: [
+        { title: "Concert", city: "Vienna" },
+        { title: "Festival", city: "Zurich" },
+      ],
+    });
+
+    const result = await fetchRemoteData({ sourceUrl: server.getUrl("/api/wrapped"), maxRetries: 0 });
+
+    expect(result.wasConverted).toBe(true);
+    expect(result.recordCount).toBe(2);
+    expect(result.data.toString()).toContain("Concert");
+  });
 });
