@@ -138,4 +138,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Note: This multi-service container requires root for the entrypoint to initialize
 # PostgreSQL, generate SSL certificates, and start supervisord. Individual services
 # run as non-root users via supervisord (postgres, nextjs, nginx).
+#
+# TODO: Eliminate root requirement. Would need:
+#   - s6-overlay instead of supervisord (manages multi-user without root)
+#   - Nginx on unprivileged ports (8080/8443) or CAP_NET_BIND_SERVICE
+#   - Pre-initialized PostgreSQL data dir with correct ownership
+#   - See Trivy DS-0002 (suppressed as non-blocking since this is a demo image)
 ENTRYPOINT ["/entrypoint.sh"]
