@@ -29,7 +29,7 @@ export const WizardHeader = () => {
   const totalSteps = visibleSteps.length;
   const progressPercent = ((currentIndex + 1) / totalSteps) * 100;
 
-  const canGoBack = currentStep > (skipAuthStep ? 2 : 1) && currentStep !== 6;
+  const canGoBack = currentStep > (skipAuthStep ? 2 : 1) && currentStep !== 7;
   const currentLabel = visibleSteps[currentIndex]?.label ?? "";
 
   return (

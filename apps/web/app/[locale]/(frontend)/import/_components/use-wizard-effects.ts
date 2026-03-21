@@ -40,7 +40,7 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
   const currentStep = useWizardStore((s) => s.currentStep);
   const startedAuthenticated = useWizardStore((s) => s.startedAuthenticated);
   const importFileId = useWizardStore((s) => s.importFileId);
-  const validationEnabled = currentStep !== 6 && importFileId === null;
+  const validationEnabled = currentStep !== 7 && importFileId === null;
   const { data: validationData } = usePreviewValidationQuery(previewId, validationEnabled);
 
   useEffect(() => {

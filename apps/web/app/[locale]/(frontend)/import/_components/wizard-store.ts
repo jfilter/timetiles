@@ -26,7 +26,7 @@ import type { ConfigSuggestion, FieldMapping, SheetInfo, SheetMapping, UrlAuthCo
 
 // ─── State Types ─────────────────────────────────────────────────────────────
 
-export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
+export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type CatalogSelection = number | "new" | null;
 
@@ -39,6 +39,22 @@ export interface ScheduleConfig {
   schemaMode: "strict" | "additive" | "flexible";
 }
 
+export interface JsonApiConfig {
+  recordsPath?: string;
+  wasAutoDetected?: boolean;
+  pagination?: {
+    enabled: boolean;
+    type?: "offset" | "cursor" | "page";
+    pageParam?: string;
+    limitParam?: string;
+    limitValue?: number;
+    cursorParam?: string;
+    nextCursorPath?: string;
+    totalPath?: string;
+    maxPages?: number;
+  };
+}
+
 export interface WizardState {
   currentStep: WizardStep;
   startedAuthenticated: boolean;
@@ -47,6 +63,7 @@ export interface WizardState {
   sheets: SheetInfo[];
   sourceUrl: string | null;
   authConfig: UrlAuthConfig | null;
+  jsonApiConfig: JsonApiConfig | null;
   selectedCatalogId: CatalogSelection;
   newCatalogName: string;
   sheetMappings: SheetMapping[];
@@ -75,6 +92,7 @@ interface WizardActions {
   ) => void;
   setSourceUrl: (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => void;
   setScheduleConfig: (config: ScheduleConfig | null) => void;
+  setJsonApiConfig: (config: JsonApiConfig | null) => void;
   clearFile: () => void;
   setCatalog: (catalogId: number | "new" | null, newCatalogName?: string) => void;
   setSheetMapping: (sheetIndex: number, mapping: Partial<SheetMapping>) => void;
@@ -104,6 +122,7 @@ export const initialState: WizardState = {
   sheets: [],
   sourceUrl: null,
   authConfig: null,
+  jsonApiConfig: null,
   selectedCatalogId: null,
   newCatalogName: "",
   sheetMappings: [],
@@ -124,8 +143,9 @@ export const WIZARD_STEPS: ReadonlyArray<{ step: WizardStep; title: string; labe
   { step: 2, title: "Upload File", label: "Upload", shortLabel: "Upload" },
   { step: 3, title: "Select Dataset", label: "Dataset", shortLabel: "Dataset" },
   { step: 4, title: "Map Fields", label: "Mapping", shortLabel: "Map" },
-  { step: 5, title: "Review", label: "Review", shortLabel: "Review" },
-  { step: 6, title: "Processing", label: "Import", shortLabel: "Import" },
+  { step: 5, title: "Schedule", label: "Schedule", shortLabel: "Schedule" },
+  { step: 6, title: "Review", label: "Review", shortLabel: "Review" },
+  { step: 7, title: "Processing", label: "Import", shortLabel: "Import" },
 ];
 
 export const STEP_TITLES: Record<WizardStep, string> = Object.fromEntries(
@@ -156,9 +176,21 @@ export const useWizardStore = create<WizardStore>()(
 
         goToStep: (step) => set({ currentStep: step }),
 
-        nextStep: () => set((s) => ({ currentStep: Math.min(s.currentStep + 1, 6) as WizardStep })),
+        nextStep: () =>
+          set((s) => {
+            let next = Math.min(s.currentStep + 1, 7) as WizardStep;
+            // Skip Schedule step for file uploads (no URL = no schedule)
+            if (next === 5 && !s.sourceUrl) next = 6;
+            return { currentStep: next };
+          }),
 
-        prevStep: () => set((s) => ({ currentStep: Math.max(s.currentStep - 1, 1) as WizardStep })),
+        prevStep: () =>
+          set((s) => {
+            let prev = Math.max(s.currentStep - 1, 1) as WizardStep;
+            // Skip Schedule step going back if no URL
+            if (prev === 5 && !s.sourceUrl) prev = 4;
+            return { currentStep: prev };
+          }),
 
         setFile: (file, sheets, previewId, sourceUrl, configSuggestions) => {
           const getDatasetName = (sheet: SheetInfo) => {
@@ -190,6 +222,8 @@ export const useWizardStore = create<WizardStore>()(
 
         setScheduleConfig: (scheduleConfig) => set({ scheduleConfig }),
 
+        setJsonApiConfig: (jsonApiConfig) => set({ jsonApiConfig }),
+
         clearFile: () =>
           set({
             file: null,
@@ -197,6 +231,7 @@ export const useWizardStore = create<WizardStore>()(
             previewId: null,
             sourceUrl: null,
             authConfig: null,
+            jsonApiConfig: null,
             sheetMappings: [],
             fieldMappings: [],
             transforms: {},
@@ -314,7 +349,7 @@ export const useWizardStore = create<WizardStore>()(
           // Never persist auth state, internal flags, or actions
           const { startedAuthenticated, _initialized, _savedAt, ...rest } = state;
           // Don't save during processing
-          if (rest.currentStep === 6) return {} as Partial<WizardState>;
+          if (rest.currentStep === 7) return {} as Partial<WizardState>;
           return { ...rest, _savedAt: Date.now() } as Partial<WizardState> & { _savedAt: number };
         },
         merge: (persisted, current) => {
