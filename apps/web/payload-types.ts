@@ -5327,6 +5327,23 @@ export interface Setting {
      */
     authHeader?: string | null;
   };
+  /**
+   * Legal links and disclaimers shown on the registration page
+   */
+  legal?: {
+    /**
+     * URL to the AGB / Terms of Service page (e.g., /terms). Leave empty for no link.
+     */
+    termsUrl?: string | null;
+    /**
+     * URL to the DSGVO / Privacy Policy page (e.g., /privacy). Leave empty for no link.
+     */
+    privacyUrl?: string | null;
+    /**
+     * Optional notice below the registration form (e.g., 'This is a demo instance. Data may be deleted at any time.').
+     */
+    registrationDisclaimer?: string | null;
+  };
   geocoding?: {
     /**
      * Enable or disable geocoding globally for event imports
@@ -5502,6 +5519,13 @@ export interface SettingsSelect<T extends boolean = true> {
     | {
         serviceUrl?: T;
         authHeader?: T;
+      };
+  legal?:
+    | T
+    | {
+        termsUrl?: T;
+        privacyUrl?: T;
+        registrationDisclaimer?: T;
       };
   geocoding?:
     | T

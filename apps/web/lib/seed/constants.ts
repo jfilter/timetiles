@@ -9,6 +9,7 @@
  */
 export const MAIN_MENU_SLUG = "main-menu";
 export const FOOTER_SLUG = "footer";
+export const SETTINGS_SLUG = "settings";
 
 /**
  * Collection names

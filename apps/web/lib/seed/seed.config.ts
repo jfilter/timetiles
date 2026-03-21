@@ -25,7 +25,7 @@
  * - Configure custom data generators.
  */
 
-import { COLLECTION_GEOCODING_PROVIDERS, FOOTER_SLUG, MAIN_MENU_SLUG } from "./constants";
+import { COLLECTION_GEOCODING_PROVIDERS, FOOTER_SLUG, MAIN_MENU_SLUG, SETTINGS_SLUG } from "./constants";
 import type { RelationshipConfig } from "./relationship-config";
 import { RELATIONSHIP_CONFIG } from "./relationship-config";
 
@@ -240,6 +240,12 @@ export const SEED_CONFIG: SeedConfiguration = {
       dependencies: [],
       options: { staticContent: true },
     },
+    // Settings - legal notices, feature flags, etc.
+    [SETTINGS_SLUG]: {
+      count: 1, // Single global settings
+      dependencies: [],
+      options: { staticContent: true },
+    },
   },
 
   // Import existing relationship configurations
@@ -299,7 +305,18 @@ export const SEED_CONFIG: SeedConfiguration = {
   presets: {
     testing: {
       description: "Fast, deterministic data for unit/integration tests",
-      enabled: ["users", "catalogs", "datasets", "events", "sites", "views", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
+      enabled: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "sites",
+        "views",
+        "pages",
+        MAIN_MENU_SLUG,
+        FOOTER_SLUG,
+        SETTINGS_SLUG,
+      ],
       volume: "small",
       realism: "simple",
       performance: "fast",
@@ -317,7 +334,18 @@ export const SEED_CONFIG: SeedConfiguration = {
 
     e2e: {
       description: "Moderate, realistic data for E2E UI testing",
-      enabled: ["users", "catalogs", "datasets", "events", "sites", "views", "pages", MAIN_MENU_SLUG, FOOTER_SLUG],
+      enabled: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "sites",
+        "views",
+        "pages",
+        MAIN_MENU_SLUG,
+        FOOTER_SLUG,
+        SETTINGS_SLUG,
+      ],
       volume: "medium",
       realism: "realistic",
       performance: "balanced",
@@ -342,6 +370,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         "pages",
         MAIN_MENU_SLUG,
         FOOTER_SLUG,
+        SETTINGS_SLUG,
         COLLECTION_GEOCODING_PROVIDERS,
       ],
       volume: "large",
