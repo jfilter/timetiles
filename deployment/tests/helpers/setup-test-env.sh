@@ -72,9 +72,18 @@ cp "$DEPLOY_DIR/nginx/security-headers.conf" "$DEPLOY_DIR/nginx-test/security-he
 cp "$DEPLOY_DIR/nginx/security-headers-https.conf" "$DEPLOY_DIR/nginx-test/security-headers-https.conf"
 cp -r "$DEPLOY_DIR/nginx/sites-enabled/"* "$DEPLOY_DIR/nginx-test/sites-enabled/"
 
-# Substitute domain name
+# Substitute domain name in all nginx config files
+# First detect what domain was substituted by bootstrap (if any)
+BOOTSTRAP_DOMAIN=$(grep -oP 'server_name \K[^;]+' "$DEPLOY_DIR/nginx-test/sites-enabled/app.conf" 2>/dev/null | grep -v 'www\.' | head -1 | tr -d ' ')
+BOOTSTRAP_DOMAIN="${BOOTSTRAP_DOMAIN:-\$\{DOMAIN_NAME\}}"
+# Replace all occurrences (server_name, redirects, cert paths) with 'localhost'
+if [[ "$BOOTSTRAP_DOMAIN" != "localhost" ]]; then
+    find "$DEPLOY_DIR/nginx-test/sites-enabled" -type f -name "*.conf" \
+        -exec sed -i.bak "s|${BOOTSTRAP_DOMAIN}|localhost|g" {} \;
+fi
+# Also replace template variable if still present
 find "$DEPLOY_DIR/nginx-test/sites-enabled" -type f -name "*.conf" \
-    -exec sed -i.bak 's/${DOMAIN_NAME}/localhost/g' {} \;
+    -exec sed -i.bak 's|\${DOMAIN_NAME}|localhost|g' {} \;
 find "$DEPLOY_DIR/nginx-test/sites-enabled" -name "*.bak" -delete
 
 # Create docker-compose.test.yml override
@@ -114,6 +123,9 @@ mkdir -p "$UPLOAD_HOST_DIR"
 if [[ "$(stat -c %u "$UPLOAD_HOST_DIR" 2>/dev/null || stat -f %u "$UPLOAD_HOST_DIR")" != "1001" ]]; then
     sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null || echo "Warning: Could not set ownership on $UPLOAD_HOST_DIR"
 fi
+
+# Remove bootstrap's SSL override (it mounts conflicting nginx config)
+rm -f "$DEPLOY_DIR/docker-compose.ssl-override.yml"
 
 # Tear down any existing services and volumes for a clean start
 echo "Cleaning up previous services..."
