@@ -164,12 +164,25 @@ else
     vagrant ssh -c "sudo chown -R timetiles:timetiles /opt/timetiles /opt/timetiles-src && sudo chmod -R a+rX /opt/timetiles-src" 2>/dev/null
 fi
 
+# Pre-bootstrap cleanup: tear down any leftover containers from previous runs
+# (rsync overwrites substituted configs with templates, so stale containers would fail)
+print_info "Cleaning up previous deployment..."
+vagrant ssh -c "sudo bash -c '
+    cd /opt/timetiles
+    if [[ -f .env.production ]]; then
+        docker compose -f docker-compose.prod.yml --env-file .env.production down -v 2>/dev/null || true
+    fi
+    rm -f .env.production docker-compose.ssl-override.yml docker-compose.test.yml
+    rm -f /var/lib/timetiles/.bootstrap-lock /var/lib/timetiles/.bootstrap-state /var/lib/timetiles/.bootstrap-config
+'" 2>/dev/null
+echo -e "${GREEN}✓ Cleanup done${NC}"
+
 # Run bootstrap in the VM (via nohup to survive SSH disconnects during Docker builds)
 print_header "Bootstrap"
 run_in_vm "Running bootstrap" \
     "/opt/timetiles/bootstrap/bootstrap.sh --non-interactive --config /opt/timetiles/tests/bootstrap.test.conf"
 
-# Post-bootstrap setup
+# Post-bootstrap setup: fix permissions and tear down for test runner
 print_info "Post-bootstrap setup..."
 vagrant ssh -c "sudo bash -c '
     chown -R timetiles:timetiles /opt/timetiles
