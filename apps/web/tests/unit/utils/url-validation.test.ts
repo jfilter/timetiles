@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/no-hardcoded-ip -- IP addresses are intentional test values for SSRF validation */
 /**
  * Unit tests for URL validation SSRF protection utilities.
  *
@@ -6,7 +7,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isPrivateUrl } from "@/lib/security/url-validation";
+import { isPrivateIP, isPrivateUrl } from "@/lib/security/url-validation";
 
 describe("isPrivateUrl", () => {
   describe("blocks loopback addresses", () => {
@@ -145,6 +146,20 @@ describe("isPrivateUrl", () => {
     });
   });
 
+  describe("blocks carrier-grade NAT (RFC 6598)", () => {
+    it("blocks 100.64.0.1", () => {
+      expect(isPrivateUrl("http://100.64.0.1/data.csv")).toBe(true);
+    });
+
+    it("blocks 100.127.255.255", () => {
+      expect(isPrivateUrl("http://100.127.255.255/data.csv")).toBe(true);
+    });
+
+    it("allows 100.128.0.1 (outside CGN range)", () => {
+      expect(isPrivateUrl("http://100.128.0.1/data.csv")).toBe(false);
+    });
+  });
+
   describe("allows public addresses", () => {
     it("allows public IPv4", () => {
       expect(isPrivateUrl("https://93.184.216.34/data.csv")).toBe(false);
@@ -165,5 +180,55 @@ describe("isPrivateUrl", () => {
     it("allows 8.8.8.8", () => {
       expect(isPrivateUrl("http://8.8.8.8/data.csv")).toBe(false);
     });
+  });
+});
+
+describe("isPrivateIP", () => {
+  it("blocks loopback 127.0.0.1", () => {
+    expect(isPrivateIP("127.0.0.1")).toBe(true);
+  });
+
+  it("blocks 10.x range", () => {
+    expect(isPrivateIP("10.0.0.1")).toBe(true);
+  });
+
+  it("blocks 172.16.x range", () => {
+    expect(isPrivateIP("172.16.0.1")).toBe(true);
+  });
+
+  it("blocks 192.168.x range", () => {
+    expect(isPrivateIP("192.168.1.1")).toBe(true);
+  });
+
+  it("blocks 0.0.0.0", () => {
+    expect(isPrivateIP("0.0.0.0")).toBe(true);
+  });
+
+  it("blocks 169.254.169.254 (cloud metadata)", () => {
+    expect(isPrivateIP("169.254.169.254")).toBe(true);
+  });
+
+  it("blocks IPv6 loopback ::1", () => {
+    expect(isPrivateIP("::1")).toBe(true);
+  });
+
+  it("blocks IPv6 link-local fe80::", () => {
+    expect(isPrivateIP("fe80::1")).toBe(true);
+  });
+
+  it("blocks IPv6 ULA fd00::", () => {
+    expect(isPrivateIP("fd12::1")).toBe(true);
+  });
+
+  it("allows public IP 8.8.8.8", () => {
+    expect(isPrivateIP("8.8.8.8")).toBe(false);
+  });
+
+  it("allows public IP 93.184.216.34", () => {
+    expect(isPrivateIP("93.184.216.34")).toBe(false);
+  });
+
+  it("blocks carrier-grade NAT 100.64.0.1", () => {
+    expect(isPrivateIP("100.64.0.1")).toBe(true);
   });
 });

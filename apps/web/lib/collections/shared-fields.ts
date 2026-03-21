@@ -35,7 +35,7 @@ export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
  */
 export const createOwnershipAccess = (
   _collection: string,
-  ownerField: "createdBy" | "ownedBy" | "user" = "createdBy"
+  ownerField: "createdBy" | "ownedBy" | "user" | "repoCreatedBy" | "scraperOwner" = "createdBy"
 ): Access => {
   // Payload Access functions legitimately return boolean | Where
   // eslint-disable-next-line sonarjs/function-return-type
@@ -57,7 +57,7 @@ export const createOwnershipAccess = (
  * Used by Sites and Views collections to eliminate duplicated access logic.
  */
 export const createPublicOwnershipAccess = (
-  ownerField: "createdBy" | "ownedBy" | "user" = "createdBy"
+  ownerField: "createdBy" | "ownedBy" | "user" | "repoCreatedBy" | "scraperOwner" = "createdBy"
 ): { read: Access; create: Access; update: Access; deleteAccess: Access; readVersions: Access } => {
   // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
   const update: Access = ({ req: { user } }): boolean | Where => {

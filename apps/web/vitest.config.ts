@@ -12,6 +12,11 @@ import { defineConfig } from "vitest/config";
 
 import baseConfig from "./vitest.config.base";
 
+// Worker count — configurable via TEST_WORKERS env var (default: 3)
+// Each integration worker spins up Payload CMS + DB clone (~1 GB each),
+// so keep this low to avoid OOM. Use `make test-ai WORKERS=2` to reduce.
+const maxWorkers = Number(process.env.TEST_WORKERS) || 3;
+
 export default defineConfig({
   ...baseConfig,
   // Cache directory for Vite/Vitest - speeds up subsequent runs
@@ -21,7 +26,7 @@ export default defineConfig({
     globals: true,
     pool: "forks",
     execArgv: ["--no-warnings"], // Suppress Node.js warnings
-    maxWorkers: 4,
+    maxWorkers,
     fileParallelism: true,
     sequence: { concurrent: true },
     coverage: {
@@ -63,6 +68,7 @@ export default defineConfig({
             "tests/unit/jobs/event-creation-helpers.test.ts",
             "tests/unit/jobs/schedule-manager-*.test.ts",
             "tests/unit/api/**/*.test.ts",
+            "tests/unit/security/safe-fetch.test.ts",
           ],
           setupFiles: ["tests/setup/unit/global-setup-minimal.ts"],
           testTimeout: 10000,
@@ -81,6 +87,7 @@ export default defineConfig({
             "tests/unit/jobs/event-creation-helpers.test.ts",
             "tests/unit/jobs/schedule-manager-*.test.ts",
             "tests/unit/api/**/*.test.ts",
+            "tests/unit/security/safe-fetch.test.ts",
           ],
           setupFiles: ["tests/setup/unit/global-setup-minimal.ts"],
           testTimeout: 10000,

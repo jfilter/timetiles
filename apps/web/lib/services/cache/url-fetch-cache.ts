@@ -12,6 +12,7 @@
 import crypto from "node:crypto";
 
 import { logger } from "@/lib/logger";
+import { safeFetch } from "@/lib/security/safe-fetch";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
@@ -143,7 +144,7 @@ export class UrlFetchCache {
    * Helper to fetch without caching
    */
   private async fetchWithoutCache(url: string, options?: RequestInit): Promise<CachedResponse> {
-    const response = await fetch(url, options);
+    const response = await safeFetch(url, options);
     const data = Buffer.from(await response.arrayBuffer());
     const headers: Record<string, string> = {};
     response.headers.forEach((value, key) => {
@@ -230,7 +231,7 @@ export class UrlFetchCache {
 
     try {
       const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
-      const response = await fetch(url, { ...fetchOptions, headers });
+      const response = await safeFetch(url, { ...fetchOptions, headers });
 
       // Handle 304 Not Modified
       if (response.status === 304) {
@@ -274,7 +275,7 @@ export class UrlFetchCache {
     options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
   ): Promise<CachedResponse> {
     const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
-    const response = await fetch(url, fetchOptions);
+    const response = await safeFetch(url, fetchOptions);
 
     const data = Buffer.from(await response.arrayBuffer());
     const headers: Record<string, string> = {};

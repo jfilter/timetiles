@@ -247,9 +247,11 @@ test:
 # Note: Full runs (no FILTER) use Turbo caching. Filtered runs bypass Turbo.
 test-ai:
 	@if [ -z "$(FILTER)" ]; then \
+		TEST_WORKERS="$(or $(WORKERS),)" \
 		pnpm turbo run test:ai --filter=web --filter=scraper; \
 	else \
-		cd apps/web && pnpm test:ai "$(FILTER)"; \
+		TEST_WORKERS="$(or $(WORKERS),)" \
+		bash -c 'cd apps/web && pnpm test:ai "$(FILTER)"'; \
 	fi
 
 # Run combined code quality checks with AI-friendly output (lint + typecheck)
