@@ -119,6 +119,19 @@ The frontend layout is responsible for merging these layers. When a Site defines
 
 **Reference:** `lib/globals/branding.ts`, `lib/collections/sites/index.ts`, `lib/context/site-context.tsx`
 
+### Display-Only Multi-Site
+
+The multi-site system is designed primarily for display and branding. Custom domains provide distinct visual identities, data scopes, and map configurations — but they do not create independent data silos. All data ingestion (file uploads, scheduled imports, scraper runs) is restricted to the default site. Non-default sites are read-only presentation layers over the shared data set.
+
+This means:
+
+- **Import UI and upload endpoints** are only accessible on the default site
+- **Scheduled imports and scraper configurations** are managed through the default site's dashboard
+- **Non-default sites** display filtered subsets of data via their Views, but cannot create or modify events
+- **Admin operations** (user management, geocoding config, system settings) remain on the default site
+
+This constraint simplifies access control, prevents data ownership ambiguity across domains, and keeps the import pipeline's assumptions (single dataset namespace, shared geocoding config, unified quota tracking) valid without per-site partitioning.
+
 ## Consequences
 
 - A single deployment serves multiple custom domains without infrastructure duplication
