@@ -1,22 +1,11 @@
-# Test override - adds Mailpit for local SMTP
-# Used automatically by timetiles when this file exists
-
 services:
-  # Override web to use mailpit for SMTP
-  web:
-    environment:
-      EMAIL_SMTP_HOST: mailpit
-      EMAIL_SMTP_PORT: 1025
-      EMAIL_FROM: noreply@test.local
+  nginx:
+    volumes:
+      - /Users/user/code/jf/timetiles/deployment/nginx-test/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /Users/user/code/jf/timetiles/deployment/nginx-test/sites-enabled:/etc/nginx/sites-enabled:ro
+      - /Users/user/code/jf/timetiles/deployment/nginx-test/proxy-headers.conf:/etc/nginx/proxy-headers.conf:ro
+      - /Users/user/code/jf/timetiles/deployment/ssl:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
 
-  # Mailpit - Local SMTP server for testing
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-mailpit
-    restart: unless-stopped
-    expose:
-      - "1025"
-    ports:
-      - "8025:8025"
-    networks:
-      - timetiles-network
+volumes:
+  certbot-webroot:

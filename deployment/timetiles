@@ -309,9 +309,9 @@ case "$1" in
         mkdir -p "$UPLOAD_HOST_DIR"
         if [[ "$(stat -c %u "$UPLOAD_HOST_DIR" 2>/dev/null || stat -f %u "$UPLOAD_HOST_DIR")" != "1001" ]]; then
             if ! sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null; then
-                echo -e "${RED}Error: Cannot set ownership on $UPLOAD_HOST_DIR${NC}"
-                echo "Run manually: sudo chown 1001:1001 $UPLOAD_HOST_DIR"
-                exit 1
+                echo -e "${YELLOW}Warning: Cannot set ownership on $UPLOAD_HOST_DIR to uid 1001${NC}"
+                echo "On Linux servers, run: sudo chown 1001:1001 $UPLOAD_HOST_DIR"
+                echo "On Docker Desktop (macOS/Windows) this is usually fine — uid mapping is handled automatically."
             fi
         fi
         echo -e "${YELLOW}Starting services...${NC}"

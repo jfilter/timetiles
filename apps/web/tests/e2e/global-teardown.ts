@@ -57,6 +57,9 @@ export default async function globalTeardown(): Promise<void> {
     }
   }
 
+  // Wait for processes to shut down before dropping DB
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
   // Clean up database
   console.log(`🧹 Cleaning up test database: ${databaseName}`);
   try {
