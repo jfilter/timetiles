@@ -330,6 +330,16 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
       useWizardStore.persist.clearStorage();
     }
   }, [isCompleted]);
+
+  // Reset full in-memory state when leaving the page after a completed import.
+  // Covers navigation via browser back, nav links, etc. — not just button clicks.
+  useEffect(() => {
+    return () => {
+      if (hasClearedRef.current) {
+        useWizardStore.getState().reset();
+      }
+    };
+  }, []);
   const status: ProcessingStatus = (() => {
     if (isCompleted) return "completed";
     if (isFailed) return "failed";
