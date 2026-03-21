@@ -23,7 +23,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@timetiles/ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   ArrowRight,
@@ -42,6 +41,7 @@ import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/l
 import type { UrlAuthConfig } from "@/lib/types/import-wizard";
 import { formatFileSize } from "@/lib/utils/format";
 
+import { AuthConfigFields } from "../auth-config-fields";
 import { useWizardCanProceed } from "../use-wizard-effects";
 import { useWizardStore } from "../wizard-store";
 import { JsonApiConfigPanel } from "./json-api-config-panel";
@@ -99,15 +99,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     username: "",
     password: "",
   });
-
-  // Auth config handlers
-  const handleAuthTypeChange = (value: string) => {
-    setAuthConfig((prev) => ({ ...prev, type: value as UrlAuthConfig["type"] }));
-  };
-
-  const handleAuthField = (field: keyof UrlAuthConfig) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAuthConfig((prev) => ({ ...prev, [field]: e.target.value }));
-  };
 
   const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUrlInput(e.target.value);
@@ -252,75 +243,6 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     void processUrl();
   };
 
-  // Render auth fields based on type
-  const renderAuthFields = () => {
-    switch (authConfig.type) {
-      case "api-key":
-        return (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="api-key">{t("apiKey")}</Label>
-              <Input
-                id="api-key"
-                type="password"
-                placeholder={t("apiKeyPlaceholder")}
-                value={authConfig.apiKey ?? ""}
-                onChange={handleAuthField("apiKey")}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="api-key-header">{t("headerName")}</Label>
-              <Input
-                id="api-key-header"
-                placeholder="X-API-Key"
-                value={authConfig.apiKeyHeader ?? "X-API-Key"}
-                onChange={handleAuthField("apiKeyHeader")}
-              />
-            </div>
-          </div>
-        );
-      case "bearer":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="bearer-token">{t("bearerToken")}</Label>
-            <Input
-              id="bearer-token"
-              type="password"
-              placeholder={t("bearerTokenPlaceholder")}
-              value={authConfig.bearerToken ?? ""}
-              onChange={handleAuthField("bearerToken")}
-            />
-          </div>
-        );
-      case "basic":
-        return (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="username">{t("username")}</Label>
-              <Input
-                id="username"
-                placeholder={t("username")}
-                value={authConfig.username ?? ""}
-                onChange={handleAuthField("username")}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">{t("passwordLabel")}</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder={t("passwordLabel")}
-                value={authConfig.password ?? ""}
-                onChange={handleAuthField("password")}
-              />
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
   // Render the URL input form
   const renderUrlInput = () => (
     <div className="space-y-4">
@@ -352,23 +274,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <Card className="p-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="auth-type">{t("authType")}</Label>
-                <Select value={authConfig.type} onValueChange={handleAuthTypeChange}>
-                  <SelectTrigger id="auth-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("authNone")}</SelectItem>
-                    <SelectItem value="api-key">{t("apiKey")}</SelectItem>
-                    <SelectItem value="bearer">{t("bearerToken")}</SelectItem>
-                    <SelectItem value="basic">{t("authBasic")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {renderAuthFields()}
-            </div>
+            <AuthConfigFields authConfig={authConfig} onAuthConfigChange={setAuthConfig} />
           </Card>
         </CollapsibleContent>
       </Collapsible>

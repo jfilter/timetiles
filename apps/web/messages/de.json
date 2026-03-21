@@ -626,6 +626,8 @@
     "authSummaryBearer": "Authentifizierung: Bearer-Token konfiguriert",
     "authSummaryApiKey": "Authentifizierung: API-Schlüssel konfiguriert ({header})",
     "authSummaryBasic": "Authentifizierung: Basic Auth konfiguriert",
+    "authSection": "Authentifizierung",
+    "authPersistHint": "Zugangsdaten werden sicher auf dem Server gespeichert und für zukünftige geplante Imports verwendet.",
     "jsonApiDetected": "JSON-API erkannt",
     "recordsPath": "Datensatzpfad",
     "recordsPathDescription": "Punkt-Pfad zum Array der Datensätze in der JSON-Antwort. Leer lassen für automatische Erkennung.",

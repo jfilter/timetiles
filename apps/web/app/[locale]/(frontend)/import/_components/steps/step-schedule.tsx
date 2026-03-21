@@ -17,12 +17,24 @@ import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
+import type { UrlAuthConfig } from "@/lib/types/import-wizard";
 
+import { AuthConfigFields } from "../auth-config-fields";
 import { type ScheduleConfig, useWizardStore } from "../wizard-store";
 
 export interface StepScheduleProps {
   className?: string;
 }
+
+/** Default auth config used when the Schedule step form has no existing auth */
+const DEFAULT_AUTH_CONFIG: UrlAuthConfig = {
+  type: "none",
+  apiKey: "",
+  apiKeyHeader: "X-API-Key",
+  bearerToken: "",
+  username: "",
+  password: "",
+};
 
 /** Default schedule config used when enabling scheduling for the first time */
 const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
@@ -40,6 +52,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
   const scheduleConfig = useWizardStore((s) => s.scheduleConfig);
   const setScheduleConfig = useWizardStore((s) => s.setScheduleConfig);
   const authConfig = useWizardStore((s) => s.authConfig);
+  const setAuthConfig = useWizardStore((s) => s.setAuthConfig);
   const file = useWizardStore((s) => s.file);
   const nextStep = useWizardStore((s) => s.nextStep);
   const prevStep = useWizardStore((s) => s.prevStep);
@@ -107,22 +120,6 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
     },
     [updateField]
   );
-
-  // --- Auth summary label ---
-
-  const authSummaryLabel = useMemo(() => {
-    if (!authConfig || authConfig.type === "none") return null;
-    switch (authConfig.type) {
-      case "bearer":
-        return t("authSummaryBearer");
-      case "api-key":
-        return t("authSummaryApiKey", { header: authConfig.apiKeyHeader ?? "X-API-Key" });
-      case "basic":
-        return t("authSummaryBasic");
-      default:
-        return null;
-    }
-  }, [authConfig, t]);
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -257,13 +254,21 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
         )}
       </Card>
 
-      {/* Auth summary card */}
-      {authSummaryLabel && (
-        <Card className="overflow-hidden">
-          <div className="flex items-center gap-3 px-6 py-4">
-            <KeyIcon className="text-cartographic-navy/60 h-4 w-4" />
-            <span className="text-cartographic-charcoal text-sm">{authSummaryLabel}</span>
-          </div>
+      {/* Authentication for scheduled imports */}
+      {isScheduleEnabled && (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <div className="flex items-center gap-2">
+              <KeyIcon className="text-cartographic-navy/60 h-4 w-4" />
+              <span className="text-sm font-medium">{t("authSection")}</span>
+            </div>
+            <AuthConfigFields
+              authConfig={authConfig ?? DEFAULT_AUTH_CONFIG}
+              onAuthConfigChange={(config) => setAuthConfig(config)}
+              compact
+            />
+            <p className="text-muted-foreground text-xs">{t("authPersistHint")}</p>
+          </CardContent>
         </Card>
       )}
 

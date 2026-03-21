@@ -86,6 +86,7 @@ interface WizardActions {
     configSuggestions?: ConfigSuggestion[]
   ) => void;
   setSourceUrl: (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => void;
+  setAuthConfig: (config: UrlAuthConfig | null) => void;
   setScheduleConfig: (config: ScheduleConfig | null) => void;
   setJsonApiConfig: (config: JsonApiConfig | null) => void;
   clearFile: () => void;
@@ -214,6 +215,8 @@ export const useWizardStore = create<WizardStore>()(
         },
 
         setSourceUrl: (sourceUrl, authConfig) => set((s) => ({ sourceUrl, authConfig: authConfig ?? s.authConfig })),
+
+        setAuthConfig: (authConfig) => set({ authConfig }),
 
         setScheduleConfig: (scheduleConfig) => set({ scheduleConfig }),
 

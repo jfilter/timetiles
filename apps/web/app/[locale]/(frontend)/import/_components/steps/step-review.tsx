@@ -423,7 +423,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={prevStep} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" />
-            {t("backToMapping")}
+            {t("back")}
           </Button>
           <div className="flex items-center gap-3">
             <span

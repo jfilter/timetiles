@@ -626,6 +626,8 @@
     "authSummaryBearer": "Authentication: Bearer Token configured",
     "authSummaryApiKey": "Authentication: API Key configured ({header})",
     "authSummaryBasic": "Authentication: Basic Auth configured",
+    "authSection": "Authentication",
+    "authPersistHint": "Credentials are stored securely on the server and used for future scheduled imports.",
     "jsonApiDetected": "JSON API detected",
     "recordsPath": "Records path",
     "recordsPathDescription": "Dot-path to the array of records in the JSON response. Leave empty for auto-detection.",

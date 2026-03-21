@@ -107,6 +107,6 @@ New fields on the `scheduled-imports` collection (`advancedOptions`):
 
 ### Future Work
 
-- Wizard UX: JSON API config (recordsPath, pagination) integrated into upload step; schedule config as own wizard step
 - Streaming conversion for very large JSON responses (avoid memory accumulation)
 - GeoJSON support as a recognized format
+- Server-side credential storage for wizard sessions (avoid re-entry on refresh)
