@@ -20,6 +20,7 @@ export default defineConfig({
     // Global settings shared across all projects
     globals: true,
     pool: "forks",
+    teardownTimeout: 5000, // Allow workers time to close pg connections before force-kill
     execArgv: ["--no-warnings"], // Suppress Node.js warnings
     maxWorkers: 4,
     fileParallelism: true,
