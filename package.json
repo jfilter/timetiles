@@ -21,8 +21,8 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.4.3",
-    "@commitlint/config-conventional": "^20.4.3",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@typescript/native-preview": "7.0.0-dev.20260321.1",
@@ -33,9 +33,9 @@
     "nyc": "^17.1.0",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",
-    "oxlint-tsgolint": "^0.16.0",
+    "oxlint-tsgolint": "^0.17.1",
     "tsx": "catalog:",
-    "turbo": "^2.8.13",
+    "turbo": "^2.8.20",
     "typescript": "catalog:"
   },
   "engines": {

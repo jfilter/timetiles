@@ -19,7 +19,7 @@
   "dependencies": {
     "@timetiles/assets": "workspace:*",
     "@timetiles/ui": "workspace:*",
-    "next": "catalog:",
+    "next": "^16.2.1",
     "nextra": "^4.6.1",
     "nextra-theme-docs": "^4.6.1",
     "react": "catalog:",
@@ -37,7 +37,7 @@
     "nodemon": "^3.1.14",
     "tsx": "catalog:",
     "typedoc": "^0.28.17",
-    "typedoc-plugin-markdown": "^4.10.0",
+    "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "catalog:"
   }
 }

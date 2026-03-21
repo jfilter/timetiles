@@ -19,9 +19,9 @@
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^2.13.0",
-    "@next/eslint-plugin-next": "^16.1.6",
+    "@next/eslint-plugin-next": "^16.2.1",
     "@tanstack/eslint-plugin-query": "^5.91.4",
-    "@typescript-eslint/parser": "^8.56.1",
+    "@typescript-eslint/parser": "^8.57.1",
     "eslint": "catalog:",
     "eslint-plugin-boundaries": "^5.4.0",
     "eslint-plugin-import": "^2.32.0",
@@ -37,12 +37,12 @@
     "eslint-plugin-security": "^3.0.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sonarjs": "^3.0.6",
-    "eslint-plugin-turbo": "^2.8.13",
+    "eslint-plugin-turbo": "^2.8.20",
     "eslint-plugin-unicorn": "^62.0.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "eslint-plugin-vitest": "^0.5.4",
     "globals": "^17.4.0",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.56.1"
+    "typescript-eslint": "^8.57.1"
   }
 }
