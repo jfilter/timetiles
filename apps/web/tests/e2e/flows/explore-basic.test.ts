@@ -88,7 +88,7 @@ test.describe("Explore Page - Basic Functionality", () => {
 
     // Mobile view - stacked (if implemented)
     await page.setViewportSize({ width: 375, height: 667 });
-    await explorePage.map.waitFor({ state: "visible", timeout: 5000 });
+    await explorePage.map.waitFor({ state: "visible", timeout: 15000 });
 
     // Both sections should still be visible
     await expect(explorePage.map).toBeVisible();

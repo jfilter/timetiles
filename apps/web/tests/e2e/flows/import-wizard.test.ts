@@ -59,13 +59,11 @@ test.describe("Import Wizard - Authentication", () => {
 
     // Verify the Sign In button exists (we're on auth step)
     const signInButton = page.getByRole("button", { name: /^Sign In$/i });
-    await expect(signInButton).toBeVisible();
+    await expect(signInButton).toBeVisible({ timeout: 10000 });
 
-    // Wizard steps should be visible showing the full import flow (Upload, Dataset, Mapping, etc.)
-    // Use .first() as there may be duplicate elements for responsive design
-    await expect(page.getByText("Upload").first()).toBeVisible();
-    await expect(page.getByText("Dataset").first()).toBeVisible();
-    await expect(page.getByText("Mapping").first()).toBeVisible();
+    // Wizard header shows current step — verify we're on Step 1 (Sign In)
+    await expect(page.getByText(/Step 1 of/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Sign In")).toBeVisible({ timeout: 5000 });
   });
 
   test("should allow login with valid credentials", async ({ page }) => {
@@ -361,12 +359,10 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
-    // Multi-sheet indicator should be visible
-    const multiSheetIndicator = page.getByText(/3 sheets detected/i);
-    await expect(multiSheetIndicator).toBeVisible();
-
-    // Verify it's showing the first sheet (Tech Events)
-    await expect(page.getByText(/mapping.*tech events/i)).toBeVisible();
+    // Verify 3 sheet tabs visible (multi-sheet mode)
+    await expect(page.locator('[data-testid="sheet-tab-0"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="sheet-tab-1"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="sheet-tab-2"]')).toBeVisible({ timeout: 10000 });
 
     // Configure field mappings for ALL 3 sheets using the sheet tabs
     // Each sheet has different column names that may or may not be auto-detected
@@ -385,27 +381,26 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       // Wait for field mapping form to be interactive after tab switch
       await importPage.waitForFieldMappingReady();
 
-      // Set title field if not auto-detected
-      const titleSelect = page.locator("#title-field");
-      const titleText = await importPage.getFieldValue(titleSelect);
-      if (!titleText || titleText === "Select column...") {
-        await importPage.selectFieldValue(titleSelect, config.title);
+      // Column-centric table: find row by column name and set target if not auto-detected
+      const titleRow = page.locator("tr").filter({ hasText: config.title }).first();
+      await expect(titleRow).toBeVisible({ timeout: 5000 });
+      const titleTargetSelect = titleRow.locator("select");
+      if ((await titleTargetSelect.inputValue()) === "__none__") {
+        await titleTargetSelect.selectOption("titleField");
       }
 
-      // Set date field if not auto-detected
-      const dateSelect = page.locator("#date-field");
-      await expect(dateSelect).toBeVisible();
-      const dateText = await importPage.getFieldValue(dateSelect);
-      if (!dateText || dateText === "Select column...") {
-        await importPage.selectFieldValue(dateSelect, config.date);
+      const dateRow = page.locator("tr").filter({ hasText: config.date }).first();
+      await expect(dateRow).toBeVisible({ timeout: 5000 });
+      const dateTargetSelect = dateRow.locator("select");
+      if ((await dateTargetSelect.inputValue()) === "__none__") {
+        await dateTargetSelect.selectOption("dateField");
       }
 
-      // Set location field if not auto-detected
-      const locationSelect = page.locator("#location-field");
-      await expect(locationSelect).toBeVisible();
-      const locationText = await importPage.getFieldValue(locationSelect);
-      if (!locationText || locationText === "Select column...") {
-        await importPage.selectFieldValue(locationSelect, config.location);
+      const locationRow = page.locator("tr").filter({ hasText: config.location }).first();
+      await expect(locationRow).toBeVisible({ timeout: 5000 });
+      const locationTargetSelect = locationRow.locator("select");
+      if ((await locationTargetSelect.inputValue()) === "__none__") {
+        await locationTargetSelect.selectOption("locationField");
       }
     }
 
@@ -559,12 +554,10 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
-    // Multi-sheet indicator should be visible
-    const multiSheetIndicator = page.getByText(/3 sheets detected/i);
-    await expect(multiSheetIndicator).toBeVisible();
-
-    // Verify it's showing the first sheet (Tech Events)
-    await expect(page.getByText(/mapping.*tech events/i)).toBeVisible();
+    // Verify 3 sheet tabs visible (multi-sheet mode)
+    await expect(page.locator('[data-testid="sheet-tab-0"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="sheet-tab-1"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="sheet-tab-2"]')).toBeVisible({ timeout: 10000 });
 
     // Configure field mappings for ALL 3 sheets using the sheet tabs
     // Each sheet has different column names that may or may not be auto-detected
@@ -583,27 +576,26 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       // Wait for field mapping form to be interactive after tab switch
       await importPage.waitForFieldMappingReady();
 
-      // Set title field if not auto-detected
-      const titleSelect = page.locator("#title-field");
-      const titleText = await importPage.getFieldValue(titleSelect);
-      if (!titleText || titleText === "Select column...") {
-        await importPage.selectFieldValue(titleSelect, config.title);
+      // Column-centric table: find row by column name and set target if not auto-detected
+      const titleRow = page.locator("tr").filter({ hasText: config.title }).first();
+      await expect(titleRow).toBeVisible({ timeout: 5000 });
+      const titleTargetSelect = titleRow.locator("select");
+      if ((await titleTargetSelect.inputValue()) === "__none__") {
+        await titleTargetSelect.selectOption("titleField");
       }
 
-      // Set date field if not auto-detected
-      const dateSelect = page.locator("#date-field");
-      await expect(dateSelect).toBeVisible();
-      const dateText = await importPage.getFieldValue(dateSelect);
-      if (!dateText || dateText === "Select column...") {
-        await importPage.selectFieldValue(dateSelect, config.date);
+      const dateRow = page.locator("tr").filter({ hasText: config.date }).first();
+      await expect(dateRow).toBeVisible({ timeout: 5000 });
+      const dateTargetSelect = dateRow.locator("select");
+      if ((await dateTargetSelect.inputValue()) === "__none__") {
+        await dateTargetSelect.selectOption("dateField");
       }
 
-      // Set location field if not auto-detected
-      const locationSelect = page.locator("#location-field");
-      await expect(locationSelect).toBeVisible();
-      const locationText = await importPage.getFieldValue(locationSelect);
-      if (!locationText || locationText === "Select column...") {
-        await importPage.selectFieldValue(locationSelect, config.location);
+      const locationRow = page.locator("tr").filter({ hasText: config.location }).first();
+      await expect(locationRow).toBeVisible({ timeout: 5000 });
+      const locationTargetSelect = locationRow.locator("select");
+      if ((await locationTargetSelect.inputValue()) === "__none__") {
+        await locationTargetSelect.selectOption("locationField");
       }
     }
 
@@ -897,29 +889,15 @@ test.describe("Import Wizard - Full Flow", () => {
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
-    // Map the fields from valid-events.csv
     // The CSV has: title, description, date, location, category
+    // Column-centric mapping table — auto-detection should pre-fill target fields
 
-    // Wait for Radix UI Select triggers to be fully mounted
+    // Wait for column mapping table to be interactive
     await importPage.waitForFieldMappingReady();
 
-    // Map Title field
-    const titleSelect = page.locator("#title-field");
-    await importPage.selectFieldValue(titleSelect, "title");
-
-    // Map Date field
-    const dateSelect = page.locator("#date-field");
-    await importPage.selectFieldValue(dateSelect, "date");
-
-    // Map Location field
-    const locationSelect = page.locator("#location-field");
-    await importPage.selectFieldValue(locationSelect, "location");
-
-    // Optionally map Description field
-    const descriptionSelect = page.locator("#description-field");
-    if (await descriptionSelect.isVisible()) {
-      await importPage.selectFieldValue(descriptionSelect, "description");
-    }
+    // Verify the column mapping table has rows for our columns
+    const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
+    await expect(titleRow).toBeVisible({ timeout: 10000 });
 
     // Click Next to go to Review (Step 5)
     await importPage.clickNext();

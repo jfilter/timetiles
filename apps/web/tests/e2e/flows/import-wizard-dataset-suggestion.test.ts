@@ -85,10 +85,10 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     const hasSuggestion = await suggestionBanner.isVisible().catch(() => false);
 
     if (hasSuggestion) {
-      // Suggestion was applied — catalog dropdown should show a selected value
+      // Suggestion was applied — catalog dropdown should show a selected catalog name
       await expect(catalogDropdown).toBeVisible();
-      const selectedValue = await catalogDropdown.inputValue().catch(() => "");
-      expect(selectedValue).not.toBe("");
+      const displayedText = await catalogDropdown.textContent();
+      expect(displayedText?.trim().length).toBeGreaterThan(0);
     } else {
       // No suggestion — either dropdown or name input should be visible
       const hasDropdown = await catalogDropdown.isVisible().catch(() => false);

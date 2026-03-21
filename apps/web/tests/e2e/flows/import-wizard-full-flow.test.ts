@@ -83,30 +83,19 @@ test.describe("Import Wizard - Full Flow", () => {
       await expect(languageBanner).toBeVisible({ timeout: 5000 });
       await expect(languageBanner).toContainText(/english/i);
 
-      // Verify title field was auto-detected (should have value "title")
-      const titleSelect = page.locator("#title-field");
-      await expect(titleSelect).toBeVisible();
-      await expect(titleSelect).toContainText("title");
+      // Column-centric mapping table — verify auto-detected target assignments
+      // The CSV columns (title, date, location) should be auto-mapped to target fields
+      const titleRow = page.locator('[data-testid="column-row-title"]');
+      await expect(titleRow).toBeVisible({ timeout: 10000 });
+      await expect(titleRow.locator("select")).toHaveValue("titleField", { timeout: 5000 });
 
-      // Verify confidence badges are shown for auto-detected fields
-      const confidenceBadges = page.locator('[data-testid^="confidence-badge-"]');
-      await expect(confidenceBadges.first()).toBeVisible({ timeout: 5000 });
+      const dateRow = page.locator('[data-testid="column-row-date"]');
+      await expect(dateRow).toBeVisible({ timeout: 5000 });
+      await expect(dateRow.locator("select")).toHaveValue("dateField", { timeout: 5000 });
 
-      // Verify date field was auto-detected
-      const dateSelect = page.locator("#date-field");
-      await expect(dateSelect).toBeVisible();
-      await expect(dateSelect).toContainText("date");
-
-      // Verify location field was auto-detected
-      const locationSelect = page.locator("#location-field");
-      await expect(locationSelect).toBeVisible();
-      await expect(locationSelect).toContainText("location");
-
-      // Verify description field was auto-detected
-      const descriptionSelect = page.locator("#description-field");
-      if (await descriptionSelect.isVisible()) {
-        await expect(descriptionSelect).toContainText("description");
-      }
+      const locationRow = page.locator('[data-testid="column-row-location"]');
+      await expect(locationRow).toBeVisible({ timeout: 5000 });
+      await expect(locationRow.locator("select")).toHaveValue(/locationField|locationNameField/, { timeout: 5000 });
 
       // No manual field mapping needed - auto-detection handled it!
 

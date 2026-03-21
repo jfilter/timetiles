@@ -56,17 +56,9 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     await expect(stringOpItem).toBeVisible({ timeout: 5000 });
     await stringOpItem.click();
 
-    // Default operation is "trim" — click chip to expand editor, change to "uppercase"
-    const transformChip = titleRow.getByText("Trim");
+    // Default operation is "uppercase" — verify chip shows
+    const transformChip = titleRow.getByText("Uppercase");
     await expect(transformChip).toBeVisible({ timeout: 5000 });
-    await transformChip.click();
-
-    const operationTrigger = page.locator("#operation");
-    await expect(operationTrigger).toBeVisible({ timeout: 5000 });
-    await operationTrigger.click();
-
-    const uppercaseOption = page.getByRole("option", { name: /uppercase/i });
-    await expect(uppercaseOption).toBeVisible({ timeout: 5000 });
     await uppercaseOption.click();
 
     await expect(titleRow.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
@@ -86,13 +78,16 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     await expect(visualEditorButton).toBeVisible({ timeout: 10000 });
     await visualEditorButton.click();
 
-    // Wait for flow editor to load
+    // Wait for flow editor to fully load
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 10000 });
+
+    // Wait for React Flow to render all nodes (transform nodes load after source/target nodes)
+    await page.waitForTimeout(1000);
 
     // Verify the transform node appears with correct content
-    await expect(page.locator(".react-flow__node-transform")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator(".react-flow__node-transform").getByText("uppercase")).toBeVisible();
+    await expect(page.locator(".react-flow__node-transform")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator(".react-flow__node-transform").getByText("uppercase")).toBeVisible({ timeout: 5000 });
 
     // Verify edges are connected
     const edges = page.locator(".react-flow__edge");

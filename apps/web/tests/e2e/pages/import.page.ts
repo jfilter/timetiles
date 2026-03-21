@@ -354,10 +354,10 @@ export class ImportPage {
    * Use after navigating to field mapping step or switching sheet tabs.
    */
   async waitForFieldMappingReady(): Promise<void> {
-    const titleField = this.page.locator("#title-field");
-    await expect(titleField).toBeVisible({ timeout: 10000 });
-    // Ensure the Radix trigger is enabled / interactive
-    await expect(titleField).toBeEnabled({ timeout: 5000 });
+    // Column-centric mapping table — wait for first target select to be visible
+    const firstTargetSelect = this.page.locator("select[aria-label]").first();
+    await expect(firstTargetSelect).toBeVisible({ timeout: 10000 });
+    await expect(firstTargetSelect).toBeEnabled({ timeout: 5000 });
   }
 
   /**

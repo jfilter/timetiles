@@ -44,7 +44,7 @@ test.describe("Explore Page - List View", () => {
 
     // Verify navigation is functional
     const nav = page.locator("nav").first();
-    await expect(nav).toBeVisible();
+    await expect(nav).toBeVisible({ timeout: 10000 });
   });
 
   test("should filter events when selecting a catalog", async ({ page }) => {

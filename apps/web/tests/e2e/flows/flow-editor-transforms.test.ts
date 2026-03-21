@@ -57,9 +57,9 @@ test.describe("Flow Editor Transforms", () => {
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
     // Open the flow editor
-    const visualEditorLink = page.getByRole("link", { name: /open visual editor/i });
-    await expect(visualEditorLink).toBeVisible({ timeout: 15000 });
-    await visualEditorLink.click();
+    const visualEditorButton = page.getByRole("button", { name: /open visual editor/i });
+    await expect(visualEditorButton).toBeVisible({ timeout: 15000 });
+    await visualEditorButton.click();
 
     // Wait for flow editor to load
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 10000 });
@@ -159,9 +159,9 @@ test.describe("Flow Editor Transforms", () => {
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
-    const visualEditorLink = page.getByRole("link", { name: /open visual editor/i });
-    await expect(visualEditorLink).toBeVisible({ timeout: 15000 });
-    await visualEditorLink.click();
+    const visualEditorButton = page.getByRole("button", { name: /open visual editor/i });
+    await expect(visualEditorButton).toBeVisible({ timeout: 15000 });
+    await visualEditorButton.click();
 
     // Wait for flow editor to load
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 10000 });
