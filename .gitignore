@@ -1,5 +1,10 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Screenshots and temp images at repo root
+/*.png
+/*.jpg
+/*.jpeg
+
 # Dependencies
 node_modules
 .pnp
