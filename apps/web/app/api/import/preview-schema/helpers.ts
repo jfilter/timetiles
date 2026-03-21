@@ -264,6 +264,7 @@ export const findConfigSuggestionsForUser = async (
 
   const datasets = datasetsResult.docs.map((ds) => ({
     ...ds,
+    catalogId: ds.catalog && typeof ds.catalog === "object" ? ds.catalog.id : 0,
     catalogName: ds.catalog && typeof ds.catalog === "object" ? ds.catalog.name : "",
   }));
 

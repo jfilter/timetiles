@@ -74,7 +74,7 @@ const calculateMatchScore = (headers: string[], knownColumns: string[]): { score
  */
 export const findConfigSuggestions = (
   headers: string[],
-  datasets: Array<Dataset & { catalogName?: string }>,
+  datasets: Array<Dataset & { catalogName?: string; catalogId?: number }>,
   maxResults: number = MAX_RESULTS
 ): ConfigSuggestion[] => {
   if (headers.length === 0) return [];
@@ -92,6 +92,7 @@ export const findConfigSuggestions = (
     suggestions.push({
       datasetId: dataset.id,
       datasetName: dataset.name,
+      catalogId: dataset.catalogId ?? 0,
       catalogName: dataset.catalogName ?? "",
       score,
       matchedColumns: matched,

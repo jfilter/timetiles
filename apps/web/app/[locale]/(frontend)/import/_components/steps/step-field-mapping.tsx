@@ -190,14 +190,16 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
     const strategy = activeMapping.idStrategy;
     return transformedSampleData.map((row, i) => {
       let id: string;
+      const stringify = (v: unknown): string => (typeof v === "object" ? JSON.stringify(v) : String(v as string));
       if (strategy === "external" && activeMapping.idField) {
-        id = String(row[activeMapping.idField] ?? "");
+        const val = row[activeMapping.idField];
+        id = val != null ? stringify(val) : "";
       } else if (strategy === "computed") {
         const parts = [row[activeMapping.titleField ?? ""], row[activeMapping.dateField ?? ""]].filter(Boolean);
-        id = parts.length > 0 ? `hash(${parts.map(String).join(", ")})` : `row-${i + 1}`;
+        id = parts.length > 0 ? `hash(${parts.map(stringify).join(", ")})` : `row-${i + 1}`;
       } else if (strategy === "hybrid" && activeMapping.idField) {
-        const ext = row[activeMapping.idField];
-        id = ext ? String(ext) : `hash(...)`;
+        const val = row[activeMapping.idField];
+        id = val != null ? stringify(val) : "hash(...)";
       } else {
         id = `auto-${i + 1}`;
       }

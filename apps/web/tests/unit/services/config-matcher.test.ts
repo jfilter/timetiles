@@ -14,9 +14,9 @@ import type { Dataset } from "@/payload-types";
 
 /** Create a minimal Dataset stub with only the fields config-matcher inspects. */
 const makeDataset = (
-  overrides: Partial<Dataset> & { id: number; name: string; catalogName?: string }
-): Dataset & { catalogName?: string } => {
-  const { catalogName, ...rest } = overrides;
+  overrides: Partial<Dataset> & { id: number; name: string; catalogName?: string; catalogId?: number }
+): Dataset & { catalogName?: string; catalogId?: number } => {
+  const { catalogName, catalogId, ...rest } = overrides;
   return {
     catalog: 1,
     language: "eng",
@@ -24,7 +24,8 @@ const makeDataset = (
     createdAt: "2026-01-01T00:00:00Z",
     ...rest,
     catalogName,
-  } as Dataset & { catalogName?: string };
+    catalogId: catalogId ?? 1,
+  } as Dataset & { catalogName?: string; catalogId?: number };
 };
 
 describe("findConfigSuggestions", () => {
@@ -44,6 +45,7 @@ describe("findConfigSuggestions", () => {
     expect(results).toHaveLength(1);
     expect(results[0]!.datasetId).toBe(1);
     expect(results[0]!.datasetName).toBe("Events");
+    expect(results[0]!.catalogId).toBe(1);
     expect(results[0]!.catalogName).toBe("My Catalog");
     // 3 matched out of max(4 headers, 3 known) = 3/4 = 75%
     expect(results[0]!.score).toBe(75);

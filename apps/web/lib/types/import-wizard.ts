@@ -160,6 +160,7 @@ export interface PreviewMetadata {
 export interface ConfigSuggestion {
   datasetId: number;
   datasetName: string;
+  catalogId: number;
   catalogName: string;
   score: number;
   matchedColumns: string[];

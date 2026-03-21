@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowRight, FileSpreadsheetIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
@@ -156,6 +156,18 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     return selectedCatalog?.datasets ?? [];
   }, [selectedCatalogId, selectedCatalog]);
 
+  // Best config suggestion for re-import
+  const bestSuggestion = configSuggestions.find((s) => s.score >= 60) ?? null;
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+  const showSuggestion = bestSuggestion && !suggestionDismissed && selectedCatalogId === null;
+
+  const handleApplySuggestion = () => {
+    if (!bestSuggestion) return;
+    setCatalog(bestSuggestion.catalogId);
+    setSheetMapping(0, { datasetId: bestSuggestion.datasetId });
+    setSuggestionDismissed(true);
+  };
+
   // Status message for the sticky footer
   const pendingStatusKey = noCatalogSelected ? "selectCatalogToContinue" : "configureDatasetToContinue";
   const statusMessageKey = canProceed ? "readyToContinue" : pendingStatusKey;
@@ -176,6 +188,26 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
       </div>
 
       {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
+
+      {/* Suggestion banner for re-imports */}
+      {showSuggestion && (
+        <div
+          className="border-cartographic-blue/20 bg-cartographic-blue/5 flex items-center justify-between rounded-sm border px-4 py-3"
+          data-testid="dataset-suggestion-banner"
+        >
+          <span className="text-cartographic-blue text-sm">
+            {t("similarConfig", { name: bestSuggestion.datasetName, score: bestSuggestion.score })}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSuggestionDismissed(true)}>
+              {t("ignoreSuggestion")}
+            </Button>
+            <Button size="sm" onClick={handleApplySuggestion}>
+              {t("useThisConfig")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Combined catalog + dataset card */}
       <Card className="overflow-hidden">
