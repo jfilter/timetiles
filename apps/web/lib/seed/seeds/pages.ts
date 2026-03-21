@@ -231,6 +231,159 @@ export const pagesSeedDe: Record<string, Partial<PageSeed>> = {
       },
     ],
   },
+  terms: {
+    title: "Nutzungsbedingungen",
+    pageBuilder: [
+      {
+        blockType: "hero",
+        title: "Nutzungsbedingungen",
+        subtitle: "Bitte lesen Sie diese Bedingungen sorgfältig durch, bevor Sie TimeTiles nutzen",
+        background: "grid",
+      },
+      {
+        blockType: "richText",
+        content: {
+          root: {
+            type: "root",
+            children: [
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "1. Nutzung des Dienstes" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "TimeTiles ist eine Open-Source-Plattform für raumbezogenes Ereignismanagement. Durch die Nutzung dieser Plattform stimmen Sie diesen Nutzungsbedingungen zu. Wir behalten uns das Recht vor, diese Bedingungen jederzeit zu ändern.",
+                  },
+                ],
+              },
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "2. Benutzerkonten" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Sie sind für die Sicherheit Ihres Kontos und Passworts verantwortlich. Konten sind für den individuellen Gebrauch bestimmt und dürfen nicht geteilt werden.",
+                  },
+                ],
+              },
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "3. Inhalte und Daten" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Sie behalten das Eigentum an den Daten, die Sie auf TimeTiles hochladen. Durch das Hochladen von Daten gewähren Sie uns die notwendigen Rechte zum Hosten und Anzeigen Ihrer Inhalte. Öffentlich geteilte Daten können von anderen Nutzern eingesehen werden.",
+                  },
+                ],
+              },
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "4. Haftungsbeschränkung" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: 'TimeTiles wird "wie besehen" bereitgestellt, ohne Garantien jeglicher Art. Wir sind nicht verantwortlich für Datenverlust, Dienstunterbrechungen oder Schäden, die durch die Nutzung der Plattform entstehen.',
+                  },
+                ],
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
+      },
+    ],
+  },
+  privacy: {
+    title: "Datenschutzrichtlinie",
+    pageBuilder: [
+      {
+        blockType: "hero",
+        title: "Datenschutzrichtlinie",
+        subtitle: "Wie wir Ihre Daten sammeln, verwenden und schützen",
+        background: "grid",
+      },
+      {
+        blockType: "richText",
+        content: {
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "heading",
+                version: 1,
+                tag: "h2",
+                children: [{ type: "text", text: "1. Welche Daten wir sammeln" }],
+              },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Wir sammeln die Informationen, die Sie bei der Registrierung angeben (E-Mail-Adresse), sowie die Daten, die Sie auf die Plattform hochladen (Ereignisdaten, Datensätze). Serverzugriffsprotokolle können IP-Adressen und Nutzungsmuster enthalten.",
+                  },
+                ],
+              },
+              {
+                type: "heading",
+                version: 1,
+                tag: "h2",
+                children: [{ type: "text", text: "2. Wie wir Ihre Daten verwenden" }],
+              },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Ihre Daten werden verwendet, um den Dienst bereitzustellen, einschließlich Geokodierung, Kartenvisualisierung und Datenimport-Verarbeitung. Wir verkaufen Ihre Daten nicht an Dritte.",
+                  },
+                ],
+              },
+              {
+                type: "heading",
+                version: 1,
+                tag: "h2",
+                children: [{ type: "text", text: "3. Datenspeicherung und -löschung" }],
+              },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Sie können jederzeit die Löschung Ihres Kontos und aller zugehörigen Daten beantragen. Nach einer 7-tägigen Frist werden Kontodaten dauerhaft gelöscht. IP-Adressen in Protokollen werden nach 30 Tagen anonymisiert.",
+                  },
+                ],
+              },
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "4. Ihre Rechte (DSGVO)" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Gemäß der DSGVO haben Sie das Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit Ihrer personenbezogenen Daten. Kontaktieren Sie uns, um diese Rechte auszuüben.",
+                  },
+                ],
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
+      },
+    ],
+  },
   contact: {
     title: "Kontakt",
     pageBuilder: [
@@ -607,6 +760,158 @@ export const pagesSeed: PageSeed[] = [
         description: "Star the repository, fork it, or open your first issue",
         buttonText: "View on GitHub",
         buttonLink: "https://github.com/jfilter/timetiles",
+      },
+    ],
+  },
+  {
+    title: "Terms of Service",
+    slug: "terms",
+    site: "default" as unknown as number,
+    pageBuilder: [
+      {
+        blockType: "hero",
+        title: "Terms of Service",
+        subtitle: "Please read these terms carefully before using TimeTiles",
+        background: "grid",
+      },
+      {
+        blockType: "richText",
+        content: {
+          root: {
+            type: "root",
+            children: [
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "1. Use of Service" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "TimeTiles is an open source geospatial event management platform. By using this platform, you agree to these terms of service. We reserve the right to modify these terms at any time.",
+                  },
+                ],
+              },
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "2. User Accounts" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "You are responsible for maintaining the security of your account and password. Accounts are intended for individual use and must not be shared.",
+                  },
+                ],
+              },
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "3. Content and Data" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "You retain ownership of data you upload to TimeTiles. By uploading data, you grant us the necessary rights to host and display your content. Publicly shared data may be viewed by other users.",
+                  },
+                ],
+              },
+              {
+                type: "heading",
+                version: 1,
+                tag: "h2",
+                children: [{ type: "text", text: "4. Limitation of Liability" }],
+              },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: 'TimeTiles is provided "as is" without warranties of any kind. We are not responsible for data loss, service interruptions, or damages arising from use of the platform.',
+                  },
+                ],
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
+      },
+    ],
+  },
+  {
+    title: "Privacy Policy",
+    slug: "privacy",
+    site: "default" as unknown as number,
+    pageBuilder: [
+      {
+        blockType: "hero",
+        title: "Privacy Policy",
+        subtitle: "How we collect, use, and protect your data",
+        background: "grid",
+      },
+      {
+        blockType: "richText",
+        content: {
+          root: {
+            type: "root",
+            children: [
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "1. Data We Collect" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "We collect the information you provide when registering (email address) and data you upload to the platform (event data, datasets). Server access logs may include IP addresses and usage patterns.",
+                  },
+                ],
+              },
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "2. How We Use Your Data" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Your data is used to provide the service, including geocoding, map visualization, and data import processing. We do not sell your data to third parties.",
+                  },
+                ],
+              },
+              {
+                type: "heading",
+                version: 1,
+                tag: "h2",
+                children: [{ type: "text", text: "3. Data Retention and Deletion" }],
+              },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "You can request deletion of your account and all associated data at any time. After a 7-day grace period, account data is permanently deleted. IP addresses in audit logs are anonymized after 30 days.",
+                  },
+                ],
+              },
+              { type: "heading", version: 1, tag: "h2", children: [{ type: "text", text: "4. Your Rights (GDPR)" }] },
+              {
+                type: "paragraph",
+                version: 1,
+                children: [
+                  {
+                    type: "text",
+                    text: "Under the GDPR, you have the right to access, rectify, delete, and port your personal data. Contact us to exercise these rights.",
+                  },
+                ],
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
+        },
       },
     ],
   },

@@ -61,7 +61,7 @@
     "confirmPasswordPlaceholder": "Repeat your password",
     "creatingAccount": "Creating account...",
     "createAccount": "Create Account",
-    "termsNotice": "By registering, you agree to our terms of service and privacy policy.",
+    "termsNotice": "By registering, you agree to our <terms>terms of service</terms> and <privacy>privacy policy</privacy>.",
     "resetYourPassword": "Reset your password",
     "resetDescription": "Enter your email address and we'll send you a link to reset your password.",
     "sending": "Sending...",

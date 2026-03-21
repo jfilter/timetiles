@@ -61,7 +61,7 @@
     "confirmPasswordPlaceholder": "Passwort wiederholen",
     "creatingAccount": "Konto wird erstellt...",
     "createAccount": "Konto erstellen",
-    "termsNotice": "Mit der Registrierung stimmen Sie unseren Nutzungsbedingungen und der Datenschutzrichtlinie zu.",
+    "termsNotice": "Mit der Registrierung stimmen Sie unseren <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzrichtlinie</privacy> zu.",
     "resetYourPassword": "Passwort zurücksetzen",
     "resetDescription": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
     "sending": "Wird gesendet...",

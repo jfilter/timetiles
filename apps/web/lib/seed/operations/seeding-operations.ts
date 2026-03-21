@@ -15,7 +15,7 @@
 import { createLogger } from "@/lib/logger";
 import type { Config } from "@/payload-types";
 
-import { COLLECTION_GEOCODING_PROVIDERS, FOOTER_SLUG, MAIN_MENU_SLUG } from "../constants";
+import { COLLECTION_GEOCODING_PROVIDERS, FOOTER_SLUG, MAIN_MENU_SLUG, SETTINGS_SLUG } from "../constants";
 import type { CollectionConfig } from "../seed.config";
 import type { SeedManager } from "../seed-manager";
 import { catalogSeeds } from "../seeds/catalogs";
@@ -25,6 +25,7 @@ import { footerSeed, footerSeedDe } from "../seeds/footer";
 import { geocodingProviderSeeds } from "../seeds/geocoding-providers";
 import { mainMenuSeed, mainMenuSeedDe } from "../seeds/main-menu";
 import { pagesSeed, pagesSeedDe } from "../seeds/pages";
+import { settingsSeed, settingsSeedDe } from "../seeds/settings";
 import { siteSeeds } from "../seeds/sites";
 import { userSeeds } from "../seeds/users";
 import { viewSeeds } from "../seeds/views";
@@ -83,7 +84,7 @@ export class SeedingOperations {
     const transformedData = this.dataProcessing.applyDataTransformations(preparedData, config, collectionName);
 
     // Handle global collections
-    if (collectionName === MAIN_MENU_SLUG || collectionName === FOOTER_SLUG) {
+    if (collectionName === MAIN_MENU_SLUG || collectionName === FOOTER_SLUG || collectionName === SETTINGS_SLUG) {
       await this.seedGlobalCollection(transformedData, collectionName);
       return null;
     }
@@ -110,7 +111,7 @@ export class SeedingOperations {
   }
 
   private async seedGlobalCollection(seedData: SeedData, collectionName: string): Promise<void> {
-    if (collectionName !== MAIN_MENU_SLUG && collectionName !== FOOTER_SLUG) return;
+    if (collectionName !== MAIN_MENU_SLUG && collectionName !== FOOTER_SLUG && collectionName !== SETTINGS_SLUG) return;
 
     try {
       const enData = (Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData) as Record<
@@ -122,9 +123,9 @@ export class SeedingOperations {
         throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
       }
 
-      type GlobalSlug = "main-menu" | "footer";
+      type GlobalSlug = "main-menu" | "footer" | "settings";
       const slug = collectionName as GlobalSlug;
-      type GlobalData = Config["globals"]["main-menu"] & Config["globals"]["footer"];
+      type GlobalData = Config["globals"]["main-menu"] & Config["globals"]["footer"] & Config["globals"]["settings"];
 
       // Initial update creates the array structure (localized fields inside arrays are dropped)
       await payload.updateGlobal({ slug, data: enData as unknown as GlobalData, locale: "en" });
@@ -156,6 +157,8 @@ export class SeedingOperations {
         return mainMenuSeedDe as unknown as Record<string, unknown>;
       case FOOTER_SLUG:
         return footerSeedDe as unknown as Record<string, unknown>;
+      case SETTINGS_SLUG:
+        return settingsSeedDe as unknown as Record<string, unknown>;
       default:
         return null;
     }
@@ -495,6 +498,8 @@ export class SeedingOperations {
         return [mainMenuSeed];
       case FOOTER_SLUG:
         return [footerSeed];
+      case SETTINGS_SLUG:
+        return [settingsSeed];
       case "sites":
         return siteSeeds;
       case "views":

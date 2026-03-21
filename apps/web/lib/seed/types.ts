@@ -15,6 +15,7 @@ import type { EventSeed } from "./seeds/events";
 import type { FooterSeed } from "./seeds/footer";
 import type { MainMenuSeed } from "./seeds/main-menu";
 import type { PageSeed } from "./seeds/pages";
+import type { SettingsSeed } from "./seeds/settings";
 import type { SiteSeed } from "./seeds/sites";
 // ImportSeed removed - import jobs are created dynamically, not seeded
 import type { UserSeed } from "./seeds/users";
@@ -27,7 +28,8 @@ export type SeedData =
   | SiteSeed[]
   | PageSeed[]
   | MainMenuSeed[]
-  | FooterSeed[];
+  | FooterSeed[]
+  | SettingsSeed[];
 
 export interface SeedOptions {
   collections?: string[];

@@ -24,6 +24,7 @@ import { validatePasswords } from "@/lib/constants/validation";
 import { registerRequest } from "@/lib/hooks/use-auth-mutations";
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
 import { useInputState } from "@/lib/hooks/use-input-state";
+import { useLegalNotices } from "@/lib/hooks/use-legal-notices";
 
 import { FormError, FormSuccess } from "./form-feedback";
 
@@ -40,6 +41,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const t = useTranslations("Auth");
   const tCommon = useTranslations("Common");
   const { isEnabled: registrationEnabled, isLoading: flagsLoading } = useFeatureEnabled("enableRegistration");
+  const { data: legalNotices } = useLegalNotices();
   const [email, handleEmailChange] = useInputState();
   const [password, handlePasswordChange] = useInputState();
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
@@ -147,7 +149,40 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
         {isPending ? t("creatingAccount") : t("createAccount")}
       </Button>
 
-      <p className="text-muted-foreground text-center text-xs">{t("termsNotice")}</p>
+      <p className="text-muted-foreground text-center text-xs">
+        {t.rich("termsNotice", {
+          terms: (chunks) =>
+            legalNotices?.termsUrl ? (
+              <a
+                href={legalNotices.termsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground underline"
+              >
+                {chunks}
+              </a>
+            ) : (
+              <span>{chunks}</span>
+            ),
+          privacy: (chunks) =>
+            legalNotices?.privacyUrl ? (
+              <a
+                href={legalNotices.privacyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground underline"
+              >
+                {chunks}
+              </a>
+            ) : (
+              <span>{chunks}</span>
+            ),
+        })}
+      </p>
+
+      {legalNotices?.registrationDisclaimer && (
+        <p className="text-muted-foreground text-center text-xs italic">{legalNotices.registrationDisclaimer}</p>
+      )}
     </form>
   );
 };

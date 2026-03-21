@@ -64,6 +64,7 @@ import * as migration_20260320_033645 from './20260320_033645';
 import * as migration_20260320_230803 from './20260320_230803';
 import * as migration_20260321_000000_dataset_name_unique_per_catalog from './20260321_000000_dataset_name_unique_per_catalog';
 import * as migration_20260321_154635 from './20260321_154635';
+import * as migration_20260321_201258 from './20260321_201258';
 
 export const migrations = [
   {
@@ -394,6 +395,11 @@ export const migrations = [
   {
     up: migration_20260321_154635.up,
     down: migration_20260321_154635.down,
-    name: '20260321_154635'
+    name: '20260321_154635',
+  },
+  {
+    up: migration_20260321_201258.up,
+    down: migration_20260321_201258.down,
+    name: '20260321_201258'
   },
 ];

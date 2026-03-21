@@ -45,18 +45,24 @@ export const Settings: GlobalConfig = {
           });
         }
 
-        // Detect geocoding or newsletter config changes
+        // Detect geocoding, newsletter, or legal config changes
         const prevGeo = JSON.stringify(previousDoc.geocoding ?? {});
         const newGeo = JSON.stringify(doc.geocoding ?? {});
         const prevNewsletter = JSON.stringify(previousDoc.newsletter ?? {});
         const newNewsletter = JSON.stringify(doc.newsletter ?? {});
+        const prevLegal = JSON.stringify(previousDoc.legal ?? {});
+        const newLegal = JSON.stringify(doc.legal ?? {});
 
-        if (prevGeo !== newGeo || prevNewsletter !== newNewsletter) {
+        if (prevGeo !== newGeo || prevNewsletter !== newNewsletter || prevLegal !== newLegal) {
           await auditLog(req.payload, {
             action: AUDIT_ACTIONS.SETTINGS_CHANGED,
             userId: req.user.id,
             userEmail: req.user.email,
-            details: { geocodingChanged: prevGeo !== newGeo, newsletterChanged: prevNewsletter !== newNewsletter },
+            details: {
+              geocodingChanged: prevGeo !== newGeo,
+              newsletterChanged: prevNewsletter !== newNewsletter,
+              legalChanged: prevLegal !== newLegal,
+            },
           });
         }
 
@@ -90,6 +96,36 @@ export const Settings: GlobalConfig = {
           admin: {
             description:
               "Optional: Authorization header for the newsletter service (e.g., 'Bearer YOUR_TOKEN' or 'Basic BASE64_CREDENTIALS'). Leave empty if not required.",
+          },
+        },
+      ],
+    },
+    {
+      name: "legal",
+      type: "group",
+      label: "Legal Notices",
+      admin: { description: "Legal links and disclaimers shown on the registration page" },
+      fields: [
+        {
+          name: "termsUrl",
+          type: "text",
+          label: "Terms of Service URL",
+          admin: { description: "URL to the AGB / Terms of Service page (e.g., /terms). Leave empty for no link." },
+        },
+        {
+          name: "privacyUrl",
+          type: "text",
+          label: "Privacy Policy URL",
+          admin: { description: "URL to the DSGVO / Privacy Policy page (e.g., /privacy). Leave empty for no link." },
+        },
+        {
+          name: "registrationDisclaimer",
+          type: "textarea",
+          label: "Registration Disclaimer",
+          localized: true,
+          admin: {
+            description:
+              "Optional notice below the registration form (e.g., 'This is a demo instance. Data may be deleted at any time.').",
           },
         },
       ],
