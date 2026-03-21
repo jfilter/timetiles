@@ -42,11 +42,12 @@ const logger = createRequestLogger("import-files");
 const ALLOWED_MIME_TYPES = [
   "text/csv",
   "text/plain",
-  "application/json", // Accepted by upload but rejected in beforeValidate for manual uploads (not yet implemented)
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.oasis.opendocument.spreadsheet",
   "application/vnd.google-apps.spreadsheet",
+  // Note: application/json is NOT allowed for manual uploads.
+  // JSON APIs are handled by scheduled imports (url-fetch-job converts JSON→CSV before import).
 ];
 
 // Note: File size limits are enforced per user's trust level via quota service in beforeValidate hook

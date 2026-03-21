@@ -13,6 +13,7 @@ import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { createImportFileAndQueueDetection } from "@/lib/import/create-import-file";
+import { convertJsonToCsv, recordsToCsv } from "@/lib/import/json-to-csv";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -22,6 +23,7 @@ import type { ScheduledImport, User } from "@/payload-types";
 
 import { buildAuthHeaders } from "./auth";
 import { calculateDataHash, detectFileTypeFromResponse, type FetchResult, fetchWithRetry } from "./fetch-utils";
+import { fetchPaginated } from "./paginated-fetch";
 import {
   checkForDuplicateContent,
   loadScheduledImportConfig,
@@ -127,6 +129,65 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
 };
 
 /**
+ * Determines whether the response should be treated as JSON based on
+ * detected MIME type and scheduled import configuration.
+ */
+const isJsonResponse = (mimeType: string, context: ImportContext): boolean => {
+  if (mimeType === "application/json") return true;
+  const advancedConfig = context.advancedConfig as Record<string, unknown> | undefined;
+  return advancedConfig?.responseFormat === "json";
+};
+
+/**
+ * Handles JSON→CSV conversion for a single-page JSON response.
+ * If pagination is enabled, fetches all pages first, then converts.
+ */
+const convertJsonResponseToCsv = async (
+  data: Buffer,
+  sourceUrl: string,
+  context: ImportContext
+): Promise<{ csvData: Buffer; recordCount: number }> => {
+  const advancedConfig = context.advancedConfig as Record<string, unknown> | undefined;
+  const jsonConfig = advancedConfig?.jsonApiConfig as
+    | { recordsPath?: string; pagination?: { enabled?: boolean } & Record<string, unknown> }
+    | undefined;
+  const recordsPath = jsonConfig?.recordsPath ?? undefined;
+
+  if (jsonConfig?.pagination?.enabled) {
+    // Paginated fetch — re-fetch all pages and combine
+    const paginationConfig = jsonConfig.pagination as {
+      enabled: boolean;
+      type: "offset" | "cursor" | "page";
+      pageParam?: string;
+      limitParam?: string;
+      limitValue?: number;
+      cursorParam?: string;
+      nextCursorPath?: string;
+      totalPath?: string;
+      maxPages?: number;
+    };
+
+    const authHeaders = buildAuthHeaders(context.scheduledImport?.authConfig ?? undefined);
+
+    const result = await fetchPaginated(sourceUrl, paginationConfig, recordsPath, {
+      authHeaders,
+      timeout: (context.advancedConfig?.timeoutMinutes ?? 30) * 60 * 1000,
+    });
+
+    logger.info("Paginated JSON fetch complete", {
+      pagesProcessed: result.pagesProcessed,
+      totalRecords: result.totalRecords,
+    });
+
+    return { csvData: recordsToCsv(result.allRecords), recordCount: result.totalRecords };
+  }
+
+  // Single response — convert in-place
+  const result = convertJsonToCsv(data, { recordsPath });
+  return { csvData: result.csv, recordCount: result.recordCount };
+};
+
+/**
  * Handles successful fetch and creates import file.
  */
 const handleFetchSuccess = async (
@@ -136,7 +197,28 @@ const handleFetchSuccess = async (
   sourceUrl: string,
   context: ImportContext
 ): Promise<FetchSuccessResult> => {
-  const dataHash = calculateDataHash(data);
+  // Detect file type
+  const detected = detectFileTypeFromResponse(contentType, data, sourceUrl);
+  let finalData = data;
+  let finalMimeType = detected.mimeType;
+  let finalExtension = detected.fileExtension;
+
+  // JSON response — convert to CSV before entering the import pipeline
+  if (isJsonResponse(detected.mimeType, context)) {
+    logger.info("JSON response detected, converting to CSV", {
+      sourceUrl: sanitizeUrlForLogging(sourceUrl),
+      originalMimeType: detected.mimeType,
+    });
+
+    const { csvData, recordCount } = await convertJsonResponseToCsv(data, sourceUrl, context);
+    finalData = csvData;
+    finalMimeType = "text/csv";
+    finalExtension = ".csv";
+
+    logger.info("JSON→CSV conversion complete", { recordCount, csvSize: csvData.length });
+  }
+
+  const dataHash = calculateDataHash(finalData);
 
   // Early return for duplicates
   const duplicateResult = await handleDuplicateCheck(payload, context, dataHash);
@@ -145,9 +227,8 @@ const handleFetchSuccess = async (
   }
 
   // Generate filename
-  const { mimeType, fileExtension } = detectFileTypeFromResponse(contentType, data, sourceUrl);
   const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
-  const filename = `url-import-${timestamp}-${uuidv4()}${fileExtension}`;
+  const filename = `url-import-${timestamp}-${uuidv4()}${finalExtension}`;
 
   // Validate and load user
   if (!context.userId) {
@@ -163,15 +244,15 @@ const handleFetchSuccess = async (
   const { importFileId } = await createImportFileAndQueueDetection({
     payload,
     importFileData,
-    file: { data, mimetype: mimeType, name: filename, size: data.length },
+    file: { data: finalData, mimetype: finalMimeType, name: filename, size: finalData.length },
     user,
   });
 
   logger.info("Import file created from URL", {
     importFileId,
     filename,
-    fileSize: data.length,
-    contentType,
+    fileSize: finalData.length,
+    contentType: finalMimeType,
     sourceUrl: sanitizeUrlForLogging(sourceUrl),
   });
 

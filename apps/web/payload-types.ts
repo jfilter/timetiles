@@ -1538,6 +1538,60 @@ export interface ScheduledImport {
      * Respect Cache-Control headers from the server
      */
     respectCacheControl?: boolean | null;
+    /**
+     * Expected response format from the URL
+     */
+    responseFormat?: ('auto' | 'csv' | 'json') | null;
+    /**
+     * Configure JSON API response handling
+     */
+    jsonApiConfig?: {
+      /**
+       * Dot-path to the records array (e.g. "data.results"). Leave empty for auto-detection.
+       */
+      recordsPath?: string | null;
+      /**
+       * Configure paginated API fetching
+       */
+      pagination?: {
+        /**
+         * Enable pagination to fetch multiple pages
+         */
+        enabled?: boolean | null;
+        /**
+         * Pagination strategy
+         */
+        type?: ('offset' | 'cursor' | 'page') | null;
+        /**
+         * Query parameter for page/offset (e.g. "page", "offset")
+         */
+        pageParam?: string | null;
+        /**
+         * Query parameter for page size
+         */
+        limitParam?: string | null;
+        /**
+         * Records per page
+         */
+        limitValue?: number | null;
+        /**
+         * Query parameter to send cursor value
+         */
+        cursorParam?: string | null;
+        /**
+         * Dot-path to next cursor in response (e.g. "meta.next_cursor")
+         */
+        nextCursorPath?: string | null;
+        /**
+         * Dot-path to total record count (e.g. "meta.total")
+         */
+        totalPath?: string | null;
+        /**
+         * Maximum number of pages to fetch (safety limit)
+         */
+        maxPages?: number | null;
+      };
+    };
   };
   /**
    * Last execution time
@@ -4225,6 +4279,25 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
         useHttpCache?: T;
         bypassCacheOnManual?: T;
         respectCacheControl?: T;
+        responseFormat?: T;
+        jsonApiConfig?:
+          | T
+          | {
+              recordsPath?: T;
+              pagination?:
+                | T
+                | {
+                    enabled?: T;
+                    type?: T;
+                    pageParam?: T;
+                    limitParam?: T;
+                    limitValue?: T;
+                    cursorParam?: T;
+                    nextCursorPath?: T;
+                    totalPath?: T;
+                    maxPages?: T;
+                  };
+            };
       };
   lastRun?: T;
   nextRun?: T;
