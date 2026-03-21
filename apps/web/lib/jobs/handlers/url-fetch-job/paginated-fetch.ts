@@ -8,6 +8,7 @@
  * @category Jobs/UrlFetch
  */
 
+import { extractRecordsFromJson } from "@/lib/import/json-to-csv";
 import { logger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
@@ -16,6 +17,9 @@ import { fetchWithRetry } from "./fetch-utils";
 
 /** Hard ceiling on pages to prevent runaway loops regardless of user config. */
 const ABSOLUTE_MAX_PAGES = 500;
+
+/** Hard ceiling on total records to prevent memory exhaustion. */
+const MAX_TOTAL_RECORDS = 100_000;
 
 /** Default number of records requested per page. */
 const DEFAULT_LIMIT = 100;
@@ -53,39 +57,6 @@ export interface PaginatedFetchResult {
   pagesProcessed: number;
   totalRecords: number;
 }
-
-/**
- * Extracts records from a parsed JSON response using a dot-path.
- *
- * When `recordsPath` is provided, traverses the object to that path and
- * expects an array. When omitted, the function auto-detects: if the
- * response is already an array it is used directly, otherwise the first
- * top-level key whose value is an array is selected.
- */
-const extractRecords = (json: unknown, recordsPath: string | undefined): Record<string, unknown>[] => {
-  let target: unknown;
-
-  if (recordsPath) {
-    target = getByPath(json, recordsPath);
-  } else if (Array.isArray(json)) {
-    target = json;
-  } else if (typeof json === "object" && json !== null) {
-    // Auto-detect: pick the first array-valued key
-    const obj = json as Record<string, unknown>;
-    for (const key of Object.keys(obj)) {
-      if (Array.isArray(obj[key])) {
-        target = obj[key];
-        break;
-      }
-    }
-  }
-
-  if (!Array.isArray(target)) {
-    return [];
-  }
-
-  return target as Record<string, unknown>[];
-};
 
 /**
  * Builds the URL for a specific page by appending or replacing pagination
@@ -213,10 +184,21 @@ export const fetchPaginated = async (
     });
 
     const json: unknown = JSON.parse(fetchResult.data.toString("utf-8"));
-    const pageRecords = extractRecords(json, recordsPath);
+    let pageRecords: Record<string, unknown>[];
+    try {
+      pageRecords = extractRecordsFromJson(json, recordsPath).records;
+    } catch {
+      // No records found on this page — treat as empty
+      pageRecords = [];
+    }
 
     allRecords.push(...pageRecords);
     pagesProcessed++;
+
+    if (allRecords.length >= MAX_TOTAL_RECORDS) {
+      logger.warn("Reached maximum record limit", { maxRecords: MAX_TOTAL_RECORDS, pagesProcessed });
+      break;
+    }
 
     if (pageRecords.length === 0) {
       logger.info("Page returned 0 records, stopping pagination", { pagesProcessed, totalRecords: allRecords.length });

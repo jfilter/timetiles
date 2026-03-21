@@ -32,7 +32,8 @@ export interface JsonToCsvResult {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
 
 /**
  * Flatten a record's nested objects into dot-separated keys.
@@ -93,6 +94,34 @@ const autoDetectRecords = (json: unknown): { records: Record<string, unknown>[];
   return null;
 };
 
+/**
+ * Extract an array of records from a parsed JSON value.
+ *
+ * If `recordsPath` is given, resolves it via dot-notation and expects an array.
+ * Otherwise auto-detects by checking for a top-level array or the first
+ * top-level property whose value is an array of objects.
+ *
+ * Shared by `convertJsonToCsv` and `paginated-fetch`.
+ */
+export const extractRecordsFromJson = (
+  json: unknown,
+  recordsPath?: string
+): { records: Record<string, unknown>[]; detectedPath: string } => {
+  if (recordsPath) {
+    const value = getByPath(json, recordsPath);
+    if (!Array.isArray(value)) {
+      throw new Error(`recordsPath "${recordsPath}" did not resolve to an array.`);
+    }
+    return { records: value as Record<string, unknown>[], detectedPath: recordsPath };
+  }
+
+  const detected = autoDetectRecords(json);
+  if (!detected) {
+    throw new Error("Could not find records array in JSON response. Specify recordsPath in JSON API configuration.");
+  }
+  return { records: detected.records, detectedPath: detected.path };
+};
+
 // ---------------------------------------------------------------------------
 // Main exports
 // ---------------------------------------------------------------------------
@@ -108,24 +137,7 @@ const autoDetectRecords = (json: unknown): { records: Record<string, unknown>[];
 export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions): JsonToCsvResult => {
   const json: unknown = JSON.parse(jsonBuffer.toString("utf-8"));
 
-  let records: Record<string, unknown>[];
-  let detectedPath: string;
-
-  if (options?.recordsPath) {
-    const value = getByPath(json, options.recordsPath);
-    if (!Array.isArray(value)) {
-      throw new Error(`recordsPath "${options.recordsPath}" did not resolve to an array.`);
-    }
-    records = value as Record<string, unknown>[];
-    detectedPath = options.recordsPath;
-  } else {
-    const detected = autoDetectRecords(json);
-    if (!detected) {
-      throw new Error("Could not find records array in JSON response. Specify recordsPath in JSON API configuration.");
-    }
-    records = detected.records;
-    detectedPath = detected.path;
-  }
+  const { records, detectedPath } = extractRecordsFromJson(json, options?.recordsPath);
 
   logger.info({ recordCount: records.length, detectedPath }, "json-to-csv: found records array");
 

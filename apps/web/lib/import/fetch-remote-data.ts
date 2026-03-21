@@ -9,11 +9,7 @@
  * @category Import
  */
 import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
-import {
-  calculateDataHash,
-  detectFileTypeFromResponse,
-  fetchWithRetry,
-} from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
+import { calculateDataHash, fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { fetchPaginated, type PaginationConfig } from "@/lib/jobs/handlers/url-fetch-job/paginated-fetch";
 import { logger } from "@/lib/logger";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
@@ -106,25 +102,29 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
     timeout,
     maxSize,
     retryConfig: { maxRetries },
-    cacheOptions: cacheOptions ? { useCache: cacheOptions.useCache, bypassCache: cacheOptions.bypassCache } : undefined,
+    cacheOptions: cacheOptions
+      ? {
+          useCache: cacheOptions.useCache,
+          bypassCache: cacheOptions.bypassCache,
+          respectCacheControl: cacheOptions.respectCacheControl,
+        }
+      : undefined,
   });
 
+  // fetchWithRetry already detects file type internally — use its results
   const originalContentType = fetchResult.contentType;
-
-  // Detect file type
-  const detected = detectFileTypeFromResponse(originalContentType, fetchResult.data, sourceUrl);
   let finalData = fetchResult.data;
-  let finalMimeType = detected.mimeType;
-  let finalExtension = detected.fileExtension;
+  let finalMimeType = fetchResult.contentType;
+  let finalExtension = fetchResult.fileExtension ?? ".bin";
   let wasConverted = false;
   let recordCount: number | undefined;
   let pagesProcessed: number | undefined;
 
   // JSON response — convert to CSV
-  if (isJsonDetected(detected.mimeType, responseFormat)) {
+  if (isJsonDetected(finalMimeType, responseFormat)) {
     logger.info("JSON response detected, converting to CSV", {
       url: sanitizeUrlForLogging(sourceUrl),
-      originalMimeType: detected.mimeType,
+      originalMimeType: finalMimeType,
       hasPagination: jsonApiConfig?.pagination?.enabled === true,
     });
 

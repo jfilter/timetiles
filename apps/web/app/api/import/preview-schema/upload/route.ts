@@ -61,14 +61,19 @@ export const POST = apiRoute({
 
     // JSON upload → convert to CSV before preview
     if (fileExtension === ".json" || file.type === "application/json") {
-      const { convertJsonToCsv } = await import("@/lib/import/json-to-csv");
-      const result = convertJsonToCsv(fileBuffer);
-      fileBuffer = result.csv as Buffer<ArrayBuffer>;
-      finalExtension = ".csv";
-      logger.info(
-        { previewId, recordCount: result.recordCount, detectedPath: result.detectedPath },
-        "JSON converted to CSV for preview"
-      );
+      try {
+        const { convertJsonToCsv } = await import("@/lib/import/json-to-csv");
+        const result = convertJsonToCsv(fileBuffer);
+        fileBuffer = Buffer.from(result.csv);
+        finalExtension = ".csv";
+        logger.info(
+          { previewId, recordCount: result.recordCount, detectedPath: result.detectedPath },
+          "JSON converted to CSV for preview"
+        );
+      } catch (jsonError) {
+        const message = jsonError instanceof Error ? jsonError.message : "Unknown error";
+        throw new ValidationError(`Failed to parse JSON file: ${message}`);
+      }
     }
 
     const previewFilePath = path.join(previewDir, `${previewId}${finalExtension}`);
