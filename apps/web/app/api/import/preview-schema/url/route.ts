@@ -16,12 +16,12 @@ import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 import { apiRoute, ValidationError } from "@/lib/api";
-import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
-import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
+import { fetchRemoteData } from "@/lib/import/fetch-remote-data";
 import { createLogger, logError } from "@/lib/logger";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
+import type { ScheduledImport } from "@/payload-types";
 
-import { buildPreviewResult, getPreviewDir, MAX_FILE_SIZE, SUPPORTED_EXTENSIONS, validateUrl } from "../helpers";
+import { buildPreviewResult, getPreviewDir, MAX_FILE_SIZE, validateUrl } from "../helpers";
 
 const logger = createLogger("api-preview-schema-url");
 
@@ -58,9 +58,6 @@ export const POST = apiRoute({
     }
     const parsedUrl = urlResult.url;
 
-    // Cast to the ScheduledImport authConfig type expected by buildAuthHeaders
-    const authHeaders = buildAuthHeaders(authConfig as Parameters<typeof buildAuthHeaders>[0]);
-
     logger.info(
       {
         url: sanitizeUrlForLogging(sourceUrl),
@@ -80,30 +77,24 @@ export const POST = apiRoute({
     let fileExtension: string;
 
     try {
-      const fetchResult = await fetchWithRetry(sourceUrl, {
-        authHeaders,
-        timeout: 60000, // 60 second timeout for preview
+      const result = await fetchRemoteData({
+        sourceUrl,
+        authConfig: authConfig as ScheduledImport["authConfig"],
+        timeout: 60_000,
         maxSize: MAX_FILE_SIZE,
-        retryConfig: { maxRetries: 0 }, // No retries for preview
-        cacheOptions: { bypassCache: true },
+        maxRetries: 0,
+        cacheOptions: { useCache: false, bypassCache: true },
       });
 
-      fileExtension = fetchResult.fileExtension ?? ".bin";
-      mimeType = fetchResult.contentType;
+      fileExtension = result.fileExtension;
+      mimeType = result.mimeType;
 
-      // Validate detected file type
-      if (!SUPPORTED_EXTENSIONS.includes(fileExtension)) {
-        throw new ValidationError(
-          `Unsupported file type detected: ${mimeType}. The URL must return CSV, Excel, or ODS data.`
-        );
-      }
-
-      // Save fetched data to temp file
+      // Save fetched data to temp file for preview
       previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
-      fs.writeFileSync(previewFilePath, fetchResult.data);
+      fs.writeFileSync(previewFilePath, result.data);
 
       originalName = path.basename(parsedUrl.pathname) || `url-import${fileExtension}`;
-      fileSize = fetchResult.data.length;
+      fileSize = result.data.length;
 
       logger.info(
         { previewId, sourceUrl: sanitizeUrlForLogging(sourceUrl), detectedType: mimeType, fileSize, userId: user.id },

@@ -13,7 +13,11 @@ import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { createImportFileAndQueueDetection } from "@/lib/import/create-import-file";
-import { convertJsonToCsv, recordsToCsv } from "@/lib/import/json-to-csv";
+import {
+  fetchRemoteData,
+  type FetchRemoteDataOptions,
+  type FetchRemoteDataResult,
+} from "@/lib/import/fetch-remote-data";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -21,9 +25,6 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledImport, User } from "@/payload-types";
 
-import { buildAuthHeaders } from "./auth";
-import { calculateDataHash, detectFileTypeFromResponse, type FetchResult, fetchWithRetry } from "./fetch-utils";
-import { fetchPaginated } from "./paginated-fetch";
 import {
   checkForDuplicateContent,
   loadScheduledImportConfig,
@@ -128,154 +129,6 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
   return data;
 };
 
-/**
- * Determines whether the response should be treated as JSON based on
- * detected MIME type and scheduled import configuration.
- */
-const isJsonResponse = (mimeType: string, context: ImportContext): boolean => {
-  if (mimeType === "application/json") return true;
-  const advancedConfig = context.advancedConfig as Record<string, unknown> | undefined;
-  return advancedConfig?.responseFormat === "json";
-};
-
-/**
- * Handles JSON→CSV conversion for a single-page JSON response.
- * If pagination is enabled, fetches all pages first, then converts.
- */
-const convertJsonResponseToCsv = async (
-  data: Buffer,
-  sourceUrl: string,
-  context: ImportContext
-): Promise<{ csvData: Buffer; recordCount: number }> => {
-  const advancedConfig = context.advancedConfig as Record<string, unknown> | undefined;
-  const jsonConfig = advancedConfig?.jsonApiConfig as
-    | { recordsPath?: string; pagination?: { enabled?: boolean } & Record<string, unknown> }
-    | undefined;
-  const recordsPath = jsonConfig?.recordsPath ?? undefined;
-
-  if (jsonConfig?.pagination?.enabled) {
-    // Paginated fetch — re-fetch all pages and combine
-    const paginationConfig = jsonConfig.pagination as {
-      enabled: boolean;
-      type: "offset" | "cursor" | "page";
-      pageParam?: string;
-      limitParam?: string;
-      limitValue?: number;
-      cursorParam?: string;
-      nextCursorPath?: string;
-      totalPath?: string;
-      maxPages?: number;
-    };
-
-    const authHeaders = buildAuthHeaders(context.scheduledImport?.authConfig ?? undefined);
-
-    const result = await fetchPaginated(sourceUrl, paginationConfig, recordsPath, {
-      authHeaders,
-      timeout: (context.advancedConfig?.timeoutMinutes ?? 30) * 60 * 1000,
-    });
-
-    logger.info("Paginated JSON fetch complete", {
-      pagesProcessed: result.pagesProcessed,
-      totalRecords: result.totalRecords,
-    });
-
-    return { csvData: recordsToCsv(result.allRecords), recordCount: result.totalRecords };
-  }
-
-  // Single response — convert in-place
-  const result = convertJsonToCsv(data, { recordsPath });
-  return { csvData: result.csv, recordCount: result.recordCount };
-};
-
-/**
- * Handles successful fetch and creates import file.
- */
-const handleFetchSuccess = async (
-  payload: Payload,
-  data: Buffer,
-  contentType: string,
-  sourceUrl: string,
-  context: ImportContext
-): Promise<FetchSuccessResult> => {
-  // Detect file type
-  const detected = detectFileTypeFromResponse(contentType, data, sourceUrl);
-  let finalData = data;
-  let finalMimeType = detected.mimeType;
-  let finalExtension = detected.fileExtension;
-
-  // JSON response — convert to CSV before entering the import pipeline
-  if (isJsonResponse(detected.mimeType, context)) {
-    logger.info("JSON response detected, converting to CSV", {
-      sourceUrl: sanitizeUrlForLogging(sourceUrl),
-      originalMimeType: detected.mimeType,
-    });
-
-    const { csvData, recordCount } = await convertJsonResponseToCsv(data, sourceUrl, context);
-    finalData = csvData;
-    finalMimeType = "text/csv";
-    finalExtension = ".csv";
-
-    logger.info("JSON→CSV conversion complete", { recordCount, csvSize: csvData.length });
-  }
-
-  const dataHash = calculateDataHash(finalData);
-
-  // Early return for duplicates
-  const duplicateResult = await handleDuplicateCheck(payload, context, dataHash);
-  if (duplicateResult) {
-    return duplicateResult;
-  }
-
-  // Generate filename
-  const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
-  const filename = `url-import-${timestamp}-${uuidv4()}${finalExtension}`;
-
-  // Validate and load user
-  if (!context.userId) {
-    throw new Error("User ID is required to create import files");
-  }
-  const user = await loadUser(payload, context.userId);
-  if (!user) {
-    throw new Error(`User not found: ${context.userId}`);
-  }
-
-  // Create import-files record, queue detection, and mark as parsing
-  const importFileData = buildImportFileData(sourceUrl, dataHash, context);
-  const { importFileId } = await createImportFileAndQueueDetection({
-    payload,
-    importFileData,
-    file: { data: finalData, mimetype: finalMimeType, name: filename, size: finalData.length },
-    user,
-  });
-
-  logger.info("Import file created from URL", {
-    importFileId,
-    filename,
-    fileSize: finalData.length,
-    contentType: finalMimeType,
-    sourceUrl: sanitizeUrlForLogging(sourceUrl),
-  });
-
-  return { importFileId, filename, contentHash: dataHash, isDuplicate: false };
-};
-
-const prepareFetchOptions = (scheduledImport: ScheduledImport | null) => {
-  // Determine timeout from config
-  const timeoutMinutes = scheduledImport?.advancedOptions?.timeoutMinutes ?? 30;
-  // Use much shorter timeout in test environment (3 seconds instead of minutes)
-  const isTestEnv = process.env.NODE_ENV === "test";
-  const configuredTestTimeout = Number(process.env.URL_FETCH_TEST_TIMEOUT_MS ?? "3000");
-  const testTimeout =
-    Number.isFinite(configuredTestTimeout) && configuredTestTimeout > 0 ? configuredTestTimeout : 3000;
-  const timeout = isTestEnv ? testTimeout : timeoutMinutes * 60 * 1000;
-
-  // Determine max file size from config
-  const maxFileSizeMB = scheduledImport?.advancedOptions?.maxFileSizeMB;
-  const maxSize = maxFileSizeMB ? maxFileSizeMB * 1024 * 1024 : undefined;
-
-  return { timeout, maxSize };
-};
-
 const createImportContext = (input: UrlFetchJobInput, scheduledImport: ScheduledImport | null): ImportContext => {
   // Resolve userId from input or scheduled import's creator
   const resolvedUserId = input.userId ?? extractRelationId(scheduledImport?.createdBy);
@@ -295,7 +148,7 @@ const buildSuccessOutput = (
   filename: string,
   contentHash: string,
   isDuplicate: boolean,
-  fetchResult: FetchResult
+  result: FetchRemoteDataResult
 ) => {
   return {
     output: {
@@ -304,8 +157,8 @@ const buildSuccessOutput = (
       filename,
       contentHash,
       isDuplicate,
-      contentType: fetchResult.contentType,
-      fileSize: fetchResult.contentLength,
+      contentType: result.mimeType,
+      fileSize: result.data.length,
       ...(isDuplicate && { skippedReason: "Duplicate content detected" }),
     },
   };
@@ -349,24 +202,75 @@ const prepareCacheOptions = (
   respectCacheControl: scheduledImport?.advancedOptions?.respectCacheControl !== false,
 });
 
-// Helper to perform the fetch operation
-const performFetch = async (
+// Helper to compute fetch timeout respecting test environment
+const computeTimeout = (scheduledImport: ScheduledImport | null): number => {
+  const timeoutMinutes = scheduledImport?.advancedOptions?.timeoutMinutes ?? 30;
+  const isTestEnv = process.env.NODE_ENV === "test";
+  const configuredTestTimeout = Number(process.env.URL_FETCH_TEST_TIMEOUT_MS ?? "3000");
+  const testTimeout =
+    Number.isFinite(configuredTestTimeout) && configuredTestTimeout > 0 ? configuredTestTimeout : 3000;
+  return isTestEnv ? testTimeout : timeoutMinutes * 60 * 1000;
+};
+
+/**
+ * Builds the options for fetchRemoteData from the job input and scheduled import config.
+ */
+const buildFetchOptions = (
   input: UrlFetchJobInput,
   scheduledImport: ScheduledImport | null,
   cachingEnabled: boolean
-): Promise<FetchResult> => {
-  const authHeaders = buildAuthHeaders(input.authConfig ?? scheduledImport?.authConfig);
-  const { timeout, maxSize } = prepareFetchOptions(scheduledImport);
-  const cacheOptions = prepareCacheOptions(scheduledImport, input.triggeredBy, cachingEnabled);
+): FetchRemoteDataOptions => {
+  const advancedConfig = scheduledImport?.advancedOptions as Record<string, unknown> | undefined;
+  const maxFileSizeMB = advancedConfig?.maxFileSizeMB as number | undefined;
 
-  return fetchWithRetry(input.sourceUrl, {
-    authHeaders,
-    timeout,
-    maxSize,
-    retryConfig: scheduledImport?.retryConfig,
-    cacheOptions,
-    userId: input.userId ? String(input.userId) : undefined,
+  return {
+    sourceUrl: input.sourceUrl,
+    authConfig: input.authConfig ?? scheduledImport?.authConfig,
+    timeout: computeTimeout(scheduledImport),
+    maxSize: maxFileSizeMB ? maxFileSizeMB * 1024 * 1024 : undefined,
+    maxRetries: scheduledImport?.retryConfig?.maxRetries ?? 3,
+    cacheOptions: prepareCacheOptions(scheduledImport, input.triggeredBy, cachingEnabled),
+    jsonApiConfig: advancedConfig?.jsonApiConfig as FetchRemoteDataOptions["jsonApiConfig"],
+    responseFormat: (advancedConfig?.responseFormat as FetchRemoteDataOptions["responseFormat"]) ?? "auto",
+  };
+};
+
+/**
+ * Creates an import file record from fetched data and queues schema detection.
+ */
+const createImportFromFetchResult = async (
+  payload: Payload,
+  input: UrlFetchJobInput,
+  importContext: ImportContext,
+  result: FetchRemoteDataResult
+): Promise<{ importFileId: string | number; filename: string }> => {
+  if (!importContext.userId) {
+    throw new Error("User ID is required to create import files");
+  }
+  const user = await loadUser(payload, importContext.userId);
+  if (!user) {
+    throw new Error(`User not found: ${importContext.userId}`);
+  }
+
+  const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
+  const filename = `url-import-${timestamp}-${uuidv4()}${result.fileExtension}`;
+  const importFileData = buildImportFileData(input.sourceUrl, result.contentHash, importContext);
+  const { importFileId } = await createImportFileAndQueueDetection({
+    payload,
+    importFileData,
+    file: { data: result.data, mimetype: result.mimeType, name: filename, size: result.data.length },
+    user,
   });
+
+  logger.info("Import file created from URL", {
+    importFileId,
+    filename,
+    fileSize: result.data.length,
+    contentType: result.mimeType,
+    sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
+  });
+
+  return { importFileId, filename };
 };
 
 export const urlFetchJob = {
@@ -406,25 +310,31 @@ export const urlFetchJob = {
       const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
       const cachingEnabled = await isFeatureEnabled(payload, "enableUrlFetchCaching");
 
-      // Perform fetch
-      const fetchResult = await performFetch(input, scheduledImport, cachingEnabled);
+      // Fetch + detect file type + convert JSON to CSV (single call)
+      const result = await fetchRemoteData(buildFetchOptions(input, scheduledImport, cachingEnabled));
 
       logger.info("URL fetch successful", {
         sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
-        contentType: fetchResult.contentType,
-        contentLength: fetchResult.contentLength,
-        attempts: fetchResult.attempts,
+        contentType: result.originalContentType,
+        fileSize: result.data.length,
+        wasConverted: result.wasConverted,
       });
 
-      // Handle successful fetch
+      // Check for duplicate content
       const importContext = createImportContext(input, scheduledImport);
-      const { importFileId, filename, contentHash, isDuplicate } = await handleFetchSuccess(
-        payload,
-        fetchResult.data,
-        fetchResult.contentType,
-        input.sourceUrl,
-        importContext
-      );
+      const duplicateResult = await handleDuplicateCheck(payload, importContext, result.contentHash);
+      if (duplicateResult) {
+        return buildSuccessOutput(
+          duplicateResult.importFileId,
+          duplicateResult.filename,
+          duplicateResult.contentHash,
+          true,
+          result
+        );
+      }
+
+      // Create import file and queue schema detection
+      const { importFileId, filename } = await createImportFromFetchResult(payload, input, importContext, result);
 
       // Update scheduled import status if applicable
       if (scheduledImport) {
@@ -432,7 +342,7 @@ export const urlFetchJob = {
         await updateScheduledImportSuccess(payload, scheduledImport, importFileId, duration);
       }
 
-      return buildSuccessOutput(importFileId, filename, contentHash, isDuplicate, fetchResult);
+      return buildSuccessOutput(importFileId, filename, result.contentHash, false, result);
     } catch (error) {
       const errorObj = error as Error;
       logError(errorObj, "URL fetch job failed", {

@@ -41,7 +41,6 @@ export const ALLOWED_MIME_TYPES = [
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const SAMPLE_ROW_COUNT = 5;
 export const FILE_EXTENSION_REGEX = /\.(csv|xls|xlsx|ods)$/i;
-export const SUPPORTED_EXTENSIONS = [".csv", ".xls", ".xlsx", ".ods"];
 
 /**
  * Get confidence level from confidence score
