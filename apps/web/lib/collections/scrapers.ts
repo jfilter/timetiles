@@ -26,6 +26,9 @@ const RESERVED_ENV_PREFIXES = [
   "PGUSER",
   "PGPASSWORD",
   "PGDATABASE",
+  "SCRAPER_",
+  "NODE_",
+  "SECRET",
 ];
 
 /** Maximum number of environment variables per scraper. */
@@ -83,6 +86,9 @@ const resolveRepoOwner = async (
   errorMessage: string
 ): Promise<number | undefined> => {
   const repo = await payload.findByID({ collection: "scraper-repos", id: repoId, overrideAccess: true });
+  if (!repo) {
+    throw new Error("Scraper repo not found");
+  }
   const repoOwnerId = extractRelationId(repo.createdBy) as number | undefined;
   if (user && !isPrivileged(user) && repoOwnerId !== user.id) {
     throw new Error(errorMessage);

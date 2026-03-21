@@ -83,8 +83,8 @@ export const isPrivateUrl = (url: string): boolean => {
   try {
     parsed = new URL(url);
   } catch {
-    // Unparseable URLs are not private, but callers should validate separately
-    return false;
+    // Fail-closed: unparseable URLs are treated as private (blocked)
+    return true;
   }
 
   const hostname = parsed.hostname.toLowerCase();

@@ -537,6 +537,40 @@ describe.sequential("Scraper Collections Access Control", () => {
     expect(scraper.envVars).toEqual({ API_KEY: "test123", DEBUG: "true" });
   });
 
+  it("should allow system operations (overrideAccess) to set repoCreatedBy", async () => {
+    // This simulates what scraper-repo-sync does: update scraper with overrideAccess: true
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "System Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
+    });
+
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: {
+        name: "System Scraper",
+        slug: "system-scraper",
+        repo: repo.id,
+        repoCreatedBy: trustedUser.id,
+        runtime: "python",
+        entrypoint: "scraper.py",
+      },
+      overrideAccess: true,
+    });
+
+    expect(scraper.repoCreatedBy).toBe(trustedUser.id);
+
+    // System update should preserve repoCreatedBy (no req.user to strip it)
+    const updated = await payload.update({
+      collection: "scrapers",
+      id: scraper.id,
+      data: { repoCreatedBy: adminUser.id },
+      overrideAccess: true,
+    });
+
+    expect(updated.repoCreatedBy).toBe(adminUser.id);
+  });
+
   it("should queue scraper-repo-sync job when creating a scraper-repo", async () => {
     await enableScrapers();
 

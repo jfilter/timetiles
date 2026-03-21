@@ -181,5 +181,30 @@ describe.sequential("safeFetch", () => {
       expect(response.status).toBe(200);
       expect(dnsLookup).not.toHaveBeenCalled();
     });
+
+    it("blocks DNS rebinding on redirect target", async () => {
+      dnsLookup
+        .mockResolvedValueOnce({ address: "93.184.216.34", family: 4 }) // initial URL OK
+        .mockResolvedValueOnce({ address: "127.0.0.1", family: 4 }); // redirect target is private
+      mockFetch.mockResolvedValueOnce(createResponse(301, { location: "https://rebind.example.com/data" }));
+
+      await expect(safeFetch("https://public.com/data", { dnsCheck: true })).rejects.toThrow("SSRF blocked");
+    });
+  });
+
+  describe("scheme validation", () => {
+    it("blocks file:// URLs", async () => {
+      await expect(safeFetch("file:///etc/passwd")).rejects.toThrow("unsupported protocol");
+    });
+
+    it("blocks data: URLs", async () => {
+      await expect(safeFetch("data:text/html,<h1>hi</h1>")).rejects.toThrow("unsupported protocol");
+    });
+
+    it("blocks redirect to file:// URL", async () => {
+      mockFetch.mockResolvedValueOnce(createResponse(301, { location: "file:///etc/passwd" }));
+
+      await expect(safeFetch("https://attacker.com/redirect")).rejects.toThrow("unsupported protocol");
+    });
   });
 });

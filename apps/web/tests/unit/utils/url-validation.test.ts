@@ -118,13 +118,13 @@ describe("isPrivateUrl", () => {
     });
   });
 
-  describe("handles edge cases", () => {
-    it("returns false for unparseable URLs", () => {
-      expect(isPrivateUrl("not-a-url")).toBe(false);
+  describe("handles edge cases (fail-closed)", () => {
+    it("returns true for unparseable URLs", () => {
+      expect(isPrivateUrl("not-a-url")).toBe(true);
     });
 
-    it("returns false for empty string", () => {
-      expect(isPrivateUrl("")).toBe(false);
+    it("returns true for empty string", () => {
+      expect(isPrivateUrl("")).toBe(true);
     });
   });
 

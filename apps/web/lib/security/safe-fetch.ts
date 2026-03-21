@@ -67,6 +67,12 @@ export const safeFetch = async (url: string, options?: SafeFetchOptions): Promis
   const visited = new Set<string>();
 
   for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+    // Validate URL scheme and structure
+    const parsed = new URL(currentUrl); // throws TypeError for malformed URLs
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error(`SSRF blocked: unsupported protocol ${parsed.protocol}`);
+    }
+
     // Validate URL is not targeting a private address
     if (isPrivateUrl(currentUrl)) {
       throw new Error(`SSRF blocked: URL targets a private/internal address: ${currentUrl}`);
