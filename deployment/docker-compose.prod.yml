@@ -147,6 +147,7 @@ services:
       - CHOWN # Required for nginx cache directory setup
       - SETUID # Required for nginx worker process privilege drop
       - SETGID # Required for nginx worker process privilege drop
+      - DAC_READ_SEARCH # Required for reading SSL private key files
     logging:
       driver: "json-file"
       options:
