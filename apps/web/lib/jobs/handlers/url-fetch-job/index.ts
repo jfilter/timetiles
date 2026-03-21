@@ -220,18 +220,17 @@ const buildFetchOptions = (
   scheduledImport: ScheduledImport | null,
   cachingEnabled: boolean
 ): FetchRemoteDataOptions => {
-  const advancedConfig = scheduledImport?.advancedOptions as Record<string, unknown> | undefined;
-  const maxFileSizeMB = advancedConfig?.maxFileSizeMB as number | undefined;
+  const advancedOptions = scheduledImport?.advancedOptions;
 
   return {
     sourceUrl: input.sourceUrl,
     authConfig: input.authConfig ?? scheduledImport?.authConfig,
     timeout: computeTimeout(scheduledImport),
-    maxSize: maxFileSizeMB ? maxFileSizeMB * 1024 * 1024 : undefined,
+    maxSize: advancedOptions?.maxFileSizeMB ? advancedOptions.maxFileSizeMB * 1024 * 1024 : undefined,
     maxRetries: scheduledImport?.retryConfig?.maxRetries ?? 3,
     cacheOptions: prepareCacheOptions(scheduledImport, input.triggeredBy, cachingEnabled),
-    jsonApiConfig: advancedConfig?.jsonApiConfig as FetchRemoteDataOptions["jsonApiConfig"],
-    responseFormat: (advancedConfig?.responseFormat as FetchRemoteDataOptions["responseFormat"]) ?? "auto",
+    jsonApiConfig: advancedOptions?.jsonApiConfig as FetchRemoteDataOptions["jsonApiConfig"],
+    responseFormat: (advancedOptions?.responseFormat as FetchRemoteDataOptions["responseFormat"]) ?? "auto",
   };
 };
 
