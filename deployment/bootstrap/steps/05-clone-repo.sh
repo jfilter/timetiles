@@ -39,6 +39,9 @@ run_step() {
     git remote add origin "$repo_url"
     git config core.sparseCheckout true
     echo "deployment/" > .git/info/sparse-checkout
+    if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
+        echo "apps/scraper/" >> .git/info/sparse-checkout
+    fi
 
     retry 3 5 git fetch --depth 1 origin "$repo_branch"
     git checkout -q "$repo_branch"

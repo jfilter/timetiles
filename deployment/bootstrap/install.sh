@@ -107,7 +107,7 @@ clone_bootstrap() {
     cd "$TEMP_DIR"
 
     # Clone only the deployment directory (sparse checkout)
-    git clone --depth 1 --filter=blob:none --sparse "$REPO_URL" repo
+    git clone --depth 1 --filter=blob:none --sparse --branch "$REPO_BRANCH" "$REPO_URL" repo
     cd repo
     git sparse-checkout set deployment/bootstrap
 

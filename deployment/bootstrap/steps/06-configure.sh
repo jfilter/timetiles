@@ -125,7 +125,7 @@ create_credentials_file() {
 # ============================================================================
 
 Domain: https://$DOMAIN_NAME
-Admin Panel: https://$DOMAIN_NAME/admin
+Admin Panel: https://$DOMAIN_NAME/dashboard
 
 Database:
   Host: postgres (internal Docker network)
@@ -154,7 +154,7 @@ fi)
 
 # ============================================================================
 # After first login, create an admin user at:
-# https://$DOMAIN_NAME/admin
+# https://$DOMAIN_NAME/dashboard
 # ============================================================================
 EOF
 

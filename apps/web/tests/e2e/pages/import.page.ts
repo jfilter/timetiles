@@ -114,14 +114,8 @@ export class ImportPage {
     this.errorMessage = page.locator('[data-testid="error-message"]');
 
     // Navigation buttons - use data-testid to avoid matching Next.js dev tools
-    this.backButton = page
-      .locator('[data-testid="wizard-navigation"] button:text-matches("Back|Previous", "i"), button:text-is("Back")')
-      .first();
-    this.nextButton = page
-      .locator(
-        '[data-testid="wizard-navigation"] button:text-matches("Continue|Next", "i"), button:text-is("Continue")'
-      )
-      .first();
+    this.backButton = page.getByRole("button", { name: /^Back/i }).first();
+    this.nextButton = page.getByRole("button", { name: /^Continue/i }).first();
     this.startImportButton = page.getByRole("button", { name: /Start Import|Import/i });
   }
 

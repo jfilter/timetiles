@@ -21,9 +21,6 @@ run_step() {
     # Create CLI symlink
     create_cli_symlink
 
-    # Print final summary
-    print_final_summary
-
     print_success "Monitoring setup complete"
 }
 
@@ -38,7 +35,7 @@ create_health_check_script() {
 # TimeTiles Health Check Script
 # Restarts the application if health check fails and sends alerts
 
-HEALTH_URL="http://localhost:3000/api/health"
+HEALTH_URL="http://localhost/api/health"
 MAX_FAILURES=3
 FAILURE_COUNT_FILE="/var/lib/timetiles/.health-failures"
 ALERT_SCRIPT="/opt/timetiles/scripts/alert.sh"
@@ -111,7 +108,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 0 3 * * 0 $user $install_dir/timetiles backup full >> /var/log/timetiles/backup.log 2>&1
 
 # Monthly backup cleanup (1st of month at 4 AM)
-0 4 1 * * $user $install_dir/timetiles backup clean >> /var/log/timetiles/backup.log 2>&1
+0 4 1 * * $user $install_dir/timetiles backup prune >> /var/log/timetiles/backup.log 2>&1
 EOF
 
     chmod 644 /etc/cron.d/timetiles
@@ -210,7 +207,7 @@ print_final_summary() {
     echo ""
     echo "Access your application:"
     echo "  - Website: https://$DOMAIN_NAME"
-    echo "  - Admin Panel: https://$DOMAIN_NAME/admin"
+    echo "  - Admin Panel: https://$DOMAIN_NAME/dashboard"
     echo ""
     echo "Useful commands:"
     echo "  - View logs: timetiles logs"
@@ -222,7 +219,7 @@ print_final_summary() {
     echo "Credentials saved to: $install_dir/credentials.txt"
     echo ""
     echo "Next steps:"
-    echo "  1. Visit https://$DOMAIN_NAME/admin to create your first admin user"
+    echo "  1. Visit https://$DOMAIN_NAME/dashboard to create your first admin user"
     echo "  2. Configure your datasets and start importing events"
     echo ""
 }

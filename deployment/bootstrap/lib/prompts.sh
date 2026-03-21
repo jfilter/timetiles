@@ -23,7 +23,7 @@ prompt() {
     # Use default in non-interactive mode
     if [[ "$NON_INTERACTIVE" == "true" ]]; then
         if [[ -n "$default" ]]; then
-            eval "$varname=\"$default\""
+            printf -v "$varname" '%s' "$default"
             return 0
         else
             print_error "Required value not set: $varname (non-interactive mode)"
@@ -41,9 +41,9 @@ prompt() {
     read -r -p "$prompt_text: " response
 
     if [[ -n "$response" ]]; then
-        eval "$varname=\"$response\""
+        printf -v "$varname" '%s' "$response"
     elif [[ -n "$default" ]]; then
-        eval "$varname=\"$default\""
+        printf -v "$varname" '%s' "$default"
     else
         print_error "Value required for: $varname"
         return 1
@@ -107,7 +107,7 @@ prompt_password() {
         return 1
     fi
 
-    eval "$varname=\"$password\""
+    printf -v "$varname" '%s' "$password"
     return 0
 }
 
@@ -249,8 +249,7 @@ collect_configuration() {
     save_config_to_state "REPO_BRANCH" "$REPO_BRANCH"
     save_config_to_state "INSTALL_DIR" "$INSTALL_DIR"
     save_config_to_state "APP_USER" "$APP_USER"
-    save_config_to_state "DB_PASSWORD" "$DB_PASSWORD"
-    save_config_to_state "PAYLOAD_SECRET" "$PAYLOAD_SECRET"
+    # Secrets (DB_PASSWORD, PAYLOAD_SECRET) are NOT saved to state — read from .env.production on resume
 
     # Display summary
     echo ""

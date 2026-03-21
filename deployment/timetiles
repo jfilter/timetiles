@@ -13,7 +13,9 @@ DEPLOY_USER="${DEPLOY_USER:-timetiles}"
 if [ "$(id -u)" = "0" ]; then
     # Check if deploy user exists
     if id "$DEPLOY_USER" &>/dev/null; then
-        exec sg docker -c "sudo -u $DEPLOY_USER $0 $*"
+        # Shell-escape each argument to prevent injection via sg -c
+        ESCAPED_ARGS=$(printf '%q ' "$@")
+        exec sg docker -c "sudo -u $DEPLOY_USER $0 $ESCAPED_ARGS"
     else
         echo "Warning: User '$DEPLOY_USER' not found, running as root"
     fi
@@ -23,7 +25,7 @@ if ! docker info &>/dev/null 2>&1; then
     echo "Warning: Cannot connect to Docker. You may need to:"
     echo "  1. Start Docker daemon"
     echo "  2. Add user to docker group: sudo usermod -aG docker $USER"
-    echo "  3. Re-login or run: sg docker -c './timetiles $*'"
+    echo "  3. Re-login or run: sg docker -c './timetiles <command>'"
 fi
 
 SCRIPT_DIR="$( cd "$( dirname "$(readlink -f "${BASH_SOURCE[0]}")" )" && pwd )"
@@ -181,17 +183,38 @@ init_ssl() {
     
     echo -e "${YELLOW}Requesting certificate for $DOMAIN_NAME...${NC}"
     
+    # Check if www DNS exists before requesting both domains
+    SSL_DOMAINS="-d $DOMAIN_NAME"
+    if host "www.$DOMAIN_NAME" >/dev/null 2>&1; then
+        SSL_DOMAINS="$SSL_DOMAINS -d www.$DOMAIN_NAME"
+    else
+        echo -e "${YELLOW}No DNS record for www.$DOMAIN_NAME, requesting cert for $DOMAIN_NAME only${NC}"
+    fi
+
     # Request certificate
     if $DC_CMD run --rm certbot certonly --webroot \
         --webroot-path=/var/www/certbot \
         --email "$LETSENCRYPT_EMAIL" \
         --agree-tos \
         --no-eff-email \
-        -d "$DOMAIN_NAME" \
-        -d "www.$DOMAIN_NAME"; then
+        $SSL_DOMAINS; then
         echo -e "${GREEN}SSL certificate obtained successfully!${NC}"
-        # Reload nginx to use new certificate
-        $DC_CMD exec nginx nginx -s reload
+
+        # Remove self-signed SSL override if present (so nginx uses the letsencrypt volume)
+        if [[ -f "$SSL_OVERRIDE" ]]; then
+            echo -e "${YELLOW}Removing self-signed SSL override...${NC}"
+            rm -f "$SSL_OVERRIDE"
+            # Rebuild compose command without the override
+            DC_CMD="docker compose -f $COMPOSE_FILE"
+            [ -f "$BUILD_OVERRIDE" ] && DC_CMD="$DC_CMD -f $BUILD_OVERRIDE"
+            [ -f "$TEST_OVERRIDE" ]  && DC_CMD="$DC_CMD -f $TEST_OVERRIDE"
+            DC_CMD="$DC_CMD --env-file $ENV_FILE"
+            # Recreate nginx to pick up new volume config
+            $DC_CMD up -d --no-deps --force-recreate nginx
+        else
+            # Reload nginx to use new certificate
+            $DC_CMD exec nginx nginx -s reload
+        fi
     else
         echo -e "${RED}Failed to obtain SSL certificate${NC}"
         exit 1
@@ -208,7 +231,7 @@ case "$1" in
             echo -e "${GREEN}Created $ENV_FILE from template${NC}"
             
             # Generate random secret for Payload
-            PAYLOAD_SECRET=$(openssl rand -base64 32 | tr -d '/')
+            PAYLOAD_SECRET=$(openssl rand -base64 32 | tr -d '/+=')
             # Use a delimiter that won't appear in base64 strings
             sed -i.bak "s|PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$PAYLOAD_SECRET|" "$ENV_FILE"
             echo -e "${GREEN}Generated PAYLOAD_SECRET${NC}"
@@ -258,7 +281,11 @@ case "$1" in
         UPLOAD_HOST_DIR="${UPLOAD_HOST_DIR:-$SCRIPT_DIR/uploads}"
         mkdir -p "$UPLOAD_HOST_DIR"
         if [[ "$(stat -c %u "$UPLOAD_HOST_DIR" 2>/dev/null || stat -f %u "$UPLOAD_HOST_DIR")" != "1001" ]]; then
-            sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null || chmod 777 "$UPLOAD_HOST_DIR"
+            if ! sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null; then
+                echo -e "${RED}Error: Cannot set ownership on $UPLOAD_HOST_DIR${NC}"
+                echo "Run manually: sudo chown 1001:1001 $UPLOAD_HOST_DIR"
+                exit 1
+            fi
         fi
         echo -e "${YELLOW}Starting services...${NC}"
 
@@ -705,7 +732,7 @@ EOF
 
         # Check Web App
         echo -n "Web App: "
-        if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+        if curl -f -s http://localhost/api/health > /dev/null 2>&1; then
             echo -e "${GREEN}✓ Healthy${NC}"
         else
             echo -e "${RED}✗ Unhealthy${NC}"
@@ -812,7 +839,7 @@ EOF
             for container in postgres web nginx; do
                 STATUS=$($DC_CMD ps --format '{{.Status}}' $container 2>/dev/null | head -1)
                 if [[ "$STATUS" == *"Up"* ]]; then
-                    if [[ "$STATUS" == *"healthy"* ]] || [[ "$container" == "nginx" ]]; then
+                    if [[ "$STATUS" == *"healthy"* ]]; then
                         print_ok "$container container healthy"
                     elif [[ "$STATUS" == *"unhealthy"* ]]; then
                         print_fail "$container container unhealthy"
@@ -825,7 +852,7 @@ EOF
             done
 
             # Check health endpoint
-            if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+            if curl -f -s http://localhost/api/health > /dev/null 2>&1; then
                 print_ok "Health endpoint responding"
             else
                 print_fail "Health endpoint not responding"
@@ -974,13 +1001,13 @@ EOF
         # Update scraper runner if configured
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
             source "$ENV_FILE"
-            local version="${TIMETILES_VERSION:-latest}"
-            local runner_dir="$SCRIPT_DIR/../scraper-runner"
+            version="${TIMETILES_VERSION:-latest}"
+            runner_dir="$SCRIPT_DIR/../scraper-runner"
 
             echo -e "${YELLOW}Updating scraper runner...${NC}"
 
             # Update runner: try GHCR image first, fall back to local build
-            local image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-scraper}:$version"
+            image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-scraper}:$version"
             rm -rf "${runner_dir:?}/dist" "${runner_dir:?}/node_modules" "${runner_dir:?}/package.json"
 
             # Helper: extract /app from image using tar (docker cp breaks pnpm symlinks)
@@ -1004,8 +1031,8 @@ EOF
             chown -R "$DEPLOY_USER:$DEPLOY_USER" "$runner_dir"
 
             # Update base images: try GHCR first, fall back to local build
-            local python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
-            local node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
+            python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
+            node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
 
             if sudo -u "$DEPLOY_USER" podman pull "$python_image" 2>/dev/null; then
                 sudo -u "$DEPLOY_USER" podman tag "$python_image" timescrape-python
@@ -1022,6 +1049,11 @@ EOF
             systemctl restart timescrape-runner
             echo -e "${GREEN}Scraper runner updated!${NC}"
         fi
+        ;;
+
+    --help|-h|help)
+        print_usage
+        exit 0
         ;;
 
     *)

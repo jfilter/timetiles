@@ -92,6 +92,10 @@ services:
       EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
       EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
       EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASS: ${EMAIL_SMTP_PASS:-}
 
       # Scraper runner (optional - leave empty to disable)
       SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
@@ -121,7 +125,7 @@ services:
 
   # Nginx reverse proxy with SSL support
   nginx:
-    image: nginx:${NGINX_VERSION:-alpine}
+    image: nginx:${NGINX_VERSION:-1.27-alpine}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-nginx
     restart: unless-stopped
     logging:
@@ -153,8 +157,9 @@ services:
 
   # Certbot for Let's Encrypt SSL certificates
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/certbot:${CERTBOT_VERSION:-v3.3.0}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-certbot
+    restart: unless-stopped
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot-webroot:/var/www/certbot

@@ -42,7 +42,7 @@ const logger = createRequestLogger("import-files");
 const ALLOWED_MIME_TYPES = [
   "text/csv",
   "text/plain",
-  "application/json",
+  "application/json", // Accepted by upload but rejected in beforeValidate for manual uploads (not yet implemented)
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.oasis.opendocument.spreadsheet",
@@ -408,30 +408,6 @@ const ImportFiles: CollectionConfig = {
 
         // Skip hook processing for programmatic creation (e.g., url-fetch-job handles its own pipeline)
         if (req.context?.skipImportFileHooks) return doc;
-
-        // Check file type first - reject JSON files BEFORE consuming quota
-        if (doc.mimeType?.includes("json")) {
-          // Update the record immediately for JSON rejection
-          try {
-            await payload.update({
-              collection: COLLECTION_NAMES.IMPORT_FILES,
-              id: doc.id,
-              req, // Pass req to stay in same transaction
-              data: {
-                status: "failed",
-                errorLog: "JSON file import not yet implemented",
-                metadata: { error: "JSON not yet implemented" },
-              },
-              context: {
-                ...req.context,
-                skipImportFileHooks: true, // Prevent infinite loops
-              },
-            });
-          } catch (error) {
-            logger.error("Failed to update import-files record for JSON rejection", error);
-          }
-          return doc;
-        }
 
         // Track file upload usage (authentication is required)
         const quotaService = createQuotaService(req.payload);

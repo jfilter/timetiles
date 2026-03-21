@@ -52,6 +52,16 @@ run_step() {
 
     print_success "SSL certificate obtained"
 
+    # Remove the self-signed SSL override so nginx uses the Let's Encrypt volume
+    local ssl_override="$install_dir/docker-compose.ssl-override.yml"
+    if [[ -f "$ssl_override" ]]; then
+        print_step "Removing self-signed SSL override (Let's Encrypt is now active)..."
+        rm -f "$ssl_override"
+        # Restart nginx to pick up certs from the letsencrypt volume
+        sudo -u "$user" sg docker -c "cd $install_dir && ./timetiles restart" 2>/dev/null || true
+        print_success "Switched to Let's Encrypt certificates"
+    fi
+
     # Verify HTTPS is working
     print_step "Verifying HTTPS..."
     sleep 5

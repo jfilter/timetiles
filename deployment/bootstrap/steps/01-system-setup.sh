@@ -52,7 +52,8 @@ create_swap() {
     fi
 
     # Create swap file
-    fallocate -l "$swap_size" /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=4096 status=progress
+    local swap_mb=$((${swap_size%G} * 1024))
+    fallocate -l "$swap_size" /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count="$swap_mb" status=progress
     chmod 600 /swapfile
     mkswap /swapfile
     swapon /swapfile
