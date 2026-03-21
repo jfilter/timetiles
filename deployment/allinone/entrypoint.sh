@@ -52,9 +52,11 @@ host    all             all             ::1/128                 scram-sha-256
 EOF
 
     # Configure PostgreSQL to listen on localhost
-    echo "listen_addresses = 'localhost'" >> /data/postgresql/postgresql.conf
-    echo "password_encryption = scram-sha-256" >> /data/postgresql/postgresql.conf
-    echo "port = 5432" >> /data/postgresql/postgresql.conf
+    {
+        echo "listen_addresses = 'localhost'"
+        echo "password_encryption = scram-sha-256"
+        echo "port = 5432"
+    } >> /data/postgresql/postgresql.conf
 
     # Start PostgreSQL temporarily to create user and database
     echo "Starting PostgreSQL temporarily for setup..."

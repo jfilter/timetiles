@@ -10,7 +10,7 @@ TOKEN=""
 
 # Wait for server to be healthy
 echo "⚙️  Job runner waiting for server..."
-for i in $(seq 1 30); do
+for _i in $(seq 1 30); do
   if curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/health" 2>/dev/null | grep -q 200; then
     break
   fi

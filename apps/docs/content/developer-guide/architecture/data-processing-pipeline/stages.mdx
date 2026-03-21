@@ -1,19 +1,19 @@
-# Processing Stages
+# Ingestion Stages
 
-The TimeTiles data processing pipeline consists of eight sequential stages, each responsible for a specific aspect of data transformation and validation. This document provides detailed conceptual explanations of each stage.
+The TimeTiles data ingestion pipeline consists of eight sequential stages, each responsible for a specific aspect of data transformation and validation. This document provides detailed conceptual explanations of each stage.
 
 ## Stage Overview
 
-| Stage                    | Job Handler                 | Purpose                                     | Batch Size       |
-| ------------------------ | --------------------------- | ------------------------------------------- | ---------------- |
-| 1. Dataset Detection     | `dataset-detection-job`     | Parse file structure and create import jobs | N/A              |
-| 2. Analyze Duplicates    | `analyze-duplicates-job`    | Find duplicate rows                         | 5,000            |
-| 3. Detect Schema         | `schema-detection-job`      | Build progressive schema                    | 10,000           |
-| 4. Validate Schema       | `validate-schema-job`       | Compare with existing schema                | 10,000           |
-| 5. Await Approval        | Manual process              | Human review of changes                     | N/A              |
-| 6. Create Schema Version | `create-schema-version-job` | Persist approved schema version             | N/A              |
-| 7. Geocode Batch         | `geocode-batch-job`         | Add location data                           | Unique locations |
-| 8. Create Events         | `create-events-batch-job`   | Generate final records                      | 1,000            |
+| Stage                    | Job Handler                 | Purpose                                        | Batch Size       |
+| ------------------------ | --------------------------- | ---------------------------------------------- | ---------------- |
+| 1. Dataset Detection     | `dataset-detection-job`     | Parse file structure and create ingestion jobs | N/A              |
+| 2. Analyze Duplicates    | `analyze-duplicates-job`    | Find duplicate rows                            | 5,000            |
+| 3. Detect Schema         | `schema-detection-job`      | Build progressive schema                       | 10,000           |
+| 4. Validate Schema       | `validate-schema-job`       | Compare with existing schema                   | 10,000           |
+| 5. Await Approval        | Manual process              | Human review of changes                        | N/A              |
+| 6. Create Schema Version | `create-schema-version-job` | Persist approved schema version                | N/A              |
+| 7. Geocode Batch         | `geocode-batch-job`         | Add location data                              | Unique locations |
+| 8. Create Events         | `create-events-batch-job`   | Generate final records                         | 1,000            |
 
 ## Stage 1: Dataset Detection
 
@@ -23,7 +23,7 @@ The TimeTiles data processing pipeline consists of eight sequential stages, each
 
 ### Purpose
 
-Parse uploaded files to detect datasets and sheets, creating individual import jobs for each detected dataset. This stage handles both single-sheet CSV files and multi-sheet Excel workbooks.
+Parse uploaded files to detect datasets and sheets, creating individual ingestion jobs for each detected dataset. This stage handles both single-sheet CSV files and multi-sheet Excel workbooks.
 
 ### Process Overview
 
@@ -41,21 +41,21 @@ Parse uploaded files to detect datasets and sheets, creating individual import j
 
 **Job Creation**:
 
-- Create one `import-job` per dataset/sheet combination
+- Create one ingestion job per dataset/sheet combination
 - Each job processes independently through all subsequent stages
 - Jobs link back to parent import-file
 
 ### Multi-Sheet Excel Handling
 
-Excel files with multiple sheets create separate import-jobs:
+Excel files with multiple sheets create separate ingestion jobs:
 
 **Example**: File "company_events.xlsx" with three sheets:
 
-- Sheet "Conferences" → Dataset "conferences" → Import Job #1
-- Sheet "Workshops" → Dataset "workshops" → Import Job #2
-- Sheet "Webinars" → Dataset "webinars" → Import Job #3
+- Sheet "Conferences" → Dataset "conferences" → Ingestion Job #1
+- Sheet "Workshops" → Dataset "workshops" → Ingestion Job #2
+- Sheet "Webinars" → Dataset "webinars" → Ingestion Job #3
 
-Each import-job progresses through all eight stages independently.
+Each ingestion job progresses through all eight stages independently.
 
 ### Import File Status
 
