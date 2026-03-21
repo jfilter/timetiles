@@ -87,7 +87,7 @@ describe.sequential("Feature Flag Service", () => {
     });
 
     it("should match Settings global defaults", async () => {
-      const settings = await payload.findGlobal({ slug: "settings" });
+      const settings = await payload.findGlobal({ slug: "settings", overrideAccess: true });
 
       // Verify the Settings global has the expected structure
       expect(settings.featureFlags).toBeDefined();
@@ -237,8 +237,13 @@ describe.sequential("Feature Flag Service", () => {
   });
 
   describe("Access Control", () => {
-    it("should allow public read access to Settings global", async () => {
-      const settings = await payload.findGlobal({ slug: "settings", overrideAccess: false });
+    it("should reject unauthenticated read access to Settings global", async () => {
+      await expect(payload.findGlobal({ slug: "settings", overrideAccess: false })).rejects.toThrow();
+    });
+
+    it("should allow admin read access to Settings global", async () => {
+      const { users } = await withUsers(testEnv, { admin: { role: "admin" } });
+      const settings = await payload.findGlobal({ slug: "settings", user: users.admin, overrideAccess: false });
 
       expect(settings).toBeDefined();
       expect(settings.featureFlags).toBeDefined();

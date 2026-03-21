@@ -14,7 +14,12 @@ import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 export const Settings: GlobalConfig = {
   slug: "settings",
   admin: { group: "System" },
-  access: { read: () => true, update: ({ req: { user } }) => user?.role === "admin" },
+  access: {
+    // Admin-only read — server-side services use overrideAccess: true,
+    // frontend uses /api/feature-flags (which reads flags via the service layer)
+    read: ({ req: { user } }) => user?.role === "admin",
+    update: ({ req: { user } }) => user?.role === "admin",
+  },
   hooks: {
     afterChange: [
       async ({ doc, previousDoc, req }) => {
