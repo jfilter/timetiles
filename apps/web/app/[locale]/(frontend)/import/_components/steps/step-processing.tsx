@@ -349,8 +349,8 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
       {/* Progress card */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* Stage timeline for processing */}
-          {status === "processing" && progress?.stages && progress.stages.length > 0 && (
+          {/* Stage timeline — visible during processing and after completion */}
+          {(status === "processing" || status === "completed") && progress?.stages && progress.stages.length > 0 && (
             <StageTimeline stages={progress.stages} />
           )}
 
