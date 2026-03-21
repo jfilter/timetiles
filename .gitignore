@@ -12,6 +12,14 @@ node_modules
 .env.test.local
 .env.production.local
 deployment/.env.production
+deployment/.env.production.pre-test-backup
+deployment/backups/
+deployment/nginx-test/
+deployment/ssl/
+deployment/uploads/
+deployment/credentials.txt
+deployment/docker-compose.test.yml
+deployment/docker-compose.ssl-override.yml
 
 # Dev email credentials (ethereal.email)
 .ethereal-credentials.json
