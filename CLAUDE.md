@@ -51,6 +51,9 @@ Every task requires three verifiable steps:
 | Run all tests        | `make test-ai`                                 | AI-optimized output           |
 | Run filtered tests   | `make test-ai FILTER=pattern`                  | 24-120x faster                |
 | Run E2E tests        | `make test-e2e`               | Playwright tests              |
+| Deploy unit tests    | `make test-deploy-unit`                    | No Docker needed              |
+| Deploy integ tests   | `make test-deploy-integration`             | Needs Docker running          |
+| Deploy VM tests      | `make test-deploy`                         | Full VM test (Vagrant)        |
 | Check scraper        | `make check-ai PACKAGE=scraper`            | Lint + typecheck              |
 | Start dev server     | `make dev`                    | Auto-starts infrastructure    |
 | Reset database       | `make db-reset`               | Full reset                    |
