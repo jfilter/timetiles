@@ -253,20 +253,32 @@ export class ImportPage {
   async createNewCatalog(catalogName: string): Promise<void> {
     const catalogDropdown = this.page.locator("#catalog-select");
     const catalogNameInput = this.page.locator("#new-catalog-name");
+    const resetButton = this.page.getByRole("button", { name: /reset to auto-detected/i });
+
+    // If auto-selection applied a suggestion, reset it first
+    if (await resetButton.isVisible().catch(() => false)) {
+      await resetButton.click();
+    }
 
     // Wait for the loading spinner to disappear and the form to render.
-    // After loading, either #catalog-select (catalogs exist) or #new-catalog-name
-    // (no catalogs, auto-selects "new") will be visible.
     const formReady = catalogDropdown.or(catalogNameInput);
     await expect(formReady).toBeVisible({ timeout: 10000 });
 
     // Check if the catalog dropdown is visible (existing catalogs exist)
     if (await catalogDropdown.isVisible()) {
-      await catalogDropdown.selectOption("new");
+      // Use native select if it's a <select>, otherwise use Radix Select pattern
+      const tagName = await catalogDropdown.evaluate((el) => el.tagName.toLowerCase());
+      if (tagName === "select") {
+        await catalogDropdown.selectOption("new");
+      } else {
+        // Radix Select — click trigger, then click the "new" option
+        await catalogDropdown.click();
+        await this.page.getByRole("option", { name: /create new catalog/i }).click();
+      }
       await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
     }
 
-    // The catalog name input should now be visible (either shown directly or after selecting "new")
+    // The catalog name input should now be visible
     await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
     await catalogNameInput.clear();
     await catalogNameInput.fill(catalogName);
