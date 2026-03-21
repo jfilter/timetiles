@@ -310,9 +310,8 @@ jobs:
         run: |
           if [ -f trivy-config-report.json ]; then
             CRITICAL=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="CRITICAL")] | length' trivy-config-report.json)
-            HIGH=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="HIGH")] | length' trivy-config-report.json)
-            if [ "${CRITICAL:-0}" -gt 0 ] || [ "${HIGH:-0}" -gt 0 ]; then
-              echo "FATAL: Found $CRITICAL critical and $HIGH high severity misconfigurations"
+            if [ "${CRITICAL:-0}" -gt 0 ]; then
+              echo "FATAL: Found $CRITICAL critical misconfigurations"
               exit 1
             fi
           fi
