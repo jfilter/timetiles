@@ -144,6 +144,9 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE # Required for binding to ports 80/443
+      - CHOWN # Required for nginx cache directory setup
+      - SETUID # Required for nginx worker process privilege drop
+      - SETGID # Required for nginx worker process privilege drop
     logging:
       driver: "json-file"
       options:

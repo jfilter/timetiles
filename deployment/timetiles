@@ -62,7 +62,10 @@ send_alert() {
 # Restic configuration
 load_restic_config() {
     # Extract only backup-related variables (not full env source to avoid leaking secrets)
-    while IFS='=' read -r key value; do
+    # Uses cut instead of IFS='=' to preserve values containing '=' (e.g., base64 passwords)
+    while IFS= read -r line; do
+        local key="${line%%=*}"
+        local value="${line#*=}"
         case "$key" in
             RESTIC_PASSWORD|RESTIC_REPOSITORY|RESTIC_OFFSITE_REPOSITORY|\
             AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_ENDPOINT_URL|\
@@ -179,8 +182,10 @@ check_env() {
 # Usage: load_env_vars VAR1 VAR2 ...
 load_env_vars() {
     local wanted="$*"
-    while IFS='=' read -r key value; do
-        [[ -z "$key" || "$key" == \#* ]] && continue
+    while IFS= read -r line; do
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        local key="${line%%=*}"
+        local value="${line#*=}"
         for var in $wanted; do
             if [[ "$key" == "$var" ]]; then
                 value="${value%\"}"
