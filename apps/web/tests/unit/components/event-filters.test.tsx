@@ -12,7 +12,7 @@ const mockCatalogs = createCatalogs(2);
 const mockDatasets = createDatasets(3);
 
 const mockDataSources: DataSourcesResponse = {
-  catalogs: mockCatalogs.map((c) => ({ id: c.id, name: c.name })),
+  catalogs: mockCatalogs.map((c) => ({ id: c.id, name: c.name, isOwned: false })),
   datasets: mockDatasets.map((d) => ({
     id: d.id,
     name: d.name,

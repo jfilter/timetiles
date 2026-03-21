@@ -2,7 +2,7 @@
  * Unit tests for the DataSourceSelector component.
  *
  * Tests catalog card rendering, selected state, dataset chips,
- * active state, event counts, and empty states.
+ * active state, event counts, empty states, and ownership grouping.
  *
  * @module
  */
@@ -15,11 +15,21 @@ import { renderWithProviders, within } from "../../setup/unit/react-render";
 // Shared mock state
 // ---------------------------------------------------------------------------
 let mockDataSources: DataSourcesResponse = { catalogs: [], datasets: [] };
+let mockAuthState = {
+  isAuthenticated: false,
+  isEmailVerified: false,
+  userId: null as number | null,
+  isLoading: false,
+  user: null,
+};
 
 // Mock the useDataSourcesQuery hook
 vi.mock("@/lib/hooks/use-data-sources-query", () => ({
   useDataSourcesQuery: () => ({ data: mockDataSources, isLoading: false, error: null }),
 }));
+
+// Mock the auth state hook
+vi.mock("@/lib/hooks/use-auth-queries", () => ({ useAuthState: () => mockAuthState }));
 
 // Mock the view context (no view active, but provider is present)
 const mockViewContext = {
@@ -34,12 +44,12 @@ vi.mock("@/lib/context/view-context", () => ({ useView: () => mockViewContext })
 describe("DataSourceSelector", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset to default data before each test
+    // Reset to default data before each test (all catalogs not owned)
     mockDataSources = {
       catalogs: [
-        { id: 1, name: "Environmental Data" },
-        { id: 2, name: "Economic Data" },
-        { id: 3, name: "Social Data" },
+        { id: 1, name: "Environmental Data", isOwned: false },
+        { id: 2, name: "Economic Data", isOwned: false },
+        { id: 3, name: "Social Data", isOwned: false },
       ],
       datasets: [
         { id: 10, name: "Air Quality", catalogId: 1 },
@@ -48,6 +58,8 @@ describe("DataSourceSelector", () => {
         { id: 30, name: "Census Data", catalogId: 3 },
       ],
     };
+    // Default to anonymous
+    mockAuthState = { isAuthenticated: false, isEmailVerified: false, userId: null, isLoading: false, user: null };
   });
 
   describe("Catalog card rendering", () => {
@@ -217,13 +229,90 @@ describe("DataSourceSelector", () => {
     });
 
     it("shows no datasets available when selected catalog has no datasets", () => {
-      mockDataSources = { catalogs: [{ id: 99, name: "Empty Catalog" }], datasets: [] };
+      mockDataSources = { catalogs: [{ id: 99, name: "Empty Catalog", isOwned: false }], datasets: [] };
 
       const searchParams = new URLSearchParams("catalog=99");
 
       const { container } = renderWithProviders(<DataSourceSelector />, { searchParams });
 
       expect(container).toHaveTextContent("No datasets available");
+    });
+  });
+
+  describe("Ownership grouping", () => {
+    it("shows flat grid for anonymous users (no group headings)", () => {
+      mockAuthState = { isAuthenticated: false, isEmailVerified: false, userId: null, isLoading: false, user: null };
+      mockDataSources = {
+        catalogs: [
+          { id: 1, name: "Environmental Data", isOwned: false },
+          { id: 2, name: "Economic Data", isOwned: false },
+        ],
+        datasets: [],
+      };
+
+      const { container } = renderWithProviders(<DataSourceSelector />);
+
+      expect(container).not.toHaveTextContent("My Catalogs");
+      expect(container).not.toHaveTextContent("Public Catalogs");
+      // All catalogs still render
+      expect(container).toHaveTextContent("Environmental Data");
+      expect(container).toHaveTextContent("Economic Data");
+    });
+
+    it("shows grouped catalogs for authenticated user with owned catalogs", () => {
+      mockAuthState = { isAuthenticated: true, isEmailVerified: true, userId: 1, isLoading: false, user: null };
+      mockDataSources = {
+        catalogs: [
+          { id: 1, name: "My Events", isOwned: true },
+          { id: 2, name: "Public Events", isOwned: false },
+        ],
+        datasets: [
+          { id: 10, name: "Dataset A", catalogId: 1 },
+          { id: 20, name: "Dataset B", catalogId: 2 },
+        ],
+      };
+
+      const { container } = renderWithProviders(<DataSourceSelector />);
+
+      expect(container).toHaveTextContent("My Catalogs");
+      expect(container).toHaveTextContent("Public Catalogs");
+      expect(container).toHaveTextContent("My Events");
+      expect(container).toHaveTextContent("Public Events");
+    });
+
+    it("shows flat grid for authenticated user with no owned catalogs", () => {
+      mockAuthState = { isAuthenticated: true, isEmailVerified: true, userId: 1, isLoading: false, user: null };
+      // All catalogs are public (none owned)
+      mockDataSources = {
+        catalogs: [
+          { id: 1, name: "Public A", isOwned: false },
+          { id: 2, name: "Public B", isOwned: false },
+        ],
+        datasets: [],
+      };
+
+      const { container } = renderWithProviders(<DataSourceSelector />);
+
+      expect(container).not.toHaveTextContent("My Catalogs");
+      expect(container).not.toHaveTextContent("Public Catalogs");
+      expect(container).toHaveTextContent("Public A");
+      expect(container).toHaveTextContent("Public B");
+    });
+
+    it("does not show Public Catalogs heading when all catalogs are owned", () => {
+      mockAuthState = { isAuthenticated: true, isEmailVerified: true, userId: 1, isLoading: false, user: null };
+      mockDataSources = {
+        catalogs: [
+          { id: 1, name: "My Catalog A", isOwned: true },
+          { id: 2, name: "My Catalog B", isOwned: true },
+        ],
+        datasets: [],
+      };
+
+      const { container } = renderWithProviders(<DataSourceSelector />);
+
+      expect(container).toHaveTextContent("My Catalogs");
+      expect(container).not.toHaveTextContent("Public Catalogs");
     });
   });
 });

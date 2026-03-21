@@ -17,6 +17,7 @@ import { useState } from "react";
 
 import { getDatasetColors } from "@/lib/constants/dataset-colors";
 import { useView } from "@/lib/context/view-context";
+import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import {
   type DataSourceCatalog,
   type DataSourceDataset,
@@ -29,9 +30,9 @@ import {
   CATALOG_VISIBLE_WHEN_COLLAPSED,
   countDatasetsByCatalog,
   DATASET_COLLAPSE_THRESHOLD,
-  filterAndSortCatalogs,
   filterAndSortDatasets,
   formatCount,
+  groupCatalogs,
 } from "./data-source-selector-helpers";
 
 interface DataSourceSelectorProps {
@@ -167,6 +168,34 @@ const ExpandCollapseButton = ({
   );
 };
 
+/** Renders a grid of catalog cards */
+const CatalogGrid = ({
+  catalogs,
+  selectedCatalogId,
+  datasetCountByCatalog,
+  eventCountsByCatalog,
+  onSelect,
+}: {
+  catalogs: DataSourceCatalog[];
+  selectedCatalogId: string | null;
+  datasetCountByCatalog: Record<string, number>;
+  eventCountsByCatalog?: Record<string, number>;
+  onSelect: (catalogId: string) => void;
+}) => (
+  <div className="grid grid-cols-2 gap-2">
+    {catalogs.map((catalog) => (
+      <CatalogCard
+        key={catalog.id}
+        catalog={catalog}
+        isSelected={selectedCatalogId === String(catalog.id)}
+        datasetCount={datasetCountByCatalog[String(catalog.id)] ?? 0}
+        eventCount={eventCountsByCatalog?.[String(catalog.id)]}
+        onSelect={onSelect}
+      />
+    ))}
+  </div>
+);
+
 /* oxlint-disable-next-line eslint(complexity) -- Inline handlers after React Compiler migration increase reported complexity */
 export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset }: DataSourceSelectorProps) => {
   const t = useTranslations("Filters");
@@ -180,12 +209,20 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
   const scopeCatalogIds = viewContext?.dataScope.catalogIds;
   const scopeDatasetIds = viewContext?.dataScope.datasetIds;
 
+  // Auth state for ownership grouping
+  const { isAuthenticated } = useAuthState();
+
   // Fetch lightweight catalog/dataset data
   const { data: dataSources } = useDataSourcesQuery();
 
-  // Sort catalogs by event count (descending), then by name
-  // Filter by view scope if active
-  const sortedCatalogs = filterAndSortCatalogs(dataSources?.catalogs ?? [], scopeCatalogIds, eventCountsByCatalog);
+  // Group catalogs by ownership (owned vs public), each sorted by event count
+  const { owned: ownedCatalogs, public: publicCatalogs } = groupCatalogs(
+    dataSources?.catalogs ?? [],
+    scopeCatalogIds,
+    eventCountsByCatalog
+  );
+  const allSortedCatalogs = [...ownedCatalogs, ...publicCatalogs];
+  const showGrouping = isAuthenticated && ownedCatalogs.length > 0;
 
   // Get datasets for selected catalog, sorted by event count
   // Filter by view scope if active
@@ -219,8 +256,8 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
   };
 
   // Catalog visibility - use CSS overflow instead of slicing to maintain stable positions
-  const useCatalogCollapse = sortedCatalogs.length > CATALOG_COLLAPSE_THRESHOLD;
-  const hiddenCatalogCount = sortedCatalogs.length - CATALOG_VISIBLE_WHEN_COLLAPSED;
+  const useCatalogCollapse = allSortedCatalogs.length > CATALOG_COLLAPSE_THRESHOLD;
+  const hiddenCatalogCount = allSortedCatalogs.length - CATALOG_VISIBLE_WHEN_COLLAPSED;
 
   // Dataset visibility
   const useDatasetCollapse = filteredDatasets.length > DATASET_COLLAPSE_THRESHOLD;
@@ -230,29 +267,51 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
   // Calculate active dataset count
   const activeDatasetCount = filters.datasets.filter((id) => filteredDatasets.some((d) => String(d.id) === id)).length;
 
+  // Shared props for catalog grids
+  const gridProps = {
+    selectedCatalogId: filters.catalog,
+    datasetCountByCatalog,
+    eventCountsByCatalog,
+    onSelect: handleCatalogSelect,
+  };
+
   return (
     <div className="space-y-4">
       {/* Catalog Selection */}
       <div>
         <div className="text-cartographic-navy/60 mb-2 font-mono text-xs tracking-wider uppercase">{t("catalogs")}</div>
 
-        {/* Grid layout for catalogs - flows left-to-right so top items stay visible when collapsed */}
+        {/* Collapsible container wraps all catalog groups */}
         <div
           className={cn(
-            "grid grid-cols-2 gap-2 transition-[max-height] duration-200 motion-reduce:transition-none",
+            "space-y-3 transition-[max-height] duration-200 motion-reduce:transition-none",
             useCatalogCollapse && !catalogsExpanded && "max-h-[180px] overflow-hidden"
           )}
         >
-          {sortedCatalogs.map((catalog) => (
-            <CatalogCard
-              key={catalog.id}
-              catalog={catalog}
-              isSelected={filters.catalog === String(catalog.id)}
-              datasetCount={datasetCountByCatalog[String(catalog.id)] ?? 0}
-              eventCount={eventCountsByCatalog?.[String(catalog.id)]}
-              onSelect={handleCatalogSelect}
-            />
-          ))}
+          {showGrouping ? (
+            <>
+              {/* My Catalogs group */}
+              <div>
+                <div className="text-cartographic-navy/50 mb-1 font-mono text-[10px] tracking-wider uppercase dark:text-white/50">
+                  {t("myCatalogs")}
+                </div>
+                <CatalogGrid catalogs={ownedCatalogs} {...gridProps} />
+              </div>
+
+              {/* Public Catalogs group */}
+              {publicCatalogs.length > 0 && (
+                <div>
+                  <div className="text-cartographic-navy/50 mb-1 font-mono text-[10px] tracking-wider uppercase dark:text-white/50">
+                    {t("publicCatalogs")}
+                  </div>
+                  <CatalogGrid catalogs={publicCatalogs} {...gridProps} />
+                </div>
+              )}
+            </>
+          ) : (
+            /* Flat ungrouped grid (anonymous or no owned catalogs) */
+            <CatalogGrid catalogs={allSortedCatalogs} {...gridProps} />
+          )}
         </div>
 
         {/* Expand/collapse button for many catalogs */}

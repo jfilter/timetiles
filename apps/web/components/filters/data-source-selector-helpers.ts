@@ -69,6 +69,21 @@ export const filterAndSortDatasets = (
   });
 };
 
+export interface GroupedCatalogs {
+  owned: DataSourceCatalog[];
+  public: DataSourceCatalog[];
+}
+
+/** Split catalogs into owned and public groups, each sorted by event count then name */
+export const groupCatalogs = (
+  catalogs: DataSourceCatalog[],
+  scopeCatalogIds: number[] | undefined,
+  eventCounts: Record<string, number> | undefined
+): GroupedCatalogs => {
+  const sorted = filterAndSortCatalogs(catalogs, scopeCatalogIds, eventCounts);
+  return { owned: sorted.filter((c) => c.isOwned), public: sorted.filter((c) => !c.isOwned) };
+};
+
 /**
  * Format large numbers compactly (e.g., 12450 -> "12.4k")
  */

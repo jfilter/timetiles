@@ -13,6 +13,7 @@
 export interface DataSourceCatalog {
   id: number;
   name: string;
+  isOwned: boolean;
 }
 
 export interface DataSourceDataset {

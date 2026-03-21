@@ -148,6 +148,8 @@
     "datasetCount": "{count, plural, one {# Datensatz} other {# Datensätze}}",
     "eventCount": "{count} Ereignisse",
     "active": "({active}/{total} aktiv)",
+    "myCatalogs": "Meine Kataloge",
+    "publicCatalogs": "Öffentliche Kataloge",
     "noDatasets": "Keine Datensätze verfügbar",
     "more": "+{count} weitere"
   },

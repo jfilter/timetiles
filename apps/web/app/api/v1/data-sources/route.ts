@@ -11,6 +11,7 @@
  */
 import { apiRoute } from "@/lib/api";
 import type { DataSourceCatalog, DataSourceDataset } from "@/lib/types/data-sources";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 export type { DataSourceCatalog, DataSourceDataset, DataSourcesResponse } from "@/lib/types/data-sources";
 
@@ -22,7 +23,7 @@ export const GET = apiRoute({
         collection: "catalogs",
         limit: 500,
         pagination: false,
-        select: { id: true, name: true },
+        select: { id: true, name: true, createdBy: true },
         user,
         overrideAccess: false,
       }),
@@ -38,7 +39,12 @@ export const GET = apiRoute({
     ]);
 
     // Transform to lightweight format
-    const catalogs: DataSourceCatalog[] = catalogsResult.docs.map((c) => ({ id: c.id, name: c.name }));
+    const userId = user?.id ?? null;
+    const catalogs: DataSourceCatalog[] = catalogsResult.docs.map((c) => ({
+      id: c.id,
+      name: c.name,
+      isOwned: userId != null && extractRelationId(c.createdBy) === userId,
+    }));
 
     const datasets: DataSourceDataset[] = datasetsResult.docs.map((d) => ({
       id: d.id,
