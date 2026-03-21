@@ -233,12 +233,15 @@ describe("MemoryCacheStorage", () => {
     });
 
     it("should track total size", async () => {
-      await storage.set("size-1", { data: "small" });
-      await storage.set("size-2", { data: "a".repeat(1000) });
+      // Use a dedicated storage to avoid shared state from other tests
+      const sizeStorage = new MemoryCacheStorage({ maxEntries: 10, maxSize: 1024 * 1024, defaultTTL: 60 });
+      await sizeStorage.set("size-1", { data: "small" });
+      await sizeStorage.set("size-2", { data: "a".repeat(1000) });
 
-      const stats = await storage.getStats();
+      const stats = await sizeStorage.getStats();
       expect(stats.totalSize).toBeGreaterThan(0);
       expect(stats.entries).toBe(2);
+      sizeStorage.destroy();
     });
 
     it("should track oldest and newest entries", async () => {

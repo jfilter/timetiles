@@ -8,6 +8,8 @@
  * @category Tests
  */
 
+import { describe, expect, it, vi } from "vitest";
+
 // ---------------------------------------------------------------------------
 // Mocks — must come before source imports
 // ---------------------------------------------------------------------------
@@ -29,9 +31,13 @@ vi.mock("@/app/[locale]/(frontend)/import/_components/use-wizard-effects", () =>
   useWizardCanProceed: vi.fn(() => false),
 }));
 vi.mock("@/app/[locale]/(frontend)/import/_components/wizard-store", () => ({ useWizardStore: vi.fn(() => null) }));
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/column-mapping-table", async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...(actual as object) };
+// column-mapping-table: mock the component, re-export pure functions via dynamic import
+vi.mock("@/app/[locale]/(frontend)/import/_components/steps/column-mapping-table", async () => {
+  // Dynamic import bypasses Vite's static JSX analysis
+  const mod = await vi.importActual<Record<string, unknown>>(
+    "@/app/[locale]/(frontend)/import/_components/steps/column-mapping-table"
+  );
+  return { ...mod, ColumnMappingTable: vi.fn() };
 });
 vi.mock("@/app/[locale]/(frontend)/import/_components/steps/field-mapping-sections", () => ({
   CompletionStatusBar: vi.fn(),
@@ -48,9 +54,11 @@ vi.mock("@/app/[locale]/(frontend)/import/_components/steps/column-mapping-share
   TRANSFORM_COLORS: {},
   TRANSFORM_ICONS: {},
 }));
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/column-row", async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...(actual as object) };
+vi.mock("@/app/[locale]/(frontend)/import/_components/steps/column-row", async () => {
+  const mod = await vi.importActual<Record<string, unknown>>(
+    "@/app/[locale]/(frontend)/import/_components/steps/column-row"
+  );
+  return { ...mod, ColumnRow: vi.fn() };
 });
 
 // Mock local component imports from column-row.tsx
@@ -62,8 +70,6 @@ vi.mock("@/app/[locale]/(frontend)/import/_components/steps/field-select", () =>
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
-
-import { describe, expect, it, vi } from "vitest";
 
 import {
   buildColumnView,
