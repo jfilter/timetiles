@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowRight, FileSpreadsheetIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
@@ -108,19 +108,55 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   const canProceed = useWizardCanProceed();
 
   const { data: catalogsData, isLoading, error: queryError } = useCatalogsQuery();
-  const catalogs = catalogsData?.catalogs ?? [];
+  const catalogsList = catalogsData?.catalogs;
+  const catalogs = catalogsList ?? [];
   const errorMessage = queryError instanceof Error ? queryError.message : t("failedToLoadCatalogs");
   const error = queryError ? errorMessage : null;
 
   // Derive a clean catalog name from the uploaded file name
   const suggestedCatalogName = fileName ? humanizeFileName(fileName) : "";
 
-  // Auto-select "new catalog" if user has no existing catalogs
+  // Auto-select from config suggestions when available, otherwise default to "new catalog"
+  const autoAppliedRef = useRef(false);
   useEffect(() => {
-    if (catalogs.length === 0 && selectedCatalogId === null && !isLoading) {
+    if (isLoading || selectedCatalogId !== null || autoAppliedRef.current) return;
+
+    // Try to auto-apply suggestions: match each sheet to its best suggestion
+    const goodSuggestions = configSuggestions.filter((s) => s.score >= 60);
+    if (goodSuggestions.length > 0 && catalogsList && catalogsList.length > 0) {
+      const bestCatalogId = goodSuggestions[0]!.catalogId;
+      if (catalogsList.some((c) => c.id === bestCatalogId)) {
+        setCatalog(bestCatalogId);
+        // Match each sheet to its best suggestion by name similarity
+        for (let i = 0; i < sheetMappings.length; i++) {
+          const sheetName = sheets[i]?.name?.toLowerCase() ?? "";
+          const match = goodSuggestions.find(
+            (s) => s.datasetName.toLowerCase().includes(sheetName) || sheetName.includes(s.datasetName.toLowerCase())
+          );
+          if (match) {
+            setSheetMapping(i, { datasetId: match.datasetId });
+          }
+        }
+        autoAppliedRef.current = true;
+        return;
+      }
+    }
+
+    // Fallback: auto-select "new catalog" if no catalogs exist
+    if (!catalogsList || catalogsList.length === 0) {
       setCatalog("new", suggestedCatalogName);
     }
-  }, [catalogs.length, selectedCatalogId, isLoading, setCatalog, suggestedCatalogName]);
+  }, [
+    catalogsList,
+    selectedCatalogId,
+    isLoading,
+    setCatalog,
+    suggestedCatalogName,
+    configSuggestions,
+    sheetMappings.length,
+    sheets,
+    setSheetMapping,
+  ]);
 
   const handleCatalogChange = (value: string) => {
     if (value === "new") {
@@ -156,17 +192,8 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     return selectedCatalog?.datasets ?? [];
   }, [selectedCatalogId, selectedCatalog]);
 
-  // Best config suggestion for re-import
-  const bestSuggestion = configSuggestions.find((s) => s.score >= 60) ?? null;
-  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
-  const showSuggestion = bestSuggestion && !suggestionDismissed && selectedCatalogId === null;
-
-  const handleApplySuggestion = () => {
-    if (!bestSuggestion) return;
-    setCatalog(bestSuggestion.catalogId);
-    setSheetMapping(0, { datasetId: bestSuggestion.datasetId });
-    setSuggestionDismissed(true);
-  };
+  // Show info when auto-applied from suggestions
+  const wasAutoApplied = autoAppliedRef.current;
 
   // Status message for the sticky footer
   const pendingStatusKey = noCatalogSelected ? "selectCatalogToContinue" : "configureDatasetToContinue";
@@ -189,23 +216,25 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
       {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
 
-      {/* Suggestion banner for re-imports */}
-      {showSuggestion && (
+      {/* Info banner when catalog + datasets were auto-selected from previous import */}
+      {wasAutoApplied && (
         <div
-          className="border-cartographic-blue/20 bg-cartographic-blue/5 flex items-center justify-between rounded-sm border px-4 py-3"
-          data-testid="dataset-suggestion-banner"
+          className="border-cartographic-forest/20 bg-cartographic-forest/5 flex items-center justify-between rounded-sm border px-4 py-3"
+          data-testid="dataset-suggestion-applied"
         >
-          <span className="text-cartographic-blue text-sm">
-            {t("similarConfig", { name: bestSuggestion.datasetName, score: bestSuggestion.score })}
+          <span className="text-cartographic-forest text-sm">
+            {t("configLoadedFromDataset", { name: configSuggestions[0]?.datasetName ?? "" })}
           </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSuggestionDismissed(true)}>
-              {t("ignoreSuggestion")}
-            </Button>
-            <Button size="sm" onClick={handleApplySuggestion}>
-              {t("useThisConfig")}
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              autoAppliedRef.current = false;
+              setCatalog(null);
+            }}
+          >
+            {t("resetToAutoDetected")}
+          </Button>
         </div>
       )}
 
