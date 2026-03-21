@@ -208,28 +208,6 @@
         "no-var": "error",
         "no-with": "off",
         "prefer-rest-params": "error",
-        "prefer-spread": "error"
-      }
-    },
-    {
-      "files": ["**/*.ts", "**/*.tsx"],
-      "rules": {
-        "constructor-super": "off",
-        "no-class-assign": "off",
-        "no-const-assign": "off",
-        "no-dupe-class-members": "off",
-        "no-dupe-keys": "off",
-        "no-func-assign": "off",
-        "no-import-assign": "off",
-        "no-new-native-nonconstructor": "off",
-        "no-obj-calls": "off",
-        "no-redeclare": "off",
-        "no-setter-return": "off",
-        "no-this-before-super": "off",
-        "no-unsafe-negation": "off",
-        "no-var": "error",
-        "no-with": "off",
-        "prefer-rest-params": "error",
         "prefer-spread": "error",
         "@typescript-eslint/await-thenable": "error",
         "@typescript-eslint/no-array-delete": "error",
@@ -424,7 +402,7 @@
         "@typescript-eslint/no-unused-vars": "off"
       }
     },
-    { "files": ["**/seed/**/*.ts", "**/seed/**/*.js", "**/seeds/**/*.ts"], "rules": {} },
+    { "files": ["**/seed/**/*.ts", "**/seed/**/*.js", "**/seeds/**/*.ts"], "rules": { "no-console": "off" } },
     {
       "files": ["scripts/**/*.ts", "scripts/**/*.js", "**/scripts/**/*.ts", "**/scripts/**/*.js"],
       "rules": {
@@ -489,16 +467,6 @@
       "files": ["**/*.spec.{ts,tsx,js,jsx}"],
       "rules": { "unicorn/filename-case": ["error", { "case": "kebabCase", "ignore": ["$^"] }] }
     },
-    {
-      "files": [
-        "**/app/(frontend)/import/_components/steps/step-field-mapping.tsx",
-        "**/app/(frontend)/import/_components/wizard-context.tsx",
-        "**/app/(frontend)/import/_components/transforms/transform-editor.tsx",
-        "**/lib/services/schema-builder/field-mapping-detection.ts"
-      ],
-      "rules": {}
-    },
-    { "files": ["**/*.jsx"], "rules": {} },
-    { "files": ["**/app/(frontend)/explore/_components/map-explorer.tsx"], "rules": {} }
+    { "files": ["**/*.jsx"], "rules": { "no-console": "off" } }
   ]
 }
