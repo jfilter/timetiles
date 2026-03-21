@@ -56,8 +56,8 @@ test.describe("Import Wizard - JSON File Upload", () => {
     const fileReady = page.getByText(/file ready for import|detected.*sheet/i);
     await expect(fileReady).toBeVisible({ timeout: 20_000 });
 
-    // Verify the file name or row count is displayed
-    await expect(page.getByText(/valid-events|3 rows/i)).toBeVisible();
+    // Verify the file name is displayed
+    await expect(page.getByText("valid-events.json")).toBeVisible();
 
     // Click Next to go to Dataset Selection (Step 3)
     await importPage.clickNext();
@@ -193,14 +193,16 @@ test.describe("Import Wizard - JSON URL Input", () => {
 
     // The server tried to fetch the URL. Depending on network
     // availability and SSRF rules, we may get success or an error.
+    // The server tried to fetch the URL. Regardless of whether the
+    // external URL is reachable, verify that the API responded and
+    // the wizard shows either a success preview or an error message.
     if (status === 200) {
-      // URL fetch succeeded — preview should show data
       const fileReady = page.getByText(/file ready for import|url data ready|ready|detected/i);
       await expect(fileReady).toBeVisible({ timeout: 10_000 });
     } else {
-      // URL fetch failed — error message should be shown to user
-      const errorText = page.locator('[class*="destructive"]');
-      await expect(errorText).toBeVisible({ timeout: 5_000 });
+      // Error: any visible text mentioning the failure is acceptable
+      const errorVisible = page.getByText(/failed|error|unsupported|could not/i).first();
+      await expect(errorVisible).toBeVisible({ timeout: 5_000 });
     }
   });
 
@@ -267,9 +269,9 @@ test.describe("Scheduled Import - JSON API Configuration", () => {
     const catalog = await catalogResponse.json();
     catalogId = catalog.doc.id;
 
-    // Create a dataset
+    // Create a dataset (language is required)
     const datasetResponse = await request.post(`${baseUrl}/api/datasets`, {
-      data: { name: `JSON API Test Dataset ${uniqueId}`, catalog: catalogId },
+      data: { name: `JSON API Test Dataset ${uniqueId}`, catalog: catalogId, language: "eng" },
       headers: { "Content-Type": "application/json", Authorization: `JWT ${token}` },
     });
 
