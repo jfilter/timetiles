@@ -40,6 +40,30 @@ const PRIVATE_IPV6_PATTERNS = [
 ];
 
 /**
+ * Check whether a raw IP address is in a private/internal range.
+ *
+ * Operates on resolved IP strings (e.g., from `dns.promises.lookup()`),
+ * not on URLs or hostnames. Used by `safeFetch()` for DNS rebinding protection.
+ *
+ * @param ip - A raw IPv4 or IPv6 address string.
+ * @returns `true` if the IP is private/internal.
+ */
+export const isPrivateIP = (ip: string): boolean => {
+  const normalized = ip.toLowerCase();
+
+  if (normalized === "0.0.0.0") return true;
+
+  for (const pattern of PRIVATE_IPV4_PATTERNS) {
+    if (pattern.test(normalized)) return true;
+  }
+  for (const pattern of PRIVATE_IPV6_PATTERNS) {
+    if (pattern.test(normalized)) return true;
+  }
+
+  return false;
+};
+
+/**
  * Check whether a URL's hostname points to a private/internal IP range.
  *
  * This performs hostname pattern matching only (no DNS resolution) to guard
@@ -59,8 +83,8 @@ export const isPrivateUrl = (url: string): boolean => {
   try {
     parsed = new URL(url);
   } catch {
-    // Unparseable URLs are not private, but callers should validate separately
-    return false;
+    // Fail-closed: unparseable URLs are treated as private (blocked)
+    return true;
   }
 
   const hostname = parsed.hostname.toLowerCase();

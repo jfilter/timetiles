@@ -95,7 +95,7 @@ export class GeocodingService {
 
   private async loadSettings(): Promise<void> {
     try {
-      const settingsGlobal = await this.payload.findGlobal({ slug: "settings" });
+      const settingsGlobal = await this.payload.findGlobal({ slug: "settings", overrideAccess: true });
 
       const geocodingSettings = settingsGlobal.geocoding;
 

@@ -89,6 +89,7 @@ const DataExports: CollectionConfig = {
     {
       name: "filePath",
       type: "text",
+      access: { read: ({ req: { user } }) => user?.role === "admin" },
       admin: {
         description: "Internal file path for the export ZIP (for cleanup)",
         condition: () => false, // Hidden from admin UI
@@ -105,6 +106,7 @@ const DataExports: CollectionConfig = {
     {
       name: "errorLog",
       type: "textarea",
+      access: { read: ({ req: { user } }) => user?.role === "admin" },
       admin: {
         description: "Error details if export failed",
         condition: (data) => data.status === "failed",

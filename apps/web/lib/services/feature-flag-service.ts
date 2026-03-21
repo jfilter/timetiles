@@ -73,7 +73,7 @@ class FeatureFlagService {
     }
 
     try {
-      const settings = await this.payload.findGlobal({ slug: "settings" });
+      const settings = await this.payload.findGlobal({ slug: "settings", overrideAccess: true });
       const flags = settings.featureFlags;
 
       const newFlags = { ...DEFAULT_FLAGS };

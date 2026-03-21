@@ -8,17 +8,148 @@
  * @category Collections
  * @module
  */
-import type { CollectionConfig, Where } from "payload";
+import type { CollectionBeforeChangeHook, CollectionConfig, Where } from "payload";
 
+import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
 import { computeWebhookUrl, handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
-import {
-  createCommonConfig,
-  createOwnershipAccess,
-  isAuthenticated,
-  isEditorOrAdmin,
-  isPrivileged,
-} from "./shared-fields";
+import { createCommonConfig, createOwnershipAccess, isEditorOrAdmin, isPrivileged } from "./shared-fields";
+
+/** Reserved environment variable prefixes that must not be overridden by scrapers. */
+const RESERVED_ENV_PREFIXES = [
+  "PAYLOAD_",
+  "DATABASE_",
+  "POSTGRES_",
+  "PGHOST",
+  "PGPORT",
+  "PGUSER",
+  "PGPASSWORD",
+  "PGDATABASE",
+  "SCRAPER_",
+  "NODE_",
+  "SECRET",
+];
+
+/** Maximum number of environment variables per scraper. */
+const MAX_ENV_VARS = 50;
+
+/** Valid environment variable key pattern. */
+const ENV_KEY_PATTERN = /^[A-Za-z_]\w*$/;
+
+/**
+ * Validates entrypoint path to prevent path traversal and absolute paths.
+ */
+const validateEntrypoint = (value: unknown): string | true => {
+  if (!value || typeof value !== "string") return "Entrypoint is required";
+  if (value.includes("..")) return "Entrypoint must not contain path traversal (..)";
+  if (value.startsWith("/")) return "Entrypoint must be a relative path";
+  if (value.includes("\0")) return "Entrypoint contains invalid characters";
+  if (value.length > 255) return "Entrypoint must be at most 255 characters";
+  return true;
+};
+
+/**
+ * Validates environment variables object for safe keys and values.
+ */
+const validateEnvVars = (value: unknown): string | true => {
+  if (value == null || (typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0)) {
+    return true; // Allow empty/null
+  }
+  if (typeof value !== "object" || Array.isArray(value)) return "Environment variables must be an object";
+  const entries = Object.entries(value);
+  if (entries.length > MAX_ENV_VARS) return `Maximum ${MAX_ENV_VARS} environment variables allowed`;
+  for (const [key] of entries) {
+    if (!ENV_KEY_PATTERN.test(key))
+      return `Invalid environment variable key: "${key}". Keys must match [A-Za-z_][A-Za-z0-9_]*`;
+    if (RESERVED_ENV_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+      return `Reserved environment variable prefix: "${key}". Keys starting with ${RESERVED_ENV_PREFIXES.join(", ")} are not allowed`;
+    }
+  }
+  return true;
+};
+
+/**
+ * Looks up a repo by ID, validates the current user owns it (unless privileged),
+ * and returns the repo owner's ID for denormalized storage.
+ */
+const resolveRepoOwner = async (
+  payload: {
+    findByID: (args: {
+      collection: "scraper-repos";
+      id: number;
+      overrideAccess: boolean;
+    }) => Promise<{ createdBy?: unknown }>;
+  },
+  repoId: number,
+  user: { id: number; role?: string | null } | undefined,
+  errorMessage: string
+): Promise<number | undefined> => {
+  const repo = await payload.findByID({ collection: "scraper-repos", id: repoId, overrideAccess: true });
+  if (!repo) {
+    throw new Error("Scraper repo not found");
+  }
+  const repoOwnerId = extractRelationId(repo.createdBy) as number | undefined;
+  if (user && !isPrivileged(user) && repoOwnerId !== user.id) {
+    throw new Error(errorMessage);
+  }
+  return repoOwnerId;
+};
+
+/**
+ * beforeChange hook that server-sets repoCreatedBy and validates repo ownership.
+ *
+ * On create: looks up the repo, validates the user owns it, and sets repoCreatedBy.
+ * On update: strips client-sent repoCreatedBy; if repo changes, re-validates and re-sets.
+ */
+const validateAndSetRepoOwnership: CollectionBeforeChangeHook = async ({ data, req, operation, originalDoc }) => {
+  if (!data) return data;
+
+  // Collect all mutations before applying — avoids require-atomic-updates false positives
+  let repoCreatedBy: number | undefined;
+  let shouldDeleteRepoCreatedBy = false;
+
+  if (operation === "create") {
+    const repoId = extractRelationId(data.repo);
+    if (repoId) {
+      repoCreatedBy = await resolveRepoOwner(
+        req.payload,
+        repoId,
+        req.user ?? undefined,
+        "You can only create scrapers for your own scraper repos"
+      );
+    }
+  }
+
+  if (operation === "update") {
+    // Prevent client-initiated updates to repoCreatedBy
+    if (req.user) {
+      shouldDeleteRepoCreatedBy = true;
+    }
+    // If repo field is changing, re-validate and re-set
+    const newRepoId = data.repo !== undefined ? extractRelationId(data.repo) : undefined;
+    const originalRepoId = extractRelationId(originalDoc?.repo);
+    if (newRepoId && newRepoId !== originalRepoId) {
+      repoCreatedBy = await resolveRepoOwner(
+        req.payload,
+        newRepoId,
+        req.user ?? undefined,
+        "You can only assign scrapers to your own scraper repos"
+      );
+      shouldDeleteRepoCreatedBy = false; // override: we have a new value
+    }
+  }
+
+  // Build result without mutating data after awaits
+  if (shouldDeleteRepoCreatedBy && repoCreatedBy === undefined) {
+    const { repoCreatedBy: _stripped, ...rest } = data;
+    return rest;
+  }
+  if (repoCreatedBy !== undefined) {
+    return { ...data, repoCreatedBy };
+  }
+  return data;
+};
 
 const Scrapers: CollectionConfig = {
   slug: "scrapers",
@@ -35,8 +166,14 @@ const Scrapers: CollectionConfig = {
       if (!user) return false;
       return { repoCreatedBy: { equals: user.id } } as Where;
     },
-    create: isAuthenticated,
-    update: createOwnershipAccess("scrapers", "repoCreatedBy" as "createdBy"),
+    create: async ({ req: { user, payload } }) => {
+      if (!user) return false;
+      const enabled = await isFeatureEnabled(payload, "enableScrapers");
+      if (!enabled) return false;
+      const trustLevel = typeof user.trustLevel === "string" ? Number(user.trustLevel) : (user.trustLevel ?? 0);
+      return trustLevel >= 3 || user.role === "admin";
+    },
+    update: createOwnershipAccess("scrapers", "repoCreatedBy"),
     delete: isEditorOrAdmin,
     readVersions: isEditorOrAdmin,
   },
@@ -51,12 +188,12 @@ const Scrapers: CollectionConfig = {
       required: true,
       admin: { description: "Source code repository containing this scraper" },
     },
-    // Denormalized owner for zero-query access control
+    // Denormalized owner for zero-query access control (server-set only)
     {
       name: "repoCreatedBy",
       type: "number",
       index: true,
-      admin: { hidden: true, description: "Denormalized from repo.createdBy for access control" },
+      admin: { hidden: true, readOnly: true, description: "Denormalized from repo.createdBy for access control" },
     },
     // Execution config
     {
@@ -73,6 +210,7 @@ const Scrapers: CollectionConfig = {
       name: "entrypoint",
       type: "text",
       required: true,
+      validate: validateEntrypoint,
       admin: { description: "Script path relative to repo root (e.g., scraper.py)" },
     },
     { name: "outputFile", type: "text", defaultValue: "data.csv", admin: { description: "Output CSV filename" } },
@@ -100,11 +238,13 @@ const Scrapers: CollectionConfig = {
       max: 4096,
       admin: { description: "Memory limit in MB" },
     },
-    // Environment variables (encrypted)
+    // Environment variables (may contain secrets — field-level access as defense-in-depth)
     {
       name: "envVars",
       type: "json",
       defaultValue: {},
+      validate: validateEnvVars,
+      access: { read: ({ req: { user } }) => user?.role === "admin" },
       admin: { description: "Environment variables passed to the scraper" },
     },
     // TimeTiles integration
@@ -148,7 +288,14 @@ const Scrapers: CollectionConfig = {
       defaultValue: false,
       admin: { description: "Enable webhook trigger for this scraper" },
     },
-    { name: "webhookToken", type: "text", maxLength: 64, index: true, admin: { hidden: true } },
+    {
+      name: "webhookToken",
+      type: "text",
+      maxLength: 64,
+      index: true,
+      access: { read: () => false },
+      admin: { hidden: true },
+    },
     {
       name: "webhookUrl",
       type: "text",
@@ -162,6 +309,7 @@ const Scrapers: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
+      validateAndSetRepoOwnership,
       ({ data, originalDoc }) => {
         if (data) handleWebhookTokenLifecycle(data, originalDoc);
         return data;

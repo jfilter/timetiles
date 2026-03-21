@@ -27,7 +27,7 @@ export const POST = apiRoute({
     const { email } = body;
 
     // Get newsletter service configuration from Payload settings
-    const settings = (await payload.findGlobal({ slug: "settings" })) as Settings;
+    const settings = (await payload.findGlobal({ slug: "settings", overrideAccess: true })) as Settings;
 
     const serviceUrl = settings.newsletter?.serviceUrl;
 

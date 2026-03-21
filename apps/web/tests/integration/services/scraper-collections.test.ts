@@ -58,7 +58,7 @@ describe.sequential("Scraper Collections Access Control", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate(["scraper-repos", "scrapers", "scraper-runs", "payload-jobs"]);
+    await testEnv.seedManager.truncate(["scraper-repos", "scrapers", "scraper-runs", "payload-jobs", "user-usage"]);
     resetFeatureFlagService();
   });
 
@@ -276,6 +276,303 @@ describe.sequential("Scraper Collections Access Control", () => {
     const adminRunIds = adminRunResult.docs.map((doc: any) => doc.id);
     expect(adminRunIds).toContain(trustedRun.id);
     expect(adminRunIds).toContain(adminRun.id);
+  });
+
+  // --- Scraper trust boundary tests ---
+
+  it("should reject scraper creation for user with trust level 2", async () => {
+    await enableScrapers();
+
+    // Create a repo owned by regularUser via overrideAccess (bypassing trust check)
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Regular Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: regularUser.id },
+      overrideAccess: true,
+    });
+
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: { name: "Blocked Scraper", slug: "blocked", repo: repo.id, runtime: "python", entrypoint: "scraper.py" },
+        user: regularUser,
+        overrideAccess: false,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("should reject scraper creation when feature flag is disabled", async () => {
+    await disableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Disabled Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
+    });
+
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Disabled Scraper",
+          slug: "disabled",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "scraper.py",
+        },
+        user: trustedUser,
+        overrideAccess: false,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("should server-set repoCreatedBy from the repo owner on create", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Owned Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: { name: "My Scraper", slug: "my-scraper", repo: repo.id, runtime: "python", entrypoint: "scraper.py" },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    expect(scraper.repoCreatedBy).toBe(trustedUser.id);
+  });
+
+  it("should reject scraper creation when user does not own the repo", async () => {
+    await enableScrapers();
+
+    // Create a repo owned by admin
+    const adminRepo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Admin Only Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: adminUser.id },
+      overrideAccess: true,
+    });
+
+    // Trusted user tries to create a scraper in admin's repo
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Hijack Scraper",
+          slug: "hijack",
+          repo: adminRepo.id,
+          runtime: "python",
+          entrypoint: "scraper.py",
+        },
+        user: trustedUser,
+        overrideAccess: false,
+      })
+    ).rejects.toThrow("You can only create scrapers for your own scraper repos");
+  });
+
+  it("should strip client-sent repoCreatedBy on update", async () => {
+    await enableScrapers();
+
+    // Create repo and scraper owned by trusted user
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Strip Test Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: { name: "Strip Test", slug: "strip-test", repo: repo.id, runtime: "python", entrypoint: "scraper.py" },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    // Try to hijack ownership via update
+    const updated = await payload.update({
+      collection: "scrapers",
+      id: scraper.id,
+      data: { repoCreatedBy: adminUser.id } as any,
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    // repoCreatedBy should still be the original owner
+    expect(updated.repoCreatedBy).toBe(trustedUser.id);
+  });
+
+  it("should reject entrypoint with path traversal", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Path Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Traversal Scraper",
+          slug: "traversal",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "../../etc/passwd",
+        },
+        user: trustedUser,
+        overrideAccess: false,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("should reject entrypoint with absolute path", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Abs Path Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Absolute Scraper",
+          slug: "absolute",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "/etc/passwd",
+        },
+        user: trustedUser,
+        overrideAccess: false,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("should reject envVars with reserved prefix keys", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Env Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Reserved Env Scraper",
+          slug: "reserved-env",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "scraper.py",
+          envVars: { PAYLOAD_SECRET: "hack", NORMAL_VAR: "ok" },
+        },
+        user: trustedUser,
+        overrideAccess: false,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("should reject envVars with invalid key names", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Invalid Key Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Invalid Key Scraper",
+          slug: "invalid-key",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "scraper.py",
+          envVars: { "invalid-key": "value", "123start": "bad" },
+        },
+        user: trustedUser,
+        overrideAccess: false,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("should allow valid envVars and entrypoint", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Valid Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: {
+        name: "Valid Scraper",
+        slug: "valid-scraper",
+        repo: repo.id,
+        runtime: "python",
+        entrypoint: "src/scraper.py",
+        envVars: { API_KEY: "test123", DEBUG: "true" },
+      },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    expect(scraper.entrypoint).toBe("src/scraper.py");
+    // envVars is admin-only readable (field-level access), so verify via overrideAccess
+    const full = await payload.findByID({ collection: "scrapers", id: scraper.id, overrideAccess: true });
+    expect(full.envVars).toEqual({ API_KEY: "test123", DEBUG: "true" });
+    // Non-admin should not see envVars
+    expect(scraper.envVars).toBeUndefined();
+  });
+
+  it("should allow system operations (overrideAccess) to set repoCreatedBy", async () => {
+    // This simulates what scraper-repo-sync does: update scraper with overrideAccess: true
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "System Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
+    });
+
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: {
+        name: "System Scraper",
+        slug: "system-scraper",
+        repo: repo.id,
+        repoCreatedBy: trustedUser.id,
+        runtime: "python",
+        entrypoint: "scraper.py",
+      },
+      overrideAccess: true,
+    });
+
+    expect(scraper.repoCreatedBy).toBe(trustedUser.id);
+
+    // System update should preserve repoCreatedBy (no req.user to strip it)
+    const updated = await payload.update({
+      collection: "scrapers",
+      id: scraper.id,
+      data: { repoCreatedBy: adminUser.id },
+      overrideAccess: true,
+    });
+
+    expect(updated.repoCreatedBy).toBe(adminUser.id);
   });
 
   it("should queue scraper-repo-sync job when creating a scraper-repo", async () => {

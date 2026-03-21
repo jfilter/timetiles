@@ -25,7 +25,7 @@ const LocationCache: CollectionConfig = {
     pagination: { defaultLimit: 50 },
   },
   access: {
-    read: ({ req: { user } }) => !!user,
+    read: ({ req: { user } }) => user?.role === "admin",
     create: () => false,
     update: () => false,
     delete: isEditorOrAdmin,
