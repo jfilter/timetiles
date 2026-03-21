@@ -244,13 +244,16 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
   );
 };
 
-const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => (
-  <div className="space-y-1 px-6 py-4">
-    {stages.map((stage, index) => (
-      <StageRow key={stage.name} stage={stage} isLast={index === stages.length - 1} />
-    ))}
-  </div>
-);
+const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => {
+  const visible = stages.filter((s) => s.status !== "skipped");
+  return (
+    <div className="space-y-1 px-6 py-4">
+      {visible.map((stage, index) => (
+        <StageRow key={stage.name} stage={stage} isLast={index === visible.length - 1} />
+      ))}
+    </div>
+  );
+};
 
 // --- Status header (unchanged) ---
 
