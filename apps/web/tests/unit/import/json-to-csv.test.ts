@@ -15,7 +15,7 @@ import "@/tests/mocks/services/logger";
 // 2. Vitest imports and source code
 import { describe, expect, it } from "vitest";
 
-import { convertJsonToCsv, flattenObject, recordsToCsv } from "@/lib/import/json-to-csv";
+import { convertJsonToCsv, extractRecordsFromJson, flattenObject, recordsToCsv } from "@/lib/import/json-to-csv";
 
 /** Helper to create a JSON Buffer from a value. */
 const toBuffer = (value: unknown): Buffer => Buffer.from(JSON.stringify(value), "utf-8");
@@ -124,6 +124,18 @@ describe("convertJsonToCsv", () => {
         'recordsPath "data.results" did not resolve to an array'
       );
     });
+
+    it("should throw when top-level array contains primitives", () => {
+      const json = [1, 2, 3];
+
+      expect(() => convertJsonToCsv(toBuffer(json))).toThrow("Could not find records array");
+    });
+
+    it("should throw when top-level array is empty", () => {
+      const json: unknown[] = [];
+
+      expect(() => convertJsonToCsv(toBuffer(json))).toThrow("Could not find records array");
+    });
   });
 });
 
@@ -168,5 +180,25 @@ describe("flattenObject", () => {
     const result = flattenObject({ a: null, b: 42, c: true, d: "str" });
 
     expect(result).toEqual({ a: null, b: 42, c: true, d: "str" });
+  });
+});
+
+describe("extractRecordsFromJson", () => {
+  it("should return records and detected path for nested array", () => {
+    const json = { meta: { total: 1 }, items: [{ id: 1, name: "A" }] };
+
+    const result = extractRecordsFromJson(json);
+
+    expect(result.records).toEqual([{ id: 1, name: "A" }]);
+    expect(result.detectedPath).toBe("items");
+  });
+
+  it("should return empty path for top-level array", () => {
+    const json = [{ id: 1 }, { id: 2 }];
+
+    const result = extractRecordsFromJson(json);
+
+    expect(result.records).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(result.detectedPath).toBe("");
   });
 });
