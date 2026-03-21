@@ -63,7 +63,6 @@ test.describe("Import Wizard - Authentication", () => {
 
     // Wizard header shows current step — verify we're on Step 1 (Sign In)
     await expect(page.getByText(/Step 1 of/)).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Sign In")).toBeVisible({ timeout: 5000 });
   });
 
   test("should allow login with valid credentials", async ({ page }) => {

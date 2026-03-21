@@ -57,10 +57,6 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     await stringOpItem.click();
 
     // Default operation is "uppercase" — verify chip shows
-    const transformChip = titleRow.getByText("Uppercase");
-    await expect(transformChip).toBeVisible({ timeout: 5000 });
-    await uppercaseOption.click();
-
     await expect(titleRow.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
   };
 
