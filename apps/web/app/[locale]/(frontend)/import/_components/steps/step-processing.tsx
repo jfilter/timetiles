@@ -25,7 +25,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { type ProgressApiResponse, useImportProgressQuery } from "@/lib/hooks/use-import-progress-query";
 
 import { useWizardStore } from "../wizard-store";
@@ -301,6 +301,7 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
 export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => {
   const t = useTranslations("Import");
   const tCommon = useTranslations("Common");
+  const router = useRouter();
   const importFileId = useWizardStore((s) => s.importFileId);
   const wizardError = useWizardStore((s) => s.error);
   const complete = useWizardStore((s) => s.complete);
@@ -402,11 +403,15 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
       {/* Action buttons */}
       {status === "completed" && (
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Button size="lg" onClick={() => reset()} asChild>
-            <Link href={progress?.catalogId ? `/explore?catalog=${progress.catalogId}` : "/explore"}>
-              <MapIcon className="mr-2 h-4 w-4" />
-              {t("viewOnMap")}
-            </Link>
+          <Button
+            size="lg"
+            onClick={() => {
+              reset();
+              router.push(progress?.catalogId ? `/explore?catalog=${progress.catalogId}` : "/explore");
+            }}
+          >
+            <MapIcon className="mr-2 h-4 w-4" />
+            {t("viewOnMap")}
           </Button>
           <Button variant="outline" size="lg" onClick={handleComplete}>
             {t("importAnotherFile")}
