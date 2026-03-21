@@ -402,7 +402,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
       {/* Action buttons */}
       {status === "completed" && (
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Button asChild size="lg">
+          <Button size="lg" onClick={() => reset()} asChild>
             <Link href={progress?.catalogId ? `/explore?catalog=${progress.catalogId}` : "/explore"}>
               <MapIcon className="mr-2 h-4 w-4" />
               {t("viewOnMap")}
