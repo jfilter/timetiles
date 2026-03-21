@@ -100,6 +100,136 @@ const executionFields: Field[] = [
         defaultValue: true,
         admin: { description: "Respect Cache-Control headers from the server" },
       },
+      {
+        name: "responseFormat",
+        type: "select",
+        enumName: "si_response_format",
+        defaultValue: "auto",
+        options: [
+          { label: "Auto-detect", value: "auto" },
+          { label: "CSV / Excel", value: "csv" },
+          { label: "JSON API", value: "json" },
+        ],
+        admin: { description: "Expected response format from the URL" },
+      },
+      {
+        name: "jsonApiConfig",
+        type: "group",
+        admin: {
+          description: "Configure JSON API response handling",
+          condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+            siblingData?.responseFormat === "json",
+        },
+        fields: [
+          {
+            name: "recordsPath",
+            type: "text",
+            admin: {
+              description: 'Dot-path to the records array (e.g. "data.results"). Leave empty for auto-detection.',
+              placeholder: "data.results",
+            },
+          },
+          {
+            name: "pagination",
+            type: "group",
+            admin: { description: "Configure paginated API fetching" },
+            fields: [
+              {
+                name: "enabled",
+                type: "checkbox",
+                defaultValue: false,
+                admin: { description: "Enable pagination to fetch multiple pages" },
+              },
+              {
+                name: "type",
+                type: "select",
+                enumName: "si_json_paging_type",
+                options: [
+                  { label: "Offset / Limit", value: "offset" },
+                  { label: "Cursor-based", value: "cursor" },
+                  { label: "Page number", value: "page" },
+                ],
+                admin: {
+                  description: "Pagination strategy",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true,
+                },
+              },
+              {
+                name: "pageParam",
+                type: "text",
+                defaultValue: "page",
+                admin: {
+                  description: 'Query parameter for page/offset (e.g. "page", "offset")',
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true && siblingData?.type !== "cursor",
+                },
+              },
+              {
+                name: "limitParam",
+                type: "text",
+                defaultValue: "limit",
+                admin: {
+                  description: "Query parameter for page size",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true,
+                },
+              },
+              {
+                name: "limitValue",
+                type: "number",
+                defaultValue: 100,
+                min: 1,
+                max: 10000,
+                admin: {
+                  description: "Records per page",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true,
+                },
+              },
+              {
+                name: "cursorParam",
+                type: "text",
+                admin: {
+                  description: "Query parameter to send cursor value",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true && siblingData?.type === "cursor",
+                },
+              },
+              {
+                name: "nextCursorPath",
+                type: "text",
+                admin: {
+                  description: 'Dot-path to next cursor in response (e.g. "meta.next_cursor")',
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true && siblingData?.type === "cursor",
+                },
+              },
+              {
+                name: "totalPath",
+                type: "text",
+                admin: {
+                  description: 'Dot-path to total record count (e.g. "meta.total")',
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true,
+                },
+              },
+              {
+                name: "maxPages",
+                type: "number",
+                defaultValue: 50,
+                min: 1,
+                max: 500,
+                admin: {
+                  description: "Maximum number of pages to fetch (safety limit)",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true,
+                },
+              },
+            ],
+          },
+        ],
+      },
     ],
   },
 

@@ -16,12 +16,12 @@ import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 import { apiRoute, ValidationError } from "@/lib/api";
-import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
-import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
+import { fetchRemoteData } from "@/lib/import/fetch-remote-data";
 import { createLogger, logError } from "@/lib/logger";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
+import type { ScheduledImport } from "@/payload-types";
 
-import { buildPreviewResult, getPreviewDir, MAX_FILE_SIZE, SUPPORTED_EXTENSIONS, validateUrl } from "../helpers";
+import { buildPreviewResult, getPreviewDir, MAX_FILE_SIZE, validateUrl } from "../helpers";
 
 const logger = createLogger("api-preview-schema-url");
 
@@ -35,7 +35,11 @@ const AuthConfigSchema = z.object({
   customHeaders: z.union([z.string(), z.record(z.string(), z.string())]).optional(),
 });
 
-const UrlPreviewBodySchema = z.object({ sourceUrl: z.url(), authConfig: AuthConfigSchema.optional() });
+const UrlPreviewBodySchema = z.object({
+  sourceUrl: z.url(),
+  authConfig: AuthConfigSchema.optional(),
+  recordsPath: z.string().optional(),
+});
 
 /**
  * Preview file schema from URL.
@@ -49,7 +53,7 @@ export const POST = apiRoute({
   rateLimit: { type: "FILE_UPLOAD", keyPrefix: (u) => `preview-url:${u!.id}` },
   body: UrlPreviewBodySchema,
   handler: async ({ body, user, payload }) => {
-    const { sourceUrl, authConfig } = body;
+    const { sourceUrl, authConfig, recordsPath } = body;
 
     // Additional SSRF validation beyond Zod's z.string().url()
     const urlResult = validateUrl(sourceUrl);
@@ -57,9 +61,6 @@ export const POST = apiRoute({
       throw new ValidationError(urlResult.error);
     }
     const parsedUrl = urlResult.url;
-
-    // Cast to the ScheduledImport authConfig type expected by buildAuthHeaders
-    const authHeaders = buildAuthHeaders(authConfig as Parameters<typeof buildAuthHeaders>[0]);
 
     logger.info(
       {
@@ -78,32 +79,33 @@ export const POST = apiRoute({
     let mimeType: string;
     let fileSize: number;
     let fileExtension: string;
+    let wasConverted = false;
+    let originalContentType = "";
+    let recordCount: number | undefined;
 
     try {
-      const fetchResult = await fetchWithRetry(sourceUrl, {
-        authHeaders,
-        timeout: 60000, // 60 second timeout for preview
+      const result = await fetchRemoteData({
+        sourceUrl,
+        authConfig: authConfig as ScheduledImport["authConfig"],
+        timeout: 60_000,
         maxSize: MAX_FILE_SIZE,
-        retryConfig: { maxRetries: 0 }, // No retries for preview
-        cacheOptions: { bypassCache: true },
+        maxRetries: 0,
+        cacheOptions: { useCache: false, bypassCache: true },
+        jsonApiConfig: recordsPath ? { recordsPath } : undefined,
       });
 
-      fileExtension = fetchResult.fileExtension ?? ".bin";
-      mimeType = fetchResult.contentType;
+      fileExtension = result.fileExtension;
+      mimeType = result.mimeType;
+      wasConverted = result.wasConverted;
+      originalContentType = result.originalContentType;
+      recordCount = result.recordCount;
 
-      // Validate detected file type
-      if (!SUPPORTED_EXTENSIONS.includes(fileExtension)) {
-        throw new ValidationError(
-          `Unsupported file type detected: ${mimeType}. The URL must return CSV, Excel, or ODS data.`
-        );
-      }
-
-      // Save fetched data to temp file
+      // Save fetched data to temp file for preview
       previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
-      fs.writeFileSync(previewFilePath, fetchResult.data);
+      fs.writeFileSync(previewFilePath, result.data);
 
       originalName = path.basename(parsedUrl.pathname) || `url-import${fileExtension}`;
-      fileSize = fetchResult.data.length;
+      fileSize = result.data.length;
 
       logger.info(
         { previewId, sourceUrl: sanitizeUrlForLogging(sourceUrl), detectedType: mimeType, fileSize, userId: user.id },
@@ -131,11 +133,15 @@ export const POST = apiRoute({
     return {
       previewId,
       sheets,
-      sourceUrl, // Return source URL so UI knows this was a URL-based preview
+      sourceUrl,
       fileName: originalName,
       contentLength: fileSize,
       contentType: mimeType,
       configSuggestions,
+      // JSON conversion metadata — tells the UI to show JSON API config panel
+      wasConverted,
+      originalContentType,
+      recordCount,
     };
   },
 });

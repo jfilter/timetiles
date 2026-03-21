@@ -1,0 +1,5 @@
+[
+  {"title": "JSON Event 1", "date": "2024-06-15", "location": "Berlin, Germany", "category": "technology"},
+  {"title": "JSON Event 2", "date": "2024-07-20", "location": "Munich, Germany", "category": "science"},
+  {"title": "JSON Event 3", "date": "2024-08-10", "location": "Hamburg, Germany", "category": "culture"}
+]

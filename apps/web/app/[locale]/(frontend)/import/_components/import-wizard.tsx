@@ -12,7 +12,15 @@
 import { cn } from "@timetiles/ui/lib/utils";
 import { useEffect } from "react";
 
-import { StepAuth, StepDatasetSelection, StepFieldMapping, StepProcessing, StepReview, StepUpload } from "./steps";
+import {
+  StepAuth,
+  StepDatasetSelection,
+  StepFieldMapping,
+  StepProcessing,
+  StepReview,
+  StepSchedule,
+  StepUpload,
+} from "./steps";
 import { useWizardStore } from "./wizard-store";
 
 export interface ImportWizardProps {
@@ -39,8 +47,10 @@ export const ImportWizard = ({ className }: Readonly<ImportWizardProps>) => {
       case 4:
         return <StepFieldMapping />;
       case 5:
-        return <StepReview />;
+        return <StepSchedule />;
       case 6:
+        return <StepReview />;
+      case 7:
         return <StepProcessing />;
       default:
         return null;

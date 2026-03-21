@@ -103,6 +103,24 @@ export const ConfigureImportBodySchema = z.object({
           customHeaders: z.union([z.string(), z.record(z.string(), z.string())]).optional(),
         })
         .optional(),
+      jsonApiConfig: z
+        .object({
+          recordsPath: z.string().optional(),
+          pagination: z
+            .object({
+              enabled: z.boolean(),
+              type: z.enum(["offset", "cursor", "page"]).optional(),
+              pageParam: z.string().optional(),
+              limitParam: z.string().optional(),
+              limitValue: z.number().min(1).max(10000).optional(),
+              cursorParam: z.string().optional(),
+              nextCursorPath: z.string().optional(),
+              totalPath: z.string().optional(),
+              maxPages: z.number().min(1).max(500).optional(),
+            })
+            .optional(),
+        })
+        .optional(),
     })
     .optional(),
 });

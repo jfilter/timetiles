@@ -9,4 +9,5 @@ export { StepDatasetSelection } from "./step-dataset-selection";
 export { StepFieldMapping } from "./step-field-mapping";
 export { StepProcessing } from "./step-processing";
 export { StepReview } from "./step-review";
+export { StepSchedule } from "./step-schedule";
 export { StepUpload } from "./step-upload";

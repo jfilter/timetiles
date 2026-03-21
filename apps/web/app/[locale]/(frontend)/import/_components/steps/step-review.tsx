@@ -11,7 +11,7 @@
 
 "use client";
 
-import { Button, Card, CardContent } from "@timetiles/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   ArrowDownIcon,
@@ -30,26 +30,15 @@ import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 
 import { useImportConfigureMutation } from "@/lib/hooks/use-import-wizard-mutations";
-import { humanizeFileName } from "@/lib/import/humanize-file-name";
 import { TRANSFORM_TYPE_LABELS } from "@/lib/types/import-transforms";
 import { formatFileSize } from "@/lib/utils/format";
 
-import { type ScheduleConfig, useWizardStore } from "../wizard-store";
-import { ScheduleConfigCard } from "./schedule-config-card";
+import { useWizardStore } from "../wizard-store";
+// Schedule config is now in step-schedule.tsx (Step 5)
 
 export interface StepReviewProps {
   className?: string;
 }
-
-// Default schedule config
-const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
-  enabled: false,
-  name: "",
-  scheduleType: "frequency",
-  frequency: "daily",
-  cronExpression: "",
-  schemaMode: "additive",
-};
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const t = useTranslations("Import");
@@ -64,6 +53,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const sourceUrl = useWizardStore((s) => s.sourceUrl);
   const authConfig = useWizardStore((s) => s.authConfig);
   const scheduleConfig = useWizardStore((s) => s.scheduleConfig);
+  const jsonApiConfig = useWizardStore((s) => s.jsonApiConfig);
   const wizardPreviewId = useWizardStore((s) => s.previewId);
   const wizardTransforms = useWizardStore((s) => s.transforms);
   const wizardError = useWizardStore((s) => s.error);
@@ -71,8 +61,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const startProcessing = useWizardStore((s) => s.startProcessing);
   const nextStep = useWizardStore((s) => s.nextStep);
   const setError = useWizardStore((s) => s.setError);
-  const setScheduleConfig = useWizardStore((s) => s.setScheduleConfig);
-
   const ID_STRATEGY_LABELS: Record<string, string> = {
     auto: t("idStrategyAuto"),
     external: t("idStrategyExternal"),
@@ -88,62 +76,23 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   const configureMutation = useImportConfigureMutation();
 
-  const defaultScheduleName = file?.name ? humanizeFileName(file.name) : "";
-
-  const getActiveScheduleConfig = (): ScheduleConfig =>
-    scheduleConfig ?? { ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName };
-
-  const activeScheduleConfig = getActiveScheduleConfig();
-
-  const updateScheduleField = (updates: Partial<ScheduleConfig>) => {
-    setScheduleConfig({ ...getActiveScheduleConfig(), ...updates });
-  };
-
-  const handleToggleScheduleEnabled = () => {
-    if (scheduleConfig?.enabled) {
-      setScheduleConfig(null);
-    } else {
-      setScheduleConfig({ ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName, enabled: true });
-    }
-  };
-
-  const handleScheduleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateScheduleField({ name: e.target.value });
-  };
-
-  const handleScheduleTypeChange = (value: string) => {
-    updateScheduleField({ scheduleType: value as "frequency" | "cron" });
-  };
-
-  const handleFrequencyChange = (value: string) => {
-    updateScheduleField({ frequency: value as "hourly" | "daily" | "weekly" | "monthly" });
-  };
-
-  const handleCronExpressionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateScheduleField({ cronExpression: e.target.value });
-  };
-
-  const handleSchemaModeChange = (value: string) => {
-    updateScheduleField({ schemaMode: value as "strict" | "additive" | "flexible" });
-  };
-
   // useCallback required: used in useEffect dependency array below
   const handleStartImport = useCallback(async () => {
     setError(null);
 
     try {
       const createSchedule =
-        sourceUrl && activeScheduleConfig.enabled
+        sourceUrl && scheduleConfig?.enabled
           ? {
               enabled: true as const,
               sourceUrl,
-              name: activeScheduleConfig.name,
-              scheduleType: activeScheduleConfig.scheduleType,
-              frequency: activeScheduleConfig.scheduleType === "frequency" ? activeScheduleConfig.frequency : undefined,
-              cronExpression:
-                activeScheduleConfig.scheduleType === "cron" ? activeScheduleConfig.cronExpression : undefined,
-              schemaMode: activeScheduleConfig.schemaMode,
+              name: scheduleConfig.name,
+              scheduleType: scheduleConfig.scheduleType,
+              frequency: scheduleConfig.scheduleType === "frequency" ? scheduleConfig.frequency : undefined,
+              cronExpression: scheduleConfig.scheduleType === "cron" ? scheduleConfig.cronExpression : undefined,
+              schemaMode: scheduleConfig.schemaMode,
               authConfig: authConfig ?? undefined,
+              jsonApiConfig: jsonApiConfig ?? undefined,
             }
           : undefined;
 
@@ -176,7 +125,8 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     }
   }, [
     sourceUrl,
-    activeScheduleConfig,
+    scheduleConfig,
+    jsonApiConfig,
     authConfig,
     wizardTransforms,
     wizardPreviewId,
@@ -441,18 +391,29 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         </Card>
       )}
 
-      {/* Schedule Configuration (only shown when importing from URL) */}
-      {sourceUrl && (
-        <ScheduleConfigCard
-          sourceUrl={sourceUrl}
-          activeScheduleConfig={activeScheduleConfig}
-          onToggleEnabled={handleToggleScheduleEnabled}
-          onNameChange={handleScheduleNameChange}
-          onScheduleTypeChange={handleScheduleTypeChange}
-          onFrequencyChange={handleFrequencyChange}
-          onCronExpressionChange={handleCronExpressionChange}
-          onSchemaModeChange={handleSchemaModeChange}
-        />
+      {/* Schedule summary (configured in Step 5) */}
+      {sourceUrl && scheduleConfig?.enabled && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{t("scheduled")}</CardTitle>
+          </CardHeader>
+          <CardContent className="text-muted-foreground space-y-1 text-sm">
+            <p>
+              {scheduleConfig.scheduleType === "frequency"
+                ? `${t("frequency")}: ${t(scheduleConfig.frequency)}`
+                : `${t("cronExpression")}: ${scheduleConfig.cronExpression}`}
+            </p>
+            <p>
+              {t("schemaChangeHandling")}:{" "}
+              {t(
+                `schema${scheduleConfig.schemaMode.charAt(0).toUpperCase()}${scheduleConfig.schemaMode.slice(1)}` as
+                  | "schemaStrict"
+                  | "schemaAdditive"
+                  | "schemaFlexible"
+              )}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {wizardError && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{wizardError}</div>}
@@ -462,7 +423,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={prevStep} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" />
-            {t("backToMapping")}
+            {t("back")}
           </Button>
           <div className="flex items-center gap-3">
             <span

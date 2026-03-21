@@ -110,6 +110,22 @@ export const isFieldMappingComplete = (mapping: FieldMapping | undefined): boole
   );
 };
 
+/** JSON API configuration for scheduled imports */
+export interface JsonApiScheduleConfig {
+  recordsPath?: string;
+  pagination?: {
+    enabled: boolean;
+    type?: "offset" | "cursor" | "page";
+    pageParam?: string;
+    limitParam?: string;
+    limitValue?: number;
+    cursorParam?: string;
+    nextCursorPath?: string;
+    totalPath?: string;
+    maxPages?: number;
+  };
+}
+
 /** Schedule creation configuration */
 export interface CreateScheduleConfig {
   enabled: boolean;
@@ -120,6 +136,7 @@ export interface CreateScheduleConfig {
   cronExpression?: string;
   schemaMode: "strict" | "additive" | "flexible";
   authConfig?: AuthConfig;
+  jsonApiConfig?: JsonApiScheduleConfig;
 }
 
 /** Full request body for the configure-import endpoint */
@@ -196,6 +213,8 @@ export interface PreviewSchemaUploadResponse {
 export interface PreviewSchemaUrlRequest {
   sourceUrl: string;
   authConfig?: UrlAuthConfig;
+  /** Dot-path to records array for JSON APIs (e.g. "data.results") */
+  recordsPath?: string;
 }
 
 /** Response from POST /api/import/preview-schema/url */
@@ -207,6 +226,12 @@ export interface PreviewSchemaUrlResponse {
   contentLength: number;
   contentType: string;
   configSuggestions?: ConfigSuggestion[];
+  /** True if the response was converted from JSON to CSV */
+  wasConverted?: boolean;
+  /** Original Content-Type from the server (before conversion) */
+  originalContentType?: string;
+  /** Number of records extracted from JSON */
+  recordCount?: number;
 }
 
 /** Response from POST /api/import/configure */
