@@ -21,7 +21,7 @@ const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
 test.describe("Import Wizard - Dataset Selection Step", () => {
   let importPage: ImportPage;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(({ page }) => {
     importPage = new ImportPage(page);
   });
 
