@@ -14,6 +14,7 @@
 import { z } from "zod";
 
 import { apiRoute, NotFoundError } from "@/lib/api";
+import { STAGE_ORDER } from "@/lib/constants/stage-graph";
 import { STAGE_DISPLAY_NAMES, STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
 import type { StageProgress } from "@/lib/types/progress-tracking";
 import { getDatasetInfo } from "@/lib/utils/event-detail";
@@ -111,8 +112,14 @@ const formatJobProgress = (job: ImportJob): FormattedJobProgress => {
   const overallPercentage = (job.progress?.overallPercentage as number | undefined) ?? 0;
   const estimatedCompletionTime = (job.progress?.estimatedCompletionTime as Date | undefined) ?? null;
 
-  // Format all stages
-  const formattedStages = Object.entries(stages).map(([stageName, stageData]) => formatStage(stageName, stageData));
+  // Format all stages, sorted by canonical pipeline order
+  const formattedStages = Object.entries(stages)
+    .sort(([a], [b]) => {
+      const ai = STAGE_ORDER.indexOf(a as (typeof STAGE_ORDER)[number]);
+      const bi = STAGE_ORDER.indexOf(b as (typeof STAGE_ORDER)[number]);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    })
+    .map(([stageName, stageData]) => formatStage(stageName, stageData));
 
   return {
     id: job.id,

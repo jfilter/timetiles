@@ -308,9 +308,8 @@ export const CompletionStatusBar = ({
         <>
           {t("requiredFieldsRemaining", { count: remainingCount })}
           {missingFields && missingFields.length > 0 && (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic keys
             <span className="text-cartographic-terracotta/70">
-              ({missingFields.map((f) => t(f as any)).join(", ")})
+              ({missingFields.map((f) => t(f as Parameters<typeof t>[0])).join(", ")})
             </span>
           )}
         </>

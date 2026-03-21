@@ -183,16 +183,16 @@ const StageDetails = ({ stage }: { stage: FormattedStage }) => {
   );
 };
 
-/** Map API stage names to i18n keys for display. */
+/** Map API stage names (lowercase-kebab from DB) to i18n keys for display. */
 const STAGE_I18N_KEYS: Record<string, string> = {
-  ANALYZE_DUPLICATES: "stageAnalyzingDuplicates",
-  DETECT_SCHEMA: "stageDetectingSchema",
-  VALIDATE_SCHEMA: "stageValidating",
-  AWAIT_APPROVAL: "stageAwaitingApproval",
-  CREATE_SCHEMA_VERSION: "stageSettingUpDataset",
-  GEOCODE_BATCH: "stageGeocoding",
-  CREATE_EVENTS: "stageCreatingEvents",
-  COMPLETED: "stageComplete",
+  "analyze-duplicates": "stageAnalyzingDuplicates",
+  "detect-schema": "stageDetectingSchema",
+  "validate-schema": "stageValidating",
+  "await-approval": "stageAwaitingApproval",
+  "create-schema-version": "stageSettingUpDataset",
+  "geocode-batch": "stageGeocoding",
+  "create-events": "stageCreatingEvents",
+  completed: "stageComplete",
 };
 
 const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean }) => {
