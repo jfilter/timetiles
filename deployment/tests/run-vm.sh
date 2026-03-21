@@ -161,7 +161,12 @@ else
     echo -e "${GREEN}✓ Reusing existing VM${NC}"
     print_info "Syncing codebase..."
     vagrant rsync
-    vagrant ssh -c "sudo chown -R timetiles:timetiles /opt/timetiles /opt/timetiles-src && sudo chmod -R a+rX /opt/timetiles-src" 2>/dev/null
+    vagrant ssh -c "sudo bash -c '
+        chown -R timetiles:timetiles /opt/timetiles /opt/timetiles-src
+        chmod -R a+rX /opt/timetiles-src
+        # Re-create apps symlink (provisioner only runs on first boot)
+        ln -sfn /opt/timetiles-src/apps /opt/timetiles/apps
+    '" 2>/dev/null
 fi
 
 # Pre-bootstrap cleanup: tear down any leftover containers from previous runs
@@ -174,6 +179,7 @@ vagrant ssh -c "sudo bash -c '
     fi
     rm -f .env.production docker-compose.ssl-override.yml docker-compose.test.yml
     rm -f /var/lib/timetiles/.bootstrap-lock /var/lib/timetiles/.bootstrap-state /var/lib/timetiles/.bootstrap-config
+    rm -rf /opt/timetiles/backups /opt/timetiles/ssl /opt/timetiles/nginx-test /opt/timetiles/uploads
 '" 2>/dev/null
 echo -e "${GREEN}✓ Cleanup done${NC}"
 

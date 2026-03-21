@@ -177,10 +177,14 @@ install_runner() {
     # Needs repo root as context for turbo prune (monorepo workspace resolution)
     elif [[ -f "$install_dir/apps/scraper/Dockerfile" ]]; then
         print_info "Registry pull failed, building runner image locally..."
-        # Find the repo root — apps/scraper/Dockerfile may be a symlink to another location
         local dockerfile="$install_dir/apps/scraper/Dockerfile"
+        # Find repo root: prefer /opt/timetiles-src (VM/test), then resolve from Dockerfile path
         local repo_root
-        repo_root="$(cd "$(dirname "$(readlink -f "$dockerfile")")" && cd ../.. && pwd)"
+        if [[ -d "/opt/timetiles-src/apps/scraper" ]]; then
+            repo_root="/opt/timetiles-src"
+        else
+            repo_root="$(cd "$(dirname "$(readlink -f "$dockerfile")")" && cd ../.. && pwd)"
+        fi
         if ! docker build -t timescrape-runner-local -f "$dockerfile" "$repo_root"; then
             die "Failed to build scraper runner image"
         fi

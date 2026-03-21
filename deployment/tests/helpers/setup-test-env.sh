@@ -27,6 +27,8 @@ ENV_FILE="$DEPLOY_DIR/.env.production"
 if [[ -f "$ENV_FILE" ]]; then
     echo "Warning: Existing .env.production found — backing up and regenerating for tests"
     cp "$ENV_FILE" "$ENV_FILE.pre-test-backup"
+    # Remove restic repo — new env file will have a new password
+    rm -rf "$DEPLOY_DIR/backups"
 fi
 
 echo "Creating test .env.production..."
@@ -66,6 +68,8 @@ echo "Preparing nginx configuration..."
 mkdir -p "$DEPLOY_DIR/nginx-test/sites-enabled"
 cp "$DEPLOY_DIR/nginx/nginx.conf" "$DEPLOY_DIR/nginx-test/nginx.conf"
 cp "$DEPLOY_DIR/nginx/proxy-headers.conf" "$DEPLOY_DIR/nginx-test/proxy-headers.conf"
+cp "$DEPLOY_DIR/nginx/security-headers.conf" "$DEPLOY_DIR/nginx-test/security-headers.conf"
+cp "$DEPLOY_DIR/nginx/security-headers-https.conf" "$DEPLOY_DIR/nginx-test/security-headers-https.conf"
 cp -r "$DEPLOY_DIR/nginx/sites-enabled/"* "$DEPLOY_DIR/nginx-test/sites-enabled/"
 
 # Substitute domain name
@@ -81,6 +85,8 @@ services:
       - $DEPLOY_DIR/nginx-test/nginx.conf:/etc/nginx/nginx.conf:ro
       - $DEPLOY_DIR/nginx-test/sites-enabled:/etc/nginx/sites-enabled:ro
       - $DEPLOY_DIR/nginx-test/proxy-headers.conf:/etc/nginx/proxy-headers.conf:ro
+      - $DEPLOY_DIR/nginx-test/security-headers.conf:/etc/nginx/security-headers.conf:ro
+      - $DEPLOY_DIR/nginx-test/security-headers-https.conf:/etc/nginx/security-headers-https.conf:ro
       - $DEPLOY_DIR/ssl:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot:ro
 

@@ -324,14 +324,23 @@ case "$1" in
         # Start postgres first and wait for it to be ready before other services.
         # kartoza/postgis restarts during first-run init (extensions, users, etc.)
         # which causes Docker Compose depends_on health gates to fail immediately.
+        # We wait for pg_isready to succeed AND stay stable for 3 consecutive checks
+        # to ensure the kartoza restart cycle has completed.
         $DC_CMD up -d --no-deps postgres
         echo "Waiting for PostgreSQL to be ready..."
         pg_attempts=0
-        pg_max=60
+        pg_max=90
+        pg_consecutive=0
+        pg_required=3
         while [[ $pg_attempts -lt $pg_max ]]; do
             if $DC_CMD exec -T postgres pg_isready -h localhost -U "${DB_USER:-timetiles_user}" &>/dev/null; then
-                echo -e "${GREEN}PostgreSQL is ready${NC}"
-                break
+                ((++pg_consecutive))
+                if [[ $pg_consecutive -ge $pg_required ]]; then
+                    echo -e "${GREEN}PostgreSQL is ready (stable)${NC}"
+                    break
+                fi
+            else
+                pg_consecutive=0
             fi
             echo -n "."
             sleep 2
