@@ -51,10 +51,12 @@ export interface StepUploadProps {
 
 const ACCEPTED_TYPES = [
   "text/csv",
+  "application/json",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.oasis.opendocument.spreadsheet",
   ".csv",
+  ".json",
   ".xls",
   ".xlsx",
   ".ods",
@@ -70,6 +72,8 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const nextStep = useWizardStore((s) => s.nextStep);
   const setFile = useWizardStore((s) => s.setFile);
   const setSourceUrl = useWizardStore((s) => s.setSourceUrl);
+  const jsonApiConfig = useWizardStore((s) => s.jsonApiConfig);
+  const setJsonApiConfig = useWizardStore((s) => s.setJsonApiConfig);
   const clearFile = useWizardStore((s) => s.clearFile);
   const canProceed = useWizardCanProceed();
 
@@ -82,6 +86,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   // File upload state
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jsonDetected, setJsonDetected] = useState(false);
 
   // URL input state
   const [urlInput, setUrlInput] = useState(sourceUrl ?? "");
@@ -170,9 +175,23 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     try {
       const authPayload = authConfig.type === "none" ? undefined : authConfig;
 
-      const data = await urlMutation.mutateAsync({ sourceUrl: urlInput.trim(), authConfig: authPayload });
+      const data = await urlMutation.mutateAsync({
+        sourceUrl: urlInput.trim(),
+        authConfig: authPayload,
+        recordsPath: jsonApiConfig?.recordsPath,
+      });
 
       setSourceUrl(urlInput.trim(), authConfig.type === "none" ? null : authConfig);
+
+      // Detect JSON conversion and store config
+      if (data.wasConverted) {
+        setJsonDetected(true);
+        if (!jsonApiConfig) {
+          setJsonApiConfig({ wasAutoDetected: true });
+        }
+      } else {
+        setJsonDetected(false);
+      }
 
       setFile(
         { name: data.fileName, size: data.contentLength, mimeType: data.contentType },
@@ -190,6 +209,157 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     clearFile();
     setError(null);
     setUrlInput("");
+  };
+
+  // Render JSON API config panel (shown when URL returned JSON)
+  const renderJsonApiConfig = () => {
+    if (!jsonDetected || !sourceUrl) return null;
+    return (
+      <Card className="border-blue-200 bg-blue-50/50">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex items-center gap-2">
+            <GlobeIcon className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-900">JSON API detected</span>
+          </div>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="records-path" className="text-sm">
+                Records path
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="records-path"
+                  placeholder="data.results"
+                  value={jsonApiConfig?.recordsPath ?? ""}
+                  onChange={(e) =>
+                    setJsonApiConfig({
+                      ...jsonApiConfig,
+                      recordsPath: e.target.value || undefined,
+                      wasAutoDetected: false,
+                    })
+                  }
+                  className="flex-1 font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFetchClick}
+                  disabled={urlMutation.isPending}
+                >
+                  {urlMutation.isPending ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Reload"}
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Dot-path to the array of records in the JSON response. Leave empty for auto-detection.
+              </p>
+            </div>
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-1 text-sm font-medium text-blue-800 hover:text-blue-900">
+                Pagination settings
+                <ChevronDownIcon className="h-3 w-3" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="pagination-enabled"
+                    checked={jsonApiConfig?.pagination?.enabled ?? false}
+                    onChange={(e) =>
+                      setJsonApiConfig({
+                        ...jsonApiConfig,
+                        pagination: {
+                          ...jsonApiConfig?.pagination,
+                          enabled: e.target.checked,
+                          type: jsonApiConfig?.pagination?.type ?? "page",
+                        },
+                      })
+                    }
+                    className="rounded"
+                  />
+                  <Label htmlFor="pagination-enabled" className="text-sm">
+                    Fetch multiple pages
+                  </Label>
+                </div>
+                {jsonApiConfig?.pagination?.enabled && (
+                  <div className="grid gap-3 pl-6 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Type</Label>
+                      <Select
+                        value={jsonApiConfig.pagination.type ?? "page"}
+                        onValueChange={(v) =>
+                          setJsonApiConfig({
+                            ...jsonApiConfig,
+                            pagination: { ...jsonApiConfig.pagination!, type: v as "offset" | "cursor" | "page" },
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="page">Page number</SelectItem>
+                          <SelectItem value="offset">Offset / Limit</SelectItem>
+                          <SelectItem value="cursor">Cursor-based</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Records per page</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10000}
+                        value={jsonApiConfig.pagination.limitValue ?? 100}
+                        onChange={(e) =>
+                          setJsonApiConfig({
+                            ...jsonApiConfig,
+                            pagination: { ...jsonApiConfig.pagination!, limitValue: Number(e.target.value) || 100 },
+                          })
+                        }
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    {jsonApiConfig.pagination.type === "cursor" && (
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label className="text-xs">Next cursor path</Label>
+                        <Input
+                          placeholder="meta.next_cursor"
+                          value={jsonApiConfig.pagination.nextCursorPath ?? ""}
+                          onChange={(e) =>
+                            setJsonApiConfig({
+                              ...jsonApiConfig,
+                              pagination: { ...jsonApiConfig.pagination!, nextCursorPath: e.target.value || undefined },
+                            })
+                          }
+                          className="h-8 font-mono text-xs"
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Max pages</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={jsonApiConfig.pagination.maxPages ?? 50}
+                        onChange={(e) =>
+                          setJsonApiConfig({
+                            ...jsonApiConfig,
+                            pagination: { ...jsonApiConfig.pagination!, maxPages: Number(e.target.value) || 50 },
+                          })
+                        }
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   // Render the file upload area
@@ -443,7 +613,10 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
       {/* Show preview if file is already loaded */}
       {file ? (
-        renderPreview()
+        <>
+          {renderPreview()}
+          {renderJsonApiConfig()}
+        </>
       ) : (
         <Tabs value={inputMode} onValueChange={handleInputModeChange}>
           <TabsList className="grid w-full grid-cols-2">

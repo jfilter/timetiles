@@ -35,7 +35,11 @@ const AuthConfigSchema = z.object({
   customHeaders: z.union([z.string(), z.record(z.string(), z.string())]).optional(),
 });
 
-const UrlPreviewBodySchema = z.object({ sourceUrl: z.url(), authConfig: AuthConfigSchema.optional() });
+const UrlPreviewBodySchema = z.object({
+  sourceUrl: z.url(),
+  authConfig: AuthConfigSchema.optional(),
+  recordsPath: z.string().optional(),
+});
 
 /**
  * Preview file schema from URL.
@@ -49,7 +53,7 @@ export const POST = apiRoute({
   rateLimit: { type: "FILE_UPLOAD", keyPrefix: (u) => `preview-url:${u!.id}` },
   body: UrlPreviewBodySchema,
   handler: async ({ body, user, payload }) => {
-    const { sourceUrl, authConfig } = body;
+    const { sourceUrl, authConfig, recordsPath } = body;
 
     // Additional SSRF validation beyond Zod's z.string().url()
     const urlResult = validateUrl(sourceUrl);
@@ -75,6 +79,9 @@ export const POST = apiRoute({
     let mimeType: string;
     let fileSize: number;
     let fileExtension: string;
+    let wasConverted = false;
+    let originalContentType = "";
+    let recordCount: number | undefined;
 
     try {
       const result = await fetchRemoteData({
@@ -84,10 +91,14 @@ export const POST = apiRoute({
         maxSize: MAX_FILE_SIZE,
         maxRetries: 0,
         cacheOptions: { useCache: false, bypassCache: true },
+        jsonApiConfig: recordsPath ? { recordsPath } : undefined,
       });
 
       fileExtension = result.fileExtension;
       mimeType = result.mimeType;
+      wasConverted = result.wasConverted;
+      originalContentType = result.originalContentType;
+      recordCount = result.recordCount;
 
       // Save fetched data to temp file for preview
       previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
@@ -122,11 +133,15 @@ export const POST = apiRoute({
     return {
       previewId,
       sheets,
-      sourceUrl, // Return source URL so UI knows this was a URL-based preview
+      sourceUrl,
       fileName: originalName,
       contentLength: fileSize,
       contentType: mimeType,
       configSuggestions,
+      // JSON conversion metadata — tells the UI to show JSON API config panel
+      wasConverted,
+      originalContentType,
+      recordCount,
     };
   },
 });

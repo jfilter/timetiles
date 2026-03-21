@@ -196,6 +196,8 @@ export interface PreviewSchemaUploadResponse {
 export interface PreviewSchemaUrlRequest {
   sourceUrl: string;
   authConfig?: UrlAuthConfig;
+  /** Dot-path to records array for JSON APIs (e.g. "data.results") */
+  recordsPath?: string;
 }
 
 /** Response from POST /api/import/preview-schema/url */
@@ -207,6 +209,12 @@ export interface PreviewSchemaUrlResponse {
   contentLength: number;
   contentType: string;
   configSuggestions?: ConfigSuggestion[];
+  /** True if the response was converted from JSON to CSV */
+  wasConverted?: boolean;
+  /** Original Content-Type from the server (before conversion) */
+  originalContentType?: string;
+  /** Number of records extracted from JSON */
+  recordCount?: number;
 }
 
 /** Response from POST /api/import/configure */
