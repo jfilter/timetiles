@@ -94,6 +94,12 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
       const hasDropdown = await catalogDropdown.isVisible().catch(() => false);
       const hasInput = await catalogNameInput.isVisible().catch(() => false);
       expect(hasDropdown || hasInput).toBe(true);
+
+      // If name input is shown, it should have a filename-derived default value
+      if (hasInput) {
+        const inputValue = await catalogNameInput.inputValue();
+        expect(inputValue.length).toBeGreaterThan(0);
+      }
     }
   });
 

@@ -161,7 +161,7 @@ else
     echo -e "${GREEN}✓ Reusing existing VM${NC}"
     print_info "Syncing codebase..."
     vagrant rsync
-    vagrant ssh -c "sudo chown -R timetiles:timetiles /opt/timetiles" 2>/dev/null
+    vagrant ssh -c "sudo chown -R timetiles:timetiles /opt/timetiles /opt/timetiles-src && sudo chmod -R a+rX /opt/timetiles-src" 2>/dev/null
 fi
 
 # Run bootstrap in the VM (via nohup to survive SSH disconnects during Docker builds)

@@ -136,6 +136,11 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     const response = await responsePromise;
     expect(response.status()).toBe(200);
 
+    // Capture dataset ID from the configure response for scoped queries
+    const responseBody = await response.json();
+    const datasetId = responseBody.datasets?.["0"] as number | undefined;
+    expect(datasetId).toBeDefined();
+
     // Verify transforms were sent
     expect(capturedRequestBody).not.toBeNull();
     const transforms = capturedRequestBody!.transforms as Array<{ sheetIndex: number; transforms: unknown[] }>;
@@ -152,5 +157,21 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     // Wait for import completion
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
+
+    // Verify the transform was actually applied to imported events — scoped to this dataset
+    const eventsResponse = await page.request.get("/api/events", {
+      params: { limit: "10", sort: "-createdAt", "where[dataset][equals]": String(datasetId) },
+    });
+    expect(eventsResponse.ok()).toBe(true);
+
+    const eventsData = await eventsResponse.json();
+    const events = eventsData.docs as Array<{ data: Record<string, unknown> }>;
+    expect(events.length).toBeGreaterThan(0);
+
+    // All events should have uppercase titles (transform was applied)
+    const uppercasedEvents = events.filter(
+      (e) => typeof e.data?.title === "string" && e.data.title === e.data.title.toUpperCase()
+    );
+    expect(uppercasedEvents.length).toBe(events.length);
   });
 });

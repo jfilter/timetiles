@@ -39,14 +39,10 @@ test.describe("Import Wizard - Authentication", () => {
     // Verify we're on the import page
     await expect(page).toHaveURL(/\/import/);
 
-    // Should see login/register tabs or auth form
-    const authContent = await page.content();
-    const hasAuthElements =
-      authContent.toLowerCase().includes("sign in") ||
-      authContent.toLowerCase().includes("login") ||
-      authContent.toLowerCase().includes("email");
-
-    expect(hasAuthElements).toBe(true);
+    // Should see auth form with sign in heading and email input
+    const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
+    await expect(signInHeading).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 5000 });
   });
 
   test("should show wizard steps on auth step for unauthenticated users", async ({ page }) => {
@@ -95,19 +91,13 @@ test.describe("Import Wizard - Authentication", () => {
     // Wait for login API response
     await page.waitForResponse((resp) => resp.url().includes("/api/users/login"), { timeout: 5000 });
 
-    // Should show error message or still be on auth step
-    const pageContent = await page.content();
+    // Should still be on the auth step — sign in heading should remain visible
+    const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
+    await expect(signInHeading).toBeVisible({ timeout: 5000 });
 
-    // Should still show login form (not uploaded content)
-    const hasLoginForm = pageContent.toLowerCase().includes("password");
-
-    // Should either show an error OR remain on the login form
-    const hasError =
-      pageContent.toLowerCase().includes("error") ||
-      pageContent.toLowerCase().includes("invalid") ||
-      pageContent.toLowerCase().includes("incorrect");
-
-    expect(hasLoginForm || hasError).toBe(true);
+    // Should NOT have advanced to the upload step
+    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
+    await expect(uploadHeading).not.toBeVisible();
   });
 });
 
@@ -146,15 +136,9 @@ test.describe("Import Wizard - File Upload Flow", () => {
     // Upload file
     await importPage.uploadFile(csvPath);
 
-    // After upload, page should show file details or preview
-    const pageContent = await page.content();
-    const hasFileInfo =
-      pageContent.includes("valid-events.csv") ||
-      pageContent.toLowerCase().includes("sheet") ||
-      pageContent.toLowerCase().includes("row") ||
-      pageContent.toLowerCase().includes("preview");
-
-    expect(hasFileInfo).toBe(true);
+    // After upload, page should show file name and ready indicator
+    await expect(page.getByText("valid-events.csv")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/file ready for import/i)).toBeVisible({ timeout: 5000 });
   });
 
   test("should accept Excel file upload", async ({ page }) => {
@@ -163,15 +147,9 @@ test.describe("Import Wizard - File Upload Flow", () => {
     // Upload file
     await importPage.uploadFile(excelPath);
 
-    // After upload, page should show file details or preview
-    const pageContent = await page.content();
-    const hasFileInfo =
-      pageContent.includes("events.xlsx") ||
-      pageContent.toLowerCase().includes("sheet") ||
-      pageContent.toLowerCase().includes("row") ||
-      pageContent.toLowerCase().includes("preview");
-
-    expect(hasFileInfo).toBe(true);
+    // After upload, page should show file name and ready indicator
+    await expect(page.getByText("events.xlsx")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/file ready for import/i)).toBeVisible({ timeout: 5000 });
   });
 
   test("should enable Next button after file upload", async ({ page }) => {
@@ -210,25 +188,20 @@ test.describe("Import Wizard - Dataset Selection", () => {
   });
 
   test("should show catalog selection interface", async ({ page }) => {
-    const pageContent = await page.content();
-    const hasCatalogUI = pageContent.toLowerCase().includes("catalog") || pageContent.toLowerCase().includes("dataset");
-
-    expect(hasCatalogUI).toBe(true);
+    // Should show the "Select destination" heading on step 3
+    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
+    await expect(destinationHeading).toBeVisible({ timeout: 10000 });
   });
 
   test("should allow creating new catalog", async ({ page }) => {
-    // The dataset selection page should have options to create or select catalogs
-    // Check that we're on the dataset selection step and have relevant UI
-    const pageContent = await page.content();
+    // Should be on the dataset selection step with catalog UI
+    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
+    await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Should have either select/dropdown UI or create option
-    const hasCreateOption =
-      pageContent.toLowerCase().includes("create") ||
-      pageContent.toLowerCase().includes("new catalog") ||
-      pageContent.toLowerCase().includes("new dataset") ||
-      pageContent.includes("select");
-
-    expect(hasCreateOption).toBe(true);
+    // Should have a catalog dropdown or catalog name input visible
+    const catalogDropdown = page.locator("#catalog-select");
+    const catalogNameInput = page.locator("#new-catalog-name");
+    await expect(catalogDropdown.or(catalogNameInput)).toBeVisible({ timeout: 10000 });
   });
 });
 
@@ -249,36 +222,20 @@ test.describe("Import Wizard - Field Mapping", () => {
   });
 
   test("should show field mapping interface with detected fields", async ({ page }) => {
-    // We're on dataset selection step - check that the page has content
-    // about fields or mapping that will be shown later
-    const pageContent = await page.content();
-
-    // Should show dataset/catalog selection or field-related content
-    const hasRelevantUI =
-      pageContent.toLowerCase().includes("catalog") ||
-      pageContent.toLowerCase().includes("dataset") ||
-      pageContent.toLowerCase().includes("field") ||
-      pageContent.toLowerCase().includes("title") ||
-      pageContent.toLowerCase().includes("date");
-
-    expect(hasRelevantUI).toBe(true);
+    // We're on dataset selection step — verify the heading is visible
+    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
+    await expect(destinationHeading).toBeVisible({ timeout: 10000 });
   });
 
   test("should show sample data preview", async ({ page }) => {
-    // The wizard should show some preview of the uploaded data
-    // Check for a preview table or descriptive text about the data
-    const tableCount = await page.locator("table").count();
-    const pageText = await page.locator("body").innerText();
-    const pageTextLower = pageText.toLowerCase();
+    // We're on dataset selection step — should show the destination heading
+    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
+    await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    const hasPreviewContent =
-      tableCount > 0 ||
-      pageTextLower.includes("preview") ||
-      pageTextLower.includes("sheet") ||
-      pageTextLower.includes("row") ||
-      pageTextLower.includes("sample");
-
-    expect(hasPreviewContent).toBe(true);
+    // The step should have a table or relevant data preview UI element
+    const table = page.locator("table").first();
+    const previewText = page.getByText(/preview|sheet|row|sample/i).first();
+    await expect(table.or(previewText)).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -300,12 +257,8 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     await importPage.uploadFile(multiSheetPath);
 
-    // Should detect multiple sheets
-    const pageContent = await page.content();
-    const hasMultipleSheets =
-      pageContent.toLowerCase().includes("sheet") || pageContent.toLowerCase().includes("multiple");
-
-    expect(hasMultipleSheets).toBe(true);
+    // Should detect multiple sheets and display the count
+    await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 10000 });
   });
 
   test("should import all sheets from multi-sheet Excel and create 3 datasets", async ({ page }) => {
@@ -712,23 +665,27 @@ test.describe("Import Wizard - Error Handling", () => {
   test("should handle empty file gracefully", async ({ page }) => {
     const emptyPath = path.join(FIXTURES_PATH, "empty.csv");
 
-    await importPage.uploadFile(emptyPath);
+    // Upload may fail validation — use setInputFiles directly to avoid timeout in uploadFile()
+    await page.locator('input[type="file"]').setInputFiles(emptyPath);
 
-    // Page should still be functional and possibly show an error
-    const pageContent = await page.content();
-    const hasContent = pageContent.length > 100;
-    expect(hasContent).toBe(true);
+    // Page should still be functional — the upload heading should remain visible
+    // or an error/warning message should be shown
+    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
+    const errorMessage = page.getByRole("alert");
+    await expect(uploadHeading.or(errorMessage)).toBeVisible({ timeout: 10000 });
   });
 
   test("should handle malformed data gracefully", async ({ page }) => {
     const malformedPath = path.join(FIXTURES_PATH, "malformed-data.csv");
 
-    await importPage.uploadFile(malformedPath);
+    // Upload may fail validation — use setInputFiles directly to avoid timeout in uploadFile()
+    await page.locator('input[type="file"]').setInputFiles(malformedPath);
 
-    // Page should still be functional
-    const pageContent = await page.content();
-    const hasContent = pageContent.length > 100;
-    expect(hasContent).toBe(true);
+    // Page should still be functional — the upload heading should remain visible
+    // or an error/warning message should be shown
+    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
+    const errorMessage = page.getByRole("alert");
+    await expect(uploadHeading.or(errorMessage)).toBeVisible({ timeout: 10000 });
   });
 });
 
@@ -766,9 +723,9 @@ test.describe("Import Wizard - Browser Navigation", () => {
     await page.reload();
     await importPage.waitForWizardLoad();
 
-    // Page should still be functional
-    const pageContent = await page.content();
-    expect(pageContent.length).toBeGreaterThan(100);
+    // Page should still be functional — the upload heading should be visible
+    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
+    await expect(uploadHeading).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -784,8 +741,9 @@ test.describe("Import Wizard - Responsive Design", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    const hasContent = (await page.content()).length > 100;
-    expect(hasContent).toBe(true);
+    // Wizard heading should be visible at desktop size
+    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
+    await expect(uploadHeading).toBeVisible({ timeout: 5000 });
   });
 
   test("should work on tablet viewport", async ({ page }) => {
@@ -793,8 +751,9 @@ test.describe("Import Wizard - Responsive Design", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    const hasContent = (await page.content()).length > 100;
-    expect(hasContent).toBe(true);
+    // Wizard heading should be visible at tablet size
+    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
+    await expect(uploadHeading).toBeVisible({ timeout: 5000 });
   });
 
   test("should work on mobile viewport", async ({ page }) => {
@@ -802,8 +761,9 @@ test.describe("Import Wizard - Responsive Design", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    const hasContent = (await page.content()).length > 100;
-    expect(hasContent).toBe(true);
+    // Wizard heading should be visible at mobile size
+    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
+    await expect(uploadHeading).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -971,13 +931,10 @@ test.describe("Import Wizard - Full Flow", () => {
     await page.reload();
     await importPage.waitForWizardLoad();
 
-    // Verify state was restored - should still be on step 3 or have file info
-    const restoredContent = await page.content();
-    const hasRestoredState =
-      restoredContent.toLowerCase().includes("valid-events.csv") ||
-      restoredContent.toLowerCase().includes("catalog") ||
-      restoredContent.toLowerCase().includes("persistence test catalog");
-
-    expect(hasRestoredState).toBe(true);
+    // Verify state was restored — should show the file name or catalog info
+    const fileName = page.getByText("valid-events.csv");
+    const catalogInfo = page.getByText(/persistence test catalog/i);
+    const destinationHeading = page.getByRole("heading", { name: /select destination/i });
+    await expect(fileName.or(catalogInfo).or(destinationHeading)).toBeVisible({ timeout: 10000 });
   });
 });

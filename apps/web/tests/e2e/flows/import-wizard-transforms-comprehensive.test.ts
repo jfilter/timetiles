@@ -193,6 +193,11 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     const response = await responsePromise;
     expect(response.status()).toBe(200);
 
+    // Capture dataset ID from the configure response for scoped queries
+    const responseBody = await response.json();
+    const datasetId = responseBody.datasets?.["0"] as number | undefined;
+    expect(datasetId).toBeDefined();
+
     // Verify only the uppercase transform was sent (rename was removed)
     expect(capturedTransforms).not.toBeNull();
     expect(capturedTransforms).toHaveLength(1);
@@ -208,8 +213,10 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     const stageTimeline = page.getByText(/creating events/i);
     await expect(stageTimeline).toBeVisible({ timeout: 5000 });
 
-    // ── 15. Verify events have uppercased titles ──
-    const eventsResponse = await page.request.get("/api/events", { params: { limit: "10", sort: "-createdAt" } });
+    // ── 15. Verify events have uppercased titles — scoped to this import's dataset ──
+    const eventsResponse = await page.request.get("/api/events", {
+      params: { limit: "10", sort: "-createdAt", "where[dataset][equals]": String(datasetId) },
+    });
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();

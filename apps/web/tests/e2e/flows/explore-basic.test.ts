@@ -152,19 +152,9 @@ test.describe("Explore Page - Basic Functionality", () => {
     // The loading state is shown as "Loading events..." in the EventsList
     const loadingText = page.getByText("Loading events...");
 
-    // Check if loading state appears (it might be very quick)
-    try {
-      await expect(loadingText).toBeVisible({ timeout: 3000 });
-      // Should hide loading indicator after response
-      await expect(loadingText).not.toBeVisible({ timeout: 10000 });
-    } catch {
-      // If loading was too fast to catch, verify the page eventually loads
-      // Check that the events count paragraph is visible (now shows "Showing X events...")
-      const eventsCount = page
-        .locator("p")
-        .filter({ hasText: /Showing .* event/ })
-        .first();
-      await expect(eventsCount).toBeVisible({ timeout: 5000 });
-    }
+    // With a 2s API delay, loading text must appear
+    await expect(loadingText).toBeVisible({ timeout: 3000 });
+    // Should hide loading indicator after response
+    await expect(loadingText).not.toBeVisible({ timeout: 10000 });
   });
 });

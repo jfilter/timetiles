@@ -37,10 +37,9 @@ test.describe("Explore View Switch - Map Position Persistence", () => {
 
     // The map should be at (approximately) zoom 10, not at the default/fitBounds zoom
     const zoom = await getMapZoom(page);
-    if (zoom !== null) {
-      expect(zoom).toBeGreaterThan(8);
-      expect(zoom).toBeLessThan(12);
-    }
+    expect(zoom).not.toBeNull();
+    expect(zoom).toBeGreaterThan(8);
+    expect(zoom).toBeLessThan(12);
   });
 
   test("preserves URL params when switching from map to list view", async ({ page }) => {

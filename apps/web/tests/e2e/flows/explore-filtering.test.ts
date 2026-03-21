@@ -173,6 +173,9 @@ test.describe("Explore Page - Filtering", () => {
 
     console.log(`New count with Economic Indicators: ${newCount}`);
 
+    // Verify results actually changed when switching filters
+    expect(newCount).not.toBe(initialCount);
+
     // Verify URL parameters reflect the new selection
     const params = await explorePage.getUrlParams();
     expect(params.has("catalog")).toBe(true);
@@ -196,9 +199,9 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Should not error and should show events for that specific date
+    // Should show events for that specific date (seed data includes events in this range)
     const count = await explorePage.getEventCount();
-    expect(count).toBeGreaterThanOrEqual(0);
+    expect(count).toBeGreaterThan(0);
   });
 
   test("should preserve filters when navigating", async () => {

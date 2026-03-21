@@ -17,9 +17,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
 
-// Must match the `name` in wizard-store.ts persist() config
-const STORAGE_KEY = "timetiles-wizard-v2";
-
 test.describe("Flow Editor Transforms", () => {
   test.describe.configure({ mode: "serial" });
 
@@ -187,13 +184,12 @@ test.describe("Flow Editor Transforms", () => {
     // Verify the serialized data was passed through the URL
     // The applyMappings param should contain the new format with fieldMapping and transforms
     // Even without transforms, it should use the new { fieldMapping, transforms } format
-    if (applyMappingsParam) {
-      const decoded = JSON.parse(decodeURIComponent(applyMappingsParam));
-      expect(decoded).toHaveProperty("fieldMapping");
-      expect(decoded).toHaveProperty("transforms");
-      expect(decoded.fieldMapping).toHaveProperty("sheetIndex");
-      expect(Array.isArray(decoded.transforms)).toBe(true);
-    }
+    expect(applyMappingsParam).not.toBeNull();
+    const decoded = JSON.parse(decodeURIComponent(applyMappingsParam!));
+    expect(decoded).toHaveProperty("fieldMapping");
+    expect(decoded).toHaveProperty("transforms");
+    expect(decoded.fieldMapping).toHaveProperty("sheetIndex");
+    expect(Array.isArray(decoded.transforms)).toBe(true);
 
     // Complete the import to verify the full round-trip
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
@@ -240,53 +236,22 @@ test.describe("Flow Editor Transforms", () => {
 
     await importPage.clickNext();
 
-    // Step 4: Wait for field mapping, then inject transforms via localStorage
+    // Step 4: Add uppercase transform via the column table UI
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Wait for wizard state to be saved to localStorage
-    await page.waitForFunction(
-      (key) => {
-        const raw = localStorage.getItem(key);
-        if (!raw) return false;
-        const data = JSON.parse(raw);
-        return data?.state?.sheetPreview != null || data?.state?.fieldMappings != null;
-      },
-      STORAGE_KEY,
-      { timeout: 10000 }
-    );
+    // Find the "title" column row and click its "Add transform" button
+    const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
+    const addTransformButton = titleRow.getByRole("button", { name: /add transform/i });
+    await expect(addTransformButton).toBeVisible({ timeout: 5000 });
+    await addTransformButton.click();
 
-    // Inject a string-op (uppercase) transform on the "title" field into wizard state
-    await page.evaluate(
-      ({ storageKey }) => {
-        const raw = localStorage.getItem(storageKey);
-        if (!raw) throw new Error("No wizard state in localStorage");
-        const data = JSON.parse(raw);
+    // Select "String Operation" from the dropdown menu
+    const stringOpItem = page.getByRole("menuitem", { name: /string operation/i });
+    await expect(stringOpItem).toBeVisible({ timeout: 5000 });
+    await stringOpItem.click();
 
-        // Add uppercase transform for sheet index 0
-        data.state.transforms = {
-          0: [
-            {
-              id: crypto.randomUUID(),
-              type: "string-op",
-              active: true,
-              autoDetected: false,
-              from: "title",
-              operation: "uppercase",
-            },
-          ],
-        };
-
-        localStorage.setItem(storageKey, JSON.stringify(data));
-      },
-      { storageKey: STORAGE_KEY }
-    );
-
-    // Reload page so wizard restores from localStorage with the injected transforms
-    await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-
-    // Wait for wizard to restore — it should land on step 4 (field mapping)
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 15000 });
+    // Default operation is "uppercase" — verify chip shows in the title row
+    await expect(titleRow.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
 
     // Proceed to review step
     await importPage.clickNext();
@@ -326,19 +291,25 @@ test.describe("Flow Editor Transforms", () => {
     expect(transform.operation).toBe("uppercase");
     expect(transform.from).toBe("title");
 
+    // Capture dataset ID from the configure response for scoped queries
+    const responseBody = await response.json();
+    const datasetId = responseBody.datasets?.["0"] as number | undefined;
+    expect(datasetId).toBeDefined();
+
     // Wait for import to complete
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
-    // Verify events were created with uppercased titles
-    // Query the Payload REST API to check event data
-    const eventsResponse = await page.request.get("/api/events", { params: { limit: "10", sort: "-createdAt" } });
+    // Verify events were created with uppercased titles — scoped to this import's dataset
+    const eventsResponse = await page.request.get("/api/events", {
+      params: { limit: "10", sort: "-createdAt", "where[dataset][equals]": String(datasetId) },
+    });
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
     const events = eventsData.docs as Array<{ data: Record<string, unknown> }>;
 
-    // Find events from this import (they should have uppercase titles in their data)
+    // All events in this dataset should have uppercase titles
     const uppercasedEvents = events.filter(
       (e) => typeof e.data?.title === "string" && e.data.title === e.data.title.toUpperCase()
     );
@@ -372,51 +343,34 @@ test.describe("Flow Editor Transforms", () => {
 
     await importPage.clickNext();
 
-    // Step 4: Wait for field mapping, then inject rename transform
+    // Step 4: Add rename transform via the column table UI
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Wait for wizard state to be saved to localStorage
-    await page.waitForFunction(
-      (key) => {
-        const raw = localStorage.getItem(key);
-        if (!raw) return false;
-        const data = JSON.parse(raw);
-        return data?.state?.sheetPreview != null || data?.state?.fieldMappings != null;
-      },
-      STORAGE_KEY,
-      { timeout: 10000 }
-    );
+    // Find the "category" column row and click its "Add transform" button
+    const categoryRow = page.locator("tr").filter({ hasText: "category" }).first();
+    const addTransformButton = categoryRow.getByRole("button", { name: /add transform/i });
+    await expect(addTransformButton).toBeVisible({ timeout: 5000 });
+    await addTransformButton.click();
 
-    // Inject a rename transform: "category" → "event_type"
-    await page.evaluate(
-      ({ storageKey }) => {
-        const raw = localStorage.getItem(storageKey);
-        if (!raw) throw new Error("No wizard state in localStorage");
-        const data = JSON.parse(raw);
+    // Select "Rename Field" from the dropdown menu
+    const renameItem = page.getByRole("menuitem", { name: /rename field/i });
+    await expect(renameItem).toBeVisible({ timeout: 5000 });
+    await renameItem.click();
 
-        data.state.transforms = {
-          0: [
-            {
-              id: crypto.randomUUID(),
-              type: "rename",
-              active: true,
-              autoDetected: false,
-              from: "category",
-              to: "event_type",
-            },
-          ],
-        };
+    // A rename chip appears — click it to expand the inline editor
+    const renameChip = categoryRow.getByText(/Rename/);
+    await expect(renameChip).toBeVisible({ timeout: 5000 });
+    await renameChip.click();
 
-        localStorage.setItem(storageKey, JSON.stringify(data));
-      },
-      { storageKey: STORAGE_KEY }
-    );
+    // Fill in the new name in the inline editor
+    const toInput = page.locator("#to");
+    await expect(toInput).toBeVisible({ timeout: 5000 });
+    await toInput.fill("event_type");
 
-    // Reload to restore from localStorage
-    await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 15000 });
+    // Save the transform
+    const saveTransformButton = page.getByRole("button", { name: /^Save$/i });
+    await expect(saveTransformButton).toBeVisible({ timeout: 5000 });
+    await saveTransformButton.click();
 
     await importPage.clickNext();
 
@@ -453,12 +407,19 @@ test.describe("Flow Editor Transforms", () => {
     expect(transform.from).toBe("category");
     expect(transform.to).toBe("event_type");
 
+    // Capture dataset ID from the configure response for scoped queries
+    const responseBody = await response.json();
+    const datasetId = responseBody.datasets?.["0"] as number | undefined;
+    expect(datasetId).toBeDefined();
+
     // Wait for import to complete
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
-    // Verify events have "event_type" field instead of "category"
-    const eventsResponse = await page.request.get("/api/events", { params: { limit: "10", sort: "-createdAt" } });
+    // Verify events have "event_type" field instead of "category" — scoped to this import's dataset
+    const eventsResponse = await page.request.get("/api/events", {
+      params: { limit: "10", sort: "-createdAt", "where[dataset][equals]": String(datasetId) },
+    });
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();

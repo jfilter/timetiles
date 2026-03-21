@@ -195,12 +195,19 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     expect(transform.from).toBe("title");
     expect(transform.active).toBe(true);
 
+    // Capture dataset ID from the configure response for scoped queries
+    const responseBody = await response.json();
+    const datasetId = responseBody.datasets?.["0"] as number | undefined;
+    expect(datasetId).toBeDefined();
+
     // Wait for import to complete
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
-    // Verify events were created with uppercased titles
-    const eventsResponse = await page.request.get("/api/events", { params: { limit: "10", sort: "-createdAt" } });
+    // Verify events were created with uppercased titles — scoped to this import's dataset
+    const eventsResponse = await page.request.get("/api/events", {
+      params: { limit: "10", sort: "-createdAt", "where[dataset][equals]": String(datasetId) },
+    });
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
