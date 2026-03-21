@@ -9,6 +9,7 @@
 
 // 1. Centralized mocks FIRST
 import "@/tests/mocks/services/logger";
+import "@/tests/mocks/services/site-resolver";
 
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => ({

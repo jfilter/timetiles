@@ -17,6 +17,7 @@ import { ErrorRecoveryService } from "@/lib/import/error-recovery";
 
 export const GET = apiRoute({
   auth: "required",
+  site: "default",
   rateLimit: { configName: "RETRY_RECOMMENDATIONS" },
   handler: async ({ user, payload }) => {
     // For admins, get all recommendations; for others, let access control filter

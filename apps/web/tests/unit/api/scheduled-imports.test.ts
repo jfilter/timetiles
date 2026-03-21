@@ -7,6 +7,7 @@
  * @category Tests
  */
 import "@/tests/mocks/services/logger";
+import "@/tests/mocks/services/site-resolver";
 
 import { NextRequest } from "next/server";
 import { getPayload } from "payload";

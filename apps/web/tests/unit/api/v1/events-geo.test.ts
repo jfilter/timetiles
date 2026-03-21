@@ -5,6 +5,7 @@
  * @category Tests
  */
 import "@/tests/mocks/services/logger";
+import "@/tests/mocks/services/site-resolver";
 
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),

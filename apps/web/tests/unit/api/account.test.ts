@@ -8,6 +8,7 @@
  * @category Tests
  */
 import "@/tests/mocks/services/logger";
+import "@/tests/mocks/services/site-resolver";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
 

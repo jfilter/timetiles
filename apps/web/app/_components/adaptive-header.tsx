@@ -29,6 +29,7 @@ import React from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { Link, usePathname } from "@/i18n/navigation";
+import { useSite } from "@/lib/context/site-context";
 import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
@@ -79,6 +80,7 @@ export const AdaptiveHeader = ({
   user = null,
 }: Readonly<AdaptiveHeaderProps>) => {
   const pathname = usePathname();
+  const { isDefaultSite } = useSite();
   const t = useTranslations("Common");
   const isExplorePage = pathname === "/explore" || pathname === "/explore/list";
   const currentView: "map" | "list" = pathname === "/explore/list" ? "list" : "map";
@@ -96,6 +98,11 @@ export const AdaptiveHeader = ({
     );
   }
 
+  // On non-default sites, hide ingestion-related nav items
+  const filteredMenu = isDefaultSite
+    ? mainMenu
+    : { ...mainMenu, navItems: mainMenu.navItems?.filter((item) => item.url !== "/import") };
+
   // Marketing pages use standard brand/nav/actions layout
   return (
     <Header variant="marketing">
@@ -106,7 +113,7 @@ export const AdaptiveHeader = ({
       </HeaderBrand>
 
       <HeaderNav>
-        <MarketingNavigation mainMenu={mainMenu} />
+        <MarketingNavigation mainMenu={filteredMenu} />
       </HeaderNav>
 
       <HeaderActions>
@@ -125,7 +132,7 @@ export const AdaptiveHeader = ({
         <MobileNavDrawer>
           <MobileNavDrawerTrigger />
           <MobileNavDrawerContent>
-            {mainMenu.navItems?.map((item) => (
+            {filteredMenu.navItems?.map((item) => (
               <MobileNavDrawerLink key={`mobile-${item.url}-${item.label}`} active={pathname === item.url} asChild>
                 <Link href={item.url}>{item.label}</Link>
               </MobileNavDrawerLink>

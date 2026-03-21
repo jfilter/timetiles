@@ -11,6 +11,7 @@ import { isPrivileged } from "@/lib/collections/shared-fields";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import type { User } from "@/payload-types";
 
 /**
@@ -79,6 +80,19 @@ export const requireFeatureEnabled = async (
  */
 export const requireScrapersEnabled = async (payload: Payload): Promise<void> =>
   requireFeatureEnabled(payload, "enableScrapers", "Scraper feature is not enabled");
+
+/**
+ * Require that the request originates from the default (main) site.
+ * Non-default sites are display-only and cannot perform data ingestion.
+ * @throws ForbiddenError if the request is from a non-default site
+ */
+export const requireDefaultSite = async (payload: Payload, req: { headers: Headers }): Promise<void> => {
+  const host = req.headers.get("host");
+  const site = await resolveSite(payload, host);
+  if (site && !site.isDefault) {
+    throw new ForbiddenError("This feature is only available on the main site");
+  }
+};
 
 /**
  * Verify a user's password by attempting a login.

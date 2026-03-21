@@ -20,6 +20,7 @@ import type { ImportJob } from "@/payload-types";
 
 export const POST = apiRoute({
   auth: "required",
+  site: "default",
   rateLimit: { configName: "IMPORT_RETRY" },
   params: z.object({ id: z.string() }),
   handler: async ({ payload, user, params }) => {

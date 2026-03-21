@@ -14,6 +14,7 @@ import { checkRateLimit, type RateLimitOptions } from "@/lib/middleware/rate-lim
 import config from "@/payload.config";
 import type { User } from "@/payload-types";
 
+import { requireDefaultSite } from "./auth-helpers";
 import { handleError } from "./errors";
 
 const logger = createLogger("api-handler");
@@ -35,6 +36,8 @@ interface RouteConfig<TBody = undefined, TQuery = undefined, TParams = undefined
   auth?: TAuth;
   /** Rate limit options */
   rateLimit?: RateLimitOptions;
+  /** Restrict to the default (main) site. Non-default sites receive 403. */
+  site?: "default";
   /** Zod schema for request body (parsed from request.json()) */
   body?: z.ZodType<TBody>;
   /** Zod schema for query parameters (parsed from URL searchParams) */
@@ -109,6 +112,11 @@ export const apiRoute = <
       if (routeConfig.rateLimit) {
         const rateLimitResponse = await checkRateLimit(req, authReq.user, routeConfig.rateLimit);
         if (rateLimitResponse) return rateLimitResponse;
+      }
+
+      // --- Site restriction ---
+      if (routeConfig.site === "default") {
+        await requireDefaultSite(payload, req);
       }
 
       // --- Validate body ---

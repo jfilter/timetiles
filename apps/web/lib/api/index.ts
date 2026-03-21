@@ -7,6 +7,7 @@
 export {
   canManageResource,
   requireAdmin,
+  requireDefaultSite,
   requireFeatureEnabled,
   requireOwnerOrAdmin,
   requirePrivileged,

@@ -18,6 +18,7 @@ import type { ScheduledImport } from "@/payload-types";
 
 export const POST = apiRoute({
   auth: "required",
+  site: "default",
   params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ payload, user, params }) => {
     const numericId = params.id;

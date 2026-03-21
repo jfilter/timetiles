@@ -24,6 +24,7 @@ const VALID_RESET_STAGES = RECOVERY_STAGES_LIST;
 
 export const POST = apiRoute({
   auth: "admin",
+  site: "default",
   rateLimit: { configName: "ADMIN_IMPORT_RESET" },
   params: z.object({ id: z.string() }),
   body: z.object({ targetStage: z.enum(VALID_RESET_STAGES), clearRetries: z.boolean().optional() }),

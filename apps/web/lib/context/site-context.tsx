@@ -74,6 +74,9 @@ interface SiteContextValue {
   /** Whether a site is active */
   hasSite: boolean;
 
+  /** Whether this is the default (main) site — true when no site is configured or site.isDefault is true */
+  isDefaultSite: boolean;
+
   /** Branding derived from site configuration */
   branding: {
     title?: string;
@@ -171,6 +174,7 @@ export const SiteProvider = ({ site, children }: SiteProviderProps): React.React
     return {
       site,
       hasSite: site != null,
+      isDefaultSite: site?.isDefault !== false,
       branding: extractBranding(site),
       customCode: extractCustomCode(site?.customCode),
     };
