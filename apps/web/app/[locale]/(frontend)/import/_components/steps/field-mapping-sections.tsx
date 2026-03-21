@@ -280,9 +280,14 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
 interface CompletionStatusBarProps {
   isComplete: boolean;
   remainingCount: number;
+  missingFields?: string[];
 }
 
-export const CompletionStatusBar = ({ isComplete, remainingCount }: Readonly<CompletionStatusBarProps>) => {
+export const CompletionStatusBar = ({
+  isComplete,
+  remainingCount,
+  missingFields,
+}: Readonly<CompletionStatusBarProps>) => {
   const t = useTranslations("Import");
 
   return (
@@ -300,7 +305,15 @@ export const CompletionStatusBar = ({ isComplete, remainingCount }: Readonly<Com
           {t("allRequiredFieldsMapped")}
         </>
       ) : (
-        t("requiredFieldsRemaining", { count: remainingCount })
+        <>
+          {t("requiredFieldsRemaining", { count: remainingCount })}
+          {missingFields && missingFields.length > 0 && (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic keys
+            <span className="text-cartographic-terracotta/70">
+              ({missingFields.map((f) => t(f as any)).join(", ")})
+            </span>
+          )}
+        </>
       )}
     </div>
   );

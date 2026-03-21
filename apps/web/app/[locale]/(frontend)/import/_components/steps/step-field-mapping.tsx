@@ -165,13 +165,13 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   // Completion status
   const requiredFieldsCount = useMemo(() => {
-    if (!activeMapping) return { mapped: 0, total: 3 };
-    let mapped = 0;
-    if (activeMapping.titleField) mapped++;
-    if (activeMapping.dateField) mapped++;
+    if (!activeMapping) return { mapped: 0, total: 3, missing: ["fieldTitle", "fieldDate", "location"] };
+    const missing: string[] = [];
+    if (!activeMapping.titleField) missing.push("fieldTitle");
+    if (!activeMapping.dateField) missing.push("fieldDate");
     const hasLocation = activeMapping.locationField ?? (activeMapping.latitudeField && activeMapping.longitudeField);
-    if (hasLocation) mapped++;
-    return { mapped, total: 3 };
+    if (!hasLocation) missing.push("location");
+    return { mapped: 3 - missing.length, total: 3, missing };
   }, [activeMapping]);
 
   const isComplete = activeMapping ? isFieldMappingComplete(activeMapping) : false;
@@ -275,6 +275,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
       <CompletionStatusBar
         isComplete={isComplete}
         remainingCount={requiredFieldsCount.total - requiredFieldsCount.mapped}
+        missingFields={requiredFieldsCount.missing}
       />
 
       {/* Column mapping table — all columns with inline transforms */}
