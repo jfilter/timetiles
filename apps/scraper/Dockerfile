@@ -2,6 +2,8 @@
 # Multi-stage build with turbo prune for monorepo workspace resolution
 
 # Stage 1: Base image with pnpm
+# Uses node:24-slim (not alpine) because the runner shells out to system tools
+# and slim provides better glibc compatibility for native npm packages
 FROM node:24-slim AS base
 RUN corepack enable \
     && corepack prepare pnpm@10.12.4 --activate

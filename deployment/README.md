@@ -142,12 +142,50 @@ timetiles check    # Full verification
 timetiles logs     # View all logs
 ```
 
+## Scraper Runner (Optional)
+
+The scraper runner executes user-defined web scrapers in isolated Podman containers. It runs as a **systemd service** (not in Docker Compose) because it needs rootless Podman access on the host.
+
+### Why not in docker-compose?
+
+Podman containers can't be launched from inside Docker — the runner needs direct access to the host's Podman socket (`/run/user/UID/podman/podman.sock`). Running it as a systemd service under the `timetiles` user preserves rootless isolation.
+
+### How it connects
+
+The web app reaches the runner via `SCRAPER_RUNNER_URL` (typically `http://host.docker.internal:4000`). The runner authenticates requests using a shared `SCRAPER_API_KEY`.
+
+### Enabling scrapers
+
+During bootstrap, pass `--scraper` or set `SKIP_SCRAPER=false` in your bootstrap config. This runs step 13 which:
+
+1. Installs Podman (rootless)
+2. Builds base images (`timescrape-python`, `timescrape-node`)
+3. Creates the `scraper-sandbox` network (no internet access for containers)
+4. Installs the runner as a systemd service
+5. Generates and configures `SCRAPER_API_KEY`
+
+For manual setup, see `apps/scraper/docs/SETUP.md`.
+
+### Backup considerations
+
+Scraper run history and metadata are stored in PostgreSQL and included in database backups. Container execution data is ephemeral — it's discarded after each run completes.
+
+### Commands
+
+```bash
+timetiles scraper-logs   # View runner logs (journalctl)
+timetiles status         # Includes runner health if configured
+timetiles check          # Includes Podman, base images, sandbox network checks
+timetiles update         # Updates runner + base images alongside main app
+```
+
 ## All-in-One Image
 
-For demos or small deployments:
+For demos or small deployments. Does **not** include the scraper runner (requires Podman, which can't run inside Docker).
 
 ```bash
 docker run -d -p 80:80 -p 443:443 \
+  -e POSTGRES_PASSWORD=your-password \
   -e PAYLOAD_SECRET=your-secret \
   -v timetiles-data:/data \
   ghcr.io/jfilter/timetiles:latest-allinone

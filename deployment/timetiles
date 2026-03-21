@@ -858,6 +858,16 @@ EOF
             else
                 print_fail "Runner health endpoint not responding"
             fi
+
+            # Verify API key is configured (runner reads from same .env.production)
+            SCRAPER_KEY=$(grep "^SCRAPER_API_KEY=" "$ENV_FILE" 2>/dev/null | cut -d= -f2-)
+            if [[ -n "$SCRAPER_KEY" && ${#SCRAPER_KEY} -ge 16 ]]; then
+                print_ok "SCRAPER_API_KEY configured (${#SCRAPER_KEY} chars)"
+            elif [[ -n "$SCRAPER_KEY" ]]; then
+                print_warn "SCRAPER_API_KEY too short (${#SCRAPER_KEY} chars, minimum 16)"
+            else
+                print_fail "SCRAPER_API_KEY not set in .env.production"
+            fi
         fi
 
         print_section "SSL"
