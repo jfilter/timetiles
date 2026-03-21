@@ -42,19 +42,24 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
  * - Arrays are serialized as JSON strings rather than being expanded.
  * - Primitives (string, number, boolean, null) are kept as-is.
  */
-export const flattenObject = (obj: Record<string, unknown>, prefix?: string): Record<string, unknown> => {
+const MAX_FLATTEN_DEPTH = 20;
+
+export const flattenObject = (obj: Record<string, unknown>, prefix?: string, depth = 0): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
 
     if (Array.isArray(value)) {
-      // Serialize arrays as JSON strings
       result[fullKey] = JSON.stringify(value);
     } else if (isPlainObject(value)) {
-      // Recurse into nested objects
-      const nested = flattenObject(value, fullKey);
-      Object.assign(result, nested);
+      if (depth >= MAX_FLATTEN_DEPTH) {
+        // Too deep — serialize as JSON to prevent stack overflow
+        result[fullKey] = JSON.stringify(value);
+      } else {
+        const nested = flattenObject(value, fullKey, depth + 1);
+        Object.assign(result, nested);
+      }
     } else {
       result[fullKey] = value;
     }

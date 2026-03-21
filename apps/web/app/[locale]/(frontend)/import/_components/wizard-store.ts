@@ -22,7 +22,14 @@ import { devtools, persist } from "zustand/middleware";
 import { createFieldMappingFromSuggestions } from "@/lib/import/field-mapping-utils";
 import { humanizeFileName } from "@/lib/import/humanize-file-name";
 import type { ImportTransform } from "@/lib/types/import-transforms";
-import type { ConfigSuggestion, FieldMapping, SheetInfo, SheetMapping, UrlAuthConfig } from "@/lib/types/import-wizard";
+import type {
+  ConfigSuggestion,
+  FieldMapping,
+  JsonApiScheduleConfig,
+  SheetInfo,
+  SheetMapping,
+  UrlAuthConfig,
+} from "@/lib/types/import-wizard";
 
 // ─── State Types ─────────────────────────────────────────────────────────────
 
@@ -39,20 +46,8 @@ export interface ScheduleConfig {
   schemaMode: "strict" | "additive" | "flexible";
 }
 
-export interface JsonApiConfig {
-  recordsPath?: string;
+export interface JsonApiConfig extends JsonApiScheduleConfig {
   wasAutoDetected?: boolean;
-  pagination?: {
-    enabled: boolean;
-    type?: "offset" | "cursor" | "page";
-    pageParam?: string;
-    limitParam?: string;
-    limitValue?: number;
-    cursorParam?: string;
-    nextCursorPath?: string;
-    totalPath?: string;
-    maxPages?: number;
-  };
 }
 
 export interface WizardState {
@@ -346,8 +341,8 @@ export const useWizardStore = create<WizardStore>()(
         name: STORAGE_KEY,
         version: 1,
         partialize: (state) => {
-          // Never persist auth state, internal flags, or actions
-          const { startedAuthenticated, _initialized, _savedAt, ...rest } = state;
+          // Never persist auth credentials, internal flags, or sensitive state
+          const { startedAuthenticated, _initialized, _savedAt, authConfig, ...rest } = state;
           // Don't save during processing
           if (rest.currentStep === 7) return {} as Partial<WizardState>;
           return { ...rest, _savedAt: Date.now() } as Partial<WizardState> & { _savedAt: number };

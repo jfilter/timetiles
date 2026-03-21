@@ -25,7 +25,7 @@ export const getByPath = (obj: unknown, path: string): unknown =>
     if (current === null || current === undefined) {
       return undefined;
     }
-    if (typeof current === "object" && key in current) {
+    if (typeof current === "object" && Object.hasOwn(current, key)) {
       return (current as Record<string, unknown>)[key];
     }
     return undefined;

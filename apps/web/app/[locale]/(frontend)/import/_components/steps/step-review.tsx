@@ -395,15 +395,23 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
       {sourceUrl && scheduleConfig?.enabled && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Scheduled Import</CardTitle>
+            <CardTitle className="text-base">{t("scheduled")}</CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground space-y-1 text-sm">
             <p>
               {scheduleConfig.scheduleType === "frequency"
-                ? `Repeats ${scheduleConfig.frequency}`
-                : `Cron: ${scheduleConfig.cronExpression}`}
+                ? `${t("frequency")}: ${t(scheduleConfig.frequency)}`
+                : `${t("cronExpression")}: ${scheduleConfig.cronExpression}`}
             </p>
-            <p>Schema mode: {scheduleConfig.schemaMode}</p>
+            <p>
+              {t("schemaChangeHandling")}:{" "}
+              {t(
+                `schema${scheduleConfig.schemaMode.charAt(0).toUpperCase()}${scheduleConfig.schemaMode.slice(1)}` as
+                  | "schemaStrict"
+                  | "schemaAdditive"
+                  | "schemaFlexible"
+              )}
+            </p>
           </CardContent>
         </Card>
       )}
