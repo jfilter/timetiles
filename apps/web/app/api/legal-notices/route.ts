@@ -7,7 +7,7 @@
  * @module
  * @category API
  */
-import { SUPPORTED_LOCALES, type Locale } from "@/i18n/config";
+import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
 import { apiRoute } from "@/lib/api";
 import type { LegalNotices } from "@/lib/hooks/use-legal-notices";
 import { logError } from "@/lib/logger";
