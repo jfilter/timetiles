@@ -207,8 +207,9 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   // Build preview fields from transformed data (includes new columns from transforms)
   const allPreviewFields = useMemo(() => {
-    const allKeys = new Set([...headers, ...previewWithIds.flatMap(Object.keys)]);
-    return [...allKeys].map((h) => ({ label: h === "__id" ? "ID" : h, columnKey: h, mono: h === "__id" }));
+    const dataKeys = [...new Set([...headers, ...previewWithIds.flatMap(Object.keys)])].filter((k) => k !== "__id");
+    const idField = { label: "ID", columnKey: "__id", mono: true };
+    return [idField, ...dataKeys.map((h) => ({ label: h, columnKey: h }))];
   }, [headers, previewWithIds]);
 
   if (!activeSheet || !activeMapping) {
