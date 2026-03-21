@@ -209,33 +209,66 @@ wait_for_health() {
     return 1
 }
 
+# Get public IPv4 address
 get_public_ip() {
-    curl -sf --max-time 5 https://api.ipify.org 2>/dev/null || \
-    curl -sf --max-time 5 https://ifconfig.me 2>/dev/null || \
-    curl -sf --max-time 5 https://icanhazip.com 2>/dev/null || \
+    curl -4 -sf --max-time 5 https://api.ipify.org 2>/dev/null || \
+    curl -4 -sf --max-time 5 https://ifconfig.me 2>/dev/null || \
+    curl -4 -sf --max-time 5 https://icanhazip.com 2>/dev/null || \
     echo "unknown"
 }
 
+# Get public IPv6 address
+get_public_ipv6() {
+    curl -6 -sf --max-time 5 https://api6.ipify.org 2>/dev/null || \
+    curl -6 -sf --max-time 5 https://ifconfig.me 2>/dev/null || \
+    curl -6 -sf --max-time 5 https://icanhazip.com 2>/dev/null || \
+    echo "unknown"
+}
+
+# Check if DNS resolves to this server (both IPv4 and IPv6)
+# Returns: 0 = all records match, 1 = warning (partial match or no records), 2 = mismatch
 check_dns_resolution() {
     local domain="$1"
-    local expected_ip
-    expected_ip=$(get_public_ip)
+    local errors=0
 
-    if [[ "$expected_ip" == "unknown" ]]; then
-        print_warning "Could not determine public IP"
-        return 1
-    fi
-
-    local resolved_ip
-    resolved_ip=$(dig +short "$domain" 2>/dev/null | head -1)
-
-    if [[ "$resolved_ip" == "$expected_ip" ]]; then
-        print_success "DNS for $domain resolves to this server ($expected_ip)"
-        return 0
+    # Check IPv4 (A record)
+    local expected_v4
+    expected_v4=$(get_public_ip)
+    if [[ "$expected_v4" != "unknown" ]]; then
+        local resolved_v4
+        resolved_v4=$(dig +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+        if [[ -z "$resolved_v4" ]]; then
+            print_warning "DNS: No A record for $domain"
+            errors=$((errors + 1))
+        elif [[ "$resolved_v4" == "$expected_v4" ]]; then
+            print_success "DNS A record for $domain → $expected_v4"
+        else
+            print_warning "DNS A record for $domain → $resolved_v4 (expected $expected_v4)"
+            errors=$((errors + 1))
+        fi
     else
-        print_warning "DNS for $domain resolves to $resolved_ip (expected $expected_ip)"
-        return 1
+        print_warning "Could not determine public IPv4 address"
+        errors=$((errors + 1))
     fi
+
+    # Check IPv6 (AAAA record)
+    local expected_v6
+    expected_v6=$(get_public_ipv6)
+    if [[ "$expected_v6" != "unknown" ]]; then
+        local resolved_v6
+        resolved_v6=$(dig +short AAAA "$domain" 2>/dev/null | grep -E '^[0-9a-f:]+$' | head -1)
+        if [[ -z "$resolved_v6" ]]; then
+            print_warning "DNS: No AAAA record for $domain (server has IPv6 $expected_v6)"
+        elif [[ "$resolved_v6" == "$expected_v6" ]]; then
+            print_success "DNS AAAA record for $domain → $expected_v6"
+        else
+            print_warning "DNS AAAA record for $domain → $resolved_v6 (expected $expected_v6)"
+            errors=$((errors + 1))
+        fi
+    fi
+    # No IPv6 on server = skip silently (not all servers have IPv6)
+
+    return "$errors"
 }
 
 configure_nginx() {

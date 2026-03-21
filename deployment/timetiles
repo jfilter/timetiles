@@ -1031,6 +1031,42 @@ EOF
             print_warn "Certbot container not running"
         fi
 
+        print_section "DNS"
+
+        if [[ -n "$DOMAIN_NAME" ]]; then
+            # Check IPv4 (A record)
+            SERVER_V4=$(get_public_ip 2>/dev/null || echo "unknown")
+            if [[ "$SERVER_V4" != "unknown" ]]; then
+                DNS_V4=$(dig +short A "$DOMAIN_NAME" 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+                if [[ -z "$DNS_V4" ]]; then
+                    print_warn "No A record for $DOMAIN_NAME"
+                elif [[ "$DNS_V4" == "$SERVER_V4" ]]; then
+                    print_ok "A record: $DOMAIN_NAME → $SERVER_V4"
+                else
+                    print_fail "A record: $DOMAIN_NAME → $DNS_V4 (expected $SERVER_V4)"
+                fi
+            else
+                print_warn "Could not determine server IPv4 address"
+            fi
+
+            # Check IPv6 (AAAA record)
+            SERVER_V6=$(get_public_ipv6 2>/dev/null || echo "unknown")
+            if [[ "$SERVER_V6" != "unknown" ]]; then
+                DNS_V6=$(dig +short AAAA "$DOMAIN_NAME" 2>/dev/null | grep -E '^[0-9a-f:]+$' | head -1)
+                if [[ -z "$DNS_V6" ]]; then
+                    print_warn "No AAAA record for $DOMAIN_NAME (server has IPv6: $SERVER_V6)"
+                elif [[ "$DNS_V6" == "$SERVER_V6" ]]; then
+                    print_ok "AAAA record: $DOMAIN_NAME → $SERVER_V6"
+                else
+                    print_fail "AAAA record: $DOMAIN_NAME → $DNS_V6 (expected $SERVER_V6)"
+                fi
+            else
+                print_ok "Server has no IPv6, AAAA check skipped"
+            fi
+        else
+            print_warn "DOMAIN_NAME not set, skipping DNS check"
+        fi
+
         print_section "Monitoring"
         run_check verify_backup_cron
         run_check verify_log_rotation
