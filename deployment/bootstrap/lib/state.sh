@@ -6,18 +6,10 @@
 [[ -n "${_BOOTSTRAP_STATE_LOADED:-}" ]] && return 0
 _BOOTSTRAP_STATE_LOADED=1
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
 STATE_DIR="${STATE_DIR:-/var/lib/timetiles}"
 STATE_FILE="${STATE_FILE:-$STATE_DIR/.bootstrap-state}"
 LOCK_FILE="${LOCK_FILE:-$STATE_DIR/.bootstrap-lock}"
 
-# ============================================================================
-# STATE MANAGEMENT
-# ============================================================================
-
-# Initialize state directory and file
 init_state() {
     if [[ ! -d "$STATE_DIR" ]]; then
         mkdir -p "$STATE_DIR"
@@ -34,7 +26,6 @@ EOF
     fi
 }
 
-# Acquire lock to prevent concurrent runs
 acquire_lock() {
     if [[ -f "$LOCK_FILE" ]]; then
         local pid
@@ -52,12 +43,10 @@ acquire_lock() {
     return 0
 }
 
-# Release lock
 release_lock() {
     rm -f "$LOCK_FILE"
 }
 
-# Mark a step as completed
 mark_completed() {
     local step="$1"
     local ts
@@ -73,13 +62,11 @@ mark_completed() {
     echo "${step}=${ts}" >> "$STATE_FILE"
 }
 
-# Check if a step is completed
 is_completed() {
     local step="$1"
     [[ -f "$STATE_FILE" ]] && grep -q "^${step}=" "$STATE_FILE" 2>/dev/null
 }
 
-# Get completion timestamp for a step
 get_completion_time() {
     local step="$1"
     if [[ -f "$STATE_FILE" ]]; then
@@ -87,21 +74,18 @@ get_completion_time() {
     fi
 }
 
-# Get list of all completed steps
 get_completed_steps() {
     if [[ -f "$STATE_FILE" ]]; then
         grep -v "^#" "$STATE_FILE" 2>/dev/null | cut -d= -f1 | grep -v "^$"
     fi
 }
 
-# Get the last completed step
 get_last_completed() {
     if [[ -f "$STATE_FILE" ]]; then
         grep -v "^#" "$STATE_FILE" 2>/dev/null | tail -1 | cut -d= -f1
     fi
 }
 
-# Clear all state (fresh start)
 clear_state() {
     if [[ -f "$STATE_FILE" ]]; then
         rm -f "$STATE_FILE"
@@ -110,7 +94,6 @@ clear_state() {
     init_state
 }
 
-# Display current state/progress
 show_state() {
     local steps=("$@")
 
@@ -135,7 +118,6 @@ show_state() {
     echo ""
 }
 
-# Save configuration values to state (for resume)
 save_config_to_state() {
     local key="$1"
     local value="$2"
@@ -156,7 +138,6 @@ save_config_to_state() {
     echo "${key}=${value}" >> "$config_file"
 }
 
-# Load configuration from state
 load_config_from_state() {
     local config_file="${STATE_DIR}/.bootstrap-config"
 

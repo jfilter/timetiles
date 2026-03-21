@@ -6,9 +6,8 @@
 [[ -n "${_BOOTSTRAP_COMMON_LOADED:-}" ]] && return 0
 _BOOTSTRAP_COMMON_LOADED=1
 
-# ============================================================================
-# COLORS AND FORMATTING
-# ============================================================================
+# Colors
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,9 +16,6 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# ============================================================================
-# PRINT FUNCTIONS
-# ============================================================================
 print_header() {
     echo ""
     echo -e "${BLUE}${BOLD}══════════════════════════════════════════════════════════════${NC}"
@@ -52,20 +48,15 @@ print_skip() {
     echo -e "${YELLOW}⏭${NC} $1"
 }
 
-# ============================================================================
-# ERROR HANDLING
-# ============================================================================
 die() {
     print_error "$1"
     exit "${2:-1}"
 }
 
-# Cleanup function - can be overridden by scripts
 cleanup() {
     :
 }
 
-# Trap handler
 trap_handler() {
     local exit_code=$?
     cleanup
@@ -76,14 +67,10 @@ trap_handler() {
     exit $exit_code
 }
 
-# Set up traps
 trap trap_handler EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-# ============================================================================
-# VALIDATION FUNCTIONS
-# ============================================================================
 check_root() {
     if [[ $EUID -ne 0 ]]; then
         die "This script must be run as root (use sudo)"
@@ -146,10 +133,6 @@ check_command() {
     return 0
 }
 
-# ============================================================================
-# RETRY WRAPPER
-# ============================================================================
-# Retry a command with exponential backoff
 # Usage: retry [max_attempts] [initial_delay] command [args...]
 retry() {
     local max_attempts="${1:-3}"
@@ -175,20 +158,14 @@ retry() {
     return 1
 }
 
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
-# Check if running in interactive terminal
 is_interactive() {
     [[ -t 0 ]]
 }
 
-# Get current timestamp in ISO format
 timestamp() {
     date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
 
-# Ensure a directory exists with proper ownership
 ensure_dir() {
     local dir="$1"
     local owner="${2:-root:root}"
@@ -203,13 +180,11 @@ ensure_dir() {
     chmod "$mode" "$dir"
 }
 
-# Check if a port is in use
 port_in_use() {
     local port="$1"
     ss -tuln | grep -q ":$port "
 }
 
-# Wait for a service to be ready
 wait_for_health() {
     local url="$1"
     local timeout="${2:-300}"
@@ -234,7 +209,6 @@ wait_for_health() {
     return 1
 }
 
-# Get public IP address
 get_public_ip() {
     curl -sf --max-time 5 https://api.ipify.org 2>/dev/null || \
     curl -sf --max-time 5 https://ifconfig.me 2>/dev/null || \
@@ -242,7 +216,6 @@ get_public_ip() {
     echo "unknown"
 }
 
-# Check if DNS resolves to this server
 check_dns_resolution() {
     local domain="$1"
     local expected_ip
@@ -265,10 +238,6 @@ check_dns_resolution() {
     fi
 }
 
-# ============================================================================
-# NGINX CONFIGURATION
-# ============================================================================
-# Substitute DOMAIN_NAME in nginx config files
 configure_nginx() {
     local install_dir="$1"
     local domain="$2"
@@ -286,7 +255,6 @@ configure_nginx() {
     print_success "Nginx configured for domain: $domain"
 }
 
-# Generate self-signed SSL certificate for local/test deployments
 generate_self_signed_ssl() {
     local domain="$1"
     local ssl_dir="$2"
@@ -310,15 +278,9 @@ generate_self_signed_ssl() {
     fi
 }
 
-# ============================================================================
-# VERIFICATION FUNCTIONS
-# ============================================================================
-# These functions verify that bootstrap steps are properly configured.
-# Used by both bootstrap validation and timetiles check command.
-# Return: 0 = OK, 1 = warning, 2 = error
-# Output: Sets CHECK_MSG with details (read by callers)
+# Verification functions for bootstrap validation and `timetiles check`.
+# Return: 0 = OK, 1 = warning, 2 = error. Sets CHECK_MSG.
 
-# Check Ubuntu version
 verify_ubuntu() {
     if [[ ! -f /etc/os-release ]]; then
         CHECK_MSG="Cannot detect OS"
@@ -334,7 +296,6 @@ verify_ubuntu() {
     fi
 }
 
-# Check swap configuration
 verify_swap() {
     local swap_size
     swap_size=$(free -m | awk '/^Swap:/ {print $2}')
@@ -350,7 +311,6 @@ verify_swap() {
     fi
 }
 
-# Check UFW firewall
 verify_ufw() {
     if ! command -v ufw &>/dev/null; then
         CHECK_MSG="UFW not installed"
@@ -373,7 +333,6 @@ verify_ufw() {
     return 0
 }
 
-# Check SSH hardening
 verify_ssh_hardening() {
     local sshd_config="/etc/ssh/sshd_config"
     if [[ ! -f "$sshd_config" ]]; then
@@ -396,7 +355,6 @@ verify_ssh_hardening() {
     fi
 }
 
-# Check fail2ban
 verify_fail2ban() {
     if ! command -v fail2ban-client &>/dev/null; then
         CHECK_MSG="fail2ban not installed"
@@ -417,7 +375,6 @@ verify_fail2ban() {
     fi
 }
 
-# Check Docker
 verify_docker() {
     if ! docker info &>/dev/null 2>&1; then
         CHECK_MSG="Docker daemon not accessible"
@@ -429,7 +386,6 @@ verify_docker() {
     return 0
 }
 
-# Check Docker Compose
 verify_docker_compose() {
     if ! docker compose version &>/dev/null 2>&1; then
         CHECK_MSG="Docker Compose not available"
@@ -441,7 +397,6 @@ verify_docker_compose() {
     return 0
 }
 
-# Check user in docker group
 verify_docker_group() {
     if groups 2>/dev/null | grep -q docker; then
         CHECK_MSG="User in docker group"
@@ -452,7 +407,6 @@ verify_docker_group() {
     fi
 }
 
-# Check backup cron
 verify_backup_cron() {
     if crontab -l 2>/dev/null | grep -q "timetiles backup"; then
         CHECK_MSG="Backup cron configured"
@@ -463,7 +417,6 @@ verify_backup_cron() {
     fi
 }
 
-# Check log rotation
 verify_log_rotation() {
     if [[ -f /etc/logrotate.d/timetiles ]] || [[ -f /etc/logrotate.d/docker-container ]]; then
         CHECK_MSG="Log rotation configured"
@@ -474,8 +427,7 @@ verify_log_rotation() {
     fi
 }
 
-# Check alerting
-# shellcheck disable=SC2034 # CHECK_MSG is read by callers
+# shellcheck disable=SC2034
 verify_alerting() {
     local alert_script="${1:-/opt/timetiles/scripts/alert.sh}"
     if [[ -x "$alert_script" ]]; then

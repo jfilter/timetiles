@@ -6,16 +6,8 @@
 [[ -n "${_BOOTSTRAP_PROMPTS_LOADED:-}" ]] && return 0
 _BOOTSTRAP_PROMPTS_LOADED=1
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
 NON_INTERACTIVE="${NON_INTERACTIVE:-false}"
 
-# ============================================================================
-# PROMPT FUNCTIONS
-# ============================================================================
-
-# Prompt for a value with optional default
 # Usage: prompt "Question" "default_value" "variable_name"
 prompt() {
     local question="$1"
@@ -119,27 +111,17 @@ prompt_password() {
     return 0
 }
 
-# ============================================================================
-# SECRET GENERATION
-# ============================================================================
-
-# Generate a random secret
 # Usage: generate_secret [length]
 generate_secret() {
     local length="${1:-32}"
     openssl rand -base64 "$length" 2>/dev/null | tr -d '/+=' | head -c "$length"
 }
 
-# Generate a secure password
 # Usage: generate_password [length]
 generate_password() {
     local length="${1:-24}"
     openssl rand -base64 "$length" 2>/dev/null | tr -d '/+=' | head -c "$length"
 }
-
-# ============================================================================
-# VALIDATION FUNCTIONS
-# ============================================================================
 
 # Validate domain name format
 validate_domain() {
@@ -189,11 +171,6 @@ validate_port() {
     return 0
 }
 
-# ============================================================================
-# CONFIGURATION FILE HANDLING
-# ============================================================================
-
-# Load configuration from file
 # Usage: load_config "config_file"
 load_config() {
     local config_file="$1"

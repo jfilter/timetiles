@@ -12,7 +12,6 @@
 #   sudo ./bootstrap.sh --help             # Show help
 #
 # For one-liner installation, see install.sh
-# ============================================================================
 
 set -euo pipefail
 
@@ -24,9 +23,6 @@ source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/state.sh"
 source "$SCRIPT_DIR/lib/prompts.sh"
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
 VERSION="1.0.0"
 FORCE="${FORCE:-false}"
 CONFIG_FILE="${CONFIG_FILE:-}"
@@ -50,9 +46,6 @@ STEPS=(
     "13-scraper-setup"
 )
 
-# ============================================================================
-# FUNCTIONS
-# ============================================================================
 
 print_usage() {
     cat << EOF
@@ -219,9 +212,6 @@ cleanup() {
     release_lock
 }
 
-# ============================================================================
-# MAIN
-# ============================================================================
 
 main() {
     # Parse command line arguments

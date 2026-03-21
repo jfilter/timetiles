@@ -2,19 +2,10 @@
 
 # TimeTiles CLI - Production Management
 # Usage: timetiles [command]
-#
-# This script should be run as the 'timetiles' user (or root, which will
-# automatically switch to timetiles). Running as other users will fail.
-#
-# Install: sudo ln -sf /opt/timetiles/timetiles /usr/local/bin/timetiles
+# Runs as 'timetiles' user (root auto-switches). Install via:
+#   sudo ln -sf /opt/timetiles/timetiles /usr/local/bin/timetiles
 
 set -eo pipefail
-
-# =============================================================================
-# User & Permission Handling
-# =============================================================================
-# The script needs to run as 'timetiles' user with docker group access.
-# If run as root, it re-executes itself as the timetiles user.
 
 DEPLOY_USER="${DEPLOY_USER:-timetiles}"
 
@@ -28,7 +19,6 @@ if [ "$(id -u)" = "0" ]; then
     fi
 fi
 
-# Verify docker access (non-fatal warning)
 if ! docker info &>/dev/null 2>&1; then
     echo "Warning: Cannot connect to Docker. You may need to:"
     echo "  1. Start Docker daemon"
@@ -36,47 +26,29 @@ if ! docker info &>/dev/null 2>&1; then
     echo "  3. Re-login or run: sg docker -c './timetiles $*'"
 fi
 
-# Configuration (resolve symlinks so /usr/local/bin/timetiles → /opt/timetiles works)
 SCRIPT_DIR="$( cd "$( dirname "$(readlink -f "${BASH_SOURCE[0]}")" )" && pwd )"
 ENV_FILE="$SCRIPT_DIR/.env.production"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.prod.yml"
 TEST_OVERRIDE="$SCRIPT_DIR/docker-compose.test.yml"
 SSL_OVERRIDE="$SCRIPT_DIR/docker-compose.ssl-override.yml"
 
-# Build compose command with appropriate overrides
+# Build compose command, layering optional overrides
 DC_CMD="docker compose -f $COMPOSE_FILE"
 BUILD_OVERRIDE="$SCRIPT_DIR/docker-compose.override.yml"
-
-# Add build override if exists (for local image builds instead of GHCR pull)
-if [ -f "$BUILD_OVERRIDE" ]; then
-    DC_CMD="$DC_CMD -f $BUILD_OVERRIDE"
-fi
-
-# Add SSL override if exists (for self-signed certs when SKIP_SSL=true)
-if [ -f "$SSL_OVERRIDE" ]; then
-    DC_CMD="$DC_CMD -f $SSL_OVERRIDE"
-fi
-
-# Add test override if exists (for CI/testing)
-if [ -f "$TEST_OVERRIDE" ]; then
-    DC_CMD="$DC_CMD -f $TEST_OVERRIDE"
-fi
-
+[ -f "$BUILD_OVERRIDE" ] && DC_CMD="$DC_CMD -f $BUILD_OVERRIDE"
+[ -f "$SSL_OVERRIDE" ]   && DC_CMD="$DC_CMD -f $SSL_OVERRIDE"
+[ -f "$TEST_OVERRIDE" ]  && DC_CMD="$DC_CMD -f $TEST_OVERRIDE"
 DC_CMD="$DC_CMD --env-file $ENV_FILE"
 
-# Change to project root for build context
 cd "$SCRIPT_DIR/.."
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Alert script location
 ALERT_SCRIPT="/opt/timetiles/scripts/alert.sh"
 
-# Send alert if script exists
 send_alert() {
     local subject="$1"
     local message="$2"

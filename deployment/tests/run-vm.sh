@@ -20,13 +20,8 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+source "$SCRIPT_DIR/helpers/colors.sh"
 
-# Parse arguments
 FRESH_MODE=false
 SHELL_MODE=false
 DESTROY_MODE=false
@@ -42,18 +37,6 @@ while [[ $# -gt 0 ]]; do
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
-
-print_header() {
-    echo ""
-    echo -e "${YELLOW}════════════════════════════════════════${NC}"
-    echo -e "${YELLOW}  $1${NC}"
-    echo -e "${YELLOW}════════════════════════════════════════${NC}"
-    echo ""
-}
-
-print_step() {
-    echo -e "${GREEN}▶${NC} $1"
-}
 
 # Setup PATH for Vagrant and VirtualBox
 setup_path() {
@@ -79,7 +62,7 @@ run_in_vm() {
     local log="/tmp/timetiles-vm-cmd.log"
     local exitfile="/tmp/timetiles-vm-cmd.exit"
 
-    print_step "$desc"
+    print_info "$desc"
 
     # Start command in background inside VM, write exit code to file when done
     vagrant ssh -c "sudo bash -c '
@@ -165,18 +148,18 @@ fi
 
 # Handle fresh mode
 if $FRESH_MODE && $VM_RUNNING; then
-    print_step "Destroying existing VM (--fresh)..."
+    print_info "Destroying existing VM (--fresh)..."
     vagrant destroy -f
     VM_RUNNING=false
 fi
 
 if ! $VM_RUNNING; then
-    print_step "Starting VM (first run downloads ~1GB image)..."
+    print_info "Starting VM (first run downloads ~1GB image)..."
     vagrant up --provider=virtualbox
     echo -e "${GREEN}✓ VM ready${NC}"
 else
     echo -e "${GREEN}✓ Reusing existing VM${NC}"
-    print_step "Syncing codebase..."
+    print_info "Syncing codebase..."
     vagrant rsync
     vagrant ssh -c "sudo chown -R timetiles:timetiles /opt/timetiles" 2>/dev/null
 fi
@@ -187,7 +170,7 @@ run_in_vm "Running bootstrap" \
     "/opt/timetiles/bootstrap/bootstrap.sh --non-interactive --config /opt/timetiles/tests/bootstrap.test.conf"
 
 # Post-bootstrap setup
-print_step "Post-bootstrap setup..."
+print_info "Post-bootstrap setup..."
 vagrant ssh -c "sudo bash -c '
     chown -R timetiles:timetiles /opt/timetiles
     chown -R timetiles:timetiles /opt/timetiles-src 2>/dev/null || true

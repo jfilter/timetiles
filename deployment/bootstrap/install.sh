@@ -1,7 +1,5 @@
 #!/bin/bash
-# ============================================================================
 # TimeTiles One-Liner Installation Script
-# ============================================================================
 # This script is designed to be run via curl:
 #
 #   curl -sSL https://raw.githubusercontent.com/jfilter/timetiles/main/deployment/bootstrap/install.sh | sudo bash
@@ -10,7 +8,6 @@
 #
 #   curl -sSL .../install.sh | sudo bash -s -- --domain example.com --email admin@example.com
 #
-# ============================================================================
 
 set -euo pipefail
 
@@ -26,10 +23,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
-
-# ============================================================================
-# FUNCTIONS
-# ============================================================================
 
 print_banner() {
     echo ""
@@ -195,10 +188,6 @@ parse_args() {
     # Export for bootstrap.sh
     BOOTSTRAP_ARGS=("${bootstrap_args[@]:-}")
 }
-
-# ============================================================================
-# MAIN
-# ============================================================================
 
 main() {
     print_banner

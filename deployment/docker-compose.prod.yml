@@ -9,6 +9,11 @@ services:
     image: ${POSTGRES_IMAGE:-kartoza/postgis}:${POSTGRES_VERSION:-17-3.5}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-postgres
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
     environment:
       # Standard postgres image variables
       POSTGRES_DB: ${DB_NAME:-timetiles}
@@ -53,6 +58,11 @@ services:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-web
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
     # No ports exposed directly - nginx handles this
     expose:
       - "${CONTAINER_PORT:-3000}"
@@ -111,6 +121,11 @@ services:
     image: nginx:${NGINX_VERSION:-alpine}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-nginx
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
@@ -118,6 +133,8 @@ services:
       - ${NGINX_CONF_PATH:-./nginx/nginx.conf}:/etc/nginx/nginx.conf:ro
       - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
       - ./nginx/proxy-headers.conf:/etc/nginx/proxy-headers.conf:ro
+      - ./nginx/security-headers.conf:/etc/nginx/security-headers.conf:ro
+      - ./nginx/security-headers-https.conf:/etc/nginx/security-headers-https.conf:ro
       - letsencrypt:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot:ro
     depends_on:
@@ -125,10 +142,11 @@ services:
     networks:
       - timetiles-network
     healthcheck:
-      test: ["CMD", "nginx", "-t"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/api/health || exit 1"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
+      start_period: 30s
 
   # Certbot for Let's Encrypt SSL certificates
   certbot:

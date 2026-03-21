@@ -35,10 +35,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Clean up
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 22 from NodeSource
+# Install Node.js 24 from NodeSource (must match Dockerfile.prod's node:24-alpine)
 RUN mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
@@ -50,32 +50,36 @@ RUN groupadd --system --gid 1001 nodejs \
 # Copy configuration files
 COPY deployment/allinone/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY deployment/allinone/nginx.conf /etc/nginx/nginx.conf
+COPY deployment/nginx/proxy-headers.conf /etc/nginx/proxy-headers.conf
+COPY deployment/nginx/security-headers.conf /etc/nginx/security-headers.conf
+COPY deployment/nginx/security-headers-https.conf /etc/nginx/security-headers-https.conf
 COPY deployment/allinone/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Enable corepack and install pnpm
 RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
 
-# Build stage: compile the application
-FROM base AS builder
-
+# Pruner stage: use turbo to extract only web's dependencies (same as Dockerfile.prod)
+# This automatically handles new packages without manual COPY updates
+FROM base AS pruner
 WORKDIR /build
+COPY . .
+RUN npx turbo prune web --docker
 
-# Copy package files first for better caching
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
-COPY apps/web/package.json ./apps/web/
-COPY packages/ui/package.json ./packages/ui/
-COPY packages/assets/package.json ./packages/assets/
-COPY packages/eslint-config/package.json ./packages/eslint-config/
-COPY packages/typescript-config/package.json ./packages/typescript-config/
-COPY packages/payload-schema-detection/package.json ./packages/payload-schema-detection/
-
-# Install dependencies
+# Dependencies stage: install only what the web app needs
+FROM base AS deps
+WORKDIR /build
+COPY --from=pruner /build/out/json/ .
+COPY --from=pruner /build/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /build/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
 
-# Copy full source code
-COPY . .
+# Build stage: compile the application
+FROM base AS builder
+WORKDIR /build
+COPY --from=pruner /build/out/full/ .
+COPY --from=deps /build/ .
 
 # Build arguments for Payload CMS (dummy values for compilation)
 ARG DATABASE_URL=postgresql://user:pass@localhost:5432/db
