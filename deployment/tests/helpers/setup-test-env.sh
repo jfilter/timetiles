@@ -104,7 +104,7 @@ source "$ENV_FILE"
 UPLOAD_HOST_DIR="${UPLOAD_HOST_DIR:-$DEPLOY_DIR/uploads}"
 mkdir -p "$UPLOAD_HOST_DIR"
 if [[ "$(stat -c %u "$UPLOAD_HOST_DIR" 2>/dev/null || stat -f %u "$UPLOAD_HOST_DIR")" != "1001" ]]; then
-    sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null || chmod 777 "$UPLOAD_HOST_DIR"
+    sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null || echo "Warning: Could not set ownership on $UPLOAD_HOST_DIR"
 fi
 
 # Tear down any existing services and volumes for a clean start

@@ -62,6 +62,17 @@ logger -t timetiles "Health check failed (attempt $failures of $MAX_FAILURES)"
 if [[ $failures -ge $MAX_FAILURES ]]; then
     logger -t timetiles "Max failures reached, restarting services"
 
+    # Check cooldown to prevent restart loops
+    COOLDOWN_FILE="/var/lib/timetiles/.last-restart"
+    if [[ -f "$COOLDOWN_FILE" ]]; then
+        last_restart=$(cat "$COOLDOWN_FILE")
+        now=$(date +%s)
+        if (( now - last_restart < 600 )); then
+            logger -t timetiles "Restart cooldown active (last restart ${last_restart}), skipping"
+            exit 1
+        fi
+    fi
+
     # Send alert before restart
     if [[ -x "$ALERT_SCRIPT" ]]; then
         "$ALERT_SCRIPT" "Health Check Failed" \
@@ -69,6 +80,7 @@ if [[ $failures -ge $MAX_FAILURES ]]; then
     fi
 
     systemctl restart timetiles.service
+    date +%s > "$COOLDOWN_FILE"
     echo "0" > "$FAILURE_COUNT_FILE"
 fi
 
@@ -132,10 +144,7 @@ setup_log_rotation() {
     delaycompress
     notifempty
     create 640 timetiles timetiles
-    sharedscripts
-    postrotate
-        /bin/true
-    endscript
+    copytruncate
 }
 EOF
 

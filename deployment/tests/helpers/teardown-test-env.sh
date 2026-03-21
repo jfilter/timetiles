@@ -18,10 +18,12 @@ else
         --env-file .env.production down 2>/dev/null || true
 fi
 
-# Clean up test artifacts (optional - keep for debugging)
+# Always clean up the test override file to avoid stale config
+rm -f "$DEPLOY_DIR/docker-compose.test.yml"
+
+# Clean up remaining test artifacts (optional - keep for debugging)
 if [[ "${CLEANUP_ALL:-false}" == "true" ]]; then
     rm -rf "$DEPLOY_DIR/nginx-test"
-    rm -f "$DEPLOY_DIR/docker-compose.test.yml"
     rm -rf "$DEPLOY_DIR/ssl"
     rm -rf "$DEPLOY_DIR/backups"
     echo "Cleaned up all test artifacts"

@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    # Run weekly on Monday at 9am UTC to catch new vulnerabilities
-    - cron: "0 9 * * 1"
+    # Run daily at 9am UTC to match image build cadence
+    - cron: "0 9 * * *"
   workflow_dispatch:
     inputs:
       scan_type:

@@ -74,23 +74,19 @@ ensure_docker_running() {
 configure_docker_daemon() {
     print_step "Configuring Docker daemon..."
 
-    # Create daemon.json with production settings
-    # DNS servers are needed for container builds to reach package repos
     mkdir -p /etc/docker
-    cat > /etc/docker/daemon.json << 'EOF'
-{
-    "dns": ["8.8.8.8", "8.8.4.4"],
-    "log-driver": "json-file",
-    "log-opts": {
-        "max-size": "10m",
-        "max-file": "3"
-    },
-    "storage-driver": "overlay2",
-    "live-restore": true
-}
-EOF
 
-    # Restart Docker to apply settings
+    # Merge with existing daemon.json if present
+    local daemon_config='{"log-driver":"json-file","log-opts":{"max-size":"10m","max-file":"3"},"storage-driver":"overlay2","live-restore":true}'
+
+    if [[ -f /etc/docker/daemon.json ]]; then
+        print_info "Merging with existing Docker daemon configuration"
+        # Merge new settings into existing config (existing values take precedence)
+        daemon_config=$(jq -s '.[0] * .[1]' /etc/docker/daemon.json <(echo "$daemon_config"))
+    fi
+
+    echo "$daemon_config" | jq . > /etc/docker/daemon.json
+
     systemctl restart docker
 
     print_success "Docker daemon configured"

@@ -48,14 +48,14 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           export PATH="$HOME/.local/bin:$PATH"
 
-          # Install linting tools
-          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.4/actionlint_1.7.4_linux_amd64.tar.gz | tar xz -C "$HOME/.local/bin" actionlint
+          # Download linting tools (to files first, not piped)
+          curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.4/actionlint_1.7.4_linux_amd64.tar.gz -o /tmp/actionlint.tar.gz
+          tar xz -C "$HOME/.local/bin" -f /tmp/actionlint.tar.gz actionlint && rm /tmp/actionlint.tar.gz
           wget -q https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -O "$HOME/.local/bin/hadolint"
           curl -sSfL https://github.com/mrtazz/checkmake/releases/download/0.2.2/checkmake-0.2.2.linux.amd64 -o "$HOME/.local/bin/checkmake"
-          chmod +x "$HOME/.local/bin/hadolint" "$HOME/.local/bin/actionlint" "$HOME/.local/bin/checkmake"
+          chmod +x "$HOME/.local/bin"/{actionlint,hadolint,checkmake}
 
           pnpm lint:devops
-        continue-on-error: true
 
       - name: Build web app
         timeout-minutes: 10

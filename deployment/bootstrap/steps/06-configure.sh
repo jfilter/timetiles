@@ -17,29 +17,27 @@ run_step() {
     fi
 
     # Generate secrets if not already set
+    # Secrets are NOT saved to state — they are only written to .env.production (chmod 600).
+    # On resume, they are read from .env.production rather than the plaintext state file.
     if [[ -z "${DB_PASSWORD:-}" ]]; then
         DB_PASSWORD=$(generate_password 24)
         print_info "Generated database password"
-        save_config_to_state "DB_PASSWORD" "$DB_PASSWORD"
     fi
 
     if [[ -z "${PAYLOAD_SECRET:-}" ]]; then
         PAYLOAD_SECRET=$(generate_secret 32)
         print_info "Generated Payload secret"
-        save_config_to_state "PAYLOAD_SECRET" "$PAYLOAD_SECRET"
     fi
 
     if [[ -z "${RESTIC_PASSWORD:-}" ]]; then
         RESTIC_PASSWORD=$(generate_secret 32)
         print_info "Generated restic backup password"
-        save_config_to_state "RESTIC_PASSWORD" "$RESTIC_PASSWORD"
     fi
 
     if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
         if [[ -z "${SCRAPER_API_KEY:-}" ]]; then
             SCRAPER_API_KEY=$(generate_secret 32)
             print_info "Generated scraper API key"
-            save_config_to_state "SCRAPER_API_KEY" "$SCRAPER_API_KEY"
         fi
     fi
 
@@ -114,53 +112,49 @@ verify_env_file() {
 
 create_credentials_file() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
-    local creds_file="$install_dir/credentials.txt"
 
-    print_step "Creating credentials file..."
+    print_step "Displaying credentials (save these now!)..."
 
-    cat > "$creds_file" << EOF
-# TimeTiles Credentials
+    echo ""
+    echo "========================================================================"
+    echo " IMPORTANT: Save these credentials now — they will not be shown again"
+    echo "========================================================================"
+    echo ""
+    echo "  Domain: https://$DOMAIN_NAME"
+    echo "  Dashboard: https://$DOMAIN_NAME/dashboard"
+    echo ""
+    echo "  Database Password: $DB_PASSWORD"
+    echo "  Payload Secret: $PAYLOAD_SECRET"
+    echo "  Backup Password: $RESTIC_PASSWORD"
+    if [[ "${SKIP_SCRAPER:-true}" != "true" ]] && [[ -n "${SCRAPER_API_KEY:-}" ]]; then
+        echo "  Scraper API Key: $SCRAPER_API_KEY"
+    fi
+    echo ""
+    echo "  CRITICAL: The backup password is required to restore backups!"
+    echo "========================================================================"
+    echo ""
+
+    # Write a reference file WITHOUT secrets
+    cat > "$install_dir/credentials.txt" << EOF
+# TimeTiles Deployment Reference
 # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-# KEEP THIS FILE SECURE - Contains sensitive information
 # ============================================================================
 
 Domain: https://$DOMAIN_NAME
-Admin Panel: https://$DOMAIN_NAME/dashboard
+Dashboard: https://$DOMAIN_NAME/dashboard
 
-Database:
-  Host: postgres (internal Docker network)
-  Port: 5432
-  Database: ${DB_NAME:-timetiles}
-  Username: ${DB_USER:-timetiles_user}
-  Password: $DB_PASSWORD
-
-Payload CMS:
-  Secret: $PAYLOAD_SECRET
-
-Let's Encrypt:
-  Email: $LETSENCRYPT_EMAIL
-
-Backup Encryption:
-  Password: $RESTIC_PASSWORD
-  CRITICAL: Without this password, backups cannot be restored!
-$(if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then cat << SCRAPER_CREDS
-
-Scraper Runner:
-  API Key: $SCRAPER_API_KEY
-  URL: http://localhost:4000
-  Health: http://localhost:4000/health
-SCRAPER_CREDS
-fi)
+Secrets are stored in: $install_dir/.env.production
+Backup password is in: $install_dir/.env.production (RESTIC_PASSWORD)
 
 # ============================================================================
-# After first login, create an admin user at:
-# https://$DOMAIN_NAME/dashboard
+# Credentials were displayed during bootstrap — they are NOT stored in this file.
+# To view secrets, check .env.production (readable only by the app user).
 # ============================================================================
 EOF
 
-    chmod 600 "$creds_file"
-    chown root:root "$creds_file"
+    chmod 600 "$install_dir/credentials.txt"
+    chown root:root "$install_dir/credentials.txt"
 
-    print_success "Credentials saved to: $creds_file"
-    print_warning "Keep this file secure!"
+    print_success "Credentials displayed (save them now!)"
+    print_warning "Secrets are only stored in .env.production — keep that file secure!"
 }

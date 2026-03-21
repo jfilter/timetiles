@@ -166,7 +166,7 @@ jobs:
     secrets: inherit
 
   merge-scraper:
-    needs: [build-scraper]
+    needs: [build-scraper, test-deployment]
     uses: ./.github/workflows/merge-manifest.yml
     with:
       image-name: ghcr.io/${{ github.repository }}-scraper
@@ -176,7 +176,7 @@ jobs:
     secrets: inherit
 
   merge-scraper-python:
-    needs: [build-scraper-python]
+    needs: [build-scraper-python, test-deployment]
     uses: ./.github/workflows/merge-manifest.yml
     with:
       image-name: ghcr.io/${{ github.repository }}-scraper-python
@@ -186,7 +186,7 @@ jobs:
     secrets: inherit
 
   merge-scraper-node:
-    needs: [build-scraper-node]
+    needs: [build-scraper-node, test-deployment]
     uses: ./.github/workflows/merge-manifest.yml
     with:
       image-name: ghcr.io/${{ github.repository }}-scraper-node

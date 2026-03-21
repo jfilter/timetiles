@@ -568,12 +568,12 @@ EOF
                     chmod +x "$CRON_SCRIPT"
 
                     # Add to crontab (daily at 2 AM)
-                    CRON_CMD="0 2 * * * $CRON_SCRIPT >> /var/log/timetiles-backup.log 2>&1"
+                    CRON_CMD="0 2 * * * $CRON_SCRIPT >> /var/log/timetiles/backup.log 2>&1"
                     (crontab -l 2>/dev/null | grep -v "$CRON_SCRIPT"; echo "$CRON_CMD") | crontab -
 
                     echo -e "${GREEN}Automatic backups configured (daily at 2 AM)${NC}"
                     [[ -n "$CRON_OFFSITE" ]] && echo "Offsite sync enabled"
-                    echo "Logs: /var/log/timetiles-backup.log"
+                    echo "Logs: /var/log/timetiles/backup.log"
                     echo "To disable: timetiles backup auto --disable"
                 fi
                 ;;

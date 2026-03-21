@@ -37,8 +37,11 @@ install_nodejs() {
 
     print_step "Installing Node.js..."
 
-    # Install Node.js 24.x from NodeSource
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+    # Add NodeSource GPG key and repository (no pipe-to-bash)
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+    apt-get update -qq
     apt-get install -y nodejs
 
     print_success "Node.js installed: $(node --version)"
@@ -129,7 +132,7 @@ create_sandbox_network() {
         return 0
     fi
 
-    sudo -u "$user" podman network create scraper-sandbox
+    sudo -u "$user" podman network create --internal scraper-sandbox
     print_success "Created Podman network: scraper-sandbox"
 }
 
@@ -211,7 +214,7 @@ enable_scraper_url() {
     # Restart the web container so it picks up the new env var
     if command -v docker &>/dev/null; then
         print_info "Restarting web container to pick up SCRAPER_RUNNER_URL..."
-        sudo -u "$user" sg docker -c "cd $install_dir && docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps web" 2>/dev/null || true
+        sudo -u "$user" sg docker -c "cd $install_dir && ./timetiles restart" 2>/dev/null || true
     fi
 
     print_success "SCRAPER_RUNNER_URL enabled"
