@@ -141,8 +141,8 @@ test.describe("Import Wizard - Full Flow", () => {
         throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
       }
 
-      expect(responseBody.importFileId).toBeDefined();
-      expect(responseBody.catalogId).toBeDefined();
+      expect(typeof responseBody.importFileId).toBe("number");
+      expect(typeof responseBody.catalogId).toBe("number");
 
       // Step 6: Processing page is shown
       const processingIndicator = page.getByText(/importing your data/i);
@@ -269,8 +269,8 @@ test.describe("Import Wizard - Full Flow", () => {
         throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
       }
 
-      expect(responseBody.importFileId).toBeDefined();
-      expect(responseBody.catalogId).toBeDefined();
+      expect(typeof responseBody.importFileId).toBe("number");
+      expect(typeof responseBody.catalogId).toBe("number");
 
       // Step 6: Processing
       const processingIndicator = page.getByText(/importing your data/i);

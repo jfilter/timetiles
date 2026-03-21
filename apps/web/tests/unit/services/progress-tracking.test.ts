@@ -97,14 +97,14 @@ describe.sequential("ProgressTrackingService", () => {
       expect(updateCall.collection).toBe("import-jobs");
       expect(updateCall.id).toBe(123);
       expect(updateCall.data.stage).toBe(PROCESSING_STAGE.DETECT_SCHEMA);
-      expect(updateCall.data.progress).toBeDefined();
-      expect(updateCall.data.progress.stages).toBeDefined();
+      expect(updateCall.data.progress).not.toBeNull();
+      expect(typeof updateCall.data.progress.stages).toBe("object");
 
       const stage = updateCall.data.progress.stages[PROCESSING_STAGE.DETECT_SCHEMA];
 
       expect(stage.status).toBe("in_progress");
       expect(stage.rowsTotal).toBe(800);
-      expect(stage.startedAt).toBeTruthy();
+      expect(typeof stage.startedAt).toBe("string");
     });
 
     it("rejects partially numeric job ids before loading the job", async () => {

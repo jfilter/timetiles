@@ -431,9 +431,11 @@ describe.sequential("POST /api/import/configure", () => {
 
       expect(response.status).toBe(200);
 
-      expect(body.importFileId).toBeDefined();
+      expect(typeof body.importFileId).toBe("number");
+      expect(body.importFileId).toBeGreaterThan(0);
       expect(body.catalogId).toBe(1);
-      expect(body.datasets).toBeDefined();
+      expect(typeof body.datasets).toBe("object");
+      expect(body.datasets).not.toBeNull();
 
       // Verify import file creation
       expect(mocks.mockPayload.create).toHaveBeenCalledWith(

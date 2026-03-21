@@ -17,7 +17,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
 
-const STORAGE_KEY = "timetiles_import_wizard_draft";
+// Must match the `name` in wizard-store.ts persist() config
+const STORAGE_KEY = "timetiles-wizard-v2";
 
 test.describe("Flow Editor Transforms", () => {
   test.describe.configure({ mode: "serial" });
@@ -116,7 +117,7 @@ test.describe("Flow Editor Transforms", () => {
       throw new Error(`Configure import failed with status ${response.status()}: ${JSON.stringify(responseBody)}`);
     }
 
-    expect(responseBody.importFileId).toBeDefined();
+    expect(typeof responseBody.importFileId).toBe("number");
 
     // Step 6: Wait for processing
     const processingIndicator = page.getByText(/importing your data/i);
@@ -242,8 +243,17 @@ test.describe("Flow Editor Transforms", () => {
     // Step 4: Wait for field mapping, then inject transforms via localStorage
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Wait for localStorage save (500ms debounce + buffer)
-    await page.waitForTimeout(1500);
+    // Wait for wizard state to be saved to localStorage
+    await page.waitForFunction(
+      (key) => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        return data?.state?.sheetPreview != null || data?.state?.fieldMappings != null;
+      },
+      STORAGE_KEY,
+      { timeout: 10000 }
+    );
 
     // Inject a string-op (uppercase) transform on the "title" field into wizard state
     await page.evaluate(
@@ -365,8 +375,17 @@ test.describe("Flow Editor Transforms", () => {
     // Step 4: Wait for field mapping, then inject rename transform
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Wait for localStorage save
-    await page.waitForTimeout(1500);
+    // Wait for wizard state to be saved to localStorage
+    await page.waitForFunction(
+      (key) => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        return data?.state?.sheetPreview != null || data?.state?.fieldMappings != null;
+      },
+      STORAGE_KEY,
+      { timeout: 10000 }
+    );
 
     // Inject a rename transform: "category" → "event_type"
     await page.evaluate(

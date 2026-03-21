@@ -30,7 +30,7 @@ describe.sequential("Password Reset Flow", () => {
     await testEnv.seedManager.truncate(["users"]);
   });
 
-  it("forgot-password returns success for existing user", async () => {
+  it("forgot-password returns a token for existing user", async () => {
     const { payload } = testEnv;
     const timestamp = Date.now();
     const testEmail = `reset-existing-${timestamp}@test.com`;
@@ -43,7 +43,55 @@ describe.sequential("Password Reset Flow", () => {
 
     const token = await payload.forgotPassword({ collection: "users", data: { email: testEmail }, disableEmail: true });
 
-    expect(token).toBeDefined();
+    expect(typeof token).toBe("string");
+    expect(token.length).toBeGreaterThan(0);
+  });
+
+  it("reset-password with valid token changes the password", async () => {
+    const { payload } = testEnv;
+    const timestamp = Date.now();
+    const testEmail = `reset-happy-${timestamp}@test.com`;
+    const oldPassword = TEST_CREDENTIALS.auth.secure;
+    const newPassword = TEST_CREDENTIALS.auth.newSecure;
+
+    await payload.create({
+      collection: "users",
+      data: { email: testEmail, password: oldPassword, trustLevel: `${TRUST_LEVELS.BASIC}`, _verified: true },
+      disableVerificationEmail: true,
+    });
+
+    // Get a valid reset token
+    const token = await payload.forgotPassword({ collection: "users", data: { email: testEmail }, disableEmail: true });
+
+    // Reset the password
+    await payload.resetPassword({ collection: "users", data: { token, password: newPassword }, overrideAccess: true });
+
+    // Verify new password works
+    const loginResult = await payload.login({ collection: "users", data: { email: testEmail, password: newPassword } });
+    expect(loginResult.user).toBeDefined();
+    expect(loginResult.user!.email).toBe(testEmail);
+  });
+
+  it("old password no longer works after reset", async () => {
+    const { payload } = testEnv;
+    const timestamp = Date.now();
+    const testEmail = `reset-old-${timestamp}@test.com`;
+    const oldPassword = TEST_CREDENTIALS.auth.secure;
+    const newPassword = TEST_CREDENTIALS.auth.newSecure;
+
+    await payload.create({
+      collection: "users",
+      data: { email: testEmail, password: oldPassword, trustLevel: `${TRUST_LEVELS.BASIC}` },
+      disableVerificationEmail: true,
+    });
+
+    const token = await payload.forgotPassword({ collection: "users", data: { email: testEmail }, disableEmail: true });
+    await payload.resetPassword({ collection: "users", data: { token, password: newPassword }, overrideAccess: true });
+
+    // Old password should no longer work
+    await expect(
+      payload.login({ collection: "users", data: { email: testEmail, password: oldPassword } })
+    ).rejects.toThrow();
   });
 
   it("forgot-password does not throw for non-existent email", async () => {

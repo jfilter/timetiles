@@ -58,9 +58,9 @@ describe("useSelectedEvent", () => {
       result.current.openEvent(456);
     });
 
-    expect(onUrlUpdate).toHaveBeenCalled();
+    expect(onUrlUpdate).toHaveBeenCalledTimes(1);
     const lastCallArgs = onUrlUpdate.mock.calls.at(-1);
-    expect(lastCallArgs).toBeDefined();
+    expect(lastCallArgs).not.toBeUndefined();
     const lastCall = lastCallArgs![0] as UrlUpdateEvent;
     expect(lastCall.queryString).toContain("event=456");
   });
@@ -117,9 +117,9 @@ describe("useSelectedEvent", () => {
       result.current.openEvent(789);
     });
 
-    expect(onUrlUpdate).toHaveBeenCalled();
+    expect(onUrlUpdate).toHaveBeenCalledTimes(1);
     const lastCallArgs = onUrlUpdate.mock.calls.at(-1);
-    expect(lastCallArgs).toBeDefined();
+    expect(lastCallArgs).not.toBeUndefined();
     const lastCall = lastCallArgs![0] as UrlUpdateEvent;
     // Should contain the new event param
     expect(lastCall.queryString).toContain("event=789");

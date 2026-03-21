@@ -268,18 +268,20 @@ test.describe("Import Wizard - Field Mapping", () => {
   });
 
   test("should show sample data preview", async ({ page }) => {
-    // Look for data preview table or sheet preview
-    const pageContent = await page.content();
-
     // The wizard should show some preview of the uploaded data
-    const hasPreview =
-      pageContent.toLowerCase().includes("preview") ||
-      pageContent.toLowerCase().includes("sheet") ||
-      pageContent.toLowerCase().includes("row") ||
-      pageContent.toLowerCase().includes("sample") ||
-      page.locator("table").count();
+    // Check for a preview table or descriptive text about the data
+    const tableCount = await page.locator("table").count();
+    const pageText = await page.locator("body").innerText();
+    const pageTextLower = pageText.toLowerCase();
 
-    expect(hasPreview).toBeTruthy();
+    const hasPreviewContent =
+      tableCount > 0 ||
+      pageTextLower.includes("preview") ||
+      pageTextLower.includes("sheet") ||
+      pageTextLower.includes("row") ||
+      pageTextLower.includes("sample");
+
+    expect(hasPreviewContent).toBe(true);
   });
 });
 
@@ -451,12 +453,12 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
     }
 
-    expect(responseBody.importFileId).toBeDefined();
-    expect(responseBody.catalogId).toBeDefined();
+    expect(typeof responseBody.importFileId).toBe("number");
+    expect(typeof responseBody.catalogId).toBe("number");
 
     // Verify 3 datasets were created in the response
     // Response should have datasets object with 3 entries (keyed by sheet index)
-    expect(responseBody.datasets).toBeDefined();
+    expect(responseBody.datasets).not.toBeNull();
     const datasetIds = Object.values(responseBody.datasets);
     expect(datasetIds.length).toBe(3);
 
@@ -649,12 +651,12 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
     }
 
-    expect(responseBody.importFileId).toBeDefined();
-    expect(responseBody.catalogId).toBeDefined();
+    expect(typeof responseBody.importFileId).toBe("number");
+    expect(typeof responseBody.catalogId).toBe("number");
 
     // Verify 3 datasets were created in the response
     // Response should have datasets object with 3 entries (keyed by sheet index)
-    expect(responseBody.datasets).toBeDefined();
+    expect(responseBody.datasets).not.toBeNull();
     const datasetIds = Object.values(responseBody.datasets);
     expect(datasetIds.length).toBe(3);
 
@@ -951,8 +953,8 @@ test.describe("Import Wizard - Full Flow", () => {
       throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
     }
 
-    expect(responseBody.importFileId).toBeDefined();
-    expect(responseBody.catalogId).toBeDefined();
+    expect(typeof responseBody.importFileId).toBe("number");
+    expect(typeof responseBody.catalogId).toBe("number");
 
     // Step 6: Processing page is shown
     const processingIndicator = page.getByText(/importing your data/i);

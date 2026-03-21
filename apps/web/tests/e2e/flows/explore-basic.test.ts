@@ -38,7 +38,7 @@ test.describe("Explore Page - Basic Functionality", () => {
 
     // Check map container has proper dimensions
     const mapBox = await explorePage.map.boundingBox();
-    expect(mapBox).toBeTruthy();
+    expect(mapBox).not.toBeNull();
     expect(mapBox!.width).toBeGreaterThan(300);
     expect(mapBox!.height).toBeGreaterThan(300);
 

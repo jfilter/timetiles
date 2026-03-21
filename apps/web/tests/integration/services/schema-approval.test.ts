@@ -178,7 +178,7 @@ describe.sequential("Schema Approval Workflow", () => {
     });
 
     it("prevents unauthorized users from approving schema", async () => {
-      // Create draft schema
+      // Create draft schema (using overrideAccess implicitly via payload.create)
       const draftSchema = await payload.create({
         collection: "dataset-schemas",
         data: {
@@ -192,11 +192,21 @@ describe.sequential("Schema Approval Workflow", () => {
         },
       });
 
-      // Regular user should not be able to approve
-      // In real implementation, this would throw an error
-      // For testing, we verify the permission check would occur
-      expect(viewerUser.role).toBe("user");
-      expect(draftSchema._status).toBe("draft");
+      // Regular user (role: "user") should NOT be able to update schemas
+      // dataset-schemas update access is restricted to isEditorOrAdmin
+      await expect(
+        payload.update({
+          collection: "dataset-schemas",
+          id: draftSchema.id,
+          data: { _status: "published", approvedBy: viewerUser.id },
+          user: viewerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow();
+
+      // Verify the schema is still in draft after the rejected update
+      const unchangedSchema = await payload.findByID({ collection: "dataset-schemas", id: draftSchema.id });
+      expect(unchangedSchema._status).toBe("draft");
     });
 
     it("handles schema rejection", async () => {
@@ -239,8 +249,12 @@ describe.sequential("Schema Approval Workflow", () => {
     });
   });
 
-  describe("Auto-approval Scenarios", () => {
-    it("auto-approves safe schema changes when autoGrow is enabled", async () => {
+  describe("Schema Approval Flag Storage", () => {
+    // NOTE: Auto-approval decision logic lives in the import pipeline jobs
+    // (schema-detection job), not in collection hooks. These tests verify
+    // that the schema collection correctly stores approval-related fields.
+
+    it("stores published auto-approved schema with correct flags", async () => {
       // Update dataset to allow auto-growth
       await payload.update({
         collection: "datasets",
@@ -248,23 +262,22 @@ describe.sequential("Schema Approval Workflow", () => {
         data: { schemaConfig: { locked: false, autoGrow: true, strictValidation: false } },
       });
 
-      // Create schema with only new optional fields
       const autoApprovedSchema = await payload.create({
         collection: "dataset-schemas",
         data: {
           dataset: testDatasetId,
           versionNumber: 2,
-          _status: "published", // Automatically active
+          _status: "published",
           schema: {
             type: "object",
             properties: {
               id: { type: "string" },
               title: { type: "string" },
               date: { type: "string", format: "date" },
-              description: { type: "string" }, // New optional field
-              tags: { type: "array", items: { type: "string" } }, // New optional field
+              description: { type: "string" },
+              tags: { type: "array", items: { type: "string" } },
             },
-            required: ["id", "title", "date"], // Same required fields
+            required: ["id", "title", "date"],
           },
           fieldMetadata: {},
           schemaSummary: {
@@ -282,17 +295,20 @@ describe.sequential("Schema Approval Workflow", () => {
       expect(autoApprovedSchema._status).toBe("published");
       expect(autoApprovedSchema.autoApproved).toBe(true);
       expect(autoApprovedSchema.approvalRequired).toBe(false);
+
+      // Verify the stored schema is queryable and correctly linked
+      const found = await payload.findByID({ collection: "dataset-schemas", id: autoApprovedSchema.id });
+      expect(found.autoApproved).toBe(true);
+      expect(found.versionNumber).toBe(2);
     });
 
-    it("auto-approves enum value additions", async () => {
-      // Update dataset schema config to allow auto-growth
+    it("stores schema with enum growth metadata", async () => {
       await payload.update({
         collection: "datasets",
         id: testDatasetId,
         data: { schemaConfig: { locked: false, autoGrow: true } },
       });
 
-      // Create schema with additional enum value
       const enumGrowthSchema = await payload.create({
         collection: "dataset-schemas",
         data: {
@@ -318,16 +334,18 @@ describe.sequential("Schema Approval Workflow", () => {
 
       expect(enumGrowthSchema.autoApproved).toBe(true);
       expect(enumGrowthSchema._status).toBe("published");
+      const summary = enumGrowthSchema.schemaSummary as { enumChanges?: Array<{ path: string }> };
+      expect(summary.enumChanges).toHaveLength(1);
+      expect(summary.enumChanges![0]!.path).toBe("status");
     });
 
-    it("requires approval for enum value removals", async () => {
-      // Create schema that removes enum values
+    it("stores draft schema requiring approval for breaking changes", async () => {
       const enumRemovalSchema = await payload.create({
         collection: "dataset-schemas",
         data: {
           dataset: testDatasetId,
           versionNumber: 2,
-          _status: "draft", // Requires approval
+          _status: "draft",
           schema: {
             type: "object",
             properties: {
@@ -387,13 +405,13 @@ describe.sequential("Schema Approval Workflow", () => {
       expect(schemaHistory.docs[0]!._status).toBe("published");
     });
 
-    it("updates dataset current schema when approved", async () => {
+    it("creates published schema version linked to dataset", async () => {
       const newSchema = {
         type: "object",
         properties: { id: { type: "string" }, title: { type: "string" }, newField: { type: "string" } },
       };
 
-      // Create and activate new schema
+      // Create and activate new schema version
       const schemaDoc = await payload.create({
         collection: "dataset-schemas",
         data: {
@@ -406,10 +424,14 @@ describe.sequential("Schema Approval Workflow", () => {
         },
       });
 
-      // In real implementation, afterChange hook would update dataset
-      // For testing, we just verify the schema was created successfully
       expect(schemaDoc.versionNumber).toBe(2);
       expect(schemaDoc._status).toBe("published");
+
+      // Verify the schema is queryable and linked to the correct dataset
+      const found = await payload.findByID({ collection: "dataset-schemas", id: schemaDoc.id });
+      expect(found._status).toBe("published");
+      const linkedDatasetId = typeof found.dataset === "object" ? found.dataset.id : found.dataset;
+      expect(linkedDatasetId).toBe(testDatasetId);
     });
   });
 
@@ -461,7 +483,7 @@ describe.sequential("Schema Approval Workflow", () => {
       expect(updatedImport.stage).toBe("await-approval");
     });
 
-    it("handles multiple pending imports after approval", async () => {
+    it("handles multiple pending imports waiting for same schema", async () => {
       // Create multiple imports waiting for same schema
       const imports = [];
       for (let i = 1; i <= 3; i++) {
@@ -472,8 +494,30 @@ describe.sequential("Schema Approval Workflow", () => {
         imports.push(imp);
       }
 
-      // Approve schema - would trigger validation for all imports
       expect(imports).toHaveLength(3);
+
+      // Approve a schema for this dataset
+      await payload.create({
+        collection: "dataset-schemas",
+        data: {
+          dataset: testDatasetId,
+          versionNumber: 2,
+          _status: "published",
+          schema: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
+          fieldMetadata: {},
+          schemaSummary: { totalFields: 2 },
+          approvedBy: adminUser.id,
+        },
+      });
+
+      // Verify all import jobs are still queryable and in their expected state
+      // (actual stage progression happens via hooks in production —
+      //  here we verify the imports exist and weren't corrupted by the schema creation)
+      for (const imp of imports) {
+        const updated = await payload.findByID({ collection: "import-jobs", id: imp.id });
+        expect(updated).toBeDefined();
+        expect(updated.dataset).toBeDefined();
+      }
     });
   });
 
@@ -531,24 +575,47 @@ describe.sequential("Schema Approval Workflow", () => {
   });
 
   describe("Permission Checks", () => {
-    it("enforces catalog-level permissions for editors", async () => {
-      // Create another catalog without our editor
+    it("regular users cannot read private schemas from other catalogs", async () => {
+      // Create a private catalog owned by admin
       const otherCatalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Other Catalog", slug: `other-catalog-${Date.now()}` },
+        data: { name: "Other Private Catalog", slug: `other-private-${Date.now()}`, isPublic: false },
+        user: adminUser,
       });
 
-      await payload.create({
+      const otherDataset = await payload.create({
         collection: "datasets",
-        data: { name: "Other Dataset", slug: `other-dataset-${Date.now()}`, catalog: otherCatalog.id, language: "eng" },
+        data: {
+          name: "Other Private Dataset",
+          slug: `other-private-ds-${Date.now()}`,
+          catalog: otherCatalog.id,
+          language: "eng",
+          isPublic: false,
+        },
       });
 
-      // Create schema for other dataset
+      // Create a schema in the private dataset
+      const otherSchema = await payload.create({
+        collection: "dataset-schemas",
+        data: {
+          dataset: otherDataset.id,
+          versionNumber: 2,
+          _status: "draft",
+          schema: { type: "object", properties: {} },
+          fieldMetadata: {},
+          schemaSummary: { totalFields: 0 },
+          approvalRequired: true,
+        },
+      });
 
-      // Editor should not have access to approve this schema
-      // Catalog has no editors field — editor has no ownership of otherCatalog
-      expect(editorUser.role).toBe("editor");
-      expect(otherCatalog.createdBy).not.toBe(editorUser.id);
+      // Regular user (viewerUser) should NOT be able to read private schemas from other catalogs
+      const readResult = await payload.find({
+        collection: "dataset-schemas",
+        where: { id: { equals: otherSchema.id } },
+        user: viewerUser,
+        overrideAccess: false,
+      });
+      expect(readResult.docs).toHaveLength(0);
     });
   });
 });

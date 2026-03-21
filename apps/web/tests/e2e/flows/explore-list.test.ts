@@ -11,21 +11,40 @@ import { expect, test } from "../fixtures";
 
 test.describe("Explore Page - List View", () => {
   test("should load the list view and display events", async ({ page }) => {
-    // Use waitUntil: "domcontentloaded" to avoid waiting for i18n middleware
-    // to fully resolve all resources
     await page.goto("/explore/list", { timeout: 30000, waitUntil: "domcontentloaded" });
 
-    // Wait for the page to render content
+    // Wait for the map container to render
     await page.waitForSelector('[data-testid="map-container"], .maplibregl-canvas', { timeout: 15000 });
 
-    // The list view should show the events count text
+    // Wait for the events count text to appear
     await page.waitForFunction(() => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""), {
       timeout: 15000,
     });
 
-    // Verify the events count element contains a number
+    // Verify the events count text is present
     const countText = await page.textContent("body");
     expect(countText).toMatch(/Showing (?:all )?\d[\d,]* event/);
+
+    // Verify the map is visible (not just present in DOM)
+    const mapContainer = page.locator('[data-testid="map-container"], .maplibregl-canvas').first();
+    await expect(mapContainer).toBeVisible();
+
+    // Verify the list view has event cards or list items rendered
+    // Wait for at least one event item to appear in the list
+    const eventItems = page.locator('[data-testid^="event-"], .event-card, [role="article"], table tbody tr').first();
+    const hasEventItems = await eventItems
+      .count()
+      .then((c) => c > 0)
+      .catch(() => false);
+
+    // If events exist, verify they have visible content
+    if (hasEventItems) {
+      await expect(eventItems).toBeVisible();
+    }
+
+    // Verify navigation is functional
+    const nav = page.locator("nav").first();
+    await expect(nav).toBeVisible();
   });
 
   test("should filter events when selecting a catalog", async ({ page }) => {

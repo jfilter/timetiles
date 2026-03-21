@@ -25,8 +25,8 @@ const waitForMapReady = async (page: Page) => {
   await expect(page.getByRole("region", { name: "Map" }).first()).toBeVisible({ timeout: 15000 });
   // Wait for MapLibre canvas to render
   await expect(page.locator(".maplibregl-canvas")).toBeVisible({ timeout: 10000 });
-  // Give the map time to settle after load/flyTo
-  await page.waitForTimeout(2000);
+  // Wait for map tiles and data to finish loading
+  await page.waitForLoadState("networkidle");
 };
 
 test.describe("Explore View Switch - Map Position Persistence", () => {

@@ -45,7 +45,8 @@ export const GET = apiRoute({
     // By capping displayed limits, we prevent enumeration of privileged accounts
     const MAX_DISPLAYED_LIMIT = 10000; // Cap shown to normal users
     const normalizeLimit = (limit: number | null): number => {
-      if (limit === null || limit > MAX_DISPLAYED_LIMIT) {
+      // -1 means unlimited, null means unknown — both should be capped
+      if (limit === null || limit === -1 || limit > MAX_DISPLAYED_LIMIT) {
         return MAX_DISPLAYED_LIMIT;
       }
       return limit;

@@ -336,12 +336,17 @@ test.describe("Access Control - Error Handling", () => {
 
     await page.goto("/explore");
 
-    // Page should still load, but might show error state
+    // Page should still load without crashing
     await page.waitForLoadState("networkidle");
 
-    // UI should handle the error gracefully
-    // (exact behavior depends on error handling implementation)
-    const pageContent = await page.content();
-    expect(pageContent).toBeTruthy();
+    // Navigation should remain functional (page didn't crash)
+    const nav = page.locator("nav").first();
+    await expect(nav).toBeVisible({ timeout: 10000 });
+
+    // The page should not show a raw error or blank screen
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText.length).toBeGreaterThan(0);
+    // Should not display raw JSON error to the user
+    expect(bodyText).not.toContain('"error":"Forbidden"');
   });
 });

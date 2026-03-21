@@ -180,7 +180,7 @@ test.describe("Explore Page - Filtering", () => {
 
     // The catalog should have changed to Economic Indicators
     const catalogParam = params.get("catalog");
-    expect(catalogParam).toBeTruthy();
+    expect(catalogParam).not.toBeNull();
     // Economic Indicators catalog should have a different ID than Environmental Data
     expect(catalogParam).not.toContain("environmental");
   });

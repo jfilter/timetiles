@@ -216,7 +216,7 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     const events = eventsData.docs as Array<{ data: Record<string, unknown> }>;
 
     const uppercasedEvents = events.filter(
-      (e) => typeof e.data?.title === "string" && e.data.title === e.data.title.toUpperCase(),
+      (e) => typeof e.data?.title === "string" && e.data.title === e.data.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBeGreaterThan(0);
   });

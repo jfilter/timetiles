@@ -30,13 +30,11 @@ describe.sequential("Import Files Collection", () => {
   ];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
-  let payload: any;
   let testCatalogId: string;
   let testUserId: string | number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
-    payload = testEnv.payload;
 
     const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
     testUserId = users.testUser.id;
@@ -96,16 +94,26 @@ describe.sequential("Import Files Collection", () => {
     expect(importFile.importedAt).toBeDefined();
   });
 
-  it("should validate file size limits in beforeValidate hook", () => {
-    // Test would require mocking the file size or creating a large test file
-    // For now, just verify the collection configuration is correct
-    const collections = payload.config.collections;
-    const importFilesCollection = collections.find((c: any) => c.slug === "import-files");
+  it("should reject files exceeding user trust level size limit", async () => {
+    // Create a user with trust level 0 (UNTRUSTED) — maxFileSizeMB: 1
+    const { users } = await withUsers(testEnv, { untrustedUser: { role: "user", trustLevel: "0" } });
 
-    expect(importFilesCollection).toBeDefined();
-    expect(importFilesCollection.upload).toBeDefined();
-    expect(importFilesCollection.upload.staticDir).toBe(`${process.env.UPLOAD_DIR ?? "uploads"}/import-files`);
-    expect(importFilesCollection.upload.mimeTypes).toContain("text/csv");
+    // Create a catalog owned by this user so ownership check passes
+    const { catalog: untrustedCatalog } = await withCatalog(testEnv, { user: users.untrustedUser });
+
+    // Create a CSV buffer slightly over 1MB (the UNTRUSTED limit)
+    const headerLine = "title,date,location\n";
+    const dataLine = "A".repeat(200) + ",2024-01-01,Test Location\n";
+    const repeatCount = Math.ceil((1.1 * 1024 * 1024) / dataLine.length);
+    const oversizedContent = Buffer.from(headerLine + dataLine.repeat(repeatCount));
+
+    // Attempting to upload should fail with file size error
+    await expect(
+      withImportFile(testEnv, untrustedCatalog.id, oversizedContent, {
+        user: users.untrustedUser.id,
+        filename: "oversized.csv",
+      })
+    ).rejects.toThrow(/[Ff]ile too large|[Mm]aximum size/);
   });
 
   it("should apply rate limiting in beforeChange hook", async () => {

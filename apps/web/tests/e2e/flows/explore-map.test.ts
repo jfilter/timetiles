@@ -87,7 +87,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Verify map has valid dimensions after zoom
     const mapBox = await explorePage.map.boundingBox();
-    expect(mapBox).toBeTruthy();
+    expect(mapBox).not.toBeNull();
     expect(mapBox!.width).toBeGreaterThan(0);
     expect(mapBox!.height).toBeGreaterThan(0);
   });
@@ -110,7 +110,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
       // Popup should contain some content
       const popupContent = await explorePage.getPopupContent();
-      expect(popupContent).toBeTruthy();
+      expect(popupContent).not.toBeNull();
       expect(popupContent!.length).toBeGreaterThan(0);
     }
   });
@@ -161,7 +161,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Verify we can still interact with the map
     const mapBox = await explorePage.map.boundingBox();
-    expect(mapBox).toBeTruthy();
+    expect(mapBox).not.toBeNull();
     expect(mapBox!.width).toBeGreaterThan(0);
     expect(mapBox!.height).toBeGreaterThan(0);
 

@@ -60,7 +60,7 @@ describe.sequential("Import Job Retry API", () => {
     testCatalogId = catalog.id;
   });
 
-  describe("POST /api/import-jobs/[id]/retry", () => {
+  describe("ErrorRecoveryService.recoverFailedJob", () => {
     it("should retry a failed import job", async () => {
       const csvContent = `title,date,location
 Event 1,2024-01-01,Location 1
@@ -106,14 +106,14 @@ Event 2,2024-01-02,Location 2`;
       expect(result.success).toBe(true);
       expect(result.action).toBe("retry_scheduled");
       expect(result.retryScheduled).toBe(true);
-      expect(result.nextRetryAt).toBeDefined();
+      expect(typeof result.nextRetryAt).toBe("object"); // Date instance
 
-      // Verify job was updated
+      // Verify job was updated in the database
       const updatedJob = await payload.findByID({ collection: "import-jobs", id: failedJob.id });
 
       expect(updatedJob.retryAttempts).toBe(1);
-      expect(updatedJob.lastRetryAt).toBeDefined();
-      expect(updatedJob.nextRetryAt).toBeDefined();
+      expect(updatedJob.lastRetryAt).not.toBeNull();
+      expect(updatedJob.nextRetryAt).not.toBeNull();
       expect(updatedJob.stage).not.toBe(PROCESSING_STAGE.FAILED); // Should be moved to recovery stage
     });
 
@@ -193,8 +193,8 @@ Event,2024-01-01`;
     });
   });
 
-  describe("POST /api/import-jobs/[id]/reset", () => {
-    it("should allow admin to reset job to specific stage", async () => {
+  describe("ErrorRecoveryService.resetJobToStage", () => {
+    it("should reset job to specific stage and clear retries", async () => {
       const csvContent = `title,date
 Event,2024-01-01`;
 
@@ -239,11 +239,11 @@ Event,2024-01-01`;
 
       expect(resetJob.stage).toBe(PROCESSING_STAGE.GEOCODE_BATCH);
       expect(resetJob.retryAttempts).toBe(0); // Should be cleared
-      expect(resetJob.lastRetryAt).toBeDefined();
+      expect(resetJob.lastRetryAt).not.toBeNull();
     });
   });
 
-  describe("GET /api/import/jobs/failed/recommendations", () => {
+  describe("ErrorRecoveryService.getRecoveryRecommendations", () => {
     it("should provide recovery recommendations for failed jobs", async () => {
       const csvContent1 = `title,date
 Event 1,2024-01-01`;

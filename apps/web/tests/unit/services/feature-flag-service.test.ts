@@ -98,7 +98,7 @@ describe.sequential("getFeatureFlags", () => {
     ];
 
     for (const key of expectedKeys) {
-      expect(flags).toHaveProperty(key);
+      expect(flags[key], `flag "${key}" should be false (fail-closed) on error`).toBe(false);
     }
   });
 });

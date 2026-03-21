@@ -136,7 +136,7 @@ export class ImportPage {
 
     // Clear wizard draft from localStorage to ensure clean state
     await this.page.evaluate(() => {
-      localStorage.removeItem("timetiles_import_wizard_draft");
+      localStorage.removeItem("timetiles-wizard-v2");
     });
 
     // Wait for wizard UI to render (auth heading or upload heading)

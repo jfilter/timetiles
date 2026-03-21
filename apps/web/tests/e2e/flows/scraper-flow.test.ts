@@ -39,8 +39,9 @@ test.describe("Scraper Flow - API", () => {
     expect(loginResponse.status()).toBe(200);
 
     const body = await loginResponse.json();
-    expect(body.token).toBeTruthy();
-    expect(body.user).toBeTruthy();
+    expect(typeof body.token).toBe("string");
+    expect(body.token.length).toBeGreaterThan(0);
+    expect(body.user).toBeDefined();
     expect(body.user.role).toBe("admin");
 
     token = body.token;
@@ -107,8 +108,8 @@ test.describe("Scraper Flow - API", () => {
     expect(createResponse.status()).toBe(201);
 
     const body = await createResponse.json();
-    expect(body.doc).toBeTruthy();
-    expect(body.doc.id).toBeTruthy();
+    expect(body.doc).toBeDefined();
+    expect(typeof body.doc.id).toBe("number");
     expect(body.doc.sourceType).toBe("upload");
 
     repoId = body.doc.id;

@@ -65,4 +65,12 @@ describe("useFeatureEnabled", () => {
     expect(result.isLoading).toBe(false);
     expect(result.error).toBe(testError);
   });
+
+  it("should call useQuery with the correct query key", () => {
+    mockUseQuery.mockReturnValue({ data: undefined, isLoading: true, error: null });
+
+    useFeatureEnabled("allowPrivateImports");
+
+    expect(mockUseQuery).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["feature-flags"] }));
+  });
 });
