@@ -159,4 +159,7 @@ export const setup = async (): Promise<void> => {
 export const teardown = async (): Promise<void> => {
   // Intentionally empty - keep template for next test run
   // This is the key optimization: subsequent test runs reuse the template
+  //
+  // Note: Workers may segfault on exit due to open pg connections in forked
+  // processes. This is cosmetic — all tests pass with exit code 0.
 };
