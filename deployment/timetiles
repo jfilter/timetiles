@@ -777,7 +777,12 @@ EOF
 
         # Check Nginx
         echo -n "Nginx: "
-        if $DC_CMD ps nginx 2>/dev/null | grep -q "Up"; then
+        NGINX_STATUS=$($DC_CMD ps --format '{{.Status}}' nginx 2>/dev/null | head -1)
+        if [[ "$NGINX_STATUS" == *"healthy"* ]]; then
+            echo -e "${GREEN}✓ Healthy${NC}"
+        elif [[ "$NGINX_STATUS" == *"unhealthy"* ]]; then
+            echo -e "${RED}✗ Unhealthy${NC}"
+        elif [[ "$NGINX_STATUS" == *"Up"* ]]; then
             echo -e "${GREEN}✓ Running${NC}"
         else
             echo -e "${RED}✗ Not running${NC}"
