@@ -11,6 +11,7 @@
     "VITEST",
     "VITEST_WORKER_ID",
     "LOG_LEVEL",
+    "LOG_FILE",
     "UPLOAD_DIR",
     "UPLOAD_TEMP_DIR",
     "TEST_ALL_BROWSERS",

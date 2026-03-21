@@ -246,7 +246,7 @@ SyslogIdentifier=timescrape-runner
 # Security hardening
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/tmp/timescrape $install_dir/scraper-runner
+ReadWritePaths=/tmp/timescrape $install_dir/scraper-runner /var/log/timetiles
 ProtectHome=yes
 PrivateTmp=no
 

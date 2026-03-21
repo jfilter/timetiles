@@ -83,6 +83,7 @@ services:
 
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE: ${LOG_FILE:-}
 
       # File uploads
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
@@ -101,6 +102,8 @@ services:
     volumes:
       # Persist uploaded files on host for easy backup/restore
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      # Persistent log files (optional, set LOG_FILE=/var/log/timetiles/web.log to enable)
+      - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
     networks:
       - timetiles-network
     healthcheck:

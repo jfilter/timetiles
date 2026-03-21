@@ -54,7 +54,18 @@ const developmentConfig: pino.LoggerOptions = {
 };
 
 // Create the logger instance
-export const logger = isDevelopment && !isTest ? pino(developmentConfig) : pino(baseConfig);
+// When LOG_FILE is set, write to both stdout and the file (for Docker logs + persistent file)
+const createProductionLogger = (): pino.Logger => {
+  if (process.env.LOG_FILE) {
+    return pino(
+      baseConfig,
+      pino.multistream([{ stream: process.stdout }, { stream: pino.destination(process.env.LOG_FILE) }])
+    );
+  }
+  return pino(baseConfig);
+};
+
+export const logger = isDevelopment && !isTest ? pino(developmentConfig) : createProductionLogger();
 
 // Create child loggers for different modules
 export const createLogger = (module: string) => {

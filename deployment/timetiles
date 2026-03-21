@@ -140,8 +140,10 @@ print_usage() {
     echo "  up        - Start all services"
     echo "  down      - Stop all services"
     echo "  restart   - Restart all services"
-    echo "  logs         - View logs (follow mode)"
-    echo "  scraper-logs - View scraper runner logs (if configured)"
+    echo "  logs            - View all logs (web + scraper merged)"
+    echo "  logs --web      - View web app logs only"
+    echo "  logs --scraper  - View scraper logs only"
+    echo "  logs --files    - Tail persistent log files (/var/log/timetiles/)"
     echo "  backup       - Backup management (full|db|uploads|auto|list|prune|verify|clean)"
     echo "  restore   - Restore from backup"
     echo "  status    - Check service status"
@@ -306,7 +308,28 @@ case "$1" in
         
     logs)
         check_env
-        $DC_CMD logs -f --tail=100
+        case "${2:-}" in
+            --web)
+                $DC_CMD logs -f --tail=100
+                ;;
+            --scraper)
+                journalctl -u timescrape-runner -f --no-pager -n 100
+                ;;
+            --files)
+                tail -f /var/log/timetiles/*.log 2>/dev/null || echo "No log files found in /var/log/timetiles/"
+                ;;
+            *)
+                # Show both Docker and scraper logs merged
+                $DC_CMD logs -f --tail=100 2>&1 | sed 's/^/[web] /' &
+                WEB_PID=$!
+                if systemctl is-active --quiet timescrape-runner 2>/dev/null; then
+                    journalctl -u timescrape-runner -f --no-pager -n 100 2>&1 | sed 's/^/[scraper] /' &
+                    SCRAPER_PID=$!
+                fi
+                trap 'kill $WEB_PID ${SCRAPER_PID:-} 2>/dev/null; exit' INT TERM
+                wait
+                ;;
+        esac
         ;;
         
     backup)
@@ -999,10 +1022,6 @@ EOF
             systemctl restart timescrape-runner
             echo -e "${GREEN}Scraper runner updated!${NC}"
         fi
-        ;;
-
-    scraper-logs)
-        journalctl -u timescrape-runner -f --no-pager -n 100
         ;;
 
     *)
