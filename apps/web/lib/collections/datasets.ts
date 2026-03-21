@@ -15,7 +15,7 @@
 import type { CollectionConfig } from "payload";
 
 import * as access from "./datasets/access";
-import { syncIsPublicToEvents, validatePublicCatalogDataset } from "./datasets/hooks";
+import { syncIsPublicToEvents, validateDatasetNameUniqueness, validatePublicCatalogDataset } from "./datasets/hooks";
 import { transformationFields } from "./datasets/transformation-fields";
 import {
   basicMetadataFields,
@@ -38,7 +38,10 @@ const Datasets: CollectionConfig = {
     delete: access.deleteAccess,
     readVersions: access.readVersions,
   },
-  hooks: { beforeChange: [validatePublicCatalogDataset], afterChange: [syncIsPublicToEvents] },
+  hooks: {
+    beforeChange: [validateDatasetNameUniqueness, validatePublicCatalogDataset],
+    afterChange: [syncIsPublicToEvents],
+  },
   fields: [
     ...basicMetadataFields,
     createSlugField("datasets"),

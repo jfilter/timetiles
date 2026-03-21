@@ -230,7 +230,7 @@ import type { Payload } from "payload";
 
 import { findConfigSuggestions } from "@/lib/import/config-matcher";
 import type { SavePreviewMetadataOpts } from "@/lib/import/preview-store";
-import { logError } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import type { ConfigSuggestion } from "@/lib/types/import-wizard";
 
 /**
@@ -287,7 +287,21 @@ export const findConfigSuggestionsForUser = async (
     })
   );
 
-  return findConfigSuggestions(headers, datasets);
+  const suggestions = findConfigSuggestions(headers, datasets);
+
+  logger.info(
+    {
+      userId,
+      headers: headers.length,
+      datasets: datasets.length,
+      withSchema: datasets.filter((d) => d.schemaColumns).length,
+      results: suggestions.length,
+    },
+    "Config suggestions: %s",
+    suggestions.map((s) => `${s.datasetName}(${s.score}%, cat=${s.catalogId})`).join(", ") || "none"
+  );
+
+  return suggestions;
 };
 
 // ---------------------------------------------------------------------------
@@ -328,19 +342,20 @@ export const buildPreviewResult = async ({
 
   savePreviewMetadata(metadata);
 
-  // Match per-sheet headers (not all combined) to get accurate similarity scores
+  // Match per-sheet headers against existing datasets
   const perSheetSuggestions = await Promise.all(
     sheets.map((s) => findConfigSuggestionsForUser(payload, userId, s.headers))
   );
-  // Deduplicate: keep highest-scoring suggestion per datasetId
-  const seen = new Map<number, (typeof perSheetSuggestions)[0][0]>();
+  // Deduplicate: keep highest-scoring suggestion per dataset NAME (not ID),
+  // so we get one suggestion per unique dataset type even if imported multiple times
+  const seen = new Map<string, (typeof perSheetSuggestions)[0][0]>();
   for (const suggestions of perSheetSuggestions) {
     for (const s of suggestions) {
-      const existing = seen.get(s.datasetId);
-      if (!existing || s.score > existing.score) seen.set(s.datasetId, s);
+      const existing = seen.get(s.datasetName);
+      if (!existing || s.score > existing.score) seen.set(s.datasetName, s);
     }
   }
-  const configSuggestions = [...seen.values()].sort((a, b) => b.score - a.score).slice(0, 3);
+  const configSuggestions = [...seen.values()].sort((a, b) => b.score - a.score);
 
   return { sheets, configSuggestions };
 };

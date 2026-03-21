@@ -56,6 +56,10 @@ export const POST = apiRoute({
       validateRequest(previewMeta, user);
 
       // Get or create catalog
+      logger.debug(
+        { catalogId: body.catalogId, newCatalogName: body.newCatalogName, userId: user.id, userRole: user.role },
+        "Resolving catalog for import"
+      );
       const finalCatalogId = await getOrCreateCatalog(payload, req, body.catalogId, body.newCatalogName, user);
       if (finalCatalogId === "forbidden") {
         throw new ForbiddenError("You do not have access to this catalog");

@@ -5,11 +5,12 @@
  * - Datasets in public catalogs must be public
  * - Force public if allowPrivateImports is disabled
  * - Sync isPublic to events for denormalized access control
+ * - Dataset names must be unique within a catalog
  *
  * @module
  * @category Collections
  */
-import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
+import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest, Where } from "payload";
 
 import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
@@ -125,6 +126,47 @@ export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
         throw error;
       }
     }
+  }
+
+  return data;
+};
+
+/**
+ * Validates that dataset names are unique within a catalog.
+ * Prevents two datasets in the same catalog from having the same name.
+ */
+export const validateDatasetNameUniqueness: CollectionBeforeChangeHook = async ({
+  data,
+  req,
+  operation,
+  originalDoc,
+}) => {
+  if (operation !== "create" && operation !== "update") return data;
+
+  const name = data?.name;
+  const catalogRef = data?.catalog;
+  if (!name || !catalogRef) return data;
+
+  const catalogId = extractRelationId(catalogRef);
+  if (!catalogId) return data;
+
+  const conditions: Where[] = [{ name: { equals: name } }, { catalog: { equals: catalogId } }];
+
+  // Exclude current document on update
+  if (operation === "update" && originalDoc?.id) {
+    conditions.push({ id: { not_equals: originalDoc.id } });
+  }
+
+  const existing = await req.payload.find({
+    collection: "datasets",
+    where: { and: conditions },
+    limit: 1,
+    overrideAccess: true,
+    depth: 0,
+  });
+
+  if (existing.docs.length > 0) {
+    throw new Error("A dataset with this name already exists in this catalog.");
   }
 
   return data;

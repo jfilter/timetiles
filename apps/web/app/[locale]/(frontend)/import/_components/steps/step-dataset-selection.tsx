@@ -274,7 +274,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                 </div>
               )}
 
-              {selectedCatalogId === "new" && (
+              {(selectedCatalogId === "new" || catalogs.length === 0) && (
                 <div className="space-y-2">
                   <Label htmlFor="new-catalog-name" className="text-cartographic-charcoal">
                     {t("catalogName")}
