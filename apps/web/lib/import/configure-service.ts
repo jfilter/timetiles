@@ -331,7 +331,7 @@ export const getOrCreateCatalog = async (
           depth: 0,
         });
         const found = catalogWithoutFilter.docs[0];
-        logger.warn(
+        logger.debug(
           {
             catalogId,
             userId: user.id,
