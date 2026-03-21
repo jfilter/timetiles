@@ -33,6 +33,7 @@ export { getPreviewDir, savePreviewMetadata };
 export const ALLOWED_MIME_TYPES = [
   "text/csv",
   "text/plain",
+  "application/json",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.oasis.opendocument.spreadsheet",
@@ -40,7 +41,7 @@ export const ALLOWED_MIME_TYPES = [
 
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export const SAMPLE_ROW_COUNT = 5;
-export const FILE_EXTENSION_REGEX = /\.(csv|xls|xlsx|ods)$/i;
+export const FILE_EXTENSION_REGEX = /\.(csv|xls|xlsx|ods|json)$/i;
 
 /**
  * Get confidence level from confidence score

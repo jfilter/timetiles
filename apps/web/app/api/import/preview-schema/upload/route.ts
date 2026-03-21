@@ -43,27 +43,42 @@ export const POST = apiRoute({
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.type) && !FILE_EXTENSION_REGEX.test(file.name)) {
-      throw new ValidationError("Unsupported file type. Please upload a CSV, Excel, or ODS file.");
+      throw new ValidationError("Unsupported file type. Please upload a CSV, Excel, ODS, or JSON file.");
     }
 
     const fileExtension = path.extname(file.name).toLowerCase();
 
     if (!FILE_EXTENSION_REGEX.test(file.name)) {
-      throw new ValidationError("Unsupported file extension. Please upload a CSV, Excel, or ODS file.");
+      throw new ValidationError("Unsupported file extension. Please upload a CSV, Excel, ODS, or JSON file.");
     }
 
     const previewId = uuidv4();
     const previewDir = getPreviewDir();
-    const previewFilePath = path.join(previewDir, `${previewId}${fileExtension}`);
 
     const arrayBuffer = await file.arrayBuffer();
-    fs.writeFileSync(previewFilePath, Buffer.from(arrayBuffer));
+    let fileBuffer = Buffer.from(arrayBuffer);
+    let finalExtension = fileExtension;
+
+    // JSON upload → convert to CSV before preview
+    if (fileExtension === ".json" || file.type === "application/json") {
+      const { convertJsonToCsv } = await import("@/lib/import/json-to-csv");
+      const result = convertJsonToCsv(fileBuffer);
+      fileBuffer = result.csv as Buffer<ArrayBuffer>;
+      finalExtension = ".csv";
+      logger.info(
+        { previewId, recordCount: result.recordCount, detectedPath: result.detectedPath },
+        "JSON converted to CSV for preview"
+      );
+    }
+
+    const previewFilePath = path.join(previewDir, `${previewId}${finalExtension}`);
+    fs.writeFileSync(previewFilePath, fileBuffer);
 
     logger.info({ previewId, fileName: file.name, fileSize: file.size, userId: user.id }, "File saved for preview");
 
     const { sheets, configSuggestions } = await buildPreviewResult({
       previewFilePath,
-      fileExtension,
+      fileExtension: finalExtension,
       metadata: {
         previewId,
         userId: user.id,
