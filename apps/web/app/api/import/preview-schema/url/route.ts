@@ -50,6 +50,7 @@ const UrlPreviewBodySchema = z.object({
  */
 export const POST = apiRoute({
   auth: "required",
+  site: "default",
   rateLimit: { type: "FILE_UPLOAD", keyPrefix: (u) => `preview-url:${u!.id}` },
   body: UrlPreviewBodySchema,
   handler: async ({ body, user, payload }) => {

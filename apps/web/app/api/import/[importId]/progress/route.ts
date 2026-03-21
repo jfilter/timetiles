@@ -141,6 +141,7 @@ const formatJobProgress = (job: ImportJob): FormattedJobProgress => {
 
 export const GET = apiRoute({
   auth: "required",
+  site: "default",
   rateLimit: { configName: "PROGRESS_CHECK" },
   params: z.object({ importId: z.string() }),
   handler: async ({ user, payload, params }) => {

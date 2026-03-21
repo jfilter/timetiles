@@ -16,6 +16,7 @@ import { validateRequest } from "@/lib/import/preview-validation";
 
 export const GET = apiRoute({
   auth: "required",
+  site: "default",
   query: z.object({ previewId: z.uuid() }),
   handler: ({ query, user }) => {
     const previewMeta = loadPreviewMetadata(query.previewId);

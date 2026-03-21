@@ -21,6 +21,7 @@ import { parseFileSheets } from "./helpers";
 
 export const GET = apiRoute({
   auth: "required",
+  site: "default",
   query: z.object({ previewId: z.uuid() }),
   handler: ({ query, user }) => {
     const meta = loadPreviewMetadata(query.previewId);

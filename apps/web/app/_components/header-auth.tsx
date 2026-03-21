@@ -22,6 +22,7 @@ import { LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link, useRouter } from "@/i18n/navigation";
+import { useSite } from "@/lib/context/site-context";
 import { useLogoutMutation } from "@/lib/hooks/use-auth-mutations";
 import type { User } from "@/payload-types";
 
@@ -31,6 +32,7 @@ interface HeaderAuthProps {
 
 export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
   const router = useRouter();
+  const { isDefaultSite } = useSite();
   const t = useTranslations("Common");
   const tHeader = useTranslations("Header");
   const logoutMutation = useLogoutMutation();
@@ -85,12 +87,14 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem asChild>
-          <Link href="/import" className="cursor-pointer">
-            <Upload className="mr-2 h-4 w-4" />
-            {tHeader("importData")}
-          </Link>
-        </DropdownMenuItem>
+        {isDefaultSite && (
+          <DropdownMenuItem asChild>
+            <Link href="/import" className="cursor-pointer">
+              <Upload className="mr-2 h-4 w-4" />
+              {tHeader("importData")}
+            </Link>
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuItem asChild>
           <Link href="/account/settings" className="cursor-pointer">

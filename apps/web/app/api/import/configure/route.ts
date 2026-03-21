@@ -37,6 +37,7 @@ const logger = createLogger("api-wizard-configure-import");
  */
 export const POST = apiRoute({
   auth: "required",
+  site: "default",
   body: ConfigureImportBodySchema,
   handler: async ({ body, req, user, payload }) => {
     try {

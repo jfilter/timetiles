@@ -10,7 +10,10 @@
  */
 import config from "@payload-config";
 import { headers } from "next/headers";
+import { getLocale } from "next-intl/server";
 import { getPayload } from "payload";
+
+import { redirectIfNotDefaultSite } from "@/lib/api/server-page-helpers";
 
 import { WizardLayoutClient } from "./_components/wizard-layout-client";
 
@@ -33,6 +36,12 @@ const getInitialAuth = async () => {
 };
 
 export default async function ImportLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const payload = await getPayload({ config });
+  const headersList = await headers();
+  const locale = await getLocale();
+
+  await redirectIfNotDefaultSite(payload, headersList, locale);
+
   const initialAuth = await getInitialAuth();
 
   return <WizardLayoutClient initialAuth={initialAuth}>{children}</WizardLayoutClient>;

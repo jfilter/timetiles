@@ -11,6 +11,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { redirect } from "@/i18n/navigation";
+import { redirectIfNotDefaultSite } from "@/lib/api/server-page-helpers";
 import config from "@/payload.config";
 
 import { SchedulesListClient } from "./_components/schedules-list-client";
@@ -20,13 +21,15 @@ export const metadata = { title: "Scheduled Imports | TimeTiles", description: "
 export default async function SchedulesPage() {
   const payload = await getPayload({ config });
   const headers = await nextHeaders();
+  const locale = await getLocale();
 
   const { user } = await payload.auth({ headers });
 
   if (!user) {
-    const locale = await getLocale();
     return redirect({ href: "/login?redirect=/account/schedules", locale });
   }
+
+  await redirectIfNotDefaultSite(payload, headers, locale);
 
   // Fetch user's scheduled imports
   const schedulesResult = await payload.find({
