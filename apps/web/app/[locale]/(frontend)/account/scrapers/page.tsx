@@ -10,8 +10,8 @@ import { headers as nextHeaders } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
-import { redirectIfNotDefaultSite } from "@/lib/api/server-page-helpers";
 import { redirect } from "@/i18n/navigation";
+import { redirectIfNotDefaultSite } from "@/lib/api/server-page-helpers";
 import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
 import config from "@/payload.config";
 

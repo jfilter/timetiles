@@ -18,7 +18,7 @@ import { vi } from "vitest";
 /** The default site returned by the mock resolver. */
 export const mockDefaultSite = { id: 1, name: "Default Site", slug: "default", isDefault: true };
 
-export const mockResolveSite = vi.fn().mockResolvedValue(mockDefaultSite);
+export const mockResolveSite: ReturnType<typeof vi.fn> = vi.fn().mockResolvedValue(mockDefaultSite);
 
 vi.mock("@/lib/services/resolution/site-resolver", () => ({
   resolveSite: mockResolveSite,

@@ -10,9 +10,9 @@
  * @category Tests
  */
 import "@/tests/mocks/services/logger";
-import { mockResolveSite } from "@/tests/mocks/services/site-resolver";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
+import { mockResolveSite } from "@/tests/mocks/services/site-resolver";
 
 const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn() }));
 
