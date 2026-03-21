@@ -74,10 +74,10 @@ describe("Wizard Store", () => {
       expect(useWizardStore.getState().currentStep).toBe(2);
     });
 
-    it("nextStep does not exceed step 6", () => {
-      resetStore({ currentStep: 6 as WizardStep });
+    it("nextStep does not exceed step 7", () => {
+      resetStore({ currentStep: 7 as WizardStep });
       useWizardStore.getState().nextStep();
-      expect(useWizardStore.getState().currentStep).toBe(6);
+      expect(useWizardStore.getState().currentStep).toBe(7);
     });
 
     it("prevStep decrements step", () => {

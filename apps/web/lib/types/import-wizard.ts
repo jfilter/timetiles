@@ -110,6 +110,22 @@ export const isFieldMappingComplete = (mapping: FieldMapping | undefined): boole
   );
 };
 
+/** JSON API configuration for scheduled imports */
+export interface JsonApiScheduleConfig {
+  recordsPath?: string;
+  pagination?: {
+    enabled: boolean;
+    type?: "offset" | "cursor" | "page";
+    pageParam?: string;
+    limitParam?: string;
+    limitValue?: number;
+    cursorParam?: string;
+    nextCursorPath?: string;
+    totalPath?: string;
+    maxPages?: number;
+  };
+}
+
 /** Schedule creation configuration */
 export interface CreateScheduleConfig {
   enabled: boolean;
@@ -120,6 +136,7 @@ export interface CreateScheduleConfig {
   cronExpression?: string;
   schemaMode: "strict" | "additive" | "flexible";
   authConfig?: AuthConfig;
+  jsonApiConfig?: JsonApiScheduleConfig;
 }
 
 /** Full request body for the configure-import endpoint */

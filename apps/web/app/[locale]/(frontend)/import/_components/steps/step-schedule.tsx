@@ -114,27 +114,22 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
     if (!authConfig || authConfig.type === "none") return null;
     switch (authConfig.type) {
       case "bearer":
-        // TODO: i18n — "Authentication: Bearer Token configured"
-        return "Authentication: Bearer Token configured";
+        return t("authSummaryBearer");
       case "api-key":
-        // TODO: i18n — "Authentication: API Key configured"
-        return `Authentication: API Key configured (${authConfig.apiKeyHeader ?? "X-API-Key"})`;
+        return t("authSummaryApiKey", { header: authConfig.apiKeyHeader ?? "X-API-Key" });
       case "basic":
-        // TODO: i18n — "Authentication: Basic Auth configured"
-        return "Authentication: Basic Auth configured";
+        return t("authSummaryBasic");
       default:
         return null;
     }
-  }, [authConfig]);
+  }, [authConfig, t]);
 
   return (
     <div className={cn("space-y-6", className)}>
       {/* Header */}
       <div className="text-center">
-        {/* TODO: i18n — "Schedule Import" */}
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">Schedule Import</h2>
-        {/* TODO: i18n — "Choose whether to import once or set up recurring imports" */}
-        <p className="text-cartographic-navy/70 mt-2">Choose whether to import once or set up recurring imports</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("scheduleTitle")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("scheduleDescription")}</p>
       </div>
 
       {/* Toggle card */}
@@ -148,14 +143,10 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
             )}
             <div>
               <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">
-                {/* TODO: i18n */}
-                {isScheduleEnabled ? "Repeat on schedule" : "Import once"}
+                {isScheduleEnabled ? t("repeatOnSchedule") : t("importOnce")}
               </h3>
               <p className="text-cartographic-navy/60 text-sm">
-                {/* TODO: i18n */}
-                {isScheduleEnabled
-                  ? "Data will be re-imported automatically on the schedule below"
-                  : "Data will be imported once from the URL"}
+                {isScheduleEnabled ? t("repeatOnScheduleDescription") : t("importOnceDescription")}
               </p>
             </div>
           </div>
@@ -165,14 +156,9 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
             size="sm"
             onClick={handleToggleSchedule}
             aria-pressed={isScheduleEnabled}
-            aria-label={
-              isScheduleEnabled
-                ? "Disable recurring schedule" /* TODO: i18n */
-                : "Enable recurring schedule" /* TODO: i18n */
-            }
+            aria-label={isScheduleEnabled ? t("disableRecurringSchedule") : t("enableRecurringSchedule")}
           >
-            {/* TODO: i18n */}
-            {isScheduleEnabled ? "Scheduled" : "One-time"}
+            {isScheduleEnabled ? t("scheduled") : t("oneTime")}
           </Button>
         </div>
 
@@ -184,8 +170,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
               <div className="flex items-start gap-3">
                 <GlobeIcon className="text-cartographic-navy/40 mt-0.5 h-4 w-4" />
                 <div className="min-w-0 flex-1">
-                  {/* TODO: i18n — "Source URL" */}
-                  <p className="text-cartographic-navy/70 text-xs">Source URL</p>
+                  <p className="text-cartographic-navy/70 text-xs">{t("sourceUrl")}</p>
                   <p className="text-cartographic-charcoal truncate font-mono text-sm">{sourceUrl}</p>
                 </div>
               </div>
@@ -193,11 +178,10 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
 
             {/* Schedule name */}
             <div className="space-y-2">
-              {/* TODO: i18n — "Schedule name" */}
-              <Label htmlFor="schedule-name">Schedule name</Label>
+              <Label htmlFor="schedule-name">{t("scheduleName")}</Label>
               <Input
                 id="schedule-name"
-                placeholder={defaultScheduleName || "My scheduled import" /* TODO: i18n */}
+                placeholder={defaultScheduleName || t("scheduleNamePlaceholder")}
                 value={activeConfig.name}
                 onChange={handleNameChange}
               />
@@ -206,40 +190,35 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
             {/* Schedule type and frequency */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                {/* TODO: i18n — "Schedule type" */}
-                <Label htmlFor="schedule-type">Schedule type</Label>
+                <Label htmlFor="schedule-type">{t("scheduleType")}</Label>
                 <Select value={activeConfig.scheduleType} onValueChange={handleScheduleTypeChange}>
                   <SelectTrigger id="schedule-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* TODO: i18n */}
-                    <SelectItem value="frequency">Frequency</SelectItem>
-                    <SelectItem value="cron">Cron expression</SelectItem>
+                    <SelectItem value="frequency">{t("simpleFrequency")}</SelectItem>
+                    <SelectItem value="cron">{t("cronExpression")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {activeConfig.scheduleType === "frequency" ? (
                 <div className="space-y-2">
-                  {/* TODO: i18n — "Frequency" */}
-                  <Label htmlFor="frequency">Frequency</Label>
+                  <Label htmlFor="frequency">{t("frequency")}</Label>
                   <Select value={activeConfig.frequency} onValueChange={handleFrequencyChange}>
                     <SelectTrigger id="frequency">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* TODO: i18n */}
-                      <SelectItem value="hourly">Hourly</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="hourly">{t("hourly")}</SelectItem>
+                      <SelectItem value="daily">{t("daily")}</SelectItem>
+                      <SelectItem value="weekly">{t("weekly")}</SelectItem>
+                      <SelectItem value="monthly">{t("monthly")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {/* TODO: i18n — "Cron expression" */}
-                  <Label htmlFor="cron-expression">Cron expression</Label>
+                  <Label htmlFor="cron-expression">{t("cronExpressionLabel")}</Label>
                   <Input
                     id="cron-expression"
                     placeholder="0 0 * * *"
@@ -252,32 +231,27 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
 
             {/* Schema mode */}
             <div className="space-y-2">
-              {/* TODO: i18n — "Schema change handling" */}
-              <Label htmlFor="schema-mode">Schema change handling</Label>
+              <Label htmlFor="schema-mode">{t("schemaChangeHandling")}</Label>
               <Select value={activeConfig.schemaMode} onValueChange={handleSchemaModeChange}>
                 <SelectTrigger id="schema-mode">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* TODO: i18n */}
                   <SelectItem value="strict">
-                    <span className="font-medium">Strict</span>
-                    <span className="text-muted-foreground ml-2 text-xs">Fail if schema changes</span>
+                    <span className="font-medium">{t("schemaStrict")}</span>
+                    <span className="text-muted-foreground ml-2 text-xs">{t("schemaModeStrictLabel")}</span>
                   </SelectItem>
                   <SelectItem value="additive">
-                    <span className="font-medium">Additive</span>
-                    <span className="text-muted-foreground ml-2 text-xs">Allow new columns</span>
+                    <span className="font-medium">{t("schemaAdditive")}</span>
+                    <span className="text-muted-foreground ml-2 text-xs">{t("schemaModeAdditiveLabel")}</span>
                   </SelectItem>
                   <SelectItem value="flexible">
-                    <span className="font-medium">Flexible</span>
-                    <span className="text-muted-foreground ml-2 text-xs">Accept any changes</span>
+                    <span className="font-medium">{t("schemaFlexible")}</span>
+                    <span className="text-muted-foreground ml-2 text-xs">{t("schemaModeFlexibleLabel")}</span>
                   </SelectItem>
                 </SelectContent>
               </Select>
-              {/* TODO: i18n — "How to handle..." */}
-              <p className="text-muted-foreground text-xs">
-                How to handle changes in the source data structure between imports
-              </p>
+              <p className="text-muted-foreground text-xs">{t("schemaChangeHandlingHint")}</p>
             </div>
           </CardContent>
         )}
@@ -298,24 +272,21 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={prevStep} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" />
-            {/* TODO: i18n — "Back" */}
             {t("back")}
           </Button>
           <div className="flex items-center gap-3">
             <span className="text-cartographic-navy/50 text-sm">
-              {/* TODO: i18n */}
               {isScheduleEnabled ? (
                 <span className="flex items-center gap-1.5">
                   <ClockIcon className="h-3.5 w-3.5" />
-                  {activeConfig.scheduleType === "frequency" ? activeConfig.frequency : "Custom cron"}
+                  {activeConfig.scheduleType === "frequency" ? t(activeConfig.frequency) : t("customCron")}
                 </span>
               ) : (
-                "One-time import"
+                t("oneTimeImport")
               )}
             </span>
             <Button size="lg" onClick={nextStep} className="gap-2">
-              {/* TODO: i18n — "Continue to Review" */}
-              Continue to Review
+              {t("continueToReview")}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>

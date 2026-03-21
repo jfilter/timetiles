@@ -259,6 +259,11 @@ export const createScheduledImport = async (
     })
   );
 
+  // Build advanced options with JSON API config if present
+  const advancedOptions = scheduleConfig.jsonApiConfig
+    ? { responseFormat: "json" as const, jsonApiConfig: scheduleConfig.jsonApiConfig }
+    : undefined;
+
   // Build base scheduled import data
   const baseData = {
     name: scheduleConfig.name,
@@ -270,6 +275,7 @@ export const createScheduledImport = async (
     schemaMode: scheduleConfig.schemaMode,
     sourceImportFile: importFileId,
     authConfig,
+    advancedOptions,
     frequency: scheduleConfig.scheduleType === "frequency" ? scheduleConfig.frequency : undefined,
     cronExpression: scheduleConfig.scheduleType === "cron" ? scheduleConfig.cronExpression : undefined,
     dataset: isSingleSheet && firstDatasetId ? firstDatasetId : undefined,
