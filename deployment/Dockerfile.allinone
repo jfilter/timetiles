@@ -81,17 +81,15 @@ WORKDIR /build
 COPY --from=pruner /build/out/full/ .
 COPY --from=deps /build/ .
 
-# Build arguments for Payload CMS (dummy values for compilation)
-ARG DATABASE_URL=postgresql://user:pass@localhost:5432/db
-ARG PAYLOAD_SECRET=dummy_secret_for_build_only
-ARG NEXT_PUBLIC_PAYLOAD_URL=http://localhost
-
-# Set build environment
+# Set build environment with dummy values for Payload CMS compilation
+# These are NOT real secrets — they exist only so the build completes without a DB.
+# Real values are injected at container runtime via environment variables.
+# Using ENV directly (instead of ARG+ENV) avoids exposing values in image layer metadata.
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL=${DATABASE_URL}
-ENV PAYLOAD_SECRET=${PAYLOAD_SECRET}
-ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL}
+ENV DATABASE_URL=postgresql://user:pass@localhost:5432/db
+ENV PAYLOAD_SECRET=dummy_secret_for_build_only
+ENV NEXT_PUBLIC_PAYLOAD_URL=http://localhost
 
 # Build the application with experimental compile mode (no DB connection needed)
 WORKDIR /build/apps/web
@@ -99,6 +97,9 @@ RUN pnpm exec next build --experimental-build-mode compile --webpack
 
 # Production stage: final image
 FROM base AS production
+
+# Remove build-time-only packages to reduce image size and attack surface
+RUN apt-get remove -y --purge curl gnupg && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -129,7 +130,7 @@ ENV NEXT_PUBLIC_PAYLOAD_URL=http://localhost
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost/api/health || exit 1
+    CMD node -e "fetch('http://localhost/api/health').then(r=>{if(!r.ok)throw r.status}).catch(()=>process.exit(1))"
 
 # Note: This multi-service container requires root for the entrypoint to initialize
 # PostgreSQL, generate SSL certificates, and start supervisord. Individual services

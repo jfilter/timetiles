@@ -78,6 +78,11 @@ jobs:
           outputs: type=image,name=${{ inputs.image-name }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ inputs.scope }}-${{ matrix.platform }}
           cache-to: type=gha,mode=min,scope=${{ inputs.scope }}-${{ matrix.platform }}
+          # NOTE: SBOM and provenance attestations are not supported with push-by-digest output mode.
+          # To add attestations, the build pipeline would need to switch to tag-based pushing
+          # or use a separate attestation step after manifest creation.
+          provenance: false
+          sbom: false
 
       - name: Export digest
         run: |

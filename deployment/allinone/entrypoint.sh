@@ -120,8 +120,8 @@ DB_NAME="${DB_NAME:-${POSTGRES_DB:-timetiles}}"
 export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}"
 export UPLOAD_DIR="/data/uploads"
 
-# Write environment to file for supervisord child processes
-# Restrict permissions - only root can read
+# Write environment to file for the Next.js wrapper script
+# Restrict permissions - only root can read (wrapper runs as nextjs via supervisord)
 umask 077
 cat > /etc/timetiles.env << EOF
 DATABASE_URL=${DATABASE_URL}
@@ -129,16 +129,24 @@ UPLOAD_DIR=${UPLOAD_DIR}
 PAYLOAD_SECRET=${PAYLOAD_SECRET}
 NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost}
 NODE_ENV=production
+PORT=3000
+HOSTNAME=0.0.0.0
+NEXT_TELEMETRY_DISABLED=1
 EOF
 chmod 600 /etc/timetiles.env
 
-# Update supervisord config with runtime environment variables
-# Escape special characters for sed replacement
-ESCAPED_DB_URL=$(printf '%s\n' "${DATABASE_URL}" | sed 's/[&/\]/\\&/g')
-ESCAPED_SECRET=$(printf '%s\n' "${PAYLOAD_SECRET}" | sed 's/[&/\]/\\&/g')
-ESCAPED_URL=$(printf '%s\n' "${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost}" | sed 's/[&/\]/\\&/g')
-
-sed -i "s|environment=NODE_ENV=\"production\",PORT=\"3000\",HOSTNAME=\"0.0.0.0\"|environment=NODE_ENV=\"production\",PORT=\"3000\",HOSTNAME=\"0.0.0.0\",DATABASE_URL=\"${ESCAPED_DB_URL}\",UPLOAD_DIR=\"/data/uploads\",PAYLOAD_SECRET=\"${ESCAPED_SECRET}\",NEXT_PUBLIC_PAYLOAD_URL=\"${ESCAPED_URL}\"|" /etc/supervisor/conf.d/supervisord.conf
+# Create wrapper script that loads environment and starts Next.js
+# This replaces fragile sed-based env injection into supervisord.conf — the wrapper
+# sources /etc/timetiles.env so any value (including special chars) is handled safely.
+cat > /app/start-nextjs.sh << 'WRAPPER'
+#!/bin/bash
+set -a
+source /etc/timetiles.env
+set +a
+exec node apps/web/server.js
+WRAPPER
+chmod +x /app/start-nextjs.sh
+chown nextjs:nodejs /app/start-nextjs.sh
 
 echo "=== Starting Supervisord ==="
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

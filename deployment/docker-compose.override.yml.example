@@ -14,7 +14,9 @@ services:
       context: ..
       dockerfile: deployment/Dockerfile.prod
       args:
-        DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
-        PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+        # DATABASE_URL and PAYLOAD_SECRET are NOT passed here because:
+        # 1. Dockerfile.prod already uses dummy defaults for build-time compilation
+        # 2. Passing real secrets as build args exposes them in image layer metadata
+        # 3. Real values are injected at runtime via environment variables
         NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
     image: timetiles-web:local

@@ -232,10 +232,20 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Generate ephemeral test secrets
+        id: secrets
+        run: |
+          echo "payload_secret=$(openssl rand -base64 32 | tr -d '/+=')" >> "$GITHUB_OUTPUT"
+          echo "db_password=$(openssl rand -base64 32 | tr -d '/+=')" >> "$GITHUB_OUTPUT"
+          echo "scraper_key=$(openssl rand -hex 20)" >> "$GITHUB_OUTPUT"
+
       - name: Smoke test all images
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           VERSION: ${{ steps.tag.outputs.version }}
+          PAYLOAD_SECRET: ${{ steps.secrets.outputs.payload_secret }}
+          DB_PASSWORD: ${{ steps.secrets.outputs.db_password }}
+          SCRAPER_KEY: ${{ steps.secrets.outputs.scraper_key }}
         run: |
           # Reusable health check: wait_for_health <url> <container> <max_attempts> <interval>
           wait_for_health() {
@@ -258,7 +268,7 @@ jobs:
           docker network create timetiles-test
           docker run -d --name postgres --network timetiles-test \
             -e POSTGRES_USER=timetiles_user \
-            -e POSTGRES_PASSWORD=test_password \
+            -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
             -e POSTGRES_DB=timetiles \
             -v ${{ github.workspace }}/deployment/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro \
             postgis/postgis:17-3.5-alpine
@@ -273,8 +283,8 @@ jobs:
 
           echo "==> Starting main app..."
           docker run -d --name timetiles --network timetiles-test -p 3000:3000 \
-            -e DATABASE_URL=postgresql://timetiles_user:test_password@postgres:5432/timetiles \
-            -e PAYLOAD_SECRET=test_secret_for_smoke_test_only \
+            -e DATABASE_URL="postgresql://timetiles_user:${DB_PASSWORD}@postgres:5432/timetiles" \
+            -e PAYLOAD_SECRET="${PAYLOAD_SECRET}" \
             -e NEXT_PUBLIC_PAYLOAD_URL=http://localhost:3000 \
             -e EMAIL_SMTP_HOST=smtp.test.invalid \
             "${IMAGE}:${VERSION}"
@@ -285,7 +295,7 @@ jobs:
           # --- Scraper image ---
           echo "==> Starting scraper runner..."
           docker run -d --name scraper-test -p 4000:4000 \
-            -e SCRAPER_API_KEY=test1234567890abcdef \
+            -e SCRAPER_API_KEY="${SCRAPER_KEY}" \
             "${IMAGE}-scraper:${VERSION}"
 
           echo "==> Checking scraper health..."
@@ -295,13 +305,23 @@ jobs:
           # --- All-in-one image (PostgreSQL bundled inside) ---
           echo "==> Starting all-in-one..."
           docker run -d --name allinone-test -p 8080:80 \
-            -e POSTGRES_PASSWORD=test_password \
-            -e PAYLOAD_SECRET=test_secret_for_smoke_test_only \
+            -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
+            -e PAYLOAD_SECRET="${PAYLOAD_SECRET}" \
             "${IMAGE}:${VERSION}-allinone"
 
           echo "==> Checking all-in-one health (includes DB init)..."
           wait_for_health http://localhost:8080/api/health allinone-test 45 3
           docker stop allinone-test && docker rm allinone-test
+
+          # Verify arm64 manifests exist (full arm64 deployment test not possible on amd64 runner)
+          echo "==> Verifying arm64 manifests..."
+          for img in "${IMAGE}:${VERSION}" "${IMAGE}:${VERSION}-allinone" "${IMAGE}-scraper:${VERSION}"; do
+            if docker manifest inspect "$img" 2>/dev/null | grep -q "arm64"; then
+              echo "  $img: arm64 manifest present"
+            else
+              echo "  WARNING: $img: arm64 manifest missing"
+            fi
+          done
 
       - name: Collect logs on failure
         if: failure()

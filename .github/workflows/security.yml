@@ -132,13 +132,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build Docker image
+      # --- Scan 1: Dockerfile.prod ---
+      - name: Build Docker image (prod)
         run: |
           docker build -f deployment/Dockerfile.prod -t ${{ env.DOCKER_IMAGE }} .
           docker images ${{ env.DOCKER_IMAGE }}
 
-      # Single scan producing JSON
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (prod)
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: ${{ env.DOCKER_IMAGE }}
@@ -148,23 +148,23 @@ jobs:
           timeout: "10m"
           scanners: "vuln,secret,misconfig"
 
-      - name: Convert JSON to SARIF
+      - name: Convert JSON to SARIF (prod)
         if: always()
         run: trivy convert --format sarif --output trivy-docker-results.sarif trivy-docker-report.json
 
-      - name: Upload Trivy results to GitHub Security
+      - name: Upload Trivy results to GitHub Security (prod)
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
         with:
           sarif_file: "trivy-docker-results.sarif"
-          category: "docker-scan"
+          category: "docker-scan-prod"
 
-      - name: Create Docker scan summary
+      - name: Create Docker scan summary (prod)
         if: always()
         run: |
           {
-            echo "## Docker Image Scan Results"
+            echo "## Docker Image Scan Results (Dockerfile.prod)"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -206,6 +206,69 @@ jobs:
             echo "**Image Size:** $IMAGE_SIZE" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # --- Scan 2: Dockerfile.allinone ---
+      # Also scan the all-in-one image which has a different base (ubuntu) and attack surface
+      - name: Build Docker image (allinone)
+        if: always()
+        run: |
+          docker build -f deployment/Dockerfile.allinone -t timetiles:allinone .
+          docker images timetiles:allinone
+
+      - name: Run Trivy vulnerability scanner (allinone)
+        if: always()
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: "timetiles:allinone"
+          format: "json"
+          output: "trivy-docker-allinone-report.json"
+          severity: "CRITICAL,HIGH,MEDIUM,LOW"
+          timeout: "10m"
+          scanners: "vuln,secret,misconfig"
+
+      - name: Convert JSON to SARIF (allinone)
+        if: always()
+        run: trivy convert --format sarif --output trivy-docker-allinone-results.sarif trivy-docker-allinone-report.json
+
+      - name: Upload Trivy results to GitHub Security (allinone)
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
+        with:
+          sarif_file: "trivy-docker-allinone-results.sarif"
+          category: "docker-scan-allinone"
+
+      - name: Create Docker scan summary (allinone)
+        if: always()
+        run: |
+          {
+            echo "## Docker Image Scan Results (Dockerfile.allinone)"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f trivy-docker-allinone-report.json ]; then
+            OS_CRITICAL=$(jq '[.Results[]? | select(.Class=="os-pkgs") | .Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-docker-allinone-report.json)
+            OS_HIGH=$(jq '[.Results[]? | select(.Class=="os-pkgs") | .Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-docker-allinone-report.json)
+            SECRETS=$(jq '[.Results[]? | select(.Class=="secret") | .Secrets[]?] | length' trivy-docker-allinone-report.json)
+
+            {
+              echo "### Scan Summary"
+              echo "| Component | Critical | High |"
+              echo "|-----------|----------|------|"
+              echo "| OS Packages | $OS_CRITICAL | $OS_HIGH |"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            if [ "$SECRETS" -gt 0 ]; then
+              echo "**Secrets Found:** $SECRETS — review and remove exposed credentials!" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+
+            if [ "$OS_CRITICAL" -gt 0 ]; then
+              echo "**Build failed due to $OS_CRITICAL critical vulnerabilities in allinone Docker image**" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+          fi
+
       - name: Upload Docker scan reports
         uses: actions/upload-artifact@v7
         if: always()
@@ -214,6 +277,8 @@ jobs:
           path: |
             trivy-docker-results.sarif
             trivy-docker-report.json
+            trivy-docker-allinone-results.sarif
+            trivy-docker-allinone-report.json
           retention-days: 30
 
   config-scan:
@@ -238,6 +303,19 @@ jobs:
           output: "trivy-config-report.json"
           severity: "CRITICAL,HIGH,MEDIUM,LOW"
           timeout: "10m"
+
+      # Fail the job if HIGH or CRITICAL misconfigurations are found
+      - name: Check for critical misconfigurations
+        if: always()
+        run: |
+          if [ -f trivy-config-report.json ]; then
+            CRITICAL=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="CRITICAL")] | length' trivy-config-report.json)
+            HIGH=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="HIGH")] | length' trivy-config-report.json)
+            if [ "${CRITICAL:-0}" -gt 0 ] || [ "${HIGH:-0}" -gt 0 ]; then
+              echo "FATAL: Found $CRITICAL critical and $HIGH high severity misconfigurations"
+              exit 1
+            fi
+          fi
 
       - name: Convert JSON to SARIF
         if: always()

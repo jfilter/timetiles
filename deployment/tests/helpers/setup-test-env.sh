@@ -21,43 +21,45 @@ if ! command -v restic &>/dev/null; then
     sudo apt-get update -qq && sudo apt-get install -y -qq restic
 fi
 
-# Create .env.production if not exists
+# Always regenerate .env.production for tests to ensure a clean, deterministic state.
+# Reusing an existing file could carry stale secrets or misconfigured values.
 ENV_FILE="$DEPLOY_DIR/.env.production"
-if [[ ! -f "$ENV_FILE" ]]; then
-    echo "Creating test .env.production..."
-    cp "$DEPLOY_DIR/.env.production.example" "$ENV_FILE"
-
-    # Set test values
-    sed -i.bak 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' "$ENV_FILE"
-    sed -i.bak 's/your-domain.com/localhost/g' "$ENV_FILE"
-    sed -i.bak 's/admin@${DOMAIN_NAME}/test@localhost/g' "$ENV_FILE"
-    sed -i.bak 's/^TIMETILES_VERSION=.*/TIMETILES_VERSION=edge/' "$ENV_FILE"
-
-    # Generate payload secret
-    PAYLOAD_SECRET=$(openssl rand -base64 32 | tr -d '/')
-    sed -i.bak "s|PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$PAYLOAD_SECRET|" "$ENV_FILE"
-
-    # Generate restic backup password
-    RESTIC_PASSWORD=$(openssl rand -base64 32 | tr -d '/')
-    sed -i.bak "s|RESTIC_PASSWORD=.*|RESTIC_PASSWORD=$RESTIC_PASSWORD|" "$ENV_FILE"
-
-    # Set paths relative to deployment dir (may differ from /opt/timetiles on GHA)
-    sed -i.bak "s|RESTIC_REPOSITORY=.*|RESTIC_REPOSITORY=$DEPLOY_DIR/backups/restic-repo|" "$ENV_FILE"
-    sed -i.bak "s|UPLOAD_HOST_DIR=.*|UPLOAD_HOST_DIR=$DEPLOY_DIR/uploads|" "$ENV_FILE"
-
-    # Override with CI env vars if set
-    if [[ -n "${TIMETILES_IMAGE:-}" ]]; then
-        sed -i.bak "s|^TIMETILES_IMAGE=.*|TIMETILES_IMAGE=$TIMETILES_IMAGE|" "$ENV_FILE"
-    fi
-    if [[ -n "${TIMETILES_VERSION:-}" ]]; then
-        sed -i.bak "s|^TIMETILES_VERSION=.*|TIMETILES_VERSION=$TIMETILES_VERSION|" "$ENV_FILE"
-    fi
-
-    rm -f "$ENV_FILE.bak"
-    echo "Created $ENV_FILE with test values"
-else
-    echo "Using existing $ENV_FILE"
+if [[ -f "$ENV_FILE" ]]; then
+    echo "Warning: Existing .env.production found — backing up and regenerating for tests"
+    cp "$ENV_FILE" "$ENV_FILE.pre-test-backup"
 fi
+
+echo "Creating test .env.production..."
+cp "$DEPLOY_DIR/.env.production.example" "$ENV_FILE"
+
+# Set test values
+sed -i.bak 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' "$ENV_FILE"
+sed -i.bak 's/your-domain.com/localhost/g' "$ENV_FILE"
+sed -i.bak 's/admin@${DOMAIN_NAME}/test@localhost/g' "$ENV_FILE"
+sed -i.bak 's/^TIMETILES_VERSION=.*/TIMETILES_VERSION=edge/' "$ENV_FILE"
+
+# Generate payload secret
+PAYLOAD_SECRET=$(openssl rand -base64 32 | tr -d '/')
+sed -i.bak "s|PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$PAYLOAD_SECRET|" "$ENV_FILE"
+
+# Generate restic backup password
+RESTIC_PASSWORD=$(openssl rand -base64 32 | tr -d '/')
+sed -i.bak "s|RESTIC_PASSWORD=.*|RESTIC_PASSWORD=$RESTIC_PASSWORD|" "$ENV_FILE"
+
+# Set paths relative to deployment dir (may differ from /opt/timetiles on GHA)
+sed -i.bak "s|RESTIC_REPOSITORY=.*|RESTIC_REPOSITORY=$DEPLOY_DIR/backups/restic-repo|" "$ENV_FILE"
+sed -i.bak "s|UPLOAD_HOST_DIR=.*|UPLOAD_HOST_DIR=$DEPLOY_DIR/uploads|" "$ENV_FILE"
+
+# Override with CI env vars if set
+if [[ -n "${TIMETILES_IMAGE:-}" ]]; then
+    sed -i.bak "s|^TIMETILES_IMAGE=.*|TIMETILES_IMAGE=$TIMETILES_IMAGE|" "$ENV_FILE"
+fi
+if [[ -n "${TIMETILES_VERSION:-}" ]]; then
+    sed -i.bak "s|^TIMETILES_VERSION=.*|TIMETILES_VERSION=$TIMETILES_VERSION|" "$ENV_FILE"
+fi
+
+rm -f "$ENV_FILE.bak"
+echo "Created $ENV_FILE with test values"
 
 # Prepare nginx config
 echo "Preparing nginx configuration..."

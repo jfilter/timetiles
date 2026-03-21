@@ -61,11 +61,20 @@ send_alert() {
 
 # Restic configuration
 load_restic_config() {
-    # Source env file so RESTIC_PASSWORD and other vars are available in shell
-    # (--env-file only passes them to docker compose, not the shell)
-    set -a
-    source "$ENV_FILE"
-    set +a
+    # Extract only backup-related variables (not full env source to avoid leaking secrets)
+    while IFS='=' read -r key value; do
+        case "$key" in
+            RESTIC_PASSWORD|RESTIC_REPOSITORY|RESTIC_OFFSITE_REPOSITORY|\
+            AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_ENDPOINT_URL|\
+            BACKUP_KEEP_DAILY|BACKUP_KEEP_WEEKLY|BACKUP_KEEP_MONTHLY|\
+            UPLOAD_HOST_DIR)
+                # Remove surrounding quotes if present
+                value="${value%\"}"
+                value="${value#\"}"
+                export "$key=$value"
+                ;;
+        esac
+    done < <(grep -E '^(RESTIC_|AWS_|BACKUP_KEEP_|UPLOAD_HOST_DIR)' "$ENV_FILE" 2>/dev/null || true)
 
     RESTIC_PASSWORD="${RESTIC_PASSWORD:-}"
     RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-$SCRIPT_DIR/backups/restic-repo}"
@@ -152,6 +161,7 @@ print_usage() {
     echo "  ssl       - Initialize Let's Encrypt SSL certificate"
     echo "  update    - Pull latest code and redeploy"
     echo "  check     - Verify all deployment aspects are properly configured"
+    echo "  version   - Show version information"
     echo ""
     echo "Note: Database migrations run automatically on container startup."
     echo ""
@@ -322,7 +332,7 @@ case "$1" in
     down)
         check_env
         echo -e "${YELLOW}Stopping services...${NC}"
-        $DC_CMD down
+        $DC_CMD down --remove-orphans
         echo -e "${GREEN}Services stopped!${NC}"
         ;;
         
@@ -388,7 +398,7 @@ case "$1" in
 
                 # Create temp SQL dump
                 TEMP_DUMP=$(mktemp)
-                trap "rm -f $TEMP_DUMP" EXIT
+                trap "rm -f $TEMP_DUMP" EXIT INT TERM
 
                 if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS pg_dump -h localhost -U $POSTGRES_USER --clean --if-exists $POSTGRES_DBNAME' > "$TEMP_DUMP"; then
                     echo -e "${RED}Database dump failed${NC}"
@@ -561,6 +571,8 @@ case "$1" in
 
                     cat > "$CRON_SCRIPT" << EOF
 #!/bin/bash
+exec 200>/var/lock/timetiles-backup.lock
+flock -n 200 || { echo "Backup already running, skipping"; exit 0; }
 cd "$SCRIPT_DIR"
 ./timetiles backup $CRON_OFFSITE
 ./timetiles backup prune
@@ -637,8 +649,8 @@ EOF
                 exit 1
             fi
             echo ""
-            echo "Usage: timetiles restore <snapshot-id> [--offsite]"
-            echo "       timetiles restore latest [--offsite]"
+            echo "Usage: timetiles restore <snapshot-id> [--offsite] [--force]"
+            echo "       timetiles restore latest [--offsite] [--force]"
             exit 0
         fi
 
@@ -662,15 +674,23 @@ EOF
         TAGS=$(echo "$SNAPSHOT_INFO" | jq -r '.[0].tags // [] | join(",")')
         echo "Snapshot $SNAPSHOT tags: $TAGS"
 
+        # Skip confirmation with --force flag
+        FORCE=false
+        for arg in "$@"; do
+            [[ "$arg" == "--force" ]] && FORCE=true
+        done
+
         # Confirm restore
-        echo ""
-        echo -e "${YELLOW}WARNING: This will overwrite current data!${NC}"
-        read -p "Continue with restore? [y/N] " -n 1 -r
-        echo
-        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 0
+        if [[ "$FORCE" != "true" ]]; then
+            echo ""
+            echo -e "${YELLOW}WARNING: This will overwrite current data!${NC}"
+            read -p "Continue with restore? [y/N] " -n 1 -r
+            echo
+            [[ ! $REPLY =~ ^[Yy]$ ]] && exit 0
+        fi
 
         RESTORE_DIR=$(mktemp -d)
-        trap "rm -rf $RESTORE_DIR" EXIT
+        trap "rm -rf $RESTORE_DIR" EXIT INT TERM
 
         # Restore snapshot to temp directory
         echo -e "${YELLOW}Extracting snapshot...${NC}"
@@ -738,6 +758,22 @@ EOF
             echo -e "${RED}✗ Unhealthy${NC}"
         fi
 
+        # Check Nginx
+        echo -n "Nginx: "
+        if $DC_CMD ps nginx 2>/dev/null | grep -q "Up"; then
+            echo -e "${GREEN}✓ Running${NC}"
+        else
+            echo -e "${RED}✗ Not running${NC}"
+        fi
+
+        # Check Certbot
+        echo -n "Certbot: "
+        if $DC_CMD ps certbot 2>/dev/null | grep -q "Up"; then
+            echo -e "${GREEN}✓ Running${NC}"
+        else
+            echo -e "${YELLOW}○ Not running (renewal only)${NC}"
+        fi
+
         # Check Scraper Runner (if configured)
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
             echo -n "Scraper Runner: "
@@ -781,9 +817,9 @@ EOF
                 "$func"
                 local result=$?
                 case $result in
-                    0) print_ok "$CHECK_MSG" ;;
-                    1) print_warn "$CHECK_MSG" ;;
-                    *) print_fail "$CHECK_MSG" ;;
+                    0) print_ok "${CHECK_MSG:-}" ;;
+                    1) print_warn "${CHECK_MSG:-}" ;;
+                    *) print_fail "${CHECK_MSG:-}" ;;
                 esac
             else
                 print_warn "Check function not available: $func"
@@ -1049,6 +1085,17 @@ EOF
 
             systemctl restart timescrape-runner
             echo -e "${GREEN}Scraper runner updated!${NC}"
+        fi
+        ;;
+
+    version|--version|-v)
+        # Try to get version from git tag or .version file
+        if [[ -f "$SCRIPT_DIR/.version" ]]; then
+            cat "$SCRIPT_DIR/.version"
+        elif command -v git &>/dev/null && git -C "$SCRIPT_DIR" describe --tags 2>/dev/null; then
+            : # git describe already printed
+        else
+            echo "unknown (no version info available)"
         fi
         ;;
 
