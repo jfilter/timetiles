@@ -466,7 +466,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             errors: 0,
           },
         },
-        context: { skipStageTransition: true },
       });
     });
   });
@@ -773,7 +772,6 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             errors: 0,
           },
         },
-        context: { skipStageTransition: true },
       });
     });
   });

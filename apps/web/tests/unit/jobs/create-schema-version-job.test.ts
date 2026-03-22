@@ -138,13 +138,11 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         collection: "ingest-jobs",
         id: "import-123",
         data: { stage: "create-schema-version" },
-        context: { skipStageTransition: true },
       });
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
         data: { datasetSchemaVersion: "schema-version-101" },
-        context: { skipStageTransition: true },
       });
     });
 
@@ -175,7 +173,6 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         collection: "ingest-jobs",
         id: "import-123",
         data: { stage: "create-schema-version" },
-        context: { skipStageTransition: true },
       });
     });
 

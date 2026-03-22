@@ -153,17 +153,7 @@ describe.sequential("review-checks", () => {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: "job-123",
         data: { stage: PROCESSING_STAGE.NEEDS_REVIEW, reviewReason: "high-duplicates", reviewDetails: details },
-        context: { skipStageTransition: true },
       });
-    });
-
-    it("should use skipStageTransition: true in context", async () => {
-      const mockPayload = { update: vi.fn().mockResolvedValue({}) };
-
-      await setNeedsReview(mockPayload as any, "job-456", "quota-exceeded", { current: 900, limit: 1000 });
-
-      const callArgs = mockPayload.update.mock.calls[0]?.[0];
-      expect(callArgs.context).toEqual({ skipStageTransition: true });
     });
   });
 });

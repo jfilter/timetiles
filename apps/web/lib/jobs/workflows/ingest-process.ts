@@ -34,7 +34,7 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
   concurrency: ({ input }) => `ingest:${input.ingestJobId}`,
   handler: async ({ job, tasks, req }) => {
     const id = job.input.ingestJobId;
-    const resumeFrom = (job.input as Record<string, unknown>).resumeFrom ?? "create-schema-version";
+    const resumeFrom = job.input.resumeFrom ?? "create-schema-version";
     logger.info("ingest-process workflow started (post-review)", { ingestJobId: id, resumeFrom });
 
     if (resumeFrom === "detect-schema") {

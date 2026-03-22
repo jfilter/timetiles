@@ -73,7 +73,6 @@ export const createSchemaVersionJob = {
             context: "create-schema-version",
           },
         },
-        context: { skipStageTransition: true },
       });
     } catch {
       // Best-effort — don't throw in onFail
@@ -97,7 +96,6 @@ export const createSchemaVersionJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { stage: PROCESSING_STAGE.CREATE_SCHEMA_VERSION },
-        context: { skipStageTransition: true },
       });
 
       // Start CREATE_SCHEMA_VERSION stage
@@ -145,7 +143,6 @@ export const createSchemaVersionJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { datasetSchemaVersion: schemaVersion.id },
-        context: { skipStageTransition: true },
       });
 
       logger.info("Schema version created successfully", { ingestJobId, schemaVersionId: schemaVersion.id });

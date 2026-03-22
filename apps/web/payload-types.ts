@@ -163,7 +163,6 @@ export interface Config {
       'schedule-manager': TaskScheduleManager;
       'cleanup-stuck-scheduled-ingests': TaskCleanupStuckScheduledIngests;
       'cleanup-stuck-scrapers': TaskCleanupStuckScrapers;
-      'process-pending-retries': TaskProcessPendingRetries;
       'quota-reset': TaskQuotaReset;
       'cache-cleanup': TaskCacheCleanup;
       'schema-maintenance': TaskSchemaMaintenance;
@@ -3671,7 +3670,6 @@ export interface PayloadJob {
           | 'schedule-manager'
           | 'cleanup-stuck-scheduled-ingests'
           | 'cleanup-stuck-scrapers'
-          | 'process-pending-retries'
           | 'quota-reset'
           | 'cache-cleanup'
           | 'schema-maintenance'
@@ -3728,7 +3726,6 @@ export interface PayloadJob {
         | 'schedule-manager'
         | 'cleanup-stuck-scheduled-ingests'
         | 'cleanup-stuck-scrapers'
-        | 'process-pending-retries'
         | 'quota-reset'
         | 'cache-cleanup'
         | 'schema-maintenance'
@@ -5811,14 +5808,6 @@ export interface TaskCleanupStuckScheduledIngests {
  * via the `definition` "TaskCleanup-stuck-scrapers".
  */
 export interface TaskCleanupStuckScrapers {
-  input?: unknown;
-  output?: unknown;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskProcess-pending-retries".
- */
-export interface TaskProcessPendingRetries {
   input?: unknown;
   output?: unknown;
 }

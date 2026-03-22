@@ -13,7 +13,6 @@ import type {
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { isRecoveryStage } from "@/lib/constants/stage-graph";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { getResumePointForReason, REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
 import { logger } from "@/lib/logger";
@@ -49,34 +48,6 @@ const enforceCompletedTerminalState = (
           `Stage transition from '${fromStage}' to '${toStage}' is not allowed.`
       );
     }
-  }
-};
-
-/**
- * Validates and logs FAILED job recovery transitions.
- */
-const validateFailedRecovery = (
-  fromStage: string,
-  toStage: string,
-  req: PayloadRequest,
-  originalDoc: IngestJob
-): void => {
-  if (fromStage === PROCESSING_STAGE.FAILED && toStage !== PROCESSING_STAGE.FAILED) {
-    if (!isRecoveryStage(toStage)) {
-      throw new Error(
-        `Invalid recovery stage '${toStage}' for failed import job. ` +
-          `Failed jobs can only be retried from specific stages via the retry mechanism.`
-      );
-    }
-
-    // Log recovery attempts (both automatic and manual)
-    logger.info("Failed import job recovery initiated", {
-      ingestJobId: originalDoc.id,
-      fromStage,
-      toStage,
-      userId: req.user?.id,
-      isAutomatic: !req.user, // No user means automated retry
-    });
   }
 };
 
@@ -167,7 +138,6 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
       const toStage = data.stage;
 
       enforceCompletedTerminalState(fromStage, toStage, req, originalDoc);
-      validateFailedRecovery(fromStage, toStage, req, originalDoc);
     }
 
     // Handle schema approval workflow
@@ -235,8 +205,7 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
       }
 
       const resumeFrom = getResumePointForReason(doc.reviewReason);
-      // resumeFrom is defined in inputSchema but not yet in generated types
-      const input = { ingestJobId: String(doc.id), resumeFrom } as { ingestJobId: string };
+      const input = { ingestJobId: String(doc.id), resumeFrom };
       await req.payload.jobs.queue({ workflow: "ingest-process", input });
     }
 

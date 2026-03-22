@@ -159,7 +159,6 @@ describe.sequential("GeocodeBatchJob Handler", () => {
             },
           },
         },
-        context: { skipStageTransition: true },
       });
 
       // Should return correct output
@@ -258,7 +257,6 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         collection: "ingest-jobs",
         id: 123,
         data: { stage: "geocode-batch" },
-        context: { skipStageTransition: true },
       });
 
       expect(result.output).toEqual({ success: true, skipped: true });
@@ -282,7 +280,6 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         collection: "ingest-jobs",
         id: 123,
         data: { geocodingResults: {} },
-        context: { skipStageTransition: true },
       });
 
       expect(result.output).toEqual({ success: true, geocoded: 0, failed: 0, skipped: 0, uniqueLocations: 0 });
@@ -458,7 +455,6 @@ describe.sequential("GeocodeBatchJob Handler", () => {
             ]),
           },
         },
-        context: { skipStageTransition: true },
       });
 
       // Should also update import file status to failed with detailed error

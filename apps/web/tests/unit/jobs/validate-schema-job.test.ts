@@ -174,7 +174,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             transformSuggestions: [],
           },
         },
-        context: { skipStageTransition: true },
       });
     });
 
@@ -286,7 +285,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           },
           stage: "needs-review",
         },
-        context: { skipStageTransition: true },
       });
     });
 
@@ -383,7 +381,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           },
           stage: "needs-review",
         },
-        context: { skipStageTransition: true },
       });
     });
   });
@@ -561,7 +558,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             transformSuggestions: [],
           },
         },
-        context: { skipStageTransition: true },
       });
     });
 

@@ -166,7 +166,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, { collection: "ingest-files", id: "file-789" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, { collection: "ingest-jobs", id: "import-123" });
 
-      // Verify update call — no stage transition, skipStageTransition context
+      // Verify update call — no stage transition
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
@@ -178,7 +178,6 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
             summary: { totalRows: 100, uniqueRows: 100, internalDuplicates: 0, externalDuplicates: 0 },
           },
         },
-        context: { skipStageTransition: true },
       });
     });
 

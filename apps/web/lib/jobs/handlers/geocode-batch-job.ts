@@ -162,7 +162,6 @@ export const geocodeBatchJob = {
             context: "geocode-batch",
           },
         },
-        context: { skipStageTransition: true },
       });
     } catch {
       // Best-effort — don't throw in onFail
@@ -185,7 +184,6 @@ export const geocodeBatchJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
-        context: { skipStageTransition: true },
       });
 
       // Create a geocoding service scoped to this job invocation
@@ -258,7 +256,6 @@ export const geocodeBatchJob = {
               failures: failures.slice(0, 10), // Store first 10 failures with details
             },
           },
-          context: { skipStageTransition: true },
         });
 
         // Also update the import file status with error message (user-facing)
@@ -287,7 +284,6 @@ export const geocodeBatchJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { geocodingResults: results },
-        context: { skipStageTransition: true },
       });
 
       logPerformance("Unique location geocoding", Date.now() - startTime, {

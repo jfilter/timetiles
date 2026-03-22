@@ -223,7 +223,6 @@ const finalizeSchemaDetection = async (
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
     data: { detectedFieldMappings: fieldMappings },
-    context: { skipStageTransition: true },
   });
 };
 
@@ -312,7 +311,6 @@ export const schemaDetectionJob = {
             context: "schema-detection",
           },
         },
-        context: { skipStageTransition: true },
       });
     } catch {
       // Best-effort — don't throw in onFail
@@ -334,7 +332,6 @@ export const schemaDetectionJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { stage: PROCESSING_STAGE.DETECT_SCHEMA },
-        context: { skipStageTransition: true },
       });
 
       // Load resources

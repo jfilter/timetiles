@@ -186,7 +186,6 @@ const markJobCompleted = async (
         errors: currentJob.errors?.length ?? 0,
       },
     },
-    context: { skipStageTransition: true },
   });
 
   // Clean up sidecar CSV files
@@ -345,7 +344,6 @@ export const createEventsBatchJob = {
             context: "create-events-batch",
           },
         },
-        context: { skipStageTransition: true },
       });
     } catch {
       // Best-effort — don't throw in onFail
@@ -359,7 +357,6 @@ export const createEventsBatchJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { stage: PROCESSING_STAGE.COMPLETED },
-        context: { skipStageTransition: true },
       });
     } catch {
       // Best-effort — don't throw in onSuccess
@@ -384,7 +381,6 @@ export const createEventsBatchJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { stage: PROCESSING_STAGE.CREATE_EVENTS },
-        context: { skipStageTransition: true },
       });
 
       const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);

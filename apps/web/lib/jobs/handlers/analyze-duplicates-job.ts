@@ -56,7 +56,6 @@ const skipDeduplication = async (
           summary: { totalRows, uniqueRows: totalRows, internalDuplicates: 0, externalDuplicates: 0 },
         },
       },
-      context: { skipStageTransition: true },
     });
     return true;
   }
@@ -208,7 +207,6 @@ const updateJobWithDuplicates = async (
         },
       },
     },
-    context: { skipStageTransition: true },
   });
 };
 
@@ -279,7 +277,6 @@ export const analyzeDuplicatesJob = {
             context: "analyze-duplicates",
           },
         },
-        context: { skipStageTransition: true },
       });
     } catch {
       // Best-effort — don't throw in onFail

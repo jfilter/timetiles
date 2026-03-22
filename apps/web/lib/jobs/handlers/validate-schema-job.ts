@@ -295,12 +295,7 @@ const applyValidationResult = async (
     updateData.stage = PROCESSING_STAGE.NEEDS_REVIEW;
   }
 
-  await payload.update({
-    collection: COLLECTION_NAMES.INGEST_JOBS,
-    id: jobIdTyped,
-    data: updateData,
-    context: { skipStageTransition: true },
-  });
+  await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: jobIdTyped, data: updateData });
 
   await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
@@ -364,7 +359,6 @@ export const validateSchemaJob = {
             context: "validate-schema",
           },
         },
-        context: { skipStageTransition: true },
       });
     } catch {
       // Best-effort — don't throw in onFail
@@ -390,7 +384,6 @@ export const validateSchemaJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
-        context: { skipStageTransition: true },
       });
 
       const { job, dataset, ingestFile } = await loadJobResources(payload, jobIdTyped);

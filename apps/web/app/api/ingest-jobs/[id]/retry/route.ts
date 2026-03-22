@@ -1,9 +1,9 @@
 /**
- * Retries a failed import job.
+ * Retries a failed import job by queuing the ingest-process workflow.
  *
- * Uses ErrorRecoveryService to classify the error, determine the appropriate
- * recovery stage, and schedule the retry. The service handles quota checks
- * and atomic claiming internally.
+ * Payload workflows handle retries natively via task `retries` config
+ * and `onFail` callbacks, so this endpoint simply re-queues the workflow
+ * from the beginning (detect-schema by default).
  *
  * POST /api/ingest-jobs/:id/retry
  *
@@ -14,7 +14,6 @@ import { z } from "zod";
 
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { ErrorRecoveryService } from "@/lib/ingest/error-recovery";
 import { logger } from "@/lib/logger";
 import type { IngestJob } from "@/payload-types";
 
@@ -34,24 +33,14 @@ export const POST = apiRoute({
       throw new ValidationError(`Ingest job is not in failed state. Current stage: ${ingestJob.stage}`);
     }
 
-    // Delegate to ErrorRecoveryService — handles quota, atomic claim, and job queueing
-    const result = await ErrorRecoveryService.recoverFailedJob(payload, ingestJob.id);
+    // Queue the ingest-process workflow to re-process from the beginning
+    await payload.jobs.queue({
+      workflow: "ingest-process",
+      input: { ingestJobId: String(ingestJob.id), resumeFrom: "detect-schema" },
+    });
 
-    if (!result.success) {
-      logger.warn({ ingestJobId: ingestJob.id, userId: user.id, reason: result.error }, "Manual retry attempt failed");
+    logger.info({ ingestJobId: ingestJob.id, userId: user.id }, "Manual retry initiated via workflow");
 
-      throw new ValidationError(result.error ?? "Failed to retry import job");
-    }
-
-    logger.info(
-      { ingestJobId: ingestJob.id, userId: user.id, nextRetryAt: result.nextRetryAt },
-      "Manual retry initiated"
-    );
-
-    return {
-      message: "Import retry scheduled successfully",
-      nextRetryAt: result.nextRetryAt?.toISOString(),
-      retryScheduled: result.retryScheduled,
-    };
+    return { message: "Import retry queued successfully", retryScheduled: true };
   },
 });

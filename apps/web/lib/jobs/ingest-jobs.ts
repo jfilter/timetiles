@@ -31,9 +31,6 @@ export { cacheCleanupJob } from "./handlers/cache-cleanup-job";
 // Schema maintenance job handlers
 export { schemaMaintenanceJob } from "./handlers/schema-maintenance-job";
 
-// Error recovery job handlers
-export { processPendingRetriesJob } from "./handlers/process-pending-retries-job";
-
 // Data export job handlers
 export { dataExportCleanupJob } from "./handlers/data-export-cleanup-job";
 export { dataExportJob } from "./handlers/data-export-job";

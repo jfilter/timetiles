@@ -350,7 +350,6 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         collection: "ingest-jobs",
         id: "import-123",
         data: { stage: "detect-schema" },
-        context: { skipStageTransition: true },
       });
 
       // Should not queue any jobs
