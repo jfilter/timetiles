@@ -149,7 +149,7 @@ describe.sequential("Security Validation Tests", () => {
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       // Execute the job
-      const result = await urlFetchJob.handler({
+      await urlFetchJob.handler({
         job: { id: "test-job-redirect" },
         req: { payload },
         input: {

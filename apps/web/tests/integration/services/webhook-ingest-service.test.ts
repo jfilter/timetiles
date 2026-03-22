@@ -904,29 +904,26 @@ describe.sequential("Webhook Import Service Integration", () => {
     });
 
     it("should handle HTTP error responses", async () => {
-      const result = await urlFetchJob.handler({
-        req: { payload },
-        job: {
-          id: `job-500-${Date.now()}`,
-          task: JOB_TYPES.URL_FETCH,
-          input: {
-            scheduledIngestId: testScheduledIngest.id,
-            sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
-            catalogId: testCatalog.id,
-            originalName: "500 Test",
-            userId: testUser.id,
-            triggeredBy: "webhook",
+      await expect(
+        urlFetchJob.handler({
+          req: { payload },
+          job: {
+            id: `job-500-${Date.now()}`,
+            task: JOB_TYPES.URL_FETCH,
+            input: {
+              scheduledIngestId: testScheduledIngest.id,
+              sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
+              catalogId: testCatalog.id,
+              originalName: "500 Test",
+              userId: testUser.id,
+              triggeredBy: "webhook",
+            },
           },
-        },
-      });
-
-      expect(false).toBe(true); // TODO: handler now throws;
-      expect("error" in result.output && result.output.error).toContain("500");
+        })
+      ).rejects.toThrow(/500/);
 
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
-
       expect(updatedImport.lastStatus).toBe("failed");
-      expect(updatedImport.lastError).toContain("500");
     });
   });
 
@@ -946,25 +943,24 @@ describe.sequential("Webhook Import Service Integration", () => {
         },
       });
 
-      const result = await urlFetchJob.handler({
-        req: { payload },
-        job: {
-          id: `job-retry-${Date.now()}`,
-          task: JOB_TYPES.URL_FETCH,
-          input: {
-            scheduledIngestId: testScheduledIngest.id,
-            sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
-            catalogId: testCatalog.id,
-            originalName: "Retry Test",
-            userId: testUser.id,
-            triggeredBy: "webhook",
+      // Handler throws on error — Payload handles retries
+      await expect(
+        urlFetchJob.handler({
+          req: { payload },
+          job: {
+            id: `job-retry-${Date.now()}`,
+            task: JOB_TYPES.URL_FETCH,
+            input: {
+              scheduledIngestId: testScheduledIngest.id,
+              sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
+              catalogId: testCatalog.id,
+              originalName: "Retry Test",
+              userId: testUser.id,
+              triggeredBy: "webhook",
+            },
           },
-        },
-      });
-
-      // Should fail after retries
-      expect(false).toBe(true); // TODO: handler now throws;
-      expect("error" in result.output && result.output.error).toContain("500");
+        })
+      ).rejects.toThrow(/500/);
     });
 
     it("should fail after max retries exceeded", async () => {
@@ -972,33 +968,29 @@ describe.sequential("Webhook Import Service Integration", () => {
         collection: "scheduled-ingests",
         id: testScheduledIngest.id,
         data: {
-          sourceUrl: `http://localhost:${testServerPort}/500-error.csv`, // Always fails
-          retryConfig: {
-            maxRetries: 1,
-            retryDelayMinutes: 1, // Minimum valid value is 1
-            exponentialBackoff: false,
-          },
+          sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
+          retryConfig: { maxRetries: 1, retryDelayMinutes: 1, exponentialBackoff: false },
         },
       });
 
-      const result = await urlFetchJob.handler({
-        req: { payload },
-        job: {
-          id: `job-maxretry-${Date.now()}`,
-          task: JOB_TYPES.URL_FETCH,
-          input: {
-            scheduledIngestId: testScheduledIngest.id,
-            sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
-            catalogId: testCatalog.id,
-            originalName: "Max Retry Test",
-            userId: testUser.id,
-            triggeredBy: "webhook",
+      // Handler throws — Payload retries up to maxRetries, then onFail marks failed
+      await expect(
+        urlFetchJob.handler({
+          req: { payload },
+          job: {
+            id: `job-maxretry-${Date.now()}`,
+            task: JOB_TYPES.URL_FETCH,
+            input: {
+              scheduledIngestId: testScheduledIngest.id,
+              sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
+              catalogId: testCatalog.id,
+              originalName: "Max Retry Test",
+              userId: testUser.id,
+              triggeredBy: "webhook",
+            },
           },
-        },
-      });
-
-      expect(false).toBe(true); // TODO: handler now throws;
-      expect("error" in result.output && result.output.error).toContain("500");
+        })
+      ).rejects.toThrow(/500/);
     });
   });
 });
