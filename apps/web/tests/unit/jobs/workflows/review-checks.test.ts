@@ -56,9 +56,10 @@ describe.sequential("review-checks", () => {
       expect(result).toEqual({ needsReview: false });
     });
 
-    it("should return needsReview false when uniqueRows is 0", () => {
+    it("should return needsReview true when uniqueRows is 0 (100% duplicates)", () => {
+      // 100 total, 0 unique = all duplicates → must trigger review
       const result = shouldReviewHighDuplicates(100, 0);
-      expect(result).toEqual({ needsReview: false });
+      expect(result).toEqual({ needsReview: true, duplicateRate: 1 });
     });
 
     it("should return needsReview false when all rows are unique", () => {

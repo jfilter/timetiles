@@ -117,7 +117,10 @@ export const shouldReviewHighDuplicates = (
   totalRows: number,
   uniqueRows: number
 ): { needsReview: boolean; duplicateRate?: number } => {
-  if (totalRows <= 0 || uniqueRows <= 0) return { needsReview: false };
+  if (totalRows <= 0) return { needsReview: false }; // no rows to check
+
+  // 0 unique rows out of N total = 100% duplicates → definitely needs review
+  if (uniqueRows <= 0 && totalRows > 0) return { needsReview: true, duplicateRate: 1 };
 
   const duplicateRate = 1 - uniqueRows / totalRows;
   if (duplicateRate > THRESHOLDS.HIGH_DUPLICATE_RATE) {
