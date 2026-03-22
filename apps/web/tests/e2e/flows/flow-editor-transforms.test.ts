@@ -124,7 +124,7 @@ test.describe("Flow Editor Transforms", () => {
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
     // Verify events were created
-    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+
     const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 5000 });
   });

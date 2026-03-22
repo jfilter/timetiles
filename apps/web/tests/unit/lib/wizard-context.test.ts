@@ -15,7 +15,6 @@ import type { FieldMapping, SheetInfo } from "@/lib/types/ingest-wizard";
 // The persist mock provides the `.persist` API (clearStorage, etc.) that
 // the store's complete()/reset() actions rely on.
 vi.mock("zustand/middleware", async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- vi.mock requires dynamic import
   const actual = await importOriginal<typeof import("zustand/middleware")>();
   return {
     ...actual,
@@ -27,7 +26,7 @@ vi.mock("zustand/middleware", async (importOriginal) => {
       return (set: AnySet, get: AnyGet, api: AnyApi) => {
         api.persist = {
           clearStorage: () => {},
-          // eslint-disable-next-line promise/prefer-await-to-then -- no-op stub, not a real promise chain
+
           rehydrate: () => Promise.resolve(),
           hasHydrated: () => true,
           onHydrate: () => () => {},

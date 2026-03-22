@@ -235,7 +235,6 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts any translation function signature
 const getTransformSummary = (transform: IngestTransform, t: (...args: any[]) => string): string => {
   switch (transform.type) {
     case "rename":

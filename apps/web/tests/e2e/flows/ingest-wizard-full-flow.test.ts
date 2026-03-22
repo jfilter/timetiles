@@ -142,7 +142,7 @@ test.describe("Import Wizard - Full Flow", () => {
       await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
       // Verify success message shows events were created (must be > 0)
-      // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+
       const successMessage = page.getByText(/import complete/i);
       await expect(successMessage).toBeVisible({ timeout: 5000 });
 
@@ -270,7 +270,7 @@ test.describe("Import Wizard - Full Flow", () => {
       await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
       // Verify success message shows events were created (must be > 0)
-      // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+
       const successMessage = page.getByText(/import complete/i);
       await expect(successMessage).toBeVisible({ timeout: 5000 });
 

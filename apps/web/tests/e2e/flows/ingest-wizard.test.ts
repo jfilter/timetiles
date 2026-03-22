@@ -423,7 +423,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
-    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+
     const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 10000 });
 
@@ -618,7 +618,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
-    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
+
     const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 10000 });
 

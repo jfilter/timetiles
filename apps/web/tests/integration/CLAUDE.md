@@ -41,7 +41,9 @@ Ingest jobs are orchestrated by 4 Payload workflows (`manual-ingest`, `scheduled
 // ✅ CORRECT - Create the record; afterChange hook queues the workflow
 const ingestFile = await payload.create({
   collection: "ingest-files",
-  data: { /* ... */ },
+  data: {
+    /* ... */
+  },
 });
 // Hook automatically queues manual-ingest workflow
 
