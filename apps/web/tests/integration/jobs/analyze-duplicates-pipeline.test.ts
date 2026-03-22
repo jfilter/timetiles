@@ -12,7 +12,7 @@ import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   withCatalog,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -52,7 +52,7 @@ describe.sequential("Analyze Duplicates Pipeline", () => {
       "Food Festival,Street food,2025-07-01,52.5030,13.4290,food\n";
 
     // Create import file
-    const { ingestFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
       filename: "scheduled-events.csv",
       mimeType: "text/csv",
       user: uploadUserId,

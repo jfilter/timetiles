@@ -8,7 +8,7 @@
  * @category E2E Setup
  */
 import { expect, test as setup } from "./fixtures";
-import { ImportPage } from "./pages/import.page";
+import { IngestPage } from "./pages/ingest.page";
 
 const AUTH_FILE = "test-results/.auth/admin.json";
 
@@ -23,10 +23,10 @@ setup("authenticate as admin", async ({ page, baseURL }) => {
     throw new Error(`Auth setup: API login failed (${apiLogin.status()}): ${body}`);
   }
 
-  const importPage = new ImportPage(page);
-  await importPage.goto();
-  await importPage.waitForWizardLoad();
-  await importPage.login("admin@example.com", "admin123");
+  const ingestPage = new IngestPage(page);
+  await ingestPage.goto();
+  await ingestPage.waitForWizardLoad();
+  await ingestPage.login("admin@example.com", "admin123");
 
   // Verify we're authenticated by checking for upload heading
   const uploadHeading = page.getByRole("heading", { name: /upload your data/i });

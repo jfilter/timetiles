@@ -27,7 +27,7 @@ export const loadScheduledImportConfig = async (
 
   try {
     const scheduledIngest = await payload.findByID({
-      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngestId,
     });
 
@@ -75,7 +75,7 @@ export const updateScheduledImportSuccess = async (
     }
 
     await payload.update({
-      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngest.id,
       data: {
         lastRun: new Date().toISOString(),
@@ -119,7 +119,7 @@ export const updateScheduledImportFailure = async (
     }
 
     await payload.update({
-      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngest.id,
       data: {
         lastRun: new Date().toISOString(),
@@ -152,7 +152,7 @@ export const checkForDuplicateContent = async (
 
   try {
     const recentFiles = await payload.find({
-      collection: COLLECTION_NAMES.IMPORT_FILES,
+      collection: COLLECTION_NAMES.INGEST_FILES,
       where: {
         catalog: { equals: catalogId },
         "metadata.urlFetch.contentHash": { equals: dataHash },

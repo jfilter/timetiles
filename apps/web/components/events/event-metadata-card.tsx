@@ -41,7 +41,7 @@ export const EventMetadataCard = ({ event }: { event: Event }) => {
           </div>
           {event.ingestBatch != null && (
             <div>
-              <p className="text-muted-foreground">{t("ingestBatch")}</p>
+              <p className="text-muted-foreground">{t("importBatch")}</p>
               <p>{event.ingestBatch}</p>
             </div>
           )}

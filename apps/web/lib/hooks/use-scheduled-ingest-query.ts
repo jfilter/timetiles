@@ -12,11 +12,11 @@ import { fetchJson } from "@/lib/api/http-error";
 import type { ScheduledIngest } from "@/payload-types";
 
 import { QUERY_PRESETS } from "./query-presets";
-import { scheduledImportKeys } from "./use-scheduled-import-mutations";
+import { scheduledIngestKeys } from "./use-scheduled-ingest-mutations";
 
 export const useScheduledIngestQuery = (id: number | null) =>
   useQuery({
-    queryKey: [...scheduledImportKeys.all, id],
+    queryKey: [...scheduledIngestKeys.all, id],
     queryFn: async () => {
       return fetchJson<ScheduledIngest>(`/api/scheduled-ingests/${id}?depth=1`, { credentials: "include" });
     },

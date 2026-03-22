@@ -12,8 +12,8 @@ import { useCallback } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import { fetchJson } from "@/lib/api/http-error";
-import { scheduledImportKeys } from "@/lib/hooks/use-scheduled-ingest-mutations";
-import type { ImportTransform } from "@/lib/types/ingest-transforms";
+import { scheduledIngestKeys } from "@/lib/hooks/use-scheduled-ingest-mutations";
+import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import type { FieldMapping, SheetMapping, UrlAuthConfig } from "@/lib/types/ingest-wizard";
 
 import type { CatalogSelection, JsonApiConfig, ScheduleConfig } from "./wizard-store";
@@ -28,7 +28,7 @@ export interface UpdateScheduleParams {
   fieldMappings: FieldMapping[];
   deduplicationStrategy: "skip" | "update" | "version";
   geocodingEnabled: boolean;
-  transforms: Record<number, ImportTransform[]>;
+  transforms: Record<number, IngestTransform[]>;
   scheduleConfig: ScheduleConfig;
   authConfig: UrlAuthConfig | null;
   jsonApiConfig: JsonApiConfig | null;
@@ -79,7 +79,7 @@ export const useUpdateSchedule = () => {
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: scheduledImportKeys.all });
+      void queryClient.invalidateQueries({ queryKey: scheduledIngestKeys.all });
       reset();
       router.push("/account/schedules");
     },

@@ -21,7 +21,7 @@ import {
 import { cleanupPreview, loadPreviewMetadata } from "@/lib/ingest/preview-store";
 import { validateRequest } from "@/lib/ingest/preview-validation";
 import { createLogger, logError } from "@/lib/logger";
-import type { ImportTransform } from "@/lib/types/ingest-transforms";
+import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 const logger = createLogger("api-update-schedule");
@@ -166,7 +166,7 @@ export const PATCH = apiRoute({
         finalCatalogId,
         body.deduplicationStrategy,
         body.geocodingEnabled,
-        body.transforms as Array<{ sheetIndex: number; transforms: ImportTransform[] }> | undefined
+        body.transforms as Array<{ sheetIndex: number; transforms: IngestTransform[] }> | undefined
       );
 
       // Update dataset schema config based on schema mode

@@ -74,7 +74,7 @@ const VerifyEmailContent = () => {
                 href="/ingest"
                 className="mt-4 rounded-md bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
               >
-                {t("goToIngest")}
+                {t("goToImport")}
               </Link>
             </div>
           )}
@@ -95,7 +95,7 @@ const VerifyEmailContent = () => {
                   href="/ingest"
                   className="rounded-md bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
                 >
-                  {t("goToIngest")}
+                  {t("goToImport")}
                 </Link>
               </div>
             </div>

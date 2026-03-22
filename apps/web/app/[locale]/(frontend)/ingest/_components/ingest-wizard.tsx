@@ -17,7 +17,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
 import { useRouter } from "@/i18n/navigation";
-import { useScheduledImportQuery } from "@/lib/hooks/use-scheduled-ingest-query";
+import { useScheduledIngestQuery } from "@/lib/hooks/use-scheduled-ingest-query";
 
 import { mapScheduleToEditData } from "./edit-schedule-mapper";
 import {
@@ -31,14 +31,14 @@ import {
 } from "./steps";
 import { useWizardStore } from "./wizard-store";
 
-export interface ImportWizardProps {
+export interface IngestWizardProps {
   /** Additional CSS classes */
   className?: string;
   /** ID of a scheduled ingest to edit (from ?edit= query parameter) */
   editScheduleId?: number | null;
 }
 
-export const IngestWizard = ({ className, editScheduleId }: Readonly<ImportWizardProps>) => {
+export const IngestWizard = ({ className, editScheduleId }: Readonly<IngestWizardProps>) => {
   const t = useTranslations("Ingest");
   const currentStep = useWizardStore((s) => s.currentStep);
   const editMode = useWizardStore((s) => s.editMode);
@@ -47,7 +47,7 @@ export const IngestWizard = ({ className, editScheduleId }: Readonly<ImportWizar
   const setError = useWizardStore((s) => s.setError);
 
   const router = useRouter();
-  const { data: schedule, isLoading: isLoadingSchedule, isError } = useScheduledImportQuery(editScheduleId ?? null);
+  const { data: schedule, isLoading: isLoadingSchedule, isError } = useScheduledIngestQuery(editScheduleId ?? null);
 
   // Initialize edit mode once the schedule is loaded
   useEffect(() => {

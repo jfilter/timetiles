@@ -20,7 +20,7 @@ import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   withCatalog,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -111,7 +111,7 @@ describe.sequential("Concurrent Job Workers (Real Processes)", () => {
 
     // Create 2 import files → 2 dataset-detection jobs auto-queued
     for (let i = 0; i < 2; i++) {
-      await withImportFile(testEnv, catalogId, fileBuffer, {
+      await withIngestFile(testEnv, catalogId, fileBuffer, {
         filename: `real-worker-${i}.csv`,
         mimeType: "text/csv",
         datasetsCount: 0,

@@ -52,7 +52,7 @@ export const ScheduleConfigCard = ({
           variant={activeScheduleConfig.enabled ? "default" : "outline"}
           size="sm"
           onClick={onToggleEnabled}
-          aria-label={t("enableScheduledIngest")}
+          aria-label={t("enableScheduledImport")}
         >
           {activeScheduleConfig.enabled ? t("enabled") : t("disabled")}
         </Button>

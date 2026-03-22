@@ -179,7 +179,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
                     <p>
                       {t("eventsCount", { total: summary.events.inPublicDatasets + summary.events.inPrivateDatasets })}
                     </p>
-                    <p>{t("scheduledIngestsCount", { count: summary.scheduledIngests })}</p>
+                    <p>{t("scheduledImportsCount", { count: summary.scheduledIngests })}</p>
                   </div>
                 </div>
 

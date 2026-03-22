@@ -142,7 +142,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
             )}
             <div>
               <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">
-                {isScheduleEnabled ? t("repeatOnSchedule") : t("ingestOnce")}
+                {isScheduleEnabled ? t("repeatOnSchedule") : t("importOnce")}
               </h3>
               <p className="text-cartographic-navy/60 text-sm">
                 {isScheduleEnabled ? t("repeatOnScheduleDescription") : t("importOnceDescription")}

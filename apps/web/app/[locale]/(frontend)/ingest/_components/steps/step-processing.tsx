@@ -267,8 +267,8 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
         <div className="bg-cartographic-forest/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           <CheckCircle2Icon className="text-cartographic-forest h-8 w-8" />
         </div>
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("ingestComplete")}</h2>
-        <p className="text-cartographic-navy/70 mt-2">{t("ingestCompleteDescription")}</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importComplete")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("importCompleteDescription")}</p>
       </>
     );
   }
@@ -279,8 +279,8 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
         <div className="bg-destructive/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           <AlertCircleIcon className="text-destructive h-8 w-8" />
         </div>
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("ingestFailed")}</h2>
-        <p className="text-cartographic-navy/70 mt-2">{t("ingestFailedDescription")}</p>
+        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importFailed")}</h2>
+        <p className="text-cartographic-navy/70 mt-2">{t("importFailedDescription")}</p>
       </>
     );
   }
@@ -290,8 +290,8 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
       <div className="bg-cartographic-blue/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
         <Loader2Icon className="text-cartographic-blue h-8 w-8 animate-spin" />
       </div>
-      <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("ingestingData")}</h2>
-      <p className="text-cartographic-navy/70 mt-2">{t("ingestingDataDescription")}</p>
+      <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importingData")}</h2>
+      <p className="text-cartographic-navy/70 mt-2">{t("importingDataDescription")}</p>
     </>
   );
 };
@@ -391,7 +391,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
           {/* Completion details */}
           {status === "completed" && progress?.datasets && progress.datasets.length > 0 && (
             <div className="border-cartographic-navy/10 border-t px-6 py-4">
-              <p className="text-cartographic-charcoal mb-3 text-sm font-medium">{t("ingestedDatasets")}</p>
+              <p className="text-cartographic-charcoal mb-3 text-sm font-medium">{t("importedDatasets")}</p>
               <div className="space-y-2">
                 {progress.datasets.map((dataset) => (
                   <div
@@ -424,7 +424,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
             {t("viewOnMap")}
           </Button>
           <Button variant="outline" size="lg" onClick={handleComplete}>
-            {t("ingestAnotherFile")}
+            {t("importAnotherFile")}
           </Button>
         </div>
       )}

@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { mapScheduleToEditData } from "@/app/[locale]/(frontend)/import/_components/edit-schedule-mapper";
+import { mapScheduleToEditData } from "@/app/[locale]/(frontend)/ingest/_components/edit-schedule-mapper";
 import type { ScheduledIngest } from "@/payload-types";
 
 const baseSchedule: ScheduledIngest = {

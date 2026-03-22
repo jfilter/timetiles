@@ -10,7 +10,7 @@ import {
   type EditScheduleData,
   initialState,
   useWizardStore,
-} from "@/app/[locale]/(frontend)/import/_components/wizard-store";
+} from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
 
 const editData: EditScheduleData = {
   sourceUrl: "https://example.com/data.csv",
@@ -87,7 +87,7 @@ describe("wizard store edit mode", () => {
       useWizardStore.setState({
         currentStep: 4,
         file: { name: "old.csv", size: 100, mimeType: "text/csv" },
-        importFileId: 99,
+        ingestFileId: 99,
         error: "old error",
       });
 
@@ -95,7 +95,7 @@ describe("wizard store edit mode", () => {
       const state = useWizardStore.getState();
 
       expect(state.file).toBeNull();
-      expect(state.importFileId).toBeNull();
+      expect(state.ingestFileId).toBeNull();
       expect(state.error).toBeNull();
     });
   });

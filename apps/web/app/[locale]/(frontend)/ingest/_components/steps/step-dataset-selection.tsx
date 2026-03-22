@@ -318,7 +318,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                   />
                   {sheets[0] && (
                     <p className="text-cartographic-navy/50 font-mono text-xs">
-                      {t("rowsWillBeIngested", { count: sheets[0].rowCount.toLocaleString() })}
+                      {t("rowsWillBeImported", { count: sheets[0].rowCount.toLocaleString() })}
                     </p>
                   )}
                 </div>

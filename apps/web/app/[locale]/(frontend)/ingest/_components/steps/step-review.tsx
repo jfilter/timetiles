@@ -29,7 +29,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 
-import { useImportConfigureMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
+import { useIngestConfigureMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
 import { TRANSFORM_TYPE_LABELS } from "@/lib/types/ingest-transforms";
 import { formatFileSize } from "@/lib/utils/format";
 
@@ -78,7 +78,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     version: t("dedupVersion"),
   };
 
-  const configureMutation = useImportConfigureMutation();
+  const configureMutation = useIngestConfigureMutation();
 
   const handleStartImport = useCallback(async () => {
     setError(null);
@@ -115,7 +115,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         transforms: transformsPayload.length > 0 ? transformsPayload : undefined,
         createSchedule,
       });
-      startProcessing(data.importFileId, data.scheduledIngestId);
+      startProcessing(data.ingestFileId, data.scheduledIngestId);
       nextStep();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("failedToStartImport"));

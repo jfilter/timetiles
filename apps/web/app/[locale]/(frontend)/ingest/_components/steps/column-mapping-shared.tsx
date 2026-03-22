@@ -41,7 +41,7 @@ export const TRANSFORM_COLORS: Record<TransformType, string> = {
 
 /** Translation keys used in target option labels. */
 type TargetLabelKey =
-  | "ingestedAsIs"
+  | "importedAsIs"
   | "fieldTitle"
   | "fieldDate"
   | "addressLocation"
@@ -58,7 +58,7 @@ export interface TargetOption {
 }
 
 export const TARGET_OPTIONS: TargetOption[] = [
-  { value: "__none__", labelKey: "ingestedAsIs", required: false },
+  { value: "__none__", labelKey: "importedAsIs", required: false },
   { value: "titleField", labelKey: "fieldTitle", required: true },
   { value: "dateField", labelKey: "fieldDate", required: true },
   { value: "locationField", labelKey: "addressLocation", required: false },

@@ -50,7 +50,7 @@ import type { APIRequestContext } from "@playwright/test";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
-import { ImportPage } from "../pages/import.page";
+import { IngestPage } from "../pages/ingest.page";
 
 test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
   test.describe.configure({ mode: "serial", timeout: 300_000 });
@@ -58,7 +58,7 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
   let token: string;
   let baseUrl: string;
   let scheduledIngestId: number;
-  let importPage: ImportPage;
+  let ingestPage: IngestPage;
 
   // CSV served by the Next.js server via public/test-fixtures/
   const csvPath = "/api/test-fixtures";
@@ -78,15 +78,15 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
 
   test("step 1: create scheduled ingest via wizard", async ({ page }) => {
     test.setTimeout(180_000);
-    importPage = new ImportPage(page);
+    ingestPage = new IngestPage(page);
 
     const uniqueId = Date.now();
     const catalogName = `E2E Schedule ${uniqueId}`;
     const csvUrl = `${baseUrl}${csvPath}`;
 
     // Navigate to wizard
-    await importPage.goto();
-    await importPage.waitForWizardLoad();
+    await ingestPage.goto();
+    await ingestPage.waitForWizardLoad();
 
     // Switch to URL tab
     const urlTab = page.getByRole("tab", { name: /from url|url/i });
@@ -103,20 +103,20 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     await expect(fileReady).toBeVisible({ timeout: 20_000 });
 
     // Continue to dataset selection
-    await importPage.clickNext();
+    await ingestPage.clickNext();
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10_000 });
 
     // Create new catalog
-    await importPage.createNewCatalog(catalogName);
+    await ingestPage.createNewCatalog(catalogName);
 
     // Continue to field mapping
-    await importPage.clickNext();
+    await ingestPage.clickNext();
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10_000 });
 
     // Continue to schedule step (step 5 — shown for URL imports)
-    await importPage.clickNext();
+    await ingestPage.clickNext();
     const scheduleHeading = page.getByRole("heading", { name: /schedule import/i });
     await expect(scheduleHeading).toBeVisible({ timeout: 10_000 });
 
@@ -132,7 +132,7 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     await scheduleName.fill(`Test Schedule ${uniqueId}`);
 
     // Continue to review
-    await importPage.clickNext();
+    await ingestPage.clickNext();
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10_000 });
 
@@ -195,7 +195,7 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
 
   test("step 5: edit scheduled ingest via wizard", async ({ page }) => {
     test.setTimeout(180_000);
-    importPage = new ImportPage(page);
+    ingestPage = new IngestPage(page);
 
     // Navigate to schedules page
     await page.goto("/account/schedules", { waitUntil: "domcontentloaded" });
@@ -227,17 +227,17 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
 
     // Continue through steps (all should be pre-filled)
     // Step 3: Dataset selection
-    await importPage.clickNext();
+    await ingestPage.clickNext();
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10_000 });
 
     // Step 4: Field mapping
-    await importPage.clickNext();
+    await ingestPage.clickNext();
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10_000 });
 
     // Step 5: Schedule (should be pre-filled, no one-time toggle in edit mode)
-    await importPage.clickNext();
+    await ingestPage.clickNext();
     const scheduleHeading = page.getByRole("heading", { name: /schedule import/i });
     await expect(scheduleHeading).toBeVisible({ timeout: 10_000 });
 
@@ -251,7 +251,7 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     await scheduleName.fill(`Updated Schedule ${Date.now()}`);
 
     // Continue to review
-    await importPage.clickNext();
+    await ingestPage.clickNext();
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10_000 });
 

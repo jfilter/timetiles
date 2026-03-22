@@ -30,11 +30,11 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useRouter } from "@/i18n/navigation";
 import { useLoadingStates } from "@/lib/hooks/use-loading-states";
 import {
-  useDeleteScheduledImportMutation,
-  useToggleScheduledImportMutation,
-  useTriggerScheduledImportMutation,
+  useDeleteScheduledIngestMutation,
+  useToggleScheduledIngestMutation,
+  useTriggerScheduledIngestMutation,
 } from "@/lib/hooks/use-scheduled-ingest-mutations";
-import { useScheduledImportsQuery } from "@/lib/hooks/use-scheduled-ingests-query";
+import { useScheduledIngestsQuery } from "@/lib/hooks/use-scheduled-ingests-query";
 import { formatDateLocale } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
@@ -182,12 +182,12 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
   const t = useTranslations("Schedules");
   const tImport = useTranslations("Ingest");
   const router = useRouter();
-  const { data: schedules = [] } = useScheduledImportsQuery(initialSchedules);
+  const { data: schedules = [] } = useScheduledIngestsQuery(initialSchedules);
   const { states: loadingStates, setLoading, clearLoading } = useLoadingStates();
 
-  const toggleMutation = useToggleScheduledImportMutation();
-  const deleteMutation = useDeleteScheduledImportMutation();
-  const triggerMutation = useTriggerScheduledImportMutation();
+  const toggleMutation = useToggleScheduledIngestMutation();
+  const deleteMutation = useDeleteScheduledIngestMutation();
+  const triggerMutation = useTriggerScheduledIngestMutation();
 
   const handleToggleEnabled = (id: number, currentEnabled: boolean) => {
     setLoading(id, "toggling");
