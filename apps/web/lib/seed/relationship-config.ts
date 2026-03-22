@@ -73,6 +73,12 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
   // Views depend on sites
   views: [{ field: "site", targetCollection: "sites", searchField: "slug", required: true }],
 
+  // Scheduled ingests depend on users and catalogs
+  "scheduled-ingests": [
+    { field: "createdBy", targetCollection: "users", searchField: "email", required: true },
+    { field: "catalog", targetCollection: "catalogs", searchField: "name", fallbackSearch: "slug", required: true },
+  ],
+
   // Events depend on datasets
   events: [
     {
@@ -103,6 +109,27 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
       },
     },
   ],
+
+  // Ingest files depend on users
+  "ingest-files": [{ field: "user", targetCollection: "users", searchField: "email", required: true }],
+
+  // Ingest jobs depend on ingest files and datasets
+  "ingest-jobs": [
+    { field: "ingestFile", targetCollection: "ingest-files", searchField: "originalName", required: true },
+    { field: "dataset", targetCollection: "datasets", searchField: "name", fallbackSearch: "slug", required: true },
+  ],
+
+  // Scraper repos depend on users and catalogs
+  "scraper-repos": [
+    { field: "createdBy", targetCollection: "users", searchField: "email", required: true },
+    { field: "catalog", targetCollection: "catalogs", searchField: "name", fallbackSearch: "slug", required: true },
+  ],
+
+  // Scrapers depend on scraper repos
+  scrapers: [{ field: "repo", targetCollection: "scraper-repos", searchField: "name", required: true }],
+
+  // Scraper runs depend on scrapers
+  "scraper-runs": [{ field: "scraper", targetCollection: "scrapers", searchField: "name", required: true }],
 };
 
 /**

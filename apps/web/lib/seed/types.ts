@@ -13,11 +13,16 @@ import type { CatalogSeed } from "./seeds/catalogs";
 import type { DatasetSeed } from "./seeds/datasets";
 import type { EventSeed } from "./seeds/events";
 import type { FooterSeed } from "./seeds/footer";
+import type { IngestFileSeed } from "./seeds/ingest-files";
+import type { IngestJobSeed } from "./seeds/ingest-jobs";
 import type { MainMenuSeed } from "./seeds/main-menu";
 import type { PageSeed } from "./seeds/pages";
+import type { ScheduledIngestSeed } from "./seeds/scheduled-ingests";
+import type { ScraperRepoSeed } from "./seeds/scraper-repos-seed";
+import type { ScraperRunSeed } from "./seeds/scraper-runs-seed";
+import type { ScraperSeed } from "./seeds/scrapers-seed";
 import type { SettingsSeed } from "./seeds/settings";
 import type { SiteSeed } from "./seeds/sites";
-// ImportSeed removed - import jobs are created dynamically, not seeded
 import type { UserSeed } from "./seeds/users";
 
 export type SeedData =
@@ -29,7 +34,13 @@ export type SeedData =
   | PageSeed[]
   | MainMenuSeed[]
   | FooterSeed[]
-  | SettingsSeed[];
+  | SettingsSeed[]
+  | ScheduledIngestSeed[]
+  | IngestFileSeed[]
+  | IngestJobSeed[]
+  | ScraperRepoSeed[]
+  | ScraperSeed[]
+  | ScraperRunSeed[];
 
 export interface SeedOptions {
   collections?: string[];

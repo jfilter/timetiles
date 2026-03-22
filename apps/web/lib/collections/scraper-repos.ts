@@ -131,6 +131,7 @@ const ScraperRepos: CollectionConfig = {
     beforeChange: [
       setCreatedByHook,
       async ({ data, req, operation }) => {
+        if (req.context?.seed) return data;
         if (operation === "create" && req.user) {
           const quotaService = createQuotaService(req.payload);
           await quotaService.checkAndIncrementUsage(req.user, "SCRAPER_REPOS", 1, req);
@@ -140,6 +141,7 @@ const ScraperRepos: CollectionConfig = {
     ],
     afterChange: [
       async ({ doc, previousDoc, operation, req }) => {
+        if (req.context?.seed) return doc;
         // Auto-trigger repo sync on create, or on update when source fields change
         const shouldSync =
           operation === "create" ||

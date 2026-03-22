@@ -194,6 +194,24 @@ export const SEED_CONFIG: SeedConfiguration = {
       options: { staticContent: true },
     },
 
+    // Scheduled ingests - recurring URL imports (development only)
+    "scheduled-ingests": { count: 5, dependencies: ["users", "catalogs"] },
+
+    // Ingest files - manual file uploads (development only)
+    "ingest-files": { count: 5, dependencies: ["users"] },
+
+    // Ingest jobs - import processing records (development only)
+    "ingest-jobs": { count: 6, dependencies: ["users", "ingest-files", "datasets"] },
+
+    // Scraper repos - scraper source code repositories (development only)
+    "scraper-repos": { count: 2, dependencies: ["users", "catalogs"] },
+
+    // Scrapers - individual scraper definitions (development only)
+    scrapers: { count: 3, dependencies: ["scraper-repos"] },
+
+    // Scraper runs - scraper execution history (development only)
+    "scraper-runs": { count: 8, dependencies: ["scrapers"] },
+
     // Media - support files
     media: {
       count: (preset) => (preset === "development" ? 10 : 0),
@@ -372,6 +390,12 @@ export const SEED_CONFIG: SeedConfiguration = {
         FOOTER_SLUG,
         SETTINGS_SLUG,
         COLLECTION_GEOCODING_PROVIDERS,
+        "scheduled-ingests",
+        "ingest-files",
+        "ingest-jobs",
+        "scraper-repos",
+        "scrapers",
+        "scraper-runs",
       ],
       volume: "large",
       realism: "realistic",
