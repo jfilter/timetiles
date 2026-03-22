@@ -27,6 +27,8 @@ export type { ConfirmDialogProps } from "./components/confirm-dialog";
 export { ConfirmDialog } from "./components/confirm-dialog";
 export type { ContentStateProps } from "./components/content-state";
 export { ContentState } from "./components/content-state";
+export type { ColumnDef, DataTableProps } from "./components/data-table";
+export { DataTable } from "./components/data-table";
 export {
   Dialog,
   DialogClose,

@@ -17,7 +17,8 @@
     "./components/dropdown-menu": "./src/components/dropdown-menu.tsx",
     "./components/input": "./src/components/input.tsx",
     "./components/label": "./src/components/label.tsx",
-    "./components/select": "./src/components/select.tsx"
+    "./components/select": "./src/components/select.tsx",
+    "./components/data-table": "./src/components/data-table.tsx"
   },
   "scripts": {
     "build": "tsc --build",
@@ -37,6 +38,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "echarts": "catalog:",
@@ -51,6 +53,9 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@turbo/gen": "^2.8.20",
