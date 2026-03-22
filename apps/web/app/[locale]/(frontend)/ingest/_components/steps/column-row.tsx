@@ -136,7 +136,7 @@ const useTransformEditing = (
 };
 
 /** Short label for a transform chip. */
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts any translation function signature
 export const getTransformChipLabel = (transform: IngestTransform, t: (...args: any[]) => string): string => {
   switch (transform.type) {
     case "rename":

@@ -199,7 +199,7 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
   const t = useTranslations("Ingest");
   const duration = formatDuration(stage.startedAt, stage.completedAt);
   const i18nKey = STAGE_I18N_KEYS[stage.name];
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key lookup from API stage name
   const stageName = i18nKey ? t(i18nKey as any) : stage.displayName;
 
   // Determine the line segment style: solid for completed/in_progress, dashed for pending
@@ -349,7 +349,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
   const errorMessage = progress?.error ?? wizardError ?? pollError;
   const progressPercent = calculateProgressPercent(progress);
   const currentStageKey = STAGE_I18N_KEYS[progress?.currentStage ?? ""];
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key lookup from API stage name
   const stageLabel = currentStageKey ? t(currentStageKey as any) : (progress?.currentStage ?? t("processingLabel"));
   const progressBarStyle = { width: `${progressPercent}%` };
 

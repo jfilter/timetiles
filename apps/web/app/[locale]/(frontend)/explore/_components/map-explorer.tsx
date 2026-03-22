@@ -126,7 +126,9 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
                 totalEventsData?.total,
                 filterLabels,
                 simpleBounds != null,
-                (k, v) => (t as any)(k, v)
+                (k, v) =>
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bridge next-intl Translator to plain fn
+                  (t as any)(k, v)
               )}
             </p>
             <EventsList

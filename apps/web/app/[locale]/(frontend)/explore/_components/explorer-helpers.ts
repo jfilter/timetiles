@@ -16,6 +16,7 @@ export interface FilterLabels {
   fieldFilters?: Record<string, string[]>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accept any next-intl translator
 type TranslateFn = (key: string, values?: any) => string;
 
 /** Convert map bounds to simple object format for React Query compatibility */

@@ -26,12 +26,12 @@ export const myJobHandler: TaskHandler<"my-job"> = async ({ input, req }) => {
 
 4 workflows orchestrate the ingest pipeline (defined in `workflows/`):
 
-| Workflow           | Queued by                       | Purpose                                                       |
-| ------------------ | ------------------------------- | ------------------------------------------------------------- |
-| `manual-ingest`    | `ingest-files` afterChange hook | Full pipeline for user uploads                                |
-| `scheduled-ingest` | `schedule-manager` job          | URL fetch + full pipeline                                     |
-| `scraper-ingest`   | `schedule-manager` job          | Scraper execution + full pipeline                             |
-| `ingest-process`   | `ingest-jobs` afterChange hook  | Post-review resume (schema version → geocode → create events) |
+| Workflow | Queued by | Purpose |
+|----------|-----------|---------|
+| `manual-ingest` | `ingest-files` afterChange hook | Full pipeline for user uploads |
+| `scheduled-ingest` | `schedule-manager` job | URL fetch + full pipeline |
+| `scraper-ingest` | `schedule-manager` job | Scraper execution + full pipeline |
+| `ingest-process` | `ingest-jobs` afterChange hook | Post-review resume (schema version → geocode → create events) |
 
 All ingest workflows run on the `ingest` queue with per-resource concurrency keys.
 
