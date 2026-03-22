@@ -28,13 +28,13 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/import/schema-versioning", () => ({
+vi.mock("@/lib/ingest/schema-versioning", () => ({
   SchemaVersioningService: { createSchemaVersion: mocks.createSchemaVersion },
 }));
 
 vi.mock("@/lib/types/schema-detection", () => ({ getFieldStats: mocks.getFieldStats }));
 
-vi.mock("@/lib/import/progress-tracking", () => ({
+vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     startStage: mocks.startStage,
     completeStage: mocks.completeStage,
@@ -42,14 +42,14 @@ vi.mock("@/lib/import/progress-tracking", () => ({
   },
 }));
 
-vi.mock("@/lib/constants/import-constants", () => ({
+vi.mock("@/lib/constants/ingest-constants", () => ({
   JOB_TYPES: { CREATE_SCHEMA_VERSION: "create-schema-version" },
   PROCESSING_STAGE: {
     CREATE_SCHEMA_VERSION: "create-schema-version",
     GEOCODE_BATCH: "geocode-batch",
     FAILED: "failed",
   },
-  COLLECTION_NAMES: { IMPORT_JOBS: "import-jobs", SCHEMA_VERSIONS: "schema-versions", DATASETS: "datasets" },
+  COLLECTION_NAMES: { INGEST_JOBS: "ingest-jobs", SCHEMA_VERSIONS: "schema-versions", DATASETS: "datasets" },
   BATCH_SIZES: { DUPLICATE_ANALYSIS: 5000, SCHEMA_DETECTION: 10000, EVENT_CREATION: 1000, DATABASE_CHUNK: 1000 },
 }));
 
@@ -68,14 +68,14 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
     mockContext = {
       req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: "running" } as any,
-      input: { importJobId: "import-123" } as any,
+      input: { ingestJobId: "import-123" } as any,
     };
   });
 
   describe("Success Cases", () => {
     it("should create schema version successfully", async () => {
       // Mock import job with manually approved schema
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
         schemaValidation: {
@@ -95,11 +95,11 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       const mockFieldStats = { title: { uniqueCount: 100, nullCount: 0 }, date: { uniqueCount: 95, nullCount: 5 } };
 
       // Mock created schema version
-      const mockSchemaVersion = { id: "schema-version-101", dataset: "dataset-456", schema: mockImportJob.schema };
+      const mockSchemaVersion = { id: "schema-version-101", dataset: "dataset-456", schema: mockIngestJob.schema };
 
       // Setup payload mock responses
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob) // First call returns import job
+        .mockResolvedValueOnce(mockIngestJob) // First call returns import job
         .mockResolvedValueOnce(mockDataset); // Second call returns dataset
 
       mockPayload.update.mockResolvedValue({});
@@ -115,30 +115,30 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
       // Verify payload calls
       expect(mockPayload.findByID).toHaveBeenCalledTimes(2);
-      expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, { collection: "import-jobs", id: "import-123" });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, { collection: "ingest-jobs", id: "import-123" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(2, { collection: "datasets", id: "dataset-456" });
 
       // Verify schema version creation
       expect(mocks.createSchemaVersion).toHaveBeenCalledWith(mockPayload, {
         dataset: "dataset-456",
-        schema: mockImportJob.schema,
+        schema: mockIngestJob.schema,
         fieldMetadata: mockFieldStats,
         fieldMappings: undefined,
         autoApproved: false,
         approvedBy: 789,
-        importSources: [],
+        ingestSources: [],
         req: mockContext.req,
       });
 
       // Verify job updates
       expect(mockPayload.update).toHaveBeenCalledTimes(2);
       expect(mockPayload.update).toHaveBeenNthCalledWith(1, {
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: { datasetSchemaVersion: "schema-version-101" },
       });
       expect(mockPayload.update).toHaveBeenNthCalledWith(2, {
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: { stage: "geocode-batch" },
       });
@@ -146,7 +146,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     it("should skip when schema version already exists", async () => {
       // Mock import job with existing schema version
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
         datasetSchemaVersion: "existing-schema-version-123",
@@ -155,7 +155,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         duplicates: { summary: { uniqueRows: 100 } },
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob);
 
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
@@ -168,7 +168,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
       // Bug 6 fix: should transition to next stage to avoid stranding imports
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: { stage: "geocode-batch" },
       });
@@ -176,7 +176,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     it("should skip when schema is not approved", async () => {
       // Mock import job with manual approval required but not yet approved
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
         schemaValidation: {
@@ -187,7 +187,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         duplicates: { summary: { uniqueRows: 100 } },
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob);
 
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
@@ -203,7 +203,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Mock import job with dataset as object
       const mockDataset = createMockDataset();
 
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: mockDataset, // Dataset as object instead of ID
         schemaValidation: {
@@ -218,7 +218,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
       const mockSchemaVersion = { id: "schema-version-101", dataset: "dataset-456" };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob);
       mockPayload.update.mockResolvedValue({});
       mocks.getFieldStats.mockReturnValue({});
       mocks.createSchemaVersion.mockResolvedValue(mockSchemaVersion);
@@ -235,7 +235,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     it("should handle approvedBy as object reference", async () => {
       // Mock import job with approvedBy as object
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
         schemaValidation: {
@@ -252,7 +252,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
       const mockSchemaVersion = { id: "schema-version-101", dataset: "dataset-456" };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockDataset);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockDataset);
       mockPayload.update.mockResolvedValue({});
       mocks.getFieldStats.mockReturnValue({});
       mocks.createSchemaVersion.mockResolvedValue(mockSchemaVersion);
@@ -263,28 +263,28 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Verify schema version creation with correct approvedBy ID
       expect(mocks.createSchemaVersion).toHaveBeenCalledWith(mockPayload, {
         dataset: "dataset-456",
-        schema: mockImportJob.schema,
+        schema: mockIngestJob.schema,
         fieldMetadata: {},
         fieldMappings: undefined,
         autoApproved: false,
         approvedBy: "user-789", // Should extract ID from object
-        importSources: [],
+        ingestSources: [],
         req: mockContext.req,
       });
     });
   });
 
   describe("Error Handling", () => {
-    it("should throw error when import job not found", async () => {
+    it("should throw error when ingest job not found", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
-      await expect(createSchemaVersionJob.handler(mockContext)).rejects.toThrow("Import job not found: import-123");
+      await expect(createSchemaVersionJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
 
-      expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "import-jobs", id: "import-123" });
+      expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "ingest-jobs", id: "import-123" });
     });
 
     it("should throw error when dataset not found", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
         schemaValidation: { approved: true },
@@ -292,13 +292,13 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         duplicates: { summary: { uniqueRows: 100 } },
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
 
       await expect(createSchemaVersionJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
     it("should handle schema version creation error and update job to failed", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
         schemaValidation: { approved: true, approvedBy: "user-789" },
@@ -311,7 +311,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
       const mockError = new Error("Schema version creation failed");
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockDataset);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockDataset);
       mockPayload.update.mockResolvedValue({});
       mocks.getFieldStats.mockReturnValue({});
       mocks.createSchemaVersion.mockRejectedValue(mockError);
@@ -321,7 +321,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
       // Verify job was updated to failed state
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: {
           stage: "failed",

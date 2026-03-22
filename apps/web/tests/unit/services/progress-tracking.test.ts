@@ -5,9 +5,9 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { ProgressTrackingService } from "@/lib/import/progress-tracking";
-import type { ImportJob } from "@/payload-types";
+import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
+import type { IngestJob } from "@/payload-types";
 
 describe.sequential("ProgressTrackingService", () => {
   let mockPayload: any;
@@ -24,7 +24,7 @@ describe.sequential("ProgressTrackingService", () => {
 
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          collection: "import-jobs",
+          collection: "ingest-jobs",
           id: 123,
           data: expect.objectContaining({
             progress: expect.objectContaining({
@@ -84,7 +84,7 @@ describe.sequential("ProgressTrackingService", () => {
             },
           },
         },
-      } as unknown as ImportJob;
+      } as unknown as IngestJob;
 
       mockPayload.findByID.mockResolvedValue(mockJob);
 
@@ -94,7 +94,7 @@ describe.sequential("ProgressTrackingService", () => {
 
       const updateCall = mockPayload.update.mock.calls[0][0];
 
-      expect(updateCall.collection).toBe("import-jobs");
+      expect(updateCall.collection).toBe("ingest-jobs");
       expect(updateCall.id).toBe(123);
       expect(updateCall.data.stage).toBe(PROCESSING_STAGE.DETECT_SCHEMA);
       expect(updateCall.data.progress).not.toBeNull();
@@ -139,7 +139,7 @@ describe.sequential("ProgressTrackingService", () => {
             },
           },
         },
-      } as unknown as ImportJob;
+      } as unknown as IngestJob;
 
       await ProgressTrackingService.updateStageProgress(mockPayload, mockJob, PROCESSING_STAGE.GEOCODE_BATCH, 50, 10);
 
@@ -176,7 +176,7 @@ describe.sequential("ProgressTrackingService", () => {
             },
           },
         },
-      } as unknown as ImportJob;
+      } as unknown as IngestJob;
 
       await ProgressTrackingService.completeBatch(mockPayload, mockJob, PROCESSING_STAGE.CREATE_EVENTS, 5);
 
@@ -208,7 +208,7 @@ describe.sequential("ProgressTrackingService", () => {
             },
           },
         },
-      } as unknown as ImportJob;
+      } as unknown as IngestJob;
 
       mockPayload.findByID.mockResolvedValue(mockJob);
 
@@ -243,7 +243,7 @@ describe.sequential("ProgressTrackingService", () => {
             },
           },
         },
-      } as unknown as ImportJob;
+      } as unknown as IngestJob;
 
       mockPayload.findByID.mockResolvedValue(mockJob);
 
@@ -392,7 +392,7 @@ describe.sequential("ProgressTrackingService", () => {
             },
           },
         },
-      } as unknown as ImportJob;
+      } as unknown as IngestJob;
 
       mockPayload.findByID.mockResolvedValue(mockJob);
 

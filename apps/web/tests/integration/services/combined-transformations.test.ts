@@ -20,19 +20,19 @@ import type { Event } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
-  runJobsUntilImportJobStage,
   runJobsUntilImportSettled,
+  runJobsUntilIngestJobStage,
   withCatalog,
   withDataset,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Combined Transformations Integration", () => {
   const collectionsToReset = [
     "events",
-    "import-files",
-    "import-jobs",
+    "ingest-files",
+    "ingest-jobs",
     "datasets",
     "dataset-schemas",
     "user-usage",
@@ -71,26 +71,26 @@ describe.sequential("Combined Transformations Integration", () => {
 
   // Helper functions
 
-  const runJobsUntilComplete = async (importFileId: string, maxIterations = 50) => {
-    const result = await runJobsUntilImportSettled(payload, importFileId, { maxIterations });
+  const runJobsUntilComplete = async (ingestFileId: string, maxIterations = 50) => {
+    const result = await runJobsUntilImportSettled(payload, ingestFileId, { maxIterations });
     return result.settled;
   };
 
-  const waitForSchemaDetection = async (importFileId: string | number) => {
-    const result = await runJobsUntilImportJobStage(
+  const waitForSchemaDetection = async (ingestFileId: string | number) => {
+    const result = await runJobsUntilIngestJobStage(
       payload,
-      importFileId,
-      (importJob) =>
-        importJob.stage === "await-approval" || importJob.stage === "completed" || importJob.stage === "failed",
+      ingestFileId,
+      (ingestJob) =>
+        ingestJob.stage === "await-approval" || ingestJob.stage === "completed" || ingestJob.stage === "failed",
       { maxIterations: 20 }
     );
     expect(result.matched).toBe(true);
-    return result.importJob;
+    return result.ingestJob;
   };
 
-  const simulateSchemaApproval = async (importJobId: string) => {
+  const simulateSchemaApproval = async (ingestJobId: string) => {
     // Get the current job
-    const beforeJob = await payload.findByID({ collection: "import-jobs", id: importJobId });
+    const beforeJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
 
     // Update the approval fields
     const updatedSchemaValidation = {
@@ -101,16 +101,16 @@ describe.sequential("Combined Transformations Integration", () => {
     };
 
     await payload.update({
-      collection: "import-jobs",
-      id: importJobId,
+      collection: "ingest-jobs",
+      id: ingestJobId,
       data: { schemaValidation: updatedSchemaValidation },
       user: approverUser, // Pass user context for authentication
     });
   };
 
   const getEventData = (event: Event): Record<string, unknown> => {
-    return typeof event.data === "object" && event.data !== null && !Array.isArray(event.data)
-      ? (event.data as Record<string, unknown>)
+    return typeof event.originalData === "object" && event.originalData !== null && !Array.isArray(event.originalData)
+      ? (event.originalData as Record<string, unknown>)
       : {};
   };
 
@@ -135,7 +135,7 @@ describe.sequential("Combined Transformations Integration", () => {
       name: `Combined Transform Dataset ${Date.now()}`,
       language: "deu", // German
       schemaConfig: { allowTransformations: true },
-      importTransforms: [
+      ingestTransforms: [
         { id: "transform-1", type: "rename", from: "Ereignis_Titel", to: "titel", active: true, autoDetected: false },
         {
           id: "transform-2",
@@ -151,7 +151,7 @@ describe.sequential("Combined Transformations Integration", () => {
 
     // Upload German CSV with datasetMapping metadata to specify which dataset to use
     const csvBuffer = loadCSVFixture("events-combined-transforms-german.csv");
-    const { importFile } = await withImportFile(testEnv, testCatalogId, csvBuffer, {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvBuffer, {
       filename: "events-combined-transforms-german.csv",
       mimeType: "text/csv",
       user: approverUser.id,
@@ -159,17 +159,17 @@ describe.sequential("Combined Transformations Integration", () => {
     });
 
     // Wait for schema detection to complete
-    const importJob = await waitForSchemaDetection(importFile.id);
+    const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
     // Approve schema
-    await simulateSchemaApproval(String(importJob!.id));
+    await simulateSchemaApproval(String(ingestJob!.id));
 
     // Complete the rest of the pipeline
-    const completed = await runJobsUntilComplete(importFile.id);
+    const completed = await runJobsUntilComplete(ingestFile.id);
     expect(completed).toBe(true);
 
     // Reload import job to see detected field mappings
-    const completedJob = await payload.findByID({ collection: "import-jobs", id: importJob!.id });
+    const completedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob!.id });
 
     // Verify field mappings were detected (after import transform applied)
     expect(completedJob.detectedFieldMappings).toBeDefined();
@@ -204,19 +204,19 @@ describe.sequential("Combined Transformations Integration", () => {
     expect(firstEventData.datum).toBe("2024-01-15"); // Papa Parse converted DD.MM.YYYY to YYYY-MM-DD
 
     // Verify all three events
-    expect(events.docs[0].data).toMatchObject({
+    expect(events.docs[0].originalData).toMatchObject({
       titel: "Technische Konferenz",
       Teilnehmer_Anzahl: 150,
       beschreibung: "Eine wichtige Konferenz über Technologie",
     });
 
-    expect(events.docs[1].data).toMatchObject({
+    expect(events.docs[1].originalData).toMatchObject({
       titel: "Musik Festival",
       Teilnehmer_Anzahl: 2500,
       beschreibung: "Großes Open-Air Musikfestival",
     });
 
-    expect(events.docs[2].data).toMatchObject({
+    expect(events.docs[2].originalData).toMatchObject({
       titel: "Wissenschaftssymposium",
       Teilnehmer_Anzahl: 75,
       beschreibung: "Akademische Diskussionsrunde",
@@ -237,7 +237,7 @@ describe.sequential("Combined Transformations Integration", () => {
       language: "deu",
       schemaConfig: { allowTransformations: true },
       // First: rename attendee_count → Teilnehmer_Anzahl, then convert to number
-      importTransforms: [
+      ingestTransforms: [
         {
           id: "transform-1",
           type: "rename",
@@ -263,7 +263,7 @@ describe.sequential("Combined Transformations Integration", () => {
 Conference,150,Technical conference
 Festival,2500,Music festival`;
 
-    const { importFile } = await withImportFile(testEnv, testCatalogId, Buffer.from(csvContent), {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, Buffer.from(csvContent), {
       user: approverUser.id,
       filename: "order-test.csv",
       mimeType: "text/csv",
@@ -271,13 +271,13 @@ Festival,2500,Music festival`;
     });
 
     // Wait for schema detection to complete
-    const importJob = await waitForSchemaDetection(importFile.id);
+    const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
     // Approve schema
-    await simulateSchemaApproval(String(importJob!.id));
+    await simulateSchemaApproval(String(ingestJob!.id));
 
     // Complete the rest of the pipeline
-    const completed = await runJobsUntilComplete(importFile.id);
+    const completed = await runJobsUntilComplete(ingestFile.id);
     expect(completed).toBe(true);
 
     const events = await payload.find({
@@ -309,7 +309,7 @@ Festival,2500,Music festival`;
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Mapping Interaction Dataset ${Date.now()}`,
       language: "deu", // German
-      importTransforms: [
+      ingestTransforms: [
         {
           id: "transform-1",
           type: "rename",
@@ -326,7 +326,7 @@ Festival,2500,Music festival`;
 Konferenz,Technical event,2024-01-15
 Workshop,Learning session,2024-02-20`;
 
-    const { importFile } = await withImportFile(testEnv, testCatalogId, Buffer.from(csvContent), {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, Buffer.from(csvContent), {
       user: approverUser.id,
       filename: "mapping-interaction-test.csv",
       mimeType: "text/csv",
@@ -334,13 +334,13 @@ Workshop,Learning session,2024-02-20`;
     });
 
     // Wait for schema detection to complete
-    const importJob = await waitForSchemaDetection(importFile.id);
+    const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
     // Field mapping should detect the TRANSFORMED field name "titel"
-    expect(importJob!.detectedFieldMappings).toBeDefined();
-    expect(importJob!.detectedFieldMappings!.titlePath).toBe("titel");
-    expect(importJob!.detectedFieldMappings!.descriptionPath).toBe("description");
-    expect(importJob!.detectedFieldMappings!.timestampPath).toBe("date");
+    expect(ingestJob!.detectedFieldMappings).toBeDefined();
+    expect(ingestJob!.detectedFieldMappings!.titlePath).toBe("titel");
+    expect(ingestJob!.detectedFieldMappings!.descriptionPath).toBe("description");
+    expect(ingestJob!.detectedFieldMappings!.timestampPath).toBe("date");
   });
 
   // Test 4: Import transform + type transform interaction
@@ -356,7 +356,7 @@ Workshop,Learning session,2024-02-20`;
       name: `Type Interaction Dataset ${Date.now()}`,
       language: "eng",
       schemaConfig: { allowTransformations: true },
-      importTransforms: [
+      ingestTransforms: [
         { id: "transform-1", type: "rename", from: "count", to: "anzahl", active: true, autoDetected: false },
         {
           id: "transform-2",
@@ -374,7 +374,7 @@ Workshop,Learning session,2024-02-20`;
 Event A,100,First event
 Event B,200,Second event`;
 
-    const { importFile } = await withImportFile(testEnv, testCatalogId, Buffer.from(csvContent), {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, Buffer.from(csvContent), {
       user: approverUser.id,
       filename: "type-interaction-test.csv",
       mimeType: "text/csv",
@@ -382,13 +382,13 @@ Event B,200,Second event`;
     });
 
     // Wait for schema detection to complete
-    const importJob = await waitForSchemaDetection(importFile.id);
+    const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
     // Approve schema
-    await simulateSchemaApproval(String(importJob!.id));
+    await simulateSchemaApproval(String(ingestJob!.id));
 
     // Complete the rest of the pipeline
-    const completed = await runJobsUntilComplete(importFile.id);
+    const completed = await runJobsUntilComplete(ingestFile.id);
     expect(completed).toBe(true);
 
     const events = await payload.find({

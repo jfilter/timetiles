@@ -18,7 +18,7 @@ import Papa from "papaparse";
 import type { Payload } from "payload";
 import { read, utils } from "xlsx";
 
-import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
@@ -26,7 +26,7 @@ import type { Dataset } from "@/payload-types";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { getImportFilePath } from "../utils/upload-path";
+import { getIngestFilePath } from "../utils/upload-path";
 
 interface SheetInfo {
   name: string;
@@ -36,12 +36,12 @@ interface SheetInfo {
   headers?: string[];
 }
 
-const normalizeImportFileRelationId = (importFileId: string | number): number => {
-  const normalizedImportFileId = typeof importFileId === "number" ? importFileId : parseStrictInteger(importFileId);
-  if (normalizedImportFileId == null) {
+const normalizeIngestFileRelationId = (ingestFileId: string | number): number => {
+  const normalizedIngestFileId = typeof ingestFileId === "number" ? ingestFileId : parseStrictInteger(ingestFileId);
+  if (normalizedIngestFileId == null) {
     throw new Error("Invalid import file ID");
   }
-  return normalizedImportFileId;
+  return normalizedIngestFileId;
 };
 
 // Extract file processing functions
@@ -131,7 +131,7 @@ const buildConfigSnapshot = (dataset: Dataset) => ({
   deduplicationConfig: dataset.deduplicationConfig ?? null,
   geoFieldDetection: dataset.geoFieldDetection ?? null,
   schemaConfig: dataset.schemaConfig ?? null,
-  importTransforms: dataset.importTransforms ?? [],
+  ingestTransforms: dataset.ingestTransforms ?? [],
 });
 
 /**
@@ -155,14 +155,14 @@ const validateDatasetAccessForUser = async (
 
   if (catalogOwnerId !== userId && !isPublicCatalog) {
     throw new Error(
-      `Import file owner does not have access to the target dataset (dataset ${dataset.id} in catalog ${catalogId})`
+      `Ingest file owner does not have access to the target dataset (dataset ${dataset.id} in catalog ${catalogId})`
     );
   }
 };
 
 const handleSingleSheet = async (
   payload: Payload,
-  importFile: { id: string | number; originalName?: string | null; metadata?: unknown },
+  ingestFile: { id: string | number; originalName?: string | null; metadata?: unknown },
   catalogId?: string | number,
   datasetMapping?: { mappingType: string; singleDataset?: unknown },
   userId?: number
@@ -185,13 +185,13 @@ const handleSingleSheet = async (
     await validateDatasetAccessForUser(payload, dataset, userId);
   } else {
     const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId, userId);
-    dataset = await findOrCreateDataset(payload, resolvedCatalogId, importFile.originalName ?? "Imported Data", userId);
+    dataset = await findOrCreateDataset(payload, resolvedCatalogId, ingestFile.originalName ?? "Imported Data", userId);
   }
 
   return payload.create({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
     data: {
-      importFile: normalizeImportFileRelationId(importFile.id),
+      ingestFile: normalizeIngestFileRelationId(ingestFile.id),
       dataset: dataset.id,
       sheetIndex: 0,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
@@ -203,7 +203,7 @@ const handleSingleSheet = async (
 
 const handleMultipleSheets = async (
   payload: Payload,
-  importFile: { id: string | number },
+  ingestFile: { id: string | number },
   sheets: SheetInfo[],
   catalogId?: string | number,
   datasetMapping?: { mappingType: string; sheetMappings?: unknown[] },
@@ -213,7 +213,7 @@ const handleMultipleSheets = async (
 
   for (const sheet of sheets) {
     const sheetName = sheet.name?.toString() ?? `Sheet_${sheet.index?.toString() ?? "Unknown"}`;
-    const job = await processSheetWithMapping(payload, importFile, sheet, sheetName, catalogId, datasetMapping, userId);
+    const job = await processSheetWithMapping(payload, ingestFile, sheet, sheetName, catalogId, datasetMapping, userId);
 
     if (job) {
       createdJobs.push(job);
@@ -225,7 +225,7 @@ const handleMultipleSheets = async (
 
 const processSheetWithMapping = async (
   payload: Payload,
-  importFile: { id: string | number },
+  ingestFile: { id: string | number },
   sheet: SheetInfo,
   sheetName: string,
   catalogId?: string | number,
@@ -273,9 +273,9 @@ const processSheetWithMapping = async (
   }
 
   return payload.create({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
     data: {
-      importFile: normalizeImportFileRelationId(importFile.id),
+      ingestFile: normalizeIngestFileRelationId(ingestFile.id),
       dataset: dataset.id,
       sheetIndex: sheet.index,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
@@ -290,35 +290,35 @@ export const datasetDetectionJob = {
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as DatasetDetectionJobInput["input"];
-    const { importFileId, catalogId } = input;
+    const { ingestFileId, catalogId } = input;
     const jobId = String(context.job?.id ?? "unknown");
 
-    logger.info("Starting dataset detection job", { jobId, importFileId, catalogId });
+    logger.info("Starting dataset detection job", { jobId, ingestFileId, catalogId });
 
     try {
-      const importFile = await payload.findByID({
-        collection: COLLECTION_NAMES.IMPORT_FILES,
-        id: String(importFileId),
+      const ingestFile = await payload.findByID({
+        collection: COLLECTION_NAMES.INGEST_FILES,
+        id: String(ingestFileId),
       });
 
-      if (!importFile) {
-        throw new Error("Import file not found");
+      if (!ingestFile) {
+        throw new Error("Ingest file not found");
       }
 
-      const filePath = getImportFilePath(importFile.filename ?? "");
+      const filePath = getIngestFilePath(ingestFile.filename ?? "");
 
       if (!fs.existsSync(filePath)) {
         throw new Error(`Cannot access file ${filePath}`);
       }
 
       // Fast-path: skip file I/O for wizard imports that already have complete metadata
-      const wizardSheets = buildSheetsFromWizardMetadata((importFile.metadata as Record<string, unknown>) ?? {});
+      const wizardSheets = buildSheetsFromWizardMetadata((ingestFile.metadata as Record<string, unknown>) ?? {});
 
       let sheets: SheetInfo[];
 
       if (wizardSheets) {
         sheets = wizardSheets;
-        logger.info("Using wizard metadata fast-path", { importFileId, sheetCount: sheets.length });
+        logger.info("Using wizard metadata fast-path", { ingestFileId, sheetCount: sheets.length });
       } else {
         const fileExtension = path.extname(filePath).toLowerCase();
         // xlsx library handles .xls, .xlsx, and .ods files
@@ -330,42 +330,42 @@ export const datasetDetectionJob = {
       }
 
       logger.info("Detected sheets", {
-        importFileId,
+        ingestFileId,
         sheetCount: sheets.length,
         sheets: sheets.map((s) => ({ name: s.name, rows: s.rowCount })),
       });
 
       await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_FILES,
-        id: importFileId,
+        collection: COLLECTION_NAMES.INGEST_FILES,
+        id: ingestFileId,
         data: { ...(!wizardSheets && { datasetsCount: sheets.length }), sheetMetadata: sheets },
       });
 
-      const datasetMapping = (importFile.metadata as Record<string, unknown>)?.datasetMapping as
+      const datasetMapping = (ingestFile.metadata as Record<string, unknown>)?.datasetMapping as
         | { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] }
         | undefined;
 
       // Extract userId from import file for setting createdBy on auto-created catalogs/datasets
-      const userId = extractRelationId(importFile.user) as number;
+      const userId = extractRelationId(ingestFile.user) as number;
 
       const createdJobs =
         sheets.length === 1
-          ? [await handleSingleSheet(payload, importFile, catalogId, datasetMapping, userId)]
-          : await handleMultipleSheets(payload, importFile, sheets, catalogId, datasetMapping, userId);
+          ? [await handleSingleSheet(payload, ingestFile, catalogId, datasetMapping, userId)]
+          : await handleMultipleSheets(payload, ingestFile, sheets, catalogId, datasetMapping, userId);
 
       logger.info("Created import jobs", {
-        importFileId,
+        ingestFileId,
         jobCount: createdJobs.length,
         jobIds: createdJobs.map((j) => j.id),
       });
 
       return { output: { sheetsDetected: sheets.length, importJobsCreated: createdJobs.length } };
     } catch (error) {
-      logError(error, "Dataset detection failed", { jobId, importFileId });
+      logError(error, "Dataset detection failed", { jobId, ingestFileId });
 
       await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_FILES,
-        id: importFileId,
+        collection: COLLECTION_NAMES.INGEST_FILES,
+        id: ingestFileId,
         data: { status: "failed", errorLog: error instanceof Error ? error.message : "Unknown error" },
       });
 

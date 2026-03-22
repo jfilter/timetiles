@@ -72,9 +72,9 @@ export interface Config {
     datasets: Dataset;
     'dataset-schemas': DatasetSchema;
     'audit-log': AuditLog;
-    'import-files': ImportFile;
-    'import-jobs': ImportJob;
-    'scheduled-imports': ScheduledImport;
+    'ingest-files': IngestFile;
+    'ingest-jobs': IngestJob;
+    'scheduled-ingests': ScheduledIngest;
     'scraper-repos': ScraperRepo;
     scrapers: Scraper;
     'scraper-runs': ScraperRun;
@@ -103,9 +103,9 @@ export interface Config {
     datasets: DatasetsSelect<false> | DatasetsSelect<true>;
     'dataset-schemas': DatasetSchemasSelect<false> | DatasetSchemasSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
-    'import-files': ImportFilesSelect<false> | ImportFilesSelect<true>;
-    'import-jobs': ImportJobsSelect<false> | ImportJobsSelect<true>;
-    'scheduled-imports': ScheduledImportsSelect<false> | ScheduledImportsSelect<true>;
+    'ingest-files': IngestFilesSelect<false> | IngestFilesSelect<true>;
+    'ingest-jobs': IngestJobsSelect<false> | IngestJobsSelect<true>;
+    'scheduled-ingests': ScheduledIngestsSelect<false> | ScheduledIngestsSelect<true>;
     'scraper-repos': ScraperReposSelect<false> | ScraperReposSelect<true>;
     scrapers: ScrapersSelect<false> | ScrapersSelect<true>;
     'scraper-runs': ScraperRunsSelect<false> | ScraperRunsSelect<true>;
@@ -285,7 +285,7 @@ export interface User {
     /**
      * Maximum import jobs per day (-1 for unlimited)
      */
-    maxImportJobsPerDay?: number | null;
+    maxIngestJobsPerDay?: number | null;
     /**
      * Maximum file size in MB for uploads
      */
@@ -556,7 +556,7 @@ export interface Dataset {
   /**
    * Transform rules applied to incoming data before validation (e.g., field renames)
    */
-  importTransforms?:
+  ingestTransforms?:
     | {
         /**
          * Unique identifier for this transform rule
@@ -870,11 +870,11 @@ export interface DatasetSchema {
       | null;
   };
   /**
-   * Import jobs that contributed to this schema
+   * Ingest jobs that contributed to this schema
    */
-  importSources?:
+  ingestSources?:
     | {
-        import: number | ImportJob;
+        ingestJob: number | IngestJob;
         recordCount?: number | null;
         batchCount?: number | null;
         id?: string | null;
@@ -932,14 +932,14 @@ export interface DatasetSchema {
  * Unified import processing pipeline
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "import-jobs".
+ * via the `definition` "ingest-jobs".
  */
-export interface ImportJob {
+export interface IngestJob {
   id: number;
   /**
-   * Source file for this import job
+   * Source file for this ingest job
    */
-  importFile: number | ImportFile;
+  ingestFile: number | IngestFile;
   /**
    * Target dataset for imported data
    */
@@ -1244,9 +1244,9 @@ export interface ImportJob {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "import-files".
+ * via the `definition` "ingest-files".
  */
-export interface ImportFile {
+export interface IngestFile {
   id: number;
   /**
    * Original user-friendly file name
@@ -1289,7 +1289,7 @@ export interface ImportFile {
    * Payload job ID for tracking the catalog parsing job
    */
   jobId?: string | null;
-  importedAt?: string | null;
+  uploadedAt?: string | null;
   completedAt?: string | null;
   /**
    * Detailed error information
@@ -1338,7 +1338,7 @@ export interface ImportFile {
   /**
    * Reference to the scheduled import that triggered this file
    */
-  scheduledImport?: (number | null) | ScheduledImport;
+  scheduledIngest?: (number | null) | ScheduledIngest;
   quotaInfo?:
     | {
         [k: string]: unknown;
@@ -1365,9 +1365,9 @@ export interface ImportFile {
  * Manage scheduled URL imports that run automatically
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "scheduled-imports".
+ * via the `definition` "scheduled-ingests".
  */
-export interface ScheduledImport {
+export interface ScheduledIngest {
   id: number;
   /**
    * Descriptive name for this scheduled import
@@ -1443,17 +1443,17 @@ export interface ScheduledImport {
    */
   timezone?: string | null;
   /**
-   * Template for generated import names. Available variables: {{name}}, {{date}}, {{time}}, {{url}}
+   * Template for generated ingest names. Available variables: {{name}}, {{date}}, {{time}}, {{url}}
    */
-  importNameTemplate?: string | null;
+  ingestNameTemplate?: string | null;
   /**
    * How to handle schema changes during scheduled executions. Strict: fail if schema differs. Additive: auto-accept new fields. Flexible: require approval for changes.
    */
   schemaMode?: ('strict' | 'additive' | 'flexible') | null;
   /**
-   * The original import file this schedule was created from (via wizard)
+   * The original ingest file this schedule was created from (via wizard)
    */
-  sourceImportFile?: (number | null) | ImportFile;
+  sourceIngestFile?: (number | null) | IngestFile;
   /**
    * Authentication configuration for accessing the URL
    */
@@ -1912,9 +1912,9 @@ export interface ScraperRun {
    */
   outputBytes?: number | null;
   /**
-   * Import file created from scraper output (when autoImport is enabled)
+   * Ingest file created from scraper output (when autoImport is enabled)
    */
-  resultFile?: (number | null) | ImportFile;
+  resultFile?: (number | null) | IngestFile;
   updatedAt: string;
   createdAt: string;
 }
@@ -1934,13 +1934,13 @@ export interface Event {
    */
   catalogOwnerId?: number | null;
   /**
-   * The import job that created this event
+   * The ingest job that created this event
    */
-  importJob?: (number | null) | ImportJob;
+  ingestJob?: (number | null) | IngestJob;
   /**
    * Generic data in JSON format (JSONB indexed for fast queries)
    */
-  data:
+  originalData:
     | {
         [k: string]: unknown;
       }
@@ -1960,8 +1960,8 @@ export interface Event {
    * Source and validation of coordinate data
    */
   coordinateSource?: {
-    type?: ('import' | 'geocoded' | 'manual' | 'none') | null;
-    importColumns?: {
+    type?: ('source-data' | 'geocoded' | 'manual' | 'none') | null;
+    sourceColumns?: {
       /**
        * Column name containing latitude
        */
@@ -2047,9 +2047,9 @@ export interface Event {
    */
   contentHash?: string | null;
   /**
-   * Batch number within import for tracking
+   * Batch number within ingest for tracking
    */
-  importBatch?: number | null;
+  ingestBatch?: number | null;
   /**
    * Schema version number this event was validated against
    */
@@ -2091,9 +2091,9 @@ export interface UserUsage {
    */
   fileUploadsToday?: number | null;
   /**
-   * Import jobs created today (resets at midnight UTC)
+   * Ingest jobs created today (resets at midnight UTC)
    */
-  importJobsToday?: number | null;
+  ingestJobsToday?: number | null;
   /**
    * Currently active scheduled imports
    */
@@ -3772,16 +3772,16 @@ export interface PayloadLockedDocument {
         value: number | AuditLog;
       } | null)
     | ({
-        relationTo: 'import-files';
-        value: number | ImportFile;
+        relationTo: 'ingest-files';
+        value: number | IngestFile;
       } | null)
     | ({
-        relationTo: 'import-jobs';
-        value: number | ImportJob;
+        relationTo: 'ingest-jobs';
+        value: number | IngestJob;
       } | null)
     | ({
-        relationTo: 'scheduled-imports';
-        value: number | ScheduledImport;
+        relationTo: 'scheduled-ingests';
+        value: number | ScheduledIngest;
       } | null)
     | ({
         relationTo: 'scraper-repos';
@@ -3966,7 +3966,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         strategy?: T;
       };
   fieldMetadata?: T;
-  importTransforms?:
+  ingestTransforms?:
     | T
     | {
         id?: T;
@@ -4066,10 +4066,10 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
               id?: T;
             };
       };
-  importSources?:
+  ingestSources?:
     | T
     | {
-        import?: T;
+        ingestJob?: T;
         recordCount?: T;
         batchCount?: T;
         id?: T;
@@ -4110,9 +4110,9 @@ export interface AuditLogSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "import-files_select".
+ * via the `definition` "ingest-files_select".
  */
-export interface ImportFilesSelect<T extends boolean = true> {
+export interface IngestFilesSelect<T extends boolean = true> {
   originalName?: T;
   catalog?: T;
   datasets?: T;
@@ -4122,14 +4122,14 @@ export interface ImportFilesSelect<T extends boolean = true> {
   datasetsProcessed?: T;
   sheetMetadata?: T;
   jobId?: T;
-  importedAt?: T;
+  uploadedAt?: T;
   completedAt?: T;
   errorLog?: T;
   rateLimitInfo?: T;
   metadata?: T;
   processingOptions?: T;
   targetDataset?: T;
-  scheduledImport?: T;
+  scheduledIngest?: T;
   quotaInfo?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -4146,10 +4146,10 @@ export interface ImportFilesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "import-jobs_select".
+ * via the `definition` "ingest-jobs_select".
  */
-export interface ImportJobsSelect<T extends boolean = true> {
-  importFile?: T;
+export interface IngestJobsSelect<T extends boolean = true> {
+  ingestFile?: T;
   dataset?: T;
   sheetIndex?: T;
   stage?: T;
@@ -4224,9 +4224,9 @@ export interface ImportJobsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "scheduled-imports_select".
+ * via the `definition` "scheduled-ingests_select".
  */
-export interface ScheduledImportsSelect<T extends boolean = true> {
+export interface ScheduledIngestsSelect<T extends boolean = true> {
   name?: T;
   createdBy?: T;
   description?: T;
@@ -4251,9 +4251,9 @@ export interface ScheduledImportsSelect<T extends boolean = true> {
   frequency?: T;
   cronExpression?: T;
   timezone?: T;
-  importNameTemplate?: T;
+  ingestNameTemplate?: T;
   schemaMode?: T;
-  sourceImportFile?: T;
+  sourceIngestFile?: T;
   authConfig?:
     | T
     | {
@@ -4416,8 +4416,8 @@ export interface EventsSelect<T extends boolean = true> {
   dataset?: T;
   datasetIsPublic?: T;
   catalogOwnerId?: T;
-  importJob?: T;
-  data?: T;
+  ingestJob?: T;
+  originalData?: T;
   location?:
     | T
     | {
@@ -4428,7 +4428,7 @@ export interface EventsSelect<T extends boolean = true> {
     | T
     | {
         type?: T;
-        importColumns?:
+        sourceColumns?:
           | T
           | {
               latitudeColumn?: T;
@@ -4455,7 +4455,7 @@ export interface EventsSelect<T extends boolean = true> {
   uniqueId?: T;
   sourceId?: T;
   contentHash?: T;
-  importBatch?: T;
+  ingestBatch?: T;
   schemaVersionNumber?: T;
   validationStatus?: T;
   transformations?: T;
@@ -4485,7 +4485,7 @@ export interface UsersSelect<T extends boolean = true> {
         maxFileUploadsPerDay?: T;
         maxEventsPerImport?: T;
         maxTotalEvents?: T;
-        maxImportJobsPerDay?: T;
+        maxIngestJobsPerDay?: T;
         maxFileSizeMB?: T;
         maxCatalogsPerUser?: T;
         maxScraperRepos?: T;
@@ -4526,7 +4526,7 @@ export interface UserUsageSelect<T extends boolean = true> {
   user?: T;
   urlFetchesToday?: T;
   fileUploadsToday?: T;
-  importJobsToday?: T;
+  ingestJobsToday?: T;
   currentActiveSchedules?: T;
   totalEventsCreated?: T;
   currentCatalogs?: T;
@@ -5458,7 +5458,7 @@ export interface Setting {
     /**
      * When enabled, users can create automated URL-based import schedules
      */
-    enableScheduledImports?: boolean | null;
+    enableScheduledIngests?: boolean | null;
     /**
      * When enabled, new users can self-register accounts
      */
@@ -5622,7 +5622,7 @@ export interface SettingsSelect<T extends boolean = true> {
     | T
     | {
         allowPrivateImports?: T;
-        enableScheduledImports?: T;
+        enableScheduledIngests?: T;
         enableRegistration?: T;
         enableEventCreation?: T;
         enableDatasetCreation?: T;

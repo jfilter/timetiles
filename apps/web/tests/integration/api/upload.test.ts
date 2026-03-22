@@ -15,14 +15,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createIntegrationTestEnvironment,
   withCatalog,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Import Files Collection", () => {
   const collectionsToReset = [
-    "import-files",
-    "import-jobs",
+    "ingest-files",
+    "ingest-jobs",
     "datasets",
     "dataset-schemas",
     "payload-jobs",
@@ -60,19 +60,19 @@ describe.sequential("Import Files Collection", () => {
     const fileName = "valid-events.csv";
 
     // Use the helper function that properly handles file uploads
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
       user: testUserId,
       filename: fileName,
       datasetsCount: 0,
       datasetsProcessed: 0,
     });
 
-    expect(importFile.id).toBeDefined();
-    expect(importFile.filename).toBeDefined(); // Payload auto-generated
-    expect(importFile.mimeType).toBe("text/csv"); // Should match our file
-    expect(importFile.filesize).toBe(fileBuffer.length); // Should match file size
-    expect(importFile.catalog.id ?? importFile.catalog).toBe(Number.parseInt(testCatalogId, 10));
-    expect(importFile.status).toBe("pending");
+    expect(ingestFile.id).toBeDefined();
+    expect(ingestFile.filename).toBeDefined(); // Payload auto-generated
+    expect(ingestFile.mimeType).toBe("text/csv"); // Should match our file
+    expect(ingestFile.filesize).toBe(fileBuffer.length); // Should match file size
+    expect(ingestFile.catalog.id ?? ingestFile.catalog).toBe(Number.parseInt(testCatalogId, 10));
+    expect(ingestFile.status).toBe("pending");
   });
 
   it("should trigger hooks on file upload", async () => {
@@ -80,18 +80,18 @@ describe.sequential("Import Files Collection", () => {
     const fileBuffer = fs.readFileSync(testFilePath);
     const fileName = "valid-events.csv";
 
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
       user: testUserId,
       filename: fileName,
     });
 
     // Check that hooks populated metadata correctly
-    expect(importFile.originalName).toBe("valid-events.csv"); // Set by beforeOperation hook
-    expect(importFile.filename).toBeDefined(); // Payload auto-generated with unique name
-    expect(importFile.filename).not.toBe("valid-events.csv"); // Should be unique
-    expect(importFile.rateLimitInfo).toBeDefined();
-    expect(importFile.metadata).toBeDefined();
-    expect(importFile.importedAt).toBeDefined();
+    expect(ingestFile.originalName).toBe("valid-events.csv"); // Set by beforeOperation hook
+    expect(ingestFile.filename).toBeDefined(); // Payload auto-generated with unique name
+    expect(ingestFile.filename).not.toBe("valid-events.csv"); // Should be unique
+    expect(ingestFile.rateLimitInfo).toBeDefined();
+    expect(ingestFile.metadata).toBeDefined();
+    expect(ingestFile.uploadedAt).toBeDefined();
   });
 
   it("should reject files exceeding user trust level size limit", async () => {
@@ -109,7 +109,7 @@ describe.sequential("Import Files Collection", () => {
 
     // Attempting to upload should fail with file size error
     await expect(
-      withImportFile(testEnv, untrustedCatalog.id, oversizedContent, {
+      withIngestFile(testEnv, untrustedCatalog.id, oversizedContent, {
         user: users.untrustedUser.id,
         filename: "oversized.csv",
       })
@@ -123,13 +123,13 @@ describe.sequential("Import Files Collection", () => {
     const fileBuffer = fs.readFileSync(testFilePath);
     const fileName = "valid-events.csv";
 
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
       user: testUserId,
       filename: fileName,
     });
 
     // Should succeed without rate limiting errors for the first request
-    expect(importFile.id).toBeDefined();
-    expect(importFile.rateLimitInfo).toBeDefined();
+    expect(ingestFile.id).toBeDefined();
+    expect(ingestFile.rateLimitInfo).toBeDefined();
   });
 });

@@ -1,5 +1,5 @@
 /**
- * URL fetch cache for scheduled imports.
+ * URL fetch cache for scheduled ingests.
  *
  * Caches HTTP responses from external URLs with support for ETags, conditional requests,
  * and Cache-Control directives. Works directly with buffers instead of Response objects

@@ -21,7 +21,7 @@ import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   success: true;
-  importFileId: string | number;
+  ingestFileId: string | number;
   filename: string;
   contentType: string;
   fileSize: number | undefined;
@@ -153,7 +153,7 @@ describe.sequential("urlFetchJob", () => {
       // Verify import file was created with file upload
       expect(mockPayload.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          collection: "import-files",
+          collection: "ingest-files",
           data: expect.objectContaining({
             originalName: "data.csv",
             status: "pending",
@@ -168,14 +168,14 @@ describe.sequential("urlFetchJob", () => {
       // Verify dataset detection was queued
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
         task: "dataset-detection",
-        input: { importFileId: "import-123" },
+        input: { ingestFileId: "import-123" },
       });
 
       // Verify result
       expect(result).toEqual({
         output: {
           success: true,
-          importFileId: "import-123",
+          ingestFileId: "import-123",
           filename: expect.stringContaining(".csv"),
           contentHash: expect.any(String),
           isDuplicate: false,
@@ -295,7 +295,7 @@ describe.sequential("urlFetchJob", () => {
 
       expect(mockPayload.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          collection: "import-files",
+          collection: "ingest-files",
           data: expect.objectContaining({ originalName: "Spreadsheet Data" }),
           file: expect.objectContaining({
             mimetype: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -309,7 +309,7 @@ describe.sequential("urlFetchJob", () => {
     });
 
     it("should handle HTTP errors", async () => {
-      // Mock scheduled import with no retries
+      // Mock scheduled ingest with no retries
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         enabled: true,
@@ -322,7 +322,7 @@ describe.sequential("urlFetchJob", () => {
 
       const result = await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/nonexistent",
           catalogId: "catalog-123",
           originalName: "Test Import",
@@ -352,7 +352,7 @@ describe.sequential("urlFetchJob", () => {
 
       const result = await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/large-file.csv",
           catalogId: "catalog-123",
           originalName: "Large File",
@@ -381,7 +381,7 @@ describe.sequential("urlFetchJob", () => {
 
       const result = await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://slow-server.com/data",
           catalogId: "catalog-123",
           originalName: "Slow Import",
@@ -406,9 +406,9 @@ describe.sequential("urlFetchJob", () => {
       ).rejects.toThrow("Source URL is required");
     });
 
-    it("should handle scheduled import metadata", async () => {
+    it("should handle scheduled ingest metadata", async () => {
       mockPayload.create.mockResolvedValue({ id: "import-123" });
-      // Return user for all findByID calls (scheduled import lookup returns null, job uses input directly)
+      // Return user for all findByID calls (scheduled ingest lookup returns null, job uses input directly)
       mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
       mockPayload.find.mockResolvedValue({ docs: [] }); // No previous imports
 
@@ -416,12 +416,12 @@ describe.sequential("urlFetchJob", () => {
 
       (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
-      // Use direct input parameters instead of relying on scheduled import lookup
+      // Use direct input parameters instead of relying on scheduled ingest lookup
       const result = await urlFetchJob.handler({
         input: {
           sourceUrl: "https://example.com/scheduled-data.csv",
           catalogId: "catalog-123",
-          originalName: "Scheduled Import",
+          originalName: "scheduled ingest",
           userId: "user-123",
         },
         job: mockJob,
@@ -431,12 +431,12 @@ describe.sequential("urlFetchJob", () => {
       expect(result.output.success).toBe(true);
       expect(mockPayload.create).toHaveBeenCalled();
       const createCall = mockPayload.create.mock.calls[0][0];
-      expect(createCall.collection).toBe("import-files");
-      expect(createCall.data.originalName).toBe("Scheduled Import");
+      expect(createCall.collection).toBe("ingest-files");
+      expect(createCall.data.originalName).toBe("scheduled ingest");
       expect(createCall.user.id).toBe("user-123");
     });
 
-    it("should update scheduled import on failure", async () => {
+    it("should update scheduled ingest on failure", async () => {
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         enabled: true,
@@ -456,7 +456,7 @@ describe.sequential("urlFetchJob", () => {
 
       const result = await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/error",
           catalogId: "catalog-123",
           originalName: "Failed Import",
@@ -471,7 +471,7 @@ describe.sequential("urlFetchJob", () => {
       expect(failureOutput.error).toBe("HTTP 500");
 
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "scheduled-imports",
+        collection: "scheduled-ingests",
         id: "scheduled-123",
         data: expect.objectContaining({
           lastStatus: "failed",
@@ -503,7 +503,7 @@ describe.sequential("urlFetchJob", () => {
       mockPayload.find.mockResolvedValue({
         docs: [
           {
-            id: "existing-import-file-999",
+            id: "existing-ingest-file-999",
             filename: "existing-file.csv",
             metadata: { urlFetch: { contentHash: expectedHash } },
           },
@@ -517,7 +517,7 @@ describe.sequential("urlFetchJob", () => {
 
       const result = await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/data.csv",
           catalogId: "catalog-123",
           originalName: "Duplicate Check",
@@ -533,7 +533,7 @@ describe.sequential("urlFetchJob", () => {
       expect(result.output.success).toBe(true);
       if (result.output.success === true) {
         const successOutput = result.output as UrlFetchSuccessOutput;
-        expect(successOutput.importFileId).toBe("existing-import-file-999");
+        expect(successOutput.ingestFileId).toBe("existing-ingest-file-999");
       }
     });
 
@@ -557,7 +557,7 @@ describe.sequential("urlFetchJob", () => {
 
       await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/data.csv",
           catalogId: "catalog-123",
           originalName: "Skip Duplicate Check",
@@ -569,10 +569,10 @@ describe.sequential("urlFetchJob", () => {
       // Should not call find to check for duplicates
       expect(mockPayload.find).not.toHaveBeenCalled();
 
-      // Just verify it was called with the import-files collection
+      // Just verify it was called with the ingest-files collection
       expect(mockPayload.create).toHaveBeenCalled();
       const createCall = mockPayload.create.mock.calls[0][0];
-      expect(createCall.collection).toBe("import-files");
+      expect(createCall.collection).toBe("ingest-files");
       expect(createCall.data.status).toBe("pending");
       expect(createCall.file).toBeDefined();
     });
@@ -598,7 +598,7 @@ describe.sequential("urlFetchJob", () => {
 
       await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/data",
           catalogId: "catalog-123",
           originalName: "Content Type Override",
@@ -611,13 +611,13 @@ describe.sequential("urlFetchJob", () => {
       // Just verify it was called correctly
       expect(mockPayload.create).toHaveBeenCalled();
       const createCall = mockPayload.create.mock.calls[0][0];
-      expect(createCall.collection).toBe("import-files");
+      expect(createCall.collection).toBe("ingest-files");
       expect(createCall.data.originalName).toBe("Content Type Override");
       expect(createCall.file.mimetype).toBe("text/csv");
     });
 
     it("should enforce max file size limit", async () => {
-      // Setup scheduled import with max file size limit
+      // Setup scheduled ingest with max file size limit
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         advancedOptions: {
@@ -638,7 +638,7 @@ describe.sequential("urlFetchJob", () => {
 
       const result = await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/large.csv",
           catalogId: "catalog-123",
           originalName: "Large File",
@@ -669,7 +669,7 @@ describe.sequential("urlFetchJob", () => {
         return Promise.resolve(createMockResponse("data", { contentType: "text/csv" }));
       });
 
-      // Use direct input with no scheduledImportId so retry config is not loaded
+      // Use direct input with no scheduledIngestId so retry config is not loaded
       // The default retry behavior will retry on failure
       const result = await urlFetchJob.handler({
         input: {
@@ -702,7 +702,7 @@ describe.sequential("urlFetchJob", () => {
 
       const result = await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://slow-server.com/data",
           catalogId: "catalog-123",
           originalName: "Timeout Test",
@@ -743,7 +743,7 @@ describe.sequential("urlFetchJob", () => {
 
       await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://api.example.com/data",
           catalogId: "catalog-123",
           originalName: "Custom Headers Test",
@@ -796,7 +796,7 @@ describe.sequential("urlFetchJob", () => {
 
       await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/data.csv",
           catalogId: "catalog-123",
           originalName: "Duration Test",
@@ -807,7 +807,7 @@ describe.sequential("urlFetchJob", () => {
 
       // Should update with new average: (3.5 * 2 + 2) / 3 = 3
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "scheduled-imports",
+        collection: "scheduled-ingests",
         id: "scheduled-123",
         data: expect.objectContaining({
           statistics: expect.objectContaining({ totalRuns: 3, successfulRuns: 3, averageDuration: 3 }),
@@ -847,7 +847,7 @@ describe.sequential("urlFetchJob", () => {
 
       await urlFetchJob.handler({
         input: {
-          scheduledImportId: "scheduled-123",
+          scheduledIngestId: "scheduled-123",
           sourceUrl: "https://example.com/data.csv",
           catalogId: "catalog-123",
           originalName: "Dataset Mapping Test",
@@ -859,7 +859,7 @@ describe.sequential("urlFetchJob", () => {
       // Verify the import file was created with dataset mapping metadata
       expect(mockPayload.create).toHaveBeenCalled();
       const createCall = mockPayload.create.mock.calls[0][0];
-      expect(createCall.collection).toBe("import-files");
+      expect(createCall.collection).toBe("ingest-files");
       expect(createCall.data.metadata.datasetMapping.enabled).toBe(true);
       expect(createCall.data.metadata.datasetMapping.sheets).toHaveLength(2);
       expect(createCall.data.metadata.datasetMapping.sheets[0].sheetIdentifier).toBe("Sheet1");

@@ -17,7 +17,7 @@ export interface ExportSummary {
   events: number;
   importFiles: number;
   importJobs: number;
-  scheduledImports: number;
+  scheduledIngests: number;
   mediaFiles: number;
 }
 
@@ -96,7 +96,7 @@ export interface EventExportData {
   id: number;
   datasetId: number;
   eventTimestamp?: string | null;
-  data: unknown;
+  originalData: unknown;
   location?: { latitude?: number | null; longitude?: number | null } | null;
   geocodingStatus?: string | null;
   validationStatus?: string | null;
@@ -105,9 +105,9 @@ export interface EventExportData {
 }
 
 /**
- * Import file metadata for export.
+ * Ingest file metadata for export.
  */
-export interface ImportFileExportData {
+export interface IngestFileExportData {
   id: number;
   originalName?: string | null;
   mimeType?: string | null;
@@ -117,11 +117,11 @@ export interface ImportFileExportData {
 }
 
 /**
- * Import job data for export.
+ * Ingest job data for export.
  */
-export interface ImportJobExportData {
+export interface IngestJobExportData {
   id: number;
-  importFileId: number;
+  ingestFileId: number;
   datasetId: number;
   stage?: string | null;
   progress?: unknown;
@@ -130,9 +130,9 @@ export interface ImportJobExportData {
 }
 
 /**
- * Scheduled import configuration for export.
+ * scheduled ingest configuration for export.
  */
-export interface ScheduledImportExportData {
+export interface ScheduledIngestExportData {
   id: number;
   name: string;
   sourceUrl: string;
@@ -170,9 +170,9 @@ export interface ExportData {
   catalogs: CatalogExportData[];
   datasets: DatasetExportData[];
   events: EventExportData[];
-  importFiles: ImportFileExportData[];
-  importJobs: ImportJobExportData[];
-  scheduledImports: ScheduledImportExportData[];
+  importFiles: IngestFileExportData[];
+  importJobs: IngestJobExportData[];
+  scheduledIngests: ScheduledIngestExportData[];
   media: MediaExportData[];
 }
 

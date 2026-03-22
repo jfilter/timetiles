@@ -14,10 +14,10 @@ import { GeocodingError } from "@/lib/services/geocoding/types";
 
 import {
   createIntegrationTestEnvironment,
-  runJobsUntilImportJobStage,
+  runJobsUntilIngestJobStage,
   withCatalog,
   withDataset,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -109,8 +109,8 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
       "datasets",
       "dataset-schemas",
       "events",
-      "import-files",
-      "import-jobs",
+      "ingest-files",
+      "ingest-jobs",
       "payload-jobs",
     ]);
 
@@ -140,45 +140,45 @@ Event 3,2024-01-03,Hamburg Germany
       schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
     });
 
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "geocode-failure-test.csv",
       mimeType: "text/csv",
       user: testUserId,
       additionalData: { originalName: "geocode-failure-test.csv" },
     });
 
-    await runJobsUntilImportJobStage(
+    await runJobsUntilIngestJobStage(
       payload,
-      importFile.id,
-      (importJob) =>
-        importJob.stage === "failed" || importJob.stage === "completed" || importJob.stage === "create-events",
+      ingestFile.id,
+      (ingestJob) =>
+        ingestJob.stage === "failed" || ingestJob.stage === "completed" || ingestJob.stage === "create-events",
       { maxIterations: 50 }
     );
 
     // Verify the import job is marked as failed
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
     });
 
     expect(importJobs.docs).toHaveLength(1);
-    const importJob = importJobs.docs[0];
+    const ingestJob = importJobs.docs[0];
 
-    expect(importJob.stage).toBe("failed");
-    expect(importJob.errorLog).toBeDefined();
-    expect(importJob.errorLog.context).toBe("geocode-batch");
+    expect(ingestJob.stage).toBe("failed");
+    expect(ingestJob.errorLog).toBeDefined();
+    expect(ingestJob.errorLog.context).toBe("geocode-batch");
     // Error message should indicate geocoding failure (either all locations failed or service error)
-    expect(importJob.errorLog.lastError).toMatch(/Geocoding|geocoding/i);
+    expect(ingestJob.errorLog.lastError).toMatch(/Geocoding|geocoding/i);
 
     // Verify the import file status (may be "failed" or still "processing" depending on error type)
-    const updatedImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
+    const updatedIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
 
     // Import file status should indicate failure eventually
     // Note: The exact status depends on whether all-geocoding-failed path or general error path was taken
-    expect(["failed", "processing"]).toContain(updatedImportFile.status);
+    expect(["failed", "processing"]).toContain(updatedIngestFile.status);
 
     // Verify no events were created (since geocoding failed)
-    const events = await payload.find({ collection: "events", where: { importJob: { equals: importJob.id } } });
+    const events = await payload.find({ collection: "events", where: { ingestJob: { equals: ingestJob.id } } });
 
     expect(events.docs).toHaveLength(0);
   });
@@ -201,40 +201,40 @@ Event 3,2024-01-03,Hamburg Germany
       schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
     });
 
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "geocode-partial-test.csv",
       mimeType: "text/csv",
       user: testUserId,
       additionalData: { originalName: "geocode-partial-test.csv" },
     });
 
-    await runJobsUntilImportJobStage(
+    await runJobsUntilIngestJobStage(
       payload,
-      importFile.id,
-      (importJob) => importJob.stage === "failed" || importJob.stage === "completed",
+      ingestFile.id,
+      (ingestJob) => ingestJob.stage === "failed" || ingestJob.stage === "completed",
       { maxIterations: 50 }
     );
 
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
     });
 
     expect(importJobs.docs).toHaveLength(1);
-    const importJob = importJobs.docs[0];
+    const ingestJob = importJobs.docs[0];
 
     // Partial success should NOT fail — job should reach completed
-    expect(importJob.stage).toBe("completed");
+    expect(ingestJob.stage).toBe("completed");
 
     // Geocoding results should contain only the 2 successful locations (addresses are normalized)
-    expect(importJob.geocodingResults).toBeDefined();
-    expect(Object.keys(importJob.geocodingResults)).toHaveLength(2);
-    expect(importJob.geocodingResults["berlin germany"]).toBeDefined();
-    expect(importJob.geocodingResults["hamburg germany"]).toBeDefined();
-    expect(importJob.geocodingResults["munich germany"]).toBeUndefined();
+    expect(ingestJob.geocodingResults).toBeDefined();
+    expect(Object.keys(ingestJob.geocodingResults)).toHaveLength(2);
+    expect(ingestJob.geocodingResults["berlin germany"]).toBeDefined();
+    expect(ingestJob.geocodingResults["hamburg germany"]).toBeDefined();
+    expect(ingestJob.geocodingResults["munich germany"]).toBeUndefined();
 
     // Events should be created for all 3 rows
-    const events = await payload.find({ collection: "events", where: { importJob: { equals: importJob.id } } });
+    const events = await payload.find({ collection: "events", where: { ingestJob: { equals: ingestJob.id } } });
     expect(events.docs.length).toBeGreaterThanOrEqual(3);
   });
 });

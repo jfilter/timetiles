@@ -22,7 +22,7 @@ import { sql } from "@payloadcms/db-postgres";
 import { getPayload } from "payload";
 
 import config from "../payload.config";
-import { COLLECTION_NAMES } from "./constants/import-constants";
+import { COLLECTION_NAMES } from "./constants/ingest-constants";
 import { createLogger } from "./logger";
 
 const logger = createLogger("health-checks");

@@ -14,12 +14,12 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import type { User } from "@/payload-types";
 import {
   createIntegrationTestEnvironment,
-  withImportFile,
-  withScheduledImport,
+  withIngestFile,
+  withScheduledIngest,
   withUsers,
 } from "@/tests/setup/integration/environment";
 
@@ -58,12 +58,12 @@ describe.sequential("Access Control Edge Cases", () => {
     // Clean up test data between tests to prevent accumulation
     // Only delete non-user collections to avoid recreating users
     try {
-      await payload.delete({ collection: "import-jobs", where: {}, overrideAccess: true });
-      await payload.delete({ collection: "import-files", where: {}, overrideAccess: true });
+      await payload.delete({ collection: "ingest-jobs", where: {}, overrideAccess: true });
+      await payload.delete({ collection: "ingest-files", where: {}, overrideAccess: true });
       await payload.delete({ collection: "events", where: {}, overrideAccess: true });
       await payload.delete({ collection: "datasets", where: {}, overrideAccess: true });
       await payload.delete({ collection: "catalogs", where: {}, overrideAccess: true });
-      await payload.delete({ collection: "scheduled-imports", where: {}, overrideAccess: true });
+      await payload.delete({ collection: "scheduled-ingests", where: {}, overrideAccess: true });
       // Clean up user-usage to reset quota counters
       await payload.delete({ collection: "user-usage", where: {}, overrideAccess: true });
     } catch {
@@ -94,7 +94,7 @@ describe.sequential("Access Control Edge Cases", () => {
         collection: "events",
         data: {
           dataset: dataset.id,
-          data: { test: "orphaned event" },
+          originalData: { test: "orphaned event" },
           uniqueId: `${dataset.id}:test:orphan-${Date.now()}`,
         },
         user: adminUser,
@@ -162,7 +162,7 @@ describe.sequential("Access Control Edge Cases", () => {
   });
 
   describe("Relationship-Based Access", () => {
-    it("should enforce access control through import-job → import-file → user chain", async () => {
+    it("should enforce access control through import-job → ingest-file → user chain", async () => {
       console.log("[TEST] Starting import-job access control test");
 
       // Create catalog owned by ownerUser (who will create the import file)
@@ -185,17 +185,17 @@ describe.sequential("Access Control Edge Cases", () => {
       // Create import file as ownerUser using helper
       console.log("[TEST] Creating import file...");
       const csvContent = "name,date\nTest Event,2024-01-01";
-      const { importFile } = await withImportFile(testEnv, catalog.id, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, catalog.id, csvContent, {
         filename: "test.csv",
         user: ownerUser.id,
       });
-      console.log(`[TEST] Import file created: ${importFile.id}`);
+      console.log(`[TEST] Import file created: ${ingestFile.id}`);
 
       // Wait for file to be written and hook to trigger
       console.log("[TEST] Waiting for hooks to complete...");
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Process the dataset-detection job queued by import-files afterChange hook
+      // Process the dataset-detection job queued by ingest-files afterChange hook
       console.log("[TEST] Running queued jobs...");
       try {
         await payload.jobs.run({ allQueues: true, limit: 10 });
@@ -207,45 +207,45 @@ describe.sequential("Access Control Edge Cases", () => {
 
       // Create import job linked to the import file (admin only)
       console.log("[TEST] Creating import job...");
-      const importJob = await payload.create({
-        collection: "import-jobs",
+      const ingestJob = await payload.create({
+        collection: "ingest-jobs",
         data: {
-          importFile: importFile.id,
+          ingestFile: ingestFile.id,
           dataset: dataset.id,
           stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
           progress: { current: 0, total: 100 },
         },
         user: adminUser,
       });
-      console.log(`[TEST] Import job created: ${importJob.id}`);
+      console.log(`[TEST] Import job created: ${ingestJob.id}`);
 
       // otherUser should NOT be able to access the import job
       console.log("[TEST] Testing otherUser access (should fail)...");
       await expect(
-        payload.findByID({ collection: "import-jobs", id: importJob.id, user: otherUser, overrideAccess: false })
+        payload.findByID({ collection: "ingest-jobs", id: ingestJob.id, user: otherUser, overrideAccess: false })
       ).rejects.toThrow();
       console.log("[TEST] otherUser correctly denied");
 
       // ownerUser CAN access (they own the import file, regardless of dataset visibility)
       console.log("[TEST] Testing ownerUser access (should succeed - file owner)...");
       const ownerJob = await payload.findByID({
-        collection: "import-jobs",
-        id: importJob.id,
+        collection: "ingest-jobs",
+        id: ingestJob.id,
         user: ownerUser,
         overrideAccess: false,
       });
-      expect(ownerJob.id).toBe(importJob.id);
+      expect(ownerJob.id).toBe(ingestJob.id);
       console.log("[TEST] ownerUser correctly granted access as file owner");
 
       // adminUser should be able to access
       console.log("[TEST] Testing adminUser access (should succeed)...");
       const adminJob = await payload.findByID({
-        collection: "import-jobs",
-        id: importJob.id,
+        collection: "ingest-jobs",
+        id: ingestJob.id,
         user: adminUser,
         overrideAccess: false,
       });
-      expect(adminJob.id).toBe(importJob.id);
+      expect(adminJob.id).toBe(ingestJob.id);
       console.log("[TEST] adminUser correctly granted access");
       console.log("[TEST] Test complete");
     }, 60000);
@@ -253,7 +253,7 @@ describe.sequential("Access Control Edge Cases", () => {
     it("should handle import file access based on user relationship", async () => {
       // Create import file as ownerUser using helper
       const csvContent = "name,date\nOwner Event,2024-01-01";
-      const { importFile } = await withImportFile(testEnv, null, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, null, csvContent, {
         filename: "owner-file.csv",
         user: ownerUser.id,
       });
@@ -264,23 +264,23 @@ describe.sequential("Access Control Edge Cases", () => {
 
       // otherUser should not be able to read it
       await expect(
-        payload.findByID({ collection: "import-files", id: importFile.id, user: otherUser, overrideAccess: false })
+        payload.findByID({ collection: "ingest-files", id: ingestFile.id, user: otherUser, overrideAccess: false })
       ).rejects.toThrow();
 
       // ownerUser should be able to read it
       const ownerFile = await payload.findByID({
-        collection: "import-files",
-        id: importFile.id,
+        collection: "ingest-files",
+        id: ingestFile.id,
         user: ownerUser,
         overrideAccess: false,
       });
-      expect(ownerFile.id).toBe(importFile.id);
+      expect(ownerFile.id).toBe(ingestFile.id);
 
       // otherUser should not be able to update it
       await expect(
         payload.update({
-          collection: "import-files",
-          id: importFile.id,
+          collection: "ingest-files",
+          id: ingestFile.id,
           data: { status: "completed" },
           user: otherUser,
           overrideAccess: false,
@@ -289,8 +289,8 @@ describe.sequential("Access Control Edge Cases", () => {
 
       // ownerUser should be able to update it
       const updated = await payload.update({
-        collection: "import-files",
-        id: importFile.id,
+        collection: "ingest-files",
+        id: ingestFile.id,
         data: { status: "completed" },
         user: ownerUser,
         overrideAccess: false,
@@ -529,7 +529,7 @@ describe.sequential("Access Control Edge Cases", () => {
     });
 
     // Note: Session-based unauthenticated uploads are no longer supported.
-    // All import files now require an authenticated user (withImportFile creates one automatically).
+    // All import files now require an authenticated user (withIngestFile creates one automatically).
   });
 
   describe("Complex Relationship Chains", () => {
@@ -554,7 +554,11 @@ describe.sequential("Access Control Edge Cases", () => {
       console.log("[CHAIN TEST] Step 3: Creating event...");
       const event = await payload.create({
         collection: "events",
-        data: { dataset: dataset.id, data: { test: "chain test" }, uniqueId: `${dataset.id}:test:chain-${Date.now()}` },
+        data: {
+          dataset: dataset.id,
+          originalData: { test: "chain test" },
+          uniqueId: `${dataset.id}:test:chain-${Date.now()}`,
+        },
         user: adminUser,
       });
       console.log(`[CHAIN TEST] Step 3 done: event ${event.id}`);
@@ -608,33 +612,33 @@ describe.sequential("Access Control Edge Cases", () => {
     }, 60000);
   });
 
-  describe("Scheduled Import Access Control", () => {
-    it("should validate catalog access when creating scheduled import", async () => {
+  describe("scheduled ingest Access Control", () => {
+    it("should validate catalog access when creating scheduled ingest", async () => {
       // Create private catalog (admin only)
       const privateCatalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Private Scheduled Import Catalog", isPublic: false },
+        data: { name: "Private scheduled ingest Catalog", isPublic: false },
         user: adminUser,
       });
 
-      // otherUser should not be able to create scheduled import for private catalog
+      // otherUser should not be able to create scheduled ingest for private catalog
       await expect(
-        withScheduledImport(testEnv, privateCatalog.id, "https://example.com/data.csv", {
-          name: "Unauthorized Scheduled Import",
+        withScheduledIngest(testEnv, privateCatalog.id, "https://example.com/data.csv", {
+          name: "Unauthorized scheduled ingest",
           frequency: "daily",
           enabled: false,
           user: otherUser,
         })
       ).rejects.toThrow();
 
-      // Admin should be able to create scheduled import in private catalog
-      const { scheduledImport } = await withScheduledImport(
+      // Admin should be able to create scheduled ingest in private catalog
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         privateCatalog.id,
         "https://example.com/data.csv",
-        { name: "Authorized Scheduled Import", frequency: "daily", enabled: false, user: adminUser }
+        { name: "Authorized scheduled ingest", frequency: "daily", enabled: false, user: adminUser }
       );
-      expect(scheduledImport.name).toBe("Authorized Scheduled Import");
+      expect(scheduledIngest.name).toBe("Authorized scheduled ingest");
     }, 60000);
   });
 });

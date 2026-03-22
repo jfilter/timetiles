@@ -49,7 +49,7 @@ export const cacheCleanupJob = {
       const totalEvicted = 0;
       const results: Record<string, unknown> = {};
 
-      // Clean URL fetch cache (for scheduled imports)
+      // Clean URL fetch cache (for scheduled ingests)
       const urlFetchCache = getUrlFetchCache();
       const urlFetchCleaned = await urlFetchCache.cleanup();
       totalCleaned += urlFetchCleaned;

@@ -5,7 +5,7 @@
  * for too long (default 2 hours). This prevents permanent blocking of
  * scrapers due to job failures or system crashes.
  *
- * Mirrors the behavior of cleanup-stuck-scheduled-imports-job.ts.
+ * Mirrors the behavior of cleanup-stuck-scheduled-ingests-job.ts.
  *
  * @module
  * @category Jobs

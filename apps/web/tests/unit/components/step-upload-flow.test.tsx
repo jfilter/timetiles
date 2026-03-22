@@ -8,19 +8,19 @@
  * @module
  */
 /* eslint-disable @typescript-eslint/require-await -- act(async () => ...) is the standard React 19 pattern for flushing state updates */
-import { StepUpload } from "@/app/[locale]/(frontend)/import/_components/steps/step-upload";
+import { StepUpload } from "@/app/[locale]/(frontend)/ingest/_components/steps/step-upload";
 import {
   initialState,
   useWizardStore,
   type WizardState,
-} from "@/app/[locale]/(frontend)/import/_components/wizard-store";
+} from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
 
 import { act, fireEvent, renderWithProviders, screen, waitFor } from "../../setup/unit/react-render";
 
 // ---------------------------------------------------------------------------
 // Mock use-wizard-effects (useWizardCanProceed depends on useAuthState)
 // ---------------------------------------------------------------------------
-vi.mock("@/app/[locale]/(frontend)/import/_components/use-wizard-effects", () => ({ useWizardCanProceed: () => true }));
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/use-wizard-effects", () => ({ useWizardCanProceed: () => true }));
 
 // ---------------------------------------------------------------------------
 // Mock localStorage for Zustand persist middleware
@@ -121,7 +121,7 @@ describe.sequential("StepUpload", () => {
 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith(
-          "/api/import/preview-schema/upload",
+          "/api/ingest/preview-schema/upload",
           expect.objectContaining({ method: "POST" })
         );
       });
@@ -147,7 +147,7 @@ describe.sequential("StepUpload", () => {
 
       await waitFor(() => {
         const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-        expect(url).toBe("/api/import/preview-schema/upload");
+        expect(url).toBe("/api/ingest/preview-schema/upload");
         expect(options.method).toBe("POST");
         expect(options.body).toBeInstanceOf(FormData);
         expect((options.body as FormData).get("file")).toBeInstanceOf(File);
@@ -197,7 +197,7 @@ describe.sequential("StepUpload", () => {
 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith(
-          "/api/import/preview-schema/upload",
+          "/api/ingest/preview-schema/upload",
           expect.objectContaining({ method: "POST" })
         );
       });

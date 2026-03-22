@@ -18,15 +18,15 @@ import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import {
   createIntegrationTestEnvironment,
   withCatalog,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../../setup/integration/environment";
 
 describe.sequential("Failure Transitions Integration", () => {
   const collectionsToReset = [
     "events",
-    "import-files",
-    "import-jobs",
+    "ingest-files",
+    "ingest-jobs",
     "datasets",
     "dataset-schemas",
     "payload-jobs",
@@ -68,24 +68,24 @@ describe.sequential("Failure Transitions Integration", () => {
       const csvContent = ""; // Empty file
       const csvFileName = `empty-${Date.now()}.csv`;
 
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         user: testUserId,
         filename: csvFileName,
       });
 
       const detectionContext = {
         req: { payload },
-        job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
+        job: { id: "detection-job", input: { ingestFileId: ingestFile.id, catalogId: testCatalogId } },
       };
 
       await expect(datasetDetectionJob.handler(detectionContext)).rejects.toThrow("No data rows found");
 
-      const failedImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
-      expect(failedImportFile.status).toBe("failed");
+      const failedIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+      expect(failedIngestFile.status).toBe("failed");
 
       const queuedJobs = await payload.find({
         collection: "payload-jobs",
-        where: { "input.importFileId": { equals: importFile.id }, completedAt: { exists: false } },
+        where: { "input.ingestFileId": { equals: ingestFile.id }, completedAt: { exists: false } },
       });
       expect(queuedJobs.docs.length).toBeLessThanOrEqual(1);
     });
@@ -94,14 +94,14 @@ describe.sequential("Failure Transitions Integration", () => {
       const csvContent = "header1,header2\nvalue1"; // Missing second value - Papa Parse handles this
       const csvFileName = `inconsistent-${Date.now()}.csv`;
 
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         user: testUserId,
         filename: csvFileName,
       });
 
       const detectionContext = {
         req: { payload },
-        job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
+        job: { id: "detection-job", input: { ingestFileId: ingestFile.id, catalogId: testCatalogId } },
       };
 
       const result = await datasetDetectionJob.handler(detectionContext);
@@ -112,12 +112,12 @@ describe.sequential("Failure Transitions Integration", () => {
   });
 
   describe("Duplicate Analysis Failures", () => {
-    it("should transition to FAILED when import job not found", async () => {
+    it("should transition to FAILED when ingest job not found", async () => {
       const nonExistentJobId = "non-existent-job-id";
 
       const duplicateContext = {
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: nonExistentJobId } },
+        job: { id: "duplicate-job", input: { ingestJobId: nonExistentJobId } },
       };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
@@ -126,17 +126,17 @@ describe.sequential("Failure Transitions Integration", () => {
       // Verify no jobs were queued for this non-existent job
       const queuedJobs = await payload.find({
         collection: "payload-jobs",
-        where: { "input.importJobId": { equals: nonExistentJobId }, completedAt: { exists: false } },
+        where: { "input.ingestJobId": { equals: nonExistentJobId }, completedAt: { exists: false } },
       });
       expect(queuedJobs.docs).toHaveLength(0);
     });
   });
 
   describe("Schema Detection Failures", () => {
-    it("should transition to FAILED when import job not found", async () => {
+    it("should transition to FAILED when ingest job not found", async () => {
       const nonExistentJobId = "non-existent-job-id";
 
-      const schemaContext = { req: { payload }, job: { id: "schema-job", input: { importJobId: nonExistentJobId } } };
+      const schemaContext = { req: { payload }, job: { id: "schema-job", input: { ingestJobId: nonExistentJobId } } };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
       await expect(schemaDetectionJob.handler(schemaContext)).rejects.toThrow("Not Found");
@@ -152,45 +152,45 @@ Event 2,2024-01-02,San Francisco CA`;
 
       const csvFileName = `geocoding-test-${Date.now()}.csv`;
 
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         user: testUserId,
         filename: csvFileName,
       });
 
       const detectionContext = {
         req: { payload },
-        job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
+        job: { id: "detection-job", input: { ingestFileId: ingestFile.id, catalogId: testCatalogId } },
       };
       await datasetDetectionJob.handler(detectionContext);
 
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
-      const importJob = importJobs.docs[0];
+      const ingestJob = importJobs.docs[0];
 
       await analyzeDuplicatesJob.handler({
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: importJob.id } },
+        job: { id: "duplicate-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await schemaDetectionJob.handler({
         req: { payload },
-        job: { id: "schema-job", input: { importJobId: importJob.id } },
+        job: { id: "schema-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await expect(
         geocodeBatchJob.handler({
           req: { payload },
-          job: { id: "geocoding-job", input: { importJobId: "non-existent", batchNumber: 0 } },
+          job: { id: "geocoding-job", input: { ingestJobId: "non-existent", batchNumber: 0 } },
         })
       ).rejects.toThrow("Not Found");
     });
   });
 
   describe("Event Creation Failures", () => {
-    it("should handle event creation errors when import job not found", async () => {
-      const eventContext = { req: { payload }, job: { id: "event-job", input: { importJobId: "non-existent" } } };
+    it("should handle event creation errors when ingest job not found", async () => {
+      const eventContext = { req: { payload }, job: { id: "event-job", input: { ingestJobId: "non-existent" } } };
 
       // Should throw error (Payload returns "Not Found" for missing documents)
       await expect(createEventsBatchJob.handler(eventContext)).rejects.toThrow("Not Found");
@@ -202,20 +202,20 @@ Event 2,2024-01-02,San Francisco CA`;
       const csvContent = ""; // Empty file to trigger failure
       const csvFileName = `error-log-test-${Date.now()}.csv`;
 
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         user: testUserId,
         filename: csvFileName,
       });
 
       const detectionContext = {
         req: { payload },
-        job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
+        job: { id: "detection-job", input: { ingestFileId: ingestFile.id, catalogId: testCatalogId } },
       };
 
       await expect(datasetDetectionJob.handler(detectionContext)).rejects.toThrow();
 
-      const failedImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
-      expect(failedImportFile.status).toBe("failed");
+      const failedIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+      expect(failedIngestFile.status).toBe("failed");
     });
   });
 });

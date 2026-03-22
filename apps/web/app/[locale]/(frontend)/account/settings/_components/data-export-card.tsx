@@ -34,7 +34,7 @@ const ExportInfoBox = () => {
       <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
         <li>{t("includesCatalogs")}</li>
         <li>{t("includesEvents")}</li>
-        <li>{t("includesImports")}</li>
+        <li>{t("includesIngests")}</li>
         <li>{t("includesMedia")}</li>
       </ul>
     </div>

@@ -127,14 +127,14 @@ const DatasetSchemas: CollectionConfig = {
       ],
     },
     {
-      name: "importSources",
+      name: "ingestSources",
       type: "array",
       fields: [
-        { name: "import", type: "relationship", relationTo: "import-jobs", required: true },
+        { name: "ingestJob", type: "relationship", relationTo: "ingest-jobs", required: true },
         { name: "recordCount", type: "number" },
         { name: "batchCount", type: "number" },
       ],
-      admin: { description: "Import jobs that contributed to this schema" },
+      admin: { description: "Ingest jobs that contributed to this schema" },
     },
     {
       name: "approvalRequired",

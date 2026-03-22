@@ -8,12 +8,12 @@
  * @category E2E Setup
  */
 import { expect, test as setup } from "./fixtures";
-import { ImportPage } from "./pages/import.page";
+import { IngestPage } from "./pages/ingest.page";
 
 const AUTH_FILE = "test-results/.auth/admin.json";
 
 setup("authenticate as admin", async ({ page }) => {
-  const importPage = new ImportPage(page);
+  const importPage = new IngestPage(page);
   await importPage.goto();
   await importPage.waitForWizardLoad();
   await importPage.login("admin@example.com", "admin123");

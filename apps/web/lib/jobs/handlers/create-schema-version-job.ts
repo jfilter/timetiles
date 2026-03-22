@@ -8,15 +8,15 @@
  */
 import type { PayloadRequest } from "payload";
 
-import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { ProgressTrackingService } from "@/lib/import/progress-tracking";
-import { SchemaVersioningService } from "@/lib/import/schema-versioning";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
+import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { failImportJob, loadDataset, loadImportJob } from "../utils/resource-loading";
+import { failIngestJob, loadDataset, loadIngestJob } from "../utils/resource-loading";
 
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
@@ -55,21 +55,21 @@ export const createSchemaVersionJob = {
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CreateSchemaVersionJobInput["input"];
-    const { importJobId } = input;
+    const { ingestJobId } = input;
 
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "create-schema-version");
-    logger.info("Creating schema version after approval", { importJobId });
+    logger.info("Creating schema version after approval", { ingestJobId });
 
     try {
       // Get import job
-      const job = await loadImportJob(payload, importJobId);
+      const job = await loadIngestJob(payload, ingestJobId);
 
       // Start CREATE_SCHEMA_VERSION stage
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
       await ProgressTrackingService.startStage(
         payload,
-        importJobId,
+        ingestJobId,
         PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
         uniqueRows
       );
@@ -77,13 +77,13 @@ export const createSchemaVersionJob = {
       // Check if we should skip
       const skipCheck = shouldSkipSchemaVersionCreation(job);
       if (skipCheck.skip) {
-        logger.info("Skipping schema version creation", { importJobId, reason: skipCheck.reason });
-        await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
+        logger.info("Skipping schema version creation", { ingestJobId, reason: skipCheck.reason });
+        await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
         // Transition to next stage so the import doesn't get stranded
         await payload.update({
-          collection: COLLECTION_NAMES.IMPORT_JOBS,
-          id: importJobId,
+          collection: COLLECTION_NAMES.INGEST_JOBS,
+          id: ingestJobId,
           data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
         });
 
@@ -98,7 +98,7 @@ export const createSchemaVersionJob = {
       const isAutoApproved = !job.schemaValidation?.requiresApproval;
       const approvedById = isAutoApproved ? null : getApprovedById(job.schemaValidation?.approvedBy);
 
-      logger.info("Creating schema version", { importJobId, datasetId: dataset.id, isAutoApproved, approvedById });
+      logger.info("Creating schema version", { ingestJobId, datasetId: dataset.id, isAutoApproved, approvedById });
 
       // Create schema version
       const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
@@ -108,34 +108,34 @@ export const createSchemaVersionJob = {
         fieldMappings: job.detectedFieldMappings,
         autoApproved: isAutoApproved,
         approvedBy: approvedById,
-        importSources: [],
+        ingestSources: [],
         req: context.req as PayloadRequest | undefined,
       });
 
       // Update job with schema version
       await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
         data: { datasetSchemaVersion: schemaVersion.id },
       });
 
-      logger.info("Schema version created successfully", { importJobId, schemaVersionId: schemaVersion.id });
+      logger.info("Schema version created successfully", { ingestJobId, schemaVersionId: schemaVersion.id });
 
       // Complete CREATE_SCHEMA_VERSION stage
-      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
+      await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
       // Transition to next stage
       await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
         data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
       });
 
       return { output: { schemaVersionId: schemaVersion.id } };
     } catch (error) {
-      logError(error, "Failed to create schema version", { importJobId });
+      logError(error, "Failed to create schema version", { ingestJobId });
 
-      await failImportJob(payload, importJobId, error, "schema-version-creation");
+      await failIngestJob(payload, ingestJobId, error, "schema-version-creation");
 
       throw error;
     }

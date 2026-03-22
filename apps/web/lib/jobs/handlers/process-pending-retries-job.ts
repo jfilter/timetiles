@@ -8,7 +8,7 @@
  * @module
  */
 
-import { ErrorRecoveryService } from "@/lib/import/error-recovery";
+import { ErrorRecoveryService } from "@/lib/ingest/error-recovery";
 
 import type { JobHandlerContext } from "../utils/job-context";
 

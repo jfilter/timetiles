@@ -17,7 +17,7 @@ import type { Payload } from "payload";
 
 import { requireRelationId } from "@/lib/utils/relation-id";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
-import type { Catalog, Dataset, Event, ImportFile, ImportJob, Media, ScheduledImport } from "@/payload-types";
+import type { Catalog, Dataset, Event, IngestFile, IngestJob, Media, ScheduledIngest } from "@/payload-types";
 
 import { createLogger } from "../logger";
 import type {
@@ -28,10 +28,10 @@ import type {
   ExportData,
   ExportManifest,
   ExportSummary,
-  ImportFileExportData,
-  ImportJobExportData,
+  IngestFileExportData,
+  IngestJobExportData,
   MediaExportData,
-  ScheduledImportExportData,
+  ScheduledIngestExportData,
   UserExportData,
 } from "./types";
 
@@ -58,11 +58,11 @@ export class DataExportService {
    */
   async getExportSummary(userId: number): Promise<ExportSummary> {
     // Count top-level collections in parallel
-    const [catalogs, datasets, importFilesCount, scheduledImports, mediaFiles] = await Promise.all([
+    const [catalogs, datasets, importFilesCount, scheduledIngests, mediaFiles] = await Promise.all([
       countUserDocs(this.payload, "catalogs", userId),
       countUserDocs(this.payload, "datasets", userId),
-      countUserDocs(this.payload, "import-files", userId, { userField: "user" }),
-      countUserDocs(this.payload, "scheduled-imports", userId),
+      countUserDocs(this.payload, "ingest-files", userId, { userField: "user" }),
+      countUserDocs(this.payload, "scheduled-ingests", userId),
       countUserDocs(this.payload, "media", userId),
     ]);
 
@@ -81,17 +81,17 @@ export class DataExportService {
     }
 
     // Count import jobs via import files
-    const userImportFiles = await findUserDocs(this.payload, "import-files", userId, {
+    const userIngestFiles = await findUserDocs(this.payload, "ingest-files", userId, {
       userField: "user",
       limit: 10000,
     });
-    const importFileIds = userImportFiles.map((f) => f.id);
+    const importFileIds = userIngestFiles.map((f) => f.id);
 
     let importJobsCount = 0;
     if (importFileIds.length > 0) {
       const importJobs = await this.payload.count({
-        collection: "import-jobs",
-        where: { importFile: { in: importFileIds } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { in: importFileIds } },
         overrideAccess: true,
       });
       importJobsCount = importJobs.totalDocs;
@@ -103,7 +103,7 @@ export class DataExportService {
       events: eventsCount,
       importFiles: importFilesCount,
       importJobs: importJobsCount,
-      scheduledImports,
+      scheduledIngests,
       mediaFiles,
     };
   }
@@ -192,7 +192,7 @@ export class DataExportService {
         id: e.id,
         datasetId: requireRelationId(e.dataset, "event.dataset"),
         eventTimestamp: e.eventTimestamp,
-        data: e.data,
+        originalData: e.originalData,
         location: e.location ? { latitude: e.location.latitude, longitude: e.location.longitude } : null,
         geocodingStatus: (e.geocodingInfo as { status?: string } | null)?.status,
         validationStatus: e.validationStatus,
@@ -211,10 +211,10 @@ export class DataExportService {
   /**
    * Fetch import files for export.
    */
-  private async fetchImportFiles(userId: number): Promise<ImportFileExportData[]> {
-    const docs = await findUserDocs(this.payload, "import-files", userId, { userField: "user", limit: 10000 });
+  private async fetchIngestFiles(userId: number): Promise<IngestFileExportData[]> {
+    const docs = await findUserDocs(this.payload, "ingest-files", userId, { userField: "user", limit: 10000 });
 
-    return docs.map((f: ImportFile) => ({
+    return docs.map((f: IngestFile) => ({
       id: f.id,
       originalName: f.originalName,
       mimeType: f.mimeType,
@@ -227,20 +227,20 @@ export class DataExportService {
   /**
    * Fetch import jobs for export.
    */
-  private async fetchImportJobs(importFileIds: number[]): Promise<ImportJobExportData[]> {
+  private async fetchIngestJobs(importFileIds: number[]): Promise<IngestJobExportData[]> {
     if (importFileIds.length === 0) return [];
 
     const result = await this.payload.find({
-      collection: "import-jobs",
-      where: { importFile: { in: importFileIds } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { in: importFileIds } },
       limit: 10000,
       overrideAccess: true,
     });
 
-    return result.docs.map((j: ImportJob) => ({
+    return result.docs.map((j: IngestJob) => ({
       id: j.id,
-      importFileId: requireRelationId(j.importFile, "importJob.importFile"),
-      datasetId: requireRelationId(j.dataset, "importJob.dataset"),
+      ingestFileId: requireRelationId(j.ingestFile, "ingestJob.ingestFile"),
+      datasetId: requireRelationId(j.dataset, "ingestJob.dataset"),
       stage: j.stage,
       progress: j.progress,
       createdAt: j.createdAt,
@@ -249,12 +249,12 @@ export class DataExportService {
   }
 
   /**
-   * Fetch scheduled imports for export.
+   * Fetch scheduled ingests for export.
    */
-  private async fetchScheduledImports(userId: number): Promise<ScheduledImportExportData[]> {
-    const docs = await findUserDocs(this.payload, "scheduled-imports", userId, { limit: 10000 });
+  private async fetchScheduledIngests(userId: number): Promise<ScheduledIngestExportData[]> {
+    const docs = await findUserDocs(this.payload, "scheduled-ingests", userId, { limit: 10000 });
 
-    return docs.map((s: ScheduledImport) => ({
+    return docs.map((s: ScheduledIngest) => ({
       id: s.id,
       name: s.name,
       sourceUrl: s.sourceUrl,
@@ -291,18 +291,18 @@ export class DataExportService {
    * Fetch all user data for export (except events which are batched).
    */
   async fetchAllUserData(userId: number): Promise<Omit<ExportData, "events">> {
-    const [user, catalogs, datasets, importFiles, scheduledImports, media] = await Promise.all([
+    const [user, catalogs, datasets, importFiles, scheduledIngests, media] = await Promise.all([
       this.fetchUserProfile(userId),
       this.fetchCatalogs(userId),
       this.fetchDatasets(userId),
-      this.fetchImportFiles(userId),
-      this.fetchScheduledImports(userId),
+      this.fetchIngestFiles(userId),
+      this.fetchScheduledIngests(userId),
       this.fetchMedia(userId),
     ]);
 
     // Fetch import jobs using the import file IDs
     const importFileIds = importFiles.map((f) => f.id);
-    const importJobs = await this.fetchImportJobs(importFileIds);
+    const importJobs = await this.fetchIngestJobs(importFileIds);
 
     return {
       exportedAt: new Date().toISOString(),
@@ -312,7 +312,7 @@ export class DataExportService {
       datasets,
       importFiles,
       importJobs,
-      scheduledImports,
+      scheduledIngests,
       media,
     };
   }
@@ -367,9 +367,9 @@ export class DataExportService {
       // Add collections
       archive.append(JSON.stringify(baseData.catalogs, null, 2), { name: "catalogs.json" });
       archive.append(JSON.stringify(baseData.datasets, null, 2), { name: "datasets.json" });
-      archive.append(JSON.stringify(baseData.importFiles, null, 2), { name: "import-files.json" });
+      archive.append(JSON.stringify(baseData.importFiles, null, 2), { name: "ingest-files.json" });
       archive.append(JSON.stringify(baseData.importJobs, null, 2), { name: "import-jobs.json" });
-      archive.append(JSON.stringify(baseData.scheduledImports, null, 2), { name: "scheduled-imports.json" });
+      archive.append(JSON.stringify(baseData.scheduledIngests, null, 2), { name: "scheduled-ingests.json" });
       archive.append(JSON.stringify(baseData.media, null, 2), { name: "media/metadata.json" });
 
       // Process events and media asynchronously, then finalize

@@ -11,8 +11,8 @@
 
 import type { Node } from "@xyflow/react";
 
-import type { ImportTransform } from "./import-transforms";
-import type { FieldMapping } from "./import-wizard";
+import type { IngestTransform } from "./ingest-transforms";
+import type { FieldMapping } from "./ingest-wizard";
 
 /**
  * Data for a source column node (left side of flow)
@@ -58,11 +58,11 @@ export interface TargetFieldNodeData extends Record<string, unknown> {
 
 /**
  * Data for a transform node (middle of flow)
- * Uses the shared ImportTransform for configuration
+ * Uses the shared IngestTransform for configuration
  */
 export interface TransformNodeData extends Record<string, unknown> {
   /** The transform configuration */
-  transform: ImportTransform;
+  transform: IngestTransform;
   /** Whether this node is currently selected for editing */
   isEditing: boolean;
 }

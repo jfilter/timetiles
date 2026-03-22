@@ -110,7 +110,7 @@ const en = {
   exportReadyCatalogs: "All catalogs you've created",
   exportReadyDatasets: "All datasets and their configurations",
   exportReadyEvents: "All events in your datasets",
-  exportReadyImports: "Import history and scheduled imports",
+  exportReadyImports: "Import history and scheduled ingests",
   exportReadyMedia: "Media files you've uploaded",
   exportReadyExpiry:
     "This download link will expire in 7 days. After that, you'll need to request a new export from your account settings.",

@@ -11,21 +11,21 @@
 import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import * as fileReaders from "@/lib/import/file-readers";
+import * as fileReaders from "@/lib/ingest/file-readers";
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
 import type { Catalog, Dataset, Event } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
   withCatalog,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
 // Helper to safely access event data fields
 const getEventData = (event: Event): Record<string, unknown> => {
-  return typeof event.data === "object" && event.data !== null && !Array.isArray(event.data)
-    ? (event.data as Record<string, unknown>)
+  return typeof event.originalData === "object" && event.originalData !== null && !Array.isArray(event.originalData)
+    ? (event.originalData as Record<string, unknown>)
     : {};
 };
 
@@ -70,7 +70,7 @@ describe.sequential("Expression Transforms Integration", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate(["events", "import-jobs", "import-files", "datasets"]);
+    await testEnv.seedManager.truncate(["events", "ingest-jobs", "ingest-files", "datasets"]);
     vi.restoreAllMocks();
   });
 
@@ -91,7 +91,7 @@ describe.sequential("Expression Transforms Integration", () => {
         language: "eng",
         schemaConfig: { allowTransformations: true },
         /* eslint-disable @typescript-eslint/no-explicit-any -- Payload-generated types not yet regenerated */
-        importTransforms: [
+        ingestTransforms: [
           {
             id: "transform-age",
             type: "string-op",
@@ -114,16 +114,16 @@ describe.sequential("Expression Transforms Integration", () => {
       },
     });
 
-    const { importFile } = await withImportFile(testEnv, testCatalog.id, Buffer.from("mock,data\n1,2"), {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalog.id, Buffer.from("mock,data\n1,2"), {
       filename: "test-transform.csv",
       user: testUserId,
     });
 
-    const importJob = await payload.create({
-      collection: "import-jobs",
+    const ingestJob = await payload.create({
+      collection: "ingest-jobs",
       data: {
         dataset: dataset.id,
-        importFile: importFile.id,
+        ingestFile: ingestFile.id,
         stage: "create-events",
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         duplicates: {
@@ -137,7 +137,7 @@ describe.sequential("Expression Transforms Integration", () => {
     await createEventsBatchJob.handler({
       job: { id: "test-job-1" },
       req: { payload },
-      input: { importJobId: importJob.id },
+      input: { ingestJobId: ingestJob.id },
     });
 
     const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } }, limit: 10 });
@@ -165,7 +165,7 @@ describe.sequential("Expression Transforms Integration", () => {
         language: "eng",
         schemaConfig: { allowTransformations: false },
         /* eslint-disable @typescript-eslint/no-explicit-any -- Payload-generated types not yet regenerated */
-        importTransforms: [
+        ingestTransforms: [
           {
             id: "transform-age-disabled",
             type: "string-op",
@@ -180,16 +180,16 @@ describe.sequential("Expression Transforms Integration", () => {
       },
     });
 
-    const { importFile } = await withImportFile(testEnv, testCatalog.id, Buffer.from("mock,data\n1,2"), {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalog.id, Buffer.from("mock,data\n1,2"), {
       filename: "test-no-transform.csv",
       user: testUserId,
     });
 
-    const importJob = await payload.create({
-      collection: "import-jobs",
+    const ingestJob = await payload.create({
+      collection: "ingest-jobs",
       data: {
         dataset: dataset.id,
-        importFile: importFile.id,
+        ingestFile: ingestFile.id,
         stage: "create-events",
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         duplicates: {
@@ -203,7 +203,7 @@ describe.sequential("Expression Transforms Integration", () => {
     await createEventsBatchJob.handler({
       job: { id: "test-job-2" },
       req: { payload },
-      input: { importJobId: importJob.id },
+      input: { ingestJobId: ingestJob.id },
     });
 
     const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } } });

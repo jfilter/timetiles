@@ -34,7 +34,7 @@ describe.sequential("Feature Flag Service", () => {
         data: {
           featureFlags: {
             allowPrivateImports: true,
-            enableScheduledImports: true,
+            enableScheduledIngests: true,
             enableRegistration: true,
             enableEventCreation: true,
             enableDatasetCreation: true,
@@ -64,7 +64,7 @@ describe.sequential("Feature Flag Service", () => {
       const flags = await getFeatureFlags(payload);
 
       expect(flags.allowPrivateImports).toBe(true);
-      expect(flags.enableScheduledImports).toBe(true);
+      expect(flags.enableScheduledIngests).toBe(true);
       expect(flags.enableRegistration).toBe(true);
       expect(flags.enableEventCreation).toBe(true);
       expect(flags.enableDatasetCreation).toBe(true);
@@ -77,7 +77,7 @@ describe.sequential("Feature Flag Service", () => {
       const defaults = getDefaultFeatureFlags();
 
       expect(defaults.allowPrivateImports).toBe(true);
-      expect(defaults.enableScheduledImports).toBe(true);
+      expect(defaults.enableScheduledIngests).toBe(true);
       expect(defaults.enableRegistration).toBe(true);
       expect(defaults.enableEventCreation).toBe(true);
       expect(defaults.enableDatasetCreation).toBe(true);
@@ -96,7 +96,7 @@ describe.sequential("Feature Flag Service", () => {
       // Note: Payload returns undefined for unset checkboxes, service should apply defaults
       const flags = await getFeatureFlags(payload);
       expect(flags.allowPrivateImports).toBe(true);
-      expect(flags.enableScheduledImports).toBe(true);
+      expect(flags.enableScheduledIngests).toBe(true);
       expect(flags.enableRegistration).toBe(true);
       expect(flags.enableEventCreation).toBe(true);
       expect(flags.enableDatasetCreation).toBe(true);
@@ -111,7 +111,7 @@ describe.sequential("Feature Flag Service", () => {
       // Reset flags to defaults before each test
       await payload.updateGlobal({
         slug: "settings",
-        data: { featureFlags: { allowPrivateImports: true, enableScheduledImports: true, enableRegistration: true } },
+        data: { featureFlags: { allowPrivateImports: true, enableScheduledIngests: true, enableRegistration: true } },
       });
       resetFeatureFlagService();
     });
@@ -124,12 +124,12 @@ describe.sequential("Feature Flag Service", () => {
       expect(flags.allowPrivateImports).toBe(false);
     });
 
-    it("should update enableScheduledImports flag", async () => {
-      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: false } } });
+    it("should update enableScheduledIngests flag", async () => {
+      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledIngests: false } } });
       resetFeatureFlagService();
 
       const flags = await getFeatureFlags(payload);
-      expect(flags.enableScheduledImports).toBe(false);
+      expect(flags.enableScheduledIngests).toBe(false);
     });
 
     it("should update enableRegistration flag", async () => {
@@ -144,14 +144,14 @@ describe.sequential("Feature Flag Service", () => {
       await payload.updateGlobal({
         slug: "settings",
         data: {
-          featureFlags: { allowPrivateImports: false, enableScheduledImports: false, enableRegistration: false },
+          featureFlags: { allowPrivateImports: false, enableScheduledIngests: false, enableRegistration: false },
         },
       });
       resetFeatureFlagService();
 
       const flags = await getFeatureFlags(payload);
       expect(flags.allowPrivateImports).toBe(false);
-      expect(flags.enableScheduledImports).toBe(false);
+      expect(flags.enableScheduledIngests).toBe(false);
       expect(flags.enableRegistration).toBe(false);
     });
 
@@ -187,7 +187,7 @@ describe.sequential("Feature Flag Service", () => {
     beforeEach(async () => {
       await payload.updateGlobal({
         slug: "settings",
-        data: { featureFlags: { allowPrivateImports: true, enableScheduledImports: false, enableRegistration: true } },
+        data: { featureFlags: { allowPrivateImports: true, enableScheduledIngests: false, enableRegistration: true } },
       });
       resetFeatureFlagService();
     });
@@ -198,7 +198,7 @@ describe.sequential("Feature Flag Service", () => {
     });
 
     it("should return false for disabled flags", async () => {
-      expect(await isFeatureEnabled(payload, "enableScheduledImports")).toBe(false);
+      expect(await isFeatureEnabled(payload, "enableScheduledIngests")).toBe(false);
     });
   });
 
@@ -284,7 +284,7 @@ describe.sequential("Feature Flag Service", () => {
         data: {
           featureFlags: {
             allowPrivateImports: true,
-            enableScheduledImports: true,
+            enableScheduledIngests: true,
             enableRegistration: true,
             enableEventCreation: true,
             enableDatasetCreation: true,
@@ -364,8 +364,8 @@ describe.sequential("Feature Flag Service", () => {
       });
     });
 
-    describe("enableScheduledImports", () => {
-      it("should block scheduled import creation when disabled", async () => {
+    describe("enableScheduledIngests", () => {
+      it("should block scheduled ingest creation when disabled", async () => {
         const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
         // Create required catalog and dataset (use overrideAccess to simplify setup)
@@ -380,15 +380,15 @@ describe.sequential("Feature Flag Service", () => {
           overrideAccess: true,
         });
 
-        // Disable scheduled imports
-        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: false } } });
+        // Disable scheduled ingests
+        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledIngests: false } } });
         resetFeatureFlagService();
 
-        // Attempt to create scheduled import - should fail access control
+        // Attempt to create scheduled ingest - should fail access control
         await expect(
           // @ts-expect-error -- `user` is a valid runtime option for access control testing
           payload.create({
-            collection: "scheduled-imports",
+            collection: "scheduled-ingests",
             data: {
               name: "Test Schedule",
               sourceUrl: "https://example.com/data.csv",
@@ -404,7 +404,7 @@ describe.sequential("Feature Flag Service", () => {
         ).rejects.toThrow();
       });
 
-      it("should allow scheduled import creation when enabled", async () => {
+      it("should allow scheduled ingest creation when enabled", async () => {
         const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
         // Create required catalog and dataset (use overrideAccess to simplify setup)
@@ -419,14 +419,14 @@ describe.sequential("Feature Flag Service", () => {
           overrideAccess: true,
         });
 
-        // Ensure scheduled imports are enabled
-        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledImports: true } } });
+        // Ensure scheduled ingests are enabled
+        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledIngests: true } } });
         resetFeatureFlagService();
 
         // Should succeed
         // @ts-expect-error -- `user` is a valid runtime option for access control testing
         const schedule = await payload.create({
-          collection: "scheduled-imports",
+          collection: "scheduled-ingests",
           data: {
             name: "Test Schedule 2",
             sourceUrl: "https://example.com/data.csv",

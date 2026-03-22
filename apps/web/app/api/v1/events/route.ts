@@ -24,7 +24,7 @@ export const transformEvent = (event: Event): EventListItem => {
     typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
 
   // Extract title, description, and id using shared normalization
-  const eventData = event.data;
+  const eventData = event.originalData;
   const { title, description } = extractEventFields(eventData, fieldMappings, event.id);
   const id = extractFieldFromData(eventData, "id");
 

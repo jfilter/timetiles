@@ -65,11 +65,11 @@ const UserUsage: CollectionConfig = {
       admin: { description: "Files uploaded today (resets at midnight UTC)" },
     },
     {
-      name: "importJobsToday",
+      name: "ingestJobsToday",
       type: "number",
       defaultValue: 0,
       min: 0,
-      admin: { description: "Import jobs created today (resets at midnight UTC)" },
+      admin: { description: "Ingest jobs created today (resets at midnight UTC)" },
     },
     // Cumulative/current counters (never automatically reset)
     {
@@ -77,7 +77,7 @@ const UserUsage: CollectionConfig = {
       type: "number",
       defaultValue: 0,
       min: 0,
-      admin: { description: "Currently active scheduled imports" },
+      admin: { description: "Currently active scheduled ingests" },
     },
     {
       name: "totalEventsCreated",

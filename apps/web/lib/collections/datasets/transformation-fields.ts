@@ -24,7 +24,7 @@ const TRANSFORM_TYPES = {
 export const transformationFields: Field[] = [
   // Unified Import Transform Rules
   {
-    name: "importTransforms",
+    name: "ingestTransforms",
     type: "array",
     admin: {
       condition: editorOrAdminCondition,

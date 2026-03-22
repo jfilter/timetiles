@@ -11,7 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { cleanupSidecarFiles, getFileRowCount, getSidecarPath, streamBatchesFromFile } from "@/lib/import/file-readers";
+import { cleanupSidecarFiles, getFileRowCount, getSidecarPath, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 
 import { getFixturePath } from "../../setup/paths";
 

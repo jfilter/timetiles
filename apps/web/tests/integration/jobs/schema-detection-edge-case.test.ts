@@ -10,15 +10,15 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { BATCH_SIZES } from "@/lib/constants/import-constants";
+import { BATCH_SIZES } from "@/lib/constants/ingest-constants";
 
 import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
-  runJobsUntilImportJobStage,
+  runJobsUntilIngestJobStage,
   withCatalog,
   withDataset,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -27,16 +27,16 @@ const TEST_FILENAME = "edge-case-test.csv";
 /** Run jobs until schema detection is complete */
 const runJobsUntilSchemaComplete = async (
   payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"],
-  importFileId: number,
+  ingestFileId: number,
   maxIterations: number
 ): Promise<void> => {
-  await runJobsUntilImportJobStage(
+  await runJobsUntilIngestJobStage(
     payload,
-    importFileId,
-    (importJob) =>
-      importJob.stage === "validate-schema" ||
-      importJob.stage === "await-approval" ||
-      importJob.stage === "geocode-batch",
+    ingestFileId,
+    (ingestJob) =>
+      ingestJob.stage === "validate-schema" ||
+      ingestJob.stage === "await-approval" ||
+      ingestJob.stage === "geocode-batch",
     { maxIterations }
   );
 };
@@ -104,27 +104,27 @@ Event 1,2024-01-01,active
 Event 2,2024-01-02,pending
 Event 3,2024-01-03,active`;
 
-    const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
       filename: TEST_FILENAME,
       mimeType: "text/csv",
       user: uploadUserId,
       additionalData: { originalName: TEST_FILENAME },
     });
 
-    await runJobsUntilSchemaComplete(payload, importFile.id, 10);
+    await runJobsUntilSchemaComplete(payload, ingestFile.id, 10);
 
     // Get the import job and check the schemaBuilderState
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
       overrideAccess: true,
     });
 
     expect(importJobs.docs).toHaveLength(1);
-    const importJob = importJobs.docs[0]!;
+    const ingestJob = importJobs.docs[0]!;
 
     // Verify schemaBuilderState has enum detection results
-    const schemaState = importJob.schemaBuilderState as Record<string, unknown> | null;
+    const schemaState = ingestJob.schemaBuilderState as Record<string, unknown> | null;
     expect(schemaState).toBeDefined();
 
     const fieldStats = schemaState?.fieldStats as Record<string, unknown> | undefined;
@@ -152,27 +152,27 @@ Event 4,2024-01-04,B
 Event 5,2024-01-05,A
 Event 6,2024-01-06,B`;
 
-    const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
       filename: TEST_FILENAME,
       mimeType: "text/csv",
       user: uploadUserId,
       additionalData: { originalName: TEST_FILENAME },
     });
 
-    await runJobsUntilSchemaComplete(payload, importFile.id, 15);
+    await runJobsUntilSchemaComplete(payload, ingestFile.id, 15);
 
     // Get the import job
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
       overrideAccess: true,
     });
 
     expect(importJobs.docs).toHaveLength(1);
-    const importJob = importJobs.docs[0]!;
+    const ingestJob = importJobs.docs[0]!;
 
     // Verify we processed all 6 rows
-    const schemaState = importJob.schemaBuilderState as Record<string, unknown> | null;
+    const schemaState = ingestJob.schemaBuilderState as Record<string, unknown> | null;
     expect(schemaState).toBeDefined();
     expect(schemaState?.recordCount).toBe(6);
 

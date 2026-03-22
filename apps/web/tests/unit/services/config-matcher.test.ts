@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { findConfigSuggestions } from "@/lib/import/config-matcher";
+import { findConfigSuggestions } from "@/lib/ingest/config-matcher";
 import type { Dataset } from "@/payload-types";
 
 /** Create a minimal Dataset stub with only the fields config-matcher inspects. */
@@ -143,7 +143,7 @@ describe("findConfigSuggestions", () => {
         id: 1,
         name: "Transform Dataset",
         fieldMappingOverrides: { titlePath: "name" },
-        importTransforms: [
+        ingestTransforms: [
           { id: "t1", type: "rename" as const, from: "raw_date", to: "date", active: true },
           { id: "t2", type: "rename" as const, from: "raw_name", to: "name", active: true },
         ],
@@ -178,7 +178,7 @@ describe("findConfigSuggestions", () => {
 
     expect(results).toHaveLength(1);
     const config = results[0]!.config;
-    expect(config.importTransforms).toEqual([]);
+    expect(config.ingestTransforms).toEqual([]);
     expect(config.idStrategy).toEqual({ type: "auto" });
     expect(config.deduplicationConfig).toEqual({ strategy: "skip" });
     expect(config.geocodingEnabled).toBe(false);
@@ -252,7 +252,7 @@ describe("findConfigSuggestions", () => {
         name: "Events",
         fieldMappingOverrides: { titlePath: "title" },
         schemaColumns: ["title", "date"],
-        importTransforms: [{ id: "1", type: "rename", from: "extra_col", to: "extra", active: true }],
+        ingestTransforms: [{ id: "1", type: "rename", from: "extra_col", to: "extra", active: true }],
       }),
     ];
 

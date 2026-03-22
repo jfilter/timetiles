@@ -24,7 +24,7 @@ import { fetchFeatureFlags } from "./use-feature-flags";
  *
  * @example
  * ```tsx
- * const { isEnabled } = useAdminFeatureFlag("enableScheduledImports");
+ * const { isEnabled } = useAdminFeatureFlag("enableScheduledIngests");
  * if (isEnabled === null || isEnabled) return null; // loading or enabled
  * return <WarningBanner />;
  * ```

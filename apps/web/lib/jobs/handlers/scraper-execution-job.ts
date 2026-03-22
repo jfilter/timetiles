@@ -10,7 +10,7 @@
  */
 import { v4 as uuidv4 } from "uuid";
 
-import { createImportFileAndQueueDetection } from "@/lib/import/create-import-file";
+import { createIngestFileAndQueueDetection } from "@/lib/ingest/create-ingest-file";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper, ScraperRepo, User } from "@/payload-types";
@@ -207,7 +207,7 @@ const triggerAutoImport = async (
   };
 
   // Create import file, queue detection, and mark as parsing
-  const { importFileId } = await createImportFileAndQueueDetection({
+  const { ingestFileId } = await createIngestFileAndQueueDetection({
     payload,
     importFileData,
     file: { data: csvBuffer, mimetype: "text/csv", name: filename, size: outputBytes },
@@ -215,14 +215,14 @@ const triggerAutoImport = async (
   });
 
   // Link import file to the scraper run (import-files IDs are always numeric)
-  await payload.update({ collection: "scraper-runs", id: runId, data: { resultFile: importFileId as number } });
+  await payload.update({ collection: "scraper-runs", id: runId, data: { resultFile: ingestFileId as number } });
 
   log.info(
-    { importFileId, scraperId: scraper.id, scraperRunId: runId, filename, size: outputBytes },
+    { ingestFileId, scraperId: scraper.id, scraperRunId: runId, filename, size: outputBytes },
     "Auto-import triggered from scraper output"
   );
 
-  return importFileId;
+  return ingestFileId;
 };
 
 // ---------------------------------------------------------------------------
@@ -323,7 +323,7 @@ const handleRunSuccess = async (
   repo: ScraperRepo,
   runId: number,
   result: RunnerResponse
-): Promise<{ importFileId?: number | string }> => {
+): Promise<{ ingestFileId?: number | string }> => {
   const { payload } = context.req;
   const finishedAt = new Date().toISOString();
 
@@ -362,10 +362,10 @@ const handleRunSuccess = async (
   );
 
   // Auto-import if enabled and run succeeded
-  let importFileId: number | string | undefined;
+  let ingestFileId: number | string | undefined;
   if (scraper.autoImport && result.status === "success" && result.output?.download_url) {
     try {
-      importFileId = await triggerAutoImport(
+      ingestFileId = await triggerAutoImport(
         context,
         scraper,
         repo,
@@ -398,7 +398,7 @@ const handleRunSuccess = async (
     }
   }
 
-  return { importFileId };
+  return { ingestFileId };
 };
 
 /**
@@ -483,7 +483,7 @@ export const scraperExecutionJob = {
       log.info({ scraperId, runId: run.id, runUuid, runtime: scraper.runtime }, "Calling runner API");
 
       const result = await callRunner(request);
-      const { importFileId } = await handleRunSuccess(context, scraper, repo, run.id, result);
+      const { ingestFileId } = await handleRunSuccess(context, scraper, repo, run.id, result);
 
       return {
         output: {
@@ -492,7 +492,7 @@ export const scraperExecutionJob = {
           status: result.status,
           durationMs: result.duration_ms,
           outputRows: result.output?.rows,
-          ...(importFileId != null ? { importFileId } : {}),
+          ...(ingestFileId != null ? { ingestFileId } : {}),
         },
       };
     } catch (error) {

@@ -224,9 +224,9 @@ export const Settings: GlobalConfig = {
           admin: { description: "When enabled, users can create private imports visible only to themselves" },
         },
         {
-          name: "enableScheduledImports",
+          name: "enableScheduledIngests",
           type: "checkbox",
-          label: "Enable Scheduled Imports",
+          label: "Enable scheduled ingests",
           defaultValue: true,
           admin: { description: "When enabled, users can create automated URL-based import schedules" },
         },
@@ -263,14 +263,14 @@ export const Settings: GlobalConfig = {
           type: "checkbox",
           label: "Enable Scheduled Job Execution",
           defaultValue: true,
-          admin: { description: "When enabled, scheduled import jobs will execute automatically" },
+          admin: { description: "When enabled, scheduled ingest jobs will execute automatically" },
         },
         {
           name: "enableUrlFetchCaching",
           type: "checkbox",
           label: "Enable URL Fetch Caching",
           defaultValue: true,
-          admin: { description: "When enabled, URL fetches for scheduled imports are cached to reduce requests" },
+          admin: { description: "When enabled, URL fetches for scheduled ingests are cached to reduce requests" },
         },
         {
           name: "enableScrapers",

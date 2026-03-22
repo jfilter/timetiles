@@ -96,8 +96,8 @@ describe.sequential("AUDIT_ACTIONS", () => {
     expect(AUDIT_ACTIONS.IMPORT_JOB_STAGE_OVERRIDE).toBe("import.job_stage_override");
   });
 
-  it("defines SCHEDULED_IMPORT_ADMIN_MODIFIED action", () => {
-    expect(AUDIT_ACTIONS.SCHEDULED_IMPORT_ADMIN_MODIFIED).toBe("import.scheduled_import_admin_modified");
+  it("defines SCHEDULED_INGEST_ADMIN_MODIFIED action", () => {
+    expect(AUDIT_ACTIONS.SCHEDULED_INGEST_ADMIN_MODIFIED).toBe("import.scheduled_ingest_admin_modified");
   });
 });
 

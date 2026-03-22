@@ -22,8 +22,8 @@ const logger = createLogger("api-admin-jobs-run");
 const fetchJobStats = async (payload: Payload) => {
   const [payloadJobs, importJobs, importFiles] = await Promise.all([
     payload.find({ collection: "payload-jobs", limit: 1000 }),
-    payload.find({ collection: "import-jobs", limit: 1000, select: { stage: true } }),
-    payload.find({ collection: "import-files", limit: 100, select: { status: true } }),
+    payload.find({ collection: "ingest-jobs", limit: 1000, select: { stage: true } }),
+    payload.find({ collection: "ingest-files", limit: 100, select: { status: true } }),
   ]);
   return { payloadJobs, importJobs, importFiles };
 };

@@ -28,7 +28,7 @@ describe("extractCoordinates", () => {
       const result = extractCoordinates(row, fieldMappings, {});
 
       expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
-      expect(result.coordinateSource.type).toBe("import");
+      expect(result.coordinateSource.type).toBe("source-data");
       expect(result.coordinateSource.normalizedAddress).toBeUndefined();
     });
 
@@ -116,7 +116,7 @@ describe("extractCoordinates", () => {
 
       // Should use import coordinates, not geocoded
       expect(result.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
-      expect(result.coordinateSource.type).toBe("import");
+      expect(result.coordinateSource.type).toBe("source-data");
       expect(result.coordinateSource.normalizedAddress).toBeUndefined();
     });
   });
@@ -216,7 +216,7 @@ describe("createEventData", () => {
       null
     );
 
-    expect(result.importJob).toBeUndefined();
+    expect(result.ingestJob).toBeUndefined();
     expect(result.uniqueId).toBe("generated-id");
   });
 });

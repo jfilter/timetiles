@@ -1,7 +1,7 @@
 /**
  * Generic webhook registry for token-based triggers.
  *
- * Abstracts webhook token lookup across multiple collections (scheduled-imports,
+ * Abstracts webhook token lookup across multiple collections (scheduled-ingests,
  * scrapers) and dispatches to the appropriate job handler. Used by the
  * POST /api/webhooks/trigger/[token] endpoint.
  *
@@ -23,7 +23,7 @@ const logger = createLogger("webhook-registry");
  */
 export interface WebhookTarget {
   /** Which collection the token belongs to. */
-  type: "scheduled-import" | "scraper";
+  type: "scheduled-ingest" | "scraper";
   /** The record ID in the source collection. */
   id: number;
   /** Display name for logging. */
@@ -75,28 +75,28 @@ export const computeWebhookUrl = (data: Record<string, unknown> | undefined): st
 /**
  * Resolve a webhook token to its target resource.
  *
- * Checks scheduled-imports first, then scrapers. Returns null if the token
+ * Checks scheduled-ingests first, then scrapers. Returns null if the token
  * is not found or the webhook is disabled on the matching record.
  */
 export const resolveWebhookToken = async (payload: Payload, token: string): Promise<WebhookTarget | null> => {
-  // Check scheduled-imports
-  const scheduledImports = await payload.find({
-    collection: "scheduled-imports",
+  // Check scheduled-ingests
+  const scheduledIngests = await payload.find({
+    collection: "scheduled-ingests",
     where: { webhookToken: { equals: token } },
     limit: 1,
     overrideAccess: true,
   });
 
-  const siDoc = scheduledImports.docs[0];
+  const siDoc = scheduledIngests.docs[0];
   if (siDoc) {
     if (!siDoc.webhookEnabled) {
-      logger.warn({ id: siDoc.id }, "Webhook disabled on scheduled import");
+      logger.warn({ id: siDoc.id }, "Webhook disabled on scheduled ingest");
       return null;
     }
     return {
-      type: "scheduled-import",
+      type: "scheduled-ingest",
       id: siDoc.id,
-      name: siDoc.name ?? `scheduled-import-${siDoc.id}`,
+      name: siDoc.name ?? `scheduled-ingest-${siDoc.id}`,
       record: siDoc as unknown as Record<string, unknown>,
     };
   }

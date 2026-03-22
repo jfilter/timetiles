@@ -67,7 +67,7 @@ describe.sequential("Data Export Service", () => {
       expect(summary.events).toBe(0);
       expect(summary.importFiles).toBe(0);
       expect(summary.importJobs).toBe(0);
-      expect(summary.scheduledImports).toBe(0);
+      expect(summary.scheduledIngests).toBe(0);
       expect(summary.mediaFiles).toBe(0);
     });
 
@@ -113,7 +113,7 @@ describe.sequential("Data Export Service", () => {
       for (let i = 0; i < 5; i++) {
         await payload.create({
           collection: "events",
-          data: { dataset: dataset.id, uniqueId: `test-event-${i}`, data: { title: `Event ${i}` } },
+          data: { dataset: dataset.id, uniqueId: `test-event-${i}`, originalData: { title: `Event ${i}` } },
         });
       }
 

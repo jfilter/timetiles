@@ -154,7 +154,7 @@ export const createEvent = (overrides: Partial<Event> = {}): Event => ({
   id: 1,
   dataset: 1,
   uniqueId: "test-event-1",
-  data: {
+  originalData: {
     title: "Test Event",
     description: "A test event description",
     date: "2024-03-15T10:00:00Z",
@@ -162,7 +162,7 @@ export const createEvent = (overrides: Partial<Event> = {}): Event => ({
     tags: ["tech", "test"],
   },
   location: { latitude: 40.7128, longitude: -74.006 },
-  coordinateSource: { type: "import" },
+  coordinateSource: { type: "source-data" },
   updatedAt: "2024-01-01T00:00:00Z",
   createdAt: "2024-01-01T00:00:00Z",
   ...overrides,
@@ -174,7 +174,7 @@ export const createEvents = (count: number = 3): Event[] => {
       id: i + 1,
       dataset: 1,
       uniqueId: `test-event-${i + 1}`,
-      data: {
+      originalData: {
         title: `Test Event ${i + 1}`,
         description: `Description for event ${i + 1}`,
         date: `2024-03-${15 + i}T10:00:00Z`,
@@ -270,7 +270,7 @@ export const createMockPayload = (overrides: Partial<any> = {}): any => {
  * ```typescript
  * const mockPayload = createMockPayload();
  * const mockContext = createMockContext(mockPayload, {
- *   importJobId: TEST_IDS.IMPORT_JOB,
+ *   ingestJobId: TEST_IDS.IMPORT_JOB,
  *   batchNumber: 0,
  * });
  * ```
@@ -284,23 +284,23 @@ export const createMockContext = <T = unknown>(
 };
 
 /**
- * Creates a mock ImportJob object for testing.
+ * Creates a mock IngestJob object for testing.
  *
  * @param options - Configuration options
- * @returns Mock ImportJob object matching Payload structure
+ * @returns Mock IngestJob object matching Payload structure
  *
  * @example
  * ```typescript
- * const job = createMockImportJob({ hasDuplicates: true });
- * const jobWithProgress = createMockImportJob({
+ * const job = createMockIngestJob({ hasDuplicates: true });
+ * const jobWithProgress = createMockIngestJob({
  *   progress: { current: 50, total: 100 }
  * });
  * ```
  */
-export interface MockImportJobOptions {
+export interface MockIngestJobOptions {
   id?: string | number;
   dataset?: string | number;
-  importFile?: string | number;
+  ingestFile?: string | number;
   sheetIndex?: number;
   hasDuplicates?: boolean;
   progress?: Record<string, any>;
@@ -310,7 +310,7 @@ export interface MockImportJobOptions {
   errors?: any[];
 }
 
-export const createMockImportJob = (options: MockImportJobOptions = {}) => {
+export const createMockIngestJob = (options: MockIngestJobOptions = {}) => {
   // Create a properly initialized stage progress structure
   const createStageProgress = () => ({
     status: "pending" as const,
@@ -343,7 +343,7 @@ export const createMockImportJob = (options: MockImportJobOptions = {}) => {
   return {
     id: options.id ?? TEST_IDS.IMPORT_JOB,
     dataset: options.dataset ?? TEST_IDS.DATASET,
-    importFile: options.importFile ?? TEST_IDS.IMPORT_FILE,
+    ingestFile: options.ingestFile ?? TEST_IDS.IMPORT_FILE,
     sheetIndex: options.sheetIndex ?? 0,
     stage: options.stage ?? "SCHEMA_DETECTION",
     status: options.status ?? "processing",
@@ -397,20 +397,20 @@ export const createMockDataset = (
 };
 
 /**
- * Creates a mock ImportFile object for testing.
+ * Creates a mock IngestFile object for testing.
  *
  * @param id - Import file ID (default: TEST_IDS.IMPORT_FILE)
  * @param filename - Filename (default: TEST_FILENAMES.CSV)
  * @param options - Additional options
- * @returns Mock ImportFile object
+ * @returns Mock IngestFile object
  *
  * @example
  * ```typescript
- * const file = createMockImportFile();
- * const excelFile = createMockImportFile("file-1", TEST_FILENAMES.EXCEL);
+ * const file = createMockIngestFile();
+ * const excelFile = createMockIngestFile("file-1", TEST_FILENAMES.EXCEL);
  * ```
  */
-export const createMockImportFile = (
+export const createMockIngestFile = (
   id: string | number = TEST_IDS.IMPORT_FILE,
   filename: string = TEST_FILENAMES.CSV,
   options: { filePath?: string; status?: string } = {}

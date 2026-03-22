@@ -15,7 +15,7 @@
 import { z } from "zod";
 
 import { apiRoute, NotFoundError, requirePrivileged, ValidationError } from "@/lib/api";
-import { SchemaInferenceService } from "@/lib/import/schema-inference";
+import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 import { logger } from "@/lib/logger";
 import type { SchemaInferenceResponse } from "@/lib/types/schema-inference";
 import { parseStrictInteger } from "@/lib/utils/event-params";

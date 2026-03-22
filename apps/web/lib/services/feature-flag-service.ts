@@ -13,7 +13,7 @@ import { logger } from "@/lib/logger";
 
 export interface FeatureFlags {
   allowPrivateImports: boolean;
-  enableScheduledImports: boolean;
+  enableScheduledIngests: boolean;
   enableRegistration: boolean;
   enableEventCreation: boolean;
   enableDatasetCreation: boolean;
@@ -25,7 +25,7 @@ export interface FeatureFlags {
 
 const DEFAULT_FLAGS: FeatureFlags = {
   allowPrivateImports: true,
-  enableScheduledImports: true,
+  enableScheduledIngests: true,
   enableRegistration: true,
   enableEventCreation: true,
   enableDatasetCreation: true,
@@ -38,7 +38,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
 /** Fail-closed defaults returned when the database is unavailable. */
 export const DISABLED_FLAGS: FeatureFlags = {
   allowPrivateImports: false,
-  enableScheduledImports: false,
+  enableScheduledIngests: false,
   enableRegistration: false,
   enableEventCreation: false,
   enableDatasetCreation: false,

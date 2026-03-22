@@ -17,7 +17,7 @@ interface PreviewValidationResponse {
 }
 
 const fetchPreviewValidation = (previewId: string) =>
-  fetchJson<PreviewValidationResponse>(`/api/import/validate-preview?previewId=${previewId}`);
+  fetchJson<PreviewValidationResponse>(`/api/ingest/validate-preview?previewId=${previewId}`);
 
 export const previewValidationQueryKeys = {
   all: ["preview-validation"] as const,

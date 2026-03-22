@@ -296,8 +296,8 @@ export class DataProcessing {
       newItem.uniqueId = `${newItem.uniqueId}-gen-${index}`;
     }
 
-    if (newItem.data != null) {
-      const dataObj = newItem.data as Record<string, unknown>;
+    if (newItem.originalData != null) {
+      const dataObj = newItem.originalData as Record<string, unknown>;
       this.appendIndexToField(dataObj, "address", index, " #");
     }
   }

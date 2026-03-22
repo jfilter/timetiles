@@ -17,8 +17,8 @@ import { promisify } from "node:util";
 
 import type { Payload } from "payload";
 
-import type { ParsedScraper } from "@/lib/import/manifest-parser";
-import { parseManifest } from "@/lib/import/manifest-parser";
+import type { ParsedScraper } from "@/lib/ingest/manifest-parser";
+import { parseManifest } from "@/lib/ingest/manifest-parser";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper } from "@/payload-types";

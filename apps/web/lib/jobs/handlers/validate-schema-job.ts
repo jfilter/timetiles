@@ -16,9 +16,9 @@
  */
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { cleanupSidecarFiles } from "@/lib/import/file-readers";
-import { ProgressTrackingService } from "@/lib/import/progress-tracking";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
+import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
@@ -26,12 +26,12 @@ import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { parseStrictInteger } from "@/lib/utils/event-params";
-import type { ImportJob, User } from "@/payload-types";
+import type { IngestJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { failImportJob, loadJobResources } from "../utils/resource-loading";
-import { getImportFilePath } from "../utils/upload-path";
+import { failIngestJob, loadJobResources } from "../utils/resource-loading";
+import { getIngestFilePath } from "../utils/upload-path";
 
 // Helper function to get schema from cached builder state
 const getSchemaFromCache = async (job: {
@@ -150,7 +150,7 @@ const evaluateSchemaMode = (
   }
 };
 
-// Helper function to determine if approval is required (for non-scheduled imports)
+// Helper function to determine if approval is required (for non-scheduled ingests)
 const checkRequiresApproval = (
   comparison: SchemaComparison,
   dataset: { schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null }
@@ -190,7 +190,7 @@ const getApprovalReason = (hasHighConfidenceTransforms: boolean, isBreaking: boo
 /**
  * Check quota limits for the import
  */
-const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, jobIdTyped: number): Promise<void> => {
+const checkImportQuotas = async (payload: Payload, user: User, job: IngestJob, jobIdTyped: number): Promise<void> => {
   const quotaService = createQuotaService(payload);
 
   // Calculate total events to be imported (considering duplicates)
@@ -205,7 +205,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   if (!eventQuotaCheck.allowed) {
     const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
 
-    await failImportJob(payload, jobIdTyped, errorMessage, "validate-schema-quota");
+    await failIngestJob(payload, jobIdTyped, errorMessage, "validate-schema-quota");
 
     throw new Error(errorMessage);
   }
@@ -216,7 +216,7 @@ const checkImportQuotas = async (payload: Payload, user: User, job: ImportJob, j
   if (!totalEventsCheck.allowed) {
     const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;
 
-    await failImportJob(payload, jobIdTyped, errorMessage, "validate-schema-quota");
+    await failIngestJob(payload, jobIdTyped, errorMessage, "validate-schema-quota");
 
     throw new Error(errorMessage);
   }
@@ -255,7 +255,7 @@ const extractSchemaChanges = (comparison: SchemaComparison, detectedSchema: Reco
 const handleSchemaModeFailure = async (
   payload: Payload,
   jobIdTyped: number,
-  importJobId: number | string,
+  ingestJobId: number | string,
   schemaModeResult: SchemaModeResult,
   validationData: {
     detectedSchema: Record<string, unknown>;
@@ -266,7 +266,7 @@ const handleSchemaModeFailure = async (
   }
 ) => {
   await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
     id: jobIdTyped,
     data: {
       schema: validationData.detectedSchema,
@@ -283,7 +283,7 @@ const handleSchemaModeFailure = async (
     },
   });
 
-  await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
+  await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
   return {
     output: {
@@ -300,7 +300,7 @@ const handleSchemaModeFailure = async (
 const applyValidationResult = async (
   payload: Payload,
   jobIdTyped: number,
-  importJobId: number | string,
+  ingestJobId: number | string,
   resultData: {
     detectedSchema: Record<string, unknown>;
     comparison: SchemaComparison;
@@ -322,7 +322,7 @@ const applyValidationResult = async (
   }
 
   await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
     id: jobIdTyped,
     data: {
       schema: resultData.detectedSchema,
@@ -338,7 +338,7 @@ const applyValidationResult = async (
     },
   });
 
-  await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
+  await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
   return {
     nextStage,
@@ -353,8 +353,8 @@ const applyValidationResult = async (
 /** Best-effort sidecar CSV cleanup for error paths. */
 const cleanupSidecarsOnError = async (payload: Payload, jobId: number): Promise<void> => {
   try {
-    const { job: failedJob, importFile: failedFile } = await loadJobResources(payload, jobId);
-    const failedFilePath = getImportFilePath(failedFile.filename ?? "");
+    const { job: failedJob, ingestFile: failedFile } = await loadJobResources(payload, jobId);
+    const failedFilePath = getIngestFilePath(failedFile.filename ?? "");
     cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
   } catch {
     // Best-effort cleanup — don't mask the original error
@@ -366,29 +366,29 @@ export const validateSchemaJob = {
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
-    const { importJobId } = input;
+    const { ingestJobId } = input;
 
-    const jobIdTyped = typeof importJobId === "number" ? importJobId : parseStrictInteger(importJobId);
+    const jobIdTyped = typeof ingestJobId === "number" ? ingestJobId : parseStrictInteger(ingestJobId);
     if (jobIdTyped == null) {
       throw new Error("Invalid import job ID");
     }
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "validate-schema");
-    logger.info("Starting schema validation", { importJobId });
+    logger.info("Starting schema validation", { ingestJobId });
     const startTime = Date.now();
 
     try {
-      const { job, dataset, importFile } = await loadJobResources(payload, jobIdTyped);
+      const { job, dataset, ingestFile } = await loadJobResources(payload, jobIdTyped);
 
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
-      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.VALIDATE_SCHEMA, uniqueRows);
+      await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA, uniqueRows);
 
       // Check event quota
-      if (importFile.user) {
+      if (ingestFile.user) {
         const user =
-          typeof importFile.user === "object"
-            ? importFile.user
-            : await payload.findByID({ collection: "users", id: importFile.user });
+          typeof ingestFile.user === "object"
+            ? ingestFile.user
+            : await payload.findByID({ collection: "users", id: ingestFile.user });
 
         if (user) {
           await checkImportQuotas(payload, user, job, jobIdTyped);
@@ -406,7 +406,7 @@ export const validateSchemaJob = {
       const hasChanges = comparison.changes.length > 0;
 
       // Schema mode evaluation
-      const processingOptions = (importFile.processingOptions as ProcessingOptions) ?? {};
+      const processingOptions = (ingestFile.processingOptions as ProcessingOptions) ?? {};
       const schemaModeResult = evaluateSchemaMode(
         processingOptions.schemaMode,
         comparison,
@@ -418,7 +418,7 @@ export const validateSchemaJob = {
           schemaMode: processingOptions.schemaMode,
           reason: schemaModeResult.failureReason,
         });
-        return await handleSchemaModeFailure(payload, jobIdTyped, importJobId, schemaModeResult, {
+        return await handleSchemaModeFailure(payload, jobIdTyped, ingestJobId, schemaModeResult, {
           detectedSchema,
           breakingChanges,
           newFields,
@@ -437,7 +437,7 @@ export const validateSchemaJob = {
       const approvalReason =
         schemaModeResult.approvalReason ?? getApprovalReason(hasHighConfidenceTransforms, comparison.isBreaking);
 
-      const result = await applyValidationResult(payload, jobIdTyped, importJobId, {
+      const result = await applyValidationResult(payload, jobIdTyped, ingestJobId, {
         detectedSchema,
         comparison,
         breakingChanges,
@@ -449,18 +449,18 @@ export const validateSchemaJob = {
       });
 
       logPerformance("Schema validation", Date.now() - startTime, {
-        importJobId,
+        ingestJobId,
         hasBreakingChanges: comparison.isBreaking,
         requiresApproval,
       });
 
       return { output: result.output };
     } catch (error) {
-      logError(error, "Schema validation failed", { importJobId });
+      logError(error, "Schema validation failed", { ingestJobId });
 
       await cleanupSidecarsOnError(payload, jobIdTyped);
 
-      await failImportJob(payload, jobIdTyped, error, "validate-schema");
+      await failIngestJob(payload, jobIdTyped, error, "validate-schema");
 
       throw error;
     }

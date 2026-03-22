@@ -89,9 +89,9 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
 
         {isDefaultSite && (
           <DropdownMenuItem asChild>
-            <Link href="/import" className="cursor-pointer">
+            <Link href="/ingest" className="cursor-pointer">
               <Upload className="mr-2 h-4 w-4" />
-              {tHeader("importData")}
+              {tHeader("ingestData")}
             </Link>
           </DropdownMenuItem>
         )}

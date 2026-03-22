@@ -84,8 +84,8 @@ const ScraperRuns: CollectionConfig = {
     {
       name: "resultFile",
       type: "relationship",
-      relationTo: "import-files",
-      admin: { description: "Import file created from scraper output (when autoImport is enabled)" },
+      relationTo: "ingest-files",
+      admin: { description: "Ingest file created from scraper output (when autoImport is enabled)" },
     },
   ],
 };

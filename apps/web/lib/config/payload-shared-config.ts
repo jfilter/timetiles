@@ -17,13 +17,13 @@ import DatasetSchemas from "@/lib/collections/dataset-schemas";
 import Datasets from "@/lib/collections/datasets";
 import Events from "@/lib/collections/events";
 import GeocodingProviders from "@/lib/collections/geocoding-providers";
-import ImportFiles from "@/lib/collections/import-files";
-import ImportJobs from "@/lib/collections/import-jobs/";
+import IngestFiles from "@/lib/collections/ingest-files";
+import IngestJobs from "@/lib/collections/ingest-jobs/";
 import { LayoutTemplates } from "@/lib/collections/layout-templates";
 import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
-import ScheduledImports from "@/lib/collections/scheduled-imports/index";
+import ScheduledIngests from "@/lib/collections/scheduled-ingests/index";
 import ScraperRepos from "@/lib/collections/scraper-repos";
 import ScraperRuns from "@/lib/collections/scraper-runs";
 import Scrapers from "@/lib/collections/scrapers";
@@ -42,7 +42,7 @@ import {
   analyzeDuplicatesJob,
   auditLogIpCleanupJob,
   cacheCleanupJob,
-  cleanupStuckScheduledImportsJob,
+  cleanupStuckScheduledIngestsJob,
   cleanupStuckScrapersJob,
   createEventsBatchJob,
   createSchemaVersionJob,
@@ -60,7 +60,7 @@ import {
   scraperRepoSyncJob,
   urlFetchJob,
   validateSchemaJob,
-} from "@/lib/jobs/import-jobs";
+} from "@/lib/jobs/ingest-jobs";
 // Import migrations
 import { migrations } from "@/migrations";
 
@@ -71,9 +71,9 @@ export const COLLECTIONS = {
   datasets: Datasets,
   "dataset-schemas": DatasetSchemas,
   "audit-log": AuditLog,
-  "import-files": ImportFiles,
-  "import-jobs": ImportJobs,
-  "scheduled-imports": ScheduledImports,
+  "ingest-files": IngestFiles,
+  "ingest-jobs": IngestJobs,
+  "scheduled-ingests": ScheduledIngests,
   "scraper-repos": ScraperRepos,
   scrapers: Scrapers,
   "scraper-runs": ScraperRuns,
@@ -106,7 +106,7 @@ export const ALL_JOBS = [
   createEventsBatchJob,
   urlFetchJob,
   scheduleManagerJob,
-  cleanupStuckScheduledImportsJob,
+  cleanupStuckScheduledIngestsJob,
   cleanupStuckScrapersJob,
   processPendingRetriesJob,
   quotaResetJobConfig,

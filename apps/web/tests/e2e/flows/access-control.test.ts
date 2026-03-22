@@ -166,7 +166,7 @@ test.describe("Access Control - User Perspective", () => {
   test.describe("Import File Access Control", () => {
     test("should not allow accessing other users' import files", async ({ request }) => {
       // Try to access an import file that might exist
-      const response = await request.get("/api/import-files/1");
+      const response = await request.get("/api/ingest-files/1");
 
       // Should return 401 (unauthorized) or 404 (not found due to access control)
       expect([401, 403, 404]).toContain(response.status());
@@ -174,7 +174,7 @@ test.describe("Access Control - User Perspective", () => {
 
     test("should require authentication for import file creation", async ({ request }) => {
       // Unauthenticated uploads are no longer supported - all imports require authentication
-      const response = await request.post("/api/import-files", {
+      const response = await request.post("/api/ingest-files", {
         data: { originalName: "test-unauthenticated.csv", status: "pending" },
       });
 
@@ -183,9 +183,9 @@ test.describe("Access Control - User Perspective", () => {
     });
   });
 
-  test.describe("Scheduled Import Access Control", () => {
-    test("should prevent creating scheduled imports without authentication", async ({ request }) => {
-      const response = await request.post("/api/scheduled-imports", {
+  test.describe("scheduled ingest Access Control", () => {
+    test("should prevent creating scheduled ingests without authentication", async ({ request }) => {
+      const response = await request.post("/api/scheduled-ingests", {
         data: {
           name: "Unauthorized Schedule",
           sourceUrl: "https://example.com/data.csv",
@@ -199,8 +199,8 @@ test.describe("Access Control - User Perspective", () => {
       expect([401, 403]).toContain(response.status());
     });
 
-    test("should not list scheduled imports without authentication", async ({ request }) => {
-      const response = await request.get("/api/scheduled-imports");
+    test("should not list scheduled ingests without authentication", async ({ request }) => {
+      const response = await request.get("/api/scheduled-ingests");
 
       // Should be unauthorized or return empty list
       expect([200, 401, 403]).toContain(response.status());
@@ -209,7 +209,7 @@ test.describe("Access Control - User Perspective", () => {
         const data = await response.json();
         // If accessible, should return empty list for unauthenticated user
         // (depending on implementation)
-        console.log("Scheduled imports for unauthenticated:", data.totalDocs);
+        console.log("scheduled ingests for unauthenticated:", data.totalDocs);
       }
     });
   });

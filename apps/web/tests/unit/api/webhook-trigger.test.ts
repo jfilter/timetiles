@@ -37,7 +37,7 @@ import { POST } from "@/app/api/webhooks/trigger/[token]/route";
 
 const { mockPayload, mockRateLimitService, mockDrizzleExecute } = mocks;
 
-const mockScheduledImport = {
+const mockScheduledIngest = {
   id: 1,
   name: "Test Import",
   sourceUrl: "https://example.com/data.csv",
@@ -63,7 +63,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRateLimitService.checkConfiguredRateLimit.mockReturnValue({ allowed: true });
-    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport }] });
+    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest }] });
     // Atomic claim via raw SQL returns { rows: [{ id }] } on success
     mockDrizzleExecute.mockResolvedValue({ rows: [{ id: 1 }] });
     mockPayload.update.mockResolvedValue({ id: 1 });
@@ -71,7 +71,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
   });
 
   it("should revert lastStatus when job queue fails (Bug 22)", async () => {
-    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport, lastStatus: "success" }] });
+    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest, lastStatus: "success" }] });
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
@@ -84,7 +84,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     // payload.update calls: [0] = metadata update (alreadyClaimed), [1] = revert
     const updateCalls = mockPayload.update.mock.calls;
     expect(updateCalls).toHaveLength(2);
-    // First call: triggerScheduledImport updates metadata (status already claimed via SQL)
+    // First call: triggerScheduledIngest updates metadata (status already claimed via SQL)
     expect(updateCalls[0]![0]).toEqual(
       expect.objectContaining({ data: expect.objectContaining({ currentRetries: 0 }) })
     );
@@ -95,7 +95,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
   });
 
   it("should revert to null when lastStatus was undefined (Bug 22)", async () => {
-    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport, lastStatus: undefined }] });
+    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest, lastStatus: undefined }] });
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue error"));
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
@@ -127,7 +127,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
   });
 
   it("should skip when import is already running", async () => {
-    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledImport, lastStatus: "running" }] });
+    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest, lastStatus: "running" }] });
     // Atomic SQL claim returns empty rows because lastStatus IS "running"
     mockDrizzleExecute.mockResolvedValue({ rows: [] });
 

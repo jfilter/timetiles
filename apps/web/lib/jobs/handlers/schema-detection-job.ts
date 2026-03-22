@@ -16,31 +16,31 @@
 /* oxlint-disable complexity -- Schema detection handles multiple column types and validation cases */
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/import/file-readers";
-import { ProgressTrackingService } from "@/lib/import/progress-tracking";
-import { applyTransformsBatch } from "@/lib/import/transforms";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
+import { applyTransformsBatch } from "@/lib/ingest/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import type { SchemaDetectionService } from "@/lib/services/schema-detection/service";
 import type { DetectionContext } from "@/lib/services/schema-detection/types";
 import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
-import type { ImportTransform } from "@/lib/types/import-transforms";
+import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
-import type { Dataset, ImportJob } from "@/payload-types";
+import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { extractDuplicateRows, failImportJob, loadJobAndFilePath } from "../utils/resource-loading";
+import { extractDuplicateRows, failIngestJob, loadJobAndFilePath } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 
 // Helper to load dataset and extract active transforms
 const loadDatasetAndTransforms = async (
   payload: Payload,
-  job: ImportJob,
+  job: IngestJob,
   logger: ReturnType<typeof createJobLogger>
-): Promise<{ dataset: Dataset | null; transforms: ImportTransform[] }> => {
-  let transforms: ImportTransform[] = [];
+): Promise<{ dataset: Dataset | null; transforms: IngestTransform[] }> => {
+  let transforms: IngestTransform[] = [];
   let dataset: Dataset | null = null;
 
   try {
@@ -115,15 +115,15 @@ const applyDatasetLanguageFallback = (
 // Helper to finalize schema detection using the pluggable SchemaDetectionService
 const finalizeSchemaDetection = async (
   payload: Payload,
-  importJobId: number | string,
+  ingestJobId: number | string,
   schemaBuilder: ProgressiveSchemaBuilder | null,
   dataset: Dataset | null,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
   if (!schemaBuilder) {
     await payload.update({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: importJobId,
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      id: ingestJobId,
       data: { stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
     });
     return;
@@ -191,8 +191,8 @@ const finalizeSchemaDetection = async (
   // Save final state with enum info to database
   const updatedSchema = await schemaBuilder.getSchema();
   await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: ingestJobId,
     data: { schema: updatedSchema, schemaBuilderState: finalState as unknown as Record<string, unknown> },
   });
 
@@ -225,8 +225,8 @@ const finalizeSchemaDetection = async (
 
   // Store field mappings and transition
   await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: ingestJobId,
     data: { detectedFieldMappings: fieldMappings, stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
   });
 };
@@ -237,7 +237,7 @@ const processBatchSchema = async (
   previousState: SchemaBuilderState | null,
   globalRowOffset: number,
   duplicateRows: Set<number>,
-  transforms: ImportTransform[]
+  transforms: IngestTransform[]
 ) => {
   // Filter out duplicate rows
   const nonDuplicateRows = rows.filter((_row, index) => {
@@ -263,7 +263,7 @@ const processBatchSchema = async (
 // Helper to update progress after batch processing
 const updateBatchProgress = async (
   payload: Payload,
-  job: ImportJob,
+  job: IngestJob,
   rowsProcessedSoFar: number,
   batchNumber: number,
   nonDuplicateRows: number
@@ -282,13 +282,13 @@ const updateBatchProgress = async (
 // Helper to update schema state in database
 const updateSchemaState = async (
   payload: Payload,
-  importJobId: number | string,
+  ingestJobId: number | string,
   updatedSchema: Record<string, unknown>,
   currentState: { fieldStats?: Record<string, FieldStatistics> } | null
 ): Promise<void> => {
   await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: ingestJobId,
     data: { schema: updatedSchema, schemaBuilderState: currentState as unknown as Record<string, unknown> },
   });
 };
@@ -298,20 +298,20 @@ export const schemaDetectionJob = {
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as SchemaDetectionJobInput["input"];
-    const { importJobId } = input;
+    const { ingestJobId } = input;
 
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "schema-detection");
-    logger.info("Starting schema detection", { importJobId });
+    logger.info("Starting schema detection", { ingestJobId });
     const startTime = Date.now();
 
     try {
       // Load resources
-      const { job, filePath } = await loadJobAndFilePath(payload, importJobId);
+      const { job, filePath } = await loadJobAndFilePath(payload, ingestJobId);
 
       // Initialize stage with total file rows (stream iterates all rows, including duplicates)
       const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;
-      await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA, totalFileRows);
+      await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA, totalFileRows);
 
       // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);
@@ -352,35 +352,35 @@ export const schemaDetectionJob = {
 
         // Save intermediate state for observability
         const currentState = schemaBuilder.getState();
-        await updateSchemaState(payload, importJobId, updatedSchema, currentState);
+        await updateSchemaState(payload, ingestJobId, updatedSchema, currentState);
         previousState = currentState;
 
         batchNumber++;
       }
 
       // Complete stage and finalize
-      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.DETECT_SCHEMA);
-      await finalizeSchemaDetection(payload, importJobId, lastSchemaBuilder, dataset, logger);
+      await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA);
+      await finalizeSchemaDetection(payload, ingestJobId, lastSchemaBuilder, dataset, logger);
 
       logPerformance("Schema detection", Date.now() - startTime, {
-        importJobId,
+        ingestJobId,
         totalBatches: batchNumber,
         totalRowsProcessed,
       });
 
       return { output: { totalBatches: batchNumber, totalRowsProcessed } };
     } catch (error) {
-      logError(error, "Schema detection failed", { importJobId });
+      logError(error, "Schema detection failed", { ingestJobId });
 
       // Clean up sidecar CSV files on error (Excel → CSV conversions)
       try {
-        const { filePath: failedFilePath, job: failedJob } = await loadJobAndFilePath(payload, importJobId);
+        const { filePath: failedFilePath, job: failedJob } = await loadJobAndFilePath(payload, ingestJobId);
         cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
       } catch {
         // Best-effort cleanup — don't mask the original error
       }
 
-      await failImportJob(payload, importJobId, error, "schema-detection");
+      await failIngestJob(payload, ingestJobId, error, "schema-detection");
 
       throw error;
     }

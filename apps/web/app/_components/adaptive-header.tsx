@@ -101,7 +101,7 @@ export const AdaptiveHeader = ({
   // On non-default sites, hide ingestion-related nav items
   const filteredMenu = isDefaultSite
     ? mainMenu
-    : { ...mainMenu, navItems: mainMenu.navItems?.filter((item) => item.url !== "/import") };
+    : { ...mainMenu, navItems: mainMenu.navItems?.filter((item) => item.url !== "/ingest") };
 
   // Marketing pages use standard brand/nav/actions layout
   return (

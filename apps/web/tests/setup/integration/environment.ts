@@ -28,7 +28,7 @@ import { createTestConfig } from "@/lib/config/payload-config-factory";
 import { COLLECTIONS } from "@/lib/config/payload-shared-config";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
-import type { ImportJob } from "@/payload-types";
+import type { IngestJob } from "@/payload-types";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { createTestDatabase } from "./database";
@@ -90,7 +90,7 @@ export interface TestEnvironment {
   truncateCollections: (collections: string[]) => Promise<void>;
 }
 
-export interface RunImportJobsOptions {
+export interface RunIngestJobsOptions {
   /** Maximum number of queue drain iterations */
   maxIterations?: number;
   /** Delay between iterations in milliseconds */
@@ -98,16 +98,16 @@ export interface RunImportJobsOptions {
   /** Job queue batch limit */
   queueLimit?: number;
   /** Optional callback for incomplete iterations */
-  onPending?: (context: { iteration: number; importFile: any }) => Promise<void> | void;
+  onPending?: (context: { iteration: number; ingestFile: any }) => Promise<void> | void;
 }
 
-export interface RunImportJobsResult {
+export interface RunIngestJobsResult {
   settled: boolean;
   iterations: number;
-  importFile: any;
+  ingestFile: any;
 }
 
-export interface RunImportJobStageOptions {
+export interface RunIngestJobStageOptions {
   /** Maximum number of queue drain iterations */
   maxIterations?: number;
   /** Delay between iterations in milliseconds */
@@ -115,19 +115,19 @@ export interface RunImportJobStageOptions {
   /** Job queue batch limit */
   queueLimit?: number;
   /** Optional callback for incomplete iterations */
-  onPending?: (context: { iteration: number; importJob: ImportJob | null }) => Promise<void> | void;
+  onPending?: (context: { iteration: number; ingestJob: IngestJob | null }) => Promise<void> | void;
 }
 
-export interface RunImportJobStageResult {
+export interface RunIngestJobStageResult {
   matched: boolean;
   iterations: number;
-  importJob: ImportJob | null;
+  ingestJob: IngestJob | null;
 }
 
 export const IMPORT_PIPELINE_COLLECTIONS_TO_RESET = [
   "events",
-  "import-files",
-  "import-jobs",
+  "ingest-files",
+  "ingest-jobs",
   "datasets",
   "dataset-schemas",
   "payload-jobs",
@@ -205,7 +205,7 @@ export class TestEnvironmentBuilder {
       // for direct test execution paths that bypass the Vitest worker setup.
       await createTestDatabase(dbName);
 
-      const uploadDir = `${process.env.UPLOAD_DIR!}/import-files`;
+      const uploadDir = `${process.env.UPLOAD_DIR!}/ingest-files`;
 
       logger.info("Creating test config", { dbName });
       const testConfig = await createTestConfig({
@@ -298,7 +298,7 @@ export class TestEnvironmentBuilder {
 
     // Upload directory is already configured in global-setup.ts
     // Just ensure it exists for this test run
-    const uploadDir = `${process.env.UPLOAD_DIR!}/import-files`;
+    const uploadDir = `${process.env.UPLOAD_DIR!}/ingest-files`;
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -471,78 +471,78 @@ export const createIntegrationTestEnvironment = async (
 
 export const runJobsUntilImportSettled = async (
   payload: Payload,
-  importFileId: string | number,
-  options: RunImportJobsOptions = {}
-): Promise<RunImportJobsResult> => {
+  ingestFileId: string | number,
+  options: RunIngestJobsOptions = {}
+): Promise<RunIngestJobsResult> => {
   const { maxIterations = 50, delayMs = 0, queueLimit = 100, onPending } = options;
 
-  let importFile: any = null;
+  let ingestFile: any = null;
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     await payload.jobs.run({ allQueues: true, limit: queueLimit });
 
-    importFile = await payload.findByID({ collection: "import-files", id: importFileId });
+    ingestFile = await payload.findByID({ collection: "ingest-files", id: ingestFileId });
 
-    const settled = importFile.status === "completed" || importFile.status === "failed";
+    const settled = ingestFile.status === "completed" || ingestFile.status === "failed";
     if (settled) {
-      return { settled: true, iterations: iteration, importFile };
+      return { settled: true, iterations: iteration, ingestFile };
     }
 
     if (onPending) {
-      await onPending({ iteration, importFile });
+      await onPending({ iteration, ingestFile });
     }
 
     await wait(delayMs);
   }
 
-  return { settled: false, iterations: maxIterations, importFile };
+  return { settled: false, iterations: maxIterations, ingestFile };
 };
 
-export const runJobsUntilImportJobStage = async (
+export const runJobsUntilIngestJobStage = async (
   payload: Payload,
-  importFileId: string | number,
-  isDone: (importJob: ImportJob) => boolean,
-  options: RunImportJobStageOptions = {}
-): Promise<RunImportJobStageResult> => {
+  ingestFileId: string | number,
+  isDone: (ingestJob: IngestJob) => boolean,
+  options: RunIngestJobStageOptions = {}
+): Promise<RunIngestJobStageResult> => {
   const { maxIterations = 50, delayMs = 0, queueLimit = 100, onPending } = options;
 
-  let importJob: ImportJob | null = null;
+  let ingestJob: IngestJob | null = null;
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     await payload.jobs.run({ allQueues: true, limit: queueLimit });
 
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFileId } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFileId } },
       overrideAccess: true,
     });
 
-    importJob = importJobs.docs[0] ?? null;
-    if (importJob && isDone(importJob)) {
-      return { matched: true, iterations: iteration, importJob };
+    ingestJob = importJobs.docs[0] ?? null;
+    if (ingestJob && isDone(ingestJob)) {
+      return { matched: true, iterations: iteration, ingestJob };
     }
 
     if (onPending) {
-      await onPending({ iteration, importJob });
+      await onPending({ iteration, ingestJob });
     }
 
     await wait(delayMs);
   }
 
-  return { matched: false, iterations: maxIterations, importJob };
+  return { matched: false, iterations: maxIterations, ingestJob };
 };
 
-export const runJobsUntilImportJobExists = async (
+export const runJobsUntilIngestJobExists = async (
   payload: Payload,
-  importFileId: string | number,
-  options: RunImportJobStageOptions = {}
-): Promise<RunImportJobStageResult> => runJobsUntilImportJobStage(payload, importFileId, () => true, options);
+  ingestFileId: string | number,
+  options: RunIngestJobStageOptions = {}
+): Promise<RunIngestJobStageResult> => runJobsUntilIngestJobStage(payload, ingestFileId, () => true, options);
 
 /**
  * Create a test catalog with smart defaults.
  *
  * A user is required so that catalogs always have a proper `createdBy` owner,
- * which is needed for import-file ownership validation.
+ * which is needed for ingest-file ownership validation.
  *
  * @example
  * ```typescript
@@ -600,7 +600,7 @@ export const withDataset = async (
     isPublic?: boolean;
     idStrategy?: { type?: string; duplicateStrategy?: string };
     description?: any;
-    importTransforms?: any[];
+    ingestTransforms?: any[];
   }
 ): Promise<TestEnvironment & { dataset: any }> => {
   const timestamp = Date.now();
@@ -616,7 +616,7 @@ export const withDataset = async (
       isPublic: options?.isPublic ?? false,
       idStrategy: options?.idStrategy as any,
       description: options?.description,
-      importTransforms: options?.importTransforms,
+      ingestTransforms: options?.ingestTransforms,
     },
   });
 
@@ -639,7 +639,7 @@ export interface UserConfig {
     maxActiveSchedules?: number;
     maxEventsPerImport?: number;
     maxTotalEvents?: number;
-    maxImportJobsPerDay?: number;
+    maxIngestJobsPerDay?: number;
     maxFileSizeMB?: number;
   };
   isActive?: boolean;
@@ -737,7 +737,7 @@ export const withUsers = async (
  * @param options.newFields - New field names (auto-generates fieldMetadata and schemaSummary)
  * @param options.removedFields - Removed field names
  * @param options.typeChanges - Type change descriptions
- * @param options.importJob - Import job ID that triggered this schema
+ * @param options.ingestJob - Import job ID that triggered this schema
  * @param options.approvalRequired - Whether approval is required (default: true for draft)
  * @param options.autoApproved - Whether auto-approved (default: false)
  * @param options.approvedBy - User ID who approved (for published schemas)
@@ -813,7 +813,7 @@ export const withSchemaVersion = async (
     newFields?: string[];
     removedFields?: string[];
     typeChanges?: Array<{ path: string; oldType: string; newType: string }>;
-    importJob?: string | number;
+    ingestJob?: string | number;
     approvalRequired?: boolean;
     autoApproved?: boolean;
     approvedBy?: string | number;
@@ -852,8 +852,8 @@ export const withSchemaVersion = async (
   };
 
   // Add import source if provided
-  if (options?.importJob !== undefined) {
-    data.importSources = [{ import: options.importJob, recordCount: 100, batchCount: 1 }];
+  if (options?.ingestJob !== undefined) {
+    data.ingestSources = [{ ingestJob: options.ingestJob, recordCount: 100, batchCount: 1 }];
   }
 
   // Add approval fields
@@ -895,7 +895,7 @@ export const withTestServer = async (
  * Helper function to create import file with upload for testing.
  * Internal helper - not exported.
  */
-const createImportFileWithUpload = async (
+const createIngestFileWithUpload = async (
   payload: Payload,
   data: any,
   fileContent: string | Buffer,
@@ -910,11 +910,10 @@ const createImportFileWithUpload = async (
   // Create file object with Buffer data (Payload expects Buffer for file uploads)
   const file = { data: Buffer.from(fileBuffer), mimetype: mimeType, name: fileName, size: fileBuffer.length };
 
-  // Use Payload's Local API with file parameter
   // If user is provided, pass it to make req.user available in hooks
   // Otherwise use overrideAccess to bypass authentication requirements
   return payload.create({
-    collection: "import-files",
+    collection: "ingest-files",
     data,
     file,
     user,
@@ -941,16 +940,16 @@ const createImportFileWithUpload = async (
  * ```typescript
  * // Basic usage (auto-creates or reuses a shared test user)
  * const csvContent = "title,date\\nTest Event,2024-01-01";
- * const { importFile } = await withImportFile(testEnv, catalogId, csvContent);
+ * const { ingestFile } = await withIngestFile(testEnv, catalogId, csvContent);
  *
  * // With specific user
- * const { importFile } = await withImportFile(testEnv, catalogId, csvContent, {
+ * const { ingestFile } = await withIngestFile(testEnv, catalogId, csvContent, {
  *   filename: "test.csv",
  *   user: userId,
  * });
  * ```
  */
-export const withImportFile = async (
+export const withIngestFile = async (
   testEnv: TestEnvironment,
   catalogId: string | number | null,
   csvContent: string | Buffer,
@@ -963,7 +962,7 @@ export const withImportFile = async (
     datasetsProcessed?: number;
     additionalData?: Record<string, any>;
   }
-): Promise<TestEnvironment & { importFile: any }> => {
+): Promise<TestEnvironment & { ingestFile: any }> => {
   // Build data object dynamically based on provided options
   const data: Record<string, any> = { status: options?.status ?? "pending" };
 
@@ -972,7 +971,7 @@ export const withImportFile = async (
     data.catalog = catalogId;
   }
 
-  // User is required for import-files. Create a test user if not provided.
+  // User is required for ingest-files. Create a test user if not provided.
   let userContext: any = undefined;
   if (options?.user === undefined) {
     const defaultUser = await getOrCreateDefaultImportUser(testEnv);
@@ -999,7 +998,7 @@ export const withImportFile = async (
     Object.assign(data, options.additionalData);
   }
 
-  const importFile = await createImportFileWithUpload(
+  const ingestFile = await createIngestFileWithUpload(
     testEnv.payload,
     data,
     csvContent,
@@ -1008,14 +1007,14 @@ export const withImportFile = async (
     userContext
   );
 
-  return { ...testEnv, importFile };
+  return { ...testEnv, ingestFile };
 };
 
 /**
- * Create a scheduled import with smart defaults.
+ * Create a scheduled ingest with smart defaults.
  *
  * @param testEnv - Test environment with payload instance
- * @param catalogId - Catalog ID to associate with the scheduled import
+ * @param catalogId - Catalog ID to associate with the scheduled ingest
  * @param sourceUrl - URL to fetch data from
  * @param options - Optional configuration
  * @param options.name - Custom name (default: auto-generated)
@@ -1029,22 +1028,22 @@ export const withImportFile = async (
  * @param options.maxRetries - Maximum retry attempts (default: 3)
  * @param options.retryDelayMinutes - Delay between retries in minutes (default: 5)
  * @param options.timeoutSeconds - Request timeout in seconds (default: 300)
- * @param options.importNameTemplate - Template for import file names
+ * @param options.ingestNameTemplate - Template for import file names
  * @param options.user - User to associate with the import
  *
  * @example
  * ```typescript
  * // Basic usage with frequency
- * const { scheduledImport } = await withScheduledImport(testEnv, catalogId, sourceUrl);
+ * const { scheduledIngest } = await withScheduledIngest(testEnv, catalogId, sourceUrl);
  *
  * // With cron schedule
- * const { scheduledImport } = await withScheduledImport(testEnv, catalogId, sourceUrl, {
+ * const { scheduledIngest } = await withScheduledIngest(testEnv, catalogId, sourceUrl, {
  *   scheduleType: "cron",
  *   cronExpression: "0 0 * * *" // Daily at midnight
  * });
  *
  * // With authentication
- * const { scheduledImport } = await withScheduledImport(testEnv, catalogId, sourceUrl, {
+ * const { scheduledIngest } = await withScheduledIngest(testEnv, catalogId, sourceUrl, {
  *   authConfig: {
  *     type: "api-key",
  *     apiKey: "secret-key",
@@ -1062,7 +1061,7 @@ const addOptionalFields = (data: Record<string, any>, options: Record<string, an
   });
 };
 
-export const withScheduledImport = async (
+export const withScheduledIngest = async (
   testEnv: TestEnvironment,
   catalogId: string | number,
   sourceUrl: string,
@@ -1088,11 +1087,11 @@ export const withScheduledImport = async (
     maxRetries?: number;
     retryDelayMinutes?: number;
     timeoutSeconds?: number;
-    importNameTemplate?: string;
+    ingestNameTemplate?: string;
     additionalData?: Record<string, any>;
     user?: any;
   }
-): Promise<TestEnvironment & { scheduledImport: any }> => {
+): Promise<TestEnvironment & { scheduledIngest: any }> => {
   const timestamp = Date.now();
 
   // Build data object with required fields
@@ -1116,7 +1115,7 @@ export const withScheduledImport = async (
     "maxRetries",
     "retryDelayMinutes",
     "timeoutSeconds",
-    "importNameTemplate",
+    "ingestNameTemplate",
   ];
 
   addOptionalFields(data, options ?? {}, optionalFields);
@@ -1126,11 +1125,11 @@ export const withScheduledImport = async (
     Object.assign(data, options.additionalData);
   }
 
-  const scheduledImport = await testEnv.payload.create({
-    collection: "scheduled-imports",
+  const scheduledIngest = await testEnv.payload.create({
+    collection: "scheduled-ingests",
     data,
     ...(options?.user && { user: options.user }),
   });
 
-  return { ...testEnv, scheduledImport };
+  return { ...testEnv, scheduledIngest };
 };

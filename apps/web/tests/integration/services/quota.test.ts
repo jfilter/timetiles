@@ -33,7 +33,7 @@ const resetUserUsage = async (payload: PayloadInstance, userId: number): Promise
       data: {
         urlFetchesToday: 0,
         fileUploadsToday: 0,
-        importJobsToday: 0,
+        ingestJobsToday: 0,
         currentActiveSchedules: 0,
         totalEventsCreated: 0,
         currentCatalogs: 0,
@@ -65,7 +65,7 @@ describe.sequential("Quota System", () => {
           maxActiveSchedules: 1,
           maxEventsPerImport: 100,
           maxTotalEvents: 500,
-          maxImportJobsPerDay: 2,
+          maxIngestJobsPerDay: 2,
           maxFileSizeMB: 5,
         },
       },
@@ -211,7 +211,7 @@ describe.sequential("Quota System", () => {
 
       expect(usage?.fileUploadsToday).toBe(0);
       expect(usage?.urlFetchesToday).toBe(0);
-      expect(usage?.importJobsToday).toBe(0);
+      expect(usage?.ingestJobsToday).toBe(0);
       // Total events should NOT be reset
       expect(usage?.totalEventsCreated).toBeGreaterThanOrEqual(0);
     });
@@ -270,15 +270,15 @@ describe.sequential("Quota System", () => {
       // All daily counters should be 0
       expect(afterReset1?.fileUploadsToday).toBe(0);
       expect(afterReset1?.urlFetchesToday).toBe(0);
-      expect(afterReset1?.importJobsToday).toBe(0);
+      expect(afterReset1?.ingestJobsToday).toBe(0);
 
       expect(afterReset2?.fileUploadsToday).toBe(0);
       expect(afterReset2?.urlFetchesToday).toBe(0);
-      expect(afterReset2?.importJobsToday).toBe(0);
+      expect(afterReset2?.ingestJobsToday).toBe(0);
 
       expect(afterReset3?.fileUploadsToday).toBe(0);
       expect(afterReset3?.urlFetchesToday).toBe(0);
-      expect(afterReset3?.importJobsToday).toBe(0);
+      expect(afterReset3?.ingestJobsToday).toBe(0);
 
       // Verify lastResetDate was updated for all users
       expect(afterReset1?.lastResetDate).toBeDefined();
@@ -333,7 +333,7 @@ describe.sequential("Quota System", () => {
     });
   });
 
-  describe("Scheduled Import Quotas", () => {
+  describe("scheduled ingest Quotas", () => {
     it("should enforce active schedule limits", async () => {
       const { payload } = testEnv;
       const quotaService = createQuotaService(payload);

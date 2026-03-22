@@ -38,7 +38,7 @@ const VerifyEmailContent = () => {
   // Auto-redirect after successful verification
   useEffect(() => {
     if (mutation.isSuccess) {
-      const timeout = setTimeout(() => router.push("/import"), 3000);
+      const timeout = setTimeout(() => router.push("/ingest"), 3000);
       return () => clearTimeout(timeout);
     }
   }, [mutation.isSuccess, router]);
@@ -71,10 +71,10 @@ const VerifyEmailContent = () => {
               <p className="text-gray-600">{t("verifiedDescription")}</p>
               <p className="text-sm text-gray-500">{t("redirecting")}</p>
               <Link
-                href="/import"
+                href="/ingest"
                 className="mt-4 rounded-md bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
               >
-                {t("goToImport")}
+                {t("goToIngest")}
               </Link>
             </div>
           )}
@@ -92,10 +92,10 @@ const VerifyEmailContent = () => {
                   {t("goToLogin")}
                 </Link>
                 <Link
-                  href="/import"
+                  href="/ingest"
                   className="rounded-md bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
                 >
-                  {t("goToImport")}
+                  {t("goToIngest")}
                 </Link>
               </div>
             </div>

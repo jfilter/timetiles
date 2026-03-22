@@ -1,7 +1,7 @@
 /**
- * Background job handler for managing scheduled imports.
+ * Background job handler for managing scheduled ingests.
  *
- * Runs periodically to check for scheduled imports that are due for execution.
+ * Runs periodically to check for scheduled ingests that are due for execution.
  * Creates new import-files records for scheduled URLs and triggers URL fetch jobs.
  * Implements a cron-like scheduler using Payload's job system with support for
  * various frequency patterns and retry logic.
@@ -11,15 +11,15 @@
  */
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
-import { calculateNextCronRun } from "@/lib/import/cron-parser";
-import { triggerScheduledImport } from "@/lib/import/trigger-service";
+import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { calculateNextCronRun } from "@/lib/ingest/cron-parser";
+import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
 import { getDatePartsInTimezone, wallClockToUtc } from "@/lib/utils/timezone";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
-import type { ScheduledImport, Scraper } from "@/payload-types";
+import type { ScheduledIngest, Scraper } from "@/payload-types";
 
 /**
  * Gets the next execution time based on frequency.
@@ -138,17 +138,17 @@ const getNextFrequencyInTimezone = (frequency: string, now: Date, timezone: stri
 /**
  * Gets the next execution time based on schedule type.
  *
- * Respects the timezone field on the scheduled import. Defaults to UTC.
+ * Respects the timezone field on the scheduled ingest. Defaults to UTC.
  */
-const getNextExecutionTime = (scheduledImport: ScheduledImport, fromDate?: Date): Date => {
-  const timezone = scheduledImport.timezone ?? "UTC";
+const getNextExecutionTime = (scheduledIngest: ScheduledIngest, fromDate?: Date): Date => {
+  const timezone = scheduledIngest.timezone ?? "UTC";
 
-  if (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) {
-    return getNextFrequencyExecution(scheduledImport.frequency, fromDate, timezone);
-  } else if (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression) {
-    const nextRun = calculateNextCronRun(scheduledImport.cronExpression, fromDate, timezone);
+  if (scheduledIngest.scheduleType === "frequency" && scheduledIngest.frequency) {
+    return getNextFrequencyExecution(scheduledIngest.frequency, fromDate, timezone);
+  } else if (scheduledIngest.scheduleType === "cron" && scheduledIngest.cronExpression) {
+    const nextRun = calculateNextCronRun(scheduledIngest.cronExpression, fromDate, timezone);
     if (!nextRun) {
-      throw new Error(`Unable to calculate next run for cron expression: ${scheduledImport.cronExpression}`);
+      throw new Error(`Unable to calculate next run for cron expression: ${scheduledIngest.cronExpression}`);
     }
     return nextRun;
   }
@@ -157,18 +157,18 @@ const getNextExecutionTime = (scheduledImport: ScheduledImport, fromDate?: Date)
 };
 
 /**
- * Checks if a scheduled import should run now.
+ * Checks if a scheduled ingest should run now.
  */
-const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): boolean => {
-  if (!scheduledImport.enabled) {
+const shouldRunNow = (scheduledIngest: ScheduledIngest, currentTime: Date): boolean => {
+  if (!scheduledIngest.enabled) {
     return false;
   }
 
   // Check schedule configuration
   const hasValidSchedule = Boolean(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    (scheduledImport.scheduleType === "frequency" && scheduledImport.frequency) ||
-    (scheduledImport.scheduleType === "cron" && scheduledImport.cronExpression)
+    (scheduledIngest.scheduleType === "frequency" && scheduledIngest.frequency) ||
+    (scheduledIngest.scheduleType === "cron" && scheduledIngest.cronExpression)
   );
 
   if (!hasValidSchedule) {
@@ -176,22 +176,22 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
   }
 
   // Check if there's a nextRun time set and if it's time to run
-  if (scheduledImport.nextRun) {
-    const nextRun = new Date(scheduledImport.nextRun);
+  if (scheduledIngest.nextRun) {
+    const nextRun = new Date(scheduledIngest.nextRun);
     return currentTime >= nextRun;
   }
 
   // If no nextRun is set, calculate if it should run based on lastRun
-  if (scheduledImport.lastRun) {
+  if (scheduledIngest.lastRun) {
     try {
-      const nextRun = getNextExecutionTime(scheduledImport, new Date(scheduledImport.lastRun));
+      const nextRun = getNextExecutionTime(scheduledIngest, new Date(scheduledIngest.lastRun));
       return currentTime >= nextRun;
     } catch (error) {
       logger.warn("Invalid schedule configuration", {
-        scheduledImportId: scheduledImport.id,
-        scheduleType: scheduledImport.scheduleType,
-        frequency: scheduledImport.frequency,
-        cronExpression: scheduledImport.cronExpression,
+        scheduledIngestId: scheduledIngest.id,
+        scheduleType: scheduledIngest.scheduleType,
+        frequency: scheduledIngest.frequency,
+        cronExpression: scheduledIngest.cronExpression,
         error: error instanceof Error ? error.message : "Unknown error",
       });
       return false;
@@ -200,14 +200,14 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
 
   // If no lastRun, this is the first run - check if it should run now
   try {
-    const nextRun = getNextExecutionTime(scheduledImport);
+    const nextRun = getNextExecutionTime(scheduledIngest);
     return currentTime >= nextRun;
   } catch (error) {
     logger.warn("Invalid schedule configuration for first run", {
-      scheduledImportId: scheduledImport.id,
-      scheduleType: scheduledImport.scheduleType,
-      frequency: scheduledImport.frequency,
-      cronExpression: scheduledImport.cronExpression,
+      scheduledIngestId: scheduledIngest.id,
+      scheduleType: scheduledIngest.scheduleType,
+      frequency: scheduledIngest.frequency,
+      cronExpression: scheduledIngest.cronExpression,
       error: error instanceof Error ? error.message : "Unknown error",
     });
     return false;
@@ -215,45 +215,45 @@ const shouldRunNow = (scheduledImport: ScheduledImport, currentTime: Date): bool
 };
 
 // Helper to calculate next run with fallback
-const calculateNextRun = (scheduledImport: ScheduledImport, currentTime: Date): Date => {
+const calculateNextRun = (scheduledIngest: ScheduledIngest, currentTime: Date): Date => {
   try {
-    return getNextExecutionTime(scheduledImport, currentTime);
+    return getNextExecutionTime(scheduledIngest, currentTime);
   } catch (error) {
     logger.error("Failed to calculate next run time", {
-      scheduledImportId: scheduledImport.id,
-      scheduleType: scheduledImport.scheduleType,
-      frequency: scheduledImport.frequency,
-      cronExpression: scheduledImport.cronExpression,
+      scheduledIngestId: scheduledIngest.id,
+      scheduleType: scheduledIngest.scheduleType,
+      frequency: scheduledIngest.frequency,
+      cronExpression: scheduledIngest.cronExpression,
       error: error instanceof Error ? error.message : "Unknown error",
     });
     return new Date(currentTime.getTime() + 24 * 60 * 60 * 1000); // Default to 24 hours
   }
 };
 
-// Helper to process a single scheduled import
-const processScheduledImport = async (
+// Helper to process a single scheduled ingest
+const processScheduledIngest = async (
   payload: Payload,
-  scheduledImport: ScheduledImport,
+  scheduledIngest: ScheduledIngest,
   currentTime: Date
 ): Promise<boolean> => {
-  if (!shouldRunNow(scheduledImport, currentTime)) {
+  if (!shouldRunNow(scheduledIngest, currentTime)) {
     return false;
   }
 
   // Quick in-memory check before attempting the atomic claim.
   // Not a guarantee (stale data), but avoids unnecessary SQL round-trips.
-  if (scheduledImport.lastStatus === "running") {
-    logger.info("Skipping scheduled import - already running", {
-      scheduledImportId: scheduledImport.id,
-      name: scheduledImport.name,
+  if (scheduledIngest.lastStatus === "running") {
+    logger.info("Skipping scheduled ingest - already running", {
+      scheduledIngestId: scheduledIngest.id,
+      name: scheduledIngest.name,
     });
     return false;
   }
 
-  const nextRun = calculateNextRun(scheduledImport, currentTime);
+  const nextRun = calculateNextRun(scheduledIngest, currentTime);
 
   try {
-    await triggerScheduledImport(payload, scheduledImport, currentTime, {
+    await triggerScheduledIngest(payload, scheduledIngest, currentTime, {
       triggeredBy: "schedule",
       nextRun: nextRun.toISOString(),
     });
@@ -261,9 +261,9 @@ const processScheduledImport = async (
     // Concurrency rejection from the atomic SQL claim means another worker
     // already claimed this import. This is expected, not an error.
     if (error instanceof Error && error.message.includes("concurrent trigger rejected")) {
-      logger.info("Skipping scheduled import - claimed by another worker", {
-        scheduledImportId: scheduledImport.id,
-        name: scheduledImport.name,
+      logger.info("Skipping scheduled ingest - claimed by another worker", {
+        scheduledIngestId: scheduledIngest.id,
+        name: scheduledIngest.name,
       });
       return false;
     }
@@ -276,25 +276,25 @@ const processScheduledImport = async (
 // Helper to handle import error
 const handleImportError = async (
   payload: Payload,
-  scheduledImport: ScheduledImport,
+  scheduledIngest: ScheduledIngest,
   error: unknown,
   currentTime: Date
 ): Promise<void> => {
-  logError(error, "Failed to trigger scheduled import", {
-    scheduledImportId: scheduledImport.id,
-    name: scheduledImport.name,
-    url: sanitizeUrlForLogging(scheduledImport.sourceUrl),
+  logError(error, "Failed to trigger scheduled ingest", {
+    scheduledIngestId: scheduledIngest.id,
+    name: scheduledIngest.name,
+    url: sanitizeUrlForLogging(scheduledIngest.sourceUrl),
   });
 
   try {
     // Advance nextRun so the scheduler doesn't retry every minute for a
     // broken import. Without this, a queue failure would leave the old
     // nextRun in the past and re-trigger on every scheduler tick.
-    const nextRun = calculateNextRun(scheduledImport, currentTime);
+    const nextRun = calculateNextRun(scheduledIngest, currentTime);
 
     await payload.update({
-      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
-      id: scheduledImport.id,
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      id: scheduledIngest.id,
       data: {
         lastStatus: "failed",
         lastError: error instanceof Error ? error.message : "Unknown error",
@@ -302,7 +302,7 @@ const handleImportError = async (
       },
     });
   } catch (updateError) {
-    logError(updateError, "Failed to update scheduled import error status");
+    logError(updateError, "Failed to update scheduled ingest error status");
   }
 };
 
@@ -340,7 +340,7 @@ const shouldScraperRunNow = (scraper: Scraper, currentTime: Date): boolean => {
 /**
  * Process all due scrapers and queue execution jobs.
  *
- * Called from the main schedule-manager handler after scheduled imports.
+ * Called from the main schedule-manager handler after scheduled ingests.
  */
 const processScheduledScrapers = async (
   payload: Payload,
@@ -431,7 +431,7 @@ export const scheduleManagerJob = {
   slug: "schedule-manager",
   schedule: [{ cron: "* * * * *", queue: "default" as const }],
   // Only one schedule-manager may run at a time across all workers.
-  // Without this, two workers could both trigger the same scheduled import.
+  // Without this, two workers could both trigger the same scheduled ingest.
   concurrency: () => "schedule-manager",
   handler: async ({ job, req }: JobHandlerContext) => {
     const { payload } = req;
@@ -450,31 +450,31 @@ export const scheduleManagerJob = {
 
       const currentTime = new Date();
 
-      // Find all enabled scheduled imports
-      const scheduledImports = await payload.find({
-        collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
+      // Find all enabled scheduled ingests
+      const scheduledIngests = await payload.find({
+        collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
         where: { enabled: { equals: true } },
         limit: 1000,
         pagination: false,
       });
 
-      logger.info("Found scheduled imports", {
-        count: scheduledImports.docs.length,
-        totalDocs: scheduledImports.totalDocs,
+      logger.info("Found scheduled ingests", {
+        count: scheduledIngests.docs.length,
+        totalDocs: scheduledIngests.totalDocs,
       });
 
       let triggeredCount = 0;
       let errorCount = 0;
 
-      for (const scheduledImport of scheduledImports.docs) {
+      for (const scheduledIngest of scheduledIngests.docs) {
         try {
-          const triggered = await processScheduledImport(payload, scheduledImport, currentTime);
+          const triggered = await processScheduledIngest(payload, scheduledIngest, currentTime);
           if (triggered) {
             triggeredCount++;
           }
         } catch (error) {
           errorCount++;
-          await handleImportError(payload, scheduledImport, error, currentTime);
+          await handleImportError(payload, scheduledIngest, error, currentTime);
         }
       }
 
@@ -483,7 +483,7 @@ export const scheduleManagerJob = {
 
       logger.info("Schedule manager job completed", {
         jobId: job?.id,
-        totalScheduled: scheduledImports.docs.length,
+        totalScheduled: scheduledIngests.docs.length,
         triggered: triggeredCount,
         errors: errorCount,
         scrapersTriggered: scraperResults.triggered,
@@ -493,7 +493,7 @@ export const scheduleManagerJob = {
       return {
         output: {
           success: true,
-          totalScheduled: scheduledImports.docs.length,
+          totalScheduled: scheduledIngests.docs.length,
           triggered: triggeredCount,
           errors: errorCount,
           scrapersTriggered: scraperResults.triggered,

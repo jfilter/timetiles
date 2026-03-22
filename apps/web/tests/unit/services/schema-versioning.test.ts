@@ -4,7 +4,7 @@
 import type { BasePayload } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SchemaVersioningService } from "@/lib/import/schema-versioning";
+import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
 describe.sequential("SchemaVersioningService", () => {
@@ -128,7 +128,7 @@ describe.sequential("SchemaVersioningService", () => {
           fieldMetadata: {},
           autoApproved: true,
           approvedBy: 1,
-          importSources: [],
+          ingestSources: [],
           _status: "published",
         },
         req: undefined,
@@ -164,7 +164,7 @@ describe.sequential("SchemaVersioningService", () => {
         fieldMetadata: mockFieldMetadata,
         autoApproved: false,
         approvedBy: "2",
-        importSources: [{ import: "123", recordCount: 500, batchCount: 5 }],
+        ingestSources: [{ ingestJob: "123", recordCount: 500, batchCount: 5 }],
       });
 
       expect(result).toEqual(mockCreatedSchema);
@@ -177,7 +177,7 @@ describe.sequential("SchemaVersioningService", () => {
           fieldMetadata: mockFieldMetadata,
           autoApproved: false,
           approvedBy: 2,
-          importSources: [{ import: 123, recordCount: 500, batchCount: 5 }],
+          ingestSources: [{ ingestJob: 123, recordCount: 500, batchCount: 5 }],
           _status: "published",
         },
         req: undefined,
@@ -220,7 +220,7 @@ describe.sequential("SchemaVersioningService", () => {
           fieldMetadata: {},
           autoApproved: false,
           approvedBy: undefined,
-          importSources: [],
+          ingestSources: [],
           _status: "published",
         },
         req: undefined,
@@ -251,9 +251,9 @@ describe.sequential("SchemaVersioningService", () => {
       const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: 111,
         schema: mockSchema,
-        importSources: [
-          { import: 222, recordCount: 1000 },
-          { import: 333, batchCount: 10 },
+        ingestSources: [
+          { ingestJob: 222, recordCount: 1000 },
+          { ingestJob: 333, batchCount: 10 },
         ],
       });
 
@@ -267,9 +267,9 @@ describe.sequential("SchemaVersioningService", () => {
           fieldMetadata: {},
           autoApproved: false,
           approvedBy: undefined,
-          importSources: [
-            { import: 222, recordCount: 1000 },
-            { import: 333, batchCount: 10 },
+          ingestSources: [
+            { ingestJob: 222, recordCount: 1000 },
+            { ingestJob: 333, batchCount: 10 },
           ],
           _status: "published",
         },
@@ -314,7 +314,7 @@ describe.sequential("SchemaVersioningService", () => {
           fieldMetadata: {},
           autoApproved: false,
           approvedBy: null,
-          importSources: [],
+          ingestSources: [],
           _status: "published",
         },
         req: undefined,
@@ -329,9 +329,9 @@ describe.sequential("SchemaVersioningService", () => {
         SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
           dataset: 999,
           schema: { type: "object" },
-          importSources: [{ import: "123abc" }],
+          ingestSources: [{ ingestJob: "123abc" }],
         })
-      ).rejects.toThrow("Invalid import source ID");
+      ).rejects.toThrow("Invalid ingest source ID");
 
       expect(mockPayload.create).not.toHaveBeenCalled();
     });
@@ -344,7 +344,7 @@ describe.sequential("SchemaVersioningService", () => {
       await SchemaVersioningService.linkImportToSchemaVersion(mockPayload as unknown as BasePayload, "123", "456");
 
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: { datasetSchemaVersion: 456 },
         req: undefined,
@@ -358,7 +358,7 @@ describe.sequential("SchemaVersioningService", () => {
       await SchemaVersioningService.linkImportToSchemaVersion(mockPayload as unknown as BasePayload, 789, 101112);
 
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 789,
         data: { datasetSchemaVersion: 101112 },
         req: undefined,
@@ -372,7 +372,7 @@ describe.sequential("SchemaVersioningService", () => {
       await SchemaVersioningService.linkImportToSchemaVersion(mockPayload as unknown as BasePayload, "555", 666);
 
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 555,
         data: { datasetSchemaVersion: 666 },
         req: undefined,
@@ -389,7 +389,7 @@ describe.sequential("SchemaVersioningService", () => {
       ).rejects.toThrow("Database update failed");
 
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: { datasetSchemaVersion: 456 },
         req: undefined,
@@ -445,7 +445,7 @@ describe.sequential("SchemaVersioningService", () => {
         },
         autoApproved: true,
         approvedBy: 1,
-        importSources: [{ import: 777, recordCount: 200, batchCount: 4 }],
+        ingestSources: [{ ingestJob: 777, recordCount: 200, batchCount: 4 }],
       });
 
       // Link import to schema version
@@ -469,7 +469,7 @@ describe.sequential("SchemaVersioningService", () => {
           },
           autoApproved: true,
           approvedBy: 1,
-          importSources: [{ import: 777, recordCount: 200, batchCount: 4 }],
+          ingestSources: [{ ingestJob: 777, recordCount: 200, batchCount: 4 }],
           _status: "published",
         },
         req: undefined,
@@ -477,7 +477,7 @@ describe.sequential("SchemaVersioningService", () => {
       });
 
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 777,
         data: { datasetSchemaVersion: 999 },
         req: undefined,

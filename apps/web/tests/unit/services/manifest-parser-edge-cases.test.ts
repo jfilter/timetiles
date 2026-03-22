@@ -10,8 +10,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { ManifestParseError, ManifestParseResult } from "@/lib/import/manifest-parser";
-import { parseManifest } from "@/lib/import/manifest-parser";
+import type { ManifestParseError, ManifestParseResult } from "@/lib/ingest/manifest-parser";
+import { parseManifest } from "@/lib/ingest/manifest-parser";
 
 describe("parseManifest edge cases", () => {
   describe("Minimal Scraper with Defaults", () => {

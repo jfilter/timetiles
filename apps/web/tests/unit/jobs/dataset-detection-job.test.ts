@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => {
 // Mock external dependencies
 vi.mock("fs", () => ({ default: mocks.fs, promises: { readFile: vi.fn() } }));
 
-vi.mock("@/lib/import/progress-tracking", () => ({
+vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     updateProgress: vi.fn().mockResolvedValue(undefined),
     createInitialProgress: vi.fn((totalRows) => ({
@@ -62,7 +62,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     mockContext = {
       req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: {} },
-      input: { importFileId: "import-file-123", catalogId: "456" },
+      input: { ingestFileId: "ingest-file-123", catalogId: "456" },
     };
   });
 
@@ -72,7 +72,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should process CSV file successfully", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123, // Use numeric ID as handler expects
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -83,7 +83,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       const mockCatalog = { id: 456, name: "Test Catalog" };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportFile) // importFile
+        .mockResolvedValueOnce(mockIngestFile) // ingestFile
         .mockResolvedValueOnce(mockCatalog); // catalog
 
       mockPayload.find.mockResolvedValue({ docs: [] }); // No existing datasets
@@ -99,17 +99,17 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       expect(mockPayload.create).toHaveBeenNthCalledWith(1, {
         collection: "datasets",
         data: expect.objectContaining({
-          name: "test.csv", // Uses originalName from importFile
+          name: "test.csv", // Uses originalName from ingestFile
           catalog: 456,
         }),
       });
 
       // Check that import job was created second with correct dataset ID
       expect(mockPayload.create).toHaveBeenNthCalledWith(2, {
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({
           dataset: "test-id",
-          importFile: 123, // importFile ID is converted to number
+          ingestFile: 123, // ingestFile ID is converted to number
           sheetIndex: 0,
           stage: "analyze-duplicates",
         }),
@@ -161,7 +161,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Mock fs.readFileSync to return the Excel buffer
       mocks.fs.readFileSync.mockReturnValue(excelBuffer);
 
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123, // Use numeric ID as handler expects
         filename: "multi-sheet.xlsx",
         filePath: "/tmp/multi-sheet.xlsx",
@@ -171,7 +171,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       const mockCatalog = { id: 456, name: "Test Catalog" };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(mockCatalog);
 
       mockPayload.find.mockResolvedValue({ docs: [] });
 
@@ -182,7 +182,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       mockPayload.create.mockImplementation((params: any) => {
         if (params.collection === "datasets") {
           return Promise.resolve({ id: `dataset-${datasetCounter++}` });
-        } else if (params.collection === "import-jobs") {
+        } else if (params.collection === "ingest-jobs") {
           return Promise.resolve({ id: `job-${jobCounter++}` });
         }
         return Promise.resolve({ id: "test-id" });
@@ -211,30 +211,30 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       // Check that import jobs were created for each sheet
       expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({
           dataset: "dataset-1",
-          importFile: 123,
+          ingestFile: 123,
           sheetIndex: 0,
           stage: "analyze-duplicates",
         }),
       });
 
       expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({
           dataset: "dataset-2",
-          importFile: 123,
+          ingestFile: 123,
           sheetIndex: 1,
           stage: "analyze-duplicates",
         }),
       });
 
       expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({
           dataset: "dataset-3",
-          importFile: 123,
+          ingestFile: 123,
           sheetIndex: 2,
           stage: "analyze-duplicates",
         }),
@@ -242,7 +242,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should match existing dataset by name", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123, // Use numeric ID
         filename: "existing.csv",
         filePath: "/tmp/existing.csv",
@@ -254,7 +254,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       const existingDataset = { id: "existing-dataset-999", name: "existing", catalog: 456 };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(mockCatalog);
 
       mockPayload.find.mockResolvedValue({ docs: [existingDataset] });
       mockPayload.create.mockResolvedValueOnce({ id: "import-job-101" });
@@ -265,10 +265,10 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       expect(mockPayload.create).toHaveBeenCalledTimes(1); // Only import job
 
       expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({
           dataset: "existing-dataset-999", // Use existing dataset
-          importFile: 123, // importFile ID is converted to number
+          ingestFile: 123, // ingestFile ID is converted to number
           sheetIndex: 0,
           stage: "analyze-duplicates",
         }),
@@ -276,7 +276,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should update import file status to processing", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -284,21 +284,21 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
       mockPayload.find.mockResolvedValue({ docs: [] });
       mockPayload.create.mockResolvedValue({ id: "test-id" });
 
       await datasetDetectionJob.handler(mockContext);
 
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-files",
-        id: "import-file-123",
+        collection: "ingest-files",
+        id: "ingest-file-123",
         data: expect.objectContaining({ datasetsCount: 1 }),
       });
     });
 
     it("should clean up file after processing", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -306,7 +306,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
       mockPayload.find.mockResolvedValue({ docs: [] });
       mockPayload.create.mockResolvedValue({ id: "test-id" });
 
@@ -319,7 +319,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
   describe("Error Handling", () => {
     it("should reject partially numeric import file relation ids before creating jobs", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: "123abc",
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -327,7 +327,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
       mockPayload.find.mockResolvedValue({ docs: [] });
       // eslint-disable promise/prefer-await-to-then -- Conditional mock
       mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
@@ -343,14 +343,14 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         data: expect.objectContaining({ name: "test.csv", catalog: 456 }),
       });
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-files",
-        id: "import-file-123",
+        collection: "ingest-files",
+        id: "ingest-file-123",
         data: expect.objectContaining({ status: "failed", errorLog: "Invalid import file ID" }),
       });
     });
 
     it("should reject partially numeric catalog ids before loading datasets", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -358,9 +358,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockContext.input = { importFileId: "import-file-123", catalogId: "456abc" };
+      mockContext.input = { ingestFileId: "ingest-file-123", catalogId: "456abc" };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       // eslint-disable promise/prefer-await-to-then -- Conditional mock
@@ -374,8 +374,8 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       expect(mockPayload.find).not.toHaveBeenCalled();
       expect(mockPayload.create).not.toHaveBeenCalled();
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-files",
-        id: "import-file-123",
+        collection: "ingest-files",
+        id: "ingest-file-123",
         data: expect.objectContaining({ status: "failed", errorLog: "Invalid catalog ID" }),
       });
     });
@@ -383,11 +383,11 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     it("should handle missing import file gracefully", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Import file not found");
+      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
     it("should handle missing catalog gracefully", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -395,7 +395,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(null); // catalog not found
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(null); // catalog not found
 
       // Mock the find call for catalog to return empty docs
       mockPayload.find.mockResolvedValueOnce({ docs: [] });
@@ -404,7 +404,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should handle file parsing errors", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -412,21 +412,21 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
 
       mocks.fs.existsSync.mockReturnValue(false);
 
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
 
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-files",
-        id: "import-file-123",
+        collection: "ingest-files",
+        id: "ingest-file-123",
         data: expect.objectContaining({ status: "failed", errorLog: expect.any(String) }),
       });
     });
 
     it("should handle CSV parsing errors", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -434,7 +434,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
 
       // Mock invalid CSV content that will cause parsing errors
       mocks.fs.readFileSync.mockReturnValue("invalid,csv,data\nwith,malformed\nrows");
@@ -443,7 +443,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should handle Excel parsing errors", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.xlsx",
         filePath: "/tmp/test.xlsx",
@@ -451,7 +451,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.xlsx",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
 
       // Mock invalid Excel content that will cause SheetJS to throw
       mocks.fs.readFileSync.mockReturnValue(Buffer.from("invalid excel content"));
@@ -462,7 +462,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
   describe("Edge Cases", () => {
     it("should handle empty CSV file", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "empty.csv",
         filePath: "/tmp/empty.csv",
@@ -470,7 +470,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "empty.csv",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
 
       // Mock CSV with only headers, no data rows
       mocks.fs.readFileSync.mockReturnValue("header1,header2\n");
@@ -492,7 +492,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Mock fs.readFileSync to return the empty Excel content
       mocks.fs.readFileSync.mockReturnValue(emptyBuffer);
 
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "empty.xlsx",
         filePath: "/tmp/empty.xlsx",
@@ -502,13 +502,13 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       const mockCatalog = { id: 456, name: "Test Catalog" };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(mockCatalog);
 
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("No valid sheets found in file");
     });
 
     it("should handle unsupported file formats", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.txt",
         filePath: "/tmp/test.txt",
@@ -516,7 +516,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.txt",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
 
       // Mock find calls for catalog
       mockPayload.find.mockResolvedValue({ docs: [] });
@@ -525,7 +525,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should handle very large files gracefully", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "large.csv",
         filePath: "/tmp/large.csv",
@@ -535,7 +535,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       const mockCatalog = { id: 456, name: "Test Catalog" };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce(mockCatalog);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(mockCatalog);
 
       mockPayload.find.mockResolvedValue({ docs: [] });
       mockPayload.create.mockResolvedValue({ id: "test-id" });
@@ -557,7 +557,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       // Check that import job was created with correct row count
       expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({ sheetIndex: 0, stage: "analyze-duplicates" }),
       });
     });
@@ -565,7 +565,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
   describe("Wizard Fast-Path", () => {
     it("should skip file parsing for wizard single-sheet import", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -581,7 +581,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       const mockDataset = { id: "dataset-42", name: "Events", catalog: 456 };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportFile) // importFile lookup
+        .mockResolvedValueOnce(mockIngestFile) // ingestFile lookup
         .mockResolvedValueOnce(mockDataset); // dataset lookup in handleSingleSheet
 
       mockPayload.create.mockResolvedValueOnce({ id: "import-job-1" });
@@ -594,10 +594,10 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Import job should still be created with correct dataset
       expect(mockPayload.create).toHaveBeenCalledTimes(1);
       expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({
           dataset: "dataset-42",
-          importFile: 123,
+          ingestFile: 123,
           sheetIndex: 0,
           stage: "analyze-duplicates",
         }),
@@ -605,7 +605,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should skip file parsing for wizard multi-sheet import", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "multi.xlsx",
         filePath: "/tmp/multi.xlsx",
@@ -634,7 +634,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       const mockDataset2 = { id: "ds-2", name: "Locations", catalog: 456 };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportFile) // importFile lookup
+        .mockResolvedValueOnce(mockIngestFile) // ingestFile lookup
         .mockResolvedValueOnce(mockDataset1) // dataset lookup for sheet 0
         .mockResolvedValueOnce(mockDataset2); // dataset lookup for sheet 1
 
@@ -648,17 +648,17 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Two import jobs should be created
       expect(mockPayload.create).toHaveBeenCalledTimes(2);
       expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({ dataset: "ds-1", sheetIndex: 0 }),
       });
       expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: expect.objectContaining({ dataset: "ds-2", sheetIndex: 1 }),
       });
     });
 
     it("should fall back to parsing when datasetMapping is missing", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -667,7 +667,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         metadata: { source: "import-wizard" }, // No datasetMapping
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
       mockPayload.find.mockResolvedValue({ docs: [] });
       mockPayload.create.mockResolvedValue({ id: "test-id" });
 
@@ -678,7 +678,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should fall back to parsing for non-wizard imports", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -687,7 +687,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         metadata: { source: "url-fetch" },
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
       mockPayload.find.mockResolvedValue({ docs: [] });
       mockPayload.create.mockResolvedValue({ id: "test-id" });
 
@@ -698,7 +698,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     });
 
     it("should still verify file exists on disk for wizard imports", async () => {
-      const mockImportFile = {
+      const mockIngestFile = {
         id: 123,
         filename: "test.csv",
         filePath: "/tmp/test.csv",
@@ -707,7 +707,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         metadata: { source: "import-wizard", datasetMapping: { mappingType: "single", singleDataset: "dataset-42" } },
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
       mocks.fs.existsSync.mockReturnValue(false);
 
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Cannot access file");

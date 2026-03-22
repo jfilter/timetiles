@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { calculateNextCronRun, matchesCronDate, parseCronExpression } from "@/lib/import/cron-parser";
+import { calculateNextCronRun, matchesCronDate, parseCronExpression } from "@/lib/ingest/cron-parser";
 import { createTimezoneFormatter } from "@/lib/utils/timezone";
 
 describe("Timezone-aware Cron Parser", () => {

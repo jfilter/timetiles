@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  *
- * Security Validation Tests for Scheduled Imports.
+ * Security Validation Tests for scheduled ingests.
  *
  * Tests various security scenarios including:
  * - Authentication validation
@@ -20,7 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
 import {
   createIntegrationTestEnvironment,
-  withScheduledImport,
+  withScheduledIngest,
   withTestServer,
   withUsers,
 } from "@/tests/setup/integration/environment";
@@ -28,7 +28,7 @@ import {
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   success: true;
-  importFileId: string | number;
+  ingestFileId: string | number;
   filename: string;
   fileSize: number | undefined;
   contentType: string;
@@ -70,7 +70,7 @@ describe.sequential("Security Validation Tests", () => {
     adminUser = users.adminUser;
     regularUser = users.regularUser;
 
-    // Create test catalog owned by regularUser so they can create scheduled imports
+    // Create test catalog owned by regularUser so they can create scheduled ingests
     const catalog = await payload.create({
       collection: "catalogs",
       data: { name: "Security Test Catalog", description: "Catalog for security tests", createdBy: regularUser.id },
@@ -87,7 +87,7 @@ describe.sequential("Security Validation Tests", () => {
     it("should reject localhost URLs", async () => {
       await expect(
         payload.create({
-          collection: "scheduled-imports",
+          collection: "scheduled-ingests",
           data: {
             name: "Localhost Import",
             sourceUrl: "http://localhost/internal.csv",
@@ -101,35 +101,35 @@ describe.sequential("Security Validation Tests", () => {
       ).resolves.toBeTruthy(); // Currently allows localhost - this might need to be restricted
 
       // Test that the job handler rejects localhost in production
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "http://127.0.0.1/internal.csv", {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, "http://127.0.0.1/internal.csv", {
         user: adminUser,
         name: "Localhost Import Test",
         frequency: "daily",
       });
 
       // In production, this should be blocked
-      expect(scheduledImport).toBeTruthy();
+      expect(scheduledIngest).toBeTruthy();
     });
 
     it("should reject private IP ranges", async () => {
       const privateIPs = ["http://192.168.1.1/data.csv", "http://10.0.0.1/data.csv", "http://172.16.0.1/data.csv"];
 
       for (const url of privateIPs) {
-        const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, url, {
+        const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, url, {
           user: adminUser,
           name: `Private IP Import ${url}`,
           frequency: "daily",
         });
 
         // Currently allows private IPs - in production this should be configurable
-        expect(scheduledImport).toBeTruthy();
+        expect(scheduledIngest).toBeTruthy();
       }
     });
 
     it("should reject file:// protocol URLs", async () => {
       await expect(
         payload.create({
-          collection: "scheduled-imports",
+          collection: "scheduled-ingests",
           data: {
             name: "File Protocol Import",
             sourceUrl: "file:///etc/passwd",
@@ -144,7 +144,7 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should handle URL redirection to private IPs", async () => {
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/redirect-to-private.csv`,
@@ -159,9 +159,9 @@ describe.sequential("Security Validation Tests", () => {
         job: { id: "test-job-redirect" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId,
           originalName: "Test Import",
           userId: adminUser.id,
@@ -175,7 +175,7 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("Authentication Credential Security", () => {
     it("should encrypt credentials at rest and decrypt on read", async () => {
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         "https://api.example.com/data.csv",
@@ -188,7 +188,7 @@ describe.sequential("Security Validation Tests", () => {
       );
 
       // Fetch via Payload API — afterRead hooks should decrypt
-      const fetched = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+      const fetched = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
       expect(fetched.authConfig.bearerToken).toBe(TEST_CREDENTIALS.bearer.superSecretToken);
 
       // Verify the raw database value is NOT plaintext (encrypted at rest)
@@ -197,8 +197,8 @@ describe.sequential("Security Validation Tests", () => {
       try {
         await client.connect();
         const rawResult = await client.query(
-          `SELECT auth_config_bearer_token FROM payload."scheduled_imports" WHERE id = $1`,
-          [scheduledImport.id]
+          `SELECT auth_config_bearer_token FROM payload."scheduled_ingests" WHERE id = $1`,
+          [scheduledIngest.id]
         );
         if (rawResult.rows.length > 0) {
           const rawToken = rawResult.rows[0].auth_config_bearer_token;
@@ -215,7 +215,7 @@ describe.sequential("Security Validation Tests", () => {
       // Set up test server endpoint
       testServer.respondWithCSV("/invalid-auth.csv", "test,data\n1,2");
 
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/invalid-auth.csv`,
@@ -239,9 +239,9 @@ describe.sequential("Security Validation Tests", () => {
         job: { id: "test-job-auth" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId,
           originalName: "Test Import",
           userId: adminUser.id,
@@ -253,7 +253,7 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should validate Basic Auth credentials format", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/basic-auth.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/basic-auth.csv`, {
         user: adminUser,
         name: "Basic Auth Import",
         frequency: "daily",
@@ -277,9 +277,9 @@ describe.sequential("Security Validation Tests", () => {
         job: { id: "test-job-basic-auth" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId,
           originalName: "Test Import",
           userId: adminUser.id,
@@ -294,7 +294,7 @@ describe.sequential("Security Validation Tests", () => {
     it("should handle malicious import name templates", async () => {
       const maliciousTemplates = [
         '{{name}} <script>alert("xss")</script>',
-        '{{name}}"; DROP TABLE scheduled_imports; --',
+        '{{name}}"; DROP TABLE scheduled_ingests; --',
         "{{name}}${process.env.DATABASE_URL}",
         // Skip null byte test as PostgreSQL doesn't support it
         // "{{name}}" + "\x00" + "null-byte",
@@ -304,15 +304,15 @@ describe.sequential("Security Validation Tests", () => {
       testServer.respondWithCSV("/malicious-template.csv", "test,data\n1,2");
 
       for (const template of maliciousTemplates) {
-        const { scheduledImport } = await withScheduledImport(
+        const { scheduledIngest } = await withScheduledIngest(
           testEnv,
           testCatalogId,
           `${testServerUrl}/malicious-template.csv`,
-          { user: adminUser, name: "XSS Test Import", frequency: "daily", importNameTemplate: template }
+          { user: adminUser, name: "XSS Test Import", frequency: "daily", ingestNameTemplate: template }
         );
 
         // Template should be stored as-is (sanitization happens on use)
-        expect(scheduledImport.importNameTemplate).toBe(template);
+        expect(scheduledIngest.ingestNameTemplate).toBe(template);
       }
     });
 
@@ -320,7 +320,7 @@ describe.sequential("Security Validation Tests", () => {
       // Set up test server endpoint
       testServer.respondWithCSV("/custom-headers.csv", "test,data\n1,2");
 
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/custom-headers.csv`,
@@ -348,9 +348,9 @@ describe.sequential("Security Validation Tests", () => {
         job: { id: "test-job-headers" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId,
           originalName: "Test Import",
           userId: adminUser.id,
@@ -362,13 +362,13 @@ describe.sequential("Security Validation Tests", () => {
   });
 
   describe("Access Control", () => {
-    it("should enforce role-based access for scheduled imports", async () => {
+    it("should enforce role-based access for scheduled ingests", async () => {
       // Set up test server endpoints for access control tests
       testServer.respondWithCSV("/admin.csv", "test,data\n1,2");
       testServer.respondWithCSV("/private-catalog.csv", "test,data\n1,2");
 
       // Create import as admin
-      const { scheduledImport: adminImport } = await withScheduledImport(
+      const { scheduledIngest: adminImport } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/admin.csv`,
@@ -377,7 +377,7 @@ describe.sequential("Security Validation Tests", () => {
 
       // Regular user should be able to read
       const canRead = await payload.find({
-        collection: "scheduled-imports",
+        collection: "scheduled-ingests",
         where: { id: { equals: adminImport.id } },
         user: { id: regularUser.id, role: "user" } as any,
       });
@@ -389,7 +389,7 @@ describe.sequential("Security Validation Tests", () => {
       // Currently Payload doesn't enforce this without custom access control
       try {
         await payload.delete({
-          collection: "scheduled-imports",
+          collection: "scheduled-ingests",
           id: adminImport.id,
           user: { id: regularUser.id, role: "user" } as any,
         });
@@ -420,11 +420,11 @@ describe.sequential("Security Validation Tests", () => {
       // Fetch the full regular user object (needed for quota checks in access control)
       const regularUserFull = await payload.findByID({ collection: "users", id: regularUser.id });
 
-      // Try to create scheduled import for private catalog as regular user
+      // Try to create scheduled ingest for private catalog as regular user
       // This should fail because regularUser doesn't own the catalog
       await expect(
         payload.create({
-          collection: "scheduled-imports",
+          collection: "scheduled-ingests",
           data: {
             name: "Unauthorized Catalog Import",
             sourceUrl: `${testServerUrl}/private-catalog.csv`,
@@ -450,8 +450,8 @@ describe.sequential("Security Validation Tests", () => {
         user: { id: adminUser.id },
       });
 
-      // Create scheduled import for private catalog
-      const { scheduledImport } = await withScheduledImport(
+      // Create scheduled ingest for private catalog
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         privateCatalog.id,
         `${testServerUrl}/fetch-test.csv`,
@@ -470,9 +470,9 @@ describe.sequential("Security Validation Tests", () => {
         job: { id: "test-job-catalog-access" },
         req: { payload, user: regularUserFull },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: privateCatalog.id,
           originalName: "Test Import",
           userId: regularUserFull.id,
@@ -490,8 +490,8 @@ describe.sequential("Security Validation Tests", () => {
       const adminUserFull = await payload.findByID({ collection: "users", id: adminUser.id });
       const csvContent = "name,date\nAdmin Event,2024-01-01";
       const fileBuffer = new Uint8Array(Buffer.from(csvContent, "utf8"));
-      const adminImportFile = await payload.create({
-        collection: "import-files",
+      const adminIngestFile = await payload.create({
+        collection: "ingest-files",
         data: { user: adminUser.id, status: "pending" },
         file: { data: fileBuffer, name: "admin-owned-file.csv", size: fileBuffer.length, mimetype: "text/csv" },
         user: adminUserFull, // Provide user context for access control hooks
@@ -500,8 +500,8 @@ describe.sequential("Security Validation Tests", () => {
       // regularUser should not be able to access adminUser's import file
       await expect(
         payload.findByID({
-          collection: "import-files",
-          id: adminImportFile.id,
+          collection: "ingest-files",
+          id: adminIngestFile.id,
           user: { id: regularUser.id, role: "user" },
           overrideAccess: false,
         })
@@ -509,39 +509,39 @@ describe.sequential("Security Validation Tests", () => {
 
       // adminUser should be able to access their own file
       const adminFile = await payload.findByID({
-        collection: "import-files",
-        id: adminImportFile.id,
+        collection: "ingest-files",
+        id: adminIngestFile.id,
         user: { id: adminUser.id, role: "admin" },
         overrideAccess: false,
       });
-      expect(adminFile.id).toBe(adminImportFile.id);
+      expect(adminFile.id).toBe(adminIngestFile.id);
     });
 
     // Note: Session-based unauthenticated uploads are no longer supported.
     // All import files now require an authenticated user.
 
-    it("should prevent cross-user scheduled import modification", async () => {
-      // Create scheduled import as regularUser
+    it("should prevent cross-user scheduled ingest modification", async () => {
+      // Create scheduled ingest as regularUser
       const regularUserFull = await payload.findByID({ collection: "users", id: regularUser.id });
 
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/regular-user-data.csv`,
-        { name: "Regular User's Scheduled Import", enabled: false, frequency: "daily", user: regularUserFull }
+        { name: "Regular User's scheduled ingest", enabled: false, frequency: "daily", user: regularUserFull }
       );
 
       // Create another regular user
       const { users: anotherUsers } = await withUsers(testEnv, { anotherUser: { role: "user" } });
       const anotherUser = anotherUsers.anotherUser;
 
-      // Another user should not be able to modify this scheduled import
-      // Currently scheduled-imports don't have explicit ownership checks
+      // Another user should not be able to modify this scheduled ingest
+      // Currently scheduled-ingests don't have explicit ownership checks
       // but they should respect general access control principles
       try {
         await payload.update({
-          collection: "scheduled-imports",
-          id: scheduledImport.id,
+          collection: "scheduled-ingests",
+          id: scheduledIngest.id,
           data: { name: "Hijacked Import" },
           user: anotherUser,
         });
@@ -556,7 +556,7 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("File Content Security", () => {
     it("should reject files with suspicious content", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/suspicious.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/suspicious.csv`, {
         user: adminUser,
         name: "Suspicious Content Import",
         frequency: "daily",
@@ -573,9 +573,9 @@ describe.sequential("Security Validation Tests", () => {
         job: { id: "test-job-csv-injection" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId,
           originalName: "Test Import",
           userId: adminUser.id,
@@ -587,7 +587,7 @@ describe.sequential("Security Validation Tests", () => {
     });
 
     it("should handle zip bombs and large files", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
         user: adminUser,
         name: "Large File Import",
         frequency: "daily",
@@ -614,9 +614,9 @@ describe.sequential("Security Validation Tests", () => {
         job: { id: "test-job-large" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId,
           originalName: "Test Import",
           userId: adminUser.id,
@@ -632,7 +632,7 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("Error Message Security", () => {
     it("should not expose internal system details in error messages", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/error-test.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/error-test.csv`, {
         user: adminUser,
         name: "Error Exposure Test",
         frequency: "daily",
@@ -649,9 +649,9 @@ describe.sequential("Security Validation Tests", () => {
         job: { id: "test-job-error" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId,
           originalName: "Test Import",
           userId: adminUser.id,

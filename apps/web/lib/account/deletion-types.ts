@@ -10,7 +10,7 @@ export interface DeletionSummary {
   catalogs: { public: number; private: number };
   datasets: { public: number; private: number };
   events: { inPublicDatasets: number; inPrivateDatasets: number };
-  scheduledImports: number;
+  scheduledIngests: number;
   importFiles: number;
   media: number;
   views: number;
@@ -30,7 +30,7 @@ export interface ExecuteDeletionResult {
   deletedUserId: number;
   transferredToUserId: number;
   dataTransferred: { catalogs: number; datasets: number };
-  dataDeleted: { catalogs: number; datasets: number; events: number; scheduledImports: number; importFiles: number };
+  dataDeleted: { catalogs: number; datasets: number; events: number; scheduledIngests: number; importFiles: number };
 }
 
 /** Check result for whether a user can be deleted. */

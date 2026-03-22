@@ -14,18 +14,18 @@
 import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { cleanupSidecarFiles, getFileRowCount, streamBatchesFromFile } from "@/lib/import/file-readers";
-import { ProgressTrackingService } from "@/lib/import/progress-tracking";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { cleanupSidecarFiles, getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { events as eventsTable } from "@/payload-generated-schema";
-import type { Dataset, ImportJob } from "@/payload-types";
+import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { failImportJob, loadJobResources } from "../utils/resource-loading";
-import { getImportFilePath } from "../utils/upload-path";
+import { failIngestJob, loadJobResources } from "../utils/resource-loading";
+import { getIngestFilePath } from "../utils/upload-path";
 
 interface DuplicateAnalysisResult {
   internalDuplicates: Array<{ rowNumber: number; uniqueId: string; firstOccurrence?: number; count?: number }>;
@@ -37,7 +37,7 @@ interface DuplicateAnalysisResult {
 // Helper functions to reduce complexity
 const skipDeduplication = async (
   payload: Payload,
-  importJobId: string | number,
+  ingestJobId: string | number,
   totalRows: number,
   dataset: Dataset,
   logger: ReturnType<typeof createJobLogger>
@@ -46,8 +46,8 @@ const skipDeduplication = async (
     logger.info("Deduplication disabled for dataset, skipping", { datasetId: dataset?.id });
 
     await payload.update({
-      collection: COLLECTION_NAMES.IMPORT_JOBS,
-      id: importJobId,
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      id: ingestJobId,
       data: {
         stage: PROCESSING_STAGE.DETECT_SCHEMA,
         duplicates: {
@@ -67,7 +67,7 @@ const analyzeInternalDuplicates = async (
   payload: Payload,
   filePath: string,
   dataset: Dataset,
-  job: ImportJob
+  job: IngestJob
 ): Promise<{
   internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
   uniqueIdMap: Map<string, number>;
@@ -150,10 +150,10 @@ const analyzeExternalDuplicates = async (
 // Helper to perform full duplicate analysis
 const performDuplicateAnalysis = async (
   payload: Payload,
-  importJobId: number | string,
+  ingestJobId: number | string,
   filePath: string,
   dataset: Dataset,
-  job: ImportJob,
+  job: IngestJob,
   fileTotalRows: number
 ): Promise<{
   internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
@@ -161,7 +161,7 @@ const performDuplicateAnalysis = async (
   totalRows: number;
   uniqueRows: number;
 }> => {
-  await ProgressTrackingService.startStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES, fileTotalRows);
+  await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES, fileTotalRows);
 
   const { internalDuplicates, uniqueIdMap, totalRows } = await analyzeInternalDuplicates(
     payload,
@@ -174,8 +174,8 @@ const performDuplicateAnalysis = async (
   // Subtract external duplicates from unique count since they'll be skipped during event creation
   const uniqueRows = uniqueIdMap.size - externalDuplicates.length;
 
-  await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
-  await ProgressTrackingService.updatePostDeduplicationTotals(payload, importJobId, uniqueRows);
+  await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
+  await ProgressTrackingService.updatePostDeduplicationTotals(payload, ingestJobId, uniqueRows);
 
   return { internalDuplicates, externalDuplicates, totalRows, uniqueRows };
 };
@@ -183,7 +183,7 @@ const performDuplicateAnalysis = async (
 // Helper to update job with duplicate results
 const updateJobWithDuplicates = async (
   payload: Payload,
-  importJobId: number | string,
+  ingestJobId: number | string,
   dataset: Dataset,
   results: {
     internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
@@ -193,8 +193,8 @@ const updateJobWithDuplicates = async (
   }
 ): Promise<void> => {
   await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: ingestJobId,
     data: {
       duplicates: {
         strategy: dataset.idStrategy?.type ?? "content-hash",
@@ -215,14 +215,14 @@ const updateJobWithDuplicates = async (
 /** Initialize progress tracking if stages don't exist yet. */
 const initializeProgressIfNeeded = async (
   payload: Payload,
-  importJobId: string | number,
-  job: ImportJob,
+  ingestJobId: string | number,
+  job: IngestJob,
   totalRows: number
 ): Promise<void> => {
   const stagesExist = job.progress?.stages && Object.keys(job.progress.stages).length > 0;
   if (!stagesExist) {
-    await ProgressTrackingService.initializeStageProgress(payload, importJobId, totalRows);
-    const updatedJob = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
+    await ProgressTrackingService.initializeStageProgress(payload, ingestJobId, totalRows);
+    const updatedJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
     Object.assign(job, updatedJob);
   }
 };
@@ -230,9 +230,9 @@ const initializeProgressIfNeeded = async (
 /** Handle the disabled-dedup path: pre-scan for totalRows, skip analysis. Returns result or null. */
 const handleDisabledDedup = async (
   payload: Payload,
-  importJobId: string | number,
+  ingestJobId: string | number,
   filePath: string,
-  job: ImportJob,
+  job: IngestJob,
   dataset: Dataset,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{ output: { skipped: boolean } } | null> => {
@@ -242,11 +242,11 @@ const handleDisabledDedup = async (
 
   // Only pre-scan the file when dedup is disabled (need totalRows for summary)
   const fileTotalRows = await getFileRowCount(filePath, job.sheetIndex ?? 0);
-  await initializeProgressIfNeeded(payload, importJobId, job, fileTotalRows);
+  await initializeProgressIfNeeded(payload, ingestJobId, job, fileTotalRows);
 
-  const shouldSkip = await skipDeduplication(payload, importJobId, fileTotalRows, dataset, logger);
+  const shouldSkip = await skipDeduplication(payload, ingestJobId, fileTotalRows, dataset, logger);
   if (shouldSkip) {
-    await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
+    await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
     return { output: { skipped: true } };
   }
 
@@ -258,34 +258,34 @@ export const analyzeDuplicatesJob = {
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as AnalyzeDuplicatesJobInput["input"];
-    const { importJobId } = input;
+    const { ingestJobId } = input;
 
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "analyze-duplicates");
-    logger.info("Starting duplicate analysis", { importJobId });
+    logger.info("Starting duplicate analysis", { ingestJobId });
     const startTime = Date.now();
 
     try {
-      const { job, dataset, importFile } = await loadJobResources(payload, importJobId);
-      const filePath = getImportFilePath(importFile.filename ?? "");
+      const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);
+      const filePath = getIngestFilePath(ingestFile.filename ?? "");
 
       // When dedup is disabled, skip analysis early (uses pre-scan for totalRows summary)
-      const skipResult = await handleDisabledDedup(payload, importJobId, filePath, job, dataset, logger);
+      const skipResult = await handleDisabledDedup(payload, ingestJobId, filePath, job, dataset, logger);
       if (skipResult) {
         return skipResult;
       }
 
       // Initialize progress tracking if needed (use 0 — streaming will update it)
-      await initializeProgressIfNeeded(payload, importJobId, job, 0);
+      await initializeProgressIfNeeded(payload, ingestJobId, job, 0);
 
       // Perform duplicate analysis — totalRows derived from streaming, no pre-scan needed
-      const results = await performDuplicateAnalysis(payload, importJobId, filePath, dataset, job, 0);
+      const results = await performDuplicateAnalysis(payload, ingestJobId, filePath, dataset, job, 0);
 
       // Update job with results
-      await updateJobWithDuplicates(payload, importJobId, dataset, results);
+      await updateJobWithDuplicates(payload, ingestJobId, dataset, results);
 
       logPerformance("Duplicate analysis", Date.now() - startTime, {
-        importJobId,
+        ingestJobId,
         totalRows: results.totalRows,
         uniqueRows: results.uniqueRows,
         internalDuplicates: results.internalDuplicates.length,
@@ -301,18 +301,18 @@ export const analyzeDuplicatesJob = {
         },
       };
     } catch (error) {
-      logError(error, "Duplicate analysis failed", { importJobId });
+      logError(error, "Duplicate analysis failed", { ingestJobId });
 
       // Clean up sidecar CSV files on error (Excel → CSV conversions)
       try {
-        const { job: failedJob, importFile: failedFile } = await loadJobResources(payload, importJobId);
-        const failedFilePath = getImportFilePath(failedFile.filename ?? "");
+        const { job: failedJob, ingestFile: failedFile } = await loadJobResources(payload, ingestJobId);
+        const failedFilePath = getIngestFilePath(failedFile.filename ?? "");
         cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
       } catch {
         // Best-effort cleanup — don't mask the original error
       }
 
-      await failImportJob(payload, importJobId, error, "analyze-duplicates");
+      await failIngestJob(payload, ingestJobId, error, "analyze-duplicates");
 
       throw error;
     }

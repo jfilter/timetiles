@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-// API response structure from /api/import/[importId]/progress
+// API response structure from /api/ingest/[ingestId]/progress
 interface ProgressApiResponse {
   type: string;
   id: number;
@@ -72,7 +72,7 @@ const transformProgressResponse = (data: ProgressApiResponse): ImportProgress =>
 
 describe("transformProgressResponse", () => {
   const createMockApiResponse = (overrides: Partial<ProgressApiResponse> = {}): ProgressApiResponse => ({
-    type: "import-file",
+    type: "ingest-file",
     id: 1,
     status: "completed",
     originalName: "test.csv",

@@ -16,8 +16,8 @@ import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import {
   createMockContext,
-  createMockImportFile,
-  createMockImportJob,
+  createMockIngestFile,
+  createMockIngestJob,
   createMockPayload,
   TEST_IDS,
 } from "@/tests/setup/factories";
@@ -36,14 +36,14 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/import/file-readers", () => ({
+vi.mock("@/lib/ingest/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
 
 vi.mock("@/lib/services/schema-builder", () => ({ ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder }));
 
-vi.mock("@/lib/import/progress-tracking", () => ({
+vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     startStage: mocks.startStage,
     completeStage: mocks.completeStage,
@@ -55,7 +55,7 @@ vi.mock("@/lib/import/progress-tracking", () => ({
 vi.mock("@/lib/types/schema-detection", () => ({ getSchemaBuilderState: vi.fn().mockReturnValue(null) }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
-  getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
+  getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
 /** Helper to create a mock async iterable from arrays of batches. */
@@ -85,7 +85,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
     // Create standard mock payload and context using factories
     mockPayload = createMockPayload();
-    mockContext = createMockContext(mockPayload, { importJobId: TEST_IDS.IMPORT_JOB });
+    mockContext = createMockContext(mockPayload, { ingestJobId: TEST_IDS.IMPORT_JOB });
 
     // Mock schema builder instance (job-specific)
     mockSchemaBuilderInstance = {
@@ -105,8 +105,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
   describe("Success Cases", () => {
     it("should analyze batch data and detect schema successfully", async () => {
       // Create mock data using factories
-      const mockImportJob = createMockImportJob();
-      const mockImportFile = createMockImportFile();
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data
       const mockFileData = [
@@ -143,7 +143,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       };
 
       // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
@@ -183,8 +183,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
     it("should detect geocoding fields via schema builder", async () => {
       // Create mock data using factories
-      const mockImportJob = createMockImportJob();
-      const mockImportFile = createMockImportFile();
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data with geocoding fields
       const mockData = [
@@ -241,7 +241,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       };
 
       // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockData]));
 
@@ -270,8 +270,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
     it("should process multiple batches in single job", async () => {
       // Create mock data using factories
-      const mockImportJob = createMockImportJob();
-      const mockImportFile = createMockImportFile();
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock two batches of data
       const batch1 = Array.from({ length: 3 }, (_, i) => ({ id: `${i + 1}`, title: `Event ${i + 1}` }));
@@ -297,7 +297,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       };
 
       // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
 
       // Stream yields two batches
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([batch1, batch2]));
@@ -329,11 +329,11 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
     it("should handle empty file and move to validation stage", async () => {
       // Create mock data using factories
-      const mockImportJob = createMockImportJob();
-      const mockImportFile = createMockImportFile();
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
 
       // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
 
       // Mock empty stream (no batches)
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
@@ -346,7 +346,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       // Verify stage transition to validation
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: { stage: "validate-schema" },
       });
@@ -358,8 +358,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
     it("should skip duplicate rows during schema building", async () => {
       // Create mock data using factories (with duplicates)
-      const mockImportJob = createMockImportJob({ hasDuplicates: true });
-      const mockImportFile = createMockImportFile();
+      const mockIngestJob = createMockIngestJob({ hasDuplicates: true });
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data (3 rows, but 2 are duplicates)
       const mockFileData = [
@@ -380,7 +380,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       };
 
       // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
@@ -413,8 +413,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
   describe("Progress Tracking", () => {
     it("should pass totalRows (not uniqueRows) to startStage when duplicates exist", async () => {
       // When hasDuplicates=true, factory sets totalRows=3, uniqueRows=1
-      const mockImportJob = createMockImportJob({ hasDuplicates: true });
-      const mockImportFile = createMockImportFile();
+      const mockIngestJob = createMockIngestJob({ hasDuplicates: true });
+      const mockIngestFile = createMockIngestFile();
 
       const mockFileData = [
         { id: "1", title: "Event 1" },
@@ -428,7 +428,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         recordCount: 1,
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
       mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
@@ -452,29 +452,29 @@ describe.sequential("SchemaDetectionJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error when import job not found", async () => {
+    it("should throw error when ingest job not found", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
-      await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("Import job not found: import-123");
+      await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
     });
 
-    it("should throw error when import file not found", async () => {
-      const mockImportJob = createMockImportJob();
+    it("should throw error when ingest file not found", async () => {
+      const mockIngestJob = createMockIngestJob();
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Import file not found
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Ingest file not found
 
-      await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("Import file not found");
+      await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
     it("should handle streaming errors", async () => {
-      const mockImportJob = createMockImportJob();
-      const mockImportFile = createMockImportFile();
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
       const mockDataset = { id: TEST_IDS.DATASET };
 
       // Use mockImplementation to handle all findByID calls (initial + error-path reload)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         if (collection === "datasets") return Promise.resolve(mockDataset);
         return Promise.resolve(null);
       });
@@ -493,21 +493,21 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       // Verify error handling updated job status
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: { stage: "failed", errorLog: { lastError: "File not found", context: "schema-detection" } },
       });
     });
 
     it("should clean up sidecar files on error", async () => {
-      const mockImportJob = createMockImportJob();
-      const mockImportFile = createMockImportFile();
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
       const mockDataset = { id: TEST_IDS.DATASET };
 
       // Use mockImplementation to handle all findByID calls (initial + error-path reload)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         if (collection === "datasets") return Promise.resolve(mockDataset);
         return Promise.resolve(null);
       });
@@ -527,7 +527,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Verify sidecar cleanup was called with the correct file path and sheet index
       expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith(
         expect.stringContaining("test.csv"),
-        0 // sheetIndex from mockImportJob
+        0 // sheetIndex from mockIngestJob
       );
     });
   });
@@ -535,14 +535,14 @@ describe.sequential("SchemaDetectionJob Handler", () => {
   describe("Edge Cases", () => {
     it("should not seed schema builder from persisted state on retry", async () => {
       // Simulate a retry: import job has persisted schemaBuilderState from a previous attempt
-      const mockImportJob = createMockImportJob();
+      const mockIngestJob = createMockIngestJob();
       // Add persisted state simulating a partial prior run
-      (mockImportJob as any).schemaBuilderState = {
+      (mockIngestJob as any).schemaBuilderState = {
         fieldStats: { id: { occurrences: 10, uniqueValues: 10, typeDistribution: { string: 10 } } },
         recordCount: 10,
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       const mockFileData = [{ id: "1", title: "Event 1" }];
 
@@ -556,7 +556,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         recordCount: 1,
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(mockImportFile);
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 

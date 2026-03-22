@@ -78,7 +78,7 @@ vi.mock("@/lib/services/cache/url-fetch-cache", () => {
 // ---------------------------------------------------------------------------
 // Imports under test (must come AFTER vi.mock calls)
 // ---------------------------------------------------------------------------
-import { fetchRemoteData } from "@/lib/import/fetch-remote-data";
+import { fetchRemoteData } from "@/lib/ingest/fetch-remote-data";
 import { fetchPaginated } from "@/lib/jobs/handlers/url-fetch-job/paginated-fetch";
 import { TestServer } from "@/tests/setup/integration/http-server";
 

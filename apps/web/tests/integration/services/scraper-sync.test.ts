@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { parseManifest } from "@/lib/import/manifest-parser";
+import { parseManifest } from "@/lib/ingest/manifest-parser";
 
 describe.sequential("Scraper Manifest Parsing", () => {
   it("should parse valid YAML manifest and return scrapers", () => {

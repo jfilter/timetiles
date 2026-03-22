@@ -55,7 +55,7 @@ describe("/api/v1/events - field filtering", () => {
         data: {
           uniqueId: `field-filter-${i + 1}`,
           dataset: testDatasetId,
-          data: { title: `Event ${i + 1}`, category: categories[i] },
+          originalData: { title: `Event ${i + 1}`, category: categories[i] },
           location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
         },
@@ -72,7 +72,7 @@ describe("/api/v1/events - field filtering", () => {
         data: {
           uniqueId: `nested-field-filter-${i + 1}`,
           dataset: nestedDatasetId,
-          data: { title: `Nested Event ${i + 1}`, venue: { city, address: { city } } },
+          originalData: { title: `Nested Event ${i + 1}`, venue: { city, address: { city } } },
           location: { latitude: 41.7128 + i * 0.01, longitude: -73.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 1, 15 + i).toISOString(),
         },

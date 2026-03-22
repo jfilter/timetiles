@@ -60,7 +60,7 @@ describe("useFeatureEnabled", () => {
     const testError = new Error("network failure");
     mockUseQuery.mockReturnValue({ data: undefined, isLoading: false, error: testError });
 
-    const result = useFeatureEnabled("enableScheduledImports");
+    const result = useFeatureEnabled("enableScheduledIngests");
 
     expect(result.isLoading).toBe(false);
     expect(result.error).toBe(testError);

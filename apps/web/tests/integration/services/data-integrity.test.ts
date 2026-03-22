@@ -21,7 +21,7 @@ import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 import {
   createIntegrationTestEnvironment,
   withCatalog,
-  withScheduledImport,
+  withScheduledIngest,
   withTestServer,
   withUsers,
 } from "@/tests/setup/integration/environment";
@@ -79,7 +79,7 @@ describe.sequential("Data Integrity Tests", () => {
       const csvContent = "id,name,value\n1,Test Item,100\n2,Another Item,200";
       const expectedHash = crypto.createHash("sha256").update(csvContent).digest("hex");
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/hash-test.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/hash-test.csv`, {
         user: testUser,
         name: "Hash Test Import",
         frequency: "daily",
@@ -96,9 +96,9 @@ describe.sequential("Data Integrity Tests", () => {
         job: { id: "test-job-hash" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Hash Test",
           userId: testUser.id,
@@ -111,16 +111,16 @@ describe.sequential("Data Integrity Tests", () => {
         expect(successOutput.contentHash).toBe(expectedHash);
 
         // Check that the import file was created with the hash
-        const importFile = await payload.findByID({ collection: "import-files", id: successOutput.importFileId });
+        const ingestFile = await payload.findByID({ collection: "ingest-files", id: successOutput.ingestFileId });
 
-        expect(importFile.metadata?.urlFetch?.contentHash).toBe(expectedHash);
+        expect(ingestFile.metadata?.urlFetch?.contentHash).toBe(expectedHash);
       }
     });
 
     it("should detect duplicate content across multiple imports", async () => {
       const csvContent = "id,name,value\n1,Duplicate Test,100";
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duplicate.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/duplicate.csv`, {
         user: testUser,
         name: "Duplicate Detection Import",
         frequency: "hourly",
@@ -137,9 +137,9 @@ describe.sequential("Data Integrity Tests", () => {
         job: { id: "test-job-dup-1" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "First Import",
           userId: testUser.id,
@@ -153,8 +153,8 @@ describe.sequential("Data Integrity Tests", () => {
 
         // Mark the first import as completed so duplicate detection can find it
         await payload.update({
-          collection: "import-files",
-          id: successOutput.importFileId,
+          collection: "ingest-files",
+          id: successOutput.ingestFileId,
           data: { status: "completed" },
         });
       }
@@ -164,9 +164,9 @@ describe.sequential("Data Integrity Tests", () => {
         job: { id: "test-job-dup-2" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Second Import",
           userId: testUser.id,
@@ -189,7 +189,7 @@ describe.sequential("Data Integrity Tests", () => {
       const rowCount = Math.ceil((5 * 1024 * 1024) / row.length);
       const largeContent = header + row.repeat(rowCount);
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large-hash.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/large-hash.csv`, {
         user: testUser,
         name: "Large File Hash Import",
         frequency: "daily",
@@ -213,9 +213,9 @@ describe.sequential("Data Integrity Tests", () => {
         job: { id: "test-job-large-hash" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Large Hash Test",
           userId: testUser.id,
@@ -231,7 +231,7 @@ describe.sequential("Data Integrity Tests", () => {
 
   describe("Execution History Tracking", () => {
     it("should accurately track execution history", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/history.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/history.csv`, {
         user: testUser,
         name: "History Tracking Import",
         frequency: "hourly",
@@ -280,16 +280,16 @@ describe.sequential("Data Integrity Tests", () => {
           executedAt: execTime.toISOString(),
           status: "success" as const,
           duration: 100 + i * 50,
-          importFileId: null,
+          ingestFileId: null,
         };
 
         executionHistory.push(executionEntry);
       }
 
-      // Update the scheduled import with all execution history
+      // Update the scheduled ingest with all execution history
       await payload.update({
-        collection: "scheduled-imports",
-        id: scheduledImport.id,
+        collection: "scheduled-ingests",
+        id: scheduledIngest.id,
         data: {
           lastRun: executionTimes.at(-1),
           lastStatus: "success",
@@ -304,8 +304,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      // Fetch the updated scheduled import
-      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+      // Fetch the updated scheduled ingest
+      const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       // Check execution history
       expect(updated.executionHistory).toHaveLength(3);
@@ -322,7 +322,7 @@ describe.sequential("Data Integrity Tests", () => {
     });
 
     it("should limit execution history to 10 entries", async () => {
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/history-limit.csv`,
@@ -352,21 +352,21 @@ describe.sequential("Data Integrity Tests", () => {
 
         await scheduleManagerJob.handler({ job: { id: `test-schedule-history-limit-${i}` }, req: { payload } });
 
-        // Manually update the scheduled import with execution history
-        const currentScheduled = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+        // Manually update the scheduled ingest with execution history
+        const currentScheduled = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
         const executionEntry = {
           executedAt: new Date(baseTime.getTime() + (i + 1) * 3600000).toISOString(),
           status: "success" as const,
           duration: 100 + i * 10,
-          importFileId: null,
+          ingestFileId: null,
         };
 
         const executionHistory = [...(currentScheduled.executionHistory ?? []), executionEntry].slice(-10);
 
         await payload.update({
-          collection: "scheduled-imports",
-          id: scheduledImport.id,
+          collection: "scheduled-ingests",
+          id: scheduledIngest.id,
           data: {
             lastRun: new Date(baseTime.getTime() + (i + 1) * 3600000),
             lastStatus: "success",
@@ -382,8 +382,8 @@ describe.sequential("Data Integrity Tests", () => {
         });
       }
 
-      // Fetch the updated scheduled import
-      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+      // Fetch the updated scheduled ingest
+      const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       // Should only keep last 10 entries
       expect(updated.executionHistory).toHaveLength(10);
@@ -402,7 +402,7 @@ describe.sequential("Data Integrity Tests", () => {
 
   describe("Statistics Accuracy", () => {
     it("should accurately track success and failure rates", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/stats.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/stats.csv`, {
         user: testUser,
         name: "Statistics Test Import",
         frequency: "hourly",
@@ -443,7 +443,7 @@ describe.sequential("Data Integrity Tests", () => {
           await scheduleManagerJob.handler({ job: { id: `test-schedule-stats-${i}` }, req: { payload } });
 
           // Manually update statistics
-          const currentScheduled = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+          const currentScheduled = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
           const stats = currentScheduled.statistics ?? {
             totalRuns: 0,
@@ -453,8 +453,8 @@ describe.sequential("Data Integrity Tests", () => {
           };
 
           await payload.update({
-            collection: "scheduled-imports",
-            id: scheduledImport.id,
+            collection: "scheduled-ingests",
+            id: scheduledIngest.id,
             data: {
               statistics: {
                 totalRuns: stats.totalRuns + 1,
@@ -469,8 +469,8 @@ describe.sequential("Data Integrity Tests", () => {
         }
       }
 
-      // Fetch the updated scheduled import
-      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+      // Fetch the updated scheduled ingest
+      const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       // Check statistics accuracy
       expect(updated.statistics.totalRuns).toBeGreaterThan(0);
@@ -481,7 +481,7 @@ describe.sequential("Data Integrity Tests", () => {
     });
 
     it("should calculate average duration correctly", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duration.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/duration.csv`, {
         user: testUser,
         name: "Duration Test Import",
         frequency: "hourly",
@@ -513,7 +513,7 @@ describe.sequential("Data Integrity Tests", () => {
         await scheduleManagerJob.handler({ job: { id: `test-schedule-duration-${i}` }, req: { payload } });
 
         // Manually update statistics with duration
-        const currentScheduled = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+        const currentScheduled = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
         const stats = currentScheduled.statistics ?? {
           totalRuns: 0,
@@ -532,14 +532,14 @@ describe.sequential("Data Integrity Tests", () => {
           executedAt: new Date(baseTime.getTime() + (i + 1) * 3600000).toISOString(),
           status: "success" as const,
           duration: duration,
-          importFileId: null,
+          ingestFileId: null,
         };
 
         const executionHistory = [...(currentScheduled.executionHistory ?? []), executionEntry].slice(-10);
 
         await payload.update({
-          collection: "scheduled-imports",
-          id: scheduledImport.id,
+          collection: "scheduled-ingests",
+          id: scheduledIngest.id,
           data: {
             statistics: {
               totalRuns: stats.totalRuns + 1,
@@ -552,8 +552,8 @@ describe.sequential("Data Integrity Tests", () => {
         });
       }
 
-      // Fetch the updated scheduled import
-      const updated = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+      // Fetch the updated scheduled ingest
+      const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       // Average duration should be calculated
       expect(updated.statistics.averageDuration).toBeGreaterThan(0);
@@ -573,7 +573,7 @@ describe.sequential("Data Integrity Tests", () => {
     it("should preserve exact file content including special characters", async () => {
       const specialContent = 'id,name,description\n1,"Test, Inc.","Quote: ""Hello"" - O\'Reilly"\n2,Café,Niño José™';
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/special.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/special.csv`, {
         user: testUser,
         name: "Special Chars Import",
         frequency: "daily",
@@ -593,9 +593,9 @@ describe.sequential("Data Integrity Tests", () => {
         job: { id: "test-job-special" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Special Chars Test",
           userId: testUser.id,
@@ -612,7 +612,7 @@ describe.sequential("Data Integrity Tests", () => {
     });
 
     it("should handle different encodings correctly", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/encoded.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/encoded.csv`, {
         user: testUser,
         name: "Encoding Test Import",
         frequency: "daily",
@@ -635,9 +635,9 @@ describe.sequential("Data Integrity Tests", () => {
         job: { id: "test-job-encoding" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Encoding Test",
           userId: testUser.id,
@@ -654,7 +654,7 @@ describe.sequential("Data Integrity Tests", () => {
 
   describe("Retry Data Consistency", () => {
     it("should maintain data consistency across retries", async () => {
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/retry-consistency.csv`,
@@ -699,9 +699,9 @@ describe.sequential("Data Integrity Tests", () => {
         job: { id: "test-job-retry-consistency" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Retry Consistency Test",
           userId: testUser.id,

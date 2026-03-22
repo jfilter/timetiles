@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { FieldMapping, SheetInfo } from "@/lib/types/import-wizard";
+import type { FieldMapping, SheetInfo } from "@/lib/types/ingest-wizard";
 
 // Mock zustand/middleware so persist and devtools are no-op wrappers.
 // This avoids localStorage/devtools dependencies in the test environment.
@@ -46,7 +46,7 @@ import {
   useWizardStore,
   type WizardState,
   type WizardStep,
-} from "../../../app/[locale]/(frontend)/import/_components/wizard-store";
+} from "../../../app/[locale]/(frontend)/ingest/_components/wizard-store";
 
 /** Reset the store to a known state before each test */
 const resetStore = (overrides?: Partial<WizardState>) => {
@@ -306,7 +306,7 @@ describe("Wizard Store", () => {
       useWizardStore.getState().startProcessing(456);
 
       const state = useWizardStore.getState();
-      expect(state.importFileId).toBe(456);
+      expect(state.ingestFileId).toBe(456);
       expect(state.error).toBeNull();
     });
 
@@ -330,7 +330,7 @@ describe("Wizard Store", () => {
       resetStore({
         currentStep: 5 as WizardStep,
         file: { name: "test.csv", size: 1024, mimeType: "text/csv" },
-        importFileId: 789,
+        ingestFileId: 789,
       });
 
       useWizardStore.getState().complete();
@@ -338,7 +338,7 @@ describe("Wizard Store", () => {
       const state = useWizardStore.getState();
       expect(state.currentStep).toBe(1);
       expect(state.file).toBeNull();
-      expect(state.importFileId).toBeNull();
+      expect(state.ingestFileId).toBeNull();
     });
 
     it("reset resets to initial state", () => {
@@ -380,7 +380,7 @@ describe("Wizard Store", () => {
         transforms: { 0: [] },
         deduplicationStrategy: "update",
         geocodingEnabled: false,
-        importFileId: 123,
+        ingestFileId: 123,
         error: null,
       });
 
@@ -401,7 +401,7 @@ describe("Wizard Store", () => {
       expect(state.transforms).toEqual({});
       expect(state.deduplicationStrategy).toBe("skip");
       expect(state.geocodingEnabled).toBe(true);
-      expect(state.importFileId).toBeNull();
+      expect(state.ingestFileId).toBeNull();
       expect(state.error).toBeNull();
       expect(state.configSuggestions).toHaveLength(0);
     });
@@ -745,7 +745,7 @@ describe("canProceed Validation", () => {
     });
 
     it("blocks even after processing completes", () => {
-      const state = { ...initialState, currentStep: 6 as WizardStep, importFileId: 123 };
+      const state = { ...initialState, currentStep: 6 as WizardStep, ingestFileId: 123 };
       expect(computeCanProceed(state)).toBe(false);
     });
   });

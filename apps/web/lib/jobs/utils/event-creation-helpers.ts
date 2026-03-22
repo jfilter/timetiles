@@ -34,7 +34,7 @@ export const extractCoordinates = (
   geocodingResults: ReturnType<typeof getImportGeocodingResults>
 ): {
   location?: { latitude: number; longitude: number };
-  coordinateSource: { type: "import" | "geocoded" | "none"; confidence?: number; normalizedAddress?: string };
+  coordinateSource: { type: "source-data" | "geocoded" | "none"; confidence?: number; normalizedAddress?: string };
 } => {
   // Try to read coordinates directly from the row (imported data)
   const { latitudePath, longitudePath, locationPath } = fieldMappings;
@@ -53,7 +53,10 @@ export const extractCoordinates = (
       parsedLng >= -180 &&
       parsedLng <= 180
     ) {
-      return { location: { latitude: parsedLat, longitude: parsedLng }, coordinateSource: { type: "import" as const } };
+      return {
+        location: { latitude: parsedLat, longitude: parsedLng },
+        coordinateSource: { type: "source-data" as const },
+      };
     }
   }
 
@@ -128,7 +131,7 @@ const extractLocationName = (row: Record<string, unknown>, locationNamePath?: st
 export const createEventData = (
   row: Record<string, unknown>,
   dataset: Dataset,
-  importJobId: string | number,
+  ingestJobId: string | number,
   job: {
     datasetSchemaVersion?: unknown;
     detectedFieldMappings?: {
@@ -143,7 +146,7 @@ export const createEventData = (
   transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null
 ) => {
   const uniqueId = generateUniqueId(row, dataset.idStrategy);
-  const importJobNum = typeof importJobId === "string" ? parseStrictInteger(importJobId) : importJobId;
+  const ingestJobNum = typeof ingestJobId === "string" ? parseStrictInteger(ingestJobId) : ingestJobId;
 
   const schemaVersionData = job.datasetSchemaVersion;
   let schemaVersion: number | undefined;
@@ -161,8 +164,8 @@ export const createEventData = (
 
   return {
     dataset: dataset.id,
-    importJob: importJobNum ?? undefined,
-    data: row,
+    ingestJob: ingestJobNum ?? undefined,
+    originalData: row,
     uniqueId,
     eventTimestamp: (extractTimestamp(row, fieldMappings.timestampPath) ?? new Date()).toISOString(),
     location,

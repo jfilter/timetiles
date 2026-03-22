@@ -18,7 +18,7 @@ import {
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   withCatalog,
   withDataset,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -60,7 +60,7 @@ describe.sequential("Dataset Detection Job", () => {
     const csvContent = "name,date\nEvent 1,2024-01-01\nEvent 2,2024-01-02\n";
 
     // Create import file using helper
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "test.csv",
       mimeType: "text/csv",
       user: uploadUserId,
@@ -68,21 +68,21 @@ describe.sequential("Dataset Detection Job", () => {
       datasetsProcessed: 0,
     });
 
-    // NOTE: The import-files collection afterChange hook automatically queues dataset-detection
+    // NOTE: The ingest-files collection afterChange hook automatically queues dataset-detection
     // So we just need to run the jobs, not queue manually
 
-    // Run the dataset-detection job (automatically queued by import-files hook)
+    // Run the dataset-detection job (automatically queued by ingest-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
     // Check that import-job was created
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
     });
 
     expect(importJobs.docs).toHaveLength(1);
-    const importJob = importJobs.docs[0];
-    expect(importJob.stage).toBe("analyze-duplicates");
+    const ingestJob = importJobs.docs[0];
+    expect(ingestJob.stage).toBe("analyze-duplicates");
 
     // After dataset-detection, analyze-duplicates job should be queued
     const result2 = await payload.jobs.run({ allQueues: true, limit: 10 });
@@ -91,7 +91,7 @@ describe.sequential("Dataset Detection Job", () => {
     expect(Object.keys(result2.jobStatus).length).toBeGreaterThan(0);
 
     // Verify import-job progressed past analyze-duplicates stage
-    const updatedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
+    const updatedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
 
     expect(updatedJob.stage).not.toBe("analyze-duplicates");
     expect(updatedJob.stage).toBe("detect-schema"); // Should be at next stage
@@ -109,7 +109,7 @@ describe.sequential("Dataset Detection Job", () => {
     });
 
     // Create import file with matching originalName
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename,
       mimeType: "text/csv",
       user: uploadUserId,
@@ -118,21 +118,21 @@ describe.sequential("Dataset Detection Job", () => {
       },
     });
 
-    // Run dataset-detection job (automatically queued by import-files hook)
+    // Run dataset-detection job (automatically queued by ingest-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
     // Find the import-job created by dataset-detection
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
       depth: 1,
     });
 
     expect(importJobs.docs).toHaveLength(1);
-    const importJob = importJobs.docs[0];
+    const ingestJob = importJobs.docs[0];
 
     // Dataset-detection should reuse our pre-created dataset
-    const datasetId = extractRelationId(importJob.dataset);
+    const datasetId = extractRelationId(ingestJob.dataset);
     expect(datasetId).toBe(preCreatedDataset.id);
 
     // Fetch the dataset to verify language is preserved
@@ -150,7 +150,7 @@ describe.sequential("Dataset Detection Job", () => {
     });
 
     // Create import file with wizard metadata including datasetMapping
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "wizard-test.csv",
       mimeType: "text/csv",
       user: uploadUserId,
@@ -163,22 +163,22 @@ describe.sequential("Dataset Detection Job", () => {
       },
     });
 
-    // Run the dataset-detection job (automatically queued by import-files hook)
+    // Run the dataset-detection job (automatically queued by ingest-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
     // Check that import-job was created pointing to the wizard's pre-created dataset
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
       depth: 1,
     });
 
     expect(importJobs.docs).toHaveLength(1);
-    const importJob = importJobs.docs[0];
-    expect(importJob.stage).toBe("analyze-duplicates");
+    const ingestJob = importJobs.docs[0];
+    expect(ingestJob.stage).toBe("analyze-duplicates");
 
     // Should use the dataset the wizard configured, not auto-create a new one
-    const datasetId = extractRelationId(importJob.dataset);
+    const datasetId = extractRelationId(ingestJob.dataset);
     expect(datasetId).toBe(wizardDataset.id);
   });
 
@@ -192,25 +192,25 @@ describe.sequential("Dataset Detection Job", () => {
     });
 
     // Create import file WITHOUT originalName
-    const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "different-name.csv", // Different from dataset name
       mimeType: "text/csv",
       user: uploadUserId,
       // NO originalName set
     });
 
-    // Run dataset-detection job (automatically queued by import-files hook)
+    // Run dataset-detection job (automatically queued by ingest-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
     // Find the import-job
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
       depth: 1,
     });
 
-    const importJob = importJobs.docs[0];
-    const datasetId = extractRelationId(importJob.dataset);
+    const ingestJob = importJobs.docs[0];
+    const datasetId = extractRelationId(ingestJob.dataset);
 
     // Creates a new dataset because originalName is null
     expect(datasetId).not.toBe(preCreatedDataset.id);

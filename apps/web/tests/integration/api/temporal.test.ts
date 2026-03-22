@@ -74,7 +74,7 @@ describe("/api/v1/events/temporal", () => {
         data: {
           uniqueId: `histogram-test-event-${i + 1}`,
           dataset: Number.parseInt(testDatasetId),
-          data: {
+          originalData: {
             title: `Test Event ${i + 1}`,
             description: `Test event for histogram on ${testDates[i]?.toISOString()}`,
             venue: { city: i < 3 ? "Berlin" : "Paris", address: { city: i < 3 ? "Berlin" : "Paris" } },

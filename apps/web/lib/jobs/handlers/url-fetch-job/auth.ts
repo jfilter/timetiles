@@ -8,12 +8,12 @@
  * @category Jobs/UrlFetch
  */
 
-import type { ScheduledImport } from "@/payload-types";
+import type { ScheduledIngest } from "@/payload-types";
 
 /**
  * Builds HTTP headers based on authentication configuration.
  */
-export const buildAuthHeaders = (authConfig: ScheduledImport["authConfig"] | undefined): Record<string, string> => {
+export const buildAuthHeaders = (authConfig: ScheduledIngest["authConfig"] | undefined): Record<string, string> => {
   const headers: Record<string, string> = { "User-Agent": "TimeTiles/1.0 (Data Import Service)" };
 
   if (!authConfig || authConfig.type === "none") {

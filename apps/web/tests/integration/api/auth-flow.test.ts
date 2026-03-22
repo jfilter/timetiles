@@ -145,7 +145,7 @@ describe.sequential("Authentication Flow", () => {
       expect(usageRecord.currentActiveSchedules).toBe(0);
       expect(usageRecord.urlFetchesToday).toBe(0);
       expect(usageRecord.fileUploadsToday).toBe(0);
-      expect(usageRecord.importJobsToday).toBe(0);
+      expect(usageRecord.ingestJobsToday).toBe(0);
       expect(usageRecord.totalEventsCreated).toBe(0);
 
       // Verify record now exists in collection

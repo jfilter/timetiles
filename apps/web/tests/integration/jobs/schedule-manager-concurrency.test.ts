@@ -6,12 +6,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { Catalog, ScheduledImport, User } from "@/payload-types";
+import type { Catalog, ScheduledIngest, User } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
   withCatalog,
-  withScheduledImport,
+  withScheduledIngest,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -21,7 +21,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
   let cleanup: () => Promise<void>;
   let testUser: User;
   let testCatalog: Catalog;
-  let testImport: ScheduledImport;
+  let testImport: ScheduledIngest;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
@@ -49,8 +49,8 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    // Create fresh scheduled import for each test
-    const { scheduledImport } = await withScheduledImport(
+    // Create fresh scheduled ingest for each test
+    const { scheduledIngest } = await withScheduledIngest(
       testEnv,
       testCatalog.id,
       "https://example.com/schedule-test.csv",
@@ -59,13 +59,13 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
         name: `Schedule Test Import ${Date.now()}`,
         createdBy: testUser.id,
         frequency: "hourly",
-        importNameTemplate: "Schedule {{name}} - {{date}}",
+        ingestNameTemplate: "Schedule {{name}} - {{date}}",
       }
     );
-    testImport = scheduledImport;
+    testImport = scheduledIngest;
   });
 
-  it("should create test scheduled import successfully", () => {
+  it("should create test scheduled ingest successfully", () => {
     // Verify test setup is working
     expect(testImport).toBeDefined();
     expect(testImport.id).toBeDefined();
@@ -83,9 +83,9 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
      * The concurrency protection has two layers:
      * 1. Job-level: Payload concurrency key "schedule-manager" prevents two
      *    schedule-manager jobs from running in parallel via the job queue.
-     * 2. Handler-level: triggerScheduledImport uses an atomic SQL
+     * 2. Handler-level: triggerScheduledIngest uses an atomic SQL
      *    `UPDATE ... WHERE last_status != 'running' RETURNING id` to claim
-     *    the scheduled import. PostgreSQL row locking ensures only one
+     *    the scheduled ingest. PostgreSQL row locking ensures only one
      *    concurrent transaction succeeds.
      *
      * This test bypasses layer 1 (calling the handler directly) to verify
@@ -97,8 +97,8 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     const baseTime = new Date("2024-01-15T10:00:00.000Z");
     vi.setSystemTime(baseTime);
 
-    // Create a scheduled import with lastRun set to make it overdue
-    const { scheduledImport } = await withScheduledImport(
+    // Create a scheduled ingest with lastRun set to make it overdue
+    const { scheduledIngest } = await withScheduledIngest(
       testEnv,
       testCatalog.id,
       "https://example.com/concurrent-test.csv",
@@ -107,7 +107,7 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
         name: `Concurrent Test Import ${Date.now()}`,
         createdBy: testUser.id,
         frequency: "hourly",
-        importNameTemplate: "Concurrent {{name}} - {{date}}",
+        ingestNameTemplate: "Concurrent {{name}} - {{date}}",
         additionalData: {
           lastRun: new Date("2024-01-15T08:30:00.000Z").toISOString(), // 1.5 hours ago
         },
@@ -143,8 +143,8 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
     // so it throws and is counted as an error, not a trigger.
     expect(totalTriggered).toBe(1);
 
-    // Verify the scheduled import was updated
-    const updatedImport = await payload.findByID({ collection: "scheduled-imports", id: scheduledImport.id });
+    // Verify the scheduled ingest was updated
+    const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
     // lastStatus should be "running" (set by one or both managers)
     expect(updatedImport.lastStatus).toBe("running");

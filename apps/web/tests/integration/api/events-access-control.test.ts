@@ -73,7 +73,7 @@ describe("Event API Access Control Consistency", () => {
         data: {
           uniqueId: `private-event-${Date.now()}-${i}`,
           dataset: privateDatasetId,
-          data: { title: `Private Event ${i + 1}` },
+          originalData: { title: `Private Event ${i + 1}` },
           location: { latitude: 52.52 + i * 0.01, longitude: 13.405 + i * 0.01 },
           eventTimestamp: new Date(2024, 5, 15 + i).toISOString(),
         },
@@ -87,7 +87,7 @@ describe("Event API Access Control Consistency", () => {
         data: {
           uniqueId: `public-event-${Date.now()}-${i}`,
           dataset: publicDatasetId,
-          data: { title: `Public Event ${i + 1}` },
+          originalData: { title: `Public Event ${i + 1}` },
           location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 6, 10 + i).toISOString(),
         },

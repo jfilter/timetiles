@@ -11,7 +11,7 @@
  *
  * @module
  */
-import { SchemaInferenceService } from "@/lib/import/schema-inference";
+import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 import { createLogger } from "@/lib/logger";
 
 import {

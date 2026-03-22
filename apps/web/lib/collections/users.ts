@@ -224,7 +224,7 @@ const Users: CollectionConfig = {
           name: "maxActiveSchedules",
           type: "number",
           min: -1,
-          admin: { description: "Maximum number of active scheduled imports (-1 for unlimited)" },
+          admin: { description: "Maximum number of active scheduled ingests (-1 for unlimited)" },
         },
         {
           name: "maxUrlFetchesPerDay",
@@ -251,7 +251,7 @@ const Users: CollectionConfig = {
           admin: { description: "Maximum total events allowed (-1 for unlimited)" },
         },
         {
-          name: "maxImportJobsPerDay",
+          name: "maxIngestJobsPerDay",
           type: "number",
           min: -1,
           admin: { description: "Maximum import jobs per day (-1 for unlimited)" },

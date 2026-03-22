@@ -22,7 +22,7 @@ process.env.UPLOAD_TEMP_DIR = `/tmp/temp`;
 // Ensure upload directories exist for unit tests
 const uploadDirs = [
   `${process.env.UPLOAD_DIR}/media`,
-  `${process.env.UPLOAD_DIR}/import-files`,
+  `${process.env.UPLOAD_DIR}/ingest-files`,
   process.env.UPLOAD_TEMP_DIR,
 ];
 

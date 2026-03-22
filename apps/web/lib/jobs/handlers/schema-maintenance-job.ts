@@ -11,10 +11,10 @@
 
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
-import type { SchemaFreshnessResult } from "@/lib/import/schema-freshness";
-import { getSchemaFreshness } from "@/lib/import/schema-freshness";
-import { SchemaInferenceService } from "@/lib/import/schema-inference";
+import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import type { SchemaFreshnessResult } from "@/lib/ingest/schema-freshness";
+import { getSchemaFreshness } from "@/lib/ingest/schema-freshness";
+import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 

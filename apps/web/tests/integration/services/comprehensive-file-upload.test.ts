@@ -17,26 +17,26 @@ import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 import * as geocodingModule from "@/lib/services/geocoding";
 
 import {
   createIntegrationTestEnvironment,
-  runJobsUntilImportJobExists,
-  runJobsUntilImportJobStage,
   runJobsUntilImportSettled,
+  runJobsUntilIngestJobExists,
+  runJobsUntilIngestJobStage,
   withCatalog,
   withDataset,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Comprehensive File Upload Tests", () => {
   const collectionsToReset = [
     "events",
-    "import-files",
-    "import-jobs",
+    "ingest-files",
+    "ingest-jobs",
     "datasets",
     "dataset-schemas",
     "user-usage",
@@ -114,21 +114,21 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     return dataset;
   };
 
-  const getImportJobs = (importFileId: string | number) =>
-    payload.find({ collection: "import-jobs", where: { importFile: { equals: importFileId } } });
+  const getIngestJobs = (ingestFileId: string | number) =>
+    payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFileId } } });
 
-  const runJobsUntilComplete = async (importFileId: string, maxIterations = 50) => {
-    const result = await runJobsUntilImportSettled(payload, importFileId, {
+  const runJobsUntilComplete = async (ingestFileId: string, maxIterations = 50) => {
+    const result = await runJobsUntilImportSettled(payload, ingestFileId, {
       maxIterations,
-      onPending: async ({ iteration, importFile }) => {
+      onPending: async ({ iteration, ingestFile }) => {
         if (iteration % 10 !== 0) {
           return;
         }
 
         // Log progress every 10 iterations
-        const jobs = await payload.find({ collection: "import-jobs", where: { importFile: { equals: importFileId } } });
+        const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFileId } } });
         logger.debug(
-          `Iteration ${iteration}: File status=${importFile.status}, Jobs:`,
+          `Iteration ${iteration}: File status=${ingestFile.status}, Jobs:`,
           jobs.docs.map((j: any) => ({ id: j.id, stage: j.stage }))
         );
       },
@@ -137,38 +137,38 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     return result.settled;
   };
 
-  const waitForImportJob = async (importFileId: string | number, maxIterations = 50) => {
-    const result = await runJobsUntilImportJobExists(payload, importFileId, { maxIterations });
+  const waitForIngestJob = async (ingestFileId: string | number, maxIterations = 50) => {
+    const result = await runJobsUntilIngestJobExists(payload, ingestFileId, { maxIterations });
 
-    if (!result.matched || !result.importJob) {
-      throw new Error(`Import job was not created for import file ${String(importFileId)}`);
+    if (!result.matched || !result.ingestJob) {
+      throw new Error(`Import job was not created for import file ${String(ingestFileId)}`);
     }
 
-    return result.importJob;
+    return result.ingestJob;
   };
 
-  const waitForImportJobStage = async (importFileId: string | number, stage: string, maxIterations = 50) => {
-    const result = await runJobsUntilImportJobStage(payload, importFileId, (importJob) => importJob.stage === stage, {
+  const waitForIngestJobStage = async (ingestFileId: string | number, stage: string, maxIterations = 50) => {
+    const result = await runJobsUntilIngestJobStage(payload, ingestFileId, (ingestJob) => ingestJob.stage === stage, {
       maxIterations,
     });
 
-    if (!result.matched || !result.importJob) {
-      throw new Error(`Import job did not reach ${stage} for import file ${String(importFileId)}`);
+    if (!result.matched || !result.ingestJob) {
+      throw new Error(`Import job did not reach ${stage} for import file ${String(ingestFileId)}`);
     }
 
-    return result.importJob;
+    return result.ingestJob;
   };
 
-  const linkImportJobToDataset = async (importFileId: string | number, datasetId: string | number) => {
-    const importJob = await waitForImportJob(importFileId);
+  const linkIngestJobToDataset = async (ingestFileId: string | number, datasetId: string | number) => {
+    const ingestJob = await waitForIngestJob(ingestFileId);
 
-    await payload.update({ collection: "import-jobs", id: importJob.id, data: { dataset: datasetId } });
+    await payload.update({ collection: "ingest-jobs", id: ingestJob.id, data: { dataset: datasetId } });
 
     logger.debug(`✓ Linked import job to dataset: ${datasetId}`);
-    return importJob;
+    return ingestJob;
   };
 
-  const simulateSchemaApproval = async (importJobId: string, approved: boolean) => {
+  const simulateSchemaApproval = async (ingestJobId: string, approved: boolean) => {
     // Create a test user for approval if approved is true
     let testUser = null;
     let testUserId = null;
@@ -178,7 +178,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     }
 
     // Get the current job
-    const beforeJob = await payload.findByID({ collection: "import-jobs", id: importJobId });
+    const beforeJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
 
     logger.debug("Job before approval:", JSON.stringify(beforeJob.schemaValidation, null, 2));
 
@@ -191,8 +191,8 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     };
 
     await payload.update({
-      collection: "import-jobs",
-      id: importJobId,
+      collection: "ingest-jobs",
+      id: ingestJobId,
       data: { schemaValidation: updatedSchemaValidation },
       user: testUser, // Pass user context for authentication
     });
@@ -209,7 +209,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       logger.debug(`✓ Using cached fixture buffer (${multiSheetFixture.length} bytes)`);
 
       // Use the helper function that properly handles file uploads
-      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), multiSheetFixture, {
+      const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), multiSheetFixture, {
         filename: fileName,
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         datasetsCount: 0,
@@ -217,24 +217,24 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         user: approverUser.id,
       });
 
-      logger.debug(`✓ Created Excel import file: ${importFile.id}`);
+      logger.debug(`✓ Created Excel import file: ${ingestFile.id}`);
 
       // Run jobs until completion
-      const completed = await runJobsUntilComplete(importFile.id);
+      const completed = await runJobsUntilComplete(ingestFile.id);
 
       // Check the final status and debug if needed
-      const finalImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
+      const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
 
-      if (finalImportFile.status !== "completed") {
-        logger.debug(`Import file status: ${finalImportFile.status}`);
-        if (finalImportFile.errorLog) {
-          logger.debug(`Error log: ${finalImportFile.errorLog}`);
+      if (finalIngestFile.status !== "completed") {
+        logger.debug(`Import file status: ${finalIngestFile.status}`);
+        if (finalIngestFile.errorLog) {
+          logger.debug(`Error log: ${finalIngestFile.errorLog}`);
         }
 
         // Check import jobs for more details
         const importJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
+          collection: "ingest-jobs",
+          where: { ingestFile: { equals: ingestFile.id } },
         });
 
         importJobs.docs.forEach((job: any, index: number) => {
@@ -246,12 +246,12 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       }
 
       expect(completed).toBe(true);
-      expect(finalImportFile.status).toBe("completed");
+      expect(finalIngestFile.status).toBe("completed");
 
       // Verify multiple import jobs were created (one per sheet)
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
 
       expect(importJobs.docs.length).toBeGreaterThan(0); // At least one sheet
@@ -279,7 +279,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       logger.debug(`✓ Using cached ODS fixture buffer (${odsFixture.length} bytes)`);
 
       // Use the helper function that properly handles file uploads
-      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), odsFixture, {
+      const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), odsFixture, {
         filename: fileName,
         mimeType: "application/vnd.oasis.opendocument.spreadsheet",
         datasetsCount: 0,
@@ -287,24 +287,24 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         user: approverUser.id,
       });
 
-      logger.debug(`✓ Created ODS import file: ${importFile.id}`);
+      logger.debug(`✓ Created ODS import file: ${ingestFile.id}`);
 
       // Run jobs until completion
-      const completed = await runJobsUntilComplete(importFile.id);
+      const completed = await runJobsUntilComplete(ingestFile.id);
 
       // Check the final status
-      const finalImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
+      const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
 
-      if (finalImportFile.status !== "completed") {
-        logger.debug(`Import file status: ${finalImportFile.status}`);
-        if (finalImportFile.errorLog) {
-          logger.debug(`Error log: ${finalImportFile.errorLog}`);
+      if (finalIngestFile.status !== "completed") {
+        logger.debug(`Import file status: ${finalIngestFile.status}`);
+        if (finalIngestFile.errorLog) {
+          logger.debug(`Error log: ${finalIngestFile.errorLog}`);
         }
 
         // Check import jobs for more details
         const importJobs = await payload.find({
-          collection: "import-jobs",
-          where: { importFile: { equals: importFile.id } },
+          collection: "ingest-jobs",
+          where: { ingestFile: { equals: ingestFile.id } },
         });
 
         importJobs.docs.forEach((job: any, index: number) => {
@@ -316,12 +316,12 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       }
 
       expect(completed).toBe(true);
-      expect(finalImportFile.status).toBe("completed");
+      expect(finalIngestFile.status).toBe("completed");
 
       // Verify import jobs were created
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
 
       expect(importJobs.docs).toHaveLength(1); // ODS file has one sheet
@@ -338,8 +338,8 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       expect(events.docs).toHaveLength(3);
       logger.debug(`✓ Created ${events.docs.length} events from ODS file`);
 
-      // Verify specific event data (title is stored in data.title JSON field)
-      const eventTitles = events.docs.map((e: any) => e.data.title);
+      // Verify specific event data (title is stored in originalData.title JSON field)
+      const eventTitles = events.docs.map((e: any) => e.originalData.title);
       expect(eventTitles).toContain("ODS Conference 2024");
       expect(eventTitles).toContain("OpenDocument Workshop");
       expect(eventTitles).toContain("LibreOffice Summit");
@@ -364,7 +364,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           // Try to create import file record with invalid MIME type
           // This should fail during creation due to MIME type validation
           await expect(
-            withImportFile(testEnv, testCatalogId, fileTest.content, {
+            withIngestFile(testEnv, testCatalogId, fileTest.content, {
               filename: fileTest.name,
               mimeType: fileTest.mimeType,
               user: approverUser.id,
@@ -392,17 +392,17 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const fileName = `corrupted-${Date.now()}.xlsx`;
 
       try {
-        const { importFile } = await withImportFile(testEnv, testCatalogId, corruptedContent, {
+        const { ingestFile } = await withIngestFile(testEnv, testCatalogId, corruptedContent, {
           filename: fileName,
           mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           user: approverUser.id,
         });
 
-        const result = await runJobsUntilImportSettled(payload, importFile.id);
+        const result = await runJobsUntilImportSettled(payload, ingestFile.id);
 
         // Check that processing failed gracefully
         expect(result.settled).toBe(true);
-        const failedFile = result.importFile;
+        const failedFile = result.ingestFile;
 
         expect(failedFile.status).toBe("failed");
         logger.debug("✓ Corrupted Excel file handled gracefully");
@@ -430,17 +430,17 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
       try {
         // Create import file linked to locked dataset
-        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
           filename: "approval-test.csv",
           user: approverUser.id,
         });
 
-        await linkImportJobToDataset(importFile.id, dataset.id);
+        await linkIngestJobToDataset(ingestFile.id, dataset.id);
 
         // Verify job is waiting for approval
-        const job = await waitForImportJobStage(importFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
+        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
 
-        const finalJobs = await getImportJobs(importFile.id);
+        const finalJobs = await getIngestJobs(ingestFile.id);
         expect(finalJobs.docs).toHaveLength(1);
         expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
         expect(job.schemaValidation?.requiresApproval).toBe(true);
@@ -466,42 +466,42 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 "Approved Event","2024-01-01","Test Location"`;
 
       try {
-        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
           filename: "approval-continue.csv",
           user: approverUser.id,
         });
 
-        await linkImportJobToDataset(importFile.id, dataset.id);
+        await linkIngestJobToDataset(ingestFile.id, dataset.id);
 
         // Get the job requiring approval
-        const job = await waitForImportJobStage(importFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
+        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
         expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
 
         // Approve the schema (this now properly triggers the approval workflow)
         await simulateSchemaApproval(String(job.id), true);
         logger.debug("✓ Schema approval update sent");
 
-        const resumedJob = await runJobsUntilImportJobStage(
+        const resumedJob = await runJobsUntilIngestJobStage(
           payload,
-          importFile.id,
-          (importJob) => importJob.stage !== PROCESSING_STAGE.AWAIT_APPROVAL,
+          ingestFile.id,
+          (ingestJob) => ingestJob.stage !== PROCESSING_STAGE.AWAIT_APPROVAL,
           { maxIterations: 30 }
         );
         expect(resumedJob.matched).toBe(true);
         logger.debug("Job resumed after approval", {
-          stage: resumedJob.importJob?.stage,
-          schemaVersionId: resumedJob.importJob?.datasetSchemaVersion,
+          stage: resumedJob.ingestJob?.stage,
+          schemaVersionId: resumedJob.ingestJob?.datasetSchemaVersion,
         });
 
         // Continue processing until completion
-        const finalCompleted = await runJobsUntilComplete(importFile.id, 100);
+        const finalCompleted = await runJobsUntilComplete(ingestFile.id, 100);
         expect(finalCompleted).toBe(true);
 
         // Verify completion
-        const finalImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
-        expect(finalImportFile.status).toBe("completed");
+        const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+        expect(finalIngestFile.status).toBe("completed");
 
-        const finalJob = await payload.findByID({ collection: "import-jobs", id: job.id });
+        const finalJob = await payload.findByID({ collection: "ingest-jobs", id: job.id });
         expect(finalJob.stage).toBe(PROCESSING_STAGE.COMPLETED);
 
         logger.debug("✓ Pipeline completed after approval");
@@ -524,21 +524,21 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const csvContent = `title,date,location,optional_field
 "Auto Event","2024-01-01","Auto Location","Optional Data"`;
 
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: "auto-approve.csv",
         user: approverUser.id,
       });
 
-      await linkImportJobToDataset(importFile.id, dataset.id);
+      await linkIngestJobToDataset(ingestFile.id, dataset.id);
 
       // Process completely without manual intervention
-      const completed = await runJobsUntilComplete(importFile.id);
+      const completed = await runJobsUntilComplete(ingestFile.id);
       expect(completed).toBe(true);
 
       // Verify it never stopped for approval
       const autoCompletedJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
 
       const job = autoCompletedJobs.docs[0];
@@ -546,8 +546,8 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       expect(job.schemaValidation?.requiresApproval).toBe(false);
 
       // Verify final status
-      const finalImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
-      expect(finalImportFile.status).toBe("completed");
+      const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+      expect(finalIngestFile.status).toBe("completed");
 
       logger.debug("✓ Schema auto-approved and pipeline completed");
     });
@@ -562,15 +562,15 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 "Rejected Event","2024-01-01","Reject Location","Bad Data"`;
 
       try {
-        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
           filename: "rejection-test.csv",
           user: approverUser.id,
         });
 
-        await linkImportJobToDataset(importFile.id, dataset.id);
+        await linkIngestJobToDataset(ingestFile.id, dataset.id);
 
         // Get job and reject the schema
-        const job = await waitForImportJobStage(importFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
+        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
         await simulateSchemaApproval(String(job.id), false); // Reject
         logger.debug("✓ Schema rejected manually");
 
@@ -578,7 +578,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         await payload.jobs.run({ allQueues: true, limit: 10 });
 
         // Verify job failed
-        const rejectedJob = await payload.findByID({ collection: "import-jobs", id: job.id });
+        const rejectedJob = await payload.findByID({ collection: "ingest-jobs", id: job.id });
 
         // Should still be awaiting approval or failed
         expect([PROCESSING_STAGE.AWAIT_APPROVAL, PROCESSING_STAGE.FAILED].includes(rejectedJob.stage)).toBe(true);
@@ -605,7 +605,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const csvContent = [headers, ...rows].join("\n");
 
       try {
-        const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+        const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
           filename: "large-dataset.csv",
           user: approverUser.id,
         });
@@ -613,7 +613,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         logger.debug(`✓ Created large file import (${csvContent.length} bytes)`);
 
         // Process with extended timeout
-        const completed = await runJobsUntilComplete(importFile.id, 100);
+        const completed = await runJobsUntilComplete(ingestFile.id, 100);
         expect(completed).toBe(true);
 
         // Verify all events were created
@@ -623,8 +623,8 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         logger.debug(`✓ Successfully processed ${events.docs.length} events`);
 
         // Verify final status
-        const finalImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
-        expect(finalImportFile.status).toBe("completed");
+        const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+        expect(finalIngestFile.status).toBe("completed");
 
         logger.debug("✓ Large file processing completed successfully");
       } catch (error) {

@@ -11,7 +11,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PROCESSING_STAGE } from "@/lib/constants/import-constants";
+import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
 import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-version-job";
@@ -26,7 +26,7 @@ import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   withCatalog,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../../setup/integration/environment";
 
@@ -83,54 +83,54 @@ describe.sequential("Pipeline Workflow Transitions", () => {
   /** Helper: Run first import through detection → validation to establish a baseline schema. */
   const runFirstImportToValidation = async (csvContent: string) => {
     const csvFileName = `baseline-${Date.now()}.csv`;
-    const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
       filename: csvFileName,
       user: testUserId,
     });
 
     const detectionContext = {
       req: { payload },
-      job: { id: "detection-job-1", input: { importFileId: importFile.id, catalogId: testCatalogId } },
+      job: { id: "detection-job-1", input: { ingestFileId: ingestFile.id, catalogId: testCatalogId } },
     };
     await datasetDetectionJob.handler(detectionContext);
 
     const importJobs = await payload.find({
-      collection: "import-jobs",
-      where: { importFile: { equals: importFile.id } },
+      collection: "ingest-jobs",
+      where: { ingestFile: { equals: ingestFile.id } },
     });
-    const importJob = importJobs.docs[0];
-    const datasetId = extractRelationId(importJob.dataset);
+    const ingestJob = importJobs.docs[0];
+    const datasetId = extractRelationId(ingestJob.dataset);
 
     await analyzeDuplicatesJob.handler({
       req: { payload },
-      job: { id: "duplicate-job-1", input: { importJobId: importJob.id } },
+      job: { id: "duplicate-job-1", input: { ingestJobId: ingestJob.id } },
     });
 
     await schemaDetectionJob.handler({
       req: { payload },
-      job: { id: "schema-job-1", input: { importJobId: importJob.id } },
+      job: { id: "schema-job-1", input: { ingestJobId: ingestJob.id } },
     });
 
     await validateSchemaJob.handler({
       req: { payload },
-      job: { id: "validation-job-1", input: { importJobId: importJob.id } },
+      job: { id: "validation-job-1", input: { ingestJobId: ingestJob.id } },
     });
 
-    return { importFile, importJob, datasetId };
+    return { ingestFile, ingestJob, datasetId };
   };
 
   /** Helper: Create a second import job for the same dataset, run through to validation. */
   const runSecondImportToValidation = async (csvContent: string, datasetId: string | number) => {
     const csvFileName = `second-${Date.now()}.csv`;
-    const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
       filename: csvFileName,
       user: testUserId,
     });
 
     const importJob2 = await payload.create({
-      collection: "import-jobs",
+      collection: "ingest-jobs",
       data: {
-        importFile: importFile.id,
+        ingestFile: ingestFile.id,
         dataset: datasetId,
         stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
@@ -140,20 +140,20 @@ describe.sequential("Pipeline Workflow Transitions", () => {
 
     await analyzeDuplicatesJob.handler({
       req: { payload },
-      job: { id: "duplicate-job-2", input: { importJobId: importJob2.id } },
+      job: { id: "duplicate-job-2", input: { ingestJobId: importJob2.id } },
     });
 
     await schemaDetectionJob.handler({
       req: { payload },
-      job: { id: "schema-job-2", input: { importJobId: importJob2.id } },
+      job: { id: "schema-job-2", input: { ingestJobId: importJob2.id } },
     });
 
     await validateSchemaJob.handler({
       req: { payload },
-      job: { id: "validation-job-2", input: { importJobId: importJob2.id } },
+      job: { id: "validation-job-2", input: { ingestJobId: importJob2.id } },
     });
 
-    return { importFile, importJob: importJob2 };
+    return { ingestFile, ingestJob: importJob2 };
   };
 
   describe("Approval Workflow", () => {
@@ -163,13 +163,13 @@ describe.sequential("Pipeline Workflow Transitions", () => {
 Event 1,2024-01-01,Location 1`);
 
       // Second import removes a column (breaking change)
-      const { importJob } = await runSecondImportToValidation(
+      const { ingestJob } = await runSecondImportToValidation(
         `title,date
 Event 2,2024-01-02`,
         datasetId
       );
 
-      const updatedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
+      const updatedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
 
       // Should be either AWAIT_APPROVAL (breaking changes) or CREATE_SCHEMA_VERSION (auto-approved)
       expect([PROCESSING_STAGE.AWAIT_APPROVAL, PROCESSING_STAGE.CREATE_SCHEMA_VERSION]).toContain(updatedJob.stage);
@@ -186,7 +186,7 @@ Event 2,2024-01-02`,
 Event 1,2024-01-01,Location 1`;
 
       const csvFileName = `manual-approval-${Date.now()}.csv`;
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
         user: testUserId,
       });
@@ -196,10 +196,10 @@ Event 1,2024-01-01,Location 1`;
         data: { name: "Manual Approval Test Dataset", catalog: testCatalogId, language: "eng" },
       });
 
-      const importJob = await payload.create({
-        collection: "import-jobs",
+      const ingestJob = await payload.create({
+        collection: "ingest-jobs",
         data: {
-          importFile: importFile.id,
+          ingestFile: ingestFile.id,
           dataset: dataset.id,
           stage: PROCESSING_STAGE.AWAIT_APPROVAL,
           schema: { title: { type: "string" }, date: { type: "date" }, location: { type: "string" } },
@@ -214,10 +214,10 @@ Event 1,2024-01-01,Location 1`;
         },
       });
 
-      expect(importJob.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
-      expect(importJob.schemaValidation).toBeDefined();
-      expect(importJob.schemaValidation.requiresApproval).toBe(true);
-      expect(importJob.schemaValidation.approved).toBe(false);
+      expect(ingestJob.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
+      expect(ingestJob.schemaValidation).toBeDefined();
+      expect(ingestJob.schemaValidation.requiresApproval).toBe(true);
+      expect(ingestJob.schemaValidation.approved).toBe(false);
     });
 
     it("should keep job in AWAIT_APPROVAL state until explicitly approved", async () => {
@@ -225,7 +225,7 @@ Event 1,2024-01-01,Location 1`;
 Event 1,2024-01-01`;
 
       const csvFileName = `no-approval-${Date.now()}.csv`;
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
         user: testUserId,
       });
@@ -235,10 +235,10 @@ Event 1,2024-01-01`;
         data: { name: "No Approval Test Dataset", catalog: testCatalogId, language: "eng" },
       });
 
-      const importJob = await payload.create({
-        collection: "import-jobs",
+      const ingestJob = await payload.create({
+        collection: "ingest-jobs",
         data: {
-          importFile: importFile.id,
+          ingestFile: ingestFile.id,
           dataset: dataset.id,
           stage: PROCESSING_STAGE.AWAIT_APPROVAL,
           schema: { title: { type: "string" }, date: { type: "date" } },
@@ -248,7 +248,7 @@ Event 1,2024-01-01`;
         },
       });
 
-      const awaitingJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
+      const awaitingJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
       expect(awaitingJob.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
       expect(awaitingJob.schemaValidation.approved).toBe(false);
       expect(awaitingJob.schemaValidation.requiresApproval).toBe(true);
@@ -263,14 +263,14 @@ Event 1,2024-01-01,Location 1
 Event 2,2024-01-02,Location 2`);
 
       // Second import with identical schema
-      const { importJob } = await runSecondImportToValidation(
+      const { ingestJob } = await runSecondImportToValidation(
         `title,date,location
 Event 3,2024-01-03,Location 3
 Event 4,2024-01-04,Location 4`,
         datasetId
       );
 
-      const updatedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
+      const updatedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
 
       // Should either go to GEOCODE_BATCH (no changes) or CREATE_SCHEMA_VERSION
       expect([PROCESSING_STAGE.GEOCODE_BATCH, PROCESSING_STAGE.CREATE_SCHEMA_VERSION]).toContain(updatedJob.stage);
@@ -291,39 +291,39 @@ Event 4,2024-01-04,Location 4`,
 Event 1,2024-01-01,Location 1`;
 
       const csvFileName = `schema-changes-${Date.now()}.csv`;
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
         user: testUserId,
       });
 
       const detectionContext = {
         req: { payload },
-        job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
+        job: { id: "detection-job", input: { ingestFileId: ingestFile.id, catalogId: testCatalogId } },
       };
       await datasetDetectionJob.handler(detectionContext);
 
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
-      const importJob = importJobs.docs[0];
+      const ingestJob = importJobs.docs[0];
 
       await analyzeDuplicatesJob.handler({
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: importJob.id } },
+        job: { id: "duplicate-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await schemaDetectionJob.handler({
         req: { payload },
-        job: { id: "schema-job", input: { importJobId: importJob.id } },
+        job: { id: "schema-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await validateSchemaJob.handler({
         req: { payload },
-        job: { id: "validation-job", input: { importJobId: importJob.id } },
+        job: { id: "validation-job", input: { ingestJobId: ingestJob.id } },
       });
 
-      const updatedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
+      const updatedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
 
       // For a new dataset with no existing schema, should go to CREATE_SCHEMA_VERSION
       expect(updatedJob.stage).toBe(PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
@@ -336,41 +336,41 @@ Event 1,2024-01-01
 Event 2,2024-01-02`;
 
       const csvFileName = `integrity-test-${Date.now()}.csv`;
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
         user: testUserId,
       });
 
       const detectionContext = {
         req: { payload },
-        job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
+        job: { id: "detection-job", input: { ingestFileId: ingestFile.id, catalogId: testCatalogId } },
       };
       await datasetDetectionJob.handler(detectionContext);
 
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
-      const importJob = importJobs.docs[0];
+      const ingestJob = importJobs.docs[0];
 
       await analyzeDuplicatesJob.handler({
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: importJob.id } },
+        job: { id: "duplicate-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await schemaDetectionJob.handler({
         req: { payload },
-        job: { id: "schema-job", input: { importJobId: importJob.id } },
+        job: { id: "schema-job", input: { ingestJobId: ingestJob.id } },
       });
 
-      const beforeValidation = await payload.findByID({ collection: "import-jobs", id: importJob.id });
+      const beforeValidation = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
 
       await validateSchemaJob.handler({
         req: { payload },
-        job: { id: "validation-job", input: { importJobId: importJob.id } },
+        job: { id: "validation-job", input: { ingestJobId: ingestJob.id } },
       });
 
-      const afterValidation = await payload.findByID({ collection: "import-jobs", id: importJob.id });
+      const afterValidation = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
 
       // Verify schema data is preserved
       expect(afterValidation.schema).toBeDefined();
@@ -392,58 +392,58 @@ Event 1,2024-01-01,Location 1
 Event 2,2024-01-02,Location 2`;
 
       const csvFileName = `completed-test-${Date.now()}.csv`;
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
         user: testUserId,
       });
 
       const detectionContext = {
         req: { payload },
-        job: { id: "detection-job", input: { importFileId: importFile.id, catalogId: testCatalogId } },
+        job: { id: "detection-job", input: { ingestFileId: ingestFile.id, catalogId: testCatalogId } },
       };
       await datasetDetectionJob.handler(detectionContext);
 
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
-      const importJob = importJobs.docs[0];
+      const ingestJob = importJobs.docs[0];
 
       await analyzeDuplicatesJob.handler({
         req: { payload },
-        job: { id: "duplicate-job", input: { importJobId: importJob.id } },
+        job: { id: "duplicate-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await schemaDetectionJob.handler({
         req: { payload },
-        job: { id: "schema-job", input: { importJobId: importJob.id } },
+        job: { id: "schema-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await validateSchemaJob.handler({
         req: { payload },
-        job: { id: "validation-job", input: { importJobId: importJob.id } },
+        job: { id: "validation-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await createSchemaVersionJob.handler({
         req: { payload },
-        job: { id: "create-schema-version-job", input: { importJobId: importJob.id } },
+        job: { id: "create-schema-version-job", input: { ingestJobId: ingestJob.id } },
       });
 
       await geocodeBatchJob.handler({
         req: { payload },
-        job: { id: "geocoding-job", input: { importJobId: importJob.id, batchNumber: 0 } },
+        job: { id: "geocoding-job", input: { ingestJobId: ingestJob.id, batchNumber: 0 } },
       });
 
       await createEventsBatchJob.handler({
         req: { payload },
-        job: { id: "event-job", input: { importJobId: importJob.id } },
+        job: { id: "event-job", input: { ingestJobId: ingestJob.id } },
       });
 
-      const completedJob = await payload.findByID({ collection: "import-jobs", id: importJob.id });
+      const completedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
       expect(completedJob.stage).toBe(PROCESSING_STAGE.COMPLETED);
 
-      const completedImportFile = await payload.findByID({ collection: "import-files", id: importFile.id });
-      expect(completedImportFile.status).toBe("completed");
+      const completedIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+      expect(completedIngestFile.status).toBe("completed");
     });
 
     it("should not allow transition from COMPLETED to another stage", async () => {
@@ -451,7 +451,7 @@ Event 2,2024-01-02,Location 2`;
 Event 1,2024-01-01`;
 
       const csvFileName = `completed-transition-test-${Date.now()}.csv`;
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
         user: testUserId,
       });
@@ -462,9 +462,9 @@ Event 1,2024-01-01`;
       });
 
       const completedJob = await payload.create({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: {
-          importFile: importFile.id,
+          ingestFile: ingestFile.id,
           dataset: dataset.id,
           stage: PROCESSING_STAGE.COMPLETED,
           schema: { title: { type: "string" }, date: { type: "date" } },
@@ -473,12 +473,12 @@ Event 1,2024-01-01`;
         },
       });
 
-      const completedJobCheck = await payload.findByID({ collection: "import-jobs", id: completedJob.id });
+      const completedJobCheck = await payload.findByID({ collection: "ingest-jobs", id: completedJob.id });
       expect(completedJobCheck.stage).toBe(PROCESSING_STAGE.COMPLETED);
 
       await expect(
         payload.update({
-          collection: "import-jobs",
+          collection: "ingest-jobs",
           id: completedJob.id,
           data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
         })
@@ -490,7 +490,7 @@ Event 1,2024-01-01`;
 Failed Event,2024-01-01`;
 
       const csvFileName = `failed-transition-test-${Date.now()}.csv`;
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
         user: testUserId,
       });
@@ -501,9 +501,9 @@ Failed Event,2024-01-01`;
       });
 
       const failedJob = await payload.create({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: {
-          importFile: importFile.id,
+          ingestFile: ingestFile.id,
           dataset: dataset.id,
           stage: PROCESSING_STAGE.FAILED,
           schema: { title: { type: "string" }, date: { type: "date" } },
@@ -513,22 +513,22 @@ Failed Event,2024-01-01`;
         },
       });
 
-      const failedJobCheck = await payload.findByID({ collection: "import-jobs", id: failedJob.id });
+      const failedJobCheck = await payload.findByID({ collection: "ingest-jobs", id: failedJob.id });
       expect(failedJobCheck.stage).toBe(PROCESSING_STAGE.FAILED);
 
       // Cannot transition FAILED → COMPLETED
       await expect(
-        payload.update({ collection: "import-jobs", id: failedJob.id, data: { stage: PROCESSING_STAGE.COMPLETED } })
+        payload.update({ collection: "ingest-jobs", id: failedJob.id, data: { stage: PROCESSING_STAGE.COMPLETED } })
       ).rejects.toThrow("Invalid recovery stage");
 
       // But CAN recover to a valid retry stage
       await payload.update({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: failedJob.id,
         data: { stage: PROCESSING_STAGE.ANALYZE_DUPLICATES },
       });
 
-      const recoveredJob = await payload.findByID({ collection: "import-jobs", id: failedJob.id });
+      const recoveredJob = await payload.findByID({ collection: "ingest-jobs", id: failedJob.id });
       expect(recoveredJob.stage).toBe(PROCESSING_STAGE.ANALYZE_DUPLICATES);
     });
 
@@ -537,7 +537,7 @@ Failed Event,2024-01-01`;
 Event,2024-01-01`;
 
       const csvFileName = `failed-queue-test-${Date.now()}.csv`;
-      const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+      const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: csvFileName,
         user: testUserId,
       });
@@ -548,9 +548,9 @@ Event,2024-01-01`;
       });
 
       const failedJob = await payload.create({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: {
-          importFile: importFile.id,
+          ingestFile: ingestFile.id,
           dataset: dataset.id,
           stage: PROCESSING_STAGE.FAILED,
           schema: { title: { type: "string" }, date: { type: "date" } },
@@ -566,7 +566,7 @@ Event,2024-01-01`;
 
       const queuedJobs = await payload.find({
         collection: "payload-jobs",
-        where: { "input.importJobId": { equals: failedJob.id }, completedAt: { exists: false } },
+        where: { "input.ingestJobId": { equals: failedJob.id }, completedAt: { exists: false } },
       });
       expect(queuedJobs.docs.length).toBeGreaterThanOrEqual(0);
     });

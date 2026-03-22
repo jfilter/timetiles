@@ -41,7 +41,7 @@ const createMockPayload = (overrides?: {
     currentActiveSchedules: 0,
     urlFetchesToday: 0,
     fileUploadsToday: 0,
-    importJobsToday: 0,
+    ingestJobsToday: 0,
     totalEventsCreated: 5,
     currentCatalogs: 0,
     lastResetDate: new Date().toISOString(),

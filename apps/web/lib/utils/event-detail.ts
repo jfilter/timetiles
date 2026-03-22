@@ -77,11 +77,11 @@ export const safeToString = (value: unknown): string => {
   return "";
 };
 
-/** Extract the data object from an event, handling non-object or array cases */
-export const getEventData = (event: { data: unknown }): EventData => {
-  return typeof event.data === "object" && event.data != null && !Array.isArray(event.data)
-    ? (event.data as EventData)
-    : {};
+/** Extract the data object from an event, handling non-object or array cases.
+ *  Accepts both Payload Event objects (`originalData`) and API DTOs (`data`). */
+export const getEventData = (event: { originalData?: unknown; data?: unknown }): EventData => {
+  const raw = event.originalData ?? event.data;
+  return typeof raw === "object" && raw != null && !Array.isArray(raw) ? (raw as EventData) : {};
 };
 
 /** Get event title from data, using field mappings when available. */

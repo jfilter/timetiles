@@ -8,7 +8,7 @@
  * @category Services/SchemaBuilder
  */
 
-import type { TransformSuggestion } from "@/lib/types/import-transforms";
+import type { TransformSuggestion } from "@/lib/types/ingest-transforms";
 import type { SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
 
 interface SchemaPropertyMap {

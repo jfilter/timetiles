@@ -39,7 +39,7 @@ describe.sequential("scheduleManagerJob", () => {
         find: vi.fn(),
         findByID: vi.fn(),
         update: vi.fn().mockResolvedValue({ docs: [{ id: "claimed" }] }),
-        // triggerScheduledImport uses atomic SQL claim via drizzle
+        // triggerScheduledIngest uses atomic SQL claim via drizzle
         db: { drizzle: { execute: vi.fn().mockResolvedValue({ rows: [{ id: 1 }] }) } },
         jobs: { queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-123" }) },
       };
@@ -51,10 +51,10 @@ describe.sequential("scheduleManagerJob", () => {
       return { mockPayload, mockJob, mockReq };
     };
 
-    it("should find and process enabled scheduled imports", async () => {
+    it("should find and process enabled scheduled ingests", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
 
-      const mockScheduledImports: any[] = [
+      const mockScheduledIngests: any[] = [
         {
           id: "import-1",
           name: "Daily Import",
@@ -64,12 +64,12 @@ describe.sequential("scheduleManagerJob", () => {
           frequency: "daily",
           catalog: "catalog-123",
           createdBy: "user-123",
-          importNameTemplate: "{{name}} - {{date}}",
+          ingestNameTemplate: "{{name}} - {{date}}",
           lastRun: new Date("2024-01-14 00:00:00").toISOString(), // Yesterday
         },
       ];
 
-      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledIngests, totalDocs: 1 });
 
       // Set time to after midnight to make the import due
       vi.setSystemTime(new Date("2024-01-15 00:30:00"));
@@ -77,7 +77,7 @@ describe.sequential("scheduleManagerJob", () => {
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.find).toHaveBeenCalledWith({
-        collection: "scheduled-imports",
+        collection: "scheduled-ingests",
         where: { enabled: { equals: true } },
         limit: 1000,
         pagination: false,
@@ -99,7 +99,7 @@ describe.sequential("scheduleManagerJob", () => {
       const currentTime = new Date("2024-01-15T10:30:00Z");
       vi.setSystemTime(currentTime);
 
-      const mockScheduledImports: any[] = [
+      const mockScheduledIngests: any[] = [
         {
           id: "hourly-import",
           name: "Hourly Import",
@@ -124,7 +124,7 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 2 });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledIngests, totalDocs: 2 });
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
@@ -133,7 +133,7 @@ describe.sequential("scheduleManagerJob", () => {
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
         task: "url-fetch",
         input: {
-          scheduledImportId: "hourly-import",
+          scheduledIngestId: "hourly-import",
           sourceUrl: "https://api1.example.com/data",
           authConfig: undefined,
           catalogId: "catalog-1",
@@ -152,7 +152,7 @@ describe.sequential("scheduleManagerJob", () => {
       const currentTime = new Date("2024-01-15 14:35:00");
       vi.setSystemTime(currentTime);
 
-      const mockScheduledImports: any[] = [
+      const mockScheduledIngests: any[] = [
         {
           id: "cron-import",
           name: "Cron Import",
@@ -166,7 +166,7 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledIngests, totalDocs: 1 });
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
@@ -174,13 +174,13 @@ describe.sequential("scheduleManagerJob", () => {
       expect(result.output.triggered).toBe(1);
     });
 
-    it("should skip scheduled imports with partially numeric cron fields", async () => {
+    it("should skip scheduled ingests with partially numeric cron fields", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
 
       const currentTime = new Date("2024-01-15 14:35:00");
       vi.setSystemTime(currentTime);
 
-      const mockScheduledImports: any[] = [
+      const mockScheduledIngests: any[] = [
         {
           id: "invalid-cron-import",
           name: "Invalid Cron Import",
@@ -194,7 +194,7 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledIngests, totalDocs: 1 });
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
@@ -209,7 +209,7 @@ describe.sequential("scheduleManagerJob", () => {
       const currentTime = new Date("2024-01-14T14:35:00Z");
       vi.setSystemTime(currentTime);
 
-      const mockScheduledImports: any[] = [
+      const mockScheduledIngests: any[] = [
         {
           id: "weekly-cron-import",
           name: "Weekly Cron Import",
@@ -223,7 +223,7 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledIngests, totalDocs: 1 });
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
@@ -235,7 +235,7 @@ describe.sequential("scheduleManagerJob", () => {
     it("should skip disabled schedules", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
 
-      const mockScheduledImports: any[] = [
+      const mockScheduledIngests: any[] = [
         {
           id: "disabled-import",
           name: "Disabled Import",
@@ -246,7 +246,7 @@ describe.sequential("scheduleManagerJob", () => {
         },
       ];
 
-      mockPayload.find.mockResolvedValue({ docs: mockScheduledImports, totalDocs: 1 });
+      mockPayload.find.mockResolvedValue({ docs: mockScheduledIngests, totalDocs: 1 });
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
@@ -256,13 +256,13 @@ describe.sequential("scheduleManagerJob", () => {
       expect(result.output.triggered).toBe(0);
     });
 
-    it("should update scheduled import metadata after triggering", async () => {
+    it("should update scheduled ingest metadata after triggering", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
 
       const currentTime = new Date("2024-01-15 10:00:00");
       vi.setSystemTime(currentTime);
 
-      const mockScheduledImport: any = {
+      const mockScheduledIngest: any = {
         id: "import-1",
         name: "Test Import",
         enabled: true,
@@ -276,11 +276,11 @@ describe.sequential("scheduleManagerJob", () => {
         executionHistory: [],
       };
 
-      mockPayload.find.mockResolvedValue({ docs: [mockScheduledImport], totalDocs: 1 });
+      mockPayload.find.mockResolvedValue({ docs: [mockScheduledIngest], totalDocs: 1 });
 
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-      // triggerScheduledImport uses atomic SQL via drizzle to claim "running" status.
+      // triggerScheduledIngest uses atomic SQL via drizzle to claim "running" status.
       expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
 
       // totalRuns is NOT incremented at queue time — only on job completion.
@@ -298,7 +298,7 @@ describe.sequential("scheduleManagerJob", () => {
       const currentTime = new Date("2024-01-15 10:00:00");
       vi.setSystemTime(currentTime);
 
-      const mockScheduledImport: any = {
+      const mockScheduledIngest: any = {
         id: "error-import",
         name: "Error Import",
         enabled: true,
@@ -310,7 +310,7 @@ describe.sequential("scheduleManagerJob", () => {
         createdBy: "user-123",
       };
 
-      mockPayload.find.mockResolvedValue({ docs: [mockScheduledImport], totalDocs: 1 });
+      mockPayload.find.mockResolvedValue({ docs: [mockScheduledIngest], totalDocs: 1 });
 
       // Make job queue throw an error
       mockPayload.jobs.queue.mockRejectedValue(new Error("Queue error"));
@@ -323,7 +323,7 @@ describe.sequential("scheduleManagerJob", () => {
       // Should update the import with error status and advance nextRun
       // so the scheduler doesn't retry every minute
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "scheduled-imports",
+        collection: "scheduled-ingests",
         id: "error-import",
         data: expect.objectContaining({ lastStatus: "failed", lastError: "Queue error", nextRun: expect.any(String) }),
       });
@@ -378,7 +378,7 @@ describe.sequential("scheduleManagerJob", () => {
 
         await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-        // triggerScheduledImport uses atomic SQL claim via drizzle
+        // triggerScheduledIngest uses atomic SQL claim via drizzle
         expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
         expect(mockPayload.jobs.queue).toHaveBeenCalled();
       }
@@ -399,7 +399,7 @@ describe.sequential("scheduleManagerJob", () => {
         frequency: "daily",
         catalog: "catalog-123",
         createdBy: "user-123",
-        importNameTemplate: "{{name}} - {{date}} at {{time}} from {{url}}",
+        ingestNameTemplate: "{{name}} - {{date}} at {{time}} from {{url}}",
         lastRun: new Date("2024-01-14 00:00:00").toISOString(), // Yesterday
       };
 

@@ -18,11 +18,11 @@ import type { Event } from "@/payload-types";
 import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
-  runJobsUntilImportJobStage,
   runJobsUntilImportSettled,
+  runJobsUntilIngestJobStage,
   withCatalog,
   withDataset,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -59,20 +59,20 @@ describe.sequential("All Transform Types Pipeline", () => {
 
   // --- Helpers ---
 
-  const waitForSchemaDetection = async (importFileId: string | number) => {
-    const result = await runJobsUntilImportJobStage(
+  const waitForSchemaDetection = async (ingestFileId: string | number) => {
+    const result = await runJobsUntilIngestJobStage(
       payload,
-      importFileId,
-      (importJob) =>
-        importJob.stage === "await-approval" || importJob.stage === "completed" || importJob.stage === "failed",
+      ingestFileId,
+      (ingestJob) =>
+        ingestJob.stage === "await-approval" || ingestJob.stage === "completed" || ingestJob.stage === "failed",
       { maxIterations: 30 }
     );
     expect(result.matched).toBe(true);
-    return result.importJob;
+    return result.ingestJob;
   };
 
-  const simulateSchemaApproval = async (importJobId: string) => {
-    const beforeJob = await payload.findByID({ collection: "import-jobs", id: importJobId });
+  const simulateSchemaApproval = async (ingestJobId: string) => {
+    const beforeJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
 
     const updatedSchemaValidation = {
       ...beforeJob.schemaValidation,
@@ -82,21 +82,21 @@ describe.sequential("All Transform Types Pipeline", () => {
     };
 
     await payload.update({
-      collection: "import-jobs",
-      id: importJobId,
+      collection: "ingest-jobs",
+      id: ingestJobId,
       data: { schemaValidation: updatedSchemaValidation },
       user: approverUser,
     });
   };
 
-  const runJobsUntilComplete = async (importFileId: string, maxIterations = 50) => {
-    const result = await runJobsUntilImportSettled(payload, importFileId, { maxIterations });
+  const runJobsUntilComplete = async (ingestFileId: string, maxIterations = 50) => {
+    const result = await runJobsUntilImportSettled(payload, ingestFileId, { maxIterations });
     return result.settled;
   };
 
   const getEventData = (event: Event): Record<string, unknown> => {
-    return typeof event.data === "object" && event.data !== null && !Array.isArray(event.data)
-      ? (event.data as Record<string, unknown>)
+    return typeof event.originalData === "object" && event.originalData !== null && !Array.isArray(event.originalData)
+      ? (event.originalData as Record<string, unknown>)
       : {};
   };
 
@@ -155,17 +155,17 @@ describe.sequential("All Transform Types Pipeline", () => {
    */
   const runFullImport = async (datasetId: string | number) => {
     const csvBuffer = loadCSVFixture("events-all-transforms.csv");
-    const { importFile } = await withImportFile(testEnv, testCatalogId, csvBuffer, {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvBuffer, {
       filename: "events-all-transforms.csv",
       mimeType: "text/csv",
       user: approverUser.id,
       additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: datasetId } } },
     });
 
-    const importJob = await waitForSchemaDetection(importFile.id);
-    await simulateSchemaApproval(String(importJob!.id));
+    const ingestJob = await waitForSchemaDetection(ingestFile.id);
+    await simulateSchemaApproval(String(ingestJob!.id));
 
-    const completed = await runJobsUntilComplete(importFile.id);
+    const completed = await runJobsUntilComplete(ingestFile.id);
     expect(completed).toBe(true);
 
     const events = await payload.find({
@@ -184,7 +184,7 @@ describe.sequential("All Transform Types Pipeline", () => {
       name: `All Transforms Dataset ${Date.now()}`,
       language: "eng",
       schemaConfig: { allowTransformations: true },
-      importTransforms: buildAllTransforms(),
+      ingestTransforms: buildAllTransforms(),
       idStrategy: { type: "auto" },
     });
 
@@ -268,7 +268,7 @@ describe.sequential("All Transform Types Pipeline", () => {
       name: `Inactive Transform Dataset ${Date.now()}`,
       language: "eng",
       schemaConfig: { allowTransformations: true },
-      importTransforms: transforms,
+      ingestTransforms: transforms,
       idStrategy: { type: "auto" },
     });
 
@@ -294,7 +294,7 @@ describe.sequential("All Transform Types Pipeline", () => {
       name: `Order Verification Dataset ${Date.now()}`,
       language: "eng",
       schemaConfig: { allowTransformations: true },
-      importTransforms: buildAllTransforms(),
+      ingestTransforms: buildAllTransforms(),
       idStrategy: { type: "auto" },
     });
 

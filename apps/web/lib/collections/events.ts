@@ -21,7 +21,7 @@
  */
 import type { Access, CollectionConfig, Where } from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 
 import { eventsBeforeChangeHook } from "./events/hooks";
 import { createCommonConfig, isEditorOrAdmin, isPrivileged } from "./shared-fields";
@@ -100,14 +100,14 @@ const Events: CollectionConfig = {
       admin: { hidden: true, description: "Denormalized from catalog.owner for zero-query owner access control" },
     },
     {
-      name: "importJob",
+      name: "ingestJob",
       type: "relationship",
-      relationTo: "import-jobs",
+      relationTo: "ingest-jobs",
       hasMany: false,
-      admin: { description: "The import job that created this event" },
+      admin: { description: "The ingest job that created this event" },
     },
     {
-      name: "data",
+      name: "originalData",
       type: "json",
       required: true,
       admin: { description: "Generic data in JSON format (JSONB indexed for fast queries)" },
@@ -129,7 +129,7 @@ const Events: CollectionConfig = {
           name: "type",
           type: "select",
           options: [
-            { label: "Pre-existing in Import", value: "import" },
+            { label: "Pre-existing in Source Data", value: "source-data" },
             { label: "Geocoded from Address", value: "geocoded" },
             { label: "Manual Entry", value: "manual" },
             { label: "Not Available", value: "none" },
@@ -137,7 +137,7 @@ const Events: CollectionConfig = {
           defaultValue: "none",
         },
         {
-          name: "importColumns",
+          name: "sourceColumns",
           type: "group",
           fields: [
             { name: "latitudeColumn", type: "text", admin: { description: "Column name containing latitude" } },
@@ -149,7 +149,7 @@ const Events: CollectionConfig = {
             },
             { name: "format", type: "text", admin: { description: "Format of coordinates (decimal, DMS, etc.)" } },
           ],
-          admin: { condition: (data) => (data.coordinateSource as { type?: string })?.type === "import" },
+          admin: { condition: (data) => (data.coordinateSource as { type?: string })?.type === "source-data" },
         },
         {
           name: "confidence",
@@ -256,10 +256,10 @@ const Events: CollectionConfig = {
       admin: { description: "SHA256 hash of data content for duplicate detection" },
     },
     {
-      name: "importBatch",
+      name: "ingestBatch",
       type: "number",
       index: true,
-      admin: { description: "Batch number within import for tracking" },
+      admin: { description: "Batch number within ingest for tracking" },
     },
     {
       name: "schemaVersionNumber",
@@ -297,7 +297,7 @@ const Events: CollectionConfig = {
     { fields: ["eventTimestamp"] },
     { fields: ["uniqueId"] },
     { fields: ["dataset", "contentHash"] },
-    { fields: ["importJob", "importBatch"] },
+    { fields: ["ingestJob", "ingestBatch"] },
     { fields: ["validationStatus"] },
     // B-tree indexes for bounds computation (MIN/MAX queries)
     { fields: ["location.longitude"] },

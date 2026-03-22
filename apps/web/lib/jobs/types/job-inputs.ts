@@ -15,30 +15,30 @@ export interface BaseJobInput {
 
 // For jobs that operate on import files (dataset detection)
 export interface FileJobInput extends BaseJobInput {
-  input: { importFileId: string; catalogId?: string };
+  input: { ingestFileId: string; catalogId?: string };
 }
 
 // For jobs that operate on import jobs (most pipeline jobs)
-export interface ImportJobInput extends BaseJobInput {
-  input: { importJobId: string | number };
+export interface IngestJobInput extends BaseJobInput {
+  input: { ingestJobId: string | number };
 }
 
 // For jobs that process data in batches
 export interface BatchJobInput extends BaseJobInput {
-  input: { importJobId: string | number; batchNumber: number };
+  input: { ingestJobId: string | number; batchNumber: number };
 }
 
 // Specific job input types
 export type DatasetDetectionJobInput = FileJobInput;
 
-export type AnalyzeDuplicatesJobInput = ImportJobInput;
+export type AnalyzeDuplicatesJobInput = IngestJobInput;
 
-export type SchemaDetectionJobInput = ImportJobInput;
+export type SchemaDetectionJobInput = IngestJobInput;
 
-export type ValidateSchemaJobInput = ImportJobInput;
+export type ValidateSchemaJobInput = IngestJobInput;
 
-export type CreateSchemaVersionJobInput = ImportJobInput;
+export type CreateSchemaVersionJobInput = IngestJobInput;
 
 export type GeocodingBatchJobInput = BatchJobInput;
 
-export type CreateEventsBatchJobInput = ImportJobInput;
+export type CreateEventsBatchJobInput = IngestJobInput;

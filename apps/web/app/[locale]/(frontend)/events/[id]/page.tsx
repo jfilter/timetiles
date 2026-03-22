@@ -32,7 +32,7 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
   const result = await payload.find({ collection: "events", where: { id: { equals: id } }, depth: 1, limit: 1 });
 
   const event = result.docs[0];
-  const eventData = event?.data as Record<string, unknown> | undefined;
+  const eventData = event?.originalData as Record<string, unknown> | undefined;
   const title = (eventData?.title as string) || (eventData?.name as string) || `Event ${id}`;
 
   return {

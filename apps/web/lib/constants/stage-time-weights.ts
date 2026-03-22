@@ -10,7 +10,7 @@
  * @category Constants
  */
 
-import { PROCESSING_STAGE } from "./import-constants";
+import { PROCESSING_STAGE } from "./ingest-constants";
 
 /**
  * Estimated relative time weights for each processing stage.

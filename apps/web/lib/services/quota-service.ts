@@ -3,7 +3,7 @@
  *
  * This service provides centralized control over user resource limits, usage tracking,
  * and quota enforcement. It integrates with Payload CMS to enforce quotas and track
- * usage across various operations like file uploads, scheduled imports, and event creation.
+ * usage across various operations like file uploads, scheduled ingests, and event creation.
  *
  * ## Usage Tracking Architecture
  *
@@ -214,7 +214,7 @@ export class QuotaService {
           user: normalizedUserId,
           urlFetchesToday: 0,
           fileUploadsToday: 0,
-          importJobsToday: 0,
+          ingestJobsToday: 0,
           currentActiveSchedules: 0,
           totalEventsCreated: 0,
           currentCatalogs: 0,
@@ -253,7 +253,7 @@ export class QuotaService {
       maxFileUploadsPerDay: userQuotas.maxFileUploadsPerDay ?? defaultQuotas.maxFileUploadsPerDay,
       maxEventsPerImport: userQuotas.maxEventsPerImport ?? defaultQuotas.maxEventsPerImport,
       maxTotalEvents: userQuotas.maxTotalEvents ?? defaultQuotas.maxTotalEvents,
-      maxImportJobsPerDay: userQuotas.maxImportJobsPerDay ?? defaultQuotas.maxImportJobsPerDay,
+      maxIngestJobsPerDay: userQuotas.maxIngestJobsPerDay ?? defaultQuotas.maxIngestJobsPerDay,
       maxFileSizeMB: userQuotas.maxFileSizeMB ?? defaultQuotas.maxFileSizeMB,
       maxCatalogsPerUser: userQuotas.maxCatalogsPerUser ?? defaultQuotas.maxCatalogsPerUser,
       maxScraperRepos: userQuotas.maxScraperRepos ?? defaultQuotas.maxScraperRepos,
@@ -300,7 +300,7 @@ export class QuotaService {
         currentActiveSchedules: doc.currentActiveSchedules ?? 0,
         urlFetchesToday: doc.urlFetchesToday ?? 0,
         fileUploadsToday: doc.fileUploadsToday ?? 0,
-        importJobsToday: doc.importJobsToday ?? 0,
+        ingestJobsToday: doc.ingestJobsToday ?? 0,
         totalEventsCreated: doc.totalEventsCreated ?? 0,
         currentCatalogs: doc.currentCatalogs ?? 0,
         currentScraperRepos: doc.currentScraperRepos ?? 0,

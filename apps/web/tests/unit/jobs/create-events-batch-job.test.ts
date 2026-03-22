@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import { createMockContext, createMockImportFile } from "@/tests/setup/factories";
+import { createMockContext, createMockIngestFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/import/file-readers", () => ({
+vi.mock("@/lib/ingest/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
@@ -41,7 +41,7 @@ vi.mock("@/lib/types/geocoding", () => ({
   getGeocodingResultForRow: mocks.getGeocodingResultForRow,
 }));
 
-vi.mock("@/lib/import/progress-tracking", () => ({
+vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     startStage: mocks.startStage,
     updateStageProgress: mocks.updateStageProgress,
@@ -52,7 +52,7 @@ vi.mock("@/lib/import/progress-tracking", () => ({
 }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
-  getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
+  getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
 vi.mock("@/lib/services/quota-service", () => ({
@@ -166,16 +166,16 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     // — no enqueue needed since the default is already []
 
     // Mock context — no batchNumber needed
-    mockContext = createMockContext(mockPayload, { importJobId: "import-123" });
+    mockContext = createMockContext(mockPayload, { ingestJobId: "import-123" });
   });
 
   describe("Success Cases", () => {
     it("should create events successfully from streamed data", async () => {
       // Mock import job - needs to be mutable to track updates (using const with Object.assign)
-      const mockImportJob: any = {
+      const mockIngestJob: any = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: { internal: [], external: [], summary: { uniqueRows: 2 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
@@ -185,7 +185,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
       // Mock import file
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data
       const mockFileData = [
@@ -194,18 +194,18 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       ];
 
       // Setup mocks - findByID will be called multiple times by ProgressTrackingService
-      // update mock should update the mockImportJob
+      // update mock should update the mockIngestJob
       mockPayload.update.mockImplementation(({ collection, data }: any) => {
-        if (collection === "import-jobs") {
-          Object.assign(mockImportJob, data);
+        if (collection === "ingest-jobs") {
+          Object.assign(mockIngestJob, data);
         }
-        return Promise.resolve(mockImportJob);
+        return Promise.resolve(mockIngestJob);
       });
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -218,7 +218,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Mock find for updateImportFileStatusIfAllJobsComplete - no pending jobs
+      // Mock find for updateIngestFileStatusIfAllJobsComplete - no pending jobs
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       // Execute job
@@ -228,7 +228,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 2, eventsSkipped: 0, errors: 0 } });
 
       // Verify streaming was used
-      expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith("/mock/import-files/test.csv", {
+      expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith("/mock/ingest-files/test.csv", {
         sheetIndex: 0,
         batchSize: expect.any(Number),
       });
@@ -241,7 +241,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         expect.objectContaining({
           dataset: "dataset-456",
           uniqueId: "dataset-456:ext:1",
-          data: expect.objectContaining({ id: "1", title: "Event 1", address: "123 Main St" }),
+          originalData: expect.objectContaining({ id: "1", title: "Event 1", address: "123 Main St" }),
         })
       );
 
@@ -253,10 +253,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("preserves string import file IDs when marking the file complete", async () => {
-      const mockImportJob: any = {
+      const mockIngestJob: any = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
@@ -264,12 +264,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
-      const mockImportFile = createMockImportFile("file-789");
+      const mockIngestFile = createMockIngestFile("file-789");
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -284,16 +284,16 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       await createEventsBatchJob.handler(mockContext);
 
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({ collection: "import-files", id: "file-789", data: { status: "completed" } })
+        expect.objectContaining({ collection: "ingest-files", id: "file-789", data: { status: "completed" } })
       );
     });
 
     it("should skip duplicate rows identified in previous stage", async () => {
       // Mock import job with duplicates
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: {
           internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
@@ -305,7 +305,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data (3 rows, but 2 are duplicates)
       const mockFileData = [
@@ -315,9 +315,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       ];
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -332,7 +332,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Mock find for updateImportFileStatusIfAllJobsComplete - no pending jobs
+      // Mock find for updateIngestFileStatusIfAllJobsComplete - no pending jobs
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       const result = await createEventsBatchJob.handler(mockContext);
@@ -355,21 +355,21 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should process multiple batches in single job", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 4 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
-      const mockImportFile = { id: "file-789", filename: "test.csv" };
+      const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -407,10 +407,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should mark import as completed after processing all batches", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: {
           internal: [],
           external: [],
@@ -424,16 +424,16 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       };
 
       const mockDataset = { id: "dataset-456" };
-      const mockImportFile = { id: "file-789", filename: "test.csv" };
+      const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
-      // Mock find for updateImportFileStatusIfAllJobsComplete - no pending jobs
+      // Mock find for updateIngestFileStatusIfAllJobsComplete - no pending jobs
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       // Mock empty stream (no rows to process)
@@ -451,7 +451,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Should mark as completed
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: {
           stage: "completed",
@@ -468,10 +468,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Progress Tracking", () => {
     it("should pass totalRows (not uniqueRows) to startStage when duplicates exist", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: {
           internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
@@ -483,14 +483,14 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       };
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       const mockFileData = Array.from({ length: 5 }, (_, i) => ({ id: `${i + 1}`, title: `Event ${i + 1}` }));
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -514,17 +514,17 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should not double-count failed rows in batch progress", async () => {
-      const mockImportJob: any = {
+      const mockIngestJob: any = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: { internal: [], external: [], summary: { uniqueRows: 5 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // 5 rows in a single batch — the 3rd row (index 2) will fail during data building
       const mockFileData = [
@@ -536,9 +536,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       ];
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -577,22 +577,22 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Retry Idempotency", () => {
     it("should delete events from prior attempt on retry using chunked SQL", async () => {
-      const mockImportJob: any = {
+      const mockIngestJob: any = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -625,41 +625,41 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error when import job not found", async () => {
+    it("should throw error when ingest job not found", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
-      await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Import job not found: import-123");
+      await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
     });
 
     it("should throw error when dataset not found", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
 
       await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
-    it("should throw error when import file not found", async () => {
-      const mockImportJob = {
+    it("should throw error when ingest file not found", async () => {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = { id: "dataset-456" };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(null); // Import file not found
+        .mockResolvedValueOnce(null); // Ingest file not found
 
-      await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Import file not found");
+      await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
   });
 
@@ -673,10 +673,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const { createQuotaService } = await import("@/lib/services/quota-service");
       vi.mocked(createQuotaService).mockReturnValue({ checkQuota: mockCheckQuota } as any);
 
-      const mockImportJob: any = {
+      const mockIngestJob: any = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: {
           internal: Array.from({ length: 950 }, (_, i) => ({ rowNumber: i + 50, uniqueId: `dup-${i}` })),
@@ -687,14 +687,14 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       };
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
       // Add user for quota check path
-      (mockImportFile as any).user = { id: "user-1", role: "user" };
+      (mockIngestFile as any).user = { id: "user-1", role: "user" };
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         if (collection === "users") return Promise.resolve({ id: "user-1", role: "user" });
         return Promise.resolve(null);
       });
@@ -724,25 +724,25 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Edge Cases", () => {
     it("should handle empty stream gracefully", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 0 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
       const mockDataset = { id: "dataset-456" };
-      const mockImportFile = { id: "file-789", filename: "empty.csv" };
+      const mockIngestFile = { id: "file-789", filename: "empty.csv" };
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
-      // Mock find for updateImportFileStatusIfAllJobsComplete
+      // Mock find for updateIngestFileStatusIfAllJobsComplete
       mockPayload.find.mockResolvedValue({ docs: [] });
 
       // Mock empty stream
@@ -755,7 +755,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       // Should mark as completed
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: {
           stage: "completed",
@@ -772,10 +772,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Type Transformations", () => {
     it("should skip transformations when allowTransformations is false", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -784,7 +784,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: false },
-        importTransforms: [
+        ingestTransforms: [
           {
             id: "transform-age",
             type: "string-op",
@@ -796,14 +796,14 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ],
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       const mockFileData = [{ id: "1", name: "John", age: "25" }];
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -821,7 +821,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          data: expect.objectContaining({ age: "25" }),
+          originalData: expect.objectContaining({ age: "25" }),
           validationStatus: "pending",
           transformations: null,
         })
@@ -829,10 +829,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should apply type transformations and mark event as transformed", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -841,7 +841,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        importTransforms: [
+        ingestTransforms: [
           {
             id: "transform-age",
             type: "string-op",
@@ -853,14 +853,14 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ],
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       const mockFileData = [{ id: "1", name: "John", age: "25" }];
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -878,7 +878,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          data: expect.objectContaining({ age: 25 }),
+          originalData: expect.objectContaining({ age: 25 }),
           validationStatus: "transformed",
           transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
         })
@@ -886,10 +886,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should handle empty transformations array", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -898,17 +898,17 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        importTransforms: [],
+        ingestTransforms: [],
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       const mockFileData = [{ id: "1", age: "25" }];
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -930,10 +930,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should apply multiple transformations to different fields", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -942,7 +942,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        importTransforms: [
+        ingestTransforms: [
           {
             id: "transform-age",
             type: "string-op",
@@ -962,14 +962,14 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ],
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       const mockFileData = [{ id: "1", age: "25", active: "true" }];
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -986,7 +986,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          data: expect.objectContaining({ age: 25, active: true }),
+          originalData: expect.objectContaining({ age: 25, active: true }),
           transformations: expect.arrayContaining([
             expect.objectContaining({ path: "age" }),
             expect.objectContaining({ path: "active" }),
@@ -996,10 +996,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should skip disabled transformation rules", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -1008,7 +1008,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        importTransforms: [
+        ingestTransforms: [
           {
             id: "transform-age",
             type: "string-op",
@@ -1020,14 +1020,14 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ],
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       const mockFileData = [{ id: "1", age: "25" }];
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -1044,17 +1044,17 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          data: expect.objectContaining({ age: "25" }), // Still string
+          originalData: expect.objectContaining({ age: "25" }), // Still string
           validationStatus: "pending",
         })
       );
     });
 
     it("should handle transformation errors gracefully", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -1063,7 +1063,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        importTransforms: [
+        ingestTransforms: [
           {
             id: "transform-age",
             type: "string-op",
@@ -1075,15 +1075,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ],
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Invalid data that will fail transformation
       const mockFileData = [{ id: "1", age: "not-a-number" }];
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -1102,7 +1102,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          data: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
+          originalData: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
           validationStatus: "transformed", // Marks as transformed (attempted)
           transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
         })

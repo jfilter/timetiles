@@ -27,8 +27,8 @@ const logger = createLogger("bulk-event-insert");
  */
 export interface BulkEventData {
   dataset: number;
-  importJob?: number;
-  data: Record<string, unknown>;
+  ingestJob?: number;
+  originalData: Record<string, unknown>;
   uniqueId: string;
   eventTimestamp: string;
   location?: { latitude: number; longitude: number };
@@ -51,8 +51,8 @@ const BATCH_SIZE = 250;
 /** Map a BulkEventData into the shape Drizzle expects for the events table. */
 const toEventsRow = (event: BulkEventData, now: string): typeof events.$inferInsert => ({
   dataset: event.dataset,
-  importJob: event.importJob ?? null,
-  data: event.data,
+  ingestJob: event.ingestJob ?? null,
+  originalData: event.originalData,
   uniqueId: event.uniqueId,
   eventTimestamp: event.eventTimestamp,
   location_latitude: event.location?.latitude ?? null,
@@ -78,8 +78,8 @@ const toVersionRow = (parentId: number, event: BulkEventData, now: string): type
   version_dataset: event.dataset,
   version_datasetIsPublic: event.datasetIsPublic ?? false,
   version_catalogOwnerId: event.catalogOwnerId ?? null,
-  version_importJob: event.importJob ?? null,
-  version_data: event.data,
+  version_ingestJob: event.ingestJob ?? null,
+  version_originalData: event.originalData,
   version_location_latitude: event.location?.latitude ?? null,
   version_location_longitude: event.location?.longitude ?? null,
   version_coordinateSource_type: event.coordinateSource

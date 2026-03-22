@@ -28,7 +28,7 @@ export interface UserQuotas {
   maxFileUploadsPerDay: number;
   maxEventsPerImport: number;
   maxTotalEvents: number;
-  maxImportJobsPerDay: number;
+  maxIngestJobsPerDay: number;
   maxFileSizeMB: number;
   maxCatalogsPerUser: number;
   maxScraperRepos: number;
@@ -42,7 +42,7 @@ export interface UserUsage {
   currentActiveSchedules: number;
   urlFetchesToday: number;
   fileUploadsToday: number;
-  importJobsToday: number;
+  ingestJobsToday: number;
   totalEventsCreated: number;
   currentCatalogs: number;
   currentScraperRepos: number;
@@ -61,7 +61,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxFileUploadsPerDay: 1,
     maxEventsPerImport: 100,
     maxTotalEvents: 100,
-    maxImportJobsPerDay: 1,
+    maxIngestJobsPerDay: 1,
     maxFileSizeMB: 1,
     maxCatalogsPerUser: 1,
     maxScraperRepos: 0,
@@ -73,7 +73,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxFileUploadsPerDay: 3,
     maxEventsPerImport: 1000,
     maxTotalEvents: 5000,
-    maxImportJobsPerDay: 5,
+    maxIngestJobsPerDay: 5,
     maxFileSizeMB: 10,
     maxCatalogsPerUser: 2,
     maxScraperRepos: 0,
@@ -85,7 +85,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxFileUploadsPerDay: 10,
     maxEventsPerImport: 10000,
     maxTotalEvents: 50000,
-    maxImportJobsPerDay: 20,
+    maxIngestJobsPerDay: 20,
     maxFileSizeMB: 50,
     maxCatalogsPerUser: 5,
     maxScraperRepos: 0,
@@ -97,7 +97,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxFileUploadsPerDay: 50,
     maxEventsPerImport: 50000,
     maxTotalEvents: 500000,
-    maxImportJobsPerDay: 100,
+    maxIngestJobsPerDay: 100,
     maxFileSizeMB: 100,
     maxCatalogsPerUser: 20,
     maxScraperRepos: 3,
@@ -109,7 +109,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxFileUploadsPerDay: 200,
     maxEventsPerImport: 200000,
     maxTotalEvents: 2000000,
-    maxImportJobsPerDay: 500,
+    maxIngestJobsPerDay: 500,
     maxFileSizeMB: 500,
     maxCatalogsPerUser: 100,
     maxScraperRepos: 10,
@@ -121,7 +121,7 @@ export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
     maxFileUploadsPerDay: -1,
     maxEventsPerImport: -1,
     maxTotalEvents: -1,
-    maxImportJobsPerDay: -1,
+    maxIngestJobsPerDay: -1,
     maxFileSizeMB: 1000,
     maxCatalogsPerUser: -1,
     maxScraperRepos: -1,
@@ -209,8 +209,8 @@ export const QUOTAS = {
       `Total events limit reached (${current}/${limit}). Contact admin for increased quota.`,
   },
   IMPORT_JOBS_PER_DAY: {
-    limitField: "maxImportJobsPerDay",
-    usageField: "importJobsToday",
+    limitField: "maxIngestJobsPerDay",
+    usageField: "ingestJobsToday",
     daily: true,
     errorMessage: (current: number, limit: number) =>
       `Daily import job limit reached (${current}/${limit}). Resets at midnight UTC.`,

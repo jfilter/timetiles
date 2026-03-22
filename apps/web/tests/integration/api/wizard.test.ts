@@ -3,8 +3,8 @@
  *
  * Tests the import wizard API endpoints:
  * - GET /api/catalogs/with-datasets - List user's catalogs
- * - POST /api/import/preview-schema - Preview file schema
- * - POST /api/import/configure - Configure and start import
+ * - POST /api/ingest/preview-schema - Preview file schema
+ * - POST /api/ingest/configure - Configure and start import
  *
  * @module
  * @category Integration Tests

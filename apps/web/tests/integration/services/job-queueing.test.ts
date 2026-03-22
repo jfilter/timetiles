@@ -21,10 +21,10 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
-  runJobsUntilImportJobStage,
   runJobsUntilImportSettled,
+  runJobsUntilIngestJobStage,
   withCatalog,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -67,7 +67,7 @@ describe.sequential("Job Queueing Tests", () => {
       const fileBuffer = fs.readFileSync(fixturePath);
 
       // Upload CSV file
-      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
+      const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
         datasetsCount: 0,
@@ -75,23 +75,23 @@ describe.sequential("Job Queueing Tests", () => {
         user: approverUserId,
       });
 
-      // Run dataset-detection job (automatically queued by import-files afterChange hook)
+      // Run dataset-detection job (automatically queued by ingest-files afterChange hook)
       await payload.jobs.run({ allQueues: true, limit: 100 });
 
       // Check that import-job was created
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
 
       expect(importJobs.docs.length).toBeGreaterThan(0);
-      const importJobId = importJobs.docs[0].id;
+      const ingestJobId = importJobs.docs[0].id;
 
       // Check queued jobs - should have exactly ONE analyze-duplicates job
       const queuedJobs = await payload.find({
         collection: "payload-jobs",
         where: {
-          "input.importJobId": { equals: importJobId },
+          "input.ingestJobId": { equals: ingestJobId },
           taskSlug: { equals: "analyze-duplicates" },
           completedAt: { exists: false },
         },
@@ -99,7 +99,7 @@ describe.sequential("Job Queueing Tests", () => {
 
       expect(queuedJobs.docs).toHaveLength(1);
       logger.info("Verified single analyze-duplicates job queued", {
-        importJobId,
+        ingestJobId,
         queuedJobsCount: queuedJobs.docs.length,
       });
     });
@@ -109,7 +109,7 @@ describe.sequential("Job Queueing Tests", () => {
       const fileBuffer = fs.readFileSync(fixturePath);
 
       // Upload CSV file
-      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
+      const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
         datasetsCount: 0,
@@ -117,13 +117,13 @@ describe.sequential("Job Queueing Tests", () => {
         user: approverUserId,
       });
 
-      const schemaDetectionResult = await runJobsUntilImportJobStage(
+      const schemaDetectionResult = await runJobsUntilIngestJobStage(
         payload,
-        importFile.id,
-        (importJob) =>
-          importJob.stage === "validate-schema" ||
-          importJob.stage === "create-events" ||
-          importJob.stage === "completed",
+        ingestFile.id,
+        (ingestJob) =>
+          ingestJob.stage === "validate-schema" ||
+          ingestJob.stage === "create-events" ||
+          ingestJob.stage === "completed",
         { maxIterations: 20 }
       );
 
@@ -131,20 +131,20 @@ describe.sequential("Job Queueing Tests", () => {
 
       // Get import job
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
         depth: 2,
       });
 
-      const importJob = importJobs.docs[0];
+      const ingestJob = importJobs.docs[0];
 
       // Approve schema
       await payload.update({
-        collection: "import-jobs",
-        id: importJob.id,
+        collection: "ingest-jobs",
+        id: ingestJob.id,
         data: {
           schemaValidation: {
-            ...importJob.schemaValidation,
+            ...ingestJob.schemaValidation,
             approved: true,
             approvedBy: approverUserId,
             approvedAt: new Date().toISOString(),
@@ -153,12 +153,12 @@ describe.sequential("Job Queueing Tests", () => {
       });
 
       // Complete the import
-      const pipelineResult = await runJobsUntilImportSettled(payload, importFile.id);
+      const pipelineResult = await runJobsUntilImportSettled(payload, ingestFile.id);
 
       expect(pipelineResult.settled).toBe(true);
 
       // Check that exactly 3 events were created (matching the 3 rows in events-german.csv)
-      const datasetId = extractRelationId(importJob.dataset);
+      const datasetId = extractRelationId(ingestJob.dataset);
       const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } } });
 
       // Should have exactly 3 events, not 6 (which would indicate double-processing)
@@ -175,7 +175,7 @@ describe.sequential("Job Queueing Tests", () => {
       const fixturePath = path.join(__dirname, "../../fixtures/events-german.csv");
       const fileBuffer = fs.readFileSync(fixturePath);
 
-      const { importFile } = await withImportFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
+      const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
         datasetsCount: 0,
@@ -183,24 +183,24 @@ describe.sequential("Job Queueing Tests", () => {
         user: approverUserId,
       });
 
-      // Stage 1: Run dataset-detection (queued by import-files afterChange hook)
+      // Stage 1: Run dataset-detection (queued by ingest-files afterChange hook)
       await payload.jobs.run({ allQueues: true, limit: 100 });
 
       // Get import job that was created
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
       });
 
       expect(importJobs.docs.length).toBeGreaterThan(0);
-      const importJobId = importJobs.docs[0].id;
+      const ingestJobId = importJobs.docs[0].id;
 
       // Stage 2: Check analyze-duplicates was queued exactly once (BEFORE running it)
       // Since deleteJobOnComplete is true by default, we must check BEFORE jobs complete
       const analyzeDuplicatesJobs = await payload.find({
         collection: "payload-jobs",
         where: {
-          "input.importJobId": { equals: importJobId },
+          "input.ingestJobId": { equals: ingestJobId },
           taskSlug: { equals: "analyze-duplicates" },
           completedAt: { exists: false },
         },
@@ -216,7 +216,7 @@ describe.sequential("Job Queueing Tests", () => {
       const detectSchemaJobs = await payload.find({
         collection: "payload-jobs",
         where: {
-          "input.importJobId": { equals: importJobId },
+          "input.ingestJobId": { equals: ingestJobId },
           taskSlug: { equals: "detect-schema" },
           completedAt: { exists: false },
         },
@@ -232,7 +232,7 @@ describe.sequential("Job Queueing Tests", () => {
       const validateSchemaJobs = await payload.find({
         collection: "payload-jobs",
         where: {
-          "input.importJobId": { equals: importJobId },
+          "input.ingestJobId": { equals: ingestJobId },
           taskSlug: { equals: "validate-schema" },
           completedAt: { exists: false },
         },

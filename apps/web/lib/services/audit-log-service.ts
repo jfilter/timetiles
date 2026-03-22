@@ -48,7 +48,7 @@ export const AUDIT_ACTIONS = {
 
   // Import admin operations
   IMPORT_JOB_STAGE_OVERRIDE: "import.job_stage_override",
-  SCHEDULED_IMPORT_ADMIN_MODIFIED: "import.scheduled_import_admin_modified",
+  SCHEDULED_INGEST_ADMIN_MODIFIED: "import.scheduled_ingest_admin_modified",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

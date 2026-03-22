@@ -24,7 +24,7 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
   isFeatureEnabled: (...args: unknown[]) => mockIsFeatureEnabled(...args),
 }));
 
-vi.mock("@/lib/import/trigger-service", () => ({ triggerScheduledImport: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/ingest/trigger-service", () => ({ triggerScheduledIngest: vi.fn().mockResolvedValue(undefined) }));
 
 const mockClaimScraperRunning = vi.fn();
 
@@ -68,12 +68,12 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
   };
 
   /**
-   * Helper: configure mockPayload.find so scheduled imports return empty
+   * Helper: configure mockPayload.find so scheduled ingests return empty
    * and scrapers return the provided docs.
    */
   const setupScrapersOnly = (mockPayload: ReturnType<typeof createMockContext>["mockPayload"], scraperDocs: any[]) => {
     mockPayload.find.mockImplementation(({ collection }: { collection: string }) => {
-      if (collection === "scheduled-imports") {
+      if (collection === "scheduled-ingests") {
         return Promise.resolve({ docs: [], totalDocs: 0 });
       }
       if (collection === "scrapers") {
@@ -92,7 +92,7 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
       return Promise.resolve(false);
     });
 
-    // Scheduled imports: none
+    // scheduled ingests: none
     mockPayload.find.mockResolvedValue({ docs: [], totalDocs: 0 });
 
     vi.setSystemTime(new Date("2026-03-15T10:00:00Z"));

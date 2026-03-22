@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import { createMockDataset, createMockImportJob, createMockPayload } from "@/tests/setup/factories";
+import { createMockDataset, createMockIngestJob, createMockPayload } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => {
     cleanupSidecarFiles: vi.fn(),
     geocode,
     MockGeocodingService,
-    getImportFilePath: vi.fn().mockReturnValue("/app/uploads/test-import.csv"),
+    getIngestFilePath: vi.fn().mockReturnValue("/app/uploads/test-import.csv"),
   };
 });
 
@@ -62,12 +62,12 @@ vi.mock("@/lib/services/geocoding", () => ({
   }),
 }));
 
-vi.mock("@/lib/import/file-readers", () => ({
+vi.mock("@/lib/ingest/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
 
-vi.mock("@/lib/jobs/utils/upload-path", () => ({ getImportFilePath: mocks.getImportFilePath }));
+vi.mock("@/lib/jobs/utils/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
 // Don't mock @/lib/types/geocoding - use real implementation
 
@@ -88,10 +88,10 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     mocks.streamBatchesFromFile.mockReset();
     mocks.cleanupSidecarFiles.mockReset();
     mocks.geocode.mockReset();
-    mocks.getImportFilePath.mockReset();
-    mocks.getImportFilePath.mockReturnValue("/app/uploads/test-import.csv");
+    mocks.getIngestFilePath.mockReset();
+    mocks.getIngestFilePath.mockReturnValue("/app/uploads/test-import.csv");
     mockPayload = createMockPayload();
-    mockContext = { req: { payload: mockPayload }, input: { importJobId: 123 } } as unknown as JobHandlerContext;
+    mockContext = { req: { payload: mockPayload }, input: { ingestJobId: 123 } } as unknown as JobHandlerContext;
   });
 
   afterEach(() => {
@@ -100,11 +100,11 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should geocode unique locations successfully", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
+      const mockIngestJob = {
+        ...createMockIngestJob(),
         id: 123,
         dataset: 456,
-        importFile: 789,
+        ingestFile: 789,
         sheetIndex: 0,
         detectedFieldMappings: { locationPath: "address" },
       };
@@ -117,7 +117,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       ]);
 
       // Mock findByID to return the job for the initial call and for ProgressTrackingService calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode
         .mockResolvedValueOnce({
@@ -142,7 +142,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should store results as location → coordinates map
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: {
           geocodingResults: {
@@ -166,7 +166,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should skip rows without location values", async () => {
-      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       // Mock file with missing/empty locations
       mockStreamBatches([
@@ -177,7 +177,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       ]);
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode.mockResolvedValueOnce({
         latitude: 40.7128,
@@ -196,7 +196,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle geocoding failures gracefully", async () => {
-      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       mockStreamBatches([
         { id: "1", title: "Event 1", address: "123 Main St" },
@@ -204,7 +204,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       ]);
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode
         .mockResolvedValueOnce({
@@ -235,8 +235,8 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should skip geocoding when no location field detected", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
+      const mockIngestJob = {
+        ...createMockIngestJob(),
         id: 123,
         detectedFieldMappings: {
           // No locationPath
@@ -244,7 +244,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       };
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       const result = await geocodeBatchJob.handler(mockContext);
 
@@ -254,7 +254,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should transition directly to CREATE_EVENTS
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: { stage: "create-events" },
       });
@@ -263,12 +263,12 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle empty file gracefully", async () => {
-      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       mockStreamBatches([]);
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       const result = await geocodeBatchJob.handler(mockContext);
 
@@ -277,7 +277,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should store empty results
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: { geocodingResults: {}, stage: "create-events" },
       });
@@ -286,7 +286,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should trim whitespace from locations", async () => {
-      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       mockStreamBatches([
         { id: "1", address: "  123 Main St  " },
@@ -294,7 +294,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       ]);
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode.mockResolvedValueOnce({
         latitude: 40.7128,
@@ -317,29 +317,29 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     it("should handle missing import job", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
-      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Import job not found");
+      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Ingest job not found");
     });
 
     it("should handle missing import file", async () => {
       const mockDataset = createMockDataset();
-      const mockImportJob = {
-        ...createMockImportJob(),
+      const mockIngestJob = {
+        ...createMockIngestJob(),
         id: 123,
         dataset: mockDataset, // Use object to avoid lookup
-        importFile: 789, // Use string so it needs to be looked up
+        ingestFile: 789, // Use string so it needs to be looked up
       };
 
       // First call returns the job, second call for import file lookup returns null
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Import file not found
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Ingest file not found
 
-      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Import file not found");
+      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
     it("should set job to FAILED stage on error", async () => {
-      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       // Make streamBatchesFromFile throw an error
       mocks.streamBatchesFromFile.mockImplementation(function* () {
@@ -351,22 +351,22 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should update job to FAILED stage with error details
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: { stage: "failed", errorLog: { lastError: "File read error", context: "geocode-batch" } },
       });
     });
 
     it("should clean up sidecar files on error", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
+      const mockIngestJob = {
+        ...createMockIngestJob(),
         id: 123,
         sheetIndex: 2,
         detectedFieldMappings: { locationPath: "address" },
       };
 
       // Mock findByID to return the job for all calls (including error cleanup re-load)
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       // Make streamBatchesFromFile throw an error
       mocks.streamBatchesFromFile.mockImplementation(function* () {
@@ -383,7 +383,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
   describe("Edge Cases", () => {
     it("should handle non-string location values", async () => {
-      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       mockStreamBatches([
         { id: "1", address: "123 Main St" },
@@ -393,7 +393,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       ]);
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode.mockResolvedValueOnce({
         latitude: 40.7128,
@@ -412,10 +412,10 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should fail the job when all geocoding fails", async () => {
-      const mockImportJob = {
-        ...createMockImportJob(),
+      const mockIngestJob = {
+        ...createMockIngestJob(),
         id: 123,
-        importFile: { id: 789, filename: "test.csv" },
+        ingestFile: { id: 789, filename: "test.csv" },
         detectedFieldMappings: { locationPath: "address" },
       };
 
@@ -425,7 +425,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       ]);
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode.mockRejectedValue(new Error("Geocoding failed"));
 
@@ -441,7 +441,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should update import job to FAILED stage with error message and failure details
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: {
           stage: "failed",
@@ -459,7 +459,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should also update import file status to failed with detailed error
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-files",
+        collection: "ingest-files",
         id: 789,
         data: {
           status: "failed",
@@ -469,7 +469,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle large number of unique locations", async () => {
-      const mockImportJob = { ...createMockImportJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       // Generate 100 rows with 50 unique locations (each location appears twice)
       const rows = [];
@@ -479,7 +479,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       mockStreamBatches(rows);
 
       // Mock findByID to return the job for all calls
-      mockPayload.findByID.mockResolvedValue(mockImportJob);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       // Mock successful geocoding for all
       mocks.geocode.mockResolvedValue({

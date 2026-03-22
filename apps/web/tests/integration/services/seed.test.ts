@@ -48,7 +48,7 @@ describe.sequential("Database-backed Seed Operations", () => {
         collections: ["users", "catalogs", "datasets", "events"],
       });
 
-      // Check that collections have data (except import-files which we're skipping)
+      // Check that collections have data (except ingest-files which we're skipping)
       const collections = ["users", "catalogs", "datasets", "events"];
 
       for (const collection of collections) {

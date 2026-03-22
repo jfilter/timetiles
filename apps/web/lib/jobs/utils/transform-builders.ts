@@ -1,5 +1,5 @@
 /**
- * Shared utility for building typed ImportTransform arrays from dataset configuration.
+ * Shared utility for building typed IngestTransform arrays from dataset configuration.
  *
  * Used by both schema-detection-job and create-events-batch-job to ensure
  * all 6 transform types are handled consistently.
@@ -7,16 +7,16 @@
  * @module
  * @category Jobs
  */
-import type { ImportTransform } from "@/lib/types/import-transforms";
+import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import type { Dataset } from "@/payload-types";
 
-type DatasetTransformEntry = NonNullable<Dataset["importTransforms"]>[number];
+type DatasetTransformEntry = NonNullable<Dataset["ingestTransforms"]>[number];
 type TransformBase = { id: string; active: true; autoDetected: boolean };
 
-const buildRenameTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+const buildRenameTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
   t.from && t.to ? { ...base, type: "rename", from: t.from, to: t.to } : null;
 
-const buildDateParseTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+const buildDateParseTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
   t.from && t.inputFormat && t.outputFormat
     ? {
         ...base,
@@ -28,7 +28,7 @@ const buildDateParseTransform = (t: DatasetTransformEntry, base: TransformBase):
       }
     : null;
 
-const buildStringOpTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+const buildStringOpTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
   t.from && t.operation
     ? {
         ...base,
@@ -42,17 +42,17 @@ const buildStringOpTransform = (t: DatasetTransformEntry, base: TransformBase): 
       }
     : null;
 
-const buildConcatenateTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+const buildConcatenateTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
   Array.isArray(t.fromFields) && t.fromFields.length >= 2 && t.to
     ? { ...base, type: "concatenate", fromFields: t.fromFields as string[], separator: t.separator ?? " ", to: t.to }
     : null;
 
-const buildSplitTransform = (t: DatasetTransformEntry, base: TransformBase): ImportTransform | null =>
+const buildSplitTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
   t.from && t.delimiter && Array.isArray(t.toFields) && t.toFields.length > 0
     ? { ...base, type: "split", from: t.from, delimiter: t.delimiter, toFields: t.toFields as string[] }
     : null;
 
-const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: TransformBase) => ImportTransform | null> = {
+const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: TransformBase) => IngestTransform | null> = {
   rename: buildRenameTransform,
   "date-parse": buildDateParseTransform,
   "string-op": buildStringOpTransform,
@@ -60,11 +60,11 @@ const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: Transf
   split: buildSplitTransform,
 };
 
-/** Build typed ImportTransform[] from a dataset's importTransforms configuration. */
-export const buildTransformsFromDataset = (dataset: Dataset): ImportTransform[] => {
-  const transforms: ImportTransform[] = [];
+/** Build typed IngestTransform[] from a dataset's ingestTransforms configuration. */
+export const buildTransformsFromDataset = (dataset: Dataset): IngestTransform[] => {
+  const transforms: IngestTransform[] = [];
 
-  for (const t of dataset.importTransforms ?? []) {
+  for (const t of dataset.ingestTransforms ?? []) {
     if (typeof t !== "object" || !t?.id || !t.type || t.active !== true) {
       continue;
     }

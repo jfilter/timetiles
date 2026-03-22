@@ -1,5 +1,5 @@
 /**
- * Scheduled imports management page.
+ * scheduled ingests management page.
  *
  * Allows users to view and manage their scheduled URL imports.
  *
@@ -16,7 +16,7 @@ import config from "@/payload.config";
 
 import { SchedulesListClient } from "./_components/schedules-list-client";
 
-export const metadata = { title: "Scheduled Imports | TimeTiles", description: "Manage your scheduled data imports" };
+export const metadata = { title: "scheduled ingests | TimeTiles", description: "Manage your scheduled data imports" };
 
 export default async function SchedulesPage() {
   const payload = await getPayload({ config });
@@ -31,9 +31,9 @@ export default async function SchedulesPage() {
 
   await redirectIfNotDefaultSite(payload, headers, locale);
 
-  // Fetch user's scheduled imports
+  // Fetch user's scheduled ingests
   const schedulesResult = await payload.find({
-    collection: "scheduled-imports",
+    collection: "scheduled-ingests",
     where: { createdBy: { equals: user.id } },
     sort: "-updatedAt",
     limit: 200,

@@ -14,12 +14,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import type { ImportJob } from "@/payload-types";
+import type { IngestJob } from "@/payload-types";
 import {
   createMockContext,
   createMockDataset,
-  createMockImportFile,
-  createMockImportJob,
+  createMockIngestFile,
+  createMockIngestJob,
   createMockPayload,
 } from "@/tests/setup/factories";
 
@@ -38,22 +38,22 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/import/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
+vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
-  getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
+  getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
 vi.mock("@/lib/services/schema-builder", () => ({ ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder }));
 
-vi.mock("@/lib/import/schema-versioning", () => ({
+vi.mock("@/lib/ingest/schema-versioning", () => ({
   SchemaVersioningService: {
     createSchemaVersion: mocks.createSchemaVersion,
     linkImportToSchemaVersion: mocks.linkImportToSchemaVersion,
   },
 }));
 
-vi.mock("@/lib/import/progress-tracking", () => ({
+vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: { startStage: mocks.startStage, completeStage: mocks.completeStage },
 }));
 
@@ -72,7 +72,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     // Create standard mock payload and context using factories
     mockPayload = createMockPayload();
-    mockContext = createMockContext(mockPayload, { importJobId: "123" });
+    mockContext = createMockContext(mockPayload, { ingestJobId: "123" });
 
     // Mock schema builder instance (job-specific)
     mockSchemaBuilderInstance = { processBatch: vi.fn(), getSchema: vi.fn(), getState: vi.fn() };
@@ -89,7 +89,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should reject partially numeric import job ids before loading resources", async () => {
-      mockContext = createMockContext(mockPayload, { importJobId: "123abc" });
+      mockContext = createMockContext(mockPayload, { ingestJobId: "123abc" });
 
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Invalid import job ID");
 
@@ -99,9 +99,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     it("should auto-approve schema with only non-breaking changes", async () => {
       // Create mock data using factories
-      const mockImportJob = createMockImportJob({ id: 123, progress: { total: 100 } });
+      const mockIngestJob = createMockIngestJob({ id: 123, progress: { total: 100 } });
       const mockDataset = createMockDataset();
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data
 
@@ -130,14 +130,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Add schema builder state to import job
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       // Mock current schema lookup
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
@@ -166,7 +166,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Verify job was updated to proceed to CREATE_SCHEMA_VERSION (for auto-approved changes)
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: {
           schema: mockDetectedSchema,
@@ -185,10 +185,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     it("should require approval for breaking changes", async () => {
       // Mock import job
-      const mockImportJob = {
+      const mockIngestJob = {
         id: 123,
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: { internal: [], external: [] },
         progress: { total: 100 },
@@ -201,7 +201,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = { id: "file-789", filename: "test.csv" };
+      const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
       // Mock file data
 
@@ -229,14 +229,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Add schema builder state to import job
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       // Mock current schema lookup
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
@@ -261,7 +261,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Verify job was updated to await approval
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: {
           schema: mockDetectedSchema,
@@ -288,10 +288,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     it("should handle locked schema configuration", async () => {
       // Mock import job
-      const mockImportJob = {
+      const mockIngestJob = {
         id: 123,
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: { internal: [], external: [] },
         progress: { total: 100 },
@@ -308,7 +308,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = { id: "file-789", filename: "test.csv" };
+      const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
       // Mock detected schema with new field
       const mockDetectedSchema = {
@@ -328,14 +328,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
       // Add schema builder state to import job
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       // Mock current schema lookup
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
@@ -357,7 +357,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Verify job was updated to await approval
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: {
           schema: mockDetectedSchema,
@@ -376,49 +376,49 @@ describe.sequential("ValidateSchemaJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error when import job not found", async () => {
+    it("should throw error when ingest job not found", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Import job not found: 123");
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Ingest job not found: 123");
     });
 
     it("should throw error when dataset not found", async () => {
-      const mockImportJob = { id: 123, dataset: "dataset-456" };
+      const mockIngestJob = { id: 123, dataset: "dataset-456" };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
 
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
-    it("should throw error when import file not found", async () => {
-      const mockImportJob = { id: 123, dataset: "dataset-456", importFile: "file-789" };
+    it("should throw error when ingest file not found", async () => {
+      const mockIngestJob = { id: 123, dataset: "dataset-456", ingestFile: "file-789" };
 
       const mockDataset = { id: "dataset-456", schemaConfig: {} };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(null); // Import file not found
+        .mockResolvedValueOnce(null); // Ingest file not found
 
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Import file not found");
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
     it("should throw error when schema builder state is missing", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: 123,
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         // No schemaBuilderState - this should cause an error
       };
 
       const mockDataset = { id: "dataset-456", schemaConfig: {} };
 
-      const mockImportFile = { id: "file-789", filename: "test.csv" };
+      const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       // Mock getSchemaBuilderState to return null (missing state)
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
@@ -429,7 +429,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Verify error handling updated job status
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: {
           stage: "failed",
@@ -442,15 +442,15 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     });
 
     it("should clean up sidecar files on error", async () => {
-      const mockImportJob = createMockImportJob({ id: 123, sheetIndex: 2 });
+      const mockIngestJob = createMockIngestJob({ id: 123, sheetIndex: 2 });
       const mockDataset = createMockDataset();
-      const mockImportFile = createMockImportFile("file-789", "test.xlsx");
+      const mockIngestFile = createMockIngestFile("file-789", "test.xlsx");
 
       // First loadJobResources call (in try block) — returns resources successfully
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       // Make getSchemaBuilderState throw to trigger the catch block
       mocks.getSchemaBuilderState.mockImplementationOnce(() => {
@@ -459,9 +459,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Second loadJobResources call (in catch block for cleanup)
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -469,11 +469,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Schema builder exploded");
 
       // Verify sidecar cleanup was called with the file path and sheetIndex
-      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/import-files/test.xlsx", 2);
+      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/ingest-files/test.xlsx", 2);
 
       // Verify the job was updated to FAILED stage
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: { stage: "failed", errorLog: { lastError: "Schema builder exploded", context: "validate-schema" } },
       });
@@ -483,10 +483,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
   describe("Edge Cases", () => {
     it("should handle no schema changes", async () => {
       // Mock import job
-      const mockImportJob = {
+      const mockIngestJob = {
         id: 123,
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: { internal: [], external: [] },
         progress: { total: 100 },
@@ -499,7 +499,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = { id: "file-789", filename: "test.csv" };
+      const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
       // Mock file data
 
@@ -514,14 +514,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
       // Add schema builder state to import job
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       // Mock current schema lookup (same as detected)
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
@@ -546,7 +546,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Verify job was updated to proceed to geocoding
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: 123,
         data: {
           schema: mockSchema,
@@ -565,10 +565,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     it("should skip duplicate rows during schema validation", async () => {
       // Mock import job with duplicates
-      const mockImportJob = {
+      const mockIngestJob = {
         id: 123,
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         duplicates: { internal: [{ rowNumber: 1 }], external: [{ rowNumber: 2 }] },
         progress: { total: 100 },
@@ -581,7 +581,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = { id: "file-789", filename: "test.csv" };
+      const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
       // Mock schema
       const mockSchema = {
@@ -597,14 +597,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       };
 
       // Add schema builder state to import job
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
       // Setup mocks
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
 
@@ -639,23 +639,23 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     }) => {
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
-      const mockImportJob = createMockImportJob({ id: 123 });
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      const mockIngestJob = createMockIngestJob({ id: 123 });
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
       const mockDataset = createMockDataset();
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Add processingOptions with schemaMode and optionally a user
-      (mockImportFile as any).processingOptions = { schemaMode: options.schemaMode };
+      (mockIngestFile as any).processingOptions = { schemaMode: options.schemaMode };
       if (options.userId) {
-        (mockImportFile as any).user = { id: options.userId, email: "test@example.com", role: "user" };
+        (mockIngestFile as any).user = { id: options.userId, email: "test@example.com", role: "user" };
       }
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: options.currentSchema }] });
 
@@ -664,7 +664,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       mockSchemaBuilderInstance.getState.mockReturnValueOnce(mockSchemaBuilderState);
       mockPayload.update.mockResolvedValue({});
 
-      return { mockImportJob, mockDataset, mockImportFile };
+      return { mockIngestJob, mockDataset, mockIngestFile };
     };
 
     it("should fail import in strict mode when schema has changes", async () => {
@@ -692,7 +692,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Verify job was updated to FAILED stage
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          collection: "import-jobs",
+          collection: "ingest-jobs",
           id: 123,
           data: expect.objectContaining({ stage: "failed" }),
         })
@@ -808,15 +808,15 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     it("should sort current schema query by -versionNumber not -version", async () => {
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
       const mockSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
-      const mockImportJob = createMockImportJob({ id: 123 });
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      const mockIngestJob = createMockIngestJob({ id: 123 });
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
       const mockDataset = createMockDataset();
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
       mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(mockSchema);
@@ -833,19 +833,19 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     it("should fail when events per import quota is exceeded", async () => {
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
-      const mockImportJob = createMockImportJob({ id: 123 });
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      const mockIngestJob = createMockIngestJob({ id: 123 });
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
       const mockDataset = createMockDataset();
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
       // Attach a user object to the import file to trigger quota checking
-      (mockImportFile as any).user = { id: 1, email: "test@example.com", role: "user" };
+      (mockIngestFile as any).user = { id: 1, email: "test@example.com", role: "user" };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       // First checkQuota call (EVENTS_PER_IMPORT) returns not allowed
       mocks.checkQuota.mockResolvedValueOnce({ allowed: false, current: 0, limit: 50, remaining: 0 });
@@ -859,7 +859,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Verify job was updated to FAILED stage
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          collection: "import-jobs",
+          collection: "ingest-jobs",
           id: 123,
           data: expect.objectContaining({ stage: "failed" }),
         })
@@ -869,18 +869,18 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     it("should fail when total events quota is exceeded", async () => {
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
-      const mockImportJob = createMockImportJob({ id: 123 });
-      (mockImportJob as unknown as ImportJob & { schemaBuilderState?: unknown }).schemaBuilderState =
+      const mockIngestJob = createMockIngestJob({ id: 123 });
+      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
       const mockDataset = createMockDataset();
-      const mockImportFile = createMockImportFile();
-      (mockImportFile as any).user = { id: 1, email: "test@example.com", role: "user" };
+      const mockIngestFile = createMockIngestFile();
+      (mockIngestFile as any).user = { id: 1, email: "test@example.com", role: "user" };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile);
+        .mockResolvedValueOnce(mockIngestFile);
 
       // First checkQuota call (EVENTS_PER_IMPORT) returns allowed
       mocks.checkQuota.mockResolvedValueOnce({ allowed: true, current: 0, limit: 1000, remaining: 1000 });
@@ -894,7 +894,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Verify the job was updated to FAILED with the quota error
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          collection: "import-jobs",
+          collection: "ingest-jobs",
           id: 123,
           data: expect.objectContaining({
             stage: "failed",

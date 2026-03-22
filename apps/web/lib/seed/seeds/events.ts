@@ -120,15 +120,15 @@ const generateEventsForDataset = (
     events.push({
       uniqueId: `${config.slug}-event-${i}`,
       dataset: config.slug,
-      data: metadata,
+      originalData: metadata,
       location: needsLocation ? location : undefined,
       locationName,
       eventTimestamp: eventTimestamp,
       validationStatus: "valid" as const,
       coordinateSource: needsLocation
         ? {
-            type: "import" as const,
-            importColumns: { latitudeColumn: "latitude", longitudeColumn: "longitude" },
+            type: "source-data" as const,
+            sourceColumns: { latitudeColumn: "latitude", longitudeColumn: "longitude" },
             validationStatus: "valid" as const,
           }
         : { type: "none" as const },

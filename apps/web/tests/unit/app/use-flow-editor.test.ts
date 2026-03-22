@@ -24,21 +24,21 @@ vi.mock("@xyflow/react", () => ({
   addEdge: vi.fn((_params, edges) => edges),
 }));
 
-vi.mock("@/lib/hooks/use-import-wizard-queries", () => ({ usePreviewSheetsQuery: mockUsePreviewSheetsQuery }));
+vi.mock("@/lib/hooks/use-ingest-wizard-queries", () => ({ usePreviewSheetsQuery: mockUsePreviewSheetsQuery }));
 
 vi.mock("@/lib/types/flow-mapping", () => ({
   createSourceNodes: () => [{ id: "src-1", type: "source-column", data: {}, position: { x: 0, y: 0 } }],
   createTargetNodes: () => [{ id: "tgt-1", type: "target-field", data: {}, position: { x: 0, y: 0 } }],
 }));
 
-vi.mock("@/lib/import/field-mapping-utils", () => ({
+vi.mock("@/lib/ingest/field-mapping-utils", () => ({
   createEmptyFieldMapping: (sheetIndex: number) => ({ sheetIndex, titleField: null }),
   setMappingField: vi.fn(),
 }));
 
-vi.mock("@/lib/types/import-transforms", () => ({ createTransform: vi.fn(), isTransformValid: () => false }));
+vi.mock("@/lib/types/ingest-transforms", () => ({ createTransform: vi.fn(), isTransformValid: () => false }));
 
-import { useFlowEditor } from "@/app/[locale]/(frontend)/import/flow-editor/_components/use-flow-editor";
+import { useFlowEditor } from "@/app/[locale]/(frontend)/ingest/flow-editor/_components/use-flow-editor";
 
 const makeSheet = (index: number, name: string) => ({
   index,

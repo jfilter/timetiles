@@ -33,13 +33,13 @@ describe.sequential("getFeatureFlags", () => {
     const mockPayload = {
       findGlobal: vi
         .fn()
-        .mockResolvedValue({ featureFlags: { allowPrivateImports: false, enableScheduledImports: true } }),
+        .mockResolvedValue({ featureFlags: { allowPrivateImports: false, enableScheduledIngests: true } }),
     };
 
     const flags = await getFeatureFlags(mockPayload as any);
 
     expect(flags.allowPrivateImports).toBe(false);
-    expect(flags.enableScheduledImports).toBe(true);
+    expect(flags.enableScheduledIngests).toBe(true);
   });
 
   it("should use default (true) for missing individual flags when settings load succeeds", async () => {
@@ -88,7 +88,7 @@ describe.sequential("getFeatureFlags", () => {
     const flags = await getFeatureFlags(mockPayload as any);
     const expectedKeys: (keyof FeatureFlags)[] = [
       "allowPrivateImports",
-      "enableScheduledImports",
+      "enableScheduledIngests",
       "enableRegistration",
       "enableEventCreation",
       "enableDatasetCreation",

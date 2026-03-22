@@ -11,7 +11,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { findConfigSuggestionsForUser } from "@/app/api/import/preview-schema/helpers";
+import { findConfigSuggestionsForUser } from "@/app/api/ingest/preview-schema/helpers";
 
 import { createIntegrationTestEnvironment, withCatalog, withUsers } from "../../setup/integration/environment";
 
@@ -119,7 +119,7 @@ describe.sequential("Config Suggestions - Integration", () => {
         catalog: catalog.id,
         language: "eng",
         fieldMappingOverrides: { titlePath: "name", timestampPath: "date", locationNamePath: "location" },
-        importTransforms: transforms,
+        ingestTransforms: transforms,
         idStrategy: { type: "auto" },
       },
     });
@@ -130,8 +130,8 @@ describe.sequential("Config Suggestions - Integration", () => {
 
     const match = suggestions.find((s) => s.matchedColumns.includes("raw_date"));
     expect(match).toBeDefined();
-    expect(match!.config.importTransforms).toBeDefined();
-    expect(match!.config.importTransforms!.length).toBeGreaterThanOrEqual(2);
+    expect(match!.config.ingestTransforms).toBeDefined();
+    expect(match!.config.ingestTransforms!.length).toBeGreaterThanOrEqual(2);
   });
 
   it("should rank multiple datasets by score (best match first)", async () => {

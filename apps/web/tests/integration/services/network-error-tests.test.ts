@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Network Error Handling Tests for Scheduled Imports.
+ * Network Error Handling Tests for scheduled ingests.
  *
  * Tests various network failure scenarios including:
  * - Malformed URLs
@@ -24,7 +24,7 @@ import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 import {
   createIntegrationTestEnvironment,
   withCatalog,
-  withScheduledImport,
+  withScheduledIngest,
   withTestServer,
   withUsers,
 } from "@/tests/setup/integration/environment";
@@ -33,7 +33,7 @@ import type { TestServer } from "@/tests/setup/integration/http-server";
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   success: true;
-  importFileId: string | number;
+  ingestFileId: string | number;
   filename: string;
   fileSize: number | undefined;
   contentType: string;
@@ -51,7 +51,7 @@ type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
 type UrlFetchErrorOutput = UrlFetchFailureOutput;
 
 describe.sequential("Network Error Handling Tests", () => {
-  const collectionsToReset = ["scheduled-imports", "import-files", "payload-jobs", "user-usage"];
+  const collectionsToReset = ["scheduled-ingests", "ingest-files", "payload-jobs", "user-usage"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
@@ -95,7 +95,7 @@ describe.sequential("Network Error Handling Tests", () => {
     it("should reject completely invalid URLs", async () => {
       await expect(
         payload.create({
-          collection: "scheduled-imports",
+          collection: "scheduled-ingests",
           data: {
             name: "Invalid URL Import",
             sourceUrl: "not-a-url",
@@ -111,7 +111,7 @@ describe.sequential("Network Error Handling Tests", () => {
     it("should reject URLs with invalid protocols", async () => {
       await expect(
         payload.create({
-          collection: "scheduled-imports",
+          collection: "scheduled-ingests",
           data: {
             name: "FTP URL Import",
             sourceUrl: "ftp://example.com/file.csv",
@@ -137,7 +137,7 @@ describe.sequential("Network Error Handling Tests", () => {
           headers: { "Content-Type": "text/plain" },
         });
 
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/file with spaces.csv`,
@@ -149,9 +149,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-1" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -168,7 +168,7 @@ describe.sequential("Network Error Handling Tests", () => {
 
   describe("DNS Resolution Failures", () => {
     it("should handle non-existent domain names", async () => {
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         "https://this-domain-definitely-does-not-exist-12345.com/file.csv",
@@ -180,9 +180,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-2" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -200,7 +200,7 @@ describe.sequential("Network Error Handling Tests", () => {
   describe("Connection Failures", () => {
     it("should handle connection refused errors", async () => {
       // Use a port that's guaranteed to be refused (1 is privileged and likely unused)
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, "http://127.0.0.1:1/file.csv", {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, "http://127.0.0.1:1/file.csv", {
         user: testUser,
         name: "Connection Refused Import",
         frequency: "daily",
@@ -211,9 +211,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-3" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -236,7 +236,7 @@ describe.sequential("Network Error Handling Tests", () => {
           // Keep the connection open without responding to trigger a fetch timeout.
         });
 
-        const { scheduledImport } = await withScheduledImport(
+        const { scheduledIngest } = await withScheduledIngest(
           testEnv,
           testCatalogId,
           `${testServerUrl}/slow-file.csv`,
@@ -264,9 +264,9 @@ describe.sequential("Network Error Handling Tests", () => {
           job: { id: "test-job-4" },
           req: { payload },
           input: {
-            scheduledImportId: scheduledImport.id,
-            sourceUrl: scheduledImport.sourceUrl,
-            authConfig: scheduledImport.authConfig,
+            scheduledIngestId: scheduledIngest.id,
+            sourceUrl: scheduledIngest.sourceUrl,
+            authConfig: scheduledIngest.authConfig,
             catalogId: testCatalogId as any,
             originalName: "Test Import",
             userId: testUser.id,
@@ -293,7 +293,7 @@ describe.sequential("Network Error Handling Tests", () => {
     it("should handle 404 Not Found", async () => {
       testServer.respond("/missing.csv", { status: 404, body: "Not Found", headers: { "Content-Type": "text/plain" } });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/missing.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/missing.csv`, {
         user: testUser,
         name: "404 Import",
         frequency: "daily",
@@ -304,9 +304,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-5" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -327,7 +327,7 @@ describe.sequential("Network Error Handling Tests", () => {
         headers: { "Content-Type": "text/plain" },
       });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/error.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/error.csv`, {
         user: testUser,
         name: "500 Import",
         frequency: "daily",
@@ -338,9 +338,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-6" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -366,7 +366,7 @@ describe.sequential("Network Error Handling Tests", () => {
         }
       });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/protected.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/protected.csv`, {
         user: testUser,
         name: "Auth Failure Import",
         frequency: "daily",
@@ -378,9 +378,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-7" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -407,7 +407,7 @@ describe.sequential("Network Error Handling Tests", () => {
         setTimeout(() => res.destroy(), 10);
       });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/partial.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/partial.csv`, {
         user: testUser,
         name: "Partial Download Import",
         frequency: "daily",
@@ -418,9 +418,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-8" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -441,7 +441,7 @@ describe.sequential("Network Error Handling Tests", () => {
         headers: { "Content-Type": "text/html" },
       });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/wrong-type.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/wrong-type.csv`, {
         user: testUser,
         name: "Wrong Content Type Import",
         frequency: "daily",
@@ -453,9 +453,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-9" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -478,7 +478,7 @@ describe.sequential("Network Error Handling Tests", () => {
         headers: { "Content-Type": "image/png" },
       });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/binary.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/binary.csv`, {
         user: testUser,
         name: "Binary Data Import",
         frequency: "daily",
@@ -490,9 +490,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-10" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -519,7 +519,7 @@ describe.sequential("Network Error Handling Tests", () => {
         headers: { "Content-Type": "text/csv", "Content-Length": String(largeData.length) },
       });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/large.csv`, {
         user: testUser,
         name: "Large File Import",
         frequency: "daily",
@@ -535,9 +535,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-11" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -567,7 +567,7 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end("test,data\n1,2");
       });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/redirect1.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/redirect1.csv`, {
         user: testUser,
         name: "Redirect Import",
         frequency: "daily",
@@ -578,9 +578,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-12" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -600,7 +600,7 @@ describe.sequential("Network Error Handling Tests", () => {
         res.end();
       });
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/loop.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/loop.csv`, {
         user: testUser,
         name: "Infinite Redirect Import",
         frequency: "daily",
@@ -611,9 +611,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-13" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Test Import",
           userId: testUser.id,
@@ -634,7 +634,7 @@ describe.sequential("Network Error Handling Tests", () => {
     it("should queue follow-up jobs using real payload.jobs.queue", async () => {
       testServer.respondWithCSV("/data.csv", "name,date,location\nEvent 1,2024-01-01,San Francisco\n");
 
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/data.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/data.csv`, {
         user: testUser,
         name: "Real Queue Test Import",
         frequency: "daily",
@@ -645,9 +645,9 @@ describe.sequential("Network Error Handling Tests", () => {
         job: { id: "test-job-queue" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Queue Test Import",
           userId: testUser.id,
@@ -657,14 +657,14 @@ describe.sequential("Network Error Handling Tests", () => {
       expect(result.output.success).toBe(true);
       if (result.output.success) {
         const successOutput = result.output as UrlFetchSuccessOutput;
-        expect(successOutput.importFileId).toBeDefined();
+        expect(successOutput.ingestFileId).toBeDefined();
         expect(successOutput.contentType).toBe("text/csv");
 
         // Verify the import file was created
-        const importFile = await payload.findByID({ collection: "import-files", id: successOutput.importFileId });
-        expect(importFile).toBeDefined();
+        const ingestFile = await payload.findByID({ collection: "ingest-files", id: successOutput.ingestFileId });
+        expect(ingestFile).toBeDefined();
         // Status should be "parsing" because afterChange hook queues dataset-detection job immediately
-        expect(importFile.status).toBe("parsing");
+        expect(ingestFile.status).toBe("parsing");
 
         // The real job queue was called to queue schema detection
         // The status is "parsing" after the afterChange hook completes

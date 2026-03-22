@@ -1,5 +1,5 @@
 /**
- * Client component for listing and managing scheduled imports.
+ * Client component for listing and managing scheduled ingests.
  *
  * Displays schedules in a card list with status indicators and actions.
  *
@@ -28,13 +28,13 @@ import { EmptyResourceCard } from "@/app/[locale]/(frontend)/account/_components
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useLoadingStates } from "@/lib/hooks/use-loading-states";
 import {
-  useDeleteScheduledImportMutation,
-  useToggleScheduledImportMutation,
-  useTriggerScheduledImportMutation,
-} from "@/lib/hooks/use-scheduled-import-mutations";
-import { useScheduledImportsQuery } from "@/lib/hooks/use-scheduled-imports-query";
+  useDeleteScheduledIngestMutation,
+  useToggleScheduledIngestMutation,
+  useTriggerScheduledIngestMutation,
+} from "@/lib/hooks/use-scheduled-ingest-mutations";
+import { useScheduledIngestsQuery } from "@/lib/hooks/use-scheduled-ingests-query";
 import { formatDateLocale } from "@/lib/utils/date";
-import type { ScheduledImport } from "@/payload-types";
+import type { ScheduledIngest } from "@/payload-types";
 
 // Helper to get toggle button icon based on loading state
 const getToggleButtonIcon = (loadingState: string | undefined, enabled: boolean) => {
@@ -48,7 +48,7 @@ const getToggleButtonIcon = (loadingState: string | undefined, enabled: boolean)
 };
 
 interface SchedulesListClientProps {
-  initialSchedules: ScheduledImport[];
+  initialSchedules: ScheduledIngest[];
 }
 
 type TranslateFn = ReturnType<typeof useTranslations<"Schedules">>;
@@ -58,7 +58,7 @@ const FREQUENCY_KEYS = { hourly: "hourly", daily: "daily", weekly: "weekly", mon
 const SCHEMA_MODE_KEYS = { strict: "strict", additive: "additive", flexible: "flexible" } as const;
 
 // Get status badge
-const getStatusBadge = (schedule: ScheduledImport, t: TranslateFn) => {
+const getStatusBadge = (schedule: ScheduledIngest, t: TranslateFn) => {
   if (!schedule.enabled) {
     return <StatusBadge variant="muted" label={t("disabled")} icon={<PauseCircleIcon className="h-3 w-3" />} />;
   }
@@ -69,7 +69,7 @@ const getStatusBadge = (schedule: ScheduledImport, t: TranslateFn) => {
 };
 
 interface ScheduleCardProps {
-  schedule: ScheduledImport;
+  schedule: ScheduledIngest;
   loadingState?: string;
   onToggle: () => void;
   onRun: () => void;
@@ -173,13 +173,13 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete, t }: 
 
 export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientProps) => {
   const t = useTranslations("Schedules");
-  const tImport = useTranslations("Import");
-  const { data: schedules = [] } = useScheduledImportsQuery(initialSchedules);
+  const tImport = useTranslations("Ingest");
+  const { data: schedules = [] } = useScheduledIngestsQuery(initialSchedules);
   const { states: loadingStates, setLoading, clearLoading } = useLoadingStates();
 
-  const toggleMutation = useToggleScheduledImportMutation();
-  const deleteMutation = useDeleteScheduledImportMutation();
-  const triggerMutation = useTriggerScheduledImportMutation();
+  const toggleMutation = useToggleScheduledIngestMutation();
+  const deleteMutation = useDeleteScheduledIngestMutation();
+  const triggerMutation = useTriggerScheduledIngestMutation();
 
   const handleToggleEnabled = (id: number, currentEnabled: boolean) => {
     setLoading(id, "toggling");
@@ -214,7 +214,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
         icon={<ClockIcon className="text-muted-foreground mb-4 h-12 w-12" />}
         title={t("noSchedules")}
         description={t("noSchedulesDescription")}
-        action={{ label: tImport("importData"), href: "/import" }}
+        action={{ label: tImport("ingestData"), href: "/ingest" }}
       />
     );
   }

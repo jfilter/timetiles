@@ -8,8 +8,8 @@
  * @module
  * @category Constants
  */
-import type { JobType, ProcessingStage } from "./import-constants";
-import { JOB_TYPES, PROCESSING_STAGE } from "./import-constants";
+import type { JobType, ProcessingStage } from "./ingest-constants";
+import { JOB_TYPES, PROCESSING_STAGE } from "./ingest-constants";
 
 /**
  * Ordered processing stages (excludes terminal COMPLETED/FAILED).

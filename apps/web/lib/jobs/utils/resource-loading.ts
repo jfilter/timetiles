@@ -11,19 +11,19 @@
  */
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import type { Dataset, ImportFile, ImportJob } from "@/payload-types";
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
 
-import { getImportFilePath } from "./upload-path";
+import { getIngestFilePath } from "./upload-path";
 
 /**
  * Load import job by ID
  */
-export const loadImportJob = async (payload: Payload, importJobId: number | string): Promise<ImportJob> => {
-  const job = await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_JOBS, id: importJobId });
+export const loadIngestJob = async (payload: Payload, ingestJobId: number | string): Promise<IngestJob> => {
+  const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
 
   if (!job) {
-    throw new Error(`Import job not found: ${importJobId}`);
+    throw new Error(`Ingest job not found: ${ingestJobId}`);
   }
 
   return job;
@@ -48,20 +48,20 @@ export const loadDataset = async (payload: Payload, datasetRef: number | string 
 /**
  * Load import file from job or by ID
  */
-export const loadImportFile = async (
+export const loadIngestFile = async (
   payload: Payload,
-  importFileRef: number | string | ImportFile
-): Promise<ImportFile> => {
-  const importFile =
+  importFileRef: number | string | IngestFile
+): Promise<IngestFile> => {
+  const ingestFile =
     typeof importFileRef === "object"
       ? importFileRef
-      : await payload.findByID({ collection: COLLECTION_NAMES.IMPORT_FILES, id: importFileRef });
+      : await payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: importFileRef });
 
-  if (!importFile) {
-    throw new Error("Import file not found");
+  if (!ingestFile) {
+    throw new Error("Ingest file not found");
   }
 
-  return importFile;
+  return ingestFile;
 };
 
 /**
@@ -69,13 +69,13 @@ export const loadImportFile = async (
  */
 export const loadJobResources = async (
   payload: Payload,
-  importJobId: string | number
-): Promise<{ job: ImportJob; dataset: Dataset; importFile: ImportFile }> => {
-  const job = await loadImportJob(payload, importJobId);
+  ingestJobId: string | number
+): Promise<{ job: IngestJob; dataset: Dataset; ingestFile: IngestFile }> => {
+  const job = await loadIngestJob(payload, ingestJobId);
   const dataset = await loadDataset(payload, job.dataset);
-  const importFile = await loadImportFile(payload, job.importFile);
+  const ingestFile = await loadIngestFile(payload, job.ingestFile);
 
-  return { job, dataset, importFile };
+  return { job, dataset, ingestFile };
 };
 
 /**
@@ -83,14 +83,14 @@ export const loadJobResources = async (
  */
 export const loadJobAndFilePath = async (
   payload: Payload,
-  importJobId: number | string
-): Promise<{ job: ImportJob; importFile: ImportFile; filePath: string }> => {
-  const job = await loadImportJob(payload, importJobId);
-  const importFile = await loadImportFile(payload, job.importFile);
+  ingestJobId: number | string
+): Promise<{ job: IngestJob; ingestFile: IngestFile; filePath: string }> => {
+  const job = await loadIngestJob(payload, ingestJobId);
+  const ingestFile = await loadIngestFile(payload, job.ingestFile);
 
-  const filePath = getImportFilePath(importFile.filename ?? "");
+  const filePath = getIngestFilePath(ingestFile.filename ?? "");
 
-  return { job, importFile, filePath };
+  return { job, ingestFile, filePath };
 };
 
 /**
@@ -99,17 +99,17 @@ export const loadJobAndFilePath = async (
  * Concentrates the repeated `payload.update({ stage: FAILED, ... })` pattern
  * from job handler catch blocks into one place.
  */
-export const failImportJob = async (
+export const failIngestJob = async (
   payload: Payload,
-  importJobId: string | number,
+  ingestJobId: string | number,
   error: unknown,
   context?: string
 ): Promise<void> => {
   const errorMessage = error instanceof Error ? error.message : String(error);
 
   await payload.update({
-    collection: COLLECTION_NAMES.IMPORT_JOBS,
-    id: importJobId,
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: ingestJobId,
     data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError: errorMessage, context: context ?? "unknown" } },
   });
 };
@@ -117,7 +117,7 @@ export const failImportJob = async (
 /**
  * Extract duplicate row numbers from import job
  */
-export const extractDuplicateRows = (job: ImportJob): Set<number> => {
+export const extractDuplicateRows = (job: IngestJob): Set<number> => {
   const duplicateRows = new Set<number>();
 
   // Handle the duplicates field which can be of various types

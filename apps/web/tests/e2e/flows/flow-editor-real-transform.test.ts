@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
-import { ImportPage } from "../pages/import.page";
+import { IngestPage } from "../pages/ingest.page";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,10 +23,10 @@ const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
 test.describe("Flow Editor Real Transform Interactions", () => {
   test.describe.configure({ mode: "serial" });
 
-  let importPage: ImportPage;
+  let importPage: IngestPage;
 
   test.beforeEach(({ page }) => {
-    importPage = new ImportPage(page);
+    importPage = new IngestPage(page);
   });
 
   /**
@@ -159,12 +159,12 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     // Set up request interception BEFORE clicking "Start Import"
     let capturedRequestBody: Record<string, unknown> | null = null;
     page.on("request", (request) => {
-      if (request.url().includes("/api/import/configure") && request.method() === "POST") {
+      if (request.url().includes("/api/ingest/configure") && request.method() === "POST") {
         capturedRequestBody = request.postDataJSON() as Record<string, unknown>;
       }
     });
 
-    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 15000,
     });
 
@@ -211,16 +211,18 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.docs as Array<{ data: Record<string, unknown> }>;
+    const events = eventsData.docs as Array<{ originalData: Record<string, unknown> }>;
 
     // All imported events should have uppercase titles
     const uppercasedEvents = events.filter(
-      (e) => typeof e.data?.title === "string" && e.data.title === e.data.title.toUpperCase()
+      (e) => typeof e.originalData?.title === "string" && e.originalData.title === e.originalData.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBeGreaterThan(0);
 
     // Verify a specific title is uppercased (from valid-events.csv)
-    const techEvent = events.find((e) => typeof e.data?.title === "string" && e.data.title.includes("TECH CONFERENCE"));
+    const techEvent = events.find(
+      (e) => typeof e.originalData?.title === "string" && e.originalData.title.includes("TECH CONFERENCE")
+    );
     expect(techEvent).toBeDefined();
   });
 });

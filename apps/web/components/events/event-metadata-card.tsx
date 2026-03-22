@@ -39,10 +39,10 @@ export const EventMetadataCard = ({ event }: { event: Event }) => {
               {event.validationStatus === "valid" ? t("valid") : t("invalid")}
             </p>
           </div>
-          {event.importBatch != null && (
+          {event.ingestBatch != null && (
             <div>
-              <p className="text-muted-foreground">{t("importBatch")}</p>
-              <p>{event.importBatch}</p>
+              <p className="text-muted-foreground">{t("ingestBatch")}</p>
+              <p>{event.ingestBatch}</p>
             </div>
           )}
         </div>

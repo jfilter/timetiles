@@ -1,7 +1,7 @@
 /**
  * URL Fetch Job Handler.
  *
- * This job handles fetching data from URLs for URL-based and scheduled imports.
+ * This job handles fetching data from URLs for URL-based and scheduled ingests.
  * It downloads the data, saves it to the file system, and updates the import-files
  * record to trigger the existing dataset-detection pipeline.
  *
@@ -12,32 +12,32 @@
 import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
-import { createImportFileAndQueueDetection } from "@/lib/import/create-import-file";
+import { createIngestFileAndQueueDetection } from "@/lib/ingest/create-ingest-file";
 import {
   fetchRemoteData,
   type FetchRemoteDataOptions,
   type FetchRemoteDataResult,
-} from "@/lib/import/fetch-remote-data";
+} from "@/lib/ingest/fetch-remote-data";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
-import type { ScheduledImport, User } from "@/payload-types";
+import type { ScheduledIngest, User } from "@/payload-types";
 
 import {
   checkForDuplicateContent,
-  loadScheduledImportConfig,
-  updateScheduledImportFailure,
-  updateScheduledImportSuccess,
-} from "./scheduled-import-utils";
+  loadScheduledIngestConfig,
+  updateScheduledIngestFailure,
+  updateScheduledIngestSuccess,
+} from "./scheduled-ingest-utils";
 
 export interface UrlFetchJobInput {
-  // For scheduled imports
-  scheduledImportId?: string;
+  // For scheduled ingests
+  scheduledIngestId?: string;
   // Direct URL fetch parameters
   sourceUrl: string;
-  authConfig?: ScheduledImport["authConfig"];
+  authConfig?: ScheduledIngest["authConfig"];
   catalogId?: number | string;
   originalName: string;
   userId?: number | string;
@@ -48,13 +48,13 @@ interface ImportContext {
   originalName: string;
   catalogId: string | number | undefined;
   userId: string | number | undefined;
-  scheduledImportId: string | undefined;
-  scheduledImport: ScheduledImport | null;
-  advancedConfig: ScheduledImport["advancedOptions"];
+  scheduledIngestId: string | undefined;
+  scheduledIngest: ScheduledIngest | null;
+  advancedConfig: ScheduledIngest["advancedOptions"];
 }
 
 type FetchSuccessResult = {
-  importFileId: number | string;
+  ingestFileId: number | string;
   filename: string;
   contentHash: string;
   isDuplicate: boolean;
@@ -85,18 +85,18 @@ const handleDuplicateCheck = async (
     dataHash,
   });
 
-  if (context.scheduledImport) {
-    await updateScheduledImportSuccess(payload, context.scheduledImport, existingFile.id, 0);
+  if (context.scheduledIngest) {
+    await updateScheduledIngestSuccess(payload, context.scheduledIngest, existingFile.id, 0);
   }
 
-  return { importFileId: existingFile.id, filename: existingFile.filename, contentHash: dataHash, isDuplicate: true };
+  return { ingestFileId: existingFile.id, filename: existingFile.filename, contentHash: dataHash, isDuplicate: true };
 };
 
 /**
  * Builds the import file data record with all conditional fields.
  */
-const buildImportFileData = (sourceUrl: string, dataHash: string, context: ImportContext): Record<string, unknown> => {
-  const { originalName, catalogId, userId, scheduledImportId, scheduledImport } = context;
+const buildIngestFileData = (sourceUrl: string, dataHash: string, context: ImportContext): Record<string, unknown> => {
+  const { originalName, catalogId, userId, scheduledIngestId, scheduledIngest } = context;
 
   const data: Record<string, unknown> = {
     originalName,
@@ -105,46 +105,46 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
     status: "pending",
     metadata: {
       urlFetch: { sourceUrl, contentHash: dataHash, isDuplicate: false, fetchedAt: new Date().toISOString() },
-      scheduledExecution: scheduledImportId
-        ? { scheduledImportId, executionTime: new Date().toISOString() }
+      scheduledExecution: scheduledIngestId
+        ? { scheduledIngestId, executionTime: new Date().toISOString() }
         : undefined,
-      datasetMapping: scheduledImport?.multiSheetConfig?.enabled
-        ? { enabled: true, sheets: scheduledImport.multiSheetConfig.sheets }
+      datasetMapping: scheduledIngest?.multiSheetConfig?.enabled
+        ? { enabled: true, sheets: scheduledIngest.multiSheetConfig.sheets }
         : undefined,
     },
     processingOptions: {
-      skipDuplicateChecking: scheduledImport?.advancedOptions?.skipDuplicateChecking ?? false,
-      autoApproveSchema: scheduledImport?.advancedOptions?.autoApproveSchema ?? false,
-      schemaMode: scheduledImport?.schemaMode ?? undefined,
+      skipDuplicateChecking: scheduledIngest?.advancedOptions?.skipDuplicateChecking ?? false,
+      autoApproveSchema: scheduledIngest?.advancedOptions?.autoApproveSchema ?? false,
+      schemaMode: scheduledIngest?.schemaMode ?? undefined,
     },
   };
 
-  if (scheduledImportId) {
-    data.scheduledImport = scheduledImportId;
+  if (scheduledIngestId) {
+    data.scheduledIngest = scheduledIngestId;
   }
-  if (scheduledImport?.dataset) {
-    data.targetDataset = scheduledImport.dataset;
+  if (scheduledIngest?.dataset) {
+    data.targetDataset = scheduledIngest.dataset;
   }
 
   return data;
 };
 
-const createImportContext = (input: UrlFetchJobInput, scheduledImport: ScheduledImport | null): ImportContext => {
-  // Resolve userId from input or scheduled import's creator
-  const resolvedUserId = input.userId ?? extractRelationId(scheduledImport?.createdBy);
+const createImportContext = (input: UrlFetchJobInput, scheduledIngest: ScheduledIngest | null): ImportContext => {
+  // Resolve userId from input or scheduled ingest's creator
+  const resolvedUserId = input.userId ?? extractRelationId(scheduledIngest?.createdBy);
 
   return {
     originalName: input.originalName,
-    catalogId: input.catalogId ?? extractRelationId(scheduledImport?.catalog),
+    catalogId: input.catalogId ?? extractRelationId(scheduledIngest?.catalog),
     userId: resolvedUserId,
-    scheduledImportId: input.scheduledImportId,
-    scheduledImport,
-    advancedConfig: scheduledImport?.advancedOptions,
+    scheduledIngestId: input.scheduledIngestId,
+    scheduledIngest,
+    advancedConfig: scheduledIngest?.advancedOptions,
   };
 };
 
 const buildSuccessOutput = (
-  importFileId: string | number,
+  ingestFileId: string | number,
   filename: string,
   contentHash: string,
   isDuplicate: boolean,
@@ -153,7 +153,7 @@ const buildSuccessOutput = (
   return {
     output: {
       success: true,
-      importFileId,
+      ingestFileId,
       filename,
       contentHash,
       isDuplicate,
@@ -178,7 +178,7 @@ const loadUser = async (payload: Payload, userId: string | number | User): Promi
 const checkAndTrackQuota = async (
   payload: Payload,
   userId: string | number | User | null | undefined,
-  _scheduledImport: ScheduledImport | null
+  _scheduledIngest: ScheduledIngest | null
 ): Promise<void> => {
   if (!userId) return;
 
@@ -192,19 +192,19 @@ const checkAndTrackQuota = async (
 
 // Helper to prepare cache options
 const prepareCacheOptions = (
-  scheduledImport: ScheduledImport | null,
+  scheduledIngest: ScheduledIngest | null,
   triggeredBy: string | undefined,
   cachingEnabled: boolean
 ) => ({
-  useCache: cachingEnabled && scheduledImport?.advancedOptions?.useHttpCache !== false,
+  useCache: cachingEnabled && scheduledIngest?.advancedOptions?.useHttpCache !== false,
   bypassCache:
-    !cachingEnabled || (triggeredBy === "manual" && scheduledImport?.advancedOptions?.bypassCacheOnManual === true),
-  respectCacheControl: scheduledImport?.advancedOptions?.respectCacheControl !== false,
+    !cachingEnabled || (triggeredBy === "manual" && scheduledIngest?.advancedOptions?.bypassCacheOnManual === true),
+  respectCacheControl: scheduledIngest?.advancedOptions?.respectCacheControl !== false,
 });
 
 // Helper to compute fetch timeout respecting test environment
-const computeTimeout = (scheduledImport: ScheduledImport | null): number => {
-  const timeoutMinutes = scheduledImport?.advancedOptions?.timeoutMinutes ?? 30;
+const computeTimeout = (scheduledIngest: ScheduledIngest | null): number => {
+  const timeoutMinutes = scheduledIngest?.advancedOptions?.timeoutMinutes ?? 30;
   const isTestEnv = process.env.NODE_ENV === "test";
   const configuredTestTimeout = Number(process.env.URL_FETCH_TEST_TIMEOUT_MS ?? "3000");
   const testTimeout =
@@ -213,22 +213,22 @@ const computeTimeout = (scheduledImport: ScheduledImport | null): number => {
 };
 
 /**
- * Builds the options for fetchRemoteData from the job input and scheduled import config.
+ * Builds the options for fetchRemoteData from the job input and scheduled ingest config.
  */
 const buildFetchOptions = (
   input: UrlFetchJobInput,
-  scheduledImport: ScheduledImport | null,
+  scheduledIngest: ScheduledIngest | null,
   cachingEnabled: boolean
 ): FetchRemoteDataOptions => {
-  const advancedOptions = scheduledImport?.advancedOptions;
+  const advancedOptions = scheduledIngest?.advancedOptions;
 
   return {
     sourceUrl: input.sourceUrl,
-    authConfig: input.authConfig ?? scheduledImport?.authConfig,
-    timeout: computeTimeout(scheduledImport),
+    authConfig: input.authConfig ?? scheduledIngest?.authConfig,
+    timeout: computeTimeout(scheduledIngest),
     maxSize: advancedOptions?.maxFileSizeMB ? advancedOptions.maxFileSizeMB * 1024 * 1024 : undefined,
-    maxRetries: scheduledImport?.retryConfig?.maxRetries ?? 3,
-    cacheOptions: prepareCacheOptions(scheduledImport, input.triggeredBy, cachingEnabled),
+    maxRetries: scheduledIngest?.retryConfig?.maxRetries ?? 3,
+    cacheOptions: prepareCacheOptions(scheduledIngest, input.triggeredBy, cachingEnabled),
     jsonApiConfig: advancedOptions?.jsonApiConfig as FetchRemoteDataOptions["jsonApiConfig"],
     responseFormat: (advancedOptions?.responseFormat as FetchRemoteDataOptions["responseFormat"]) ?? "auto",
   };
@@ -242,7 +242,7 @@ const createImportFromFetchResult = async (
   input: UrlFetchJobInput,
   importContext: ImportContext,
   result: FetchRemoteDataResult
-): Promise<{ importFileId: string | number; filename: string }> => {
+): Promise<{ ingestFileId: string | number; filename: string }> => {
   if (!importContext.userId) {
     throw new Error("User ID is required to create import files");
   }
@@ -253,23 +253,23 @@ const createImportFromFetchResult = async (
 
   const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
   const filename = `url-import-${timestamp}-${uuidv4()}${result.fileExtension}`;
-  const importFileData = buildImportFileData(input.sourceUrl, result.contentHash, importContext);
-  const { importFileId } = await createImportFileAndQueueDetection({
+  const importFileData = buildIngestFileData(input.sourceUrl, result.contentHash, importContext);
+  const { ingestFileId } = await createIngestFileAndQueueDetection({
     payload,
     importFileData,
     file: { data: result.data, mimetype: result.mimeType, name: filename, size: result.data.length },
     user,
   });
 
-  logger.info("Import file created from URL", {
-    importFileId,
+  logger.info("Ingest file created from URL", {
+    ingestFileId,
     filename,
     fileSize: result.data.length,
     contentType: result.mimeType,
     sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
   });
 
-  return { importFileId, filename };
+  return { ingestFileId, filename };
 };
 
 export const urlFetchJob = {
@@ -281,36 +281,36 @@ export const urlFetchJob = {
     const startTime = Date.now();
     logger.info("Starting URL fetch job", {
       sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
-      scheduledImportId: input.scheduledImportId,
+      scheduledIngestId: input.scheduledIngestId,
     });
 
     if (!input.sourceUrl) {
       throw new Error("Source URL is required");
     }
 
-    let scheduledImport: ScheduledImport | null = null;
+    let scheduledIngest: ScheduledIngest | null = null;
 
     try {
-      scheduledImport = await loadScheduledImportConfig(payload, input.scheduledImportId);
+      scheduledIngest = await loadScheduledIngestConfig(payload, input.scheduledIngestId);
 
-      // Abort if scheduled import was requested but is disabled or not found
-      if (input.scheduledImportId && !scheduledImport) {
-        logger.info("Scheduled import disabled or not found, aborting", { scheduledImportId: input.scheduledImportId });
-        return { output: { success: false, error: "Scheduled import is disabled or not found" } };
+      // Abort if scheduled ingest was requested but is disabled or not found
+      if (input.scheduledIngestId && !scheduledIngest) {
+        logger.info("scheduled ingest disabled or not found, aborting", { scheduledIngestId: input.scheduledIngestId });
+        return { output: { success: false, error: "scheduled ingest is disabled or not found" } };
       }
 
-      // Resolve userId from input or scheduled import's creator
-      const resolvedUserId = input.userId ?? extractRelationId(scheduledImport?.createdBy);
+      // Resolve userId from input or scheduled ingest's creator
+      const resolvedUserId = input.userId ?? extractRelationId(scheduledIngest?.createdBy);
 
       // Check and track quota (handles undefined userId gracefully)
-      await checkAndTrackQuota(payload, resolvedUserId, scheduledImport);
+      await checkAndTrackQuota(payload, resolvedUserId, scheduledIngest);
 
       // Check if URL fetch caching is enabled
       const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
       const cachingEnabled = await isFeatureEnabled(payload, "enableUrlFetchCaching");
 
       // Fetch + detect file type + convert JSON to CSV (single call)
-      const result = await fetchRemoteData(buildFetchOptions(input, scheduledImport, cachingEnabled));
+      const result = await fetchRemoteData(buildFetchOptions(input, scheduledIngest, cachingEnabled));
 
       logger.info("URL fetch successful", {
         sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
@@ -320,11 +320,11 @@ export const urlFetchJob = {
       });
 
       // Check for duplicate content
-      const importContext = createImportContext(input, scheduledImport);
+      const importContext = createImportContext(input, scheduledIngest);
       const duplicateResult = await handleDuplicateCheck(payload, importContext, result.contentHash);
       if (duplicateResult) {
         return buildSuccessOutput(
-          duplicateResult.importFileId,
+          duplicateResult.ingestFileId,
           duplicateResult.filename,
           duplicateResult.contentHash,
           true,
@@ -333,24 +333,24 @@ export const urlFetchJob = {
       }
 
       // Create import file and queue schema detection
-      const { importFileId, filename } = await createImportFromFetchResult(payload, input, importContext, result);
+      const { ingestFileId, filename } = await createImportFromFetchResult(payload, input, importContext, result);
 
-      // Update scheduled import status if applicable
-      if (scheduledImport) {
+      // Update scheduled ingest status if applicable
+      if (scheduledIngest) {
         const duration = Date.now() - startTime;
-        await updateScheduledImportSuccess(payload, scheduledImport, importFileId, duration);
+        await updateScheduledIngestSuccess(payload, scheduledIngest, ingestFileId, duration);
       }
 
-      return buildSuccessOutput(importFileId, filename, result.contentHash, false, result);
+      return buildSuccessOutput(ingestFileId, filename, result.contentHash, false, result);
     } catch (error) {
       const errorObj = error as Error;
       logError(errorObj, "URL fetch job failed", {
         sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
-        scheduledImportId: input.scheduledImportId,
+        scheduledIngestId: input.scheduledIngestId,
       });
 
-      if (scheduledImport) {
-        await updateScheduledImportFailure(payload, scheduledImport, errorObj);
+      if (scheduledIngest) {
+        await updateScheduledIngestFailure(payload, scheduledIngest, errorObj);
       }
 
       return buildErrorOutput(errorObj);

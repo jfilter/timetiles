@@ -14,20 +14,20 @@
 /* eslint-disable sonarjs/max-lines-per-function -- Batch geocoding requires sequential processing steps */
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/import-constants";
-import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/import/file-readers";
-import { ProgressTrackingService } from "@/lib/import/progress-tracking";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import type { ImportGeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
-import type { ImportJob } from "@/payload-types";
+import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { failImportJob, loadJobResources } from "../utils/resource-loading";
-import { getImportFilePath } from "../utils/upload-path";
+import { failIngestJob, loadJobResources } from "../utils/resource-loading";
+import { getIngestFilePath } from "../utils/upload-path";
 
 /**
  * Stream through file batches to extract unique location values without loading all rows into memory.
@@ -80,7 +80,7 @@ const BATCH_CONCURRENCY = 10;
 const geocodeUniqueLocations = async (
   geocodingService: GeocodingService,
   payload: Payload,
-  job: ImportJob,
+  job: IngestJob,
   locations: Set<string>,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{
@@ -143,18 +143,18 @@ export const geocodeBatchJob = {
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as GeocodingBatchJobInput["input"];
-    const { importJobId } = input;
+    const { ingestJobId } = input;
 
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "geocode-unique-locations");
-    logger.info("Starting unique location geocoding", { importJobId });
+    logger.info("Starting unique location geocoding", { ingestJobId });
     const startTime = Date.now();
 
     try {
       // Create a geocoding service scoped to this job invocation
       const geocodingService = createGeocodingService(payload);
 
-      const { job, importFile } = await loadJobResources(payload, importJobId);
+      const { job, ingestFile } = await loadJobResources(payload, ingestJobId);
 
       // Get geocoding candidate (locationPath) from field mappings
       const geocodingCandidate = getGeocodingCandidate(job);
@@ -162,16 +162,16 @@ export const geocodeBatchJob = {
       // Skip if no location field detected
       if (!geocodingCandidate?.locationField) {
         logger.info("No location field detected, moving to event creation");
-        await ProgressTrackingService.skipStage(payload, importJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+        await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
         await payload.update({
-          collection: COLLECTION_NAMES.IMPORT_JOBS,
-          id: importJobId,
+          collection: COLLECTION_NAMES.INGEST_JOBS,
+          id: ingestJobId,
           data: { stage: PROCESSING_STAGE.CREATE_EVENTS },
         });
         return { output: { skipped: true } };
       }
 
-      const filePath = getImportFilePath(importFile.filename ?? "");
+      const filePath = getIngestFilePath(ingestFile.filename ?? "");
       const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
 
       // Stream file to extract unique locations (memory-efficient)
@@ -185,7 +185,7 @@ export const geocodeBatchJob = {
       // Start tracking with unique locations count as total
       await ProgressTrackingService.startStage(
         payload,
-        importJobId,
+        ingestJobId,
         PROCESSING_STAGE.GEOCODE_BATCH,
         uniqueLocations.size
       );
@@ -214,8 +214,8 @@ export const geocodeBatchJob = {
         const detailedError = `${errorMessage}\n\nFailed locations${moreCount}:\n${failedLocationsPreview.join("\n")}`;
 
         await payload.update({
-          collection: COLLECTION_NAMES.IMPORT_JOBS,
-          id: importJobId,
+          collection: COLLECTION_NAMES.INGEST_JOBS,
+          id: ingestJobId,
           data: {
             stage: PROCESSING_STAGE.FAILED,
             errorLog: {
@@ -228,10 +228,10 @@ export const geocodeBatchJob = {
         });
 
         // Also update the import file status with error message (user-facing)
-        const { importFile } = await loadJobResources(payload, importJobId);
+        const { ingestFile } = await loadJobResources(payload, ingestJobId);
         await payload.update({
-          collection: COLLECTION_NAMES.IMPORT_FILES,
-          id: importFile.id,
+          collection: COLLECTION_NAMES.INGEST_FILES,
+          id: ingestFile.id,
           data: { status: "failed", errorLog: detailedError },
         });
 
@@ -246,17 +246,17 @@ export const geocodeBatchJob = {
       }
 
       // Complete GEOCODE_BATCH stage
-      await ProgressTrackingService.completeStage(payload, importJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+      await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
 
       // Store geocoding results
       await payload.update({
-        collection: COLLECTION_NAMES.IMPORT_JOBS,
-        id: importJobId,
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
         data: { geocodingResults: results, stage: PROCESSING_STAGE.CREATE_EVENTS },
       });
 
       logPerformance("Unique location geocoding", Date.now() - startTime, {
-        importJobId,
+        ingestJobId,
         totalRows,
         uniqueLocations: uniqueLocations.size,
         successCount,
@@ -272,18 +272,18 @@ export const geocodeBatchJob = {
         },
       };
     } catch (error) {
-      logError(error, "Unique location geocoding failed", { importJobId });
+      logError(error, "Unique location geocoding failed", { ingestJobId });
 
       // Clean up sidecar CSV files on error (best-effort)
       try {
-        const { job: failedJob, importFile: failedFile } = await loadJobResources(payload, importJobId);
-        const failedFilePath = getImportFilePath(failedFile.filename ?? "");
+        const { job: failedJob, ingestFile: failedFile } = await loadJobResources(payload, ingestJobId);
+        const failedFilePath = getIngestFilePath(failedFile.filename ?? "");
         cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
       } catch {
         // Best-effort cleanup
       }
 
-      await failImportJob(payload, importJobId, error, "geocode-batch");
+      await failIngestJob(payload, ingestJobId, error, "geocode-batch");
 
       throw error;
     }

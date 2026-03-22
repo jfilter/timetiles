@@ -36,7 +36,7 @@ describe.sequential("scheduleManagerJob timezone support", () => {
       find: vi.fn(),
       findByID: vi.fn(),
       update: vi.fn().mockResolvedValue({ docs: [{ id: "claimed" }] }),
-      // triggerScheduledImport uses atomic SQL claim via drizzle
+      // triggerScheduledIngest uses atomic SQL claim via drizzle
       db: { drizzle: { execute: vi.fn().mockResolvedValue({ rows: [{ id: 1 }] }) } },
       jobs: { queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-tz" }) },
     };

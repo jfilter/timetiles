@@ -16,7 +16,7 @@ export const mainMenuSeed: MainMenuSeed = {
   navItems: [
     { label: "Home", url: "/" },
     { label: "Explore", url: "/explore" },
-    { label: "Import", url: "/import" },
+    { label: "Import", url: "/ingest" },
     { label: "About", url: "/about" },
     { label: "Contact", url: "/contact" },
   ],
@@ -26,7 +26,7 @@ export const mainMenuSeedDe: MainMenuSeed = {
   navItems: [
     { label: "Startseite", url: "/" },
     { label: "Erkunden", url: "/explore" },
-    { label: "Importieren", url: "/import" },
+    { label: "Importieren", url: "/ingest" },
     { label: "Über uns", url: "/about" },
     { label: "Kontakt", url: "/contact" },
   ],

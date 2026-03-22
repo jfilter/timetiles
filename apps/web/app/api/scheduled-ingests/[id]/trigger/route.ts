@@ -1,0 +1,78 @@
+/**
+ * Manually triggers a scheduled ingest.
+ *
+ * Uses an atomic claim pattern to prevent concurrent triggers of the same
+ * schedule. Queues a url-fetch job for the import after validating access
+ * and concurrency state.
+ *
+ * POST /api/scheduled-ingests/:id/trigger
+ *
+ * @module
+ * @category API Routes
+ */
+import { z } from "zod";
+
+import { apiRoute, AppError, ConflictError, safeFindByID } from "@/lib/api";
+import { logError } from "@/lib/logger";
+import type { ScheduledIngest } from "@/payload-types";
+
+export const POST = apiRoute({
+  auth: "required",
+  site: "default",
+  params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
+  handler: async ({ payload, user, params }) => {
+    const numericId = params.id;
+
+    // Fetch schedule with access control enforced by Payload
+    const existingSchedule = await safeFindByID<ScheduledIngest>(payload, {
+      collection: "scheduled-ingests",
+      id: numericId,
+      depth: 1,
+      user,
+    });
+
+    // Atomically claim the import by updating only if not already running.
+    // This prevents a race condition where two concurrent trigger requests
+    // could both start an import.
+    // Use overrideAccess: true because access was already verified above.
+    const claimResult = await payload.update({
+      collection: "scheduled-ingests",
+      where: { id: { equals: numericId }, lastStatus: { not_equals: "running" } },
+      data: { lastRun: new Date().toISOString(), lastStatus: "running" },
+      overrideAccess: true,
+    });
+
+    if (claimResult.docs.length === 0) {
+      throw new ConflictError("Import is already running");
+    }
+
+    try {
+      // Queue the URL fetch job for manual trigger
+      await payload.jobs.queue({
+        task: "url-fetch",
+        input: {
+          scheduledIngestId: String(numericId),
+          sourceUrl: existingSchedule.sourceUrl,
+          authConfig: existingSchedule.authConfig,
+          originalName: existingSchedule.name,
+          triggeredBy: "manual",
+        },
+      });
+
+      return { message: "Import triggered" };
+    } catch (error) {
+      // Revert status so the schedule doesn't get stuck as "running"
+      logError(error, "Error triggering scheduled ingest, reverting status", {
+        scheduleId: numericId,
+        userId: user.id,
+      });
+      await payload.update({
+        collection: "scheduled-ingests",
+        where: { id: { equals: numericId } },
+        data: { lastStatus: "failed", lastError: "Failed to queue import job" },
+        overrideAccess: true,
+      });
+      throw new AppError(500, "Internal server error");
+    }
+  },
+});

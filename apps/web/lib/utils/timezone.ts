@@ -2,7 +2,7 @@
  * Timezone conversion utilities using the built-in Intl API.
  *
  * Provides functions to convert between IANA timezones and UTC for
- * scheduled import scheduling. Uses Intl.DateTimeFormat exclusively
+ * scheduled ingest scheduling. Uses Intl.DateTimeFormat exclusively
  * (no external timezone libraries) to keep the dependency footprint small.
  *
  * @module

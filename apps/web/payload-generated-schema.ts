@@ -19,9 +19,9 @@ import {
   boolean,
   timestamp,
   numeric,
+  type AnyPgColumn,
   text,
 } from "@payloadcms/db-postgres/drizzle/pg-core";
-import { type AnyPgColumn } from "@payloadcms/db-postgres/drizzle/pg-core";
 import { sql, relations } from "@payloadcms/db-postgres/drizzle";
 export const db_schema = pgSchema("payload");
 export const enum__locales = db_schema.enum("enum__locales", ["en", "de"]);
@@ -41,12 +41,12 @@ export const enum_data_exports_status = db_schema.enum(
   "enum_data_exports_status",
   ["pending", "processing", "ready", "failed", "expired"],
 );
-export const enum_datasets_import_transforms_type = db_schema.enum(
-  "enum_datasets_import_transforms_type",
-  ["rename", "date-parse", "string-op", "concatenate", "split", "type-cast"],
+export const enum_datasets_ingest_transforms_type = db_schema.enum(
+  "enum_datasets_ingest_transforms_type",
+  ["rename", "date-parse", "string-op", "concatenate", "split"],
 );
-export const enum_datasets_import_transforms_input_format = db_schema.enum(
-  "enum_datasets_import_transforms_input_format",
+export const enum_datasets_ingest_transforms_input_format = db_schema.enum(
+  "enum_datasets_ingest_transforms_input_format",
   [
     "DD/MM/YYYY",
     "MM/DD/YYYY",
@@ -56,25 +56,13 @@ export const enum_datasets_import_transforms_input_format = db_schema.enum(
     "DD.MM.YYYY",
   ],
 );
-export const enum_datasets_import_transforms_output_format = db_schema.enum(
-  "enum_datasets_import_transforms_output_format",
+export const enum_datasets_ingest_transforms_output_format = db_schema.enum(
+  "enum_datasets_ingest_transforms_output_format",
   ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"],
 );
-export const enum_datasets_import_transforms_operation = db_schema.enum(
-  "enum_datasets_import_transforms_operation",
-  ["uppercase", "lowercase", "trim", "replace"],
-);
-export const enum_datasets_import_transforms_from_type = db_schema.enum(
-  "enum_datasets_import_transforms_from_type",
-  ["string", "number", "boolean", "date", "array", "object", "null"],
-);
-export const enum_datasets_import_transforms_to_type = db_schema.enum(
-  "enum_datasets_import_transforms_to_type",
-  ["string", "number", "boolean", "date", "array", "object"],
-);
-export const enum_datasets_import_transforms_strategy = db_schema.enum(
-  "enum_datasets_import_transforms_strategy",
-  ["parse", "cast", "custom", "reject"],
+export const enum_datasets_ingest_transforms_operation = db_schema.enum(
+  "enum_datasets_ingest_transforms_operation",
+  ["uppercase", "lowercase", "trim", "replace", "expression"],
 );
 export const enum_datasets_id_strategy_type = db_schema.enum(
   "enum_datasets_id_strategy_type",
@@ -100,12 +88,12 @@ export const enum_datasets_status = db_schema.enum("enum_datasets_status", [
   "draft",
   "published",
 ]);
-export const enum__datasets_v_version_import_transforms_type = db_schema.enum(
-  "enum__datasets_v_version_import_transforms_type",
-  ["rename", "date-parse", "string-op", "concatenate", "split", "type-cast"],
+export const enum__datasets_v_version_ingest_transforms_type = db_schema.enum(
+  "enum__datasets_v_version_ingest_transforms_type",
+  ["rename", "date-parse", "string-op", "concatenate", "split"],
 );
-export const enum__datasets_v_version_import_transforms_input_format =
-  db_schema.enum("enum__datasets_v_version_import_transforms_input_format", [
+export const enum__datasets_v_version_ingest_transforms_input_format =
+  db_schema.enum("enum__datasets_v_version_ingest_transforms_input_format", [
     "DD/MM/YYYY",
     "MM/DD/YYYY",
     "YYYY-MM-DD",
@@ -113,44 +101,19 @@ export const enum__datasets_v_version_import_transforms_input_format =
     "MM-DD-YYYY",
     "DD.MM.YYYY",
   ]);
-export const enum__datasets_v_version_import_transforms_output_format =
-  db_schema.enum("enum__datasets_v_version_import_transforms_output_format", [
+export const enum__datasets_v_version_ingest_transforms_output_format =
+  db_schema.enum("enum__datasets_v_version_ingest_transforms_output_format", [
     "YYYY-MM-DD",
     "DD/MM/YYYY",
     "MM/DD/YYYY",
   ]);
-export const enum__datasets_v_version_import_transforms_operation =
-  db_schema.enum("enum__datasets_v_version_import_transforms_operation", [
+export const enum__datasets_v_version_ingest_transforms_operation =
+  db_schema.enum("enum__datasets_v_version_ingest_transforms_operation", [
     "uppercase",
     "lowercase",
     "trim",
     "replace",
-  ]);
-export const enum__datasets_v_version_import_transforms_from_type =
-  db_schema.enum("enum__datasets_v_version_import_transforms_from_type", [
-    "string",
-    "number",
-    "boolean",
-    "date",
-    "array",
-    "object",
-    "null",
-  ]);
-export const enum__datasets_v_version_import_transforms_to_type =
-  db_schema.enum("enum__datasets_v_version_import_transforms_to_type", [
-    "string",
-    "number",
-    "boolean",
-    "date",
-    "array",
-    "object",
-  ]);
-export const enum__datasets_v_version_import_transforms_strategy =
-  db_schema.enum("enum__datasets_v_version_import_transforms_strategy", [
-    "parse",
-    "cast",
-    "custom",
-    "reject",
+    "expression",
   ]);
 export const enum__datasets_v_version_id_strategy_type = db_schema.enum(
   "enum__datasets_v_version_id_strategy_type",
@@ -196,15 +159,15 @@ export const enum__dataset_schemas_v_published_locale = db_schema.enum(
   "enum__dataset_schemas_v_published_locale",
   ["en", "de"],
 );
-export const enum_import_files_status = db_schema.enum(
-  "enum_import_files_status",
+export const enum_ingest_files_status = db_schema.enum(
+  "enum_ingest_files_status",
   ["pending", "parsing", "processing", "completed", "failed"],
 );
-export const enum__import_files_v_version_status = db_schema.enum(
-  "enum__import_files_v_version_status",
+export const enum__ingest_files_v_version_status = db_schema.enum(
+  "enum__ingest_files_v_version_status",
   ["pending", "parsing", "processing", "completed", "failed"],
 );
-export const enum_import_jobs_stage = db_schema.enum("enum_import_jobs_stage", [
+export const enum_ingest_jobs_stage = db_schema.enum("enum_ingest_jobs_stage", [
   "analyze-duplicates",
   "detect-schema",
   "validate-schema",
@@ -215,8 +178,8 @@ export const enum_import_jobs_stage = db_schema.enum("enum_import_jobs_stage", [
   "completed",
   "failed",
 ]);
-export const enum_import_jobs_last_successful_stage = db_schema.enum(
-  "enum_import_jobs_last_successful_stage",
+export const enum_ingest_jobs_last_successful_stage = db_schema.enum(
+  "enum_ingest_jobs_last_successful_stage",
   [
     "analyze-duplicates",
     "detect-schema",
@@ -226,8 +189,8 @@ export const enum_import_jobs_last_successful_stage = db_schema.enum(
     "create-events",
   ],
 );
-export const enum__import_jobs_v_version_stage = db_schema.enum(
-  "enum__import_jobs_v_version_stage",
+export const enum__ingest_jobs_v_version_stage = db_schema.enum(
+  "enum__ingest_jobs_v_version_stage",
   [
     "analyze-duplicates",
     "detect-schema",
@@ -240,8 +203,8 @@ export const enum__import_jobs_v_version_stage = db_schema.enum(
     "failed",
   ],
 );
-export const enum__import_jobs_v_version_last_successful_stage = db_schema.enum(
-  "enum__import_jobs_v_version_last_successful_stage",
+export const enum__ingest_jobs_v_version_last_successful_stage = db_schema.enum(
+  "enum__ingest_jobs_v_version_last_successful_stage",
   [
     "analyze-duplicates",
     "detect-schema",
@@ -251,8 +214,8 @@ export const enum__import_jobs_v_version_last_successful_stage = db_schema.enum(
     "create-events",
   ],
 );
-export const enum_scheduled_imports_execution_history_status = db_schema.enum(
-  "enum_scheduled_imports_execution_history_status",
+export const enum_scheduled_ingests_execution_history_status = db_schema.enum(
+  "enum_scheduled_ingests_execution_history_status",
   ["success", "failed"],
 );
 export const trig_by = db_schema.enum("trig_by", [
@@ -261,64 +224,74 @@ export const trig_by = db_schema.enum("trig_by", [
   "manual",
   "system",
 ]);
-export const enum_scheduled_imports_schedule_type = db_schema.enum(
-  "enum_scheduled_imports_schedule_type",
+export const enum_scheduled_ingests_schedule_type = db_schema.enum(
+  "enum_scheduled_ingests_schedule_type",
   ["frequency", "cron"],
 );
-export const enum_scheduled_imports_frequency = db_schema.enum(
-  "enum_scheduled_imports_frequency",
+export const enum_scheduled_ingests_frequency = db_schema.enum(
+  "enum_scheduled_ingests_frequency",
   ["hourly", "daily", "weekly", "monthly"],
 );
-export const enum_scheduled_imports_schema_mode = db_schema.enum(
-  "enum_scheduled_imports_schema_mode",
+export const enum_scheduled_ingests_schema_mode = db_schema.enum(
+  "enum_scheduled_ingests_schema_mode",
   ["strict", "additive", "flexible"],
 );
-export const enum_scheduled_imports_auth_config_type = db_schema.enum(
-  "enum_scheduled_imports_auth_config_type",
+export const enum_scheduled_ingests_auth_config_type = db_schema.enum(
+  "enum_scheduled_ingests_auth_config_type",
   ["none", "api-key", "bearer", "basic"],
 );
-export const enum_scheduled_imports_last_status = db_schema.enum(
-  "enum_scheduled_imports_last_status",
+export const si_response_format = db_schema.enum("si_response_format", [
+  "auto",
+  "csv",
+  "json",
+]);
+export const si_json_paging_type = db_schema.enum("si_json_paging_type", [
+  "offset",
+  "cursor",
+  "page",
+]);
+export const enum_scheduled_ingests_last_status = db_schema.enum(
+  "enum_scheduled_ingests_last_status",
   ["success", "failed", "running"],
 );
-export const enum_scheduled_imports_status = db_schema.enum(
-  "enum_scheduled_imports_status",
+export const enum_scheduled_ingests_status = db_schema.enum(
+  "enum_scheduled_ingests_status",
   ["draft", "published"],
 );
-export const enum__scheduled_imports_v_version_execution_history_status =
-  db_schema.enum("enum__scheduled_imports_v_version_execution_history_status", [
+export const enum__scheduled_ingests_v_version_execution_history_status =
+  db_schema.enum("enum__scheduled_ingests_v_version_execution_history_status", [
     "success",
     "failed",
   ]);
-export const enum__scheduled_imports_v_version_schedule_type = db_schema.enum(
-  "enum__scheduled_imports_v_version_schedule_type",
+export const enum__scheduled_ingests_v_version_schedule_type = db_schema.enum(
+  "enum__scheduled_ingests_v_version_schedule_type",
   ["frequency", "cron"],
 );
-export const enum__scheduled_imports_v_version_frequency = db_schema.enum(
-  "enum__scheduled_imports_v_version_frequency",
+export const enum__scheduled_ingests_v_version_frequency = db_schema.enum(
+  "enum__scheduled_ingests_v_version_frequency",
   ["hourly", "daily", "weekly", "monthly"],
 );
-export const enum__scheduled_imports_v_version_schema_mode = db_schema.enum(
-  "enum__scheduled_imports_v_version_schema_mode",
+export const enum__scheduled_ingests_v_version_schema_mode = db_schema.enum(
+  "enum__scheduled_ingests_v_version_schema_mode",
   ["strict", "additive", "flexible"],
 );
-export const enum__scheduled_imports_v_version_auth_config_type =
-  db_schema.enum("enum__scheduled_imports_v_version_auth_config_type", [
+export const enum__scheduled_ingests_v_version_auth_config_type =
+  db_schema.enum("enum__scheduled_ingests_v_version_auth_config_type", [
     "none",
     "api-key",
     "bearer",
     "basic",
   ]);
-export const enum__scheduled_imports_v_version_last_status = db_schema.enum(
-  "enum__scheduled_imports_v_version_last_status",
+export const enum__scheduled_ingests_v_version_last_status = db_schema.enum(
+  "enum__scheduled_ingests_v_version_last_status",
   ["success", "failed", "running"],
 );
-export const enum__scheduled_imports_v_version_status = db_schema.enum(
-  "enum__scheduled_imports_v_version_status",
+export const enum__scheduled_ingests_v_version_status = db_schema.enum(
+  "enum__scheduled_ingests_v_version_status",
   ["draft", "published"],
 );
-export const enum__scheduled_imports_v_published_locale = db_schema.enum(
-  "enum__scheduled_imports_v_published_locale",
+export const enum__scheduled_ingests_v_published_locale = db_schema.enum(
+  "enum__scheduled_ingests_v_published_locale",
   ["en", "de"],
 );
 export const enum_scraper_repos_source_type = db_schema.enum(
@@ -347,7 +320,7 @@ export const enum_scraper_runs_triggered_by = db_schema.enum(
 );
 export const enum_events_coordinate_source_type = db_schema.enum(
   "enum_events_coordinate_source_type",
-  ["import", "geocoded", "manual", "none"],
+  ["source-data", "geocoded", "manual", "none"],
 );
 export const enum_events_coordinate_source_validation_status = db_schema.enum(
   "enum_events_coordinate_source_validation_status",
@@ -371,7 +344,7 @@ export const enum_events_status = db_schema.enum("enum_events_status", [
 ]);
 export const enum__events_v_version_coordinate_source_type = db_schema.enum(
   "enum__events_v_version_coordinate_source_type",
-  ["import", "geocoded", "manual", "none"],
+  ["source-data", "geocoded", "manual", "none"],
 );
 export const enum__events_v_version_coordinate_source_validation_status =
   db_schema.enum("enum__events_v_version_coordinate_source_validation_status", [
@@ -921,7 +894,6 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
     "create-schema-version",
     "geocode-batch",
     "create-events",
-    "cleanup-approval-locks",
     "url-fetch",
     "schedule-manager",
     "cleanup-stuck-scheduled-imports",
@@ -953,7 +925,6 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
     "create-schema-version",
     "geocode-batch",
     "create-events",
-    "cleanup-approval-locks",
     "url-fetch",
     "schedule-manager",
     "cleanup-stuck-scheduled-imports",
@@ -1042,7 +1013,7 @@ export const catalogs = db_schema.table(
     name: varchar("name"),
     description: jsonb("description"),
     slug: varchar("slug"),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     isPublic: boolean("is_public").default(false),
@@ -1081,13 +1052,14 @@ export const _catalogs_v = db_schema.table(
   "_catalogs_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => catalogs.id, {
+    parent: integer("parent_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_description: jsonb("version_description"),
     version_slug: varchar("version_slug"),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -1162,7 +1134,7 @@ export const data_exports = db_schema.table(
     id: serial("id").primaryKey(),
     user: integer("user_id")
       .notNull()
-      .references((): AnyPgColumn => users.id, {
+      .references(() => users.id, {
         onDelete: "set null",
       }),
     status: enum_data_exports_status("status").notNull().default("pending"),
@@ -1232,53 +1204,49 @@ export const datasets_id_strategy_computed_id_fields = db_schema.table(
   ],
 );
 
-export const datasets_import_transforms = db_schema.table(
-  "datasets_import_transforms",
+export const datasets_ingest_transforms = db_schema.table(
+  "datasets_ingest_transforms",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
-    type: enum_datasets_import_transforms_type("type").default("rename"),
+    type: enum_datasets_ingest_transforms_type("type").default("rename"),
     from: varchar("from"),
     to: varchar("to"),
-    inputFormat: enum_datasets_import_transforms_input_format("input_format"),
+    inputFormat: enum_datasets_ingest_transforms_input_format("input_format"),
     outputFormat:
-      enum_datasets_import_transforms_output_format("output_format").default(
+      enum_datasets_ingest_transforms_output_format("output_format").default(
         "YYYY-MM-DD",
       ),
     timezone: varchar("timezone"),
-    operation: enum_datasets_import_transforms_operation("operation"),
+    operation: enum_datasets_ingest_transforms_operation("operation"),
     pattern: varchar("pattern"),
     replacement: varchar("replacement"),
+    expression: varchar("expression"),
     fromFields: jsonb("from_fields"),
     separator: varchar("separator").default(" "),
     delimiter: varchar("delimiter").default(","),
     toFields: jsonb("to_fields"),
-    fromType: enum_datasets_import_transforms_from_type("from_type"),
-    toType: enum_datasets_import_transforms_to_type("to_type"),
-    strategy:
-      enum_datasets_import_transforms_strategy("strategy").default("parse"),
-    customFunction: varchar("custom_function"),
     active: boolean("active").default(true),
     addedAt: timestamp("added_at", {
       mode: "string",
       withTimezone: true,
       precision: 3,
     }),
-    addedBy: integer("added_by_id").references((): AnyPgColumn => users.id, {
+    addedBy: integer("added_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     confidence: numeric("confidence", { mode: "number" }),
     autoDetected: boolean("auto_detected").default(false),
   },
   (columns) => [
-    index("datasets_import_transforms_order_idx").on(columns._order),
-    index("datasets_import_transforms_parent_id_idx").on(columns._parentID),
-    index("datasets_import_transforms_added_by_idx").on(columns.addedBy),
+    index("datasets_ingest_transforms_order_idx").on(columns._order),
+    index("datasets_ingest_transforms_parent_id_idx").on(columns._parentID),
+    index("datasets_ingest_transforms_added_by_idx").on(columns.addedBy),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [datasets.id],
-      name: "datasets_import_transforms_parent_id_fk",
+      name: "datasets_ingest_transforms_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
@@ -1290,14 +1258,14 @@ export const datasets = db_schema.table(
     name: varchar("name"),
     description: jsonb("description"),
     slug: varchar("slug"),
-    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
+    catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
     catalogCreatorId: numeric("catalog_creator_id", { mode: "number" }),
     catalogIsPublic: boolean("catalog_is_public").default(false),
     language: varchar("language"),
     isPublic: boolean("is_public").default(false),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     metadata: jsonb("metadata"),
@@ -1371,7 +1339,8 @@ export const datasets = db_schema.table(
     fieldMappingOverrides_locationPath: varchar(
       "field_mapping_overrides_location_path",
     ),
-    schemaDetector: integer("schema_detector_id").references((): AnyPgColumn => schema_detectors.id,
+    schemaDetector: integer("schema_detector_id").references(
+      () => schema_detectors.id,
       {
         onDelete: "set null",
       },
@@ -1436,64 +1405,58 @@ export const _datasets_v_version_id_strategy_computed_id_fields =
     ],
   );
 
-export const _datasets_v_version_import_transforms = db_schema.table(
-  "_datasets_v_version_import_transforms",
+export const _datasets_v_version_ingest_transforms = db_schema.table(
+  "_datasets_v_version_ingest_transforms",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: serial("id").primaryKey(),
     _uuid: varchar("_uuid"),
-    type: enum__datasets_v_version_import_transforms_type("type").default(
+    type: enum__datasets_v_version_ingest_transforms_type("type").default(
       "rename",
     ),
     from: varchar("from"),
     to: varchar("to"),
     inputFormat:
-      enum__datasets_v_version_import_transforms_input_format("input_format"),
+      enum__datasets_v_version_ingest_transforms_input_format("input_format"),
     outputFormat:
-      enum__datasets_v_version_import_transforms_output_format(
+      enum__datasets_v_version_ingest_transforms_output_format(
         "output_format",
       ).default("YYYY-MM-DD"),
     timezone: varchar("timezone"),
     operation:
-      enum__datasets_v_version_import_transforms_operation("operation"),
+      enum__datasets_v_version_ingest_transforms_operation("operation"),
     pattern: varchar("pattern"),
     replacement: varchar("replacement"),
+    expression: varchar("expression"),
     fromFields: jsonb("from_fields"),
     separator: varchar("separator").default(" "),
     delimiter: varchar("delimiter").default(","),
     toFields: jsonb("to_fields"),
-    fromType: enum__datasets_v_version_import_transforms_from_type("from_type"),
-    toType: enum__datasets_v_version_import_transforms_to_type("to_type"),
-    strategy:
-      enum__datasets_v_version_import_transforms_strategy("strategy").default(
-        "parse",
-      ),
-    customFunction: varchar("custom_function"),
     active: boolean("active").default(true),
     addedAt: timestamp("added_at", {
       mode: "string",
       withTimezone: true,
       precision: 3,
     }),
-    addedBy: integer("added_by_id").references((): AnyPgColumn => users.id, {
+    addedBy: integer("added_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     confidence: numeric("confidence", { mode: "number" }),
     autoDetected: boolean("auto_detected").default(false),
   },
   (columns) => [
-    index("_datasets_v_version_import_transforms_order_idx").on(columns._order),
-    index("_datasets_v_version_import_transforms_parent_id_idx").on(
+    index("_datasets_v_version_ingest_transforms_order_idx").on(columns._order),
+    index("_datasets_v_version_ingest_transforms_parent_id_idx").on(
       columns._parentID,
     ),
-    index("_datasets_v_version_import_transforms_added_by_idx").on(
+    index("_datasets_v_version_ingest_transforms_added_by_idx").on(
       columns.addedBy,
     ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_datasets_v.id],
-      name: "_datasets_v_version_import_transforms_parent_id_fk",
+      name: "_datasets_v_version_ingest_transforms_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
@@ -1502,13 +1465,14 @@ export const _datasets_v = db_schema.table(
   "_datasets_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => datasets.id, {
+    parent: integer("parent_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_description: jsonb("version_description"),
     version_slug: varchar("version_slug"),
-    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
+    version_catalog: integer("version_catalog_id").references(
+      () => catalogs.id,
       {
         onDelete: "set null",
       },
@@ -1521,7 +1485,8 @@ export const _datasets_v = db_schema.table(
     ),
     version_language: varchar("version_language"),
     version_isPublic: boolean("version_is_public").default(false),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -1612,7 +1577,8 @@ export const _datasets_v = db_schema.table(
     version_fieldMappingOverrides_locationPath: varchar(
       "version_field_mapping_overrides_location_path",
     ),
-    version_schemaDetector: integer("version_schema_detector_id").references((): AnyPgColumn => schema_detectors.id,
+    version_schemaDetector: integer("version_schema_detector_id").references(
+      () => schema_detectors.id,
       {
         onDelete: "set null",
       },
@@ -1788,26 +1754,28 @@ export const dataset_schemas_schema_summary_enum_changes = db_schema.table(
   ],
 );
 
-export const dataset_schemas_import_sources = db_schema.table(
-  "dataset_schemas_import_sources",
+export const dataset_schemas_ingest_sources = db_schema.table(
+  "dataset_schemas_ingest_sources",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
-    import: integer("import_id").references((): AnyPgColumn => import_jobs.id, {
+    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
       onDelete: "set null",
     }),
     recordCount: numeric("record_count", { mode: "number" }),
     batchCount: numeric("batch_count", { mode: "number" }),
   },
   (columns) => [
-    index("dataset_schemas_import_sources_order_idx").on(columns._order),
-    index("dataset_schemas_import_sources_parent_id_idx").on(columns._parentID),
-    index("dataset_schemas_import_sources_import_idx").on(columns.import),
+    index("dataset_schemas_ingest_sources_order_idx").on(columns._order),
+    index("dataset_schemas_ingest_sources_parent_id_idx").on(columns._parentID),
+    index("dataset_schemas_ingest_sources_ingest_job_idx").on(
+      columns.ingestJob,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [dataset_schemas.id],
-      name: "dataset_schemas_import_sources_parent_id_fk",
+      name: "dataset_schemas_ingest_sources_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
@@ -1816,7 +1784,7 @@ export const dataset_schemas = db_schema.table(
   "dataset_schemas",
   {
     id: serial("id").primaryKey(),
-    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+    dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     datasetIsPublic: boolean("dataset_is_public").default(false),
@@ -1832,7 +1800,7 @@ export const dataset_schemas = db_schema.table(
       mode: "number",
     }),
     approvalRequired: boolean("approval_required"),
-    approvedBy: integer("approved_by_id").references((): AnyPgColumn => users.id, {
+    approvedBy: integer("approved_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     approvalNotes: varchar("approval_notes"),
@@ -1981,13 +1949,13 @@ export const _dataset_schemas_v_version_schema_summary_enum_changes =
     ],
   );
 
-export const _dataset_schemas_v_version_import_sources = db_schema.table(
-  "_dataset_schemas_v_version_import_sources",
+export const _dataset_schemas_v_version_ingest_sources = db_schema.table(
+  "_dataset_schemas_v_version_ingest_sources",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: serial("id").primaryKey(),
-    import: integer("import_id").references((): AnyPgColumn => import_jobs.id, {
+    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
       onDelete: "set null",
     }),
     recordCount: numeric("record_count", { mode: "number" }),
@@ -1995,19 +1963,19 @@ export const _dataset_schemas_v_version_import_sources = db_schema.table(
     _uuid: varchar("_uuid"),
   },
   (columns) => [
-    index("_dataset_schemas_v_version_import_sources_order_idx").on(
+    index("_dataset_schemas_v_version_ingest_sources_order_idx").on(
       columns._order,
     ),
-    index("_dataset_schemas_v_version_import_sources_parent_id_idx").on(
+    index("_dataset_schemas_v_version_ingest_sources_parent_id_idx").on(
       columns._parentID,
     ),
-    index("_dataset_schemas_v_version_import_sources_import_idx").on(
-      columns.import,
+    index("_dataset_schemas_v_version_ingest_sources_ingest_job_idx").on(
+      columns.ingestJob,
     ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_dataset_schemas_v.id],
-      name: "_dataset_schemas_v_version_import_sources_parent_id_fk",
+      name: "_dataset_schemas_v_version_ingest_sources_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
@@ -2016,10 +1984,11 @@ export const _dataset_schemas_v = db_schema.table(
   "_dataset_schemas_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => dataset_schemas.id, {
+    parent: integer("parent_id").references(() => dataset_schemas.id, {
       onDelete: "set null",
     }),
-    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
+    version_dataset: integer("version_dataset_id").references(
+      () => datasets.id,
       {
         onDelete: "set null",
       },
@@ -2044,7 +2013,8 @@ export const _dataset_schemas_v = db_schema.table(
       { mode: "number" },
     ),
     version_approvalRequired: boolean("version_approval_required"),
-    version_approvedBy: integer("version_approved_by_id").references((): AnyPgColumn => users.id,
+    version_approvedBy: integer("version_approved_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -2147,7 +2117,7 @@ export const audit_log = db_schema.table(
     action: varchar("action").notNull(),
     userId: numeric("user_id", { mode: "number" }).notNull(),
     userEmailHash: varchar("user_email_hash").notNull(),
-    performedBy: integer("performed_by_id").references((): AnyPgColumn => users.id, {
+    performedBy: integer("performed_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     timestamp: timestamp("timestamp", {
@@ -2183,27 +2153,27 @@ export const audit_log = db_schema.table(
   ],
 );
 
-export const import_files = db_schema.table(
-  "import_files",
+export const ingest_files = db_schema.table(
+  "ingest_files",
   {
     id: serial("id").primaryKey(),
     originalName: varchar("original_name"),
-    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
+    catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
     user: integer("user_id")
       .notNull()
-      .references((): AnyPgColumn => users.id, {
+      .references(() => users.id, {
         onDelete: "set null",
       }),
-    status: enum_import_files_status("status").default("pending"),
+    status: enum_ingest_files_status("status").default("pending"),
     datasetsCount: numeric("datasets_count", { mode: "number" }).default(0),
     datasetsProcessed: numeric("datasets_processed", {
       mode: "number",
     }).default(0),
     sheetMetadata: jsonb("sheet_metadata"),
     jobId: varchar("job_id"),
-    importedAt: timestamp("imported_at", {
+    uploadedAt: timestamp("uploaded_at", {
       mode: "string",
       withTimezone: true,
       precision: 3,
@@ -2217,10 +2187,11 @@ export const import_files = db_schema.table(
     rateLimitInfo: jsonb("rate_limit_info"),
     metadata: jsonb("metadata"),
     processingOptions: jsonb("processing_options"),
-    targetDataset: integer("target_dataset_id").references((): AnyPgColumn => datasets.id, {
+    targetDataset: integer("target_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
-    scheduledImport: integer("scheduled_import_id").references((): AnyPgColumn => scheduled_imports.id,
+    scheduledImport: integer("scheduled_import_id").references(
+      (): AnyPgColumn => scheduled_ingests.id,
       {
         onDelete: "set null",
       },
@@ -2255,19 +2226,19 @@ export const import_files = db_schema.table(
     focalY: numeric("focal_y", { mode: "number" }),
   },
   (columns) => [
-    index("import_files_catalog_idx").on(columns.catalog),
-    index("import_files_user_idx").on(columns.user),
-    index("import_files_target_dataset_idx").on(columns.targetDataset),
-    index("import_files_scheduled_import_idx").on(columns.scheduledImport),
-    index("import_files_updated_at_idx").on(columns.updatedAt),
-    index("import_files_created_at_idx").on(columns.createdAt),
-    index("import_files_deleted_at_idx").on(columns.deletedAt),
-    uniqueIndex("import_files_filename_idx").on(columns.filename),
+    index("ingest_files_catalog_idx").on(columns.catalog),
+    index("ingest_files_user_idx").on(columns.user),
+    index("ingest_files_target_dataset_idx").on(columns.targetDataset),
+    index("ingest_files_scheduled_import_idx").on(columns.scheduledImport),
+    index("ingest_files_updated_at_idx").on(columns.updatedAt),
+    index("ingest_files_created_at_idx").on(columns.createdAt),
+    index("ingest_files_deleted_at_idx").on(columns.deletedAt),
+    uniqueIndex("ingest_files_filename_idx").on(columns.filename),
   ],
 );
 
-export const import_files_rels = db_schema.table(
-  "import_files_rels",
+export const ingest_files_rels = db_schema.table(
+  "ingest_files_rels",
   {
     id: serial("id").primaryKey(),
     order: integer("order"),
@@ -2276,43 +2247,44 @@ export const import_files_rels = db_schema.table(
     datasetsID: integer("datasets_id"),
   },
   (columns) => [
-    index("import_files_rels_order_idx").on(columns.order),
-    index("import_files_rels_parent_idx").on(columns.parent),
-    index("import_files_rels_path_idx").on(columns.path),
-    index("import_files_rels_datasets_id_idx").on(columns.datasetsID),
+    index("ingest_files_rels_order_idx").on(columns.order),
+    index("ingest_files_rels_parent_idx").on(columns.parent),
+    index("ingest_files_rels_path_idx").on(columns.path),
+    index("ingest_files_rels_datasets_id_idx").on(columns.datasetsID),
     foreignKey({
       columns: [columns["parent"]],
-      foreignColumns: [import_files.id],
-      name: "import_files_rels_parent_fk",
+      foreignColumns: [ingest_files.id],
+      name: "ingest_files_rels_parent_fk",
     }).onDelete("cascade"),
     foreignKey({
       columns: [columns["datasetsID"]],
       foreignColumns: [datasets.id],
-      name: "import_files_rels_datasets_fk",
+      name: "ingest_files_rels_datasets_fk",
     }).onDelete("cascade"),
   ],
 );
 
-export const _import_files_v = db_schema.table(
-  "_import_files_v",
+export const _ingest_files_v = db_schema.table(
+  "_ingest_files_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => import_files.id, {
+    parent: integer("parent_id").references(() => ingest_files.id, {
       onDelete: "set null",
     }),
     version_originalName: varchar("version_original_name"),
-    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
+    version_catalog: integer("version_catalog_id").references(
+      () => catalogs.id,
       {
         onDelete: "set null",
       },
     ),
     version_user: integer("version_user_id")
       .notNull()
-      .references((): AnyPgColumn => users.id, {
+      .references(() => users.id, {
         onDelete: "set null",
       }),
     version_status:
-      enum__import_files_v_version_status("version_status").default("pending"),
+      enum__ingest_files_v_version_status("version_status").default("pending"),
     version_datasetsCount: numeric("version_datasets_count", {
       mode: "number",
     }).default(0),
@@ -2321,7 +2293,7 @@ export const _import_files_v = db_schema.table(
     }).default(0),
     version_sheetMetadata: jsonb("version_sheet_metadata"),
     version_jobId: varchar("version_job_id"),
-    version_importedAt: timestamp("version_imported_at", {
+    version_uploadedAt: timestamp("version_uploaded_at", {
       mode: "string",
       withTimezone: true,
       precision: 3,
@@ -2335,12 +2307,14 @@ export const _import_files_v = db_schema.table(
     version_rateLimitInfo: jsonb("version_rate_limit_info"),
     version_metadata: jsonb("version_metadata"),
     version_processingOptions: jsonb("version_processing_options"),
-    version_targetDataset: integer("version_target_dataset_id").references((): AnyPgColumn => datasets.id,
+    version_targetDataset: integer("version_target_dataset_id").references(
+      () => datasets.id,
       {
         onDelete: "set null",
       },
     ),
-    version_scheduledImport: integer("version_scheduled_import_id").references((): AnyPgColumn => scheduled_imports.id,
+    version_scheduledImport: integer("version_scheduled_import_id").references(
+      () => scheduled_ingests.id,
       {
         onDelete: "set null",
       },
@@ -2385,36 +2359,36 @@ export const _import_files_v = db_schema.table(
       .notNull(),
   },
   (columns) => [
-    index("_import_files_v_parent_idx").on(columns.parent),
-    index("_import_files_v_version_version_catalog_idx").on(
+    index("_ingest_files_v_parent_idx").on(columns.parent),
+    index("_ingest_files_v_version_version_catalog_idx").on(
       columns.version_catalog,
     ),
-    index("_import_files_v_version_version_user_idx").on(columns.version_user),
-    index("_import_files_v_version_version_target_dataset_idx").on(
+    index("_ingest_files_v_version_version_user_idx").on(columns.version_user),
+    index("_ingest_files_v_version_version_target_dataset_idx").on(
       columns.version_targetDataset,
     ),
-    index("_import_files_v_version_version_scheduled_import_idx").on(
+    index("_ingest_files_v_version_version_scheduled_import_idx").on(
       columns.version_scheduledImport,
     ),
-    index("_import_files_v_version_version_updated_at_idx").on(
+    index("_ingest_files_v_version_version_updated_at_idx").on(
       columns.version_updatedAt,
     ),
-    index("_import_files_v_version_version_created_at_idx").on(
+    index("_ingest_files_v_version_version_created_at_idx").on(
       columns.version_createdAt,
     ),
-    index("_import_files_v_version_version_deleted_at_idx").on(
+    index("_ingest_files_v_version_version_deleted_at_idx").on(
       columns.version_deletedAt,
     ),
-    index("_import_files_v_version_version_filename_idx").on(
+    index("_ingest_files_v_version_version_filename_idx").on(
       columns.version_filename,
     ),
-    index("_import_files_v_created_at_idx").on(columns.createdAt),
-    index("_import_files_v_updated_at_idx").on(columns.updatedAt),
+    index("_ingest_files_v_created_at_idx").on(columns.createdAt),
+    index("_ingest_files_v_updated_at_idx").on(columns.updatedAt),
   ],
 );
 
-export const _import_files_v_rels = db_schema.table(
-  "_import_files_v_rels",
+export const _ingest_files_v_rels = db_schema.table(
+  "_ingest_files_v_rels",
   {
     id: serial("id").primaryKey(),
     order: integer("order"),
@@ -2423,25 +2397,25 @@ export const _import_files_v_rels = db_schema.table(
     datasetsID: integer("datasets_id"),
   },
   (columns) => [
-    index("_import_files_v_rels_order_idx").on(columns.order),
-    index("_import_files_v_rels_parent_idx").on(columns.parent),
-    index("_import_files_v_rels_path_idx").on(columns.path),
-    index("_import_files_v_rels_datasets_id_idx").on(columns.datasetsID),
+    index("_ingest_files_v_rels_order_idx").on(columns.order),
+    index("_ingest_files_v_rels_parent_idx").on(columns.parent),
+    index("_ingest_files_v_rels_path_idx").on(columns.path),
+    index("_ingest_files_v_rels_datasets_id_idx").on(columns.datasetsID),
     foreignKey({
       columns: [columns["parent"]],
-      foreignColumns: [_import_files_v.id],
-      name: "_import_files_v_rels_parent_fk",
+      foreignColumns: [_ingest_files_v.id],
+      name: "_ingest_files_v_rels_parent_fk",
     }).onDelete("cascade"),
     foreignKey({
       columns: [columns["datasetsID"]],
       foreignColumns: [datasets.id],
-      name: "_import_files_v_rels_datasets_fk",
+      name: "_ingest_files_v_rels_datasets_fk",
     }).onDelete("cascade"),
   ],
 );
 
-export const import_jobs_errors = db_schema.table(
-  "import_jobs_errors",
+export const ingest_jobs_errors = db_schema.table(
+  "ingest_jobs_errors",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
@@ -2450,32 +2424,32 @@ export const import_jobs_errors = db_schema.table(
     error: varchar("error"),
   },
   (columns) => [
-    index("import_jobs_errors_order_idx").on(columns._order),
-    index("import_jobs_errors_parent_id_idx").on(columns._parentID),
+    index("ingest_jobs_errors_order_idx").on(columns._order),
+    index("ingest_jobs_errors_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
-      foreignColumns: [import_jobs.id],
-      name: "import_jobs_errors_parent_id_fk",
+      foreignColumns: [ingest_jobs.id],
+      name: "ingest_jobs_errors_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
 
-export const import_jobs = db_schema.table(
-  "import_jobs",
+export const ingest_jobs = db_schema.table(
+  "ingest_jobs",
   {
     id: serial("id").primaryKey(),
-    importFile: integer("import_file_id")
+    ingestFile: integer("ingest_file_id")
       .notNull()
-      .references((): AnyPgColumn => import_files.id, {
+      .references(() => ingest_files.id, {
         onDelete: "set null",
       }),
     dataset: integer("dataset_id")
       .notNull()
-      .references((): AnyPgColumn => datasets.id, {
+      .references(() => datasets.id, {
         onDelete: "set null",
       }),
     sheetIndex: numeric("sheet_index", { mode: "number" }),
-    stage: enum_import_jobs_stage("stage")
+    stage: enum_ingest_jobs_stage("stage")
       .notNull()
       .default("analyze-duplicates"),
     progress_stages: jsonb("progress_stages"),
@@ -2509,6 +2483,7 @@ export const import_jobs = db_schema.table(
     detectedFieldMappings_locationPath: varchar(
       "detected_field_mappings_location_path",
     ),
+    configSnapshot: jsonb("config_snapshot"),
     schemaValidation_isCompatible: boolean("schema_validation_is_compatible"),
     schemaValidation_breakingChanges: jsonb(
       "schema_validation_breaking_changes",
@@ -2526,7 +2501,7 @@ export const import_jobs = db_schema.table(
     schemaValidation_approved: boolean("schema_validation_approved"),
     schemaValidation_approvedBy: integer(
       "schema_validation_approved_by_id",
-    ).references((): AnyPgColumn => users.id, {
+    ).references(() => users.id, {
       onDelete: "set null",
     }),
     schemaValidation_approvedAt: timestamp("schema_validation_approved_at", {
@@ -2534,7 +2509,8 @@ export const import_jobs = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    datasetSchemaVersion: integer("dataset_schema_version_id").references((): AnyPgColumn => dataset_schemas.id,
+    datasetSchemaVersion: integer("dataset_schema_version_id").references(
+      () => dataset_schemas.id,
       {
         onDelete: "set null",
       },
@@ -2570,7 +2546,7 @@ export const import_jobs = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    lastSuccessfulStage: enum_import_jobs_last_successful_stage(
+    lastSuccessfulStage: enum_ingest_jobs_last_successful_stage(
       "last_successful_stage",
     ),
     updatedAt: timestamp("updated_at", {
@@ -2594,22 +2570,22 @@ export const import_jobs = db_schema.table(
     }),
   },
   (columns) => [
-    index("import_jobs_import_file_idx").on(columns.importFile),
-    index("import_jobs_dataset_idx").on(columns.dataset),
-    index("import_jobs_schema_validation_schema_validation_approved_idx").on(
+    index("ingest_jobs_ingest_file_idx").on(columns.ingestFile),
+    index("ingest_jobs_dataset_idx").on(columns.dataset),
+    index("ingest_jobs_schema_validation_schema_validation_approved_idx").on(
       columns.schemaValidation_approvedBy,
     ),
-    index("import_jobs_dataset_schema_version_idx").on(
+    index("ingest_jobs_dataset_schema_version_idx").on(
       columns.datasetSchemaVersion,
     ),
-    index("import_jobs_updated_at_idx").on(columns.updatedAt),
-    index("import_jobs_created_at_idx").on(columns.createdAt),
-    index("import_jobs_deleted_at_idx").on(columns.deletedAt),
+    index("ingest_jobs_updated_at_idx").on(columns.updatedAt),
+    index("ingest_jobs_created_at_idx").on(columns.createdAt),
+    index("ingest_jobs_deleted_at_idx").on(columns.deletedAt),
   ],
 );
 
-export const _import_jobs_v_version_errors = db_schema.table(
-  "_import_jobs_v_version_errors",
+export const _ingest_jobs_v_version_errors = db_schema.table(
+  "_ingest_jobs_v_version_errors",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
@@ -2619,35 +2595,35 @@ export const _import_jobs_v_version_errors = db_schema.table(
     _uuid: varchar("_uuid"),
   },
   (columns) => [
-    index("_import_jobs_v_version_errors_order_idx").on(columns._order),
-    index("_import_jobs_v_version_errors_parent_id_idx").on(columns._parentID),
+    index("_ingest_jobs_v_version_errors_order_idx").on(columns._order),
+    index("_ingest_jobs_v_version_errors_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
-      foreignColumns: [_import_jobs_v.id],
-      name: "_import_jobs_v_version_errors_parent_id_fk",
+      foreignColumns: [_ingest_jobs_v.id],
+      name: "_ingest_jobs_v_version_errors_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
 
-export const _import_jobs_v = db_schema.table(
-  "_import_jobs_v",
+export const _ingest_jobs_v = db_schema.table(
+  "_ingest_jobs_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => import_jobs.id, {
+    parent: integer("parent_id").references(() => ingest_jobs.id, {
       onDelete: "set null",
     }),
-    version_importFile: integer("version_import_file_id")
+    version_ingestFile: integer("version_ingest_file_id")
       .notNull()
-      .references((): AnyPgColumn => import_files.id, {
+      .references(() => ingest_files.id, {
         onDelete: "set null",
       }),
     version_dataset: integer("version_dataset_id")
       .notNull()
-      .references((): AnyPgColumn => datasets.id, {
+      .references(() => datasets.id, {
         onDelete: "set null",
       }),
     version_sheetIndex: numeric("version_sheet_index", { mode: "number" }),
-    version_stage: enum__import_jobs_v_version_stage("version_stage")
+    version_stage: enum__ingest_jobs_v_version_stage("version_stage")
       .notNull()
       .default("analyze-duplicates"),
     version_progress_stages: jsonb("version_progress_stages"),
@@ -2682,6 +2658,7 @@ export const _import_jobs_v = db_schema.table(
     version_detectedFieldMappings_locationPath: varchar(
       "version_detected_field_mappings_location_path",
     ),
+    version_configSnapshot: jsonb("version_config_snapshot"),
     version_schemaValidation_isCompatible: boolean(
       "version_schema_validation_is_compatible",
     ),
@@ -2705,7 +2682,7 @@ export const _import_jobs_v = db_schema.table(
     ),
     version_schemaValidation_approvedBy: integer(
       "version_schema_validation_approved_by_id",
-    ).references((): AnyPgColumn => users.id, {
+    ).references(() => users.id, {
       onDelete: "set null",
     }),
     version_schemaValidation_approvedAt: timestamp(
@@ -2714,7 +2691,7 @@ export const _import_jobs_v = db_schema.table(
     ),
     version_datasetSchemaVersion: integer(
       "version_dataset_schema_version_id",
-    ).references((): AnyPgColumn => dataset_schemas.id, {
+    ).references(() => dataset_schemas.id, {
       onDelete: "set null",
     }),
     version_duplicates_strategy: varchar("version_duplicates_strategy"),
@@ -2753,7 +2730,7 @@ export const _import_jobs_v = db_schema.table(
       precision: 3,
     }),
     version_lastSuccessfulStage:
-      enum__import_jobs_v_version_last_successful_stage(
+      enum__ingest_jobs_v_version_last_successful_stage(
         "version_last_successful_stage",
       ),
     version_updatedAt: timestamp("version_updated_at", {
@@ -2787,65 +2764,65 @@ export const _import_jobs_v = db_schema.table(
       .notNull(),
   },
   (columns) => [
-    index("_import_jobs_v_parent_idx").on(columns.parent),
-    index("_import_jobs_v_version_version_import_file_idx").on(
-      columns.version_importFile,
+    index("_ingest_jobs_v_parent_idx").on(columns.parent),
+    index("_ingest_jobs_v_version_version_ingest_file_idx").on(
+      columns.version_ingestFile,
     ),
-    index("_import_jobs_v_version_version_dataset_idx").on(
+    index("_ingest_jobs_v_version_version_dataset_idx").on(
       columns.version_dataset,
     ),
-    index("_import_jobs_v_version_schema_validation_version_schema__idx").on(
+    index("_ingest_jobs_v_version_schema_validation_version_schema__idx").on(
       columns.version_schemaValidation_approvedBy,
     ),
-    index("_import_jobs_v_version_version_dataset_schema_version_idx").on(
+    index("_ingest_jobs_v_version_version_dataset_schema_version_idx").on(
       columns.version_datasetSchemaVersion,
     ),
-    index("_import_jobs_v_version_version_updated_at_idx").on(
+    index("_ingest_jobs_v_version_version_updated_at_idx").on(
       columns.version_updatedAt,
     ),
-    index("_import_jobs_v_version_version_created_at_idx").on(
+    index("_ingest_jobs_v_version_version_created_at_idx").on(
       columns.version_createdAt,
     ),
-    index("_import_jobs_v_version_version_deleted_at_idx").on(
+    index("_ingest_jobs_v_version_version_deleted_at_idx").on(
       columns.version_deletedAt,
     ),
-    index("_import_jobs_v_created_at_idx").on(columns.createdAt),
-    index("_import_jobs_v_updated_at_idx").on(columns.updatedAt),
+    index("_ingest_jobs_v_created_at_idx").on(columns.createdAt),
+    index("_ingest_jobs_v_updated_at_idx").on(columns.updatedAt),
   ],
 );
 
-export const scheduled_imports_multi_sheet_config_sheets = db_schema.table(
-  "scheduled_imports_multi_sheet_config_sheets",
+export const scheduled_ingests_multi_sheet_config_sheets = db_schema.table(
+  "scheduled_ingests_multi_sheet_config_sheets",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
     sheetIdentifier: varchar("sheet_identifier"),
-    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+    dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     skipIfMissing: boolean("skip_if_missing").default(false),
   },
   (columns) => [
-    index("scheduled_imports_multi_sheet_config_sheets_order_idx").on(
+    index("scheduled_ingests_multi_sheet_config_sheets_order_idx").on(
       columns._order,
     ),
-    index("scheduled_imports_multi_sheet_config_sheets_parent_id_idx").on(
+    index("scheduled_ingests_multi_sheet_config_sheets_parent_id_idx").on(
       columns._parentID,
     ),
-    index("scheduled_imports_multi_sheet_config_sheets_dataset_idx").on(
+    index("scheduled_ingests_multi_sheet_config_sheets_dataset_idx").on(
       columns.dataset,
     ),
     foreignKey({
       columns: [columns["_parentID"]],
-      foreignColumns: [scheduled_imports.id],
-      name: "scheduled_imports_multi_sheet_config_sheets_parent_id_fk",
+      foreignColumns: [scheduled_ingests.id],
+      name: "scheduled_ingests_multi_sheet_config_sheets_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
 
-export const scheduled_imports_execution_history = db_schema.table(
-  "scheduled_imports_execution_history",
+export const scheduled_ingests_execution_history = db_schema.table(
+  "scheduled_ingests_execution_history",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
@@ -2855,7 +2832,7 @@ export const scheduled_imports_execution_history = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    status: enum_scheduled_imports_execution_history_status("status"),
+    status: enum_scheduled_ingests_execution_history_status("status"),
     duration: numeric("duration", { mode: "number" }),
     recordsImported: numeric("records_imported", { mode: "number" }),
     error: varchar("error"),
@@ -2863,57 +2840,58 @@ export const scheduled_imports_execution_history = db_schema.table(
     triggeredBy: trig_by("triggered_by").default("schedule"),
   },
   (columns) => [
-    index("scheduled_imports_execution_history_order_idx").on(columns._order),
-    index("scheduled_imports_execution_history_parent_id_idx").on(
+    index("scheduled_ingests_execution_history_order_idx").on(columns._order),
+    index("scheduled_ingests_execution_history_parent_id_idx").on(
       columns._parentID,
     ),
     foreignKey({
       columns: [columns["_parentID"]],
-      foreignColumns: [scheduled_imports.id],
-      name: "scheduled_imports_execution_history_parent_id_fk",
+      foreignColumns: [scheduled_ingests.id],
+      name: "scheduled_ingests_execution_history_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
 
-export const scheduled_imports = db_schema.table(
-  "scheduled_imports",
+export const scheduled_ingests = db_schema.table(
+  "scheduled_ingests",
   {
     id: serial("id").primaryKey(),
     name: varchar("name"),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     description: varchar("description"),
     enabled: boolean("enabled").default(true),
     sourceUrl: varchar("source_url"),
-    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
+    catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
-    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+    dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     multiSheetConfig_enabled: boolean("multi_sheet_config_enabled").default(
       false,
     ),
     scheduleType:
-      enum_scheduled_imports_schedule_type("schedule_type").default(
+      enum_scheduled_ingests_schedule_type("schedule_type").default(
         "frequency",
       ),
-    frequency: enum_scheduled_imports_frequency("frequency"),
+    frequency: enum_scheduled_ingests_frequency("frequency"),
     cronExpression: varchar("cron_expression"),
     timezone: varchar("timezone").default("UTC"),
-    importNameTemplate: varchar("import_name_template").default(
+    ingestNameTemplate: varchar("ingest_name_template").default(
       "{{name}} - {{date}}",
     ),
     schemaMode:
-      enum_scheduled_imports_schema_mode("schema_mode").default("additive"),
-    sourceImportFile: integer("source_import_file_id").references((): AnyPgColumn => import_files.id,
+      enum_scheduled_ingests_schema_mode("schema_mode").default("additive"),
+    sourceIngestFile: integer("source_ingest_file_id").references(
+      (): AnyPgColumn => ingest_files.id,
       {
         onDelete: "set null",
       },
     ),
     authConfig_type:
-      enum_scheduled_imports_auth_config_type("auth_config_type").default(
+      enum_scheduled_ingests_auth_config_type("auth_config_type").default(
         "none",
       ),
     authConfig_apiKey: varchar("auth_config_api_key"),
@@ -2956,6 +2934,41 @@ export const scheduled_imports = db_schema.table(
     advancedOptions_respectCacheControl: boolean(
       "advanced_options_respect_cache_control",
     ).default(true),
+    advancedOptions_responseFormat: si_response_format(
+      "advanced_options_response_format",
+    ).default("auto"),
+    advancedOptions_jsonApiConfig_recordsPath: varchar(
+      "advanced_options_json_api_config_records_path",
+    ),
+    advancedOptions_jsonApiConfig_pagination_enabled: boolean(
+      "advanced_options_json_api_config_pagination_enabled",
+    ).default(false),
+    advancedOptions_jsonApiConfig_pagination_type: si_json_paging_type(
+      "advanced_options_json_api_config_pagination_type",
+    ),
+    advancedOptions_jsonApiConfig_pagination_pageParam: varchar(
+      "advanced_options_json_api_config_pagination_page_param",
+    ).default("page"),
+    advancedOptions_jsonApiConfig_pagination_limitParam: varchar(
+      "advanced_options_json_api_config_pagination_limit_param",
+    ).default("limit"),
+    advancedOptions_jsonApiConfig_pagination_limitValue: numeric(
+      "advanced_options_json_api_config_pagination_limit_value",
+      { mode: "number" },
+    ).default(100),
+    advancedOptions_jsonApiConfig_pagination_cursorParam: varchar(
+      "advanced_options_json_api_config_pagination_cursor_param",
+    ),
+    advancedOptions_jsonApiConfig_pagination_nextCursorPath: varchar(
+      "advanced_options_json_api_config_pagination_next_cursor_path",
+    ),
+    advancedOptions_jsonApiConfig_pagination_totalPath: varchar(
+      "advanced_options_json_api_config_pagination_total_path",
+    ),
+    advancedOptions_jsonApiConfig_pagination_maxPages: numeric(
+      "advanced_options_json_api_config_pagination_max_pages",
+      { mode: "number" },
+    ).default(50),
     lastRun: timestamp("last_run", {
       mode: "string",
       withTimezone: true,
@@ -2966,7 +2979,7 @@ export const scheduled_imports = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    lastStatus: enum_scheduled_imports_last_status("last_status"),
+    lastStatus: enum_scheduled_ingests_last_status("last_status"),
     lastError: varchar("last_error"),
     currentRetries: numeric("current_retries", { mode: "number" }).default(0),
     statistics_totalRuns: numeric("statistics_total_runs", {
@@ -3003,31 +3016,31 @@ export const scheduled_imports = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    _status: enum_scheduled_imports_status("_status").default("draft"),
+    _status: enum_scheduled_ingests_status("_status").default("draft"),
   },
   (columns) => [
-    index("scheduled_imports_created_by_idx").on(columns.createdBy),
-    index("scheduled_imports_catalog_idx").on(columns.catalog),
-    index("scheduled_imports_dataset_idx").on(columns.dataset),
-    index("scheduled_imports_source_import_file_idx").on(
-      columns.sourceImportFile,
+    index("scheduled_ingests_created_by_idx").on(columns.createdBy),
+    index("scheduled_ingests_catalog_idx").on(columns.catalog),
+    index("scheduled_ingests_dataset_idx").on(columns.dataset),
+    index("scheduled_ingests_source_ingest_file_idx").on(
+      columns.sourceIngestFile,
     ),
-    index("scheduled_imports_updated_at_idx").on(columns.updatedAt),
-    index("scheduled_imports_created_at_idx").on(columns.createdAt),
-    index("scheduled_imports_deleted_at_idx").on(columns.deletedAt),
-    index("scheduled_imports__status_idx").on(columns._status),
+    index("scheduled_ingests_updated_at_idx").on(columns.updatedAt),
+    index("scheduled_ingests_created_at_idx").on(columns.createdAt),
+    index("scheduled_ingests_deleted_at_idx").on(columns.deletedAt),
+    index("scheduled_ingests__status_idx").on(columns._status),
   ],
 );
 
-export const _scheduled_imports_v_version_multi_sheet_config_sheets =
+export const _scheduled_ingests_v_version_multi_sheet_config_sheets =
   db_schema.table(
-    "_scheduled_imports_v_version_multi_sheet_config_sheets",
+    "_scheduled_ingests_v_version_multi_sheet_config_sheets",
     {
       _order: integer("_order").notNull(),
       _parentID: integer("_parent_id").notNull(),
       id: serial("id").primaryKey(),
       sheetIdentifier: varchar("sheet_identifier"),
-      dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+      dataset: integer("dataset_id").references(() => datasets.id, {
         onDelete: "set null",
       }),
       skipIfMissing: boolean("skip_if_missing").default(false),
@@ -3035,24 +3048,24 @@ export const _scheduled_imports_v_version_multi_sheet_config_sheets =
     },
     (columns) => [
       index(
-        "_scheduled_imports_v_version_multi_sheet_config_sheets_order_idx",
+        "_scheduled_ingests_v_version_multi_sheet_config_sheets_order_idx",
       ).on(columns._order),
       index(
-        "_scheduled_imports_v_version_multi_sheet_config_sheets_parent_id_idx",
+        "_scheduled_ingests_v_version_multi_sheet_config_sheets_parent_id_idx",
       ).on(columns._parentID),
-      index("_scheduled_imports_v_version_multi_sheet_config_sheets_d_idx").on(
+      index("_scheduled_ingests_v_version_multi_sheet_config_sheets_d_idx").on(
         columns.dataset,
       ),
       foreignKey({
         columns: [columns["_parentID"]],
-        foreignColumns: [_scheduled_imports_v.id],
-        name: "_scheduled_imports_v_version_multi_sheet_config_sheets_parent_id_fk",
+        foreignColumns: [_scheduled_ingests_v.id],
+        name: "_scheduled_ingests_v_version_multi_sheet_config_sheets_parent_id_fk",
       }).onDelete("cascade"),
     ],
   );
 
-export const _scheduled_imports_v_version_execution_history = db_schema.table(
-  "_scheduled_imports_v_version_execution_history",
+export const _scheduled_ingests_v_version_execution_history = db_schema.table(
+  "_scheduled_ingests_v_version_execution_history",
   {
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
@@ -3063,7 +3076,7 @@ export const _scheduled_imports_v_version_execution_history = db_schema.table(
       precision: 3,
     }),
     status:
-      enum__scheduled_imports_v_version_execution_history_status("status"),
+      enum__scheduled_ingests_v_version_execution_history_status("status"),
     duration: numeric("duration", { mode: "number" }),
     recordsImported: numeric("records_imported", { mode: "number" }),
     error: varchar("error"),
@@ -3072,29 +3085,30 @@ export const _scheduled_imports_v_version_execution_history = db_schema.table(
     _uuid: varchar("_uuid"),
   },
   (columns) => [
-    index("_scheduled_imports_v_version_execution_history_order_idx").on(
+    index("_scheduled_ingests_v_version_execution_history_order_idx").on(
       columns._order,
     ),
-    index("_scheduled_imports_v_version_execution_history_parent_id_idx").on(
+    index("_scheduled_ingests_v_version_execution_history_parent_id_idx").on(
       columns._parentID,
     ),
     foreignKey({
       columns: [columns["_parentID"]],
-      foreignColumns: [_scheduled_imports_v.id],
-      name: "_scheduled_imports_v_version_execution_history_parent_id_fk",
+      foreignColumns: [_scheduled_ingests_v.id],
+      name: "_scheduled_ingests_v_version_execution_history_parent_id_fk",
     }).onDelete("cascade"),
   ],
 );
 
-export const _scheduled_imports_v = db_schema.table(
-  "_scheduled_imports_v",
+export const _scheduled_ingests_v = db_schema.table(
+  "_scheduled_ingests_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => scheduled_imports.id, {
+    parent: integer("parent_id").references(() => scheduled_ingests.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -3102,12 +3116,14 @@ export const _scheduled_imports_v = db_schema.table(
     version_description: varchar("version_description"),
     version_enabled: boolean("version_enabled").default(true),
     version_sourceUrl: varchar("version_source_url"),
-    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
+    version_catalog: integer("version_catalog_id").references(
+      () => catalogs.id,
       {
         onDelete: "set null",
       },
     ),
-    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
+    version_dataset: integer("version_dataset_id").references(
+      () => datasets.id,
       {
         onDelete: "set null",
       },
@@ -3115,25 +3131,25 @@ export const _scheduled_imports_v = db_schema.table(
     version_multiSheetConfig_enabled: boolean(
       "version_multi_sheet_config_enabled",
     ).default(false),
-    version_scheduleType: enum__scheduled_imports_v_version_schedule_type(
+    version_scheduleType: enum__scheduled_ingests_v_version_schedule_type(
       "version_schedule_type",
     ).default("frequency"),
     version_frequency:
-      enum__scheduled_imports_v_version_frequency("version_frequency"),
+      enum__scheduled_ingests_v_version_frequency("version_frequency"),
     version_cronExpression: varchar("version_cron_expression"),
     version_timezone: varchar("version_timezone").default("UTC"),
-    version_importNameTemplate: varchar("version_import_name_template").default(
+    version_ingestNameTemplate: varchar("version_ingest_name_template").default(
       "{{name}} - {{date}}",
     ),
-    version_schemaMode: enum__scheduled_imports_v_version_schema_mode(
+    version_schemaMode: enum__scheduled_ingests_v_version_schema_mode(
       "version_schema_mode",
     ).default("additive"),
-    version_sourceImportFile: integer(
-      "version_source_import_file_id",
-    ).references((): AnyPgColumn => import_files.id, {
+    version_sourceIngestFile: integer(
+      "version_source_ingest_file_id",
+    ).references(() => ingest_files.id, {
       onDelete: "set null",
     }),
-    version_authConfig_type: enum__scheduled_imports_v_version_auth_config_type(
+    version_authConfig_type: enum__scheduled_ingests_v_version_auth_config_type(
       "version_auth_config_type",
     ).default("none"),
     version_authConfig_apiKey: varchar("version_auth_config_api_key"),
@@ -3180,6 +3196,41 @@ export const _scheduled_imports_v = db_schema.table(
     version_advancedOptions_respectCacheControl: boolean(
       "version_advanced_options_respect_cache_control",
     ).default(true),
+    version_advancedOptions_responseFormat: si_response_format(
+      "version_advanced_options_response_format",
+    ).default("auto"),
+    version_advancedOptions_jsonApiConfig_recordsPath: varchar(
+      "version_advanced_options_json_api_config_records_path",
+    ),
+    version_advancedOptions_jsonApiConfig_pagination_enabled: boolean(
+      "version_advanced_options_json_api_config_pagination_enabled",
+    ).default(false),
+    version_advancedOptions_jsonApiConfig_pagination_type: si_json_paging_type(
+      "version_advanced_options_json_api_config_pagination_type",
+    ),
+    version_advancedOptions_jsonApiConfig_pagination_pageParam: varchar(
+      "version_advanced_options_json_api_config_pagination_page_param",
+    ).default("page"),
+    version_advancedOptions_jsonApiConfig_pagination_limitParam: varchar(
+      "version_advanced_options_json_api_config_pagination_limit_param",
+    ).default("limit"),
+    version_advancedOptions_jsonApiConfig_pagination_limitValue: numeric(
+      "version_advanced_options_json_api_config_pagination_limit_value",
+      { mode: "number" },
+    ).default(100),
+    version_advancedOptions_jsonApiConfig_pagination_cursorParam: varchar(
+      "version_advanced_options_json_api_config_pagination_cursor_param",
+    ),
+    version_advancedOptions_jsonApiConfig_pagination_nextCursorPath: varchar(
+      "version_advanced_options_json_api_config_pagination_next_cursor_path",
+    ),
+    version_advancedOptions_jsonApiConfig_pagination_totalPath: varchar(
+      "version_advanced_options_json_api_config_pagination_total_path",
+    ),
+    version_advancedOptions_jsonApiConfig_pagination_maxPages: numeric(
+      "version_advanced_options_json_api_config_pagination_max_pages",
+      { mode: "number" },
+    ).default(50),
     version_lastRun: timestamp("version_last_run", {
       mode: "string",
       withTimezone: true,
@@ -3190,7 +3241,7 @@ export const _scheduled_imports_v = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    version_lastStatus: enum__scheduled_imports_v_version_last_status(
+    version_lastStatus: enum__scheduled_ingests_v_version_last_status(
       "version_last_status",
     ),
     version_lastError: varchar("version_last_error"),
@@ -3230,7 +3281,7 @@ export const _scheduled_imports_v = db_schema.table(
       precision: 3,
     }),
     version__status:
-      enum__scheduled_imports_v_version_status("version__status").default(
+      enum__scheduled_ingests_v_version_status("version__status").default(
         "draft",
       ),
     createdAt: timestamp("created_at", {
@@ -3249,44 +3300,44 @@ export const _scheduled_imports_v = db_schema.table(
       .notNull(),
     snapshot: boolean("snapshot"),
     publishedLocale:
-      enum__scheduled_imports_v_published_locale("published_locale"),
+      enum__scheduled_ingests_v_published_locale("published_locale"),
     latest: boolean("latest"),
     autosave: boolean("autosave"),
   },
   (columns) => [
-    index("_scheduled_imports_v_parent_idx").on(columns.parent),
-    index("_scheduled_imports_v_version_version_created_by_idx").on(
+    index("_scheduled_ingests_v_parent_idx").on(columns.parent),
+    index("_scheduled_ingests_v_version_version_created_by_idx").on(
       columns.version_createdBy,
     ),
-    index("_scheduled_imports_v_version_version_catalog_idx").on(
+    index("_scheduled_ingests_v_version_version_catalog_idx").on(
       columns.version_catalog,
     ),
-    index("_scheduled_imports_v_version_version_dataset_idx").on(
+    index("_scheduled_ingests_v_version_version_dataset_idx").on(
       columns.version_dataset,
     ),
-    index("_scheduled_imports_v_version_version_source_import_file_idx").on(
-      columns.version_sourceImportFile,
+    index("_scheduled_ingests_v_version_version_source_ingest_file_idx").on(
+      columns.version_sourceIngestFile,
     ),
-    index("_scheduled_imports_v_version_version_updated_at_idx").on(
+    index("_scheduled_ingests_v_version_version_updated_at_idx").on(
       columns.version_updatedAt,
     ),
-    index("_scheduled_imports_v_version_version_created_at_idx").on(
+    index("_scheduled_ingests_v_version_version_created_at_idx").on(
       columns.version_createdAt,
     ),
-    index("_scheduled_imports_v_version_version_deleted_at_idx").on(
+    index("_scheduled_ingests_v_version_version_deleted_at_idx").on(
       columns.version_deletedAt,
     ),
-    index("_scheduled_imports_v_version_version__status_idx").on(
+    index("_scheduled_ingests_v_version_version__status_idx").on(
       columns.version__status,
     ),
-    index("_scheduled_imports_v_created_at_idx").on(columns.createdAt),
-    index("_scheduled_imports_v_updated_at_idx").on(columns.updatedAt),
-    index("_scheduled_imports_v_snapshot_idx").on(columns.snapshot),
-    index("_scheduled_imports_v_published_locale_idx").on(
+    index("_scheduled_ingests_v_created_at_idx").on(columns.createdAt),
+    index("_scheduled_ingests_v_updated_at_idx").on(columns.updatedAt),
+    index("_scheduled_ingests_v_snapshot_idx").on(columns.snapshot),
+    index("_scheduled_ingests_v_published_locale_idx").on(
       columns.publishedLocale,
     ),
-    index("_scheduled_imports_v_latest_idx").on(columns.latest),
-    index("_scheduled_imports_v_autosave_idx").on(columns.autosave),
+    index("_scheduled_ingests_v_latest_idx").on(columns.latest),
+    index("_scheduled_ingests_v_autosave_idx").on(columns.autosave),
   ],
 );
 
@@ -3297,7 +3348,7 @@ export const scraper_repos = db_schema.table(
     name: varchar("name").notNull(),
     description: jsonb("description"),
     slug: varchar("slug"),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     sourceType: enum_scraper_repos_source_type("source_type")
@@ -3306,7 +3357,7 @@ export const scraper_repos = db_schema.table(
     gitUrl: varchar("git_url"),
     gitBranch: varchar("git_branch").default("main"),
     code: jsonb("code"),
-    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
+    catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
     lastSyncAt: timestamp("last_sync_at", {
@@ -3354,7 +3405,7 @@ export const scrapers = db_schema.table(
     slug: varchar("slug").notNull(),
     repo: integer("repo_id")
       .notNull()
-      .references((): AnyPgColumn => scraper_repos.id, {
+      .references(() => scraper_repos.id, {
         onDelete: "set null",
       }),
     repoCreatedBy: numeric("repo_created_by", { mode: "number" }),
@@ -3366,7 +3417,7 @@ export const scrapers = db_schema.table(
     timeoutSecs: numeric("timeout_secs", { mode: "number" }).default(300),
     memoryMb: numeric("memory_mb", { mode: "number" }).default(512),
     envVars: jsonb("env_vars").default(sql`'{}'::jsonb`),
-    targetDataset: integer("target_dataset_id").references((): AnyPgColumn => datasets.id, {
+    targetDataset: integer("target_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     autoImport: boolean("auto_import").default(false),
@@ -3425,7 +3476,7 @@ export const scraper_runs = db_schema.table(
     id: serial("id").primaryKey(),
     scraper: integer("scraper_id")
       .notNull()
-      .references((): AnyPgColumn => scrapers.id, {
+      .references(() => scrapers.id, {
         onDelete: "set null",
       }),
     scraperOwner: numeric("scraper_owner", { mode: "number" }),
@@ -3449,7 +3500,7 @@ export const scraper_runs = db_schema.table(
     error: varchar("error"),
     outputRows: numeric("output_rows", { mode: "number" }),
     outputBytes: numeric("output_bytes", { mode: "number" }),
-    resultFile: integer("result_file_id").references((): AnyPgColumn => import_files.id, {
+    resultFile: integer("result_file_id").references(() => ingest_files.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -3481,31 +3532,31 @@ export const events = db_schema.table(
   "events",
   {
     id: serial("id").primaryKey(),
-    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+    dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     datasetIsPublic: boolean("dataset_is_public").default(false),
     catalogOwnerId: numeric("catalog_owner_id", { mode: "number" }),
-    importJob: integer("import_job_id").references((): AnyPgColumn => import_jobs.id, {
+    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
       onDelete: "set null",
     }),
-    data: jsonb("data"),
+    originalData: jsonb("original_data"),
     location_latitude: numeric("location_latitude", { mode: "number" }),
     location_longitude: numeric("location_longitude", { mode: "number" }),
     coordinateSource_type: enum_events_coordinate_source_type(
       "coordinate_source_type",
     ).default("none"),
-    coordinateSource_importColumns_latitudeColumn: varchar(
-      "coordinate_source_import_columns_latitude_column",
+    coordinateSource_sourceColumns_latitudeColumn: varchar(
+      "coordinate_source_source_columns_latitude_column",
     ),
-    coordinateSource_importColumns_longitudeColumn: varchar(
-      "coordinate_source_import_columns_longitude_column",
+    coordinateSource_sourceColumns_longitudeColumn: varchar(
+      "coordinate_source_source_columns_longitude_column",
     ),
-    coordinateSource_importColumns_combinedColumn: varchar(
-      "coordinate_source_import_columns_combined_column",
+    coordinateSource_sourceColumns_combinedColumn: varchar(
+      "coordinate_source_source_columns_combined_column",
     ),
-    coordinateSource_importColumns_format: varchar(
-      "coordinate_source_import_columns_format",
+    coordinateSource_sourceColumns_format: varchar(
+      "coordinate_source_source_columns_format",
     ),
     coordinateSource_confidence: numeric("coordinate_source_confidence", {
       mode: "number",
@@ -3540,7 +3591,7 @@ export const events = db_schema.table(
     uniqueId: varchar("unique_id"),
     sourceId: varchar("source_id"),
     contentHash: varchar("content_hash"),
-    importBatch: numeric("import_batch", { mode: "number" }),
+    ingestBatch: numeric("ingest_batch", { mode: "number" }),
     schemaVersionNumber: numeric("schema_version_number", { mode: "number" }),
     validationStatus:
       enum_events_validation_status("validation_status").default("pending"),
@@ -3570,11 +3621,11 @@ export const events = db_schema.table(
     index("events_dataset_idx").on(columns.dataset),
     index("events_dataset_is_public_idx").on(columns.datasetIsPublic),
     index("events_catalog_owner_id_idx").on(columns.catalogOwnerId),
-    index("events_import_job_idx").on(columns.importJob),
+    index("events_ingest_job_idx").on(columns.ingestJob),
     uniqueIndex("events_unique_id_idx").on(columns.uniqueId),
     index("events_source_id_idx").on(columns.sourceId),
     index("events_content_hash_idx").on(columns.contentHash),
-    index("events_import_batch_idx").on(columns.importBatch),
+    index("events_ingest_batch_idx").on(columns.ingestBatch),
     index("events_validation_status_idx").on(columns.validationStatus),
     index("events_updated_at_idx").on(columns.updatedAt),
     index("events_created_at_idx").on(columns.createdAt),
@@ -3587,9 +3638,9 @@ export const events = db_schema.table(
     index("eventTimestamp_idx").on(columns.eventTimestamp),
     index("uniqueId_idx").on(columns.uniqueId),
     index("dataset_contentHash_idx").on(columns.dataset, columns.contentHash),
-    index("importJob_importBatch_idx").on(
-      columns.importJob,
-      columns.importBatch,
+    index("ingestJob_ingestBatch_idx").on(
+      columns.ingestJob,
+      columns.ingestBatch,
     ),
     index("validationStatus_idx").on(columns.validationStatus),
     index("location_longitude_idx").on(columns.location_longitude),
@@ -3601,10 +3652,11 @@ export const _events_v = db_schema.table(
   "_events_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => events.id, {
+    parent: integer("parent_id").references(() => events.id, {
       onDelete: "set null",
     }),
-    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
+    version_dataset: integer("version_dataset_id").references(
+      () => datasets.id,
       {
         onDelete: "set null",
       },
@@ -3615,12 +3667,13 @@ export const _events_v = db_schema.table(
     version_catalogOwnerId: numeric("version_catalog_owner_id", {
       mode: "number",
     }),
-    version_importJob: integer("version_import_job_id").references((): AnyPgColumn => import_jobs.id,
+    version_ingestJob: integer("version_ingest_job_id").references(
+      () => ingest_jobs.id,
       {
         onDelete: "set null",
       },
     ),
-    version_data: jsonb("version_data"),
+    version_originalData: jsonb("version_original_data"),
     version_location_latitude: numeric("version_location_latitude", {
       mode: "number",
     }),
@@ -3631,17 +3684,17 @@ export const _events_v = db_schema.table(
       enum__events_v_version_coordinate_source_type(
         "version_coordinate_source_type",
       ).default("none"),
-    version_coordinateSource_importColumns_latitudeColumn: varchar(
-      "version_coordinate_source_import_columns_latitude_column",
+    version_coordinateSource_sourceColumns_latitudeColumn: varchar(
+      "version_coordinate_source_source_columns_latitude_column",
     ),
-    version_coordinateSource_importColumns_longitudeColumn: varchar(
-      "version_coordinate_source_import_columns_longitude_column",
+    version_coordinateSource_sourceColumns_longitudeColumn: varchar(
+      "version_coordinate_source_source_columns_longitude_column",
     ),
-    version_coordinateSource_importColumns_combinedColumn: varchar(
-      "version_coordinate_source_import_columns_combined_column",
+    version_coordinateSource_sourceColumns_combinedColumn: varchar(
+      "version_coordinate_source_source_columns_combined_column",
     ),
-    version_coordinateSource_importColumns_format: varchar(
-      "version_coordinate_source_import_columns_format",
+    version_coordinateSource_sourceColumns_format: varchar(
+      "version_coordinate_source_source_columns_format",
     ),
     version_coordinateSource_confidence: numeric(
       "version_coordinate_source_confidence",
@@ -3682,7 +3735,7 @@ export const _events_v = db_schema.table(
     version_uniqueId: varchar("version_unique_id"),
     version_sourceId: varchar("version_source_id"),
     version_contentHash: varchar("version_content_hash"),
-    version_importBatch: numeric("version_import_batch", { mode: "number" }),
+    version_ingestBatch: numeric("version_ingest_batch", { mode: "number" }),
     version_schemaVersionNumber: numeric("version_schema_version_number", {
       mode: "number",
     }),
@@ -3735,8 +3788,8 @@ export const _events_v = db_schema.table(
     index("_events_v_version_version_catalog_owner_id_idx").on(
       columns.version_catalogOwnerId,
     ),
-    index("_events_v_version_version_import_job_idx").on(
-      columns.version_importJob,
+    index("_events_v_version_version_ingest_job_idx").on(
+      columns.version_ingestJob,
     ),
     index("_events_v_version_version_unique_id_idx").on(
       columns.version_uniqueId,
@@ -3747,8 +3800,8 @@ export const _events_v = db_schema.table(
     index("_events_v_version_version_content_hash_idx").on(
       columns.version_contentHash,
     ),
-    index("_events_v_version_version_import_batch_idx").on(
-      columns.version_importBatch,
+    index("_events_v_version_version_ingest_batch_idx").on(
+      columns.version_ingestBatch,
     ),
     index("_events_v_version_version_validation_status_idx").on(
       columns.version_validationStatus,
@@ -3779,9 +3832,9 @@ export const _events_v = db_schema.table(
       columns.version_dataset,
       columns.version_contentHash,
     ),
-    index("version_importJob_version_importBatch_idx").on(
-      columns.version_importJob,
-      columns.version_importBatch,
+    index("version_ingestJob_version_ingestBatch_idx").on(
+      columns.version_ingestJob,
+      columns.version_ingestBatch,
     ),
     index("version_validationStatus_idx").on(columns.version_validationStatus),
     index("version_location_longitude_idx").on(
@@ -3854,7 +3907,7 @@ export const users = db_schema.table(
     quotas_maxTotalEvents: numeric("quotas_max_total_events", {
       mode: "number",
     }),
-    quotas_maxImportJobsPerDay: numeric("quotas_max_import_jobs_per_day", {
+    quotas_maxIngestJobsPerDay: numeric("quotas_max_ingest_jobs_per_day", {
       mode: "number",
     }),
     quotas_maxFileSizeMB: numeric("quotas_max_file_size_m_b", {
@@ -3901,6 +3954,9 @@ export const users = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
+    enableAPIKey: boolean("enable_a_p_i_key"),
+    apiKey: varchar("api_key"),
+    apiKeyIndex: varchar("api_key_index"),
     email: varchar("email").notNull(),
     resetPasswordToken: varchar("reset_password_token"),
     resetPasswordExpiration: timestamp("reset_password_expiration", {
@@ -3933,7 +3989,7 @@ export const user_usage = db_schema.table(
     id: serial("id").primaryKey(),
     user: integer("user_id")
       .notNull()
-      .references((): AnyPgColumn => users.id, {
+      .references(() => users.id, {
         onDelete: "set null",
       }),
     urlFetchesToday: numeric("url_fetches_today", { mode: "number" }).default(
@@ -3942,7 +3998,7 @@ export const user_usage = db_schema.table(
     fileUploadsToday: numeric("file_uploads_today", { mode: "number" }).default(
       0,
     ),
-    importJobsToday: numeric("import_jobs_today", { mode: "number" }).default(
+    ingestJobsToday: numeric("ingest_jobs_today", { mode: "number" }).default(
       0,
     ),
     currentActiveSchedules: numeric("current_active_schedules", {
@@ -3996,7 +4052,7 @@ export const media = db_schema.table(
   "media",
   {
     id: serial("id").primaryKey(),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     alt: varchar("alt"),
@@ -4075,10 +4131,11 @@ export const _media_v = db_schema.table(
   "_media_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => media.id, {
+    parent: integer("parent_id").references(() => media.id, {
       onDelete: "set null",
     }),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -4266,7 +4323,7 @@ export const _location_cache_v = db_schema.table(
   "_location_cache_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => location_cache.id, {
+    parent: integer("parent_id").references(() => location_cache.id, {
       onDelete: "set null",
     }),
     version_originalAddress: varchar("version_original_address"),
@@ -4501,7 +4558,7 @@ export const _geocoding_providers_v = db_schema.table(
   "_geocoding_providers_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => geocoding_providers.id, {
+    parent: integer("parent_id").references(() => geocoding_providers.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -5451,15 +5508,16 @@ export const pages = db_schema.table(
   {
     id: serial("id").primaryKey(),
     slug: varchar("slug"),
-    site: integer("site_id").references((): AnyPgColumn => sites.id, {
+    site: integer("site_id").references(() => sites.id, {
       onDelete: "set null",
     }),
-    layoutOverride: integer("layout_override_id").references((): AnyPgColumn => layout_templates.id,
+    layoutOverride: integer("layout_override_id").references(
+      () => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -6333,19 +6391,21 @@ export const _pages_v = db_schema.table(
   "_pages_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => pages.id, {
+    parent: integer("parent_id").references(() => pages.id, {
       onDelete: "set null",
     }),
     version_slug: varchar("version_slug"),
-    version_site: integer("version_site_id").references((): AnyPgColumn => sites.id, {
+    version_site: integer("version_site_id").references(() => sites.id, {
       onDelete: "set null",
     }),
-    version_layoutOverride: integer("version_layout_override_id").references((): AnyPgColumn => layout_templates.id,
+    version_layoutOverride: integer("version_layout_override_id").references(
+      () => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -6445,15 +6505,17 @@ export const sites = db_schema.table(
     domain: varchar("domain"),
     isDefault: boolean("is_default").default(false),
     branding_title: varchar("branding_title"),
-    branding_logo: integer("branding_logo_id").references((): AnyPgColumn => media.id, {
+    branding_logo: integer("branding_logo_id").references(() => media.id, {
       onDelete: "set null",
     }),
-    branding_logoDark: integer("branding_logo_dark_id").references((): AnyPgColumn => media.id,
+    branding_logoDark: integer("branding_logo_dark_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
     ),
-    branding_favicon: integer("branding_favicon_id").references((): AnyPgColumn => media.id,
+    branding_favicon: integer("branding_favicon_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
@@ -6491,20 +6553,21 @@ export const sites = db_schema.table(
     branding_style_density: enum_sites_branding_style_density(
       "branding_style_density",
     ),
-    branding_theme: integer("branding_theme_id").references((): AnyPgColumn => themes.id, {
+    branding_theme: integer("branding_theme_id").references(() => themes.id, {
       onDelete: "set null",
     }),
     customCode_headHtml: varchar("custom_code_head_html"),
     customCode_customCSS: varchar("custom_code_custom_c_s_s"),
     customCode_bodyStartHtml: varchar("custom_code_body_start_html"),
     customCode_bodyEndHtml: varchar("custom_code_body_end_html"),
-    defaultLayout: integer("default_layout_id").references((): AnyPgColumn => layout_templates.id,
+    defaultLayout: integer("default_layout_id").references(
+      () => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
     isPublic: boolean("is_public").default(true),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -6550,7 +6613,7 @@ export const _sites_v = db_schema.table(
   "_sites_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => sites.id, {
+    parent: integer("parent_id").references(() => sites.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -6558,17 +6621,19 @@ export const _sites_v = db_schema.table(
     version_domain: varchar("version_domain"),
     version_isDefault: boolean("version_is_default").default(false),
     version_branding_title: varchar("version_branding_title"),
-    version_branding_logo: integer("version_branding_logo_id").references((): AnyPgColumn => media.id,
+    version_branding_logo: integer("version_branding_logo_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
     ),
     version_branding_logoDark: integer(
       "version_branding_logo_dark_id",
-    ).references((): AnyPgColumn => media.id, {
+    ).references(() => media.id, {
       onDelete: "set null",
     }),
-    version_branding_favicon: integer("version_branding_favicon_id").references((): AnyPgColumn => media.id,
+    version_branding_favicon: integer("version_branding_favicon_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
@@ -6618,7 +6683,8 @@ export const _sites_v = db_schema.table(
       enum__sites_v_version_branding_style_density(
         "version_branding_style_density",
       ),
-    version_branding_theme: integer("version_branding_theme_id").references((): AnyPgColumn => themes.id,
+    version_branding_theme: integer("version_branding_theme_id").references(
+      () => themes.id,
       {
         onDelete: "set null",
       },
@@ -6631,13 +6697,15 @@ export const _sites_v = db_schema.table(
     version_customCode_bodyEndHtml: varchar(
       "version_custom_code_body_end_html",
     ),
-    version_defaultLayout: integer("version_default_layout_id").references((): AnyPgColumn => layout_templates.id,
+    version_defaultLayout: integer("version_default_layout_id").references(
+      () => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
     version_isPublic: boolean("version_is_public").default(true),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -6760,7 +6828,7 @@ export const themes = db_schema.table(
     ),
     style_borderRadius: enum_themes_style_border_radius("style_border_radius"),
     style_density: enum_themes_style_density("style_density"),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -6797,7 +6865,7 @@ export const _themes_v = db_schema.table(
   "_themes_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => themes.id, {
+    parent: integer("parent_id").references(() => themes.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -6858,7 +6926,8 @@ export const _themes_v = db_schema.table(
     version_style_density: enum__themes_v_version_style_density(
       "version_style_density",
     ),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -6940,7 +7009,7 @@ export const layout_templates = db_schema.table(
       enum_layout_templates_content_max_width("content_max_width").default(
         "lg",
       ),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -6977,7 +7046,7 @@ export const _layout_templates_v = db_schema.table(
   "_layout_templates_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => layout_templates.id, {
+    parent: integer("parent_id").references(() => layout_templates.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -6992,7 +7061,8 @@ export const _layout_templates_v = db_schema.table(
     version_contentMaxWidth: enum__layout_templates_v_version_content_max_width(
       "version_content_max_width",
     ).default("lg"),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -7093,7 +7163,7 @@ export const views = db_schema.table(
     id: serial("id").primaryKey(),
     name: varchar("name"),
     slug: varchar("slug"),
-    site: integer("site_id").references((): AnyPgColumn => sites.id, {
+    site: integer("site_id").references(() => sites.id, {
       onDelete: "set null",
     }),
     isDefault: boolean("is_default").default(false),
@@ -7137,7 +7207,7 @@ export const views = db_schema.table(
     ).default("default"),
     mapSettings_customStyleUrl: varchar("map_settings_custom_style_url"),
     isPublic: boolean("is_public").default(true),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -7236,12 +7306,12 @@ export const _views_v = db_schema.table(
   "_views_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => views.id, {
+    parent: integer("parent_id").references(() => views.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_slug: varchar("version_slug"),
-    version_site: integer("version_site_id").references((): AnyPgColumn => sites.id, {
+    version_site: integer("version_site_id").references(() => sites.id, {
       onDelete: "set null",
     }),
     version_isDefault: boolean("version_is_default").default(false),
@@ -7294,7 +7364,8 @@ export const _views_v = db_schema.table(
       "version_map_settings_custom_style_url",
     ),
     version_isPublic: boolean("version_is_public").default(true),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -7500,6 +7571,7 @@ export const payload_jobs = db_schema.table(
       precision: 3,
     }),
     processing: boolean("processing").default(false),
+    concurrencyKey: varchar("concurrency_key"),
     meta: jsonb("meta"),
     updatedAt: timestamp("updated_at", {
       mode: "string",
@@ -7524,6 +7596,7 @@ export const payload_jobs = db_schema.table(
     index("payload_jobs_queue_idx").on(columns.queue),
     index("payload_jobs_wait_until_idx").on(columns.waitUntil),
     index("payload_jobs_processing_idx").on(columns.processing),
+    index("payload_jobs_concurrency_key_idx").on(columns.concurrencyKey),
     index("payload_jobs_updated_at_idx").on(columns.updatedAt),
     index("payload_jobs_created_at_idx").on(columns.createdAt),
   ],
@@ -7568,9 +7641,9 @@ export const payload_locked_documents_rels = db_schema.table(
     datasetsID: integer("datasets_id"),
     "dataset-schemasID": integer("dataset_schemas_id"),
     "audit-logID": integer("audit_log_id"),
-    "import-filesID": integer("import_files_id"),
-    "import-jobsID": integer("import_jobs_id"),
-    "scheduled-importsID": integer("scheduled_imports_id"),
+    "ingest-filesID": integer("ingest_files_id"),
+    "ingest-jobsID": integer("ingest_jobs_id"),
+    "scheduled-ingestsID": integer("scheduled_ingests_id"),
     "scraper-reposID": integer("scraper_repos_id"),
     scrapersID: integer("scrapers_id"),
     "scraper-runsID": integer("scraper_runs_id"),
@@ -7606,14 +7679,14 @@ export const payload_locked_documents_rels = db_schema.table(
     index("payload_locked_documents_rels_audit_log_id_idx").on(
       columns["audit-logID"],
     ),
-    index("payload_locked_documents_rels_import_files_id_idx").on(
-      columns["import-filesID"],
+    index("payload_locked_documents_rels_ingest_files_id_idx").on(
+      columns["ingest-filesID"],
     ),
-    index("payload_locked_documents_rels_import_jobs_id_idx").on(
-      columns["import-jobsID"],
+    index("payload_locked_documents_rels_ingest_jobs_id_idx").on(
+      columns["ingest-jobsID"],
     ),
-    index("payload_locked_documents_rels_scheduled_imports_id_idx").on(
-      columns["scheduled-importsID"],
+    index("payload_locked_documents_rels_scheduled_ingests_id_idx").on(
+      columns["scheduled-ingestsID"],
     ),
     index("payload_locked_documents_rels_scraper_repos_id_idx").on(
       columns["scraper-reposID"],
@@ -7677,19 +7750,19 @@ export const payload_locked_documents_rels = db_schema.table(
       name: "payload_locked_documents_rels_audit_log_fk",
     }).onDelete("cascade"),
     foreignKey({
-      columns: [columns["import-filesID"]],
-      foreignColumns: [import_files.id],
-      name: "payload_locked_documents_rels_import_files_fk",
+      columns: [columns["ingest-filesID"]],
+      foreignColumns: [ingest_files.id],
+      name: "payload_locked_documents_rels_ingest_files_fk",
     }).onDelete("cascade"),
     foreignKey({
-      columns: [columns["import-jobsID"]],
-      foreignColumns: [import_jobs.id],
-      name: "payload_locked_documents_rels_import_jobs_fk",
+      columns: [columns["ingest-jobsID"]],
+      foreignColumns: [ingest_jobs.id],
+      name: "payload_locked_documents_rels_ingest_jobs_fk",
     }).onDelete("cascade"),
     foreignKey({
-      columns: [columns["scheduled-importsID"]],
-      foreignColumns: [scheduled_imports.id],
-      name: "payload_locked_documents_rels_scheduled_imports_fk",
+      columns: [columns["scheduled-ingestsID"]],
+      foreignColumns: [scheduled_ingests.id],
+      name: "payload_locked_documents_rels_scheduled_ingests_fk",
     }).onDelete("cascade"),
     foreignKey({
       columns: [columns["scraper-reposID"]],
@@ -8337,18 +8410,20 @@ export const branding = db_schema.table(
   "branding",
   {
     id: serial("id").primaryKey(),
-    logoLight: integer("logo_light_id").references((): AnyPgColumn => media.id, {
+    logoLight: integer("logo_light_id").references(() => media.id, {
       onDelete: "set null",
     }),
-    logoDark: integer("logo_dark_id").references((): AnyPgColumn => media.id, {
+    logoDark: integer("logo_dark_id").references(() => media.id, {
       onDelete: "set null",
     }),
-    faviconSourceLight: integer("favicon_source_light_id").references((): AnyPgColumn => media.id,
+    faviconSourceLight: integer("favicon_source_light_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
     ),
-    faviconSourceDark: integer("favicon_source_dark_id").references((): AnyPgColumn => media.id,
+    faviconSourceDark: integer("favicon_source_dark_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
@@ -8424,6 +8499,8 @@ export const settings = db_schema.table("settings", {
   id: serial("id").primaryKey(),
   newsletter_serviceUrl: varchar("newsletter_service_url"),
   newsletter_authHeader: varchar("newsletter_auth_header"),
+  legal_termsUrl: varchar("legal_terms_url"),
+  legal_privacyUrl: varchar("legal_privacy_url"),
   geocoding_enabled: boolean("geocoding_enabled").default(true),
   geocoding_fallbackEnabled: boolean("geocoding_fallback_enabled").default(
     true,
@@ -8439,8 +8516,8 @@ export const settings = db_schema.table("settings", {
   featureFlags_allowPrivateImports: boolean(
     "feature_flags_allow_private_imports",
   ).default(true),
-  featureFlags_enableScheduledImports: boolean(
-    "feature_flags_enable_scheduled_imports",
+  featureFlags_enableScheduledIngests: boolean(
+    "feature_flags_enable_scheduled_ingests",
   ).default(true),
   featureFlags_enableRegistration: boolean(
     "feature_flags_enable_registration",
@@ -8474,6 +8551,27 @@ export const settings = db_schema.table("settings", {
     precision: 3,
   }),
 });
+
+export const settings_locales = db_schema.table(
+  "settings_locales",
+  {
+    legal_registrationDisclaimer: varchar("legal_registration_disclaimer"),
+    id: serial("id").primaryKey(),
+    _locale: enum__locales("_locale").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+  },
+  (columns) => [
+    uniqueIndex("settings_locales_locale_parent_id_unique").on(
+      columns._locale,
+      columns._parentID,
+    ),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [settings.id],
+      name: "settings_locales_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
 
 export const payload_jobs_stats = db_schema.table("payload_jobs_stats", {
   id: serial("id").primaryKey(),
@@ -8526,16 +8624,16 @@ export const relations_datasets_id_strategy_computed_id_fields = relations(
     }),
   }),
 );
-export const relations_datasets_import_transforms = relations(
-  datasets_import_transforms,
+export const relations_datasets_ingest_transforms = relations(
+  datasets_ingest_transforms,
   ({ one }) => ({
     _parentID: one(datasets, {
-      fields: [datasets_import_transforms._parentID],
+      fields: [datasets_ingest_transforms._parentID],
       references: [datasets.id],
-      relationName: "importTransforms",
+      relationName: "ingestTransforms",
     }),
     addedBy: one(users, {
-      fields: [datasets_import_transforms.addedBy],
+      fields: [datasets_ingest_transforms.addedBy],
       references: [users.id],
       relationName: "addedBy",
     }),
@@ -8555,8 +8653,8 @@ export const relations_datasets = relations(datasets, ({ one, many }) => ({
   idStrategy_computedIdFields: many(datasets_id_strategy_computed_id_fields, {
     relationName: "idStrategy_computedIdFields",
   }),
-  importTransforms: many(datasets_import_transforms, {
-    relationName: "importTransforms",
+  ingestTransforms: many(datasets_ingest_transforms, {
+    relationName: "ingestTransforms",
   }),
   schemaDetector: one(schema_detectors, {
     fields: [datasets.schemaDetector],
@@ -8572,16 +8670,16 @@ export const relations__datasets_v_version_id_strategy_computed_id_fields =
       relationName: "version_idStrategy_computedIdFields",
     }),
   }));
-export const relations__datasets_v_version_import_transforms = relations(
-  _datasets_v_version_import_transforms,
+export const relations__datasets_v_version_ingest_transforms = relations(
+  _datasets_v_version_ingest_transforms,
   ({ one }) => ({
     _parentID: one(_datasets_v, {
-      fields: [_datasets_v_version_import_transforms._parentID],
+      fields: [_datasets_v_version_ingest_transforms._parentID],
       references: [_datasets_v.id],
-      relationName: "version_importTransforms",
+      relationName: "version_ingestTransforms",
     }),
     addedBy: one(users, {
-      fields: [_datasets_v_version_import_transforms.addedBy],
+      fields: [_datasets_v_version_ingest_transforms.addedBy],
       references: [users.id],
       relationName: "addedBy",
     }),
@@ -8611,8 +8709,8 @@ export const relations__datasets_v = relations(
         relationName: "version_idStrategy_computedIdFields",
       },
     ),
-    version_importTransforms: many(_datasets_v_version_import_transforms, {
-      relationName: "version_importTransforms",
+    version_ingestTransforms: many(_datasets_v_version_ingest_transforms, {
+      relationName: "version_ingestTransforms",
     }),
     version_schemaDetector: one(schema_detectors, {
       fields: [_datasets_v.version_schemaDetector],
@@ -8659,18 +8757,18 @@ export const relations_dataset_schemas_schema_summary_enum_changes = relations(
     }),
   }),
 );
-export const relations_dataset_schemas_import_sources = relations(
-  dataset_schemas_import_sources,
+export const relations_dataset_schemas_ingest_sources = relations(
+  dataset_schemas_ingest_sources,
   ({ one }) => ({
     _parentID: one(dataset_schemas, {
-      fields: [dataset_schemas_import_sources._parentID],
+      fields: [dataset_schemas_ingest_sources._parentID],
       references: [dataset_schemas.id],
-      relationName: "importSources",
+      relationName: "ingestSources",
     }),
-    import: one(import_jobs, {
-      fields: [dataset_schemas_import_sources.import],
-      references: [import_jobs.id],
-      relationName: "import",
+    ingestJob: one(ingest_jobs, {
+      fields: [dataset_schemas_ingest_sources.ingestJob],
+      references: [ingest_jobs.id],
+      relationName: "ingestJob",
     }),
   }),
 );
@@ -8703,8 +8801,8 @@ export const relations_dataset_schemas = relations(
         relationName: "schemaSummary_enumChanges",
       },
     ),
-    importSources: many(dataset_schemas_import_sources, {
-      relationName: "importSources",
+    ingestSources: many(dataset_schemas_ingest_sources, {
+      relationName: "ingestSources",
     }),
     approvedBy: one(users, {
       fields: [dataset_schemas.approvedBy],
@@ -8765,18 +8863,18 @@ export const relations__dataset_schemas_v_version_schema_summary_enum_changes =
       }),
     }),
   );
-export const relations__dataset_schemas_v_version_import_sources = relations(
-  _dataset_schemas_v_version_import_sources,
+export const relations__dataset_schemas_v_version_ingest_sources = relations(
+  _dataset_schemas_v_version_ingest_sources,
   ({ one }) => ({
     _parentID: one(_dataset_schemas_v, {
-      fields: [_dataset_schemas_v_version_import_sources._parentID],
+      fields: [_dataset_schemas_v_version_ingest_sources._parentID],
       references: [_dataset_schemas_v.id],
-      relationName: "version_importSources",
+      relationName: "version_ingestSources",
     }),
-    import: one(import_jobs, {
-      fields: [_dataset_schemas_v_version_import_sources.import],
-      references: [import_jobs.id],
-      relationName: "import",
+    ingestJob: one(ingest_jobs, {
+      fields: [_dataset_schemas_v_version_ingest_sources.ingestJob],
+      references: [ingest_jobs.id],
+      relationName: "ingestJob",
     }),
   }),
 );
@@ -8817,8 +8915,8 @@ export const relations__dataset_schemas_v = relations(
         relationName: "version_schemaSummary_enumChanges",
       },
     ),
-    version_importSources: many(_dataset_schemas_v_version_import_sources, {
-      relationName: "version_importSources",
+    version_ingestSources: many(_dataset_schemas_v_version_ingest_sources, {
+      relationName: "version_ingestSources",
     }),
     version_approvedBy: one(users, {
       fields: [_dataset_schemas_v.version_approvedBy],
@@ -8834,298 +8932,298 @@ export const relations_audit_log = relations(audit_log, ({ one }) => ({
     relationName: "performedBy",
   }),
 }));
-export const relations_import_files_rels = relations(
-  import_files_rels,
+export const relations_ingest_files_rels = relations(
+  ingest_files_rels,
   ({ one }) => ({
-    parent: one(import_files, {
-      fields: [import_files_rels.parent],
-      references: [import_files.id],
+    parent: one(ingest_files, {
+      fields: [ingest_files_rels.parent],
+      references: [ingest_files.id],
       relationName: "_rels",
     }),
     datasetsID: one(datasets, {
-      fields: [import_files_rels.datasetsID],
+      fields: [ingest_files_rels.datasetsID],
       references: [datasets.id],
       relationName: "datasets",
     }),
   }),
 );
-export const relations_import_files = relations(
-  import_files,
+export const relations_ingest_files = relations(
+  ingest_files,
   ({ one, many }) => ({
     catalog: one(catalogs, {
-      fields: [import_files.catalog],
+      fields: [ingest_files.catalog],
       references: [catalogs.id],
       relationName: "catalog",
     }),
     user: one(users, {
-      fields: [import_files.user],
+      fields: [ingest_files.user],
       references: [users.id],
       relationName: "user",
     }),
     targetDataset: one(datasets, {
-      fields: [import_files.targetDataset],
+      fields: [ingest_files.targetDataset],
       references: [datasets.id],
       relationName: "targetDataset",
     }),
-    scheduledImport: one(scheduled_imports, {
-      fields: [import_files.scheduledImport],
-      references: [scheduled_imports.id],
+    scheduledImport: one(scheduled_ingests, {
+      fields: [ingest_files.scheduledImport],
+      references: [scheduled_ingests.id],
       relationName: "scheduledImport",
     }),
-    _rels: many(import_files_rels, {
+    _rels: many(ingest_files_rels, {
       relationName: "_rels",
     }),
   }),
 );
-export const relations__import_files_v_rels = relations(
-  _import_files_v_rels,
+export const relations__ingest_files_v_rels = relations(
+  _ingest_files_v_rels,
   ({ one }) => ({
-    parent: one(_import_files_v, {
-      fields: [_import_files_v_rels.parent],
-      references: [_import_files_v.id],
+    parent: one(_ingest_files_v, {
+      fields: [_ingest_files_v_rels.parent],
+      references: [_ingest_files_v.id],
       relationName: "_rels",
     }),
     datasetsID: one(datasets, {
-      fields: [_import_files_v_rels.datasetsID],
+      fields: [_ingest_files_v_rels.datasetsID],
       references: [datasets.id],
       relationName: "datasets",
     }),
   }),
 );
-export const relations__import_files_v = relations(
-  _import_files_v,
+export const relations__ingest_files_v = relations(
+  _ingest_files_v,
   ({ one, many }) => ({
-    parent: one(import_files, {
-      fields: [_import_files_v.parent],
-      references: [import_files.id],
+    parent: one(ingest_files, {
+      fields: [_ingest_files_v.parent],
+      references: [ingest_files.id],
       relationName: "parent",
     }),
     version_catalog: one(catalogs, {
-      fields: [_import_files_v.version_catalog],
+      fields: [_ingest_files_v.version_catalog],
       references: [catalogs.id],
       relationName: "version_catalog",
     }),
     version_user: one(users, {
-      fields: [_import_files_v.version_user],
+      fields: [_ingest_files_v.version_user],
       references: [users.id],
       relationName: "version_user",
     }),
     version_targetDataset: one(datasets, {
-      fields: [_import_files_v.version_targetDataset],
+      fields: [_ingest_files_v.version_targetDataset],
       references: [datasets.id],
       relationName: "version_targetDataset",
     }),
-    version_scheduledImport: one(scheduled_imports, {
-      fields: [_import_files_v.version_scheduledImport],
-      references: [scheduled_imports.id],
+    version_scheduledImport: one(scheduled_ingests, {
+      fields: [_ingest_files_v.version_scheduledImport],
+      references: [scheduled_ingests.id],
       relationName: "version_scheduledImport",
     }),
-    _rels: many(_import_files_v_rels, {
+    _rels: many(_ingest_files_v_rels, {
       relationName: "_rels",
     }),
   }),
 );
-export const relations_import_jobs_errors = relations(
-  import_jobs_errors,
+export const relations_ingest_jobs_errors = relations(
+  ingest_jobs_errors,
   ({ one }) => ({
-    _parentID: one(import_jobs, {
-      fields: [import_jobs_errors._parentID],
-      references: [import_jobs.id],
+    _parentID: one(ingest_jobs, {
+      fields: [ingest_jobs_errors._parentID],
+      references: [ingest_jobs.id],
       relationName: "errors",
     }),
   }),
 );
-export const relations_import_jobs = relations(
-  import_jobs,
+export const relations_ingest_jobs = relations(
+  ingest_jobs,
   ({ one, many }) => ({
-    importFile: one(import_files, {
-      fields: [import_jobs.importFile],
-      references: [import_files.id],
-      relationName: "importFile",
+    ingestFile: one(ingest_files, {
+      fields: [ingest_jobs.ingestFile],
+      references: [ingest_files.id],
+      relationName: "ingestFile",
     }),
     dataset: one(datasets, {
-      fields: [import_jobs.dataset],
+      fields: [ingest_jobs.dataset],
       references: [datasets.id],
       relationName: "dataset",
     }),
     schemaValidation_approvedBy: one(users, {
-      fields: [import_jobs.schemaValidation_approvedBy],
+      fields: [ingest_jobs.schemaValidation_approvedBy],
       references: [users.id],
       relationName: "schemaValidation_approvedBy",
     }),
     datasetSchemaVersion: one(dataset_schemas, {
-      fields: [import_jobs.datasetSchemaVersion],
+      fields: [ingest_jobs.datasetSchemaVersion],
       references: [dataset_schemas.id],
       relationName: "datasetSchemaVersion",
     }),
-    errors: many(import_jobs_errors, {
+    errors: many(ingest_jobs_errors, {
       relationName: "errors",
     }),
   }),
 );
-export const relations__import_jobs_v_version_errors = relations(
-  _import_jobs_v_version_errors,
+export const relations__ingest_jobs_v_version_errors = relations(
+  _ingest_jobs_v_version_errors,
   ({ one }) => ({
-    _parentID: one(_import_jobs_v, {
-      fields: [_import_jobs_v_version_errors._parentID],
-      references: [_import_jobs_v.id],
+    _parentID: one(_ingest_jobs_v, {
+      fields: [_ingest_jobs_v_version_errors._parentID],
+      references: [_ingest_jobs_v.id],
       relationName: "version_errors",
     }),
   }),
 );
-export const relations__import_jobs_v = relations(
-  _import_jobs_v,
+export const relations__ingest_jobs_v = relations(
+  _ingest_jobs_v,
   ({ one, many }) => ({
-    parent: one(import_jobs, {
-      fields: [_import_jobs_v.parent],
-      references: [import_jobs.id],
+    parent: one(ingest_jobs, {
+      fields: [_ingest_jobs_v.parent],
+      references: [ingest_jobs.id],
       relationName: "parent",
     }),
-    version_importFile: one(import_files, {
-      fields: [_import_jobs_v.version_importFile],
-      references: [import_files.id],
-      relationName: "version_importFile",
+    version_ingestFile: one(ingest_files, {
+      fields: [_ingest_jobs_v.version_ingestFile],
+      references: [ingest_files.id],
+      relationName: "version_ingestFile",
     }),
     version_dataset: one(datasets, {
-      fields: [_import_jobs_v.version_dataset],
+      fields: [_ingest_jobs_v.version_dataset],
       references: [datasets.id],
       relationName: "version_dataset",
     }),
     version_schemaValidation_approvedBy: one(users, {
-      fields: [_import_jobs_v.version_schemaValidation_approvedBy],
+      fields: [_ingest_jobs_v.version_schemaValidation_approvedBy],
       references: [users.id],
       relationName: "version_schemaValidation_approvedBy",
     }),
     version_datasetSchemaVersion: one(dataset_schemas, {
-      fields: [_import_jobs_v.version_datasetSchemaVersion],
+      fields: [_ingest_jobs_v.version_datasetSchemaVersion],
       references: [dataset_schemas.id],
       relationName: "version_datasetSchemaVersion",
     }),
-    version_errors: many(_import_jobs_v_version_errors, {
+    version_errors: many(_ingest_jobs_v_version_errors, {
       relationName: "version_errors",
     }),
   }),
 );
-export const relations_scheduled_imports_multi_sheet_config_sheets = relations(
-  scheduled_imports_multi_sheet_config_sheets,
+export const relations_scheduled_ingests_multi_sheet_config_sheets = relations(
+  scheduled_ingests_multi_sheet_config_sheets,
   ({ one }) => ({
-    _parentID: one(scheduled_imports, {
-      fields: [scheduled_imports_multi_sheet_config_sheets._parentID],
-      references: [scheduled_imports.id],
+    _parentID: one(scheduled_ingests, {
+      fields: [scheduled_ingests_multi_sheet_config_sheets._parentID],
+      references: [scheduled_ingests.id],
       relationName: "multiSheetConfig_sheets",
     }),
     dataset: one(datasets, {
-      fields: [scheduled_imports_multi_sheet_config_sheets.dataset],
+      fields: [scheduled_ingests_multi_sheet_config_sheets.dataset],
       references: [datasets.id],
       relationName: "dataset",
     }),
   }),
 );
-export const relations_scheduled_imports_execution_history = relations(
-  scheduled_imports_execution_history,
+export const relations_scheduled_ingests_execution_history = relations(
+  scheduled_ingests_execution_history,
   ({ one }) => ({
-    _parentID: one(scheduled_imports, {
-      fields: [scheduled_imports_execution_history._parentID],
-      references: [scheduled_imports.id],
+    _parentID: one(scheduled_ingests, {
+      fields: [scheduled_ingests_execution_history._parentID],
+      references: [scheduled_ingests.id],
       relationName: "executionHistory",
     }),
   }),
 );
-export const relations_scheduled_imports = relations(
-  scheduled_imports,
+export const relations_scheduled_ingests = relations(
+  scheduled_ingests,
   ({ one, many }) => ({
     createdBy: one(users, {
-      fields: [scheduled_imports.createdBy],
+      fields: [scheduled_ingests.createdBy],
       references: [users.id],
       relationName: "createdBy",
     }),
     catalog: one(catalogs, {
-      fields: [scheduled_imports.catalog],
+      fields: [scheduled_ingests.catalog],
       references: [catalogs.id],
       relationName: "catalog",
     }),
     dataset: one(datasets, {
-      fields: [scheduled_imports.dataset],
+      fields: [scheduled_ingests.dataset],
       references: [datasets.id],
       relationName: "dataset",
     }),
-    multiSheetConfig_sheets: many(scheduled_imports_multi_sheet_config_sheets, {
+    multiSheetConfig_sheets: many(scheduled_ingests_multi_sheet_config_sheets, {
       relationName: "multiSheetConfig_sheets",
     }),
-    sourceImportFile: one(import_files, {
-      fields: [scheduled_imports.sourceImportFile],
-      references: [import_files.id],
-      relationName: "sourceImportFile",
+    sourceIngestFile: one(ingest_files, {
+      fields: [scheduled_ingests.sourceIngestFile],
+      references: [ingest_files.id],
+      relationName: "sourceIngestFile",
     }),
-    executionHistory: many(scheduled_imports_execution_history, {
+    executionHistory: many(scheduled_ingests_execution_history, {
       relationName: "executionHistory",
     }),
   }),
 );
-export const relations__scheduled_imports_v_version_multi_sheet_config_sheets =
+export const relations__scheduled_ingests_v_version_multi_sheet_config_sheets =
   relations(
-    _scheduled_imports_v_version_multi_sheet_config_sheets,
+    _scheduled_ingests_v_version_multi_sheet_config_sheets,
     ({ one }) => ({
-      _parentID: one(_scheduled_imports_v, {
+      _parentID: one(_scheduled_ingests_v, {
         fields: [
-          _scheduled_imports_v_version_multi_sheet_config_sheets._parentID,
+          _scheduled_ingests_v_version_multi_sheet_config_sheets._parentID,
         ],
-        references: [_scheduled_imports_v.id],
+        references: [_scheduled_ingests_v.id],
         relationName: "version_multiSheetConfig_sheets",
       }),
       dataset: one(datasets, {
         fields: [
-          _scheduled_imports_v_version_multi_sheet_config_sheets.dataset,
+          _scheduled_ingests_v_version_multi_sheet_config_sheets.dataset,
         ],
         references: [datasets.id],
         relationName: "dataset",
       }),
     }),
   );
-export const relations__scheduled_imports_v_version_execution_history =
-  relations(_scheduled_imports_v_version_execution_history, ({ one }) => ({
-    _parentID: one(_scheduled_imports_v, {
-      fields: [_scheduled_imports_v_version_execution_history._parentID],
-      references: [_scheduled_imports_v.id],
+export const relations__scheduled_ingests_v_version_execution_history =
+  relations(_scheduled_ingests_v_version_execution_history, ({ one }) => ({
+    _parentID: one(_scheduled_ingests_v, {
+      fields: [_scheduled_ingests_v_version_execution_history._parentID],
+      references: [_scheduled_ingests_v.id],
       relationName: "version_executionHistory",
     }),
   }));
-export const relations__scheduled_imports_v = relations(
-  _scheduled_imports_v,
+export const relations__scheduled_ingests_v = relations(
+  _scheduled_ingests_v,
   ({ one, many }) => ({
-    parent: one(scheduled_imports, {
-      fields: [_scheduled_imports_v.parent],
-      references: [scheduled_imports.id],
+    parent: one(scheduled_ingests, {
+      fields: [_scheduled_ingests_v.parent],
+      references: [scheduled_ingests.id],
       relationName: "parent",
     }),
     version_createdBy: one(users, {
-      fields: [_scheduled_imports_v.version_createdBy],
+      fields: [_scheduled_ingests_v.version_createdBy],
       references: [users.id],
       relationName: "version_createdBy",
     }),
     version_catalog: one(catalogs, {
-      fields: [_scheduled_imports_v.version_catalog],
+      fields: [_scheduled_ingests_v.version_catalog],
       references: [catalogs.id],
       relationName: "version_catalog",
     }),
     version_dataset: one(datasets, {
-      fields: [_scheduled_imports_v.version_dataset],
+      fields: [_scheduled_ingests_v.version_dataset],
       references: [datasets.id],
       relationName: "version_dataset",
     }),
     version_multiSheetConfig_sheets: many(
-      _scheduled_imports_v_version_multi_sheet_config_sheets,
+      _scheduled_ingests_v_version_multi_sheet_config_sheets,
       {
         relationName: "version_multiSheetConfig_sheets",
       },
     ),
-    version_sourceImportFile: one(import_files, {
-      fields: [_scheduled_imports_v.version_sourceImportFile],
-      references: [import_files.id],
-      relationName: "version_sourceImportFile",
+    version_sourceIngestFile: one(ingest_files, {
+      fields: [_scheduled_ingests_v.version_sourceIngestFile],
+      references: [ingest_files.id],
+      relationName: "version_sourceIngestFile",
     }),
     version_executionHistory: many(
-      _scheduled_imports_v_version_execution_history,
+      _scheduled_ingests_v_version_execution_history,
       {
         relationName: "version_executionHistory",
       },
@@ -9162,9 +9260,9 @@ export const relations_scraper_runs = relations(scraper_runs, ({ one }) => ({
     references: [scrapers.id],
     relationName: "scraper",
   }),
-  resultFile: one(import_files, {
+  resultFile: one(ingest_files, {
     fields: [scraper_runs.resultFile],
-    references: [import_files.id],
+    references: [ingest_files.id],
     relationName: "resultFile",
   }),
 }));
@@ -9174,10 +9272,10 @@ export const relations_events = relations(events, ({ one }) => ({
     references: [datasets.id],
     relationName: "dataset",
   }),
-  importJob: one(import_jobs, {
-    fields: [events.importJob],
-    references: [import_jobs.id],
-    relationName: "importJob",
+  ingestJob: one(ingest_jobs, {
+    fields: [events.ingestJob],
+    references: [ingest_jobs.id],
+    relationName: "ingestJob",
   }),
 }));
 export const relations__events_v = relations(_events_v, ({ one }) => ({
@@ -9191,10 +9289,10 @@ export const relations__events_v = relations(_events_v, ({ one }) => ({
     references: [datasets.id],
     relationName: "version_dataset",
   }),
-  version_importJob: one(import_jobs, {
-    fields: [_events_v.version_importJob],
-    references: [import_jobs.id],
-    relationName: "version_importJob",
+  version_ingestJob: one(ingest_jobs, {
+    fields: [_events_v.version_ingestJob],
+    references: [ingest_jobs.id],
+    relationName: "version_ingestJob",
   }),
 }));
 export const relations_users_sessions = relations(
@@ -10419,20 +10517,20 @@ export const relations_payload_locked_documents_rels = relations(
       references: [audit_log.id],
       relationName: "audit-log",
     }),
-    "import-filesID": one(import_files, {
-      fields: [payload_locked_documents_rels["import-filesID"]],
-      references: [import_files.id],
-      relationName: "import-files",
+    "ingest-filesID": one(ingest_files, {
+      fields: [payload_locked_documents_rels["ingest-filesID"]],
+      references: [ingest_files.id],
+      relationName: "ingest-files",
     }),
-    "import-jobsID": one(import_jobs, {
-      fields: [payload_locked_documents_rels["import-jobsID"]],
-      references: [import_jobs.id],
-      relationName: "import-jobs",
+    "ingest-jobsID": one(ingest_jobs, {
+      fields: [payload_locked_documents_rels["ingest-jobsID"]],
+      references: [ingest_jobs.id],
+      relationName: "ingest-jobs",
     }),
-    "scheduled-importsID": one(scheduled_imports, {
-      fields: [payload_locked_documents_rels["scheduled-importsID"]],
-      references: [scheduled_imports.id],
-      relationName: "scheduled-imports",
+    "scheduled-ingestsID": one(scheduled_ingests, {
+      fields: [payload_locked_documents_rels["scheduled-ingestsID"]],
+      references: [scheduled_ingests.id],
+      relationName: "scheduled-ingests",
     }),
     "scraper-reposID": one(scraper_repos, {
       fields: [payload_locked_documents_rels["scraper-reposID"]],
@@ -10805,6 +10903,16 @@ export const relations_settings_geocoding_provider_selection_required_tags =
       relationName: "geocoding_providerSelection_requiredTags",
     }),
   }));
+export const relations_settings_locales = relations(
+  settings_locales,
+  ({ one }) => ({
+    _parentID: one(settings, {
+      fields: [settings_locales._parentID],
+      references: [settings.id],
+      relationName: "_locales",
+    }),
+  }),
+);
 export const relations_settings = relations(settings, ({ many }) => ({
   geocoding_providerSelection_requiredTags: many(
     settings_geocoding_provider_selection_required_tags,
@@ -10812,6 +10920,9 @@ export const relations_settings = relations(settings, ({ many }) => ({
       relationName: "geocoding_providerSelection_requiredTags",
     },
   ),
+  _locales: many(settings_locales, {
+    relationName: "_locales",
+  }),
 }));
 export const relations_payload_jobs_stats = relations(
   payload_jobs_stats,
@@ -10825,26 +10936,20 @@ type DatabaseSchema = {
   enum__catalogs_v_version_status: typeof enum__catalogs_v_version_status;
   enum__catalogs_v_published_locale: typeof enum__catalogs_v_published_locale;
   enum_data_exports_status: typeof enum_data_exports_status;
-  enum_datasets_import_transforms_type: typeof enum_datasets_import_transforms_type;
-  enum_datasets_import_transforms_input_format: typeof enum_datasets_import_transforms_input_format;
-  enum_datasets_import_transforms_output_format: typeof enum_datasets_import_transforms_output_format;
-  enum_datasets_import_transforms_operation: typeof enum_datasets_import_transforms_operation;
-  enum_datasets_import_transforms_from_type: typeof enum_datasets_import_transforms_from_type;
-  enum_datasets_import_transforms_to_type: typeof enum_datasets_import_transforms_to_type;
-  enum_datasets_import_transforms_strategy: typeof enum_datasets_import_transforms_strategy;
+  enum_datasets_ingest_transforms_type: typeof enum_datasets_ingest_transforms_type;
+  enum_datasets_ingest_transforms_input_format: typeof enum_datasets_ingest_transforms_input_format;
+  enum_datasets_ingest_transforms_output_format: typeof enum_datasets_ingest_transforms_output_format;
+  enum_datasets_ingest_transforms_operation: typeof enum_datasets_ingest_transforms_operation;
   enum_datasets_id_strategy_type: typeof enum_datasets_id_strategy_type;
   enum_datasets_id_strategy_duplicate_strategy: typeof enum_datasets_id_strategy_duplicate_strategy;
   enum_datasets_schema_config_enum_mode: typeof enum_datasets_schema_config_enum_mode;
   enum_datasets_deduplication_config_strategy: typeof enum_datasets_deduplication_config_strategy;
   enum_datasets_enum_detection_mode: typeof enum_datasets_enum_detection_mode;
   enum_datasets_status: typeof enum_datasets_status;
-  enum__datasets_v_version_import_transforms_type: typeof enum__datasets_v_version_import_transforms_type;
-  enum__datasets_v_version_import_transforms_input_format: typeof enum__datasets_v_version_import_transforms_input_format;
-  enum__datasets_v_version_import_transforms_output_format: typeof enum__datasets_v_version_import_transforms_output_format;
-  enum__datasets_v_version_import_transforms_operation: typeof enum__datasets_v_version_import_transforms_operation;
-  enum__datasets_v_version_import_transforms_from_type: typeof enum__datasets_v_version_import_transforms_from_type;
-  enum__datasets_v_version_import_transforms_to_type: typeof enum__datasets_v_version_import_transforms_to_type;
-  enum__datasets_v_version_import_transforms_strategy: typeof enum__datasets_v_version_import_transforms_strategy;
+  enum__datasets_v_version_ingest_transforms_type: typeof enum__datasets_v_version_ingest_transforms_type;
+  enum__datasets_v_version_ingest_transforms_input_format: typeof enum__datasets_v_version_ingest_transforms_input_format;
+  enum__datasets_v_version_ingest_transforms_output_format: typeof enum__datasets_v_version_ingest_transforms_output_format;
+  enum__datasets_v_version_ingest_transforms_operation: typeof enum__datasets_v_version_ingest_transforms_operation;
   enum__datasets_v_version_id_strategy_type: typeof enum__datasets_v_version_id_strategy_type;
   enum__datasets_v_version_id_strategy_duplicate_strategy: typeof enum__datasets_v_version_id_strategy_duplicate_strategy;
   enum__datasets_v_version_schema_config_enum_mode: typeof enum__datasets_v_version_schema_config_enum_mode;
@@ -10855,28 +10960,30 @@ type DatabaseSchema = {
   enum_dataset_schemas_status: typeof enum_dataset_schemas_status;
   enum__dataset_schemas_v_version_status: typeof enum__dataset_schemas_v_version_status;
   enum__dataset_schemas_v_published_locale: typeof enum__dataset_schemas_v_published_locale;
-  enum_import_files_status: typeof enum_import_files_status;
-  enum__import_files_v_version_status: typeof enum__import_files_v_version_status;
-  enum_import_jobs_stage: typeof enum_import_jobs_stage;
-  enum_import_jobs_last_successful_stage: typeof enum_import_jobs_last_successful_stage;
-  enum__import_jobs_v_version_stage: typeof enum__import_jobs_v_version_stage;
-  enum__import_jobs_v_version_last_successful_stage: typeof enum__import_jobs_v_version_last_successful_stage;
-  enum_scheduled_imports_execution_history_status: typeof enum_scheduled_imports_execution_history_status;
+  enum_ingest_files_status: typeof enum_ingest_files_status;
+  enum__ingest_files_v_version_status: typeof enum__ingest_files_v_version_status;
+  enum_ingest_jobs_stage: typeof enum_ingest_jobs_stage;
+  enum_ingest_jobs_last_successful_stage: typeof enum_ingest_jobs_last_successful_stage;
+  enum__ingest_jobs_v_version_stage: typeof enum__ingest_jobs_v_version_stage;
+  enum__ingest_jobs_v_version_last_successful_stage: typeof enum__ingest_jobs_v_version_last_successful_stage;
+  enum_scheduled_ingests_execution_history_status: typeof enum_scheduled_ingests_execution_history_status;
   trig_by: typeof trig_by;
-  enum_scheduled_imports_schedule_type: typeof enum_scheduled_imports_schedule_type;
-  enum_scheduled_imports_frequency: typeof enum_scheduled_imports_frequency;
-  enum_scheduled_imports_schema_mode: typeof enum_scheduled_imports_schema_mode;
-  enum_scheduled_imports_auth_config_type: typeof enum_scheduled_imports_auth_config_type;
-  enum_scheduled_imports_last_status: typeof enum_scheduled_imports_last_status;
-  enum_scheduled_imports_status: typeof enum_scheduled_imports_status;
-  enum__scheduled_imports_v_version_execution_history_status: typeof enum__scheduled_imports_v_version_execution_history_status;
-  enum__scheduled_imports_v_version_schedule_type: typeof enum__scheduled_imports_v_version_schedule_type;
-  enum__scheduled_imports_v_version_frequency: typeof enum__scheduled_imports_v_version_frequency;
-  enum__scheduled_imports_v_version_schema_mode: typeof enum__scheduled_imports_v_version_schema_mode;
-  enum__scheduled_imports_v_version_auth_config_type: typeof enum__scheduled_imports_v_version_auth_config_type;
-  enum__scheduled_imports_v_version_last_status: typeof enum__scheduled_imports_v_version_last_status;
-  enum__scheduled_imports_v_version_status: typeof enum__scheduled_imports_v_version_status;
-  enum__scheduled_imports_v_published_locale: typeof enum__scheduled_imports_v_published_locale;
+  enum_scheduled_ingests_schedule_type: typeof enum_scheduled_ingests_schedule_type;
+  enum_scheduled_ingests_frequency: typeof enum_scheduled_ingests_frequency;
+  enum_scheduled_ingests_schema_mode: typeof enum_scheduled_ingests_schema_mode;
+  enum_scheduled_ingests_auth_config_type: typeof enum_scheduled_ingests_auth_config_type;
+  si_response_format: typeof si_response_format;
+  si_json_paging_type: typeof si_json_paging_type;
+  enum_scheduled_ingests_last_status: typeof enum_scheduled_ingests_last_status;
+  enum_scheduled_ingests_status: typeof enum_scheduled_ingests_status;
+  enum__scheduled_ingests_v_version_execution_history_status: typeof enum__scheduled_ingests_v_version_execution_history_status;
+  enum__scheduled_ingests_v_version_schedule_type: typeof enum__scheduled_ingests_v_version_schedule_type;
+  enum__scheduled_ingests_v_version_frequency: typeof enum__scheduled_ingests_v_version_frequency;
+  enum__scheduled_ingests_v_version_schema_mode: typeof enum__scheduled_ingests_v_version_schema_mode;
+  enum__scheduled_ingests_v_version_auth_config_type: typeof enum__scheduled_ingests_v_version_auth_config_type;
+  enum__scheduled_ingests_v_version_last_status: typeof enum__scheduled_ingests_v_version_last_status;
+  enum__scheduled_ingests_v_version_status: typeof enum__scheduled_ingests_v_version_status;
+  enum__scheduled_ingests_v_published_locale: typeof enum__scheduled_ingests_v_published_locale;
   enum_scraper_repos_source_type: typeof enum_scraper_repos_source_type;
   enum_scraper_repos_last_sync_status: typeof enum_scraper_repos_last_sync_status;
   enum_scrapers_runtime: typeof enum_scrapers_runtime;
@@ -11000,38 +11107,38 @@ type DatabaseSchema = {
   _catalogs_v: typeof _catalogs_v;
   data_exports: typeof data_exports;
   datasets_id_strategy_computed_id_fields: typeof datasets_id_strategy_computed_id_fields;
-  datasets_import_transforms: typeof datasets_import_transforms;
+  datasets_ingest_transforms: typeof datasets_ingest_transforms;
   datasets: typeof datasets;
   _datasets_v_version_id_strategy_computed_id_fields: typeof _datasets_v_version_id_strategy_computed_id_fields;
-  _datasets_v_version_import_transforms: typeof _datasets_v_version_import_transforms;
+  _datasets_v_version_ingest_transforms: typeof _datasets_v_version_ingest_transforms;
   _datasets_v: typeof _datasets_v;
   dataset_schemas_schema_summary_new_fields: typeof dataset_schemas_schema_summary_new_fields;
   dataset_schemas_schema_summary_removed_fields: typeof dataset_schemas_schema_summary_removed_fields;
   dataset_schemas_schema_summary_type_changes: typeof dataset_schemas_schema_summary_type_changes;
   dataset_schemas_schema_summary_enum_changes: typeof dataset_schemas_schema_summary_enum_changes;
-  dataset_schemas_import_sources: typeof dataset_schemas_import_sources;
+  dataset_schemas_ingest_sources: typeof dataset_schemas_ingest_sources;
   dataset_schemas: typeof dataset_schemas;
   _dataset_schemas_v_version_schema_summary_new_fields: typeof _dataset_schemas_v_version_schema_summary_new_fields;
   _dataset_schemas_v_version_schema_summary_removed_fields: typeof _dataset_schemas_v_version_schema_summary_removed_fields;
   _dataset_schemas_v_version_schema_summary_type_changes: typeof _dataset_schemas_v_version_schema_summary_type_changes;
   _dataset_schemas_v_version_schema_summary_enum_changes: typeof _dataset_schemas_v_version_schema_summary_enum_changes;
-  _dataset_schemas_v_version_import_sources: typeof _dataset_schemas_v_version_import_sources;
+  _dataset_schemas_v_version_ingest_sources: typeof _dataset_schemas_v_version_ingest_sources;
   _dataset_schemas_v: typeof _dataset_schemas_v;
   audit_log: typeof audit_log;
-  import_files: typeof import_files;
-  import_files_rels: typeof import_files_rels;
-  _import_files_v: typeof _import_files_v;
-  _import_files_v_rels: typeof _import_files_v_rels;
-  import_jobs_errors: typeof import_jobs_errors;
-  import_jobs: typeof import_jobs;
-  _import_jobs_v_version_errors: typeof _import_jobs_v_version_errors;
-  _import_jobs_v: typeof _import_jobs_v;
-  scheduled_imports_multi_sheet_config_sheets: typeof scheduled_imports_multi_sheet_config_sheets;
-  scheduled_imports_execution_history: typeof scheduled_imports_execution_history;
-  scheduled_imports: typeof scheduled_imports;
-  _scheduled_imports_v_version_multi_sheet_config_sheets: typeof _scheduled_imports_v_version_multi_sheet_config_sheets;
-  _scheduled_imports_v_version_execution_history: typeof _scheduled_imports_v_version_execution_history;
-  _scheduled_imports_v: typeof _scheduled_imports_v;
+  ingest_files: typeof ingest_files;
+  ingest_files_rels: typeof ingest_files_rels;
+  _ingest_files_v: typeof _ingest_files_v;
+  _ingest_files_v_rels: typeof _ingest_files_v_rels;
+  ingest_jobs_errors: typeof ingest_jobs_errors;
+  ingest_jobs: typeof ingest_jobs;
+  _ingest_jobs_v_version_errors: typeof _ingest_jobs_v_version_errors;
+  _ingest_jobs_v: typeof _ingest_jobs_v;
+  scheduled_ingests_multi_sheet_config_sheets: typeof scheduled_ingests_multi_sheet_config_sheets;
+  scheduled_ingests_execution_history: typeof scheduled_ingests_execution_history;
+  scheduled_ingests: typeof scheduled_ingests;
+  _scheduled_ingests_v_version_multi_sheet_config_sheets: typeof _scheduled_ingests_v_version_multi_sheet_config_sheets;
+  _scheduled_ingests_v_version_execution_history: typeof _scheduled_ingests_v_version_execution_history;
+  _scheduled_ingests_v: typeof _scheduled_ingests_v;
   scraper_repos: typeof scraper_repos;
   scrapers: typeof scrapers;
   scraper_runs: typeof scraper_runs;
@@ -11159,43 +11266,44 @@ type DatabaseSchema = {
   branding_locales: typeof branding_locales;
   settings_geocoding_provider_selection_required_tags: typeof settings_geocoding_provider_selection_required_tags;
   settings: typeof settings;
+  settings_locales: typeof settings_locales;
   payload_jobs_stats: typeof payload_jobs_stats;
   relations_catalogs: typeof relations_catalogs;
   relations__catalogs_v: typeof relations__catalogs_v;
   relations_data_exports: typeof relations_data_exports;
   relations_datasets_id_strategy_computed_id_fields: typeof relations_datasets_id_strategy_computed_id_fields;
-  relations_datasets_import_transforms: typeof relations_datasets_import_transforms;
+  relations_datasets_ingest_transforms: typeof relations_datasets_ingest_transforms;
   relations_datasets: typeof relations_datasets;
   relations__datasets_v_version_id_strategy_computed_id_fields: typeof relations__datasets_v_version_id_strategy_computed_id_fields;
-  relations__datasets_v_version_import_transforms: typeof relations__datasets_v_version_import_transforms;
+  relations__datasets_v_version_ingest_transforms: typeof relations__datasets_v_version_ingest_transforms;
   relations__datasets_v: typeof relations__datasets_v;
   relations_dataset_schemas_schema_summary_new_fields: typeof relations_dataset_schemas_schema_summary_new_fields;
   relations_dataset_schemas_schema_summary_removed_fields: typeof relations_dataset_schemas_schema_summary_removed_fields;
   relations_dataset_schemas_schema_summary_type_changes: typeof relations_dataset_schemas_schema_summary_type_changes;
   relations_dataset_schemas_schema_summary_enum_changes: typeof relations_dataset_schemas_schema_summary_enum_changes;
-  relations_dataset_schemas_import_sources: typeof relations_dataset_schemas_import_sources;
+  relations_dataset_schemas_ingest_sources: typeof relations_dataset_schemas_ingest_sources;
   relations_dataset_schemas: typeof relations_dataset_schemas;
   relations__dataset_schemas_v_version_schema_summary_new_fields: typeof relations__dataset_schemas_v_version_schema_summary_new_fields;
   relations__dataset_schemas_v_version_schema_summary_removed_fields: typeof relations__dataset_schemas_v_version_schema_summary_removed_fields;
   relations__dataset_schemas_v_version_schema_summary_type_changes: typeof relations__dataset_schemas_v_version_schema_summary_type_changes;
   relations__dataset_schemas_v_version_schema_summary_enum_changes: typeof relations__dataset_schemas_v_version_schema_summary_enum_changes;
-  relations__dataset_schemas_v_version_import_sources: typeof relations__dataset_schemas_v_version_import_sources;
+  relations__dataset_schemas_v_version_ingest_sources: typeof relations__dataset_schemas_v_version_ingest_sources;
   relations__dataset_schemas_v: typeof relations__dataset_schemas_v;
   relations_audit_log: typeof relations_audit_log;
-  relations_import_files_rels: typeof relations_import_files_rels;
-  relations_import_files: typeof relations_import_files;
-  relations__import_files_v_rels: typeof relations__import_files_v_rels;
-  relations__import_files_v: typeof relations__import_files_v;
-  relations_import_jobs_errors: typeof relations_import_jobs_errors;
-  relations_import_jobs: typeof relations_import_jobs;
-  relations__import_jobs_v_version_errors: typeof relations__import_jobs_v_version_errors;
-  relations__import_jobs_v: typeof relations__import_jobs_v;
-  relations_scheduled_imports_multi_sheet_config_sheets: typeof relations_scheduled_imports_multi_sheet_config_sheets;
-  relations_scheduled_imports_execution_history: typeof relations_scheduled_imports_execution_history;
-  relations_scheduled_imports: typeof relations_scheduled_imports;
-  relations__scheduled_imports_v_version_multi_sheet_config_sheets: typeof relations__scheduled_imports_v_version_multi_sheet_config_sheets;
-  relations__scheduled_imports_v_version_execution_history: typeof relations__scheduled_imports_v_version_execution_history;
-  relations__scheduled_imports_v: typeof relations__scheduled_imports_v;
+  relations_ingest_files_rels: typeof relations_ingest_files_rels;
+  relations_ingest_files: typeof relations_ingest_files;
+  relations__ingest_files_v_rels: typeof relations__ingest_files_v_rels;
+  relations__ingest_files_v: typeof relations__ingest_files_v;
+  relations_ingest_jobs_errors: typeof relations_ingest_jobs_errors;
+  relations_ingest_jobs: typeof relations_ingest_jobs;
+  relations__ingest_jobs_v_version_errors: typeof relations__ingest_jobs_v_version_errors;
+  relations__ingest_jobs_v: typeof relations__ingest_jobs_v;
+  relations_scheduled_ingests_multi_sheet_config_sheets: typeof relations_scheduled_ingests_multi_sheet_config_sheets;
+  relations_scheduled_ingests_execution_history: typeof relations_scheduled_ingests_execution_history;
+  relations_scheduled_ingests: typeof relations_scheduled_ingests;
+  relations__scheduled_ingests_v_version_multi_sheet_config_sheets: typeof relations__scheduled_ingests_v_version_multi_sheet_config_sheets;
+  relations__scheduled_ingests_v_version_execution_history: typeof relations__scheduled_ingests_v_version_execution_history;
+  relations__scheduled_ingests_v: typeof relations__scheduled_ingests_v;
   relations_scraper_repos: typeof relations_scraper_repos;
   relations_scrapers: typeof relations_scrapers;
   relations_scraper_runs: typeof relations_scraper_runs;
@@ -11322,6 +11430,7 @@ type DatabaseSchema = {
   relations_branding_locales: typeof relations_branding_locales;
   relations_branding: typeof relations_branding;
   relations_settings_geocoding_provider_selection_required_tags: typeof relations_settings_geocoding_provider_selection_required_tags;
+  relations_settings_locales: typeof relations_settings_locales;
   relations_settings: typeof relations_settings;
   relations_payload_jobs_stats: typeof relations_payload_jobs_stats;
 };

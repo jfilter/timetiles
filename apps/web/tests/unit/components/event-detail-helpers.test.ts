@@ -59,29 +59,34 @@ describe("safeToString", () => {
 });
 
 describe("getEventData", () => {
-  it("should extract data object from event", () => {
-    const event = { data: { title: "Test Event", description: "A test" } } as unknown as Event;
+  it("should extract originalData object from event", () => {
+    const event = { originalData: { title: "Test Event", description: "A test" } } as unknown as Event;
     expect(getEventData(event)).toEqual({ title: "Test Event", description: "A test" });
   });
 
-  it("should return empty object if data is null", () => {
-    const event = { data: null } as unknown as Event;
+  it("should return empty object if originalData is null", () => {
+    const event = { originalData: null } as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if data is undefined", () => {
+  it("should return empty object if originalData is undefined", () => {
     const event = {} as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if data is an array", () => {
-    const event = { data: [1, 2, 3] } as unknown as Event;
+  it("should return empty object if originalData is an array", () => {
+    const event = { originalData: [1, 2, 3] } as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if data is a primitive", () => {
-    const event = { data: "string" } as unknown as Event;
+  it("should return empty object if originalData is a primitive", () => {
+    const event = { originalData: "string" } as unknown as Event;
     expect(getEventData(event)).toEqual({});
+  });
+
+  it("should fall back to data field for DTO objects", () => {
+    const dto = { data: { title: "DTO Event" } };
+    expect(getEventData(dto)).toEqual({ title: "DTO Event" });
   });
 });
 

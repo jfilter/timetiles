@@ -56,8 +56,8 @@ describe("Seed Data Functions", () => {
     // Development should have more events than production
     expect(devEvents.length).toBeGreaterThan(prodEvents.length);
     // All events should have required fields
-    expect(devEvents.every((event) => event.dataset && event.data)).toBe(true);
-    expect(prodEvents.every((event) => event.dataset && event.data)).toBe(true);
+    expect(devEvents.every((event) => event.dataset && event.originalData)).toBe(true);
+    expect(prodEvents.every((event) => event.dataset && event.originalData)).toBe(true);
   });
 });
 

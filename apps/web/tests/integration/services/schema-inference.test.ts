@@ -12,8 +12,8 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { getSchemaFreshness } from "@/lib/import/schema-freshness";
-import { SchemaInferenceService } from "@/lib/import/schema-inference";
+import { getSchemaFreshness } from "@/lib/ingest/schema-freshness";
+import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 
 import {
   createIntegrationTestEnvironment,
@@ -73,7 +73,7 @@ describe.sequential("Schema Inference Service", () => {
         data: {
           dataset: testDatasetId,
           uniqueId: generateUniqueId(testDatasetId),
-          data: { name: "Test Event" },
+          originalData: { name: "Test Event" },
           eventTimestamp: new Date().toISOString(),
         },
         overrideAccess: true,
@@ -101,7 +101,7 @@ describe.sequential("Schema Inference Service", () => {
           data: {
             dataset: testDatasetId,
             uniqueId: generateUniqueId(testDatasetId),
-            data: { name: `Event ${i}` },
+            originalData: { name: `Event ${i}` },
             eventTimestamp: new Date().toISOString(),
           },
           overrideAccess: true,
@@ -140,7 +140,7 @@ describe.sequential("Schema Inference Service", () => {
           data: {
             dataset: testDatasetId,
             uniqueId: generateUniqueId(testDatasetId),
-            data: { name: `Event ${i}` },
+            originalData: { name: `Event ${i}` },
             eventTimestamp: new Date().toISOString(),
           },
           overrideAccess: true,
@@ -181,7 +181,7 @@ describe.sequential("Schema Inference Service", () => {
         data: {
           dataset: testDatasetId,
           uniqueId: generateUniqueId(testDatasetId),
-          data: { name: "Test" },
+          originalData: { name: "Test" },
           eventTimestamp: new Date().toISOString(),
         },
         overrideAccess: true,
@@ -232,7 +232,7 @@ describe.sequential("Schema Inference Service", () => {
           data: {
             dataset: testDatasetId,
             uniqueId: generateUniqueId(testDatasetId),
-            data,
+            originalData: data,
             eventTimestamp: new Date().toISOString(),
           },
           overrideAccess: true,
@@ -263,7 +263,7 @@ describe.sequential("Schema Inference Service", () => {
         data: {
           dataset: testDatasetId,
           uniqueId: generateUniqueId(testDatasetId),
-          data: { name: "Test" },
+          originalData: { name: "Test" },
           eventTimestamp: new Date().toISOString(),
         },
         overrideAccess: true,
@@ -286,7 +286,7 @@ describe.sequential("Schema Inference Service", () => {
         data: {
           dataset: testDatasetId,
           uniqueId: generateUniqueId(testDatasetId),
-          data: { name: "Test" },
+          originalData: { name: "Test" },
           eventTimestamp: new Date().toISOString(),
         },
         overrideAccess: true,
@@ -319,7 +319,7 @@ describe.sequential("Schema Inference Service", () => {
           data: {
             dataset: testDatasetId,
             uniqueId: generateUniqueId(testDatasetId),
-            data: { index: i },
+            originalData: { index: i },
             eventTimestamp: new Date().toISOString(),
           },
           overrideAccess: true,
@@ -339,7 +339,7 @@ describe.sequential("Schema Inference Service", () => {
         data: {
           dataset: testDatasetId,
           uniqueId: generateUniqueId(testDatasetId),
-          data: { name: "Test" },
+          originalData: { name: "Test" },
           eventTimestamp: new Date().toISOString(),
         },
         overrideAccess: true,

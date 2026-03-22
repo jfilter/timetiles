@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  *
- * Performance and Concurrency Tests for Scheduled Imports.
+ * Performance and Concurrency Tests for scheduled ingests.
  *
  * Tests various performance and concurrency scenarios including:
  * - Large file handling
@@ -23,7 +23,7 @@ import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 import {
   createIntegrationTestEnvironment,
   withCatalog,
-  withScheduledImport,
+  withScheduledIngest,
   withTestServer,
   withUsers,
 } from "@/tests/setup/integration/environment";
@@ -31,7 +31,7 @@ import {
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   success: true;
-  importFileId: string | number;
+  ingestFileId: string | number;
   filename: string;
   fileSize: number | undefined;
   contentType: string;
@@ -103,7 +103,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
   describe("Large File Performance", () => {
     it("should handle CSV files with streaming", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/stream.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/stream.csv`, {
         user: testUser,
         name: "CSV Stream Test",
         frequency: "daily",
@@ -131,9 +131,9 @@ describe.sequential("Performance and Concurrency Tests", () => {
         job: { id: "test-job-csv" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "CSV Stream Test",
           userId: testUser.id,
@@ -149,7 +149,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
     });
 
     it("should handle Excel files correctly", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/large.xlsx`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/large.xlsx`, {
         user: testUser,
         name: "Large Excel Import",
         frequency: "daily",
@@ -181,9 +181,9 @@ describe.sequential("Performance and Concurrency Tests", () => {
         job: { id: "test-job-large-excel" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Large Excel Test",
           userId: testUser.id,
@@ -200,14 +200,14 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
   describe("Concurrent Schedule Execution", () => {
     it("should handle multiple concurrent URL fetches", async () => {
-      // Create multiple scheduled imports (reduced for test performance)
+      // Create multiple scheduled ingests (reduced for test performance)
       const schedules = await Promise.all(
         Array.from({ length: 2 }, (_, i) =>
-          withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/concurrent-${i}.csv`, {
+          withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/concurrent-${i}.csv`, {
             user: testUser,
             name: `Concurrent Import ${i}`,
             frequency: "hourly",
-          }).then((result) => result.scheduledImport)
+          }).then((result) => result.scheduledIngest)
         )
       );
 
@@ -227,7 +227,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
             job: { id: `test-job-concurrent-${i}` },
             req: { payload },
             input: {
-              scheduledImportId: schedule.id,
+              scheduledIngestId: schedule.id,
               sourceUrl: schedule.sourceUrl,
               authConfig: schedule.authConfig,
               catalogId: testCatalogId as any,
@@ -255,8 +255,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
       const baseTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(baseTime);
 
-      // Create a scheduled import with lastRun set to an hour ago
-      await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/duplicate-test.csv`, {
+      // Create a scheduled ingest with lastRun set to an hour ago
+      await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/duplicate-test.csv`, {
         user: testUser,
         name: "Duplicate Prevention Import",
         frequency: "hourly",
@@ -294,14 +294,14 @@ describe.sequential("Performance and Concurrency Tests", () => {
     it("should efficiently queue many jobs", async () => {
       const startTime = Date.now();
 
-      // Create scheduled imports quickly (reduced for test performance)
+      // Create scheduled ingests quickly (reduced for test performance)
       const schedules = await Promise.all(
         Array.from({ length: 3 }, (_, i) =>
-          withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/queue-test-${i}.csv`, {
+          withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/queue-test-${i}.csv`, {
             user: testUser,
             name: `Queue Test Import ${i}`,
             frequency: "daily",
-          }).then((result) => result.scheduledImport)
+          }).then((result) => result.scheduledIngest)
         )
       );
 
@@ -315,7 +315,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
           payload.jobs.queue({
             task: "url-fetch",
             input: {
-              scheduledImportId: schedule.id,
+              scheduledIngestId: schedule.id,
               sourceUrl: schedule.sourceUrl,
               authConfig: schedule.authConfig,
               catalogId: testCatalogId as any,
@@ -342,11 +342,11 @@ describe.sequential("Performance and Concurrency Tests", () => {
         // Create schedules
         const schedules = await Promise.all(
           Array.from({ length: 2 }, (_, i) =>
-            withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/memory-${batch}-${i}.csv`, {
+            withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/memory-${batch}-${i}.csv`, {
               user: testUser,
               name: `Memory Test Import ${batch}-${i}`,
               frequency: "hourly",
-            }).then((result) => result.scheduledImport)
+            }).then((result) => result.scheduledIngest)
           )
         );
 
@@ -363,7 +363,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
               job: { id: `test-job-memory-${batch}` },
               req: { payload },
               input: {
-                scheduledImportId: schedule.id,
+                scheduledIngestId: schedule.id,
                 sourceUrl: schedule.sourceUrl,
                 authConfig: schedule.authConfig,
                 catalogId: testCatalogId as any,
@@ -390,7 +390,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
   describe("Rate Limiting", () => {
     it("should handle rate-limited APIs gracefully", async () => {
-      const { scheduledImport } = await withScheduledImport(
+      const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
         `${testServerUrl}/rate-limited.csv`,
@@ -426,9 +426,9 @@ describe.sequential("Performance and Concurrency Tests", () => {
         job: { id: "test-job-rate-limit" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Rate Limit Test",
           userId: testUser.id,
@@ -444,7 +444,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
   describe("Timeout Performance", () => {
     it("should handle slow responses efficiently", async () => {
-      const { scheduledImport } = await withScheduledImport(testEnv, testCatalogId, `${testServerUrl}/slow.csv`, {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/slow.csv`, {
         user: testUser,
         name: "Slow Response Import",
         frequency: "daily",
@@ -468,9 +468,9 @@ describe.sequential("Performance and Concurrency Tests", () => {
         job: { id: "test-job-slow" },
         req: { payload },
         input: {
-          scheduledImportId: scheduledImport.id,
-          sourceUrl: scheduledImport.sourceUrl,
-          authConfig: scheduledImport.authConfig,
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
           catalogId: testCatalogId as any,
           originalName: "Slow Response Test",
           userId: testUser.id,

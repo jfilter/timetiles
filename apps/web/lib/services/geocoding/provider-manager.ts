@@ -15,7 +15,7 @@
 import NodeGeocoder, { type Options } from "node-geocoder";
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/import-constants";
+import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { createLogger } from "@/lib/logger";
 import type { GeocodingProvider } from "@/payload-types";
 

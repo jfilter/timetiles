@@ -1,7 +1,7 @@
 /**
  * Unit tests for webhook token resolution and scraper claim logic.
  *
- * Tests resolveWebhookToken (lookup across scheduled-imports and scrapers)
+ * Tests resolveWebhookToken (lookup across scheduled-ingests and scrapers)
  * and claimScraperRunning (atomic running-status claim via raw SQL).
  *
  * @module
@@ -23,7 +23,7 @@ beforeEach(() => {
 });
 
 describe.sequential("resolveWebhookToken", () => {
-  it("returns scheduled-import target when token found in scheduled-imports", async () => {
+  it("returns scheduled-ingest target when token found in scheduled-ingests", async () => {
     mockPayload.find.mockResolvedValueOnce({
       docs: [{ id: 1, name: "My Import", webhookEnabled: true, webhookToken: "tok-abc" }],
     });
@@ -31,7 +31,7 @@ describe.sequential("resolveWebhookToken", () => {
     const result = await resolveWebhookToken(mockPayload as any, "tok-abc");
 
     expect(result).toEqual({
-      type: "scheduled-import",
+      type: "scheduled-ingest",
       id: 1,
       name: "My Import",
       record: expect.objectContaining({ id: 1, webhookEnabled: true }),
@@ -39,7 +39,7 @@ describe.sequential("resolveWebhookToken", () => {
 
     expect(mockPayload.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        collection: "scheduled-imports",
+        collection: "scheduled-ingests",
         where: { webhookToken: { equals: "tok-abc" } },
         limit: 1,
         overrideAccess: true,
@@ -47,8 +47,8 @@ describe.sequential("resolveWebhookToken", () => {
     );
   });
 
-  it("returns scraper target when token found in scrapers (not in scheduled-imports)", async () => {
-    // scheduled-imports returns nothing
+  it("returns scraper target when token found in scrapers (not in scheduled-ingests)", async () => {
+    // scheduled-ingests returns nothing
     mockPayload.find.mockResolvedValueOnce({ docs: [] });
     // scrapers returns a match
     mockPayload.find.mockResolvedValueOnce({
@@ -82,7 +82,7 @@ describe.sequential("resolveWebhookToken", () => {
     expect(mockPayload.find).toHaveBeenCalledTimes(2);
   });
 
-  it("returns null when matched scheduled-import has webhookEnabled=false", async () => {
+  it("returns null when matched scheduled-ingest has webhookEnabled=false", async () => {
     mockPayload.find.mockResolvedValueOnce({
       docs: [{ id: 5, name: "Disabled Import", webhookEnabled: false, webhookToken: "tok-disabled" }],
     });
@@ -106,8 +106,8 @@ describe.sequential("resolveWebhookToken", () => {
     expect(mockPayload.find).toHaveBeenCalledTimes(2);
   });
 
-  it("checks scheduled-imports before scrapers (priority)", async () => {
-    // Both collections have a matching token - scheduled-imports should win
+  it("checks scheduled-ingests before scrapers (priority)", async () => {
+    // Both collections have a matching token - scheduled-ingests should win
     mockPayload.find.mockResolvedValueOnce({
       docs: [{ id: 1, name: "SI Match", webhookEnabled: true, webhookToken: "shared-tok" }],
     });
@@ -118,19 +118,19 @@ describe.sequential("resolveWebhookToken", () => {
 
     const result = await resolveWebhookToken(mockPayload as any, "shared-tok");
 
-    expect(result).toEqual(expect.objectContaining({ type: "scheduled-import", id: 1 }));
-    // Only one find call - scrapers never checked when scheduled-import matches
+    expect(result).toEqual(expect.objectContaining({ type: "scheduled-ingest", id: 1 }));
+    // Only one find call - scrapers never checked when scheduled-ingest matches
     expect(mockPayload.find).toHaveBeenCalledTimes(1);
   });
 
-  it("uses fallback name when scheduled-import name is missing", async () => {
+  it("uses fallback name when scheduled-ingest name is missing", async () => {
     mockPayload.find.mockResolvedValueOnce({
       docs: [{ id: 7, name: null, webhookEnabled: true, webhookToken: "tok-noname" }],
     });
 
     const result = await resolveWebhookToken(mockPayload as any, "tok-noname");
 
-    expect(result).toEqual(expect.objectContaining({ name: "scheduled-import-7" }));
+    expect(result).toEqual(expect.objectContaining({ name: "scheduled-ingest-7" }));
   });
 
   it("uses fallback name when scraper name is missing", async () => {

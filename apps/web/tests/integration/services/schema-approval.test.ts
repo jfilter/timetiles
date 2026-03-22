@@ -7,15 +7,15 @@ import {
   createIntegrationTestEnvironment,
   withCatalog,
   withDataset,
-  withImportFile,
+  withIngestFile,
   withSchemaVersion,
   withUsers,
 } from "../../setup/integration/environment";
 
 describe.sequential("Schema Approval Workflow", () => {
   const collectionsToReset = [
-    "import-files",
-    "import-jobs",
+    "ingest-files",
+    "ingest-jobs",
     "datasets",
     "dataset-schemas",
     "user-usage",
@@ -29,8 +29,8 @@ describe.sequential("Schema Approval Workflow", () => {
   let viewerUser: any;
   let testCatalogId: number;
   let testDatasetId: number;
-  let testImportFileId: number;
-  let testImportJobId: number;
+  let testIngestFileId: number;
+  let testIngestJobId: number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
@@ -82,18 +82,18 @@ describe.sequential("Schema Approval Workflow", () => {
 
     // Create test import file
     const csvContent = "title,date,location\nTest Event,2024-01-01,Test Location";
-    const { importFile } = await withImportFile(testEnv, testCatalogId, csvContent, {
+    const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
       status: "completed",
       user: adminUser.id,
     });
-    testImportFileId = importFile.id;
+    testIngestFileId = ingestFile.id;
 
     // Create test import job
-    const importJob = await payload.create({
-      collection: "import-jobs",
-      data: { importFile: testImportFileId, dataset: testDatasetId, stage: "completed", sheetIndex: 0 },
+    const ingestJob = await payload.create({
+      collection: "ingest-jobs",
+      data: { ingestFile: testIngestFileId, dataset: testDatasetId, stage: "completed", sheetIndex: 0 },
     });
-    testImportJobId = importJob.id;
+    testIngestJobId = ingestJob.id;
   });
 
   describe("Schema Creation and Approval", () => {
@@ -110,7 +110,7 @@ describe.sequential("Schema Approval Workflow", () => {
         },
         required: ["id", "title", "date"],
         newFields: ["category"],
-        importJob: testImportJobId,
+        ingestJob: testIngestJobId,
       });
 
       expect(draftSchema._status).toBe("draft");
@@ -439,9 +439,9 @@ describe.sequential("Schema Approval Workflow", () => {
     it("updates import stage after schema approval", async () => {
       // Create import waiting for schema approval
       const importRecord = await payload.create({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         data: {
-          importFile: testImportFileId,
+          ingestFile: testIngestFileId,
           dataset: testDatasetId,
           stage: "await-approval",
           sheetIndex: 0,
@@ -459,7 +459,7 @@ describe.sequential("Schema Approval Workflow", () => {
           schema: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
           fieldMetadata: {},
           schemaSummary: { totalFields: 2 },
-          importSources: [{ import: importRecord.id, recordCount: 100 }],
+          ingestSources: [{ ingestJob: importRecord.id, recordCount: 100 }],
           approvedBy: adminUser.id,
           approvalNotes: "Approved for testing",
         },
@@ -479,7 +479,7 @@ describe.sequential("Schema Approval Workflow", () => {
 
       // The import record should still be in await-approval stage
       // (actual progression would happen via hooks in production)
-      const updatedImport = await payload.findByID({ collection: "import-jobs", id: importRecord.id });
+      const updatedImport = await payload.findByID({ collection: "ingest-jobs", id: importRecord.id });
       expect(updatedImport.stage).toBe("await-approval");
     });
 
@@ -488,8 +488,8 @@ describe.sequential("Schema Approval Workflow", () => {
       const imports = [];
       for (let i = 1; i <= 3; i++) {
         const imp = await payload.create({
-          collection: "import-jobs",
-          data: { importFile: testImportFileId, dataset: testDatasetId, stage: "await-approval", sheetIndex: 0 },
+          collection: "ingest-jobs",
+          data: { ingestFile: testIngestFileId, dataset: testDatasetId, stage: "await-approval", sheetIndex: 0 },
         });
         imports.push(imp);
       }
@@ -514,7 +514,7 @@ describe.sequential("Schema Approval Workflow", () => {
       // (actual stage progression happens via hooks in production —
       //  here we verify the imports exist and weren't corrupted by the schema creation)
       for (const imp of imports) {
-        const updated = await payload.findByID({ collection: "import-jobs", id: imp.id });
+        const updated = await payload.findByID({ collection: "ingest-jobs", id: imp.id });
         expect(updated).toBeDefined();
         expect(updated.dataset).toBeDefined();
       }

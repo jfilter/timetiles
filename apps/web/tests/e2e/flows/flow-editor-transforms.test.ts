@@ -11,7 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
-import { ImportPage } from "../pages/import.page";
+import { IngestPage } from "../pages/ingest.page";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,10 +20,10 @@ const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
 test.describe("Flow Editor Transforms", () => {
   test.describe.configure({ mode: "serial" });
 
-  let importPage: ImportPage;
+  let importPage: IngestPage;
 
   test.beforeEach(({ page }) => {
-    importPage = new ImportPage(page);
+    importPage = new IngestPage(page);
   });
 
   test("should complete import using flow editor for field mapping", async ({ page }) => {
@@ -85,7 +85,7 @@ test.describe("Flow Editor Transforms", () => {
     await saveButton.click();
 
     // Should redirect back to import wizard at step 4
-    await expect(page).toHaveURL(/\/import/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/ingest/, { timeout: 10000 });
 
     // The wizard should be on the field mapping step
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
@@ -100,7 +100,7 @@ test.describe("Flow Editor Transforms", () => {
     await expect(page.getByText(catalogName)).toBeVisible();
 
     // Start the import
-    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
 
@@ -114,7 +114,7 @@ test.describe("Flow Editor Transforms", () => {
       throw new Error(`Configure import failed with status ${response.status()}: ${JSON.stringify(responseBody)}`);
     }
 
-    expect(typeof responseBody.importFileId).toBe("number");
+    expect(typeof responseBody.ingestFileId).toBe("number");
 
     // Step 6: Wait for processing
     const processingIndicator = page.getByText(/importing your data/i);
@@ -179,7 +179,7 @@ test.describe("Flow Editor Transforms", () => {
     await saveButton.click();
 
     // Wait for redirect
-    await expect(page).toHaveURL(/\/import/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/ingest/, { timeout: 10000 });
 
     // Verify the serialized data was passed through the URL
     // The applyMappings param should contain the new format with fieldMapping and transforms
@@ -199,7 +199,7 @@ test.describe("Flow Editor Transforms", () => {
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
     // Start import
-    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
 
@@ -260,13 +260,13 @@ test.describe("Flow Editor Transforms", () => {
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
     // Intercept the configure API call to verify transforms are sent
-    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
 
     let capturedRequestBody: Record<string, unknown> | null = null;
     page.on("request", (request) => {
-      if (request.url().includes("/api/import/configure") && request.method() === "POST") {
+      if (request.url().includes("/api/ingest/configure") && request.method() === "POST") {
         capturedRequestBody = request.postDataJSON() as Record<string, unknown>;
       }
     });
@@ -307,18 +307,20 @@ test.describe("Flow Editor Transforms", () => {
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.docs as Array<{ data: Record<string, unknown> }>;
+    const events = eventsData.docs as Array<{ originalData: Record<string, unknown> }>;
 
     // All events in this dataset should have uppercase titles
     const uppercasedEvents = events.filter(
-      (e) => typeof e.data?.title === "string" && e.data.title === e.data.title.toUpperCase()
+      (e) => typeof e.originalData?.title === "string" && e.originalData.title === e.originalData.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBeGreaterThan(0);
 
     // Verify specific title is uppercased (from valid-events.csv)
-    const techEvent = events.find((e) => typeof e.data?.title === "string" && e.data.title.includes("TECH CONFERENCE"));
+    const techEvent = events.find(
+      (e) => typeof e.originalData?.title === "string" && e.originalData.title.includes("TECH CONFERENCE")
+    );
     expect(techEvent).toBeDefined();
-    expect(techEvent!.data.title).toBe("TECH CONFERENCE 2024");
+    expect(techEvent!.originalData.title).toBe("TECH CONFERENCE 2024");
   });
 
   test("should apply rename transform and verify field name change", async ({ page }) => {
@@ -378,13 +380,13 @@ test.describe("Flow Editor Transforms", () => {
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
     // Intercept and verify the configure API call
-    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/import/configure"), {
+    const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
 
     let capturedRequestBody: Record<string, unknown> | null = null;
     page.on("request", (request) => {
-      if (request.url().includes("/api/import/configure") && request.method() === "POST") {
+      if (request.url().includes("/api/ingest/configure") && request.method() === "POST") {
         capturedRequestBody = request.postDataJSON() as Record<string, unknown>;
       }
     });
@@ -423,14 +425,16 @@ test.describe("Flow Editor Transforms", () => {
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.docs as Array<{ data: Record<string, unknown> }>;
+    const events = eventsData.docs as Array<{ originalData: Record<string, unknown> }>;
 
     // Find events with the renamed field
-    const renamedEvents = events.filter((e) => typeof e.data?.event_type === "string" && !("category" in e.data));
+    const renamedEvents = events.filter(
+      (e) => typeof e.originalData?.event_type === "string" && !("category" in e.originalData)
+    );
     expect(renamedEvents.length).toBeGreaterThan(0);
 
     // Verify specific value - "technology" should now be under "event_type"
-    const techEvent = renamedEvents.find((e) => e.data.event_type === "technology");
+    const techEvent = renamedEvents.find((e) => e.originalData.event_type === "technology");
     expect(techEvent).toBeDefined();
   });
 });

@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import { createMockImportFile } from "@/tests/setup/factories";
+import { createMockIngestFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/import/progress-tracking", () => ({
+vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     initializeStageProgress: vi.fn().mockResolvedValue(undefined),
     updateStageProgress: vi.fn().mockResolvedValue(undefined),
@@ -33,7 +33,7 @@ vi.mock("@/lib/import/progress-tracking", () => ({
   },
 }));
 
-vi.mock("@/lib/import/file-readers", () => ({
+vi.mock("@/lib/ingest/file-readers", () => ({
   getFileRowCount: mocks.getFileRowCount,
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
@@ -42,7 +42,7 @@ vi.mock("@/lib/import/file-readers", () => ({
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
-  getImportFilePath: vi.fn((filename: string) => `/mock/import-files/${filename}`),
+  getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
 /** Helper to create a mock async iterable from arrays of batches. */
@@ -121,17 +121,17 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
     mockContext = {
       req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: "running" } as any,
-      input: { importJobId: "import-123" } as any,
+      input: { ingestJobId: "import-123" } as any,
     };
   });
 
   describe("Success Cases", () => {
     it("should skip analysis when deduplication is disabled", async () => {
       // Mock import job
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
 
@@ -139,14 +139,14 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const mockDataset = { id: "dataset-456", deduplicationConfig: { enabled: false } };
 
       // Mock import file
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Setup payload mock responses
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob) // First call returns import job
+        .mockResolvedValueOnce(mockIngestJob) // First call returns import job
         .mockResolvedValueOnce(mockDataset) // Second call returns dataset
-        .mockResolvedValueOnce(mockImportFile) // Third call returns import file
-        .mockResolvedValueOnce(mockImportJob); // Fourth call refetches import job after progress init
+        .mockResolvedValueOnce(mockIngestFile) // Third call returns import file
+        .mockResolvedValueOnce(mockIngestJob); // Fourth call refetches import job after progress init
 
       // Mock getFileRowCount for total rows
       mocks.getFileRowCount.mockResolvedValueOnce(100);
@@ -161,14 +161,14 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       // Verify payload calls - includes refetch after progress initialization
       expect(mockPayload.findByID).toHaveBeenCalledTimes(4);
-      expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, { collection: "import-jobs", id: "import-123" });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, { collection: "ingest-jobs", id: "import-123" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(2, { collection: "datasets", id: "dataset-456" });
-      expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, { collection: "import-files", id: "file-789" });
-      expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, { collection: "import-jobs", id: "import-123" });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, { collection: "ingest-files", id: "file-789" });
+      expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, { collection: "ingest-jobs", id: "import-123" });
 
       // Verify update call
       expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "import-jobs",
+        collection: "ingest-jobs",
         id: "import-123",
         data: {
           stage: "detect-schema",
@@ -184,10 +184,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
     it("should process file with no duplicates", async () => {
       // Mock import job
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456", // Reference to dataset
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -202,7 +202,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data - no duplicates
       const mockFileData = [
@@ -213,10 +213,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job (4th findByID call)
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile)
-        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
 
       // No getFileRowCount call when dedup is enabled — totalRows derived from streaming
 
@@ -261,10 +261,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
     it("should identify internal duplicates", async () => {
       // Mock import job
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -279,7 +279,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data with internal duplicate
       const mockFileData = [
@@ -290,10 +290,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile)
-        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
 
       // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
@@ -323,10 +323,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
     it("should identify external duplicates", async () => {
       // Mock import job
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -341,7 +341,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data
       const mockFileData = [
@@ -351,10 +351,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile)
-        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
 
       // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
@@ -381,40 +381,40 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error when import job not found", async () => {
+    it("should throw error when ingest job not found", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
-      await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Import job not found: import-123");
+      await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
 
-      expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "import-jobs", id: "import-123" });
+      expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "ingest-jobs", id: "import-123" });
     });
 
     it("should throw error when dataset not found", async () => {
-      const mockImportJob = { id: "import-123", dataset: "dataset-456", importFile: "file-789" };
+      const mockIngestJob = { id: "import-123", dataset: "dataset-456", ingestFile: "file-789" };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockImportJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
-    it("should throw error when import file not found", async () => {
-      const mockImportJob = { id: "import-123", dataset: "dataset-456", importFile: "file-789" };
+    it("should throw error when ingest file not found", async () => {
+      const mockIngestJob = { id: "import-123", dataset: "dataset-456", ingestFile: "file-789" };
 
       const mockDataset = { id: "dataset-456", deduplicationConfig: { enabled: true } };
 
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(null); // Import file not found
+        .mockResolvedValueOnce(null); // Ingest file not found
 
-      await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Import file not found");
+      await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
     it("should clean up sidecar files on error", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 1,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -425,13 +425,13 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         idStrategy: { type: "external", externalIdPath: "id" },
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Use mockImplementation to handle all findByID calls (initial + progress refetch + error-path reload)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
-        if (collection === "import-jobs") return Promise.resolve(mockImportJob);
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
-        if (collection === "import-files") return Promise.resolve(mockImportFile);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
         return Promise.resolve(null);
       });
 
@@ -452,7 +452,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify sidecar cleanup was called
       expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith(
         expect.stringContaining("test.csv"),
-        1 // sheetIndex from mockImportJob
+        1 // sheetIndex from mockIngestJob
       );
     });
   });
@@ -460,10 +460,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   describe("File Pre-scan Optimization", () => {
     it("should not pre-scan file when deduplication is enabled", async () => {
       // Mock import job
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -476,7 +476,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       };
 
       // Mock import file
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Mock file data - 3 rows
       const mockFileData = [
@@ -487,10 +487,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       // Setup mocks
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile)
-        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
@@ -516,10 +516,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
   describe("Edge Cases", () => {
     it("should handle empty file", async () => {
-      const mockImportJob = {
+      const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
-        importFile: "file-789",
+        ingestFile: "file-789",
         sheetIndex: 0,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };
@@ -530,14 +530,14 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         idStrategy: { type: "external", externalIdPath: "id" },
       };
 
-      const mockImportFile = createMockImportFile();
+      const mockIngestFile = createMockIngestFile();
 
       // Setup mocks — when dedup is enabled, progress init passes 0 and refetches the job
       mockPayload.findByID
-        .mockResolvedValueOnce(mockImportJob)
+        .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockImportFile)
-        .mockResolvedValueOnce(mockImportJob); // Refetch after initializeStageProgress
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
 
       // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));

@@ -27,45 +27,45 @@ vi.mock("react", async (importOriginal) => {
 vi.mock("@/i18n/navigation", () => ({ useRouter: vi.fn(() => ({ push: vi.fn() })) }));
 
 // Mock local component imports from step-field-mapping.tsx
-vi.mock("@/app/[locale]/(frontend)/import/_components/use-wizard-effects", () => ({
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/use-wizard-effects", () => ({
   useWizardCanProceed: vi.fn(() => false),
 }));
-vi.mock("@/app/[locale]/(frontend)/import/_components/wizard-store", () => ({ useWizardStore: vi.fn(() => null) }));
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/wizard-store", () => ({ useWizardStore: vi.fn(() => null) }));
 // column-mapping-table: mock the component, re-export pure functions via dynamic import
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/column-mapping-table", async () => {
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-table", async () => {
   // Dynamic import bypasses Vite's static JSX analysis
   const mod = await vi.importActual<Record<string, unknown>>(
-    "@/app/[locale]/(frontend)/import/_components/steps/column-mapping-table"
+    "@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-table"
   );
   return { ...mod, ColumnMappingTable: vi.fn() };
 });
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/field-mapping-sections", () => ({
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/field-mapping-sections", () => ({
   CompletionStatusBar: vi.fn(),
   ConfigSuggestionBanner: vi.fn(),
   DataPreviewSection: vi.fn(),
   LanguageDetectionBanner: vi.fn(),
 }));
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/id-strategy-card", () => ({ IdStrategyCard: vi.fn() }));
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/sheet-tab-button", () => ({ SheetTabButton: vi.fn() }));
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/id-strategy-card", () => ({ IdStrategyCard: vi.fn() }));
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/sheet-tab-button", () => ({ SheetTabButton: vi.fn() }));
 
 // Mock local component imports from column-mapping-table.tsx
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/column-mapping-shared", () => ({
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-shared", () => ({
   TargetSelect: vi.fn(),
   TRANSFORM_COLORS: {},
   TRANSFORM_ICONS: {},
 }));
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/column-row", async () => {
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/column-row", async () => {
   const mod = await vi.importActual<Record<string, unknown>>(
-    "@/app/[locale]/(frontend)/import/_components/steps/column-row"
+    "@/app/[locale]/(frontend)/ingest/_components/steps/column-row"
   );
   return { ...mod, ColumnRow: vi.fn() };
 });
 
 // Mock local component imports from column-row.tsx
-vi.mock("@/app/[locale]/(frontend)/import/_components/transforms/transform-editor", () => ({
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/transforms/transform-editor", () => ({
   TransformEditor: vi.fn(),
 }));
-vi.mock("@/app/[locale]/(frontend)/import/_components/steps/field-select", () => ({ ConfidenceBadge: vi.fn() }));
+vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/field-select", () => ({ ConfidenceBadge: vi.fn() }));
 
 // ---------------------------------------------------------------------------
 // Imports
@@ -75,12 +75,12 @@ import {
   buildColumnView,
   findTargetForColumn,
   getSampleValue,
-} from "@/app/[locale]/(frontend)/import/_components/steps/column-mapping-table";
-import { getTransformChipLabel } from "@/app/[locale]/(frontend)/import/_components/steps/column-row";
-import { applyPreviewTransforms } from "@/app/[locale]/(frontend)/import/_components/steps/step-field-mapping";
-import type { ImportTransform } from "@/lib/types/import-transforms";
-import type { FieldMapping, SuggestedMappings } from "@/lib/types/import-wizard";
-import { isFieldMappingComplete } from "@/lib/types/import-wizard";
+} from "@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-table";
+import { getTransformChipLabel } from "@/app/[locale]/(frontend)/ingest/_components/steps/column-row";
+import { applyPreviewTransforms } from "@/app/[locale]/(frontend)/ingest/_components/steps/step-field-mapping";
+import type { IngestTransform } from "@/lib/types/ingest-transforms";
+import type { FieldMapping, SuggestedMappings } from "@/lib/types/ingest-wizard";
+import { isFieldMappingComplete } from "@/lib/types/ingest-wizard";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -113,7 +113,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should apply uppercase transform", () => {
     const data = [{ city: "berlin" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "city", operation: "uppercase", active: true, autoDetected: false },
     ];
     const result = applyPreviewTransforms(data, transforms);
@@ -122,7 +122,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should apply lowercase transform", () => {
     const data = [{ city: "BERLIN" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "city", operation: "lowercase", active: true, autoDetected: false },
     ];
     const result = applyPreviewTransforms(data, transforms);
@@ -131,7 +131,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should apply replace transform", () => {
     const data = [{ text: "hello world" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "string-op",
@@ -149,7 +149,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should apply replace with empty replacement when replacement is undefined", () => {
     const data = [{ text: "hello world" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "string-op",
@@ -166,7 +166,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should apply rename transform", () => {
     const data = [{ old_name: "value" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "rename", from: "old_name", to: "new_name", active: true, autoDetected: false },
     ];
     const result = applyPreviewTransforms(data, transforms);
@@ -176,7 +176,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should apply concatenate transform", () => {
     const data = [{ first: "John", last: "Doe" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "concatenate",
@@ -193,7 +193,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should apply concatenate transform with custom separator", () => {
     const data = [{ first: "John", last: "Doe" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "concatenate",
@@ -210,7 +210,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should skip null values in concatenate", () => {
     const data = [{ first: "John", middle: null, last: "Doe" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "concatenate",
@@ -227,7 +227,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should apply split transform", () => {
     const data = [{ coords: "52.5,13.4" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "split",
@@ -245,7 +245,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should trim split values", () => {
     const data = [{ coords: "52.5 , 13.4" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "split",
@@ -263,7 +263,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should handle split with fewer parts than toFields", () => {
     const data = [{ value: "only_one" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "split",
@@ -282,7 +282,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should skip inactive transforms", () => {
     const data = [{ city: "berlin" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "city", operation: "uppercase", active: false, autoDetected: false },
     ];
     const result = applyPreviewTransforms(data, transforms);
@@ -291,7 +291,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should chain multiple transforms", () => {
     const data = [{ name: "  John Doe  " }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "name", operation: "uppercase", active: true, autoDetected: false },
       { id: "2", type: "rename", from: "name", to: "full_name", active: true, autoDetected: false },
     ];
@@ -302,7 +302,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should handle multiple rows", () => {
     const data = [{ city: "berlin" }, { city: "paris" }, { city: "london" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "city", operation: "uppercase", active: true, autoDetected: false },
     ];
     const result = applyPreviewTransforms(data, transforms);
@@ -311,7 +311,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should not mutate original data", () => {
     const data = [{ city: "berlin" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "city", operation: "uppercase", active: true, autoDetected: false },
     ];
     applyPreviewTransforms(data, transforms);
@@ -320,7 +320,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should skip string-op on non-string values", () => {
     const data = [{ count: 42 }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "count", operation: "uppercase", active: true, autoDetected: false },
     ];
     const result = applyPreviewTransforms(data, transforms);
@@ -329,7 +329,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should handle expression as no-op in preview", () => {
     const data = [{ price: "42.5" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "string-op",
@@ -347,7 +347,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should skip split on non-string values", () => {
     const data = [{ count: 42 }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "split",
@@ -365,7 +365,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should not rename when source field is undefined", () => {
     const data = [{ other: "value" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "rename", from: "missing", to: "new_name", active: true, autoDetected: false },
     ];
     const result = applyPreviewTransforms(data, transforms);
@@ -374,7 +374,7 @@ describe("applyPreviewTransforms", () => {
   });
 
   it("should handle empty data array", () => {
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "city", operation: "uppercase", active: true, autoDetected: false },
     ];
     const result = applyPreviewTransforms([], transforms);
@@ -383,7 +383,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should replace all occurrences with replaceAll", () => {
     const data = [{ text: "foo-bar-baz" }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "string-op",
@@ -401,7 +401,7 @@ describe("applyPreviewTransforms", () => {
 
   it("should not produce concatenation when all fromFields are null", () => {
     const data = [{ a: null, b: null }];
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "concatenate",
@@ -471,7 +471,7 @@ describe("buildColumnView", () => {
     const headers = ["coords"];
     const sampleData = [{ coords: "52.5,13.4" }];
     const fieldMapping = createFieldMapping();
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "split",
@@ -493,7 +493,7 @@ describe("buildColumnView", () => {
     const headers = ["coords"];
     const sampleData = [{ coords: "52.5,13.4" }];
     const fieldMapping = createFieldMapping();
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "split",
@@ -518,7 +518,7 @@ describe("buildColumnView", () => {
     const headers = ["coords"];
     const sampleData = [{ coords: "52.5,13.4" }];
     const fieldMapping = createFieldMapping({ latitudeField: "lat", longitudeField: "lon" });
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "split",
@@ -562,7 +562,7 @@ describe("buildColumnView", () => {
     const headers = ["name", "date"];
     const sampleData = [{ name: "event", date: "2024-01-01" }];
     const fieldMapping = createFieldMapping();
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       { id: "1", type: "string-op", from: "name", operation: "uppercase", active: true, autoDetected: false },
       { id: "2", type: "rename", from: "date", to: "event_date", active: true, autoDetected: false },
     ];
@@ -579,7 +579,7 @@ describe("buildColumnView", () => {
     const headers = ["first", "last"];
     const sampleData = [{ first: "John", last: "Doe" }];
     const fieldMapping = createFieldMapping();
-    const transforms: ImportTransform[] = [
+    const transforms: IngestTransform[] = [
       {
         id: "1",
         type: "concatenate",
@@ -668,7 +668,7 @@ describe("getTransformChipLabel", () => {
   };
 
   it("should show rename with target name", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "rename",
       from: "old",
@@ -681,7 +681,7 @@ describe("getTransformChipLabel", () => {
   });
 
   it("should show rename default when no target", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "rename",
       from: "old",
@@ -694,7 +694,7 @@ describe("getTransformChipLabel", () => {
   });
 
   it("should show date format", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "date-parse",
       from: "date",
@@ -708,7 +708,7 @@ describe("getTransformChipLabel", () => {
   });
 
   it("should show date default when no format", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "date-parse",
       from: "date",
@@ -722,7 +722,7 @@ describe("getTransformChipLabel", () => {
   });
 
   it("should capitalize string-op operation name", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "string-op",
       from: "field",
@@ -735,7 +735,7 @@ describe("getTransformChipLabel", () => {
   });
 
   it("should capitalize lowercase operation name", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "string-op",
       from: "field",
@@ -748,7 +748,7 @@ describe("getTransformChipLabel", () => {
   });
 
   it("should capitalize replace operation name", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "string-op",
       from: "field",
@@ -763,7 +763,7 @@ describe("getTransformChipLabel", () => {
   });
 
   it("should show join field count", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "concatenate",
       fromFields: ["a", "b", "c"],
@@ -777,7 +777,7 @@ describe("getTransformChipLabel", () => {
   });
 
   it("should show split count", () => {
-    const transform: ImportTransform = {
+    const transform: IngestTransform = {
       id: "1",
       type: "split",
       from: "coords",
@@ -954,7 +954,7 @@ describe("edge cases", () => {
   describe("applyPreviewTransforms edge cases", () => {
     it("should handle replace with undefined pattern gracefully", () => {
       const data = [{ text: "hello" }];
-      const transforms: ImportTransform[] = [
+      const transforms: IngestTransform[] = [
         {
           id: "1",
           type: "string-op",
@@ -971,7 +971,7 @@ describe("edge cases", () => {
 
     it("should handle concatenate with single field", () => {
       const data = [{ name: "Berlin" }];
-      const transforms: ImportTransform[] = [
+      const transforms: IngestTransform[] = [
         {
           id: "1",
           type: "concatenate",
@@ -988,7 +988,7 @@ describe("edge cases", () => {
 
     it("should handle split with empty delimiter", () => {
       const data = [{ text: "abc" }];
-      const transforms: ImportTransform[] = [
+      const transforms: IngestTransform[] = [
         {
           id: "1",
           type: "split",
@@ -1008,7 +1008,7 @@ describe("edge cases", () => {
 
     it("should handle rename overwriting existing field", () => {
       const data = [{ old: "old_value", new_name: "existing_value" }];
-      const transforms: ImportTransform[] = [
+      const transforms: IngestTransform[] = [
         { id: "1", type: "rename", from: "old", to: "new_name", active: true, autoDetected: false },
       ];
       const result = applyPreviewTransforms(data, transforms);

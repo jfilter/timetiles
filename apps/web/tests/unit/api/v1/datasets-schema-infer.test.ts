@@ -19,7 +19,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockReso
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/import/schema-inference", () => ({
+vi.mock("@/lib/ingest/schema-inference", () => ({
   SchemaInferenceService: { inferSchemaFromEvents: mocks.mockInferSchemaFromEvents },
 }));
 

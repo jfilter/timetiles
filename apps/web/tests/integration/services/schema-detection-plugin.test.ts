@@ -21,10 +21,10 @@ import type { DetectionContext, FieldStatistics } from "@/lib/services/schema-de
 import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
-  runJobsUntilImportJobStage,
+  runJobsUntilIngestJobStage,
   withCatalog,
   withDataset,
-  withImportFile,
+  withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -246,7 +246,7 @@ describe.sequential("Schema Detection Plugin Integration", () => {
         schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
       });
 
-      const { importFile } = await withImportFile(testEnv, catalog.id, fileBuffer, {
+      const { ingestFile } = await withIngestFile(testEnv, catalog.id, fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
         user: users.importer.id,
@@ -255,20 +255,20 @@ describe.sequential("Schema Detection Plugin Integration", () => {
       });
 
       // Run jobs until schema detection completes (validate-schema follows detect-schema)
-      const stageResult = await runJobsUntilImportJobStage(
+      const stageResult = await runJobsUntilIngestJobStage(
         payload,
-        importFile.id,
-        (importJob) =>
-          importJob.stage === "validate-schema" ||
-          importJob.stage === "create-schema-version" ||
-          importJob.stage === "completed",
+        ingestFile.id,
+        (ingestJob) =>
+          ingestJob.stage === "validate-schema" ||
+          ingestJob.stage === "create-schema-version" ||
+          ingestJob.stage === "completed",
         {
           maxIterations: 30,
-          onPending: ({ iteration, importJob }) => {
+          onPending: ({ iteration, ingestJob }) => {
             if (iteration % 5 === 0) {
               logger.debug("Waiting for schema detection to complete", {
                 iteration,
-                stage: importJob?.stage ?? "missing",
+                stage: ingestJob?.stage ?? "missing",
               });
             }
           },
@@ -279,19 +279,19 @@ describe.sequential("Schema Detection Plugin Integration", () => {
 
       // Load the import job with detectedFieldMappings
       const importJobs = await payload.find({
-        collection: "import-jobs",
-        where: { importFile: { equals: importFile.id } },
+        collection: "ingest-jobs",
+        where: { ingestFile: { equals: ingestFile.id } },
         depth: 0,
       });
 
       expect(importJobs.docs.length).toBeGreaterThan(0);
-      const importJob = importJobs.docs[0];
+      const ingestJob = importJobs.docs[0];
 
       // Verify detectedFieldMappings are populated
-      expect(importJob.detectedFieldMappings).toBeDefined();
-      expect(importJob.detectedFieldMappings.titlePath).toBe("titel");
-      expect(importJob.detectedFieldMappings.timestampPath).toBe("datum");
-      expect(importJob.detectedFieldMappings.descriptionPath).toBe("beschreibung");
+      expect(ingestJob.detectedFieldMappings).toBeDefined();
+      expect(ingestJob.detectedFieldMappings.titlePath).toBe("titel");
+      expect(ingestJob.detectedFieldMappings.timestampPath).toBe("datum");
+      expect(ingestJob.detectedFieldMappings.descriptionPath).toBe("beschreibung");
     });
   });
 

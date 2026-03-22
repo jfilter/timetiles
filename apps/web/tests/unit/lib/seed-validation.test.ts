@@ -98,7 +98,7 @@ describe("Seed Data Validation", () => {
     it("should generate valid events for development environment", () => {
       const events = eventSeeds("development");
       expect(events.length).toBeGreaterThan(0);
-      expect(events.every((event) => event.dataset && event.data)).toBe(true);
+      expect(events.every((event) => event.dataset && event.originalData)).toBe(true);
     });
 
     it("should have proper dataset references", () => {
@@ -143,7 +143,12 @@ describe("Seed Data Validation", () => {
       expect(devCatalogs.some((c) => c.slug === "community-events-portal")).toBe(true);
       expect(devDatasets.some((d) => d.slug?.includes("local-events-calendar"))).toBe(true);
       expect(
-        devEvents.some((e) => e.data && typeof e.data === "object" && ("venue" in e.data || "performer" in e.data))
+        devEvents.some(
+          (e) =>
+            e.originalData &&
+            typeof e.originalData === "object" &&
+            ("venue" in e.originalData || "performer" in e.originalData)
+        )
       ).toBe(true);
     });
   });

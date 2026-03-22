@@ -1,5 +1,5 @@
 /**
- * Paginated JSON API fetching for scheduled imports.
+ * Paginated JSON API fetching for scheduled ingests.
  *
  * Handles offset-based, page-based, and cursor-based pagination strategies,
  * collecting all records across multiple pages into a single result array.
@@ -8,7 +8,7 @@
  * @category Jobs/UrlFetch
  */
 
-import { extractRecordsFromJson } from "@/lib/import/json-to-csv";
+import { extractRecordsFromJson } from "@/lib/ingest/json-to-csv";
 import { logger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";

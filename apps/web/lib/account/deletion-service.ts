@@ -18,7 +18,7 @@ import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
 
 import { DELETION_GRACE_PERIOD_DAYS } from "../constants/account-constants";
-import { PROCESSING_STAGE } from "../constants/import-constants";
+import { PROCESSING_STAGE } from "../constants/ingest-constants";
 import { createLogger, logError } from "../logger";
 import { AUDIT_ACTIONS, auditLog } from "../services/audit-log-service";
 import { sendDeletionCancelledEmail, sendDeletionCompletedEmail, sendDeletionScheduledEmail } from "./deletion-emails";
@@ -98,7 +98,7 @@ export class AccountDeletionService {
 
     // Check for active import jobs
     const activeJobs = await this.payload.find({
-      collection: "import-jobs",
+      collection: "ingest-jobs",
       where: {
         and: [
           { "dataset.createdBy": { equals: userId } },
@@ -160,9 +160,9 @@ export class AccountDeletionService {
     }
 
     // Count other entities
-    const [scheduledImports, importFiles, media, views, dataExports] = await Promise.all([
-      countUserDocs(this.payload, "scheduled-imports", userId),
-      countUserDocs(this.payload, "import-files", userId, { userField: "user" }),
+    const [scheduledIngests, importFiles, media, views, dataExports] = await Promise.all([
+      countUserDocs(this.payload, "scheduled-ingests", userId),
+      countUserDocs(this.payload, "ingest-files", userId, { userField: "user" }),
       countUserDocs(this.payload, "media", userId),
       countUserDocs(this.payload, "views", userId),
       countUserDocs(this.payload, "data-exports", userId, { userField: "user" }),
@@ -172,7 +172,7 @@ export class AccountDeletionService {
       catalogs: { public: publicCatalogs, private: privateCatalogs },
       datasets: { public: publicDatasets, private: privateDatasets },
       events: { inPublicDatasets: eventsInPublic, inPrivateDatasets: eventsInPrivate },
-      scheduledImports,
+      scheduledIngests,
       importFiles,
       media,
       views,
@@ -295,7 +295,7 @@ export class AccountDeletionService {
       deletedUserId: userId,
       transferredToUserId: systemUser.id,
       dataTransferred: { catalogs: 0, datasets: 0 },
-      dataDeleted: { catalogs: 0, datasets: 0, events: 0, scheduledImports: 0, importFiles: 0 },
+      dataDeleted: { catalogs: 0, datasets: 0, events: 0, scheduledIngests: 0, importFiles: 0 },
     };
 
     // Create a minimal req object for Payload's transaction utilities.
@@ -313,7 +313,7 @@ export class AccountDeletionService {
         // Delete private data
         await this.deletePrivateData(userId, result, req);
 
-        // Delete user resources (scheduled imports, import files)
+        // Delete user resources (scheduled ingests, import files)
         await this.deleteUserResources(userId, result, req);
 
         // Finalize user deletion and create audit log
@@ -455,22 +455,22 @@ export class AccountDeletionService {
   }
 
   /**
-   * Delete scheduled imports and import files.
+   * Delete scheduled ingests and import files.
    */
   private async deleteUserResources(userId: number, result: ExecuteDeletionResult, req: TransactionReq): Promise<void> {
-    // Delete scheduled imports
-    const scheduledImports = await findUserDocs(this.payload, "scheduled-imports", userId);
+    // Delete scheduled ingests
+    const scheduledIngests = await findUserDocs(this.payload, "scheduled-ingests", userId);
 
-    for (const schedule of scheduledImports) {
-      await this.payload.delete({ collection: "scheduled-imports", id: schedule.id, overrideAccess: true, req });
-      result.dataDeleted.scheduledImports++;
+    for (const schedule of scheduledIngests) {
+      await this.payload.delete({ collection: "scheduled-ingests", id: schedule.id, overrideAccess: true, req });
+      result.dataDeleted.scheduledIngests++;
     }
 
     // Delete import files
-    const importFiles = await findUserDocs(this.payload, "import-files", userId, { userField: "user" });
+    const importFiles = await findUserDocs(this.payload, "ingest-files", userId, { userField: "user" });
 
     for (const file of importFiles) {
-      await this.payload.delete({ collection: "import-files", id: file.id, overrideAccess: true, req });
+      await this.payload.delete({ collection: "ingest-files", id: file.id, overrideAccess: true, req });
       result.dataDeleted.importFiles++;
     }
 

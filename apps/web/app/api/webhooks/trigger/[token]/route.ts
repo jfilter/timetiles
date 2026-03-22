@@ -1,7 +1,7 @@
 /**
  * Generic webhook trigger endpoint.
  *
- * Resolves a webhook token to either a scheduled import or a scraper,
+ * Resolves a webhook token to either a scheduled ingest or a scraper,
  * then dispatches to the appropriate job handler. Implements dual-window
  * rate limiting and concurrency prevention.
  *
@@ -13,11 +13,11 @@ import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
-import { queueWebhookImport } from "@/lib/import/trigger-service";
+import { queueWebhookImport } from "@/lib/ingest/trigger-service";
 import { logger } from "@/lib/logger";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
 import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
-import type { ScheduledImport } from "@/payload-types";
+import type { ScheduledIngest } from "@/payload-types";
 
 interface RateLimitResponse {
   success: false;
@@ -71,22 +71,22 @@ export const POST = apiRoute({
     }
 
     // Dispatch based on target type
-    if (target.type === "scheduled-import") {
-      return handleScheduledImportTrigger(payload, target);
+    if (target.type === "scheduled-ingest") {
+      return handleScheduledIngestTrigger(payload, target);
     }
 
     return handleScraperTrigger(payload, target);
   },
 });
 
-/** Handle webhook trigger for a scheduled import. */
-const handleScheduledImportTrigger = async (
+/** Handle webhook trigger for a scheduled ingest. */
+const handleScheduledIngestTrigger = async (
   payload: Parameters<typeof queueWebhookImport>[0],
   target: { id: number; name: string; record: Record<string, unknown> }
 ): Promise<Record<string, unknown>> => {
   // Atomically claim "running" status to prevent concurrent executions
   const claimResult = (await payload.db.drizzle.execute(sql`
-    UPDATE payload.scheduled_imports
+    UPDATE payload.scheduled_ingests
     SET last_status = 'running'
     WHERE id = ${target.id}
       AND (last_status IS NULL OR last_status != 'running')
@@ -95,14 +95,14 @@ const handleScheduledImportTrigger = async (
 
   if (claimResult.rows.length === 0) {
     logger.info(
-      { scheduledImportId: target.id, name: target.name },
+      { scheduledIngestId: target.id, name: target.name },
       "Webhook trigger skipped - import already running"
     );
     return { message: "Import already running, skipped", status: "skipped" };
   }
 
   try {
-    const { jobId } = await queueWebhookImport(payload, target.record as unknown as ScheduledImport);
+    const { jobId } = await queueWebhookImport(payload, target.record as unknown as ScheduledIngest);
     return { message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() };
   } catch {
     throw new AppError(500, "Failed to queue import job");
