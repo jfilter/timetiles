@@ -2,13 +2,11 @@
  * Typed output interfaces for Payload CMS workflow tasks.
  *
  * Each task handler returns `{ output: TaskOutput }` where the output
- * follows these contracts. Workflow handlers check `success` to decide
- * whether to continue or skip a sheet.
+ * follows these contracts. The error model uses throw/needsReview:
  *
- * Rules:
- * - `success: true` + data → workflow continues to next task
- * - `success: false` + reason → workflow handler decides (skip sheet, stop)
- * - Task throws → Payload retries (transient errors only)
+ * - Task returns data -> workflow continues to next task
+ * - Task returns `{ needsReview: true }` -> workflow handler pauses for review
+ * - Task throws -> Payload retries (transient errors), then onFail marks FAILED
  *
  * @module
  * @category Jobs
@@ -24,7 +22,6 @@ export interface SheetInfo {
 
 /** Output from `dataset-detection` task. */
 export interface DatasetDetectionOutput {
-  success: boolean;
   sheetsDetected?: number;
   ingestJobsCreated?: number;
   sheets?: SheetInfo[];
@@ -33,7 +30,7 @@ export interface DatasetDetectionOutput {
 
 /** Output from `analyze-duplicates` task. */
 export interface AnalyzeDuplicatesOutput {
-  success: boolean;
+  needsReview?: boolean;
   totalRows?: number;
   uniqueRows?: number;
   internalDuplicates?: number;
@@ -44,7 +41,6 @@ export interface AnalyzeDuplicatesOutput {
 
 /** Output from `detect-schema` task. */
 export interface DetectSchemaOutput {
-  success: boolean;
   fieldCount?: number;
   totalRowsProcessed?: number;
   reason?: string;
@@ -64,7 +60,6 @@ export interface ValidateSchemaOutput {
 
 /** Output from `create-schema-version` task. */
 export interface CreateSchemaVersionOutput {
-  success: boolean;
   schemaVersionId?: number | string;
   versionNumber?: number;
   skipped?: boolean;
@@ -73,7 +68,7 @@ export interface CreateSchemaVersionOutput {
 
 /** Output from `geocode-batch` task. */
 export interface GeocodeBatchOutput {
-  success: boolean;
+  needsReview?: boolean;
   totalRows?: number;
   uniqueLocations?: number;
   geocoded?: number;
@@ -84,7 +79,6 @@ export interface GeocodeBatchOutput {
 
 /** Output from `create-events-batch` task. */
 export interface CreateEventsOutput {
-  success: boolean;
   eventCount?: number;
   duplicatesSkipped?: number;
   errors?: number;
@@ -93,14 +87,12 @@ export interface CreateEventsOutput {
 
 /** Output from `url-fetch` task. */
 export interface UrlFetchOutput {
-  success: boolean;
   ingestFileId?: number | string;
   reason?: string;
 }
 
 /** Output from `scraper-execution` task. */
 export interface ScraperExecutionOutput {
-  success: boolean;
   ingestFileId?: number | string;
   hasOutput?: boolean;
   reason?: string;

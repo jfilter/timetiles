@@ -111,10 +111,8 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — includes success, versionNumber, schemaVersionId
-      expect(result).toEqual({
-        output: { success: true, versionNumber: undefined, schemaVersionId: "schema-version-101" },
-      });
+      // Verify result — includes versionNumber, schemaVersionId
+      expect(result).toEqual({ output: { versionNumber: undefined, schemaVersionId: "schema-version-101" } });
 
       // Verify payload calls
       expect(mockPayload.findByID).toHaveBeenCalledTimes(2);
@@ -162,8 +160,8 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — skip path includes success: true
-      expect(result).toEqual({ output: { success: true, skipped: true } });
+      // Verify result — skip path
+      expect(result).toEqual({ output: { skipped: true } });
 
       // Verify no schema version creation was attempted
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
@@ -194,8 +192,8 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — skip path includes success: true
-      expect(result).toEqual({ output: { success: true, skipped: true } });
+      // Verify result — skip path
+      expect(result).toEqual({ output: { skipped: true } });
 
       // Verify no schema version creation was attempted
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
@@ -228,10 +226,8 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — includes success, versionNumber, schemaVersionId
-      expect(result).toEqual({
-        output: { success: true, versionNumber: undefined, schemaVersionId: "schema-version-101" },
-      });
+      // Verify result — includes versionNumber, schemaVersionId
+      expect(result).toEqual({ output: { versionNumber: undefined, schemaVersionId: "schema-version-101" } });
 
       // Verify only one findByID call (no separate dataset fetch needed)
       expect(mockPayload.findByID).toHaveBeenCalledTimes(1);

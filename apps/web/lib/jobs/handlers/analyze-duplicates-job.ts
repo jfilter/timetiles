@@ -26,6 +26,12 @@ import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
+import {
+  checkQuotaForSheet,
+  REVIEW_REASONS,
+  setNeedsReview,
+  shouldReviewHighDuplicates,
+} from "../workflows/review-checks";
 
 interface DuplicateAnalysisResult {
   internalDuplicates: Array<{ rowNumber: number; uniqueId: string; firstOccurrence?: number; count?: number }>;
@@ -233,7 +239,7 @@ const handleDisabledDedup = async (
   job: IngestJob,
   dataset: Dataset,
   logger: ReturnType<typeof createJobLogger>
-): Promise<{ output: { success: boolean; skipped: boolean } } | null> => {
+): Promise<{ output: { skipped: boolean } } | null> => {
   if (dataset?.deduplicationConfig?.enabled) {
     return null;
   }
@@ -245,7 +251,7 @@ const handleDisabledDedup = async (
   const shouldSkip = await skipDeduplication(payload, ingestJobId, fileTotalRows, dataset, logger);
   if (shouldSkip) {
     await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
-    return { output: { success: true, skipped: true } };
+    return { output: { skipped: true } };
   }
 
   return null;
@@ -255,11 +261,11 @@ export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
   retries: 1,
   outputSchema: [
-    { name: "success", type: "checkbox" as const, required: true },
     { name: "totalRows", type: "number" as const },
     { name: "uniqueRows", type: "number" as const },
     { name: "internalDuplicates", type: "number" as const },
     { name: "externalDuplicates", type: "number" as const },
+    { name: "needsReview", type: "checkbox" as const },
     { name: "skipped", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
@@ -319,9 +325,42 @@ export const analyzeDuplicatesJob = {
         externalDuplicates: results.externalDuplicates.length,
       });
 
+      // Review check: high duplicate rate (>80%)
+      const dupCheck = shouldReviewHighDuplicates(results.totalRows, results.uniqueRows);
+      if (dupCheck.needsReview) {
+        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_DUPLICATE_RATE, {
+          totalRows: results.totalRows,
+          uniqueRows: results.uniqueRows,
+          duplicateRate: dupCheck.duplicateRate,
+        });
+        return {
+          output: {
+            needsReview: true,
+            totalRows: results.totalRows,
+            uniqueRows: results.uniqueRows,
+            internalDuplicates: results.internalDuplicates.length,
+            externalDuplicates: results.externalDuplicates.length,
+          },
+        };
+      }
+
+      // Review check: quota
+      const quotaCheck = await checkQuotaForSheet(payload, ingestJobId, results.uniqueRows);
+      if (!quotaCheck.allowed) {
+        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.QUOTA_EXCEEDED, quotaCheck);
+        return {
+          output: {
+            needsReview: true,
+            totalRows: results.totalRows,
+            uniqueRows: results.uniqueRows,
+            internalDuplicates: results.internalDuplicates.length,
+            externalDuplicates: results.externalDuplicates.length,
+          },
+        };
+      }
+
       return {
         output: {
-          success: true,
           totalRows: results.totalRows,
           uniqueRows: results.uniqueRows,
           internalDuplicates: results.internalDuplicates.length,

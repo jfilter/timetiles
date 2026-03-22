@@ -28,6 +28,7 @@ import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
+import { REVIEW_REASONS, setNeedsReview, shouldReviewGeocodingPartial } from "../workflows/review-checks";
 
 /**
  * Stream through file batches to extract unique location values without loading all rows into memory.
@@ -141,11 +142,11 @@ export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
   retries: 3,
   outputSchema: [
-    { name: "success", type: "checkbox" as const, required: true },
     { name: "geocoded", type: "number" as const },
     { name: "failed", type: "number" as const },
     { name: "skipped", type: "number" as const },
     { name: "uniqueLocations", type: "number" as const },
+    { name: "needsReview", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
   onFail: async (args: TaskCallbackArgs) => {
@@ -202,7 +203,7 @@ export const geocodeBatchJob = {
       if (!geocodingCandidate?.locationField) {
         logger.info("No location field detected, moving to event creation");
         await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
-        return { output: { success: true, skipped: true } };
+        return { output: { skipped: true } };
       }
 
       const filePath = getIngestFilePath(ingestFile.filename ?? "");
@@ -265,14 +266,19 @@ export const geocodeBatchJob = {
         failureCount,
       });
 
-      return {
-        output: {
-          success: true,
+      // Review check: geocoding partial failure (>50% failed)
+      const geoCheck = shouldReviewGeocodingPartial(successCount, failureCount);
+      if (geoCheck.needsReview) {
+        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.GEOCODING_PARTIAL, {
           geocoded: successCount,
           failed: failureCount,
-          skipped: 0,
-          uniqueLocations: uniqueLocations.size,
-        },
+          failRate: geoCheck.failRate,
+        });
+        return { output: { needsReview: true, geocoded: successCount, failed: failureCount } };
+      }
+
+      return {
+        output: { geocoded: successCount, failed: failureCount, skipped: 0, uniqueLocations: uniqueLocations.size },
       };
     } catch (error) {
       logError(error, "Unique location geocoding failed", { ingestJobId });

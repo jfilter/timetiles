@@ -20,19 +20,13 @@ import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
-  success: true;
   ingestFileId: string | number;
   filename: string;
   contentType: string;
   fileSize: number | undefined;
 }
 
-interface UrlFetchFailureOutput {
-  success: false;
-  error: string;
-}
-
-type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
+type _UrlFetchOutput = UrlFetchSuccessOutput;
 
 // Mock dependencies
 vi.mock("fs/promises", () => {
@@ -174,7 +168,6 @@ describe.sequential("urlFetchJob", () => {
       // Verify result
       expect(result).toEqual({
         output: {
-          success: true,
           ingestFileId: "import-123",
           filename: expect.stringContaining(".csv"),
           contentHash: expect.any(String),
@@ -320,21 +313,18 @@ describe.sequential("urlFetchJob", () => {
 
       (globalThis.fetch as any).mockRejectedValue(new Error("HTTP 404: Not Found"));
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: "scheduled-123",
-          sourceUrl: "https://example.com/nonexistent",
-          catalogId: "catalog-123",
-          originalName: "Test Import",
-        },
-        job: mockJob,
-        req: mockReq,
-      });
-
-      // Should return failure output instead of throwing
-      expect(result.output.success).toBe(false);
-      const failureOutput = result.output as UrlFetchFailureOutput;
-      expect(failureOutput.error).toBe("HTTP 404: Not Found");
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://example.com/nonexistent",
+            catalogId: "catalog-123",
+            originalName: "Test Import",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow("HTTP 404: Not Found");
     });
 
     it("should handle file size limits", async () => {
@@ -350,21 +340,18 @@ describe.sequential("urlFetchJob", () => {
 
       (globalThis.fetch as any).mockRejectedValue(new Error(`File too large: ${largeSize} bytes`));
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: "scheduled-123",
-          sourceUrl: "https://example.com/large-file.csv",
-          catalogId: "catalog-123",
-          originalName: "Large File",
-        },
-        job: mockJob,
-        req: mockReq,
-      });
-
-      // Should return failure output instead of throwing
-      expect(result.output.success).toBe(false);
-      const failureOutput = result.output as UrlFetchFailureOutput;
-      expect(failureOutput.error).toBeDefined();
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://example.com/large-file.csv",
+            catalogId: "catalog-123",
+            originalName: "Large File",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow();
     });
 
     it("should handle timeouts", async () => {
@@ -379,21 +366,18 @@ describe.sequential("urlFetchJob", () => {
       // Mock a timeout error
       (globalThis.fetch as any).mockRejectedValue(new Error("Request timeout after 30000ms"));
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: "scheduled-123",
-          sourceUrl: "https://slow-server.com/data",
-          catalogId: "catalog-123",
-          originalName: "Slow Import",
-        },
-        job: mockJob,
-        req: mockReq,
-      });
-
-      // Should return failure output instead of throwing
-      expect(result.output.success).toBe(false);
-      const failureOutput = result.output as UrlFetchFailureOutput;
-      expect(failureOutput.error).toMatch(/timeout/i);
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://slow-server.com/data",
+            catalogId: "catalog-123",
+            originalName: "Slow Import",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow(/timeout/i);
     });
 
     it("should handle missing source URL", async () => {
@@ -428,7 +412,7 @@ describe.sequential("urlFetchJob", () => {
         req: mockReq,
       });
 
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
       expect(mockPayload.create).toHaveBeenCalled();
       const createCall = mockPayload.create.mock.calls[0][0];
       expect(createCall.collection).toBe("ingest-files");
@@ -454,21 +438,18 @@ describe.sequential("urlFetchJob", () => {
       };
       (globalThis.fetch as any).mockResolvedValue(errorResponse);
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: "scheduled-123",
-          sourceUrl: "https://example.com/error",
-          catalogId: "catalog-123",
-          originalName: "Failed Import",
-        },
-        job: mockJob,
-        req: mockReq,
-      });
-
-      // Should return failure output instead of throwing
-      expect(result.output.success).toBe(false);
-      const failureOutput = result.output as UrlFetchFailureOutput;
-      expect(failureOutput.error).toBe("HTTP 500");
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://example.com/error",
+            catalogId: "catalog-123",
+            originalName: "Failed Import",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow("HTTP 500");
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "scheduled-ingests",
@@ -530,11 +511,8 @@ describe.sequential("urlFetchJob", () => {
       expect(mockPayload.create).not.toHaveBeenCalled();
 
       // Result should indicate success with existing file ID
-      expect(result.output.success).toBe(true);
-      if (result.output.success === true) {
-        const successOutput = result.output as UrlFetchSuccessOutput;
-        expect(successOutput.ingestFileId).toBe("existing-ingest-file-999");
-      }
+      const successOutput = result.output as UrlFetchSuccessOutput;
+      expect(successOutput.ingestFileId).toBe("existing-ingest-file-999");
     });
 
     it("should skip duplicate checking when configured", async () => {
@@ -636,21 +614,18 @@ describe.sequential("urlFetchJob", () => {
 
       (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: "scheduled-123",
-          sourceUrl: "https://example.com/large.csv",
-          catalogId: "catalog-123",
-          originalName: "Large File",
-        },
-        job: mockJob,
-        req: mockReq,
-      });
-
-      // Should return failure output instead of throwing
-      expect(result.output.success).toBe(false);
-      const failureOutput = result.output as UrlFetchFailureOutput;
-      expect(failureOutput.error).toBeDefined();
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://example.com/large.csv",
+            catalogId: "catalog-123",
+            originalName: "Large File",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow();
     });
 
     it("should handle retry logic", async () => {
@@ -684,7 +659,7 @@ describe.sequential("urlFetchJob", () => {
 
       // With default retry config, it should retry and eventually succeed
       expect(callCount).toBeGreaterThan(1);
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
     });
 
     it("should respect timeout configuration", async () => {
@@ -700,21 +675,18 @@ describe.sequential("urlFetchJob", () => {
       // Mock a timeout error directly
       (globalThis.fetch as any).mockRejectedValue(new Error("Request timeout after 6ms"));
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: "scheduled-123",
-          sourceUrl: "https://slow-server.com/data",
-          catalogId: "catalog-123",
-          originalName: "Timeout Test",
-        },
-        job: mockJob,
-        req: mockReq,
-      });
-
-      // Should return failure output instead of throwing
-      expect(result.output.success).toBe(false);
-      const failureOutput = result.output as UrlFetchFailureOutput;
-      expect(failureOutput.error).toMatch(/timeout/i);
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://slow-server.com/data",
+            catalogId: "catalog-123",
+            originalName: "Timeout Test",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow(/timeout/i);
     });
 
     it("should apply custom headers", async () => {

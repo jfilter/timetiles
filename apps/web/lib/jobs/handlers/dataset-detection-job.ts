@@ -289,7 +289,6 @@ export const datasetDetectionJob = {
   slug: JOB_TYPES.DATASET_DETECTION,
   retries: 1,
   outputSchema: [
-    { name: "success", type: "checkbox" as const, required: true },
     { name: "sheetsDetected", type: "number" as const },
     { name: "ingestJobsCreated", type: "number" as const },
     { name: "sheets", type: "json" as const },
@@ -390,7 +389,6 @@ export const datasetDetectionJob = {
 
       return {
         output: {
-          success: true,
           sheetsDetected: sheets.length,
           ingestJobsCreated: createdJobs.length,
           sheets: createdJobs.map((j, i) => ({
@@ -410,7 +408,8 @@ export const datasetDetectionJob = {
         data: { status: "failed", errorLog: error instanceof Error ? error.message : "Unknown error" },
       });
 
-      return { output: { success: false, reason: error instanceof Error ? error.message : "Unknown error" } };
+      // Throw — Payload marks workflow as failed; onFail updates ingest file status
+      throw error;
     }
   },
 };

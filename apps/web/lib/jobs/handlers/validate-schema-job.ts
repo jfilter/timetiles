@@ -325,7 +325,7 @@ export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
   retries: 1,
   outputSchema: [
-    { name: "success", type: "checkbox" as const, required: true },
+    { name: "needsReview", type: "checkbox" as const },
     { name: "requiresApproval", type: "checkbox" as const },
     { name: "hasBreakingChanges", type: "checkbox" as const },
     { name: "hasChanges", type: "checkbox" as const },

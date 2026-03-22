@@ -16,9 +16,9 @@ const handler = ingestProcessWorkflow.handler as WorkflowHandler<"ingest-process
 
 /** Creates a mock tasks object with all task handlers as vi.fn(). */
 const createMockTasks = () => ({
-  "create-schema-version": vi.fn().mockResolvedValue({ success: true, schemaVersionId: 10, versionNumber: 3 }),
-  "geocode-batch": vi.fn().mockResolvedValue({ success: true, geocoded: 50, failed: 0 }),
-  "create-events": vi.fn().mockResolvedValue({ success: true, eventCount: 50 }),
+  "create-schema-version": vi.fn().mockResolvedValue({ schemaVersionId: 10, versionNumber: 3 }),
+  "geocode-batch": vi.fn().mockResolvedValue({ geocoded: 50, failed: 0 }),
+  "create-events": vi.fn().mockResolvedValue({ eventCount: 50 }),
   "dataset-detection": vi.fn(),
   "analyze-duplicates": vi.fn(),
   "detect-schema": vi.fn(),
@@ -114,8 +114,8 @@ describe.sequential("ingestProcessWorkflow", () => {
   // ── 6. resumeFrom: "detect-schema" runs all 5 tasks ────────────────
 
   it('resumeFrom: "detect-schema" runs all 5 tasks', async () => {
-    tasks["detect-schema"].mockResolvedValueOnce({ success: true });
-    tasks["validate-schema"].mockResolvedValueOnce({ success: true });
+    tasks["detect-schema"].mockResolvedValueOnce({});
+    tasks["validate-schema"].mockResolvedValueOnce({});
 
     mockJob.input = { ingestJobId: "123", resumeFrom: "detect-schema" };
 

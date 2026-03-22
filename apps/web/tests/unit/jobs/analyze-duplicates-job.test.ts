@@ -45,6 +45,19 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
+// Mock review checks — default: no review needed, quota allowed
+vi.mock("@/lib/jobs/workflows/review-checks", () => ({
+  REVIEW_REASONS: {
+    SCHEMA_DRIFT: "schema-drift",
+    QUOTA_EXCEEDED: "quota-exceeded",
+    HIGH_DUPLICATE_RATE: "high-duplicates",
+    GEOCODING_PARTIAL: "geocoding-partial",
+  },
+  shouldReviewHighDuplicates: vi.fn().mockReturnValue({ needsReview: false }),
+  checkQuotaForSheet: vi.fn().mockResolvedValue({ allowed: true }),
+  setNeedsReview: vi.fn().mockResolvedValue(undefined),
+}));
+
 /** Helper to create a mock async iterable from arrays of batches. */
 const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
   [Symbol.asyncIterator]: () => {
@@ -157,7 +170,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({ output: { success: true, skipped: true } });
+      expect(result).toEqual({ output: { skipped: true } });
 
       // Verify payload calls - includes refetch after progress initialization
       expect(mockPayload.findByID).toHaveBeenCalledTimes(4);
@@ -236,9 +249,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({
-        output: { success: true, totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 },
-      });
+      expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
 
       // Verify getFileRowCount was NOT called (dedup enabled skips pre-scan)
       expect(mocks.getFileRowCount).not.toHaveBeenCalled();
@@ -314,7 +325,6 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify result
       expect(result).toEqual({
         output: {
-          success: true,
           totalRows: 3,
           uniqueRows: 2, // uniqueIdMap.size = 2 (distinct unique IDs: id:1, id:2)
           internalDuplicates: 1,
@@ -373,7 +383,6 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify result
       expect(result).toEqual({
         output: {
-          success: true,
           totalRows: 2,
           uniqueRows: 1, // 2 unique IDs minus 1 external duplicate
           internalDuplicates: 0,
@@ -518,9 +527,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mocks.getFileRowCount).not.toHaveBeenCalled();
 
       // Verify totalRows was derived from streaming (3 rows processed)
-      expect(result).toEqual({
-        output: { success: true, totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 },
-      });
+      expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
     });
   });
 
@@ -558,9 +565,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       // Verify result for empty file
-      expect(result).toEqual({
-        output: { success: true, totalRows: 0, uniqueRows: 0, internalDuplicates: 0, externalDuplicates: 0 },
-      });
+      expect(result).toEqual({ output: { totalRows: 0, uniqueRows: 0, internalDuplicates: 0, externalDuplicates: 0 } });
 
       // Verify no external duplicate check was made (Drizzle select not called for empty file)
       expect(drizzleMock.select).not.toHaveBeenCalled();

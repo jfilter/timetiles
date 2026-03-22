@@ -152,7 +152,6 @@ const buildSuccessOutput = (
 ) => {
   return {
     output: {
-      success: true,
       ingestFileId,
       filename,
       contentHash,
@@ -162,10 +161,6 @@ const buildSuccessOutput = (
       ...(isDuplicate && { skippedReason: "Duplicate content detected" }),
     },
   };
-};
-
-const buildErrorOutput = (error: Error) => {
-  return { output: { success: false, error: error.message, errorDetails: { name: error.name, stack: error.stack } } };
 };
 
 // Helper to load user from userId (which can be object or ID)
@@ -296,7 +291,7 @@ export const urlFetchJob = {
       // Abort if scheduled ingest was requested but is disabled or not found
       if (input.scheduledIngestId && !scheduledIngest) {
         logger.info("scheduled ingest disabled or not found, aborting", { scheduledIngestId: input.scheduledIngestId });
-        return { output: { success: false, error: "scheduled ingest is disabled or not found" } };
+        throw new Error("scheduled ingest is disabled or not found");
       }
 
       // Resolve userId from input or scheduled ingest's creator
@@ -353,7 +348,8 @@ export const urlFetchJob = {
         await updateScheduledImportFailure(payload, scheduledIngest, errorObj);
       }
 
-      return buildErrorOutput(errorObj);
+      // Throw — Payload marks workflow as failed
+      throw error;
     }
   },
 };

@@ -5677,7 +5677,6 @@ export interface CollectionsWidget {
 export interface TaskDatasetDetection {
   input?: unknown;
   output: {
-    success: boolean;
     sheetsDetected?: number | null;
     ingestJobsCreated?: number | null;
     sheets?:
@@ -5699,7 +5698,6 @@ export interface TaskDatasetDetection {
 export interface TaskDetectSchema {
   input?: unknown;
   output: {
-    success: boolean;
     fieldCount?: number | null;
     totalRowsProcessed?: number | null;
     reason?: string | null;
@@ -5712,11 +5710,11 @@ export interface TaskDetectSchema {
 export interface TaskAnalyzeDuplicates {
   input?: unknown;
   output: {
-    success: boolean;
     totalRows?: number | null;
     uniqueRows?: number | null;
     internalDuplicates?: number | null;
     externalDuplicates?: number | null;
+    needsReview?: boolean | null;
     skipped?: boolean | null;
     reason?: string | null;
   };
@@ -5728,7 +5726,7 @@ export interface TaskAnalyzeDuplicates {
 export interface TaskValidateSchema {
   input?: unknown;
   output: {
-    success: boolean;
+    needsReview?: boolean | null;
     requiresApproval?: boolean | null;
     hasBreakingChanges?: boolean | null;
     hasChanges?: boolean | null;
@@ -5745,7 +5743,6 @@ export interface TaskValidateSchema {
 export interface TaskCreateSchemaVersion {
   input?: unknown;
   output: {
-    success: boolean;
     versionNumber?: number | null;
     skipped?: boolean | null;
     reason?: string | null;
@@ -5758,11 +5755,11 @@ export interface TaskCreateSchemaVersion {
 export interface TaskGeocodeBatch {
   input?: unknown;
   output: {
-    success: boolean;
     geocoded?: number | null;
     failed?: number | null;
     skipped?: number | null;
     uniqueLocations?: number | null;
+    needsReview?: boolean | null;
     reason?: string | null;
   };
 }
@@ -5773,7 +5770,6 @@ export interface TaskGeocodeBatch {
 export interface TaskCreateEvents {
   input?: unknown;
   output: {
-    success: boolean;
     eventCount?: number | null;
     duplicatesSkipped?: number | null;
     reason?: string | null;

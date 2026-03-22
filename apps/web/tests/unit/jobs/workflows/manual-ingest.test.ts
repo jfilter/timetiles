@@ -22,7 +22,6 @@ import { processSheets } from "@/lib/jobs/workflows/process-sheets";
 const createMockTasks = () => ({
   // Payload's tasks[] returns the output directly (not wrapped in { output })
   "dataset-detection": vi.fn().mockResolvedValue({
-    success: true,
     sheetsDetected: 2,
     ingestJobsCreated: 2,
     sheets: [
@@ -73,10 +72,12 @@ describe.sequential("manualIngestWorkflow", () => {
 
   // ── 2. Detection fails — no further tasks ────────────────────────────
 
-  it("should stop when detection returns success: false", async () => {
-    tasks["dataset-detection"].mockResolvedValueOnce({ success: false, reason: "corrupt file" });
+  it("should stop when detection throws", async () => {
+    tasks["dataset-detection"].mockRejectedValueOnce(new Error("corrupt file"));
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any })
+    ).rejects.toThrow("corrupt file");
 
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
     expect(processSheets).not.toHaveBeenCalled();
@@ -85,7 +86,7 @@ describe.sequential("manualIngestWorkflow", () => {
   // ── 3. Detection returns empty sheets array — no further tasks ────────
 
   it("should stop when detection returns empty sheets array", async () => {
-    tasks["dataset-detection"].mockResolvedValueOnce({ success: true, sheetsDetected: 0, sheets: [] });
+    tasks["dataset-detection"].mockResolvedValueOnce({ sheetsDetected: 0, sheets: [] });
 
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
@@ -96,7 +97,7 @@ describe.sequential("manualIngestWorkflow", () => {
   // ── 4. Detection returns no sheets property — no further tasks ────────
 
   it("should stop when detection output has no sheets property", async () => {
-    tasks["dataset-detection"].mockResolvedValueOnce({ success: true, sheetsDetected: 0 });
+    tasks["dataset-detection"].mockResolvedValueOnce({ sheetsDetected: 0 });
 
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 

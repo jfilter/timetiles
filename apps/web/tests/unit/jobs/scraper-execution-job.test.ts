@@ -137,10 +137,9 @@ describe.sequential("scraperExecutionJob", () => {
     (isFeatureEnabled as any).mockResolvedValue(false);
 
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
-    const result = await scraperExecutionJob.handler(context as any);
 
-    expect(result.output).toEqual(
-      expect.objectContaining({ success: false, skipped: true, reason: "Feature flag enableScrapers is disabled" })
+    await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow(
+      "Feature flag enableScrapers is disabled"
     );
 
     // Should not load the scraper or call the runner

@@ -32,7 +32,6 @@ import type { TestServer } from "@/tests/setup/integration/http-server";
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
-  success: true;
   ingestFileId: string | number;
   filename: string;
   fileSize: number | undefined;
@@ -42,13 +41,20 @@ interface UrlFetchSuccessOutput {
   skippedReason?: string;
 }
 
-interface UrlFetchFailureOutput {
-  success: false;
-  error: string;
-}
+type _UrlFetchOutput = UrlFetchSuccessOutput;
 
-type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
-type UrlFetchErrorOutput = UrlFetchFailureOutput;
+/**
+ * Helper: call urlFetchJob.handler and expect it to throw.
+ * Returns the error message for further assertions.
+ */
+const expectHandlerToThrow = async (handlerArgs: Parameters<typeof urlFetchJob.handler>[0]): Promise<string> => {
+  try {
+    await urlFetchJob.handler(handlerArgs);
+    throw new Error("Expected handler to throw but it did not");
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+};
 
 describe.sequential("Network Error Handling Tests", () => {
   const collectionsToReset = ["scheduled-ingests", "ingest-files", "payload-jobs", "user-usage"];
@@ -145,7 +151,7 @@ describe.sequential("Network Error Handling Tests", () => {
       );
 
       // Execute the job
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-1" },
         req: { payload },
         input: {
@@ -158,10 +164,8 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
-        expect(failureOutput.error).toContain("404");
+      {
+        expect(errorMsg).toContain("404");
       }
     });
   });
@@ -176,7 +180,7 @@ describe.sequential("Network Error Handling Tests", () => {
       );
 
       // Execute the job - real DNS will fail for non-existent domain
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-2" },
         req: { payload },
         input: {
@@ -189,10 +193,8 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
-        expect(failureOutput.error).toMatch(/ENOTFOUND|getaddrinfo|network|fetch failed/i);
+      {
+        expect(errorMsg).toMatch(/ENOTFOUND|getaddrinfo|network|fetch failed/i);
       }
     });
   });
@@ -207,7 +209,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Execute the job - real connection will be refused
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-3" },
         req: { payload },
         input: {
@@ -220,10 +222,8 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
-        expect(failureOutput.error).toMatch(/ECONNREFUSED|connection refused|network|fetch failed/i);
+      {
+        expect(errorMsg).toMatch(/ECONNREFUSED|connection refused|network|fetch failed/i);
       }
     });
 
@@ -260,7 +260,7 @@ describe.sequential("Network Error Handling Tests", () => {
         );
 
         // Execute the job - should timeout quickly via the test override
-        const result = await urlFetchJob.handler({
+        const errorMsg = await expectHandlerToThrow({
           job: { id: "test-job-4" },
           req: { payload },
           input: {
@@ -274,10 +274,9 @@ describe.sequential("Network Error Handling Tests", () => {
         });
 
         // Should fail due to timeout
-        expect(result.output.success).toBe(false);
-        if (!result.output.success) {
-          const failureOutput = result.output as UrlFetchFailureOutput;
-          expect(failureOutput.error).toMatch(/abort|timeout|fetch failed/i);
+
+        {
+          expect(errorMsg).toMatch(/abort|timeout|fetch failed/i);
         }
       } finally {
         if (previousTestTimeout === undefined) {
@@ -300,7 +299,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Execute the job
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-5" },
         req: { payload },
         input: {
@@ -313,10 +312,8 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
-        expect(failureOutput.error).toContain("404");
+      {
+        expect(errorMsg).toContain("404");
       }
     });
 
@@ -334,7 +331,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Execute the job
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-6" },
         req: { payload },
         input: {
@@ -347,10 +344,8 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
-        expect(failureOutput.error).toContain("500");
+      {
+        expect(errorMsg).toContain("500");
       }
     });
 
@@ -374,7 +369,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Execute the job
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-7" },
         req: { payload },
         input: {
@@ -387,10 +382,8 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
-        expect(failureOutput.error).toContain("401");
+      {
+        expect(errorMsg).toContain("401");
       }
     });
   });
@@ -427,9 +420,9 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      // May succeed if the partial data is valid CSV, or fail if connection is detected as broken
+      // May succeed if the partial data is valid CSV, or throw if connection is detected as broken
       // The important thing is it doesn't hang or crash
-      expect(result.output).toBeDefined();
+      expect(result.output.ingestFileId).toBeDefined();
     });
   });
 
@@ -464,8 +457,8 @@ describe.sequential("Network Error Handling Tests", () => {
 
       // Handler currently accepts HTML and overrides content type to CSV
       // This is documented behavior
-      expect(result.output.success).toBe(true);
-      if (result.output.success) {
+      expect(result.output.ingestFileId).toBeDefined();
+      if (result.output.ingestFileId) {
         const successOutput = result.output as UrlFetchSuccessOutput;
         expect(successOutput.contentType).toBe("text/csv");
       }
@@ -485,8 +478,8 @@ describe.sequential("Network Error Handling Tests", () => {
         additionalData: { advancedConfig: { expectedContentType: "csv" } },
       });
 
-      // Execute the job
-      const result = await urlFetchJob.handler({
+      // Execute the job - should throw for binary data when expecting CSV
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-10" },
         req: { payload },
         input: {
@@ -499,14 +492,8 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      // Handler should reject binary data when expecting CSV
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const errorOutput = result.output as UrlFetchErrorOutput;
-        // Binary data causes parsing error when expecting CSV
-        expect(errorOutput.error).toBeDefined();
-        expect(typeof errorOutput.error).toBe("string");
-      }
+      // Binary data causes parsing error when expecting CSV
+      expect(typeof errorMsg).toBe("string");
     });
   });
 
@@ -531,7 +518,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Execute the job
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-11" },
         req: { payload },
         input: {
@@ -545,10 +532,9 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Handler should reject files exceeding max size limit
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
-        expect(failureOutput.error).toContain("too large");
+
+      {
+        expect(errorMsg).toContain("too large");
       }
     });
   });
@@ -587,7 +573,7 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
       expect(requestCount).toBe(2);
     });
 
@@ -607,7 +593,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Execute the job - should fail due to too many redirects
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-13" },
         req: { payload },
         input: {
@@ -621,11 +607,10 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       // Fetch API has built-in redirect limit (typically 20)
-      expect(result.output.success).toBe(false);
-      if (!result.output.success) {
-        const failureOutput = result.output as UrlFetchFailureOutput;
+
+      {
         // The actual error message varies by Node version
-        expect(failureOutput.error).toMatch(/redirect|fetch failed/i);
+        expect(errorMsg).toMatch(/redirect|fetch failed/i);
       }
     });
   });
@@ -654,8 +639,8 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
-      if (result.output.success) {
+      expect(result.output.ingestFileId).toBeDefined();
+      if (result.output.ingestFileId) {
         const successOutput = result.output as UrlFetchSuccessOutput;
         expect(successOutput.ingestFileId).toBeDefined();
         expect(successOutput.contentType).toBe("text/csv");

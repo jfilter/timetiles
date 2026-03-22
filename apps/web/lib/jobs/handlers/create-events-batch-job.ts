@@ -325,7 +325,6 @@ export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
   retries: 1,
   outputSchema: [
-    { name: "success", type: "checkbox" as const, required: true },
     { name: "eventCount", type: "number" as const },
     { name: "duplicatesSkipped", type: "number" as const },
     { name: "reason", type: "text" as const },
@@ -469,7 +468,7 @@ export const createEventsBatchJob = {
         totalErrors,
       });
 
-      return { output: { success: true, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
+      return { output: { eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
     } catch (error) {
       logError(error, "Event creation failed", { ingestJobId });
       cleanupOnError(filePath, sheetIndex);

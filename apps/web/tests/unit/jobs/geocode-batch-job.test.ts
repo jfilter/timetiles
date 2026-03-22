@@ -70,6 +70,18 @@ vi.mock("@/lib/ingest/file-readers", () => ({
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
+// Mock review checks — default: no review needed
+vi.mock("@/lib/jobs/workflows/review-checks", () => ({
+  REVIEW_REASONS: {
+    SCHEMA_DRIFT: "schema-drift",
+    QUOTA_EXCEEDED: "quota-exceeded",
+    HIGH_DUPLICATE_RATE: "high-duplicates",
+    GEOCODING_PARTIAL: "geocoding-partial",
+  },
+  shouldReviewGeocodingPartial: vi.fn().mockReturnValue({ needsReview: false }),
+  setNeedsReview: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Don't mock @/lib/types/geocoding - use real implementation
 
 /** Helper to mock streamBatchesFromFile as an async generator yielding one batch. */
@@ -162,7 +174,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       });
 
       // Should return correct output
-      expect(result.output).toEqual({ success: true, geocoded: 2, failed: 0, skipped: 0, uniqueLocations: 2 });
+      expect(result.output).toEqual({ geocoded: 2, failed: 0, skipped: 0, uniqueLocations: 2 });
     });
 
     it("should skip rows without location values", async () => {
@@ -192,7 +204,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
       expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
-      expect(result.output).toEqual({ success: true, geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
+      expect(result.output).toEqual({ geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
     });
 
     it("should handle geocoding failures gracefully", async () => {
@@ -220,7 +232,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should geocode both, but only one succeeds
       expect(mocks.geocode).toHaveBeenCalledTimes(2);
 
-      expect(result.output).toEqual({ success: true, geocoded: 1, failed: 1, skipped: 0, uniqueLocations: 2 });
+      expect(result.output).toEqual({ geocoded: 1, failed: 1, skipped: 0, uniqueLocations: 2 });
 
       // Should still store the successful result
       expect(mockPayload.update).toHaveBeenCalledWith(
@@ -259,7 +271,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         data: { stage: "geocode-batch" },
       });
 
-      expect(result.output).toEqual({ success: true, skipped: true });
+      expect(result.output).toEqual({ skipped: true });
     });
 
     it("should handle empty file gracefully", async () => {
@@ -282,7 +294,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         data: { geocodingResults: {} },
       });
 
-      expect(result.output).toEqual({ success: true, geocoded: 0, failed: 0, skipped: 0, uniqueLocations: 0 });
+      expect(result.output).toEqual({ geocoded: 0, failed: 0, skipped: 0, uniqueLocations: 0 });
     });
 
     it("should trim whitespace from locations", async () => {
@@ -309,7 +321,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
       expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
-      expect(result.output).toEqual({ success: true, geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
+      expect(result.output).toEqual({ geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
     });
   });
 
@@ -413,7 +425,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
       expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
-      expect(result.output).toEqual({ success: true, geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
+      expect(result.output).toEqual({ geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
     });
 
     it("should fail the job when all geocoding fails", async () => {
@@ -466,7 +478,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should geocode exactly 50 unique locations, not 100
       expect(mocks.geocode).toHaveBeenCalledTimes(50);
 
-      expect(result.output).toEqual({ success: true, geocoded: 50, failed: 0, skipped: 0, uniqueLocations: 50 });
+      expect(result.output).toEqual({ geocoded: 50, failed: 0, skipped: 0, uniqueLocations: 50 });
     });
   });
 });

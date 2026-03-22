@@ -292,7 +292,6 @@ export const schemaDetectionJob = {
   slug: JOB_TYPES.DETECT_SCHEMA,
   retries: 1,
   outputSchema: [
-    { name: "success", type: "checkbox" as const, required: true },
     { name: "fieldCount", type: "number" as const },
     { name: "totalRowsProcessed", type: "number" as const },
     { name: "reason", type: "text" as const },
@@ -396,7 +395,7 @@ export const schemaDetectionJob = {
         totalRowsProcessed,
       });
 
-      return { output: { success: true, totalBatches: batchNumber, totalRowsProcessed } };
+      return { output: { totalBatches: batchNumber, totalRowsProcessed } };
     } catch (error) {
       logError(error, "Schema detection failed", { ingestJobId });
 

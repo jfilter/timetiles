@@ -160,7 +160,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result — new output format
-      expect(result).toEqual({ output: { success: true, totalBatches: 1, totalRowsProcessed: 3 } });
+      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 3 } });
 
       // Verify streaming was used
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith(expect.stringContaining("test.csv"), {
@@ -258,7 +258,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({ output: { success: true, totalBatches: 1, totalRowsProcessed: 2 } });
+      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 2 } });
 
       // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();
@@ -319,7 +319,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result shows both batches
-      expect(result).toEqual({ output: { success: true, totalBatches: 2, totalRowsProcessed: 5 } });
+      expect(result).toEqual({ output: { totalBatches: 2, totalRowsProcessed: 5 } });
 
       // Verify schema builder was called for each batch
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledTimes(2);
@@ -343,7 +343,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result indicates zero work
-      expect(result).toEqual({ output: { success: true, totalBatches: 0, totalRowsProcessed: 0 } });
+      expect(result).toEqual({ output: { totalBatches: 0, totalRowsProcessed: 0 } });
 
       // Verify stage tracking at handler start (workflow controls sequencing)
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -397,7 +397,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({ output: { success: true, totalBatches: 1, totalRowsProcessed: 3 } });
+      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 3 } });
 
       // Verify schema builder was called with filtered non-duplicate rows
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(
@@ -571,7 +571,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       const result = await schemaDetectionJob.handler(mockContext);
 
-      expect(result).toEqual({ output: { success: true, totalBatches: 1, totalRowsProcessed: 1 } });
+      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 1 } });
 
       // ProgressiveSchemaBuilder must be constructed with undefined (from null),
       // NOT with the persisted state — single-job pattern always starts fresh

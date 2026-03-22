@@ -30,11 +30,6 @@ export const manualIngestWorkflow: WorkflowConfig<"manual-ingest"> = {
       input: { ingestFileId },
     })) as DatasetDetectionOutput;
 
-    if (!detection.success) {
-      logger.info("manual-ingest: dataset detection failed", { ingestFileId, reason: detection.reason });
-      return;
-    }
-
     if (!detection.sheets?.length) {
       logger.info("manual-ingest: no sheets detected", { ingestFileId });
       return;

@@ -19,11 +19,10 @@ import { processSheets } from "@/lib/jobs/workflows/process-sheets";
 
 /** Creates a mock tasks object with all task handlers as vi.fn(). */
 const createMockTasks = () => ({
-  "url-fetch": vi.fn().mockResolvedValue({ success: true, ingestFileId: "fetched-file-1" }),
+  "url-fetch": vi.fn().mockResolvedValue({ ingestFileId: "fetched-file-1" }),
   "dataset-detection": vi
     .fn()
     .mockResolvedValue({
-      success: true,
       sheetsDetected: 1,
       ingestJobsCreated: 1,
       sheets: [{ index: 0, ingestJobId: "ij-1", name: "Sheet1", rowCount: 200 }],
@@ -94,10 +93,12 @@ describe.sequential("scheduledIngestWorkflow", () => {
 
   // ── 2. Fetch fails — no detection, no sheets ─────────────────────────
 
-  it("should stop when url-fetch returns success: false", async () => {
-    tasks["url-fetch"].mockResolvedValueOnce({ success: false, reason: "404 not found" });
+  it("should stop when url-fetch throws", async () => {
+    tasks["url-fetch"].mockRejectedValueOnce(new Error("404 not found"));
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any })
+    ).rejects.toThrow("404 not found");
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
@@ -107,7 +108,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
   // ── 3. Fetch returns no ingestFileId — no detection ───────────────────
 
   it("should stop when url-fetch returns no ingestFileId", async () => {
-    tasks["url-fetch"].mockResolvedValueOnce({ success: true });
+    tasks["url-fetch"].mockResolvedValueOnce({});
 
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
@@ -118,10 +119,12 @@ describe.sequential("scheduledIngestWorkflow", () => {
 
   // ── 4. Detection fails — no sheets processed ─────────────────────────
 
-  it("should stop when detection returns success: false", async () => {
-    tasks["dataset-detection"].mockResolvedValueOnce({ success: false, reason: "unsupported format" });
+  it("should stop when detection throws", async () => {
+    tasks["dataset-detection"].mockRejectedValueOnce(new Error("unsupported format"));
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any })
+    ).rejects.toThrow("unsupported format");
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
@@ -131,7 +134,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
   // ── 5. Detection returns empty sheets — no sheets processed ───────────
 
   it("should stop when detection returns empty sheets array", async () => {
-    tasks["dataset-detection"].mockResolvedValueOnce({ success: true, sheetsDetected: 0, sheets: [] });
+    tasks["dataset-detection"].mockResolvedValueOnce({ sheetsDetected: 0, sheets: [] });
 
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
@@ -152,7 +155,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
   // ── 7. Fetch returns numeric ingestFileId — converted to string ───────
 
   it("should convert numeric ingestFileId to string for detection", async () => {
-    tasks["url-fetch"].mockResolvedValueOnce({ success: true, ingestFileId: 12345 });
+    tasks["url-fetch"].mockResolvedValueOnce({ ingestFileId: 12345 });
 
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 

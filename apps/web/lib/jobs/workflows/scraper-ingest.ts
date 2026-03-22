@@ -33,10 +33,6 @@ export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
       input: { scraperId, triggeredBy },
     })) as ScraperExecutionOutput;
 
-    if (!scraperResult.success) {
-      logger.info("scraper-ingest: scraper execution failed", { scraperId, reason: scraperResult.reason });
-      return;
-    }
     if (!scraperResult.ingestFileId) {
       logger.info("scraper-ingest: no output file (autoImport disabled?)", { scraperId });
       return;
@@ -51,7 +47,7 @@ export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
       input: { ingestFileId: String(scraperResult.ingestFileId) },
     })) as DatasetDetectionOutput;
 
-    if (!detection.success || !detection.sheets?.length) {
+    if (!detection.sheets?.length) {
       logger.info("scraper-ingest: no sheets detected", { scraperId });
       return;
     }

@@ -45,10 +45,6 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
       },
     })) as UrlFetchOutput;
 
-    if (!fetchResult.success) {
-      logger.info("scheduled-ingest: URL fetch failed", { scheduledIngestId, reason: fetchResult.reason });
-      return;
-    }
     if (!fetchResult.ingestFileId) {
       logger.info("scheduled-ingest: no ingest file created", { scheduledIngestId });
       return;
@@ -63,7 +59,7 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
       input: { ingestFileId: String(fetchResult.ingestFileId) },
     })) as DatasetDetectionOutput;
 
-    if (!detection.success || !detection.sheets?.length) {
+    if (!detection.sheets?.length) {
       logger.info("scheduled-ingest: no sheets detected", { scheduledIngestId });
       return;
     }

@@ -54,7 +54,6 @@ export const createSchemaVersionJob = {
   slug: JOB_TYPES.CREATE_SCHEMA_VERSION,
   retries: 1,
   outputSchema: [
-    { name: "success", type: "checkbox" as const, required: true },
     { name: "versionNumber", type: "number" as const },
     { name: "skipped", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
@@ -113,7 +112,7 @@ export const createSchemaVersionJob = {
         logger.info("Skipping schema version creation", { ingestJobId, reason: skipCheck.reason });
         await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
-        return { output: { success: true, skipped: true } };
+        return { output: { skipped: true } };
       }
 
       // Get dataset and prepare schema version data
@@ -150,9 +149,7 @@ export const createSchemaVersionJob = {
       // Complete CREATE_SCHEMA_VERSION stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
-      return {
-        output: { success: true, versionNumber: schemaVersion.versionNumber, schemaVersionId: schemaVersion.id },
-      };
+      return { output: { versionNumber: schemaVersion.versionNumber, schemaVersionId: schemaVersion.id } };
     } catch (error) {
       logError(error, "Failed to create schema version", { ingestJobId });
 

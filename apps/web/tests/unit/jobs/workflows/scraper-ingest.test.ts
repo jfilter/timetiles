@@ -19,11 +19,10 @@ import { processSheets } from "@/lib/jobs/workflows/process-sheets";
 
 /** Creates a mock tasks object with all task handlers as vi.fn(). */
 const createMockTasks = () => ({
-  "scraper-execution": vi.fn().mockResolvedValue({ success: true, ingestFileId: "scraper-file-1", hasOutput: true }),
+  "scraper-execution": vi.fn().mockResolvedValue({ ingestFileId: "scraper-file-1", hasOutput: true }),
   "dataset-detection": vi
     .fn()
     .mockResolvedValue({
-      success: true,
       sheetsDetected: 1,
       ingestJobsCreated: 1,
       sheets: [{ index: 0, ingestJobId: "ij-scrape-1", name: "Sheet1", rowCount: 75 }],
@@ -75,10 +74,12 @@ describe.sequential("scraperIngestWorkflow", () => {
 
   // ── 2. Scraper fails — no detection ───────────────────────────────────
 
-  it("should stop when scraper-execution returns success: false", async () => {
-    tasks["scraper-execution"].mockResolvedValueOnce({ success: false, reason: "container timeout" });
+  it("should stop when scraper-execution throws", async () => {
+    tasks["scraper-execution"].mockRejectedValueOnce(new Error("container timeout"));
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any })
+    ).rejects.toThrow("container timeout");
 
     expect(tasks["scraper-execution"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
@@ -88,7 +89,7 @@ describe.sequential("scraperIngestWorkflow", () => {
   // ── 3. Scraper succeeds but no ingestFileId (no autoImport) ───────────
 
   it("should stop when scraper returns no ingestFileId", async () => {
-    tasks["scraper-execution"].mockResolvedValueOnce({ success: true, hasOutput: true });
+    tasks["scraper-execution"].mockResolvedValueOnce({ hasOutput: true });
 
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
@@ -99,10 +100,12 @@ describe.sequential("scraperIngestWorkflow", () => {
 
   // ── 4. Detection fails — no sheets ────────────────────────────────────
 
-  it("should stop when detection returns success: false", async () => {
-    tasks["dataset-detection"].mockResolvedValueOnce({ success: false, reason: "no parseable content" });
+  it("should stop when detection throws", async () => {
+    tasks["dataset-detection"].mockRejectedValueOnce(new Error("no parseable content"));
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any })
+    ).rejects.toThrow("no parseable content");
 
     expect(tasks["scraper-execution"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
@@ -121,7 +124,7 @@ describe.sequential("scraperIngestWorkflow", () => {
   // ── 6. Scraper returns numeric ingestFileId — converted to string ─────
 
   it("should convert numeric ingestFileId to string for detection", async () => {
-    tasks["scraper-execution"].mockResolvedValueOnce({ success: true, ingestFileId: 999, hasOutput: true });
+    tasks["scraper-execution"].mockResolvedValueOnce({ ingestFileId: 999, hasOutput: true });
 
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
@@ -131,7 +134,7 @@ describe.sequential("scraperIngestWorkflow", () => {
   // ── 7. Detection returns empty sheets — no processing ─────────────────
 
   it("should stop when detection returns empty sheets array", async () => {
-    tasks["dataset-detection"].mockResolvedValueOnce({ success: true, sheetsDetected: 0, sheets: [] });
+    tasks["dataset-detection"].mockResolvedValueOnce({ sheetsDetected: 0, sheets: [] });
 
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 

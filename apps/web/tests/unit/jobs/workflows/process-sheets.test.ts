@@ -6,28 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SheetInfo } from "@/lib/jobs/types/task-outputs";
 import { processSheets } from "@/lib/jobs/workflows/process-sheets";
 
-// Mock review-checks to avoid real DB calls
-vi.mock("@/lib/jobs/workflows/review-checks", () => ({
-  REVIEW_REASONS: {
-    SCHEMA_DRIFT: "schema-drift",
-    QUOTA_EXCEEDED: "quota-exceeded",
-    HIGH_DUPLICATE_RATE: "high-duplicates",
-    GEOCODING_PARTIAL: "geocoding-partial",
-  },
-  shouldReviewHighDuplicates: vi.fn().mockReturnValue({ needsReview: false }),
-  checkQuotaForSheet: vi.fn().mockResolvedValue({ allowed: true }),
-  shouldReviewGeocodingPartial: vi.fn().mockReturnValue({ needsReview: false }),
-  setNeedsReview: vi.fn().mockResolvedValue(undefined),
-}));
-
 /** Creates a mock tasks object with all task handlers as vi.fn(). */
 const createMockTasks = () => ({
-  "analyze-duplicates": vi.fn().mockResolvedValue({ success: true, totalRows: 100, uniqueRows: 100 }),
-  "detect-schema": vi.fn().mockResolvedValue({ success: true }),
-  "validate-schema": vi.fn().mockResolvedValue({ success: true }),
-  "create-schema-version": vi.fn().mockResolvedValue({ success: true }),
-  "geocode-batch": vi.fn().mockResolvedValue({ success: true, geocoded: 10, failed: 0 }),
-  "create-events": vi.fn().mockResolvedValue({ success: true }),
+  "analyze-duplicates": vi.fn().mockResolvedValue({ totalRows: 100, uniqueRows: 100 }),
+  "detect-schema": vi.fn().mockResolvedValue({}),
+  "validate-schema": vi.fn().mockResolvedValue({}),
+  "create-schema-version": vi.fn().mockResolvedValue({}),
+  "geocode-batch": vi.fn().mockResolvedValue({ geocoded: 10, failed: 0 }),
+  "create-events": vi.fn().mockResolvedValue({}),
 });
 
 /** Creates a minimal mock PayloadRequest. */
@@ -238,36 +224,36 @@ describe.sequential("processSheets", () => {
         // Simulate a delay for sheet 0
         await new Promise((resolve) => setTimeout(resolve, 50));
         callOrder.push(`analyze-${id}`);
-        return { success: true };
+        return {};
       })
       .mockImplementationOnce((id: string) => {
         callOrder.push(`analyze-${id}`);
-        return { success: true };
+        return {};
       });
 
     tasks["detect-schema"].mockImplementation((id: string) => {
       callOrder.push(`detect-${id}`);
-      return { success: true };
+      return {};
     });
 
     tasks["validate-schema"].mockImplementation((id: string) => {
       callOrder.push(`validate-${id}`);
-      return { success: true };
+      return {};
     });
 
     tasks["create-schema-version"].mockImplementation((id: string) => {
       callOrder.push(`version-${id}`);
-      return { success: true };
+      return {};
     });
 
     tasks["geocode-batch"].mockImplementation((id: string) => {
       callOrder.push(`geocode-${id}`);
-      return { success: true };
+      return {};
     });
 
     tasks["create-events"].mockImplementation((id: string) => {
       callOrder.push(`events-${id}`);
-      return { success: true };
+      return {};
     });
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0"), makeSheet(1, "j1")];
@@ -286,71 +272,42 @@ describe.sequential("processSheets", () => {
     expect(tasks["create-events"]).toHaveBeenCalledTimes(2);
   });
 
-  // ── Review Check Tests ────────────────────────────────────────────────
+  // ── Review Check Tests (now inside handlers, tested via task return) ──
 
-  it("should pause for review when duplicate rate exceeds 80%", async () => {
-    // analyze returns 100 total, 10 unique → 90% duplicates
-    tasks["analyze-duplicates"].mockResolvedValueOnce({ totalRows: 100, uniqueRows: 10 });
-    const { shouldReviewHighDuplicates: mockDupCheck } = await import("@/lib/jobs/workflows/review-checks");
-    vi.mocked(mockDupCheck).mockReturnValueOnce({ needsReview: true, duplicateRate: 0.9 });
+  it("should pause for review when analyze-duplicates returns needsReview", async () => {
+    // analyze-duplicates handler now performs review checks internally
+    // and returns { needsReview: true } when duplicate rate exceeds 80%
+    tasks["analyze-duplicates"].mockResolvedValueOnce({ needsReview: true, totalRows: 100, uniqueRows: 10 });
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0")];
     await processSheets(tasks as any, sheets, mockReq);
 
-    const { setNeedsReview: mockSetReview } = await import("@/lib/jobs/workflows/review-checks");
-    expect(vi.mocked(mockSetReview)).toHaveBeenCalledWith(
-      mockReq.payload,
-      "j0",
-      "high-duplicates",
-      expect.objectContaining({ duplicateRate: 0.9 })
-    );
+    // Pipeline should stop after analyze — no further tasks called
     expect(tasks["detect-schema"]).not.toHaveBeenCalled();
     expect(tasks["create-events"]).not.toHaveBeenCalled();
   });
 
-  it("should pause for review when quota is exceeded", async () => {
-    tasks["analyze-duplicates"].mockResolvedValueOnce({ totalRows: 100, uniqueRows: 100 });
-    const { checkQuotaForSheet: mockQuota } = await import("@/lib/jobs/workflows/review-checks");
-    vi.mocked(mockQuota).mockResolvedValueOnce({ allowed: false, current: 900, limit: 1000, estimatedNew: 100 });
+  it("should pause for review when geocode-batch returns needsReview", async () => {
+    // geocode-batch handler now performs review checks internally
+    tasks["geocode-batch"].mockResolvedValueOnce({ needsReview: true, geocoded: 30, failed: 70 });
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0")];
     await processSheets(tasks as any, sheets, mockReq);
 
-    const { setNeedsReview: mockSetReview } = await import("@/lib/jobs/workflows/review-checks");
-    expect(vi.mocked(mockSetReview)).toHaveBeenCalledWith(
-      mockReq.payload,
-      "j0",
-      "quota-exceeded",
-      expect.objectContaining({ allowed: false })
-    );
-    expect(tasks["detect-schema"]).not.toHaveBeenCalled();
-  });
-
-  it("should pause for review when geocoding failure rate exceeds 50%", async () => {
-    tasks["geocode-batch"].mockResolvedValueOnce({ geocoded: 30, failed: 70 });
-    const { shouldReviewGeocodingPartial: mockGeoCheck } = await import("@/lib/jobs/workflows/review-checks");
-    vi.mocked(mockGeoCheck).mockReturnValueOnce({ needsReview: true, failRate: 0.7 });
-
-    const sheets: SheetInfo[] = [makeSheet(0, "j0")];
-    await processSheets(tasks as any, sheets, mockReq);
-
-    const { setNeedsReview: mockSetReview } = await import("@/lib/jobs/workflows/review-checks");
-    expect(vi.mocked(mockSetReview)).toHaveBeenCalledWith(
-      mockReq.payload,
-      "j0",
-      "geocoding-partial",
-      expect.objectContaining({ failRate: 0.7 })
-    );
+    // Pipeline should stop after geocode — create-events not called
+    expect(tasks["analyze-duplicates"]).toHaveBeenCalledOnce();
+    expect(tasks["detect-schema"]).toHaveBeenCalledOnce();
+    expect(tasks["validate-schema"]).toHaveBeenCalledOnce();
+    expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
+    expect(tasks["geocode-batch"]).toHaveBeenCalledOnce();
     expect(tasks["create-events"]).not.toHaveBeenCalled();
   });
 
-  it("should continue normally when all review checks pass", async () => {
-    // All defaults return "no review needed"
+  it("should continue normally when no review is needed", async () => {
+    // All defaults return no needsReview
     const sheets: SheetInfo[] = [makeSheet(0, "j0")];
     await processSheets(tasks as any, sheets, mockReq);
 
-    const { setNeedsReview: mockSetReview } = await import("@/lib/jobs/workflows/review-checks");
-    expect(vi.mocked(mockSetReview)).not.toHaveBeenCalled();
     expect(tasks["create-events"]).toHaveBeenCalledOnce();
   });
 });
