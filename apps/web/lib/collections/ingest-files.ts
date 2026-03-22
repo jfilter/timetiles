@@ -19,12 +19,13 @@
  *
  * @module
  */
-import type { CollectionConfig, Where } from "payload";
+import type { CollectionConfig, Payload, Where } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import type { User } from "@/payload-types";
 
 import { createRequestLogger } from "../logger";
 import { createQuotaService } from "../services/quota-service";
@@ -38,6 +39,40 @@ import {
 } from "./shared-fields";
 
 const logger = createRequestLogger("ingest-files");
+
+/** Check upload rate limits unless seed/test context. Returns clientId if rate-limited. */
+const enforceUploadRateLimit = (
+  data: Record<string, unknown>,
+  req: { payload: Payload; user?: User | null; headers?: Headers },
+  hookLogger: ReturnType<typeof createRequestLogger>
+): string | undefined => {
+  const isSeedData =
+    data.metadata &&
+    typeof data.metadata === "object" &&
+    "source" in data.metadata &&
+    data.metadata.source === "seed-data";
+
+  const isTestEnv = process.env.NODE_ENV === "test" || process.env.DATABASE_URL?.includes("_test");
+
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- logical OR is intentional
+  if (isSeedData || isTestEnv) return undefined;
+
+  const rateLimitService = getRateLimitService(req.payload);
+  const clientId = getClientIdentifier(req as unknown as Request);
+  const result = rateLimitService.checkTrustLevelRateLimit(clientId, req.user, "FILE_UPLOAD");
+
+  if (!result.allowed) {
+    hookLogger.warn("Rate limit exceeded", {
+      clientId,
+      isAuthenticated: !!req.user,
+      trustLevel: req.user?.trustLevel,
+      failedWindow: result.failedWindow,
+    });
+    throw new Error(`Too many import requests. Please try again later. (Limited by ${result.failedWindow} window)`);
+  }
+
+  return clientId;
+};
 
 const ALLOWED_MIME_TYPES = [
   "text/csv",
@@ -259,6 +294,8 @@ const IngestFiles: CollectionConfig = {
       ({ operation, req }) => {
         // Only run on create operations
         if (operation !== "create") return;
+        // Skip during seeding
+        if (req.context?.seed) return;
 
         const logger = createRequestLogger("import-files-beforeoperation");
 
@@ -294,6 +331,9 @@ const IngestFiles: CollectionConfig = {
       async ({ data, req, operation }) => {
         // Only run on create operations
         if (operation !== "create") return data;
+
+        // Skip all validation during seeding
+        if (req.context?.seed) return data;
 
         const logger = createRequestLogger("import-files-validate");
         const user = req.user;
@@ -345,38 +385,11 @@ const IngestFiles: CollectionConfig = {
       async ({ data, req, operation }) => {
         // Only run on create operations
         if (operation !== "create") return data;
+        // Skip during seeding — seed data provides all fields directly
+        if (req.context?.seed) return data;
 
-        const logger = createRequestLogger("import-files-beforechange");
-
-        // Skip rate limiting for seed data or test environments
-        const isSeedData =
-          data.metadata &&
-          typeof data.metadata === "object" &&
-          "source" in data.metadata &&
-          data.metadata.source === "seed-data";
-        const isTestEnv = process.env.NODE_ENV === "test" || process.env.DATABASE_URL?.includes("_test");
-
-        let clientId: string | undefined;
-        if (!isSeedData && !isTestEnv) {
-          // Trust-level-aware rate limiting check
-          const rateLimitService = getRateLimitService(req.payload);
-          clientId = getClientIdentifier(req as unknown as Request);
-
-          // Use trust-level-aware rate limiting
-          const result = rateLimitService.checkTrustLevelRateLimit(clientId, req.user, "FILE_UPLOAD");
-
-          if (!result.allowed) {
-            logger.warn("Rate limit exceeded", {
-              clientId,
-              isAuthenticated: !!req.user,
-              trustLevel: req.user?.trustLevel,
-              failedWindow: result.failedWindow,
-            });
-            throw new Error(
-              `Too many import requests. Please try again later. (Limited by ${result.failedWindow} window)`
-            );
-          }
-        }
+        const changeLogger = createRequestLogger("import-files-beforechange");
+        const clientId = enforceUploadRateLimit(data, req, changeLogger);
 
         // Extract custom metadata from the request
         const userAgent = req.headers?.get?.("user-agent") ?? null;

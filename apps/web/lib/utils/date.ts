@@ -209,3 +209,15 @@ export const formatDateLocale = (dateStr: string | null | undefined): string => 
   if (!dateStr) return "\u2014";
   return new Date(dateStr).toLocaleString();
 };
+
+/**
+ * Format a duration in milliseconds to a human-readable string.
+ *
+ * Returns an em-dash for null/undefined input.
+ * Shows milliseconds for durations under 1 second, otherwise seconds with one decimal.
+ */
+export const formatDuration = (ms: number | null | undefined): string => {
+  if (ms == null) return "\u2014";
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+};

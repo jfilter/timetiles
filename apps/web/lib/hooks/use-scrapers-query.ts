@@ -22,6 +22,8 @@ export const useScraperReposQuery = (initialData?: ScraperRepo[]) =>
     ...QUERY_PRESETS.standard,
   });
 
+const POLL_INTERVAL = 5000;
+
 export const useScrapersQuery = (repoId?: number, initialData?: Scraper[]) =>
   useQuery({
     queryKey: scraperKeys.byRepo(repoId),
@@ -33,6 +35,13 @@ export const useScrapersQuery = (repoId?: number, initialData?: Scraper[]) =>
     },
     initialData,
     ...QUERY_PRESETS.standard,
+    // eslint-disable-next-line sonarjs/function-return-type -- React Query refetchInterval API requires false | number
+    refetchInterval: (query) => {
+      const docs = query.state.data;
+      if (!docs?.length) return false;
+      const hasRunning = docs.some((d) => d.lastRunStatus === "running");
+      return hasRunning ? POLL_INTERVAL : false;
+    },
   });
 
 export const useScraperRunsQuery = (scraperId?: number) =>

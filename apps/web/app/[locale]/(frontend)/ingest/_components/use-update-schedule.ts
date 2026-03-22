@@ -81,7 +81,7 @@ export const useUpdateSchedule = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: scheduledIngestKeys.all });
       reset();
-      router.push("/account/schedules");
+      router.push("/account/imports?tab=scheduled");
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : t("failedToUpdateSchedule"));

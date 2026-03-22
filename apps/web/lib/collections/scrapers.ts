@@ -104,6 +104,7 @@ const resolveRepoOwner = async (
  */
 const validateAndSetRepoOwnership: CollectionBeforeChangeHook = async ({ data, req, operation, originalDoc }) => {
   if (!data) return data;
+  if (req.context?.seed) return data;
 
   // Collect all mutations before applying — avoids require-atomic-updates false positives
   let repoCreatedBy: number | undefined;

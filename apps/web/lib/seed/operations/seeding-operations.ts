@@ -23,8 +23,14 @@ import { datasetSeeds } from "../seeds/datasets";
 import { eventSeeds } from "../seeds/events";
 import { footerSeed, footerSeedDe } from "../seeds/footer";
 import { geocodingProviderSeeds } from "../seeds/geocoding-providers";
+import { ingestFileSeeds } from "../seeds/ingest-files";
+import { ingestJobSeeds } from "../seeds/ingest-jobs";
 import { mainMenuSeed, mainMenuSeedDe } from "../seeds/main-menu";
 import { pagesSeed, pagesSeedDe } from "../seeds/pages";
+import { scheduledIngestSeeds } from "../seeds/scheduled-ingests";
+import { scraperRepoSeeds } from "../seeds/scraper-repos-seed";
+import { scraperRunSeeds } from "../seeds/scraper-runs-seed";
+import { scraperSeeds } from "../seeds/scrapers-seed";
 import { settingsSeed, settingsSeedDe } from "../seeds/settings";
 import { siteSeeds } from "../seeds/sites";
 import { userSeeds } from "../seeds/users";
@@ -402,6 +408,8 @@ export class SeedingOperations {
           size: fileBuffer.length,
           mimetype: (resolvedItem as { mimeType?: string }).mimeType ?? "text/plain",
         },
+        overrideAccess: true,
+        context: { seed: true, skipIngestFileHooks: true },
       });
     } else if (collectionName === "pages") {
       // Payload CMS doesn't store localized fields inside blocks during create(),
@@ -449,9 +457,18 @@ export class SeedingOperations {
     } else if (collectionName === "users") {
       // Disable verification email for seeded users (they're already pre-verified).
       // @ts-expect-error -- disableVerificationEmail is a valid runtime option for auth collections but not in Payload's types
-      await payload.create({ collection: "users", data: resolvedItem, disableVerificationEmail: true });
+      await payload.create({
+        collection: "users",
+        data: resolvedItem,
+        disableVerificationEmail: true,
+        context: { seed: true },
+      });
     } else {
-      await payload.create({ collection: collectionName as keyof Config["collections"], data: resolvedItem });
+      await payload.create({
+        collection: collectionName as keyof Config["collections"],
+        data: resolvedItem,
+        context: { seed: true },
+      });
     }
 
     const displayName = this.queryBuilders.getDisplayName(resolvedItem);
@@ -506,6 +523,18 @@ export class SeedingOperations {
         return viewSeeds;
       case "pages":
         return pagesSeed;
+      case "scheduled-ingests":
+        return scheduledIngestSeeds(environment);
+      case "ingest-files":
+        return ingestFileSeeds(environment);
+      case "ingest-jobs":
+        return ingestJobSeeds(environment);
+      case "scraper-repos":
+        return scraperRepoSeeds(environment);
+      case "scrapers":
+        return scraperSeeds(environment);
+      case "scraper-runs":
+        return scraperRunSeeds(environment);
       default:
         logger.warn(`Unknown collection for seeding: ${collectionOrGlobal}`);
         return [];
