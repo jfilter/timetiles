@@ -133,6 +133,136 @@ services:
       retries: 3
       start_period: 60s
 
+  # Ingest worker — processes ingest workflows (high throughput)
+  worker-ingest:
+    image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-ingest
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    command:
+      ["node", "node_modules/.bin/payload", "jobs:run", "--cron", "*/1 * * * *", "--queue", "ingest", "--limit", "50"]
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
+      SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+    networks:
+      - timetiles-network
+
+  # Default worker — scheduled jobs, webhooks, general tasks
+  worker-default:
+    image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-default
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    command:
+      [
+        "node",
+        "node_modules/.bin/payload",
+        "jobs:run",
+        "--cron",
+        "*/1 * * * *",
+        "--queue",
+        "default",
+        "--limit",
+        "20",
+        "--handle-schedules",
+      ]
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
+      SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+    networks:
+      - timetiles-network
+
+  # Maintenance worker — periodic cleanup, cache, quotas
+  worker-maintenance:
+    image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-maintenance
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    command:
+      [
+        "node",
+        "node_modules/.bin/payload",
+        "jobs:run",
+        "--cron",
+        "*/5 * * * *",
+        "--queue",
+        "maintenance",
+        "--limit",
+        "10",
+      ]
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+    networks:
+      - timetiles-network
+
   # Nginx reverse proxy with SSL support
   nginx:
     image: nginx:${NGINX_VERSION:-1.27-alpine}

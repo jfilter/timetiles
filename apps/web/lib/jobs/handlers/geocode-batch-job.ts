@@ -25,9 +25,10 @@ import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
-import type { JobHandlerContext } from "../utils/job-context";
-import { failIngestJob, loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
+import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
+import { REVIEW_REASONS, setNeedsReview, shouldReviewGeocodingPartial } from "../workflows/review-checks";
 
 /**
  * Stream through file batches to extract unique location values without loading all rows into memory.
@@ -139,6 +140,38 @@ const geocodeUniqueLocations = async (
 
 export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
+  retries: 3,
+  outputSchema: [
+    { name: "geocoded", type: "number" as const },
+    { name: "failed", type: "number" as const },
+    { name: "skipped", type: "number" as const },
+    { name: "uniqueLocations", type: "number" as const },
+    { name: "needsReview", type: "checkbox" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskCallbackArgs) => {
+    // Note: onFail does NOT fire when tasks run inside workflow handlers with Promise.allSettled.
+    // Promise.allSettled catches the TaskError before it reaches Payload's error handler.
+    // Failure marking is handled by processSheets instead. This callback is kept for
+    // standalone task execution (outside workflows).
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+            context: "geocode-batch",
+          },
+        },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
 
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
     const { payload } = context.req;
@@ -151,6 +184,13 @@ export const geocodeBatchJob = {
     const startTime = Date.now();
 
     try {
+      // Set stage for UI progress tracking (workflow controls sequencing)
+      await payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
+      });
+
       // Create a geocoding service scoped to this job invocation
       const geocodingService = createGeocodingService(payload);
 
@@ -163,11 +203,6 @@ export const geocodeBatchJob = {
       if (!geocodingCandidate?.locationField) {
         logger.info("No location field detected, moving to event creation");
         await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
-        await payload.update({
-          collection: COLLECTION_NAMES.INGEST_JOBS,
-          id: ingestJobId,
-          data: { stage: PROCESSING_STAGE.CREATE_EVENTS },
-        });
         return { output: { skipped: true } };
       }
 
@@ -207,52 +242,20 @@ export const geocodeBatchJob = {
           failures,
         });
 
-        // Build detailed error message with failed locations (limit to first 5 for readability)
-        const failedLocationsPreview = failures.slice(0, 5).map((f) => `"${f.location}": ${f.error}`);
-        const moreCount = failures.length > 5 ? ` (and ${failures.length - 5} more)` : "";
-        const errorMessage = `Geocoding failed for all ${failureCount} locations. Please check your geocoding provider configuration in the admin panel.`;
-        const detailedError = `${errorMessage}\n\nFailed locations${moreCount}:\n${failedLocationsPreview.join("\n")}`;
-
-        await payload.update({
-          collection: COLLECTION_NAMES.INGEST_JOBS,
-          id: ingestJobId,
-          data: {
-            stage: PROCESSING_STAGE.FAILED,
-            errorLog: {
-              lastError: errorMessage,
-              context: "geocode-batch",
-              failedLocations: failureCount,
-              failures: failures.slice(0, 10), // Store first 10 failures with details
-            },
-          },
-        });
-
-        // Also update the import file status with error message (user-facing)
-        const { ingestFile } = await loadJobResources(payload, ingestJobId);
-        await payload.update({
-          collection: COLLECTION_NAMES.INGEST_FILES,
-          id: ingestFile.id,
-          data: { status: "failed", errorLog: detailedError },
-        });
-
-        return {
-          output: {
-            failed: true,
-            reason: "All geocoding failed",
-            totalLocations: uniqueLocations.size,
-            failedCount: failureCount,
-          },
-        };
+        // Total geocoding failure — throw so processSheets marks the sheet as FAILED
+        throw new Error(
+          `Geocoding failed for all ${failureCount} locations. Please check your geocoding provider configuration.`
+        );
       }
 
       // Complete GEOCODE_BATCH stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
 
-      // Store geocoding results
+      // Store geocoding results (workflow controls stage sequencing)
       await payload.update({
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
-        data: { geocodingResults: results, stage: PROCESSING_STAGE.CREATE_EVENTS },
+        data: { geocodingResults: results },
       });
 
       logPerformance("Unique location geocoding", Date.now() - startTime, {
@@ -263,13 +266,19 @@ export const geocodeBatchJob = {
         failureCount,
       });
 
+      // Review check: geocoding partial failure (>50% failed)
+      const geoCheck = shouldReviewGeocodingPartial(successCount, failureCount);
+      if (geoCheck.needsReview) {
+        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.GEOCODING_PARTIAL, {
+          geocoded: successCount,
+          failed: failureCount,
+          failRate: geoCheck.failRate,
+        });
+        return { output: { needsReview: true, geocoded: successCount, failed: failureCount } };
+      }
+
       return {
-        output: {
-          totalRows,
-          uniqueLocations: uniqueLocations.size,
-          geocodedCount: successCount,
-          failedCount: failureCount,
-        },
+        output: { geocoded: successCount, failed: failureCount, skipped: 0, uniqueLocations: uniqueLocations.size },
       };
     } catch (error) {
       logError(error, "Unique location geocoding failed", { ingestJobId });
@@ -283,8 +292,7 @@ export const geocodeBatchJob = {
         // Best-effort cleanup
       }
 
-      await failIngestJob(payload, ingestJobId, error, "geocode-batch");
-
+      // Re-throw — caught by processSheets try/catch which marks the sheet FAILED
       throw error;
     }
   },

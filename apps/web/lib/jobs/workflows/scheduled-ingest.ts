@@ -1,0 +1,72 @@
+/**
+ * Scheduled ingest workflow — automated URL fetch + full pipeline.
+ *
+ * Triggered by the schedule-manager job or webhooks. Fetches data from
+ * a URL, runs dataset-detection, then processes all sheets in parallel.
+ *
+ * @module
+ * @category Jobs
+ */
+import type { WorkflowConfig } from "payload";
+
+import { logger } from "@/lib/logger";
+
+import type { DatasetDetectionOutput, UrlFetchOutput } from "../types/task-outputs";
+import { updateIngestFileStatus } from "./completion";
+import { processSheets } from "./process-sheets";
+
+export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
+  slug: "scheduled-ingest",
+  label: "Scheduled Ingest",
+  queue: "ingest",
+  inputSchema: [
+    { name: "scheduledIngestId", type: "number", required: true },
+    { name: "sourceUrl", type: "text", required: true },
+    { name: "authConfig", type: "json" },
+    { name: "catalogId", type: "text" },
+    { name: "originalName", type: "text", required: true },
+    { name: "userId", type: "text" },
+    { name: "triggeredBy", type: "text" },
+  ],
+  concurrency: ({ input }) => `sched:${input.scheduledIngestId}`,
+  handler: async ({ job, tasks, req }) => {
+    const { scheduledIngestId, sourceUrl } = job.input;
+    logger.info("scheduled-ingest workflow started", { scheduledIngestId, sourceUrl });
+
+    const fetchResult = (await tasks["url-fetch"]("fetch-url", {
+      input: {
+        scheduledIngestId: job.input.scheduledIngestId,
+        sourceUrl: job.input.sourceUrl,
+        authConfig: job.input.authConfig,
+        catalogId: job.input.catalogId,
+        originalName: job.input.originalName,
+        userId: job.input.userId,
+        triggeredBy: job.input.triggeredBy,
+      },
+    })) as UrlFetchOutput;
+
+    if (!fetchResult.ingestFileId) {
+      logger.info("scheduled-ingest: no ingest file created", { scheduledIngestId });
+      return;
+    }
+
+    logger.info("scheduled-ingest: URL fetched, detecting sheets", {
+      scheduledIngestId,
+      ingestFileId: fetchResult.ingestFileId,
+    });
+
+    const detection = (await tasks["dataset-detection"]("detect-sheets", {
+      input: { ingestFileId: String(fetchResult.ingestFileId) },
+    })) as DatasetDetectionOutput;
+
+    if (!detection.sheets?.length) {
+      logger.info("scheduled-ingest: no sheets detected", { scheduledIngestId });
+      return;
+    }
+
+    await processSheets(tasks, detection.sheets, req);
+    await updateIngestFileStatus(req.payload, detection.sheets);
+
+    logger.info("scheduled-ingest workflow completed", { scheduledIngestId });
+  },
+};

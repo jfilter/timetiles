@@ -120,15 +120,16 @@ describe.sequential("Concurrent Job Workers (Real Processes)", () => {
       });
     }
 
-    // Verify 2 pending jobs
+    // Verify 2 pending workflow jobs (manual-ingest workflows, one per file)
     const pending = await payload.find({
       collection: "payload-jobs",
-      where: { taskSlug: { equals: "dataset-detection" }, processing: { equals: false } },
+      where: { workflowSlug: { equals: "manual-ingest" }, processing: { equals: false } },
     });
     expect(pending.docs).toHaveLength(2);
 
     // Spawn TWO real worker processes — each gets its own Payload + pool
-    const [w1, w2] = await Promise.all([spawnWorker(databaseUrl, 1, webDir), spawnWorker(databaseUrl, 1, webDir)]);
+    // Use limit:2 to handle case where one worker starts faster and both jobs are available
+    const [w1, w2] = await Promise.all([spawnWorker(databaseUrl, 2, webDir), spawnWorker(databaseUrl, 2, webDir)]);
 
     // Parse worker results
     const parseResult = (w: { stdout: string; stderr: string; code: number | null }, label: string) => {
@@ -145,15 +146,14 @@ describe.sequential("Concurrent Job Workers (Real Processes)", () => {
     const r1 = parseResult(w1, "Worker 1");
     const r2 = parseResult(w2, "Worker 2");
 
-    // What did each worker claim?
+    // Combine results — both workers together should have processed all 2 jobs
     const allClaimedIds = [...r1.jobIds, ...r2.jobIds];
     const uniqueClaimedIds = new Set(allClaimedIds);
 
-    // CRITICAL: did they claim DIFFERENT jobs?
-    // If both claimed the same job → uniqueClaimedIds.size === 1 (Payload MVCC bug)
-    // If they claimed different jobs → uniqueClaimedIds.size === 2 (correct)
+    // CRITICAL: no duplicate processing — each job claimed by exactly one worker
     expect(uniqueClaimedIds.size).toBe(allClaimedIds.length);
-    expect(allClaimedIds).toHaveLength(2);
+    // Together they should have claimed both jobs (distribution may vary: 2+0 or 1+1)
+    expect(allClaimedIds.length).toBeGreaterThanOrEqual(2);
 
     // Drain follow-up jobs
     for (let i = 0; i < 10; i++) {

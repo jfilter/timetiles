@@ -1,11 +1,11 @@
 /**
- * Shared helper for creating an import-files record and queuing dataset detection.
+ * Shared helper for creating an import-files record and queuing the ingest workflow.
  *
- * Both the url-fetch-job and scraper-execution-job follow the same three-step
+ * Both the url-fetch and scraper-execution steps follow the same three-step
  * pipeline after obtaining file data:
  *
  *   1. Create an import-files record with the attached file buffer.
- *   2. Queue a dataset-detection job for the new record.
+ *   2. Queue a manual-ingest workflow for the new record.
  *   3. Update the record to status "parsing" with the queued job ID.
  *
  * This module extracts that pipeline into a single reusable function so changes
@@ -17,7 +17,7 @@
 
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/ingest-constants";
+import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import type { IngestFile, User } from "@/payload-types";
 
 /** The file buffer and its associated metadata. */
@@ -51,9 +51,9 @@ export interface CreateIngestFileResult {
 }
 
 /**
- * Create an import-files record, queue dataset-detection, and mark the record
- * as "parsing". This is the shared pipeline used by url-fetch-job and
- * scraper-execution-job.
+ * Create an import-files record, queue the manual-ingest workflow, and mark the
+ * record as "parsing". This is the shared pipeline used by url-fetch and
+ * scraper-execution steps.
  */
 export const createIngestFileAndQueueDetection = async ({
   payload,
@@ -70,17 +70,17 @@ export const createIngestFileAndQueueDetection = async ({
     context: { skipIngestFileHooks: true },
   });
 
-  // Step 2: Queue dataset detection job
-  const detectionJob = await payload.jobs.queue({
-    task: JOB_TYPES.DATASET_DETECTION,
-    input: { ingestFileId: ingestFile.id },
+  // Step 2: Queue manual-ingest workflow
+  const workflowJob = await payload.jobs.queue({
+    workflow: "manual-ingest",
+    input: { ingestFileId: String(ingestFile.id) },
   });
 
-  // Step 3: Update status to "parsing" with the detection job ID
+  // Step 3: Update status to "parsing" with the workflow job ID
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_FILES,
     id: ingestFile.id,
-    data: { status: "parsing", jobId: String(detectionJob.id) },
+    data: { status: "parsing", jobId: String(workflowJob.id) },
     context: { skipIngestFileHooks: true },
   });
 

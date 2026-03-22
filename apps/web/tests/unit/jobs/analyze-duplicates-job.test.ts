@@ -45,6 +45,19 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
+// Mock review checks — default: no review needed, quota allowed
+vi.mock("@/lib/jobs/workflows/review-checks", () => ({
+  REVIEW_REASONS: {
+    SCHEMA_DRIFT: "schema-drift",
+    QUOTA_EXCEEDED: "quota-exceeded",
+    HIGH_DUPLICATE_RATE: "high-duplicates",
+    GEOCODING_PARTIAL: "geocoding-partial",
+  },
+  shouldReviewHighDuplicates: vi.fn().mockReturnValue({ needsReview: false }),
+  checkQuotaForSheet: vi.fn().mockResolvedValue({ allowed: true }),
+  setNeedsReview: vi.fn().mockResolvedValue(undefined),
+}));
+
 /** Helper to create a mock async iterable from arrays of batches. */
 const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
   [Symbol.asyncIterator]: () => {
@@ -166,12 +179,11 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, { collection: "ingest-files", id: "file-789" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, { collection: "ingest-jobs", id: "import-123" });
 
-      // Verify update call
+      // Verify update call — no stage transition
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
         data: {
-          stage: "detect-schema",
           duplicates: {
             strategy: "disabled",
             internal: [],
@@ -381,23 +393,27 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error when ingest job not found", async () => {
-      mockPayload.findByID.mockResolvedValueOnce(null);
+    it("should throw Error when ingest job not found (onFail handles failure marking)", async () => {
+      mockPayload.findByID.mockResolvedValue(null);
+      mockPayload.update.mockResolvedValue({});
 
-      await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
+      const error = await analyzeDuplicatesJob.handler(mockContext).catch((e: unknown) => e);
 
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("Ingest job not found: import-123");
       expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "ingest-jobs", id: "import-123" });
     });
 
-    it("should throw error when dataset not found", async () => {
+    it("should throw Error when dataset not found (onFail handles failure marking)", async () => {
       const mockIngestJob = { id: "import-123", dataset: "dataset-456", ingestFile: "file-789" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
-    it("should throw error when ingest file not found", async () => {
+    it("should throw Error when ingest file not found (onFail handles failure marking)", async () => {
       const mockIngestJob = { id: "import-123", dataset: "dataset-456", ingestFile: "file-789" };
 
       const mockDataset = { id: "dataset-456", deduplicationConfig: { enabled: true } };
@@ -406,6 +422,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(null); // Ingest file not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });

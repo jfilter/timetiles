@@ -24,7 +24,6 @@ import * as geocodingModule from "@/lib/services/geocoding";
 import {
   createIntegrationTestEnvironment,
   runJobsUntilImportSettled,
-  runJobsUntilIngestJobExists,
   runJobsUntilIngestJobStage,
   withCatalog,
   withDataset,
@@ -137,16 +136,6 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     return result.settled;
   };
 
-  const waitForIngestJob = async (ingestFileId: string | number, maxIterations = 50) => {
-    const result = await runJobsUntilIngestJobExists(payload, ingestFileId, { maxIterations });
-
-    if (!result.matched || !result.ingestJob) {
-      throw new Error(`Import job was not created for import file ${String(ingestFileId)}`);
-    }
-
-    return result.ingestJob;
-  };
-
   const waitForIngestJobStage = async (ingestFileId: string | number, stage: string, maxIterations = 50) => {
     const result = await runJobsUntilIngestJobStage(payload, ingestFileId, (ingestJob) => ingestJob.stage === stage, {
       maxIterations,
@@ -157,15 +146,6 @@ describe.sequential("Comprehensive File Upload Tests", () => {
     }
 
     return result.ingestJob;
-  };
-
-  const linkIngestJobToDataset = async (ingestFileId: string | number, datasetId: string | number) => {
-    const ingestJob = await waitForIngestJob(ingestFileId);
-
-    await payload.update({ collection: "ingest-jobs", id: ingestJob.id, data: { dataset: datasetId } });
-
-    logger.debug(`✓ Linked import job to dataset: ${datasetId}`);
-    return ingestJob;
   };
 
   const simulateSchemaApproval = async (ingestJobId: string, approved: boolean) => {
@@ -429,20 +409,19 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 "Event 2","2024-01-02","Location 2","More Data"`;
 
       try {
-        // Create import file linked to locked dataset
+        // Create import file linked to locked dataset via metadata
         const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
           filename: "approval-test.csv",
           user: approverUser.id,
+          additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
         });
 
-        await linkIngestJobToDataset(ingestFile.id, dataset.id);
-
         // Verify job is waiting for approval
-        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
+        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.NEEDS_REVIEW, 30);
 
         const finalJobs = await getIngestJobs(ingestFile.id);
         expect(finalJobs.docs).toHaveLength(1);
-        expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
+        expect(job.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
         expect(job.schemaValidation?.requiresApproval).toBe(true);
 
         logger.debug("✓ Pipeline correctly stopped at approval stage");
@@ -469,13 +448,12 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
           filename: "approval-continue.csv",
           user: approverUser.id,
+          additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
         });
 
-        await linkIngestJobToDataset(ingestFile.id, dataset.id);
-
         // Get the job requiring approval
-        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
-        expect(job.stage).toBe(PROCESSING_STAGE.AWAIT_APPROVAL);
+        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.NEEDS_REVIEW, 30);
+        expect(job.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
 
         // Approve the schema (this now properly triggers the approval workflow)
         await simulateSchemaApproval(String(job.id), true);
@@ -484,7 +462,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         const resumedJob = await runJobsUntilIngestJobStage(
           payload,
           ingestFile.id,
-          (ingestJob) => ingestJob.stage !== PROCESSING_STAGE.AWAIT_APPROVAL,
+          (ingestJob) => ingestJob.stage !== PROCESSING_STAGE.NEEDS_REVIEW,
           { maxIterations: 30 }
         );
         expect(resumedJob.matched).toBe(true);
@@ -527,9 +505,8 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
         filename: "auto-approve.csv",
         user: approverUser.id,
+        additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
       });
-
-      await linkIngestJobToDataset(ingestFile.id, dataset.id);
 
       // Process completely without manual intervention
       const completed = await runJobsUntilComplete(ingestFile.id);
@@ -565,12 +542,11 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
           filename: "rejection-test.csv",
           user: approverUser.id,
+          additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
         });
 
-        await linkIngestJobToDataset(ingestFile.id, dataset.id);
-
         // Get job and reject the schema
-        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.AWAIT_APPROVAL, 30);
+        const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.NEEDS_REVIEW, 30);
         await simulateSchemaApproval(String(job.id), false); // Reject
         logger.debug("✓ Schema rejected manually");
 
@@ -581,7 +557,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         const rejectedJob = await payload.findByID({ collection: "ingest-jobs", id: job.id });
 
         // Should still be awaiting approval or failed
-        expect([PROCESSING_STAGE.AWAIT_APPROVAL, PROCESSING_STAGE.FAILED].includes(rejectedJob.stage)).toBe(true);
+        expect([PROCESSING_STAGE.NEEDS_REVIEW, PROCESSING_STAGE.FAILED].includes(rejectedJob.stage)).toBe(true);
         logger.debug(`✓ Job correctly handled rejection (stage: ${rejectedJob.stage}`);
       } catch (error) {
         logger.error("Schema rejection test failed:", error);

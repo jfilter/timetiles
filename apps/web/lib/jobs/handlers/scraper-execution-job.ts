@@ -456,7 +456,7 @@ export const scraperExecutionJob = {
     const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
     if (!(await isFeatureEnabled(payload, "enableScrapers"))) {
       log.info({ jobId }, "Scraper execution skipped - feature disabled");
-      return { output: { success: false, skipped: true, reason: "Feature flag enableScrapers is disabled" } };
+      throw new Error("Feature flag enableScrapers is disabled");
     }
 
     const { scraper, repo } = await loadScraperWithRepo(payload, scraperId);
@@ -487,7 +487,6 @@ export const scraperExecutionJob = {
 
       return {
         output: {
-          success: true,
           runId: run.id,
           status: result.status,
           durationMs: result.duration_ms,

@@ -40,7 +40,7 @@ pnpm seed test                        # Seed test data
 
 **Import pipeline** (8 stages): `dataset-detection` → `analyze-duplicates` → `schema-detection` → `validate-schema` → `create-schema-version` → `geocode-batch` → `create-events-batch`
 
-**System jobs**: `schedule-manager`, `url-fetch`, `quota-reset`, `cache-cleanup`, `schema-maintenance`, `audit-log-ip-cleanup`, `data-export`, `data-export-cleanup`, `execute-account-deletion`, `cleanup-approval-locks`, `cleanup-stuck-scheduled-imports`, `process-pending-retries`, `scraper-execution`, `scraper-repo-sync`
+**System jobs**: `schedule-manager`, `url-fetch`, `quota-reset`, `cache-cleanup`, `schema-maintenance`, `audit-log-ip-cleanup`, `data-export`, `data-export-cleanup`, `execute-account-deletion`, `cleanup-approval-locks`, `cleanup-stuck-scheduled-imports`, `scraper-execution`, `scraper-repo-sync`
 
 ### File Uploads
 

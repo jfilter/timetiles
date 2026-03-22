@@ -11,7 +11,7 @@
 import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES, JOB_TYPES } from "@/lib/constants/ingest-constants";
+import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledIngest } from "@/payload-types";
@@ -117,16 +117,16 @@ export const triggerScheduledIngest = async (
     }
   }
 
-  // Queue URL fetch job
+  // Queue scheduled-ingest workflow
   const urlFetchJob = await payload.jobs.queue({
-    task: JOB_TYPES.URL_FETCH,
+    workflow: "scheduled-ingest",
     input: {
       scheduledIngestId: scheduledIngest.id,
       sourceUrl: scheduledIngest.sourceUrl,
       authConfig: scheduledIngest.authConfig,
-      catalogId: extractRelationId(scheduledIngest.catalog),
+      catalogId: String(extractRelationId(scheduledIngest.catalog) ?? ""),
       originalName: importName,
-      userId: extractRelationId(scheduledIngest.createdBy),
+      userId: String(extractRelationId(scheduledIngest.createdBy) ?? ""),
       triggeredBy: options.triggeredBy,
     },
   });

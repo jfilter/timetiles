@@ -188,7 +188,7 @@ const STAGE_I18N_KEYS: Record<string, string> = {
   "analyze-duplicates": "stageAnalyzingDuplicates",
   "detect-schema": "stageDetectingSchema",
   "validate-schema": "stageValidating",
-  "await-approval": "stageAwaitingApproval",
+  "needs-review": "stageAwaitingApproval",
   "create-schema-version": "stageSettingUpDataset",
   "geocode-batch": "stageGeocoding",
   "create-events": "stageCreatingEvents",
@@ -245,7 +245,7 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
 };
 
 const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => {
-  const visible = stages.filter((s) => s.status !== "skipped" && s.name !== "await-approval");
+  const visible = stages.filter((s) => s.status !== "skipped" && s.name !== "needs-review");
   return (
     <div className="space-y-1 px-6 py-4">
       {visible.map((stage, index) => (

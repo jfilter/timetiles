@@ -380,13 +380,13 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       });
     });
 
-    it("should handle missing import file gracefully", async () => {
+    it("should throw when import file not found", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
-    it("should handle missing catalog gracefully", async () => {
+    it("should throw when catalog not found", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "test.csv",
@@ -403,7 +403,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
     });
 
-    it("should handle file parsing errors", async () => {
+    it("should throw on file parsing errors", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "test.csv",
@@ -425,7 +425,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       });
     });
 
-    it("should handle CSV parsing errors", async () => {
+    it("should throw on CSV parsing errors", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "test.csv",
@@ -442,7 +442,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
     });
 
-    it("should handle Excel parsing errors", async () => {
+    it("should throw on Excel parsing errors", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "test.xlsx",

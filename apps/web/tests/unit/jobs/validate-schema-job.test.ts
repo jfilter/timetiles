@@ -10,6 +10,7 @@
 // Import centralized mocks FIRST (before anything that uses them)
 import "@/tests/mocks/services/logger";
 
+import { JobCancelledError } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { validateSchemaJob } from "@/lib/jobs/handlers/validate-schema-job";
@@ -33,7 +34,6 @@ const mocks = vi.hoisted(() => {
     getSchemaBuilderState: vi.fn(),
     startStage: vi.fn(),
     completeStage: vi.fn(),
-    checkQuota: vi.fn(),
   };
 });
 
@@ -59,8 +59,6 @@ vi.mock("@/lib/ingest/progress-tracking", () => ({
 
 vi.mock("@/lib/types/schema-detection", () => ({ getSchemaBuilderState: mocks.getSchemaBuilderState }));
 
-vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: () => ({ checkQuota: mocks.checkQuota }) }));
-
 describe.sequential("ValidateSchemaJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
@@ -82,9 +80,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
     mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
       return mockSchemaBuilderInstance;
     });
-
-    // Default quota check: allowed
-    mocks.checkQuota.mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 });
   });
 
   describe("Success Cases", () => {
@@ -157,14 +152,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Execute job
       const result = await validateSchemaJob.handler(mockContext);
 
-      // Verify result
-      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 1 } });
+      // Verify result — success: true, no stage transition (workflow controls it)
+      expect(result).toEqual({ output: { hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
 
       // Schema version creation now happens in CREATE_SCHEMA_VERSION stage, not inline
       // So we should NOT expect createSchemaVersion to be called here
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
-      // Verify job was updated to proceed to CREATE_SCHEMA_VERSION (for auto-approved changes)
+      // Verify job was updated with validation data but no stage (workflow controls sequencing)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -178,7 +173,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             approvalReason: "Manual approval required by dataset configuration",
             transformSuggestions: [],
           },
-          stage: "create-schema-version", // Changed from geocode-batch
         },
       });
     });
@@ -254,12 +248,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // Verify result requires approval due to breaking changes
-      expect(result).toEqual({ output: { requiresApproval: true, hasBreakingChanges: true, newFields: 0 } });
+      expect(result).toEqual({
+        output: { needsReview: true, requiresApproval: true, hasBreakingChanges: true, newFields: 0 },
+      });
 
       // Verify no schema version was created (needs approval)
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
-      // Verify job was updated to await approval
+      // Verify job was updated to await approval (stage set for needs-review pause)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -281,7 +277,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             approvalReason: "Breaking schema changes detected",
             transformSuggestions: [],
           },
-          stage: "await-approval",
+          stage: "needs-review",
         },
       });
     });
@@ -353,9 +349,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // Verify result requires approval due to locked schema
-      expect(result).toEqual({ output: { requiresApproval: true, hasBreakingChanges: false, newFields: 1 } });
+      expect(result).toEqual({
+        output: { needsReview: true, requiresApproval: true, hasBreakingChanges: false, newFields: 1 },
+      });
 
-      // Verify job was updated to await approval
+      // Verify job was updated to await approval (stage set for needs-review pause)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -369,28 +367,30 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             approvalReason: "Manual approval required by dataset configuration",
             transformSuggestions: [],
           },
-          stage: "await-approval",
+          stage: "needs-review",
         },
       });
     });
   });
 
   describe("Error Handling", () => {
-    it("should throw error when ingest job not found", async () => {
-      mockPayload.findByID.mockResolvedValueOnce(null);
+    it("should throw Error when ingest job not found (onFail handles failure marking)", async () => {
+      mockPayload.findByID.mockResolvedValue(null);
+      mockPayload.update.mockResolvedValue({});
 
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Ingest job not found: 123");
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Ingest job not found");
     });
 
-    it("should throw error when dataset not found", async () => {
+    it("should throw Error when dataset not found (onFail handles failure marking)", async () => {
       const mockIngestJob = { id: 123, dataset: "dataset-456" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
-    it("should throw error when ingest file not found", async () => {
+    it("should throw Error when ingest file not found (onFail handles failure marking)", async () => {
       const mockIngestJob = { id: 123, dataset: "dataset-456", ingestFile: "file-789" };
 
       const mockDataset = { id: "dataset-456", schemaConfig: {} };
@@ -399,11 +399,12 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(null); // Ingest file not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
-    it("should throw error when schema builder state is missing", async () => {
+    it("should throw Error when schema builder state is missing (onFail handles failure marking)", async () => {
       const mockIngestJob = {
         id: 123,
         dataset: "dataset-456",
@@ -422,26 +423,16 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Mock getSchemaBuilderState to return null (missing state)
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
+      mockPayload.update.mockResolvedValue({});
 
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow(
-        "Schema builder state not found. Schema detection stage must run first."
-      );
+      // Error is re-thrown for Payload to retry; onFail marks job as failed after retries exhaust
+      const error = await validateSchemaJob.handler(mockContext).catch((e: unknown) => e);
 
-      // Verify error handling updated job status
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-jobs",
-        id: 123,
-        data: {
-          stage: "failed",
-          errorLog: {
-            lastError: "Schema builder state not found. Schema detection stage must run first.",
-            context: "validate-schema",
-          },
-        },
-      });
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("Schema builder state not found. Schema detection stage must run first.");
     });
 
-    it("should clean up sidecar files on error", async () => {
+    it("should re-throw transient errors and clean up sidecar files", async () => {
       const mockIngestJob = createMockIngestJob({ id: 123, sheetIndex: 2 });
       const mockDataset = createMockDataset();
       const mockIngestFile = createMockIngestFile("file-789", "test.xlsx");
@@ -452,9 +443,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
 
-      // Make getSchemaBuilderState throw to trigger the catch block
+      // Make getSchemaBuilderState throw a transient error (matches transient patterns)
       mocks.getSchemaBuilderState.mockImplementationOnce(() => {
-        throw new Error("Schema builder exploded");
+        throw new Error("Connection timeout");
       });
 
       // Second loadJobResources call (in catch block for cleanup)
@@ -465,18 +456,14 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Verify the handler still throws the original error
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Schema builder exploded");
+      // Transient error: re-throws original error for Payload to retry (not JobCancelledError)
+      const error = await validateSchemaJob.handler(mockContext).catch((e: unknown) => e);
+
+      expect(error).not.toBeInstanceOf(JobCancelledError);
+      expect((error as Error).message).toBe("Connection timeout");
 
       // Verify sidecar cleanup was called with the file path and sheetIndex
       expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/ingest-files/test.xlsx", 2);
-
-      // Verify the job was updated to FAILED stage
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-jobs",
-        id: 123,
-        data: { stage: "failed", errorLog: { lastError: "Schema builder exploded", context: "validate-schema" } },
-      });
     });
   });
 
@@ -538,13 +525,13 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       // Execute job
       const result = await validateSchemaJob.handler(mockContext);
 
-      // Verify result - no approval needed, no changes
-      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 0 } });
+      // Verify result - no approval needed, no changes, success
+      expect(result).toEqual({ output: { hasChanges: false, hasBreakingChanges: false, newFields: 0 } });
 
       // Verify no schema version was created (no changes)
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
-      // Verify job was updated to proceed to geocoding
+      // Verify job was updated with validation data but no stage (workflow controls sequencing)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -558,7 +545,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             approvalReason: "Manual approval required by dataset configuration",
             transformSuggestions: [],
           },
-          stage: "geocode-batch",
         },
       });
     });
@@ -667,7 +653,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       return { mockIngestJob, mockDataset, mockIngestFile };
     };
 
-    it("should fail import in strict mode when schema has changes", async () => {
+    it("should throw for strict mode when schema has changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = {
         type: "object",
@@ -677,19 +663,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       setupSchemaModeTest({ schemaMode: "strict", detectedSchema, currentSchema });
 
-      const result = await validateSchemaJob.handler(mockContext);
+      // Strict-mode violation now throws (Payload retries → onFail marks FAILED)
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Schema mismatch in strict mode");
 
-      expect(result).toEqual({
-        output: {
-          requiresApproval: false,
-          hasBreakingChanges: false,
-          newFields: 1,
-          failed: true,
-          failureReason: "Schema mismatch in strict mode: 1 change(s) detected",
-        },
-      });
-
-      // Verify job was updated to FAILED stage
+      // Verify job was updated to FAILED stage (handler marks it before throwing)
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "ingest-jobs",
@@ -699,23 +676,15 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       );
     });
 
-    it("should fail import in additive mode when schema has breaking changes", async () => {
+    it("should throw for additive mode when schema has breaking changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = { type: "object", properties: { id: { type: "number" } }, required: ["id"] };
 
       setupSchemaModeTest({ schemaMode: "additive", detectedSchema, currentSchema });
 
-      const result = await validateSchemaJob.handler(mockContext);
-
-      expect(result).toEqual({
-        output: {
-          requiresApproval: false,
-          hasBreakingChanges: true,
-          newFields: 0,
-          failed: true,
-          failureReason: "Breaking schema changes not allowed in additive mode",
-        },
-      });
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow(
+        "Breaking schema changes not allowed in additive mode"
+      );
 
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -741,31 +710,21 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // additive mode with non-breaking changes and no high-confidence transforms: auto-approve
       // schemaMode is set so determineRequiresApproval returns false (bypasses dataset config)
-      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 1 } });
+      expect(result).toEqual({ output: { hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
 
-      // Should proceed to create-schema-version since there are changes but no approval needed
+      // Workflow controls stage transition — no stage in update data
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ stage: "create-schema-version" }) })
+        expect.objectContaining({ data: expect.not.objectContaining({ stage: expect.anything() }) })
       );
     });
 
-    it("should fail import in flexible mode when schema has breaking changes", async () => {
+    it("should throw for flexible mode when schema has breaking changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = { type: "object", properties: { id: { type: "number" } }, required: ["id"] };
 
       setupSchemaModeTest({ schemaMode: "flexible", detectedSchema, currentSchema });
 
-      const result = await validateSchemaJob.handler(mockContext);
-
-      expect(result).toEqual({
-        output: {
-          requiresApproval: false,
-          hasBreakingChanges: true,
-          newFields: 0,
-          failed: true,
-          failureReason: "Breaking schema changes detected",
-        },
-      });
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Breaking schema changes detected");
     });
 
     it("should auto-approve non-breaking changes in flexible mode", async () => {
@@ -781,10 +740,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // flexible mode: non-breaking changes auto-approve, schemaMode bypasses dataset config
-      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 1 } });
+      expect(result).toEqual({ output: { hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
 
+      // Workflow controls stage transition — no stage in update data
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ stage: "create-schema-version" }) })
+        expect.objectContaining({ data: expect.not.objectContaining({ stage: expect.anything() }) })
       );
     });
 
@@ -795,11 +755,12 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       const result = await validateSchemaJob.handler(mockContext);
 
-      // No changes in strict mode: no failure, no approval, goes to geocode-batch
-      expect(result).toEqual({ output: { requiresApproval: false, hasBreakingChanges: false, newFields: 0 } });
+      // No changes in strict mode: no failure, no approval, success
+      expect(result).toEqual({ output: { hasChanges: false, hasBreakingChanges: false, newFields: 0 } });
 
+      // Workflow controls stage transition — no stage in update data
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ stage: "geocode-batch" }) })
+        expect.objectContaining({ data: expect.not.objectContaining({ stage: expect.anything() }) })
       );
     });
   });
@@ -825,85 +786,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       await validateSchemaJob.handler(mockContext);
       expect(mockPayload.find).toHaveBeenCalledWith(
         expect.objectContaining({ collection: "dataset-schemas", sort: "-versionNumber", limit: 1 })
-      );
-    });
-  });
-
-  describe("Import Quota Validation", () => {
-    it("should fail when events per import quota is exceeded", async () => {
-      const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
-
-      const mockIngestJob = createMockIngestJob({ id: 123 });
-      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
-        mockSchemaBuilderState;
-
-      const mockDataset = createMockDataset();
-      const mockIngestFile = createMockIngestFile();
-      // Attach a user object to the import file to trigger quota checking
-      (mockIngestFile as any).user = { id: 1, email: "test@example.com", role: "user" };
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockIngestJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockIngestFile);
-
-      // First checkQuota call (EVENTS_PER_IMPORT) returns not allowed
-      mocks.checkQuota.mockResolvedValueOnce({ allowed: false, current: 0, limit: 50, remaining: 0 });
-
-      mockPayload.update.mockResolvedValue({});
-
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow(
-        "exceeding your limit of 50 events per import"
-      );
-
-      // Verify job was updated to FAILED stage
-      expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          collection: "ingest-jobs",
-          id: 123,
-          data: expect.objectContaining({ stage: "failed" }),
-        })
-      );
-    });
-
-    it("should fail when total events quota is exceeded", async () => {
-      const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
-
-      const mockIngestJob = createMockIngestJob({ id: 123 });
-      (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
-        mockSchemaBuilderState;
-
-      const mockDataset = createMockDataset();
-      const mockIngestFile = createMockIngestFile();
-      (mockIngestFile as any).user = { id: 1, email: "test@example.com", role: "user" };
-
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockIngestJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockIngestFile);
-
-      // First checkQuota call (EVENTS_PER_IMPORT) returns allowed
-      mocks.checkQuota.mockResolvedValueOnce({ allowed: true, current: 0, limit: 1000, remaining: 1000 });
-      // Second checkQuota call (TOTAL_EVENTS) returns not allowed
-      mocks.checkQuota.mockResolvedValueOnce({ allowed: false, current: 9500, limit: 10000, remaining: 500 });
-
-      mockPayload.update.mockResolvedValue({});
-
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("would exceed your total events limit");
-
-      // Verify the job was updated to FAILED with the quota error
-      expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          collection: "ingest-jobs",
-          id: 123,
-          data: expect.objectContaining({
-            stage: "failed",
-            errorLog: expect.objectContaining({
-              lastError: expect.stringContaining("would exceed your total events limit"),
-              context: "validate-schema-quota",
-            }),
-          }),
-        })
       );
     });
   });

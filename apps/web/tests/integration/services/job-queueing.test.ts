@@ -1,10 +1,10 @@
 /**
  * Integration tests for job queueing behavior.
  *
- * This test suite verifies that jobs are queued correctly through the import pipeline,
+ * This test suite verifies that workflows are queued correctly through the import pipeline,
  * specifically ensuring that:
- * - Jobs are queued exactly once (no double-queueing)
- * - Collection hooks properly trigger job queueing
+ * - Workflows are queued exactly once (no double-queueing)
+ * - The ingest-files afterChange hook properly triggers the manual-ingest workflow
  * - Import pipeline stages progress without duplication
  *
  * @module
@@ -62,7 +62,7 @@ describe.sequential("Job Queueing Tests", () => {
   });
 
   describe("Import Job Creation", () => {
-    it("should queue analyze-duplicates exactly once when import-job is created", async () => {
+    it("should queue exactly one manual-ingest workflow when file is uploaded", async () => {
       const fixturePath = path.join(__dirname, "../../fixtures/events-german.csv");
       const fileBuffer = fs.readFileSync(fixturePath);
 
@@ -75,32 +75,16 @@ describe.sequential("Job Queueing Tests", () => {
         user: approverUserId,
       });
 
-      // Run dataset-detection job (automatically queued by ingest-files afterChange hook)
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      // Check that import-job was created
-      const importJobs = await payload.find({
-        collection: "ingest-jobs",
-        where: { ingestFile: { equals: ingestFile.id } },
-      });
-
-      expect(importJobs.docs.length).toBeGreaterThan(0);
-      const ingestJobId = importJobs.docs[0].id;
-
-      // Check queued jobs - should have exactly ONE analyze-duplicates job
-      const queuedJobs = await payload.find({
+      // Check that exactly one manual-ingest workflow was queued (before running it)
+      const queuedWorkflows = await payload.find({
         collection: "payload-jobs",
-        where: {
-          "input.ingestJobId": { equals: ingestJobId },
-          taskSlug: { equals: "analyze-duplicates" },
-          completedAt: { exists: false },
-        },
+        where: { "input.ingestFileId": { equals: String(ingestFile.id) }, workflowSlug: { equals: "manual-ingest" } },
       });
 
-      expect(queuedJobs.docs).toHaveLength(1);
-      logger.info("Verified single analyze-duplicates job queued", {
-        ingestJobId,
-        queuedJobsCount: queuedJobs.docs.length,
+      expect(queuedWorkflows.docs).toHaveLength(1);
+      logger.info("Verified single manual-ingest workflow queued", {
+        ingestFileId: ingestFile.id,
+        queuedWorkflowsCount: queuedWorkflows.docs.length,
       });
     });
 
@@ -171,7 +155,7 @@ describe.sequential("Job Queueing Tests", () => {
   });
 
   describe("Stage Transitions", () => {
-    it("should queue next job only once at each stage transition", async () => {
+    it("should process all stages through the workflow without duplicates", async () => {
       const fixturePath = path.join(__dirname, "../../fixtures/events-german.csv");
       const fileBuffer = fs.readFileSync(fixturePath);
 
@@ -183,63 +167,34 @@ describe.sequential("Job Queueing Tests", () => {
         user: approverUserId,
       });
 
-      // Stage 1: Run dataset-detection (queued by ingest-files afterChange hook)
-      await payload.jobs.run({ allQueues: true, limit: 100 });
+      // Verify exactly one workflow job is queued
+      const workflowJobs = await payload.find({
+        collection: "payload-jobs",
+        where: { "input.ingestFileId": { equals: String(ingestFile.id) }, workflowSlug: { equals: "manual-ingest" } },
+      });
 
-      // Get import job that was created
+      expect(workflowJobs.docs).toHaveLength(1);
+      logger.info("Verified: single manual-ingest workflow queued");
+
+      // Run the workflow to completion
+      const pipelineResult = await runJobsUntilImportSettled(payload, ingestFile.id);
+      expect(pipelineResult.settled).toBe(true);
+
+      // Verify import completed and exactly one ingest job was created
       const importJobs = await payload.find({
         collection: "ingest-jobs",
         where: { ingestFile: { equals: ingestFile.id } },
       });
 
-      expect(importJobs.docs.length).toBeGreaterThan(0);
-      const ingestJobId = importJobs.docs[0].id;
+      expect(importJobs.docs).toHaveLength(1);
+      expect(importJobs.docs[0].stage).toBe("completed");
+      logger.info("Verified: single ingest job processed through all stages");
 
-      // Stage 2: Check analyze-duplicates was queued exactly once (BEFORE running it)
-      // Since deleteJobOnComplete is true by default, we must check BEFORE jobs complete
-      const analyzeDuplicatesJobs = await payload.find({
-        collection: "payload-jobs",
-        where: {
-          "input.ingestJobId": { equals: ingestJobId },
-          taskSlug: { equals: "analyze-duplicates" },
-          completedAt: { exists: false },
-        },
-      });
-
-      expect(analyzeDuplicatesJobs.docs).toHaveLength(1);
-      logger.info("✓ Verified: analyze-duplicates queued exactly once");
-
-      // Run analyze-duplicates
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      // Stage 3: Check detect-schema was queued exactly once (BEFORE running it)
-      const detectSchemaJobs = await payload.find({
-        collection: "payload-jobs",
-        where: {
-          "input.ingestJobId": { equals: ingestJobId },
-          taskSlug: { equals: "detect-schema" },
-          completedAt: { exists: false },
-        },
-      });
-
-      expect(detectSchemaJobs.docs).toHaveLength(1);
-      logger.info("✓ Verified: detect-schema queued exactly once");
-
-      // Run detect-schema
-      await payload.jobs.run({ allQueues: true, limit: 100 });
-
-      // Stage 4: Check validate-schema was queued exactly once (BEFORE running it)
-      const validateSchemaJobs = await payload.find({
-        collection: "payload-jobs",
-        where: {
-          "input.ingestJobId": { equals: ingestJobId },
-          taskSlug: { equals: "validate-schema" },
-          completedAt: { exists: false },
-        },
-      });
-
-      expect(validateSchemaJobs.docs).toHaveLength(1);
-      logger.info("✓ Verified: validate-schema queued exactly once");
+      // Verify exactly 3 events (no duplicates from double-processing)
+      const datasetId = extractRelationId(importJobs.docs[0].dataset);
+      const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } } });
+      expect(events.docs).toHaveLength(3);
+      logger.info("Verified: correct event count, no stage duplication");
     });
   });
 });

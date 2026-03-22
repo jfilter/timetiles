@@ -171,7 +171,7 @@ export const enum_ingest_jobs_stage = db_schema.enum("enum_ingest_jobs_stage", [
   "analyze-duplicates",
   "detect-schema",
   "validate-schema",
-  "await-approval",
+  "needs-review",
   "create-schema-version",
   "geocode-batch",
   "create-events",
@@ -184,7 +184,7 @@ export const enum_ingest_jobs_last_successful_stage = db_schema.enum(
     "analyze-duplicates",
     "detect-schema",
     "validate-schema",
-    "await-approval",
+    "needs-review",
     "geocode-batch",
     "create-events",
   ],
@@ -195,7 +195,7 @@ export const enum__ingest_jobs_v_version_stage = db_schema.enum(
     "analyze-duplicates",
     "detect-schema",
     "validate-schema",
-    "await-approval",
+    "needs-review",
     "create-schema-version",
     "geocode-batch",
     "create-events",
@@ -209,7 +209,7 @@ export const enum__ingest_jobs_v_version_last_successful_stage = db_schema.enum(
     "analyze-duplicates",
     "detect-schema",
     "validate-schema",
-    "await-approval",
+    "needs-review",
     "geocode-batch",
     "create-events",
   ],
@@ -896,7 +896,7 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
     "create-events",
     "url-fetch",
     "schedule-manager",
-    "cleanup-stuck-scheduled-imports",
+    "cleanup-stuck-scheduled-ingests",
     "cleanup-stuck-scrapers",
     "process-pending-retries",
     "quota-reset",
@@ -914,6 +914,10 @@ export const enum_payload_jobs_log_state = db_schema.enum(
   "enum_payload_jobs_log_state",
   ["failed", "succeeded"],
 );
+export const enum_payload_jobs_workflow_slug = db_schema.enum(
+  "enum_payload_jobs_workflow_slug",
+  ["manual-ingest", "scheduled-ingest", "scraper-ingest", "ingest-process"],
+);
 export const enum_payload_jobs_task_slug = db_schema.enum(
   "enum_payload_jobs_task_slug",
   [
@@ -927,7 +931,7 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
     "create-events",
     "url-fetch",
     "schedule-manager",
-    "cleanup-stuck-scheduled-imports",
+    "cleanup-stuck-scheduled-ingests",
     "cleanup-stuck-scrapers",
     "process-pending-retries",
     "quota-reset",
@@ -2190,7 +2194,7 @@ export const ingest_files = db_schema.table(
     targetDataset: integer("target_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
-    scheduledImport: integer("scheduled_import_id").references(
+    scheduledIngest: integer("scheduled_ingest_id").references(
       (): AnyPgColumn => scheduled_ingests.id,
       {
         onDelete: "set null",
@@ -2229,7 +2233,7 @@ export const ingest_files = db_schema.table(
     index("ingest_files_catalog_idx").on(columns.catalog),
     index("ingest_files_user_idx").on(columns.user),
     index("ingest_files_target_dataset_idx").on(columns.targetDataset),
-    index("ingest_files_scheduled_import_idx").on(columns.scheduledImport),
+    index("ingest_files_scheduled_ingest_idx").on(columns.scheduledIngest),
     index("ingest_files_updated_at_idx").on(columns.updatedAt),
     index("ingest_files_created_at_idx").on(columns.createdAt),
     index("ingest_files_deleted_at_idx").on(columns.deletedAt),
@@ -2313,7 +2317,7 @@ export const _ingest_files_v = db_schema.table(
         onDelete: "set null",
       },
     ),
-    version_scheduledImport: integer("version_scheduled_import_id").references(
+    version_scheduledIngest: integer("version_scheduled_ingest_id").references(
       () => scheduled_ingests.id,
       {
         onDelete: "set null",
@@ -2367,8 +2371,8 @@ export const _ingest_files_v = db_schema.table(
     index("_ingest_files_v_version_version_target_dataset_idx").on(
       columns.version_targetDataset,
     ),
-    index("_ingest_files_v_version_version_scheduled_import_idx").on(
-      columns.version_scheduledImport,
+    index("_ingest_files_v_version_version_scheduled_ingest_idx").on(
+      columns.version_scheduledIngest,
     ),
     index("_ingest_files_v_version_version_updated_at_idx").on(
       columns.version_updatedAt,
@@ -2509,6 +2513,8 @@ export const ingest_jobs = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
+    reviewReason: varchar("review_reason"),
+    reviewDetails: jsonb("review_details"),
     datasetSchemaVersion: integer("dataset_schema_version_id").references(
       () => dataset_schemas.id,
       {
@@ -2689,6 +2695,8 @@ export const _ingest_jobs_v = db_schema.table(
       "version_schema_validation_approved_at",
       { mode: "string", withTimezone: true, precision: 3 },
     ),
+    version_reviewReason: varchar("version_review_reason"),
+    version_reviewDetails: jsonb("version_review_details"),
     version_datasetSchemaVersion: integer(
       "version_dataset_schema_version_id",
     ).references(() => dataset_schemas.id, {
@@ -7563,6 +7571,7 @@ export const payload_jobs = db_schema.table(
     totalTried: numeric("total_tried", { mode: "number" }).default(0),
     hasError: boolean("has_error").default(false),
     error: jsonb("error"),
+    workflowSlug: enum_payload_jobs_workflow_slug("workflow_slug"),
     taskSlug: enum_payload_jobs_task_slug("task_slug"),
     queue: varchar("queue").default("default"),
     waitUntil: timestamp("wait_until", {
@@ -7592,6 +7601,7 @@ export const payload_jobs = db_schema.table(
     index("payload_jobs_completed_at_idx").on(columns.completedAt),
     index("payload_jobs_total_tried_idx").on(columns.totalTried),
     index("payload_jobs_has_error_idx").on(columns.hasError),
+    index("payload_jobs_workflow_slug_idx").on(columns.workflowSlug),
     index("payload_jobs_task_slug_idx").on(columns.taskSlug),
     index("payload_jobs_queue_idx").on(columns.queue),
     index("payload_jobs_wait_until_idx").on(columns.waitUntil),
@@ -8965,10 +8975,10 @@ export const relations_ingest_files = relations(
       references: [datasets.id],
       relationName: "targetDataset",
     }),
-    scheduledImport: one(scheduled_ingests, {
-      fields: [ingest_files.scheduledImport],
+    scheduledIngest: one(scheduled_ingests, {
+      fields: [ingest_files.scheduledIngest],
       references: [scheduled_ingests.id],
-      relationName: "scheduledImport",
+      relationName: "scheduledIngest",
     }),
     _rels: many(ingest_files_rels, {
       relationName: "_rels",
@@ -9013,10 +9023,10 @@ export const relations__ingest_files_v = relations(
       references: [datasets.id],
       relationName: "version_targetDataset",
     }),
-    version_scheduledImport: one(scheduled_ingests, {
-      fields: [_ingest_files_v.version_scheduledImport],
+    version_scheduledIngest: one(scheduled_ingests, {
+      fields: [_ingest_files_v.version_scheduledIngest],
       references: [scheduled_ingests.id],
-      relationName: "version_scheduledImport",
+      relationName: "version_scheduledIngest",
     }),
     _rels: many(_ingest_files_v_rels, {
       relationName: "_rels",
@@ -11092,6 +11102,7 @@ type DatabaseSchema = {
   enum__views_v_published_locale: typeof enum__views_v_published_locale;
   enum_payload_jobs_log_task_slug: typeof enum_payload_jobs_log_task_slug;
   enum_payload_jobs_log_state: typeof enum_payload_jobs_log_state;
+  enum_payload_jobs_workflow_slug: typeof enum_payload_jobs_workflow_slug;
   enum_payload_jobs_task_slug: typeof enum_payload_jobs_task_slug;
   enum_main_menu_status: typeof enum_main_menu_status;
   enum__main_menu_v_version_status: typeof enum__main_menu_v_version_status;

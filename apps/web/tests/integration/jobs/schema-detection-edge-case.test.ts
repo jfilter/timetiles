@@ -35,7 +35,7 @@ const runJobsUntilSchemaComplete = async (
     ingestFileId,
     (ingestJob) =>
       ingestJob.stage === "validate-schema" ||
-      ingestJob.stage === "await-approval" ||
+      ingestJob.stage === "needs-review" ||
       ingestJob.stage === "geocode-batch",
     { maxIterations }
   );

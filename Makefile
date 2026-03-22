@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra dev scraper-dev scraper-images scraper-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra jobs dev scraper-dev scraper-images scraper-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE from .env (default: docker)
 -include .env
@@ -164,6 +164,11 @@ ensure-infra:
 # Check development environment status
 status:
 	@./scripts/status.sh
+
+# Run background job worker (alternative to autoRun for testing worker isolation)
+jobs: ensure-infra
+	@echo "🔄 Starting job worker..."
+	cd apps/web && pnpm payload jobs:run --cron "* * * * *" --all-queues --handle-schedules
 
 # Start development server (requires infrastructure)
 dev: ensure-infra

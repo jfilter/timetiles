@@ -105,8 +105,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
-      if (result.output.success) {
+      expect(result.output.ingestFileId).toBeDefined();
+      if (result.output.ingestFileId) {
         const successOutput = result.output as any;
         expect(successOutput.contentHash).toBe(expectedHash);
 
@@ -146,8 +146,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result1.output.success).toBe(true);
-      if (result1.output.success) {
+      expect(result1.output.ingestFileId).toBeDefined();
+      if (result1.output.ingestFileId) {
         const successOutput = result1.output as any;
         expect(successOutput.isDuplicate).toBe(false);
 
@@ -173,8 +173,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result2.output.success).toBe(true);
-      if (result2.output.success) {
+      expect(result2.output.ingestFileId).toBeDefined();
+      if (result2.output.ingestFileId) {
         const successOutput = result2.output as any;
         expect(successOutput.isDuplicate).toBe(true);
         expect(successOutput.skippedReason).toContain("Duplicate");
@@ -224,7 +224,7 @@ describe.sequential("Data Integrity Tests", () => {
 
       const duration = Date.now() - startTime;
 
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
       expect(duration).toBeLessThan(10000); // Should complete within 10 seconds
     });
   });
@@ -602,8 +602,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
-      if (result.output.success) {
+      expect(result.output.ingestFileId).toBeDefined();
+      if (result.output.ingestFileId) {
         const successOutput = result.output as any;
         // Content hash should be consistent
         const expectedHash = crypto.createHash("sha256").update(specialContent).digest("hex");
@@ -644,8 +644,8 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
-      if (result.output.success) {
+      expect(result.output.ingestFileId).toBeDefined();
+      if (result.output.ingestFileId) {
         const successOutput = result.output as any;
         expect(successOutput.fileSize).toBe(latin1Content.length);
       }
@@ -709,7 +709,7 @@ describe.sequential("Data Integrity Tests", () => {
       });
 
       // Should succeed after one retry
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
       expect(attemptCount).toBe(2);
     });
   });

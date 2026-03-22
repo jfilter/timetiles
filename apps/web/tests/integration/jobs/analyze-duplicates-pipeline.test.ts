@@ -43,7 +43,7 @@ describe.sequential("Analyze Duplicates Pipeline", () => {
     await testEnv.seedManager.truncate(collectionsToReset);
   });
 
-  it("should run dataset-detection then analyze-duplicates without errors", { timeout: 30_000 }, async () => {
+  it("should run the full pipeline without errors", { timeout: 30_000 }, async () => {
     // CSV matching the E2E test fixture (lat/lon, no location column)
     const csvContent =
       "title,description,date,latitude,longitude,category\n" +
@@ -51,7 +51,7 @@ describe.sequential("Analyze Duplicates Pipeline", () => {
       "Jazz Night,Open-air jazz,2025-06-15,52.5280,13.4430,music\n" +
       "Food Festival,Street food,2025-07-01,52.5030,13.4290,food\n";
 
-    // Create import file
+    // Create import file (triggers manual-ingest workflow via afterChange hook)
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
       filename: "scheduled-events.csv",
       mimeType: "text/csv",
@@ -60,10 +60,11 @@ describe.sequential("Analyze Duplicates Pipeline", () => {
       datasetsProcessed: 0,
     });
 
-    // Step 1: Run dataset-detection (auto-queued by import-files afterChange hook)
-    const result1 = await payload.jobs.run({ allQueues: true, limit: 10 });
-    const jobCount1 = result1?.jobStatus ? Object.keys(result1.jobStatus).length : 0;
-    console.log(`dataset-detection: ${jobCount1} jobs processed`);
+    // Run the workflow until completion (manual-ingest runs all stages)
+    for (let i = 0; i < 20; i++) {
+      const result = await payload.jobs.run({ allQueues: true, limit: 10 });
+      if (result.noJobsRemaining) break;
+    }
 
     // Check that import-job was created
     const importJobs = await payload.find({
@@ -73,39 +74,24 @@ describe.sequential("Analyze Duplicates Pipeline", () => {
     expect(importJobs.docs.length).toBeGreaterThanOrEqual(1);
     const importJobId = importJobs.docs[0].id;
 
-    // Check that analyze-duplicates was queued
-    const pendingJobs = await payload.find({
+    // Check the workflow job completed without errors
+    const workflowJobs = await payload.find({
       collection: "payload-jobs",
-      where: { taskSlug: { equals: "analyze-duplicates" }, completedAt: { exists: false } },
-    });
-    console.log(`analyze-duplicates pending: ${pendingJobs.docs.length}`);
-    expect(pendingJobs.docs.length).toBe(1);
-
-    // Step 2: Run analyze-duplicates
-    const result2 = await payload.jobs.run({ allQueues: true, limit: 10 });
-    const jobCount2 = result2?.jobStatus ? Object.keys(result2.jobStatus).length : 0;
-    console.log(`analyze-duplicates: ${jobCount2} jobs processed`);
-
-    // Check that it didn't fail
-    const analyzeDupJob = await payload.find({
-      collection: "payload-jobs",
-      where: { taskSlug: { equals: "analyze-duplicates" } },
+      where: { workflowSlug: { equals: "manual-ingest" } },
       limit: 1,
       sort: "-createdAt",
     });
 
-    if (analyzeDupJob.docs.length > 0) {
-      const job = analyzeDupJob.docs[0];
+    if (workflowJobs.docs.length > 0) {
+      const job = workflowJobs.docs[0];
       if (job.hasError) {
-        console.error("analyze-duplicates FAILED:", JSON.stringify(job.error, null, 2));
+        console.error("manual-ingest workflow FAILED:", JSON.stringify(job.error, null, 2));
       }
       expect(job.hasError).toBeFalsy();
     }
 
-    // Check import-job progressed past analyze-duplicates
+    // Check import-job completed successfully (pipeline ran through analyze-duplicates and beyond)
     const updatedJob = await payload.findByID({ collection: "ingest-jobs", id: importJobId });
-    console.log(`Import job stage after analyze-duplicates: ${updatedJob.stage}`);
-    // Should have moved to schema-detection or beyond
-    expect(updatedJob.stage).not.toBe("ANALYZE_DUPLICATES");
+    expect(updatedJob.stage).toBe("completed");
   });
 });

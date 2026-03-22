@@ -23,9 +23,15 @@ import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
-import type { JobHandlerContext } from "../utils/job-context";
-import { failIngestJob, loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
+import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
+import {
+  checkQuotaForSheet,
+  REVIEW_REASONS,
+  setNeedsReview,
+  shouldReviewHighDuplicates,
+} from "../workflows/review-checks";
 
 interface DuplicateAnalysisResult {
   internalDuplicates: Array<{ rowNumber: number; uniqueId: string; firstOccurrence?: number; count?: number }>;
@@ -49,7 +55,6 @@ const skipDeduplication = async (
       collection: COLLECTION_NAMES.INGEST_JOBS,
       id: ingestJobId,
       data: {
-        stage: PROCESSING_STAGE.DETECT_SCHEMA,
         duplicates: {
           strategy: "disabled",
           internal: [],
@@ -207,7 +212,6 @@ const updateJobWithDuplicates = async (
           externalDuplicates: results.externalDuplicates.length,
         },
       },
-      stage: PROCESSING_STAGE.DETECT_SCHEMA,
     },
   });
 };
@@ -255,6 +259,35 @@ const handleDisabledDedup = async (
 
 export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
+  retries: 1,
+  outputSchema: [
+    { name: "totalRows", type: "number" as const },
+    { name: "uniqueRows", type: "number" as const },
+    { name: "internalDuplicates", type: "number" as const },
+    { name: "externalDuplicates", type: "number" as const },
+    { name: "needsReview", type: "checkbox" as const },
+    { name: "skipped", type: "checkbox" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskCallbackArgs) => {
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+            context: "analyze-duplicates",
+          },
+        },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as AnalyzeDuplicatesJobInput["input"];
@@ -292,6 +325,40 @@ export const analyzeDuplicatesJob = {
         externalDuplicates: results.externalDuplicates.length,
       });
 
+      // Review check: high duplicate rate (>80%)
+      const dupCheck = shouldReviewHighDuplicates(results.totalRows, results.uniqueRows);
+      if (dupCheck.needsReview) {
+        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_DUPLICATE_RATE, {
+          totalRows: results.totalRows,
+          uniqueRows: results.uniqueRows,
+          duplicateRate: dupCheck.duplicateRate,
+        });
+        return {
+          output: {
+            needsReview: true,
+            totalRows: results.totalRows,
+            uniqueRows: results.uniqueRows,
+            internalDuplicates: results.internalDuplicates.length,
+            externalDuplicates: results.externalDuplicates.length,
+          },
+        };
+      }
+
+      // Review check: quota
+      const quotaCheck = await checkQuotaForSheet(payload, ingestJobId, results.uniqueRows);
+      if (!quotaCheck.allowed) {
+        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.QUOTA_EXCEEDED, quotaCheck);
+        return {
+          output: {
+            needsReview: true,
+            totalRows: results.totalRows,
+            uniqueRows: results.uniqueRows,
+            internalDuplicates: results.internalDuplicates.length,
+            externalDuplicates: results.externalDuplicates.length,
+          },
+        };
+      }
+
       return {
         output: {
           totalRows: results.totalRows,
@@ -312,8 +379,7 @@ export const analyzeDuplicatesJob = {
         // Best-effort cleanup — don't mask the original error
       }
 
-      await failIngestJob(payload, ingestJobId, error, "analyze-duplicates");
-
+      // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;
     }
   },

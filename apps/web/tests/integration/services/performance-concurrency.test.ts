@@ -30,7 +30,6 @@ import {
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
-  success: true;
   ingestFileId: string | number;
   filename: string;
   fileSize: number | undefined;
@@ -40,12 +39,7 @@ interface UrlFetchSuccessOutput {
   skippedReason?: string;
 }
 
-interface UrlFetchFailureOutput {
-  success: false;
-  error: string;
-}
-
-type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
+type _UrlFetchOutput = UrlFetchSuccessOutput;
 
 describe.sequential("Performance and Concurrency Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -140,8 +134,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
-      if (result.output.success) {
+      expect(result.output.ingestFileId).toBeDefined();
+      if (result.output.ingestFileId) {
         const successOutput = result.output as UrlFetchSuccessOutput;
         expect(successOutput.fileSize).toBeGreaterThan(0);
         expect(successOutput.contentType).toContain("csv");
@@ -190,8 +184,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
-      if (result.output.success) {
+      expect(result.output.ingestFileId).toBeDefined();
+      if (result.output.ingestFileId) {
         const successOutput = result.output as UrlFetchSuccessOutput;
         expect(successOutput.fileSize).toBe(excelData.length);
       }
@@ -240,8 +234,8 @@ describe.sequential("Performance and Concurrency Tests", () => {
       const endTime = Date.now();
 
       // All should succeed
-      results.forEach((result: { output: { success: boolean } }) => {
-        expect(result.output.success).toBe(true);
+      results.forEach((result: { output: Record<string, unknown> }) => {
+        expect(result.output.ingestFileId).toBeDefined();
       });
 
       // Should complete in reasonable time (not sequential)
@@ -436,7 +430,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
       });
 
       // Should eventually succeed after retries
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
       // Note: attempts not included in output, but request count verifies retries happened
       expect(requestCount).toBeGreaterThan(2); // Should have made at least 3 requests
     });
@@ -479,7 +473,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
 
       const duration = Date.now() - startTime;
 
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
       expect(duration).toBeGreaterThan(400); // Should wait at least 400ms (with 500ms delay)
       expect(duration).toBeLessThan(5000); // Should not take too long
     });

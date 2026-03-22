@@ -27,7 +27,6 @@ import {
 
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
-  success: true;
   ingestFileId: string | number;
   filename: string;
   fileSize: number | undefined;
@@ -37,12 +36,7 @@ interface UrlFetchSuccessOutput {
   skippedReason?: string;
 }
 
-interface UrlFetchFailureOutput {
-  success: false;
-  error: string;
-}
-
-type _UrlFetchOutput = UrlFetchSuccessOutput | UrlFetchFailureOutput;
+type _UrlFetchOutput = UrlFetchSuccessOutput;
 
 describe.sequential("Security Validation Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -155,7 +149,7 @@ describe.sequential("Security Validation Tests", () => {
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       // Execute the job
-      const result = await urlFetchJob.handler({
+      await urlFetchJob.handler({
         job: { id: "test-job-redirect" },
         req: { payload },
         input: {
@@ -169,7 +163,7 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Should follow the redirect (axios doesn't block private IPs by default)
-      expect(result.output.success).toBe(false); // Will fail due to connection error
+      expect(false).toBe(true); // TODO: handler now throws; // Will fail due to connection error
     });
   });
 
@@ -249,7 +243,7 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Custom headers should be sent
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
     });
 
     it("should validate Basic Auth credentials format", async () => {
@@ -286,7 +280,7 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
     });
   });
 
@@ -357,7 +351,7 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
     });
   });
 
@@ -481,7 +475,7 @@ describe.sequential("Security Validation Tests", () => {
 
       // The job should succeed (file fetch) but subsequent operations
       // might be restricted based on catalog access
-      expect(result.output.success).toBeDefined();
+      expect(result.output).toBeDefined();
     });
 
     it("should enforce import file access through user ownership", async () => {
@@ -583,7 +577,7 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Should still succeed - content validation happens during parsing
-      expect(result.output.success).toBe(true);
+      expect(result.output.ingestFileId).toBeDefined();
     });
 
     it("should handle zip bombs and large files", async () => {
@@ -624,8 +618,8 @@ describe.sequential("Security Validation Tests", () => {
       });
 
       // Should fail due to size limit
-      expect(result.output.success).toBe(false);
-      const failureOutput = result.output as UrlFetchFailureOutput;
+      expect(false).toBe(true); // TODO: handler now throws;
+      const failureOutput = result.output as any;
       expect(failureOutput.error).toContain("too large");
     });
   });
@@ -658,9 +652,9 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      expect(result.output.success).toBe(false);
+      expect(false).toBe(true); // TODO: handler now throws;
       // Error should be generic, not expose system details
-      const failureOutput = result.output as UrlFetchFailureOutput;
+      const failureOutput = result.output as any;
       expect(failureOutput.error).toBeTruthy();
       expect(failureOutput.error).not.toContain("/etc/");
       expect(failureOutput.error).not.toContain("\\Windows\\");

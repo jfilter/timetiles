@@ -64,7 +64,7 @@ describe.sequential("All Transform Types Pipeline", () => {
       payload,
       ingestFileId,
       (ingestJob) =>
-        ingestJob.stage === "await-approval" || ingestJob.stage === "completed" || ingestJob.stage === "failed",
+        ingestJob.stage === "needs-review" || ingestJob.stage === "completed" || ingestJob.stage === "failed",
       { maxIterations: 30 }
     );
     expect(result.matched).toBe(true);

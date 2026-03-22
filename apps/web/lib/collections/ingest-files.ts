@@ -10,7 +10,7 @@
  * - Information about the datasets detected within the file.
  * - A reference to the background job responsible for processing the file.
  *
- * An `afterChange` hook is used to automatically trigger the `dataset-detection` job
+ * An `afterChange` hook is used to automatically queue the `manual-ingest` workflow
  * as soon as a new file is uploaded and created in this collection.
  *
  * ⚠️ Payload CMS Deadlock Prevention
@@ -419,21 +419,9 @@ const IngestFiles: CollectionConfig = {
           return doc;
         }
 
-        // Get the catalog if specified
-        let catalog = null;
-        if (doc.catalog) {
-          catalog =
-            typeof doc.catalog === "object"
-              ? doc.catalog
-              : await payload.findByID({ collection: COLLECTION_NAMES.CATALOGS, id: doc.catalog });
-        }
-
-        // Queue the dataset detection job to detect sheets/datasets
+        // Queue the manual-ingest workflow to process the file through the full pipeline
         try {
-          const job = await payload.jobs.queue({
-            task: "dataset-detection",
-            input: { ingestFileId: doc.id, catalogId: catalog?.id },
-          });
+          const job = await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(doc.id) } });
 
           // Update with job ID
           try {
@@ -451,7 +439,7 @@ const IngestFiles: CollectionConfig = {
             logger.error("Failed to update import-files record with job ID", error);
           }
         } catch (error) {
-          logger.error("Failed to queue dataset detection job", error);
+          logger.error("Failed to queue manual-ingest workflow", error);
           try {
             await payload.update({
               collection: COLLECTION_NAMES.INGEST_FILES,

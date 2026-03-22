@@ -2,7 +2,8 @@
  * Resets a failed import job to a specific stage for recovery or debugging.
  *
  * This is a powerful admin-only operation that bypasses normal stage transition
- * rules. Uses ErrorRecoveryService.resetJobToStage for the actual reset logic.
+ * rules. Resets the job stage and queues the ingest-process workflow to resume
+ * processing from the target stage.
  *
  * POST /api/ingest-jobs/:id/reset
  *
@@ -12,15 +13,38 @@
 import { z } from "zod";
 
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
-import { RECOVERY_STAGES_LIST } from "@/lib/constants/stage-graph";
-import { ErrorRecoveryService } from "@/lib/ingest/error-recovery";
+import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 import type { IngestJob } from "@/payload-types";
 
 /**
- * Valid stages for manual reset — derived from the canonical stage graph.
+ * Valid stages an admin can reset a failed job to.
+ * These correspond to points where the ingest-process workflow can resume.
  */
-const VALID_RESET_STAGES = RECOVERY_STAGES_LIST;
+const VALID_RESET_STAGES = [
+  PROCESSING_STAGE.ANALYZE_DUPLICATES,
+  PROCESSING_STAGE.DETECT_SCHEMA,
+  PROCESSING_STAGE.VALIDATE_SCHEMA,
+  PROCESSING_STAGE.GEOCODE_BATCH,
+  PROCESSING_STAGE.CREATE_EVENTS,
+] as const;
+
+/**
+ * Maps a recovery stage to the appropriate resumeFrom value for the
+ * ingest-process workflow. Stages before detect-schema (like analyze-duplicates)
+ * start from detect-schema since the ingest-process workflow begins there.
+ */
+const stageToResumeFrom = (stage: string): string => {
+  switch (stage) {
+    case PROCESSING_STAGE.CREATE_EVENTS:
+      return "create-events";
+    case PROCESSING_STAGE.GEOCODE_BATCH:
+    case PROCESSING_STAGE.CREATE_SCHEMA_VERSION:
+      return "create-schema-version";
+    default:
+      return "detect-schema";
+  }
+};
 
 export const POST = apiRoute({
   auth: "admin",
@@ -35,17 +59,22 @@ export const POST = apiRoute({
     // Get the import job (admins have access to all jobs)
     const ingestJob = await safeFindByID<IngestJob>(payload, { collection: "ingest-jobs", id, user });
 
-    // Reset via ErrorRecoveryService
-    const result = await ErrorRecoveryService.resetJobToStage(payload, ingestJob.id, targetStage, clearRetries);
-
-    if (!result.success) {
-      logger.warn(
-        { ingestJobId: ingestJob.id, adminId: user.id, fromStage: ingestJob.stage, targetStage, reason: result.error },
-        "Admin stage reset failed"
-      );
-
-      throw new ValidationError(result.error ?? "Failed to reset import job");
+    // Only allow resetting failed jobs
+    if (ingestJob.stage !== PROCESSING_STAGE.FAILED) {
+      throw new ValidationError(`Can only reset jobs in FAILED state. Current stage: ${ingestJob.stage}`);
     }
+
+    // Reset the job stage and optionally clear error log
+    const updateData: Record<string, unknown> = { stage: targetStage };
+    if (clearRetries) {
+      updateData.errorLog = null;
+    }
+
+    await payload.update({ collection: "ingest-jobs", id: ingestJob.id, data: updateData });
+
+    // Queue the ingest-process workflow to resume from the target stage
+    const resumeFrom = stageToResumeFrom(targetStage);
+    await payload.jobs.queue({ workflow: "ingest-process", input: { ingestJobId: String(ingestJob.id), resumeFrom } });
 
     logger.info(
       {
@@ -54,9 +83,10 @@ export const POST = apiRoute({
         adminEmail: user.email,
         fromStage: ingestJob.stage,
         targetStage,
+        resumeFrom,
         clearedRetries: clearRetries,
       },
-      "Admin manually reset import job stage"
+      "Admin manually reset import job stage and queued workflow"
     );
 
     return {

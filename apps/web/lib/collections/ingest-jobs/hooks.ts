@@ -12,10 +12,9 @@ import type {
 
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
-import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { isRecoveryStage } from "@/lib/constants/stage-graph";
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
-import { StageTransitionService } from "@/lib/ingest/stage-transition";
+import { getResumePointForReason, REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -23,7 +22,6 @@ import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { IngestJob } from "@/payload-types";
 
 import { getIngestFilePath } from "../../jobs/utils/upload-path";
-import { handleJobCompletion, isJobCompleted } from "./helpers";
 
 /**
  * Enforces terminal state for COMPLETED jobs.
@@ -54,34 +52,6 @@ const enforceCompletedTerminalState = (
 };
 
 /**
- * Validates and logs FAILED job recovery transitions.
- */
-const validateFailedRecovery = (
-  fromStage: string,
-  toStage: string,
-  req: PayloadRequest,
-  originalDoc: IngestJob
-): void => {
-  if (fromStage === PROCESSING_STAGE.FAILED && toStage !== PROCESSING_STAGE.FAILED) {
-    if (!isRecoveryStage(toStage)) {
-      throw new Error(
-        `Invalid recovery stage '${toStage}' for failed import job. ` +
-          `Failed jobs can only be retried from specific stages via the retry mechanism.`
-      );
-    }
-
-    // Log recovery attempts (both automatic and manual)
-    logger.info("Failed import job recovery initiated", {
-      ingestJobId: originalDoc.id,
-      fromStage,
-      toStage,
-      userId: req.user?.id,
-      isAutomatic: !req.user, // No user means automated retry
-    });
-  }
-};
-
-/**
  * Handles schema approval workflow.
  */
 const handleSchemaApproval = (
@@ -92,7 +62,7 @@ const handleSchemaApproval = (
 ): void => {
   const isApprovalUpdate =
     operation === "update" &&
-    data.stage === PROCESSING_STAGE.AWAIT_APPROVAL &&
+    data.stage === PROCESSING_STAGE.NEEDS_REVIEW &&
     data.schemaValidation?.approved === true &&
     originalDoc?.schemaValidation?.approved !== true;
 
@@ -100,11 +70,10 @@ const handleSchemaApproval = (
     if (!req.user) {
       throw new Error("Authentication required to approve schema changes");
     }
-    const approvedBy = req.user.id;
-    data.stage = PROCESSING_STAGE.CREATE_SCHEMA_VERSION;
+    // Only set approval metadata — the afterChange hook will queue ingest-process workflow
     data.schemaValidation.approvedAt = new Date().toISOString();
-    data.schemaValidation.approvedBy = approvedBy;
-    logger.info("Ingest job approved", { ingestJobId: data.id, approvedBy: approvedBy, stage: data.stage });
+    data.schemaValidation.approvedBy = req.user.id;
+    logger.info("Ingest job approved", { ingestJobId: data.id, approvedBy: req.user.id });
   }
 };
 
@@ -169,7 +138,6 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
       const toStage = data.stage;
 
       enforceCompletedTerminalState(fromStage, toStage, req, originalDoc);
-      validateFailedRecovery(fromStage, toStage, req, originalDoc);
     }
 
     // Handle schema approval workflow
@@ -213,39 +181,32 @@ const trackIngestJobQuota = async (req: PayloadRequest, doc: IngestJob): Promise
   logger.info("Ingest job creation tracked for quota", { userId, ingestJobId: doc.id });
 };
 
-const handleFailedTransition = async (req: PayloadRequest, doc: IngestJob, error: string): Promise<void> => {
-  logger.error("Stage transition failed, marking job as FAILED", { ingestJobId: doc.id, error });
-  await req.payload.update({
-    collection: COLLECTION_NAMES.INGEST_JOBS,
-    id: doc.id,
-    data: {
-      stage: PROCESSING_STAGE.FAILED,
-      errorLog: { error, context: "stage transition", timestamp: new Date().toISOString() },
-    },
-  });
-};
-
 export const afterChangeHooks: CollectionAfterChangeHook[] = [
   async ({ doc, previousDoc, req, operation }) => {
-    if (req.context?.skipStageTransition) return doc;
-
     if (operation === "update" && previousDoc) {
       await auditAdminStageOverride(req, doc, previousDoc);
     }
 
     if (operation === "create") {
       await trackIngestJobQuota(req, doc);
-      await req.payload.jobs.queue({ task: JOB_TYPES.ANALYZE_DUPLICATES, input: { ingestJobId: doc.id } });
-      return doc;
+      // No longer queue jobs here — workflow handles orchestration
     }
 
-    const transitionResult = await StageTransitionService.processStageTransition(req.payload, doc, previousDoc);
-    if (!transitionResult.success && transitionResult.error) {
-      await handleFailedTransition(req, doc, transitionResult.error);
-    }
+    // Queue ingest-process workflow when NEEDS_REVIEW is approved
+    if (
+      operation === "update" &&
+      previousDoc?.stage === PROCESSING_STAGE.NEEDS_REVIEW &&
+      doc.schemaValidation?.approved === true &&
+      previousDoc?.schemaValidation?.approved !== true
+    ) {
+      // Quota exceeded requires admin approval
+      if (doc.reviewReason === REVIEW_REASONS.QUOTA_EXCEEDED && req.user?.role !== "admin") {
+        throw new Error("Only admins can approve quota-exceeded imports. Please contact us to increase your limit.");
+      }
 
-    if (isJobCompleted(doc)) {
-      await handleJobCompletion(req.payload, doc, req);
+      const resumeFrom = getResumePointForReason(doc.reviewReason);
+      const input = { ingestJobId: String(doc.id), resumeFrom };
+      await req.payload.jobs.queue({ workflow: "ingest-process", input });
     }
 
     return doc;
