@@ -166,8 +166,9 @@ Event 3,2024-01-03,Hamburg Germany
 
     expect(ingestJob.stage).toBe("failed");
     expect(ingestJob.errorLog).toBeDefined();
-    expect(ingestJob.errorLog.context).toBe("geocode-batch");
-    // Error message should indicate geocoding failure (either all locations failed or service error)
+    // Context is "pipeline" when error is caught by processSheets, or "geocode-batch" when caught by handler
+    expect(ingestJob.errorLog.context).toMatch(/pipeline|geocode-batch/);
+    // Error message should indicate geocoding failure
     expect(ingestJob.errorLog.lastError).toMatch(/Geocoding|geocoding/i);
 
     // Verify the import file status (may be "failed" or still "processing" depending on error type)

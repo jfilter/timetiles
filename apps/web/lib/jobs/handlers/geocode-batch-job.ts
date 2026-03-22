@@ -241,43 +241,10 @@ export const geocodeBatchJob = {
           failures,
         });
 
-        // Build detailed error message with failed locations (limit to first 5 for readability)
-        const failedLocationsPreview = failures.slice(0, 5).map((f) => `"${f.location}": ${f.error}`);
-        const moreCount = failures.length > 5 ? ` (and ${failures.length - 5} more)` : "";
-        const errorMessage = `Geocoding failed for all ${failureCount} locations. Please check your geocoding provider configuration in the admin panel.`;
-        const detailedError = `${errorMessage}\n\nFailed locations${moreCount}:\n${failedLocationsPreview.join("\n")}`;
-
-        // Mark the ingest job as FAILED — total geocoding failure is a permanent error
-        await payload.update({
-          collection: COLLECTION_NAMES.INGEST_JOBS,
-          id: ingestJobId,
-          data: {
-            stage: PROCESSING_STAGE.FAILED,
-            errorLog: {
-              lastError: errorMessage,
-              context: "geocode-batch",
-              failedLocations: failureCount,
-              failures: failures.slice(0, 10), // Store first 10 failures with details
-            },
-          },
-        });
-
-        // Also update the import file status with error message (user-facing)
-        const { ingestFile: failedIngestFile } = await loadJobResources(payload, ingestJobId);
-        await payload.update({
-          collection: COLLECTION_NAMES.INGEST_FILES,
-          id: failedIngestFile.id,
-          data: { status: "failed", errorLog: detailedError },
-        });
-
-        return {
-          output: {
-            success: false,
-            reason: "geocoding-failed",
-            totalLocations: uniqueLocations.size,
-            failedCount: failureCount,
-          },
-        };
+        // Total geocoding failure — throw so processSheets marks the sheet as FAILED
+        throw new Error(
+          `Geocoding failed for all ${failureCount} locations. Please check your geocoding provider configuration.`
+        );
       }
 
       // Complete GEOCODE_BATCH stage

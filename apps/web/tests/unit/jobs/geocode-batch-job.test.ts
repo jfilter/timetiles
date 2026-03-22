@@ -434,38 +434,10 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       mocks.geocode.mockRejectedValue(new Error("Geocoding failed"));
 
-      const result = await geocodeBatchJob.handler(mockContext);
+      // Total geocoding failure now throws — caught by processSheets markSheetFailed
+      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Geocoding failed for all");
 
-      // Should return failure output (workflow handles FAILED stage transition)
-      expect(result.output).toEqual({ success: false, reason: "geocoding-failed", totalLocations: 2, failedCount: 2 });
-
-      // Should store error details and set FAILED stage (total geocoding failure is permanent)
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-jobs",
-        id: 123,
-        data: {
-          stage: "failed",
-          errorLog: {
-            lastError: expect.stringContaining("Geocoding failed for all 2 locations"),
-            context: "geocode-batch",
-            failedLocations: 2,
-            failures: expect.arrayContaining([
-              expect.objectContaining({ location: "invalid 1", error: expect.any(String) }),
-              expect.objectContaining({ location: "invalid 2", error: expect.any(String) }),
-            ]),
-          },
-        },
-      });
-
-      // Should also update import file status to failed with detailed error
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-files",
-        id: 789,
-        data: {
-          status: "failed",
-          errorLog: expect.stringMatching(/Geocoding failed for all 2 locations.*Failed locations/s),
-        },
-      });
+      // File status update is handled by workflow handler's updateIngestFileStatus, not by the task
     });
 
     it("should handle large number of unique locations", async () => {
