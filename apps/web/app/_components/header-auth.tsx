@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   DropdownMenu,
@@ -21,9 +22,10 @@ import {
 import { LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { useSite } from "@/lib/context/site-context";
 import { useLogoutMutation } from "@/lib/hooks/use-auth-mutations";
+import { authKeys } from "@/lib/hooks/use-auth-queries";
 import type { User } from "@/payload-types";
 
 interface HeaderAuthProps {
@@ -31,7 +33,7 @@ interface HeaderAuthProps {
 }
 
 export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { isDefaultSite } = useSite();
   const t = useTranslations("Common");
   const tHeader = useTranslations("Header");
@@ -40,8 +42,10 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
       onSettled: () => {
-        router.refresh();
-        router.push("/");
+        // Clear client-side auth cache so the navbar updates immediately
+        queryClient.setQueryData(authKeys.currentUser, { user: null });
+        // Full page navigation to re-render all server components with cleared session
+        globalThis.location.href = "/";
       },
     });
   };
