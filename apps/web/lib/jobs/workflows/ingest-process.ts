@@ -21,16 +21,18 @@ import type {
   GeocodeBatchOutput,
   ValidateSchemaOutput,
 } from "../types/task-outputs";
+import { updateIngestFileStatusForJob } from "./completion";
 
 export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
   slug: "ingest-process",
   label: "Ingest Process (Post-Review)",
+  queue: "ingest",
   inputSchema: [
     { name: "ingestJobId", type: "text", required: true },
     { name: "resumeFrom", type: "text" },
   ],
   concurrency: ({ input }) => `ingest:${input.ingestJobId}`,
-  handler: async ({ job, tasks }) => {
+  handler: async ({ job, tasks, req }) => {
     const id = job.input.ingestJobId;
     const resumeFrom = (job.input as Record<string, unknown>).resumeFrom ?? "create-schema-version";
     logger.info("ingest-process workflow started (post-review)", { ingestJobId: id, resumeFrom });
@@ -70,6 +72,7 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
     }
 
     (await tasks["create-events"]("create-events", { input: { ingestJobId: id } })) as CreateEventsOutput;
+    await updateIngestFileStatusForJob(req.payload, id);
 
     logger.info("ingest-process workflow completed", { ingestJobId: id });
   },

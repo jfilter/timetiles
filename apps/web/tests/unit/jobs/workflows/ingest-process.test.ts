@@ -6,6 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ingestProcessWorkflow } from "@/lib/jobs/workflows/ingest-process";
 
+// Mock completion helpers (tested separately)
+vi.mock("@/lib/jobs/workflows/completion", () => ({
+  updateIngestFileStatusForJob: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Extract handler with correct type (WorkflowConfig.handler is a union with string)
 const handler = ingestProcessWorkflow.handler as WorkflowHandler<"ingest-process">;
 

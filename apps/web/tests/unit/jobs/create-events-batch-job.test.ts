@@ -283,14 +283,13 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // Job handler marks the ingest job as COMPLETED; the afterChange hook
-      // on ingest-jobs handles updating the ingest file status.
+      // Job handler stores results; onSuccess callback sets stage to COMPLETED.
       expect(result).toEqual({ output: { success: true, eventCount: 1, duplicatesSkipped: 0 } });
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "ingest-jobs",
           id: "import-123",
-          data: expect.objectContaining({ stage: "completed" }),
+          data: expect.objectContaining({ results: expect.objectContaining({ totalEvents: expect.any(Number) }) }),
         })
       );
     });
@@ -455,12 +454,11 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       await createEventsBatchJob.handler(mockContext);
 
-      // Should store results and mark stage as COMPLETED
+      // Should store results (stage transition moved to onSuccess callback)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
         data: {
-          stage: "completed",
           results: {
             totalEvents: 2, // From payload.count() mock
             duplicatesSkipped: 3, // 1 internal + 2 external
@@ -763,12 +761,11 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       expect(result).toEqual({ output: { success: true, eventCount: 0, duplicatesSkipped: 0 } });
 
-      // Should store results (no stage: "completed" — workflow handles that)
+      // Should store results (stage transition moved to onSuccess callback)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
         data: {
-          stage: "completed",
           results: {
             totalEvents: 2, // From payload.count() mock
             duplicatesSkipped: 0,

@@ -13,11 +13,13 @@ import type { WorkflowConfig } from "payload";
 import { logger } from "@/lib/logger";
 
 import type { DatasetDetectionOutput } from "../types/task-outputs";
+import { updateIngestFileStatus } from "./completion";
 import { processSheets } from "./process-sheets";
 
 export const manualIngestWorkflow: WorkflowConfig<"manual-ingest"> = {
   slug: "manual-ingest",
   label: "Manual Ingest",
+  queue: "ingest",
   inputSchema: [{ name: "ingestFileId", type: "text", required: true }],
   concurrency: ({ input }) => `file:${input.ingestFileId}`,
   handler: async ({ job, tasks, req }) => {
@@ -44,6 +46,7 @@ export const manualIngestWorkflow: WorkflowConfig<"manual-ingest"> = {
     });
 
     await processSheets(tasks, detection.sheets, req);
+    await updateIngestFileStatus(req.payload, detection.sheets);
 
     logger.info("manual-ingest workflow completed", { ingestFileId });
   },

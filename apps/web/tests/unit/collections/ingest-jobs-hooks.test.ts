@@ -21,8 +21,6 @@ vi.mock("@/lib/constants/ingest-constants", () => ({
   PROCESSING_STAGE: { COMPLETED: "completed", FAILED: "failed", NEEDS_REVIEW: "needs-review" },
 }));
 
-vi.mock("@/lib/collections/ingest-jobs/helpers", () => ({ handleJobCompletion: vi.fn(), isJobCompleted: vi.fn() }));
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ingestJobAfterDeleteHook } from "@/lib/collections/ingest-jobs/hooks";

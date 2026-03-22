@@ -179,7 +179,6 @@ const markJobCompleted = async (
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
     data: {
-      stage: PROCESSING_STAGE.COMPLETED,
       results: {
         totalEvents: totalEventsCreated,
         duplicatesSkipped,
@@ -350,6 +349,20 @@ export const createEventsBatchJob = {
       });
     } catch {
       // Best-effort — don't throw in onFail
+    }
+  },
+  onSuccess: async (args: TaskFailureCallbackArgs) => {
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { stage: PROCESSING_STAGE.COMPLETED },
+        context: { skipStageTransition: true },
+      });
+    } catch {
+      // Best-effort — don't throw in onSuccess
     }
   },
   handler: async (context: JobHandlerContext) => {

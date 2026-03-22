@@ -211,7 +211,7 @@ export class TestEnvironmentBuilder {
       const testConfig = await createTestConfig({
         databaseUrl: dbUrl,
         collections,
-        logLevel: (process.env.LOG_LEVEL as "silent" | "error" | "warn" | "info" | "debug") ?? "silent",
+        logLevel: (process.env.LOG_LEVEL as "silent" | "error" | "warn" | "info" | "debug") ?? "warn",
       });
       logger.info("Test config created", { dbName });
 

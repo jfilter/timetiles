@@ -12,11 +12,13 @@ import type { WorkflowConfig } from "payload";
 import { logger } from "@/lib/logger";
 
 import type { DatasetDetectionOutput, UrlFetchOutput } from "../types/task-outputs";
+import { updateIngestFileStatus } from "./completion";
 import { processSheets } from "./process-sheets";
 
 export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
   slug: "scheduled-ingest",
   label: "Scheduled Ingest",
+  queue: "ingest",
   inputSchema: [
     { name: "scheduledIngestId", type: "number", required: true },
     { name: "sourceUrl", type: "text", required: true },
@@ -73,6 +75,7 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
     }
 
     await processSheets(tasks, detection.sheets, req);
+    await updateIngestFileStatus(req.payload, detection.sheets);
 
     logger.info("scheduled-ingest workflow completed", { scheduledIngestId });
   },

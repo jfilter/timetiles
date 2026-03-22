@@ -23,7 +23,6 @@ import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { IngestJob } from "@/payload-types";
 
 import { getIngestFilePath } from "../../jobs/utils/upload-path";
-import { handleJobCompletion, isJobCompleted } from "./helpers";
 
 /**
  * Enforces terminal state for COMPLETED jobs.
@@ -221,10 +220,6 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     if (operation === "create") {
       await trackIngestJobQuota(req, doc);
       // No longer queue jobs here — workflow handles orchestration
-    }
-
-    if (isJobCompleted(doc)) {
-      await handleJobCompletion(req.payload, doc, req);
     }
 
     // Queue ingest-process workflow when NEEDS_REVIEW is approved

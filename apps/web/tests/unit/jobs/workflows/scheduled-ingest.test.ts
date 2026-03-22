@@ -12,6 +12,9 @@ const handler = scheduledIngestWorkflow.handler as WorkflowHandler<"scheduled-in
 // Mock processSheets so we can verify it's called without running the real pipeline
 vi.mock("@/lib/jobs/workflows/process-sheets", () => ({ processSheets: vi.fn().mockResolvedValue(undefined) }));
 
+// Mock completion helpers (tested separately)
+vi.mock("@/lib/jobs/workflows/completion", () => ({ updateIngestFileStatus: vi.fn().mockResolvedValue(undefined) }));
+
 import { processSheets } from "@/lib/jobs/workflows/process-sheets";
 
 /** Creates a mock tasks object with all task handlers as vi.fn(). */

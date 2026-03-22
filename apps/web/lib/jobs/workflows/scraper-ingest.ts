@@ -13,11 +13,13 @@ import type { WorkflowConfig } from "payload";
 import { logger } from "@/lib/logger";
 
 import type { DatasetDetectionOutput, ScraperExecutionOutput } from "../types/task-outputs";
+import { updateIngestFileStatus } from "./completion";
 import { processSheets } from "./process-sheets";
 
 export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
   slug: "scraper-ingest",
   label: "Scraper Ingest",
+  queue: "ingest",
   inputSchema: [
     { name: "scraperId", type: "number", required: true },
     { name: "triggeredBy", type: "text", required: true },
@@ -55,6 +57,7 @@ export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
     }
 
     await processSheets(tasks, detection.sheets, req);
+    await updateIngestFileStatus(req.payload, detection.sheets);
 
     logger.info("scraper-ingest workflow completed", { scraperId });
   },

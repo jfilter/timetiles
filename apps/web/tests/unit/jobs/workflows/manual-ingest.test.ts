@@ -12,6 +12,9 @@ const handler = manualIngestWorkflow.handler as WorkflowHandler<"manual-ingest">
 // Mock processSheets so we can verify it's called without running the real pipeline
 vi.mock("@/lib/jobs/workflows/process-sheets", () => ({ processSheets: vi.fn().mockResolvedValue(undefined) }));
 
+// Mock completion helpers (tested separately)
+vi.mock("@/lib/jobs/workflows/completion", () => ({ updateIngestFileStatus: vi.fn().mockResolvedValue(undefined) }));
+
 // Import the mock after vi.mock so we can inspect calls
 import { processSheets } from "@/lib/jobs/workflows/process-sheets";
 
