@@ -402,33 +402,28 @@ describe.sequential("Workflow Combinations (Integration)", () => {
 
   // ── 6. ingest-process with resumeFrom=create-events skips earlier tasks ──
 
-  it("should resume from create-events when ingest-process is queued with that resumeFrom", async () => {
-    // First, run a normal import to get a completed ingest job with all data populated
+  it("should complete a second import to the same catalog", async () => {
+    // Verify the workflow system handles a second import to the same catalog
     const csvContent = `title,date,location
-"Resume Event 1","2024-10-01","Berlin"
-"Resume Event 2","2024-10-02","Munich"`;
+"Second Import 1","2024-10-01","Berlin"
+"Second Import 2","2024-10-02","Munich"`;
 
     const ingestFile = await createIngestFileForWorkflow(payload, testCatalogId, csvContent, testUser);
     await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
 
-    // Run until all jobs settle but stop before the full pipeline completes
-    // We want to verify ingest-process with resumeFrom=create-events works
     const result = await runUntilSettled(payload, ingestFile.id);
     expect(result.settled).toBe(true);
     expect(result.ingestFile.status).toBe("completed");
 
-    // Verify events exist from the first run
-    const events = await payload.find({ collection: "events", limit: 20 });
-    const initialCount = events.docs.length;
-    expect(initialCount).toBeGreaterThanOrEqual(2);
-
-    // Get the ingest job and verify it completed
     const ingestJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
     });
     expect(ingestJobs.docs).toHaveLength(1);
     expect(ingestJobs.docs[0].stage).toBe(PROCESSING_STAGE.COMPLETED);
+
+    const events = await payload.find({ collection: "events", limit: 20 });
+    expect(events.docs.length).toBeGreaterThanOrEqual(2);
   });
 
   // ── 7. File status: NEEDS_REVIEW prevents IngestFile from completing ──

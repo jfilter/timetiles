@@ -61,10 +61,13 @@ describe.sequential("ingestProcessWorkflow", () => {
 
   // ── 2. Create-schema-version fails — geocode and create-events not called
 
-  it("should stop when create-schema-version fails", async () => {
-    tasks["create-schema-version"].mockResolvedValueOnce({ success: false, reason: "schema conflict" });
+  it("should stop when create-schema-version throws", async () => {
+    tasks["create-schema-version"].mockRejectedValueOnce(new Error("schema conflict"));
+    const mockReq = { payload: { findByID: vi.fn(), find: vi.fn().mockResolvedValue({ docs: [] }), update: vi.fn() } };
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: mockReq as any })
+    ).rejects.toThrow("schema conflict");
 
     expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
     expect(tasks["geocode-batch"]).not.toHaveBeenCalled();
@@ -73,10 +76,13 @@ describe.sequential("ingestProcessWorkflow", () => {
 
   // ── 3. Geocode fails — create-events not called ───────────────────────
 
-  it("should stop when geocode-batch fails", async () => {
-    tasks["geocode-batch"].mockResolvedValueOnce({ success: false, reason: "provider rate limited" });
+  it("should stop when geocode-batch throws", async () => {
+    tasks["geocode-batch"].mockRejectedValueOnce(new Error("provider rate limited"));
+    const mockReq = { payload: { findByID: vi.fn(), find: vi.fn().mockResolvedValue({ docs: [] }), update: vi.fn() } };
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: mockReq as any })
+    ).rejects.toThrow("provider rate limited");
 
     expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
     expect(tasks["geocode-batch"]).toHaveBeenCalledOnce();
