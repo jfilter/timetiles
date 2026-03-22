@@ -18,6 +18,8 @@ import { logError, logger } from "@/lib/logger";
  */
 export const dataExportCleanupJob = {
   slug: "data-export-cleanup",
+  schedule: [{ cron: "0 * * * *", queue: "maintenance" as const }],
+  concurrency: () => "data-export-cleanup",
   handler: async ({ job, req }: JobHandlerContext) => {
     const { payload } = req;
 

@@ -17,6 +17,8 @@ import { logError, logger } from "@/lib/logger";
  */
 export const executeAccountDeletionJob = {
   slug: "execute-account-deletion",
+  schedule: [{ cron: "0 2 * * *", queue: "maintenance" as const }],
+  concurrency: () => "execute-account-deletion",
   handler: async ({ job, req }: JobHandlerContext) => {
     const { payload } = req;
 
