@@ -901,7 +901,8 @@ const createIngestFileWithUpload = async (
   fileContent: string | Buffer,
   fileName: string,
   mimeType: string,
-  user?: any
+  user?: any,
+  triggerWorkflow = false
 ) => {
   // Convert to Uint8Array which is what Payload's file-type checker expects
   const fileBuffer =
@@ -912,12 +913,17 @@ const createIngestFileWithUpload = async (
 
   // If user is provided, pass it to make req.user available in hooks
   // Otherwise use overrideAccess to bypass authentication requirements
+  //
+  // By default, skip the afterChange hook that queues manual-ingest workflows.
+  // Tests that need the full pipeline should pass triggerWorkflow: true and
+  // drain jobs with payload.jobs.run() or runJobsUntilImportSettled().
   return payload.create({
     collection: "ingest-files",
     data,
     file,
     user,
     overrideAccess: !user, // Only override when no user is provided
+    context: triggerWorkflow ? {} : { skipIngestFileHooks: true },
   });
 };
 
@@ -961,6 +967,8 @@ export const withIngestFile = async (
     datasetsCount?: number;
     datasetsProcessed?: number;
     additionalData?: Record<string, any>;
+    /** Set to true to queue the manual-ingest workflow (default: false). Tests using this must drain jobs. */
+    triggerWorkflow?: boolean;
   }
 ): Promise<TestEnvironment & { ingestFile: any }> => {
   // Build data object dynamically based on provided options
@@ -1004,7 +1012,8 @@ export const withIngestFile = async (
     csvContent,
     options?.filename ?? `test-import-${Date.now()}.csv`,
     options?.mimeType ?? "text/csv",
-    userContext
+    userContext,
+    options?.triggerWorkflow ?? false
   );
 
   return { ...testEnv, ingestFile };

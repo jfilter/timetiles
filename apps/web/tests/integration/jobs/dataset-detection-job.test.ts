@@ -66,6 +66,7 @@ describe.sequential("Dataset Detection Job", () => {
       user: uploadUserId,
       datasetsCount: 0,
       datasetsProcessed: 0,
+      triggerWorkflow: true,
     });
 
     // Run the workflow until completion (manual-ingest runs all stages)
@@ -106,6 +107,7 @@ describe.sequential("Dataset Detection Job", () => {
       additionalData: {
         originalName: filename, // KEY: This must be set for dataset-detection to match
       },
+      triggerWorkflow: true,
     });
 
     // Run dataset-detection job (automatically queued by ingest-files hook)
@@ -151,6 +153,7 @@ describe.sequential("Dataset Detection Job", () => {
           wizardConfig: { sheetMappings: [{ sheetIndex: 0, newDatasetName: "Wizard Events" }], fieldMappings: [] },
         },
       },
+      triggerWorkflow: true,
     });
 
     // Run the workflow until completion (manual-ingest runs all stages)
@@ -189,6 +192,7 @@ describe.sequential("Dataset Detection Job", () => {
       mimeType: "text/csv",
       user: uploadUserId,
       // NO originalName set
+      triggerWorkflow: true,
     });
 
     // Run dataset-detection job (automatically queued by ingest-files hook)

@@ -132,6 +132,7 @@ describe.sequential("Multi-Language Import Tests", () => {
       user: importerUserId,
       datasetsCount: 0,
       datasetsProcessed: 0,
+      triggerWorkflow: true,
     });
 
     const schemaDetectionResult = await runJobsUntilIngestJobStage(

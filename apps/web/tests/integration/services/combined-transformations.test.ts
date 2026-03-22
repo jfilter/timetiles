@@ -156,6 +156,7 @@ describe.sequential("Combined Transformations Integration", () => {
       mimeType: "text/csv",
       user: approverUser.id,
       additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
+      triggerWorkflow: true,
     });
 
     // Wait for schema detection to complete
@@ -268,6 +269,7 @@ Festival,2500,Music festival`;
       filename: "order-test.csv",
       mimeType: "text/csv",
       additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
+      triggerWorkflow: true,
     });
 
     // Wait for schema detection to complete
@@ -331,6 +333,7 @@ Workshop,Learning session,2024-02-20`;
       filename: "mapping-interaction-test.csv",
       mimeType: "text/csv",
       additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
+      triggerWorkflow: true,
     });
 
     // Wait for schema detection to complete
@@ -379,6 +382,7 @@ Event B,200,Second event`;
       filename: "type-interaction-test.csv",
       mimeType: "text/csv",
       additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
+      triggerWorkflow: true,
     });
 
     // Wait for schema detection to complete

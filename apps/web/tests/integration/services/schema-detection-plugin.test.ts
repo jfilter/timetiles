@@ -252,6 +252,7 @@ describe.sequential("Schema Detection Plugin Integration", () => {
         user: users.importer.id,
         datasetsCount: 0,
         datasetsProcessed: 0,
+        triggerWorkflow: true,
       });
 
       // Run jobs until schema detection completes (validate-schema follows detect-schema)

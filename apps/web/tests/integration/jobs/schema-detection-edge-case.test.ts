@@ -109,6 +109,7 @@ Event 3,2024-01-03,active`;
       mimeType: "text/csv",
       user: uploadUserId,
       additionalData: { originalName: TEST_FILENAME },
+      triggerWorkflow: true,
     });
 
     await runJobsUntilSchemaComplete(payload, ingestFile.id, 10);
@@ -157,6 +158,7 @@ Event 6,2024-01-06,B`;
       mimeType: "text/csv",
       user: uploadUserId,
       additionalData: { originalName: TEST_FILENAME },
+      triggerWorkflow: true,
     });
 
     await runJobsUntilSchemaComplete(payload, ingestFile.id, 15);

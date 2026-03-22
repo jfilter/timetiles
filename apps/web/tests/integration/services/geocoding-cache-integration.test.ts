@@ -73,7 +73,7 @@ describe.sequential("Geocoding Cache Integration", () => {
   };
 
   const createIngestFile = async (csvContent: string | Buffer, filename: string) =>
-    withIngestFile(testEnv, testCatalogId, csvContent, { filename, user: testUserId });
+    withIngestFile(testEnv, testCatalogId, csvContent, { filename, user: testUserId, triggerWorkflow: true });
 
   beforeAll(async () => {
     // Spy on loadProviders to return mock providers instead of calling real NodeGeocoder

@@ -160,6 +160,7 @@ describe.sequential("All Transform Types Pipeline", () => {
       mimeType: "text/csv",
       user: approverUser.id,
       additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: datasetId } } },
+      triggerWorkflow: true,
     });
 
     const ingestJob = await waitForSchemaDetection(ingestFile.id);

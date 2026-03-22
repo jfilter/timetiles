@@ -145,6 +145,7 @@ Event 3,2024-01-03,Hamburg Germany
       mimeType: "text/csv",
       user: testUserId,
       additionalData: { originalName: "geocode-failure-test.csv" },
+      triggerWorkflow: true,
     });
 
     await runJobsUntilIngestJobStage(
@@ -207,6 +208,7 @@ Event 3,2024-01-03,Hamburg Germany
       mimeType: "text/csv",
       user: testUserId,
       additionalData: { originalName: "geocode-partial-test.csv" },
+      triggerWorkflow: true,
     });
 
     await runJobsUntilIngestJobStage(

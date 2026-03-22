@@ -195,6 +195,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         datasetsCount: 0,
         datasetsProcessed: 0,
         user: approverUser.id,
+        triggerWorkflow: true,
       });
 
       logger.debug(`✓ Created Excel import file: ${ingestFile.id}`);
@@ -265,6 +266,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         datasetsCount: 0,
         datasetsProcessed: 0,
         user: approverUser.id,
+        triggerWorkflow: true,
       });
 
       logger.debug(`✓ Created ODS import file: ${ingestFile.id}`);
@@ -376,6 +378,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           filename: fileName,
           mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           user: approverUser.id,
+          triggerWorkflow: true,
         });
 
         const result = await runJobsUntilImportSettled(payload, ingestFile.id);
@@ -414,6 +417,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           filename: "approval-test.csv",
           user: approverUser.id,
           additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
+          triggerWorkflow: true,
         });
 
         // Verify job is waiting for approval
@@ -449,6 +453,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           filename: "approval-continue.csv",
           user: approverUser.id,
           additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
+          triggerWorkflow: true,
         });
 
         // Get the job requiring approval
@@ -506,6 +511,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         filename: "auto-approve.csv",
         user: approverUser.id,
         additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
+        triggerWorkflow: true,
       });
 
       // Process completely without manual intervention
@@ -543,6 +549,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
           filename: "rejection-test.csv",
           user: approverUser.id,
           additionalData: { metadata: { datasetMapping: { mappingType: "single", singleDataset: dataset.id } } },
+          triggerWorkflow: true,
         });
 
         // Get job and reject the schema
@@ -584,6 +591,7 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
           filename: "large-dataset.csv",
           user: approverUser.id,
+          triggerWorkflow: true,
         });
 
         logger.debug(`✓ Created large file import (${csvContent.length} bytes)`);

@@ -58,6 +58,7 @@ describe.sequential("Analyze Duplicates Pipeline", () => {
       user: uploadUserId,
       datasetsCount: 0,
       datasetsProcessed: 0,
+      triggerWorkflow: true,
     });
 
     // Run the workflow until completion (manual-ingest runs all stages)

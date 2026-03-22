@@ -188,6 +188,7 @@ describe.sequential("Access Control Edge Cases", () => {
       const { ingestFile } = await withIngestFile(testEnv, catalog.id, csvContent, {
         filename: "test.csv",
         user: ownerUser.id,
+        triggerWorkflow: true,
       });
       console.log(`[TEST] Import file created: ${ingestFile.id}`);
 
@@ -256,6 +257,7 @@ describe.sequential("Access Control Edge Cases", () => {
       const { ingestFile } = await withIngestFile(testEnv, null, csvContent, {
         filename: "owner-file.csv",
         user: ownerUser.id,
+        triggerWorkflow: true,
       });
 
       // Wait for hooks to complete and process jobs

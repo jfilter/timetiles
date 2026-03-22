@@ -73,6 +73,7 @@ describe.sequential("Job Queueing Tests", () => {
         datasetsCount: 0,
         datasetsProcessed: 0,
         user: approverUserId,
+        triggerWorkflow: true,
       });
 
       // Check that exactly one manual-ingest workflow was queued (before running it)
@@ -99,6 +100,7 @@ describe.sequential("Job Queueing Tests", () => {
         datasetsCount: 0,
         datasetsProcessed: 0,
         user: approverUserId,
+        triggerWorkflow: true,
       });
 
       const schemaDetectionResult = await runJobsUntilIngestJobStage(
@@ -165,6 +167,7 @@ describe.sequential("Job Queueing Tests", () => {
         datasetsCount: 0,
         datasetsProcessed: 0,
         user: approverUserId,
+        triggerWorkflow: true,
       });
 
       // Verify exactly one workflow job is queued
