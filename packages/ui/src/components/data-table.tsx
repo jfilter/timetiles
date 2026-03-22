@@ -55,6 +55,7 @@ const SkeletonRow = ({ colCount }: { readonly colCount: number }) => (
   </TableRow>
 );
 
+// any is required here because @tanstack/react-table doesn't export a standalone Header type
 const HeaderCell = ({
   header,
 }: {
@@ -147,6 +148,18 @@ const DataTable = <TData, TValue>({
                       data-state={row.getIsSelected() ? "selected" : undefined}
                       className={renderExpandedRow ? "cursor-pointer" : undefined}
                       onClick={renderExpandedRow ? () => toggleRow(row.id) : undefined}
+                      aria-expanded={renderExpandedRow ? isExpanded : undefined}
+                      tabIndex={renderExpandedRow ? 0 : undefined}
+                      onKeyDown={
+                        renderExpandedRow
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleRow(row.id);
+                              }
+                            }
+                          : undefined
+                      }
                     >
                       {renderExpandedRow && (
                         <TableCell className="w-8 px-2">

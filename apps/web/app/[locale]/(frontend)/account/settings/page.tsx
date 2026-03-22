@@ -14,6 +14,7 @@ import { getPayload } from "payload";
 import { redirect } from "@/i18n/navigation";
 import config from "@/payload.config";
 
+import { AccountPageShell } from "../_components/account-page-shell";
 import { AccountSettingsClient } from "./_components/account-settings-client";
 
 export const metadata = {
@@ -35,10 +36,8 @@ export default async function AccountSettingsPage() {
   const t = await getTranslations("Account");
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-8 text-2xl font-bold">{t("settings")}</h1>
-
+    <AccountPageShell title={t("settings")} description={t("settingsDescription")} maxWidth="2xl">
       <AccountSettingsClient user={user} />
-    </div>
+    </AccountPageShell>
   );
 }

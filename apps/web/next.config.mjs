@@ -24,6 +24,8 @@ const nextConfig = {
     { source: "/dashboard/create-first-user", destination: "/", permanent: false },
     { source: "/dashboard/forgot-password", destination: "/login", permanent: false },
     { source: "/dashboard/reset-password", destination: "/login", permanent: false },
+    // User-friendly /import URL redirects to internal /ingest route
+    { source: "/import", destination: "/ingest", permanent: false },
   ],
   reactCompiler: true,
   experimental: {

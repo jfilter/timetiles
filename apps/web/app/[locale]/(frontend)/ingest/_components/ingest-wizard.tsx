@@ -73,7 +73,7 @@ export const IngestWizard = ({ className, editScheduleId }: Readonly<IngestWizar
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <AlertCircle className="text-destructive h-8 w-8" />
         <p className="text-destructive text-sm">{t("failedToLoadSchedule")}</p>
-        <Button variant="outline" size="sm" onClick={() => router.push("/account/schedules")}>
+        <Button variant="outline" size="sm" onClick={() => router.push("/account/imports?tab=scheduled")}>
           {t("back")}
         </Button>
       </div>

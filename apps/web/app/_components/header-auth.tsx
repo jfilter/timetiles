@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@timetiles/ui";
-import { LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
+import { Activity, LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link, useRouter } from "@/i18n/navigation";
@@ -88,12 +88,21 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
         <DropdownMenuSeparator />
 
         {isDefaultSite && (
-          <DropdownMenuItem asChild>
-            <Link href="/ingest" className="cursor-pointer">
-              <Upload className="mr-2 h-4 w-4" />
-              {tHeader("importData")}
-            </Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/ingest" className="cursor-pointer">
+                <Upload className="mr-2 h-4 w-4" />
+                {tHeader("importData")}
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild>
+              <Link href="/account/imports" className="cursor-pointer">
+                <Activity className="mr-2 h-4 w-4" />
+                {tHeader("importActivity")}
+              </Link>
+            </DropdownMenuItem>
+          </>
         )}
 
         <DropdownMenuItem asChild>

@@ -43,7 +43,7 @@ export const WizardHeader = () => {
   const handleClose = () => {
     if (editMode) {
       reset();
-      router.push("/account/schedules");
+      router.push("/account/imports?tab=scheduled");
     } else {
       router.back();
     }

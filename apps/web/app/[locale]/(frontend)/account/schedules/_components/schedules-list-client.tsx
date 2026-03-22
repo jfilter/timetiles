@@ -195,7 +195,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
   };
 
   const handleEdit = (id: number) => {
-    router.push(`/import?edit=${id}`);
+    router.push(`/ingest?edit=${id}`);
   };
 
   const handleManualRun = (id: number) => {
