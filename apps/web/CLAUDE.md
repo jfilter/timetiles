@@ -33,14 +33,45 @@ pnpm seed test                        # Seed test data
 
 ### Background Jobs
 
-- Import jobs use Payload's job queue
-- **Jobs auto-delete after completion** - query pending jobs before running
-- Jobs triggered via Payload hooks in `afterChange`
+- Ingest pipeline uses **Payload Workflows** (not hook-driven state machine)
+- **Jobs auto-delete after completion** — query pending jobs before running
+- Workflows queued via Payload `afterChange` hooks (not manually)
 - See `tests/integration/CLAUDE.md` for job testing patterns
 
-**Import pipeline** (8 stages): `dataset-detection` → `analyze-duplicates` → `schema-detection` → `validate-schema` → `create-schema-version` → `geocode-batch` → `create-events-batch`
+**3-queue architecture:**
 
-**System jobs**: `schedule-manager`, `url-fetch`, `quota-reset`, `cache-cleanup`, `schema-maintenance`, `audit-log-ip-cleanup`, `data-export`, `data-export-cleanup`, `execute-account-deletion`, `cleanup-approval-locks`, `cleanup-stuck-scheduled-imports`, `scraper-execution`, `scraper-repo-sync`
+| Queue | Purpose | Workers |
+|-------|---------|---------|
+| `ingest` | User-facing ingest workflows | Production: dedicated Docker container |
+| `default` | Trigger jobs (`schedule-manager`) | Production: dedicated Docker container |
+| `maintenance` | Scheduled system jobs | Production: dedicated Docker container |
+
+**4 ingest workflows** (in `lib/jobs/workflows/`):
+
+| Workflow | Trigger | Pipeline |
+|----------|---------|----------|
+| `manual-ingest` | `ingest-files` afterChange hook | dataset-detection → per-sheet: analyze → detect-schema → validate → create-schema-version → geocode → create-events |
+| `scheduled-ingest` | `schedule-manager` job | url-fetch → dataset-detection → per-sheet pipeline |
+| `scraper-ingest` | `schedule-manager` job | scraper-execution → dataset-detection → per-sheet pipeline |
+| `ingest-process` | `ingest-jobs` afterChange hook (NEEDS_REVIEW approval) | create-schema-version → geocode → create-events |
+
+**Error model:** Tasks throw for failures (Payload retries), return `{ needsReview: true }` for human review, return data for success. Sheets process in parallel via `Promise.allSettled` with per-sheet try/catch.
+
+**System jobs** (Payload native `schedule` property):
+
+| Job | Queue | Schedule |
+|-----|-------|----------|
+| `schedule-manager` | default | Every minute |
+| `quota-reset` | maintenance | Daily midnight |
+| `cache-cleanup` | maintenance | Every 6 hours |
+| `schema-maintenance` | maintenance | Daily 3:00 AM |
+| `audit-log-ip-cleanup` | maintenance | Daily 4:00 AM |
+| `execute-account-deletion` | maintenance | Daily 2:00 AM |
+| `data-export-cleanup` | maintenance | Hourly |
+| `cleanup-stuck-scheduled-ingests` | maintenance | Hourly |
+| `cleanup-stuck-scrapers` | maintenance | Hourly |
+
+**Standalone task jobs** (queued on demand): `scraper-repo-sync`, `data-export`
 
 ### File Uploads
 
@@ -100,7 +131,7 @@ lib/
 ├── database/     # Database setup and operations
 ├── middleware/    # Rate limiting, auth middleware
 # Layer 2 — Domain (can import Layer 0 + 1)
-├── import/       # Import pipeline (file readers, transforms, state machine)
+├── import/       # Import pipeline (file readers, transforms)
 ├── account/      # Account lifecycle (deletion, system user)
 ├── export/       # Data export (service, emails, formatting)
 ├── email/        # Email service, templates, i18n

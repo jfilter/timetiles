@@ -2,14 +2,15 @@
 
 ## Status
 
-Accepted
+Implemented
 
 **Implementation notes:**
 
 - Naming uses `ingest` (not `import`) following the codebase rename
-- Sheets process in parallel via `Promise.all` within workflow handlers (supported since Payload 3.80, PRs #11917, #13452)
-- Production workers run as separate Docker containers via `pnpm payload jobs:run --cron`
+- Sheets process in parallel via `Promise.allSettled` within workflow handlers (supported since Payload 3.80, PRs #11917, #13452)
+- Production workers run as separate Docker containers via `pnpm payload jobs:run --cron` (1 container per queue)
 - Development uses `autoRun` within the Next.js process
+- Testing uses `payload.jobs.run()` in-process (single process, no race conditions)
 
 ## Context
 
@@ -178,24 +179,24 @@ handler: async ({ job, tasks }) => {
 
 ### Task Output Contract
 
-Every task handler returns structured output. The workflow handler checks `success` and decides whether to continue or skip.
+Every task handler returns structured output. The workflow handler inspects the `needsReview` flag and decides whether to continue or pause.
 
 **Rules:**
 
-- **Returns `{ success: true, ... }`** → workflow continues to next task
-- **Returns `{ success: false, reason: '...' }`** → workflow handler decides (skip sheet, stop workflow)
-- **Throws an error** → Payload retries the task automatically (for transient errors: DB timeouts, OOM, network failures)
-- Tasks should only throw for unexpected/transient errors. Business logic outcomes (schema drift, quota exceeded, empty file) use return values.
+- **Returns data** → workflow continues to next task
+- **Returns `{ needsReview: true }`** → workflow pauses for that sheet (human review required)
+- **Throws an error** → per-sheet try/catch marks sheet FAILED (in multi-sheet workflows), or Payload's `onFail` fires (in single-job `ingest-process` workflow)
+- Tasks should only throw for unexpected/transient errors. Human review decisions use the `needsReview` flag.
 
-| Task                    | Success Output                                                               | Failure Output                                                                              |
-| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `dataset-detection`     | `{ success, sheets: [{ index, importJobId, name, rowCount }] }`              | `{ success: false, reason: 'unreadable' \| 'empty' }`                                       |
-| `analyze-duplicates`    | `{ success, totalRows, uniqueRows, internalDuplicates, externalDuplicates }` | `{ success: false, reason }`                                                                |
-| `detect-schema`         | `{ success, fieldCount, detectedTypes }`                                     | `{ success: false, reason }`                                                                |
-| `validate-schema`       | `{ success, hasChanges, isBreaking }`                                        | `{ success: false, reason: 'needs-review' \| 'quota-exceeded' \| 'strict-mode-violation' }` |
-| `create-schema-version` | `{ success, versionNumber }`                                                 | `{ success: false, reason }`                                                                |
-| `geocode-batch`         | `{ success, geocoded, failed, skipped }`                                     | `{ success: false, reason }`                                                                |
-| `create-events-batch`   | `{ success, eventCount, duplicatesSkipped }`                                 | `{ success: false, reason }`                                                                |
+| Task                    | Normal Output                                                                  | Review Output                                                  |
+| ----------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| `dataset-detection`     | `{ sheetsDetected, ingestJobsCreated, sheets: [{ index, ingestJobId, ... }] }` | N/A (throws on failure)                                        |
+| `analyze-duplicates`    | `{ totalRows, uniqueRows, internalDuplicates, externalDuplicates }`            | `{ needsReview: true }` (high duplicate rate)                  |
+| `detect-schema`         | `{ fieldCount, totalRowsProcessed }`                                           | N/A (throws on failure)                                        |
+| `validate-schema`       | `{ hasChanges, hasBreakingChanges, newFields }`                                | `{ needsReview: true, requiresApproval: true }` (schema drift) |
+| `create-schema-version` | `{ schemaVersionId, versionNumber }`                                           | N/A (throws on failure)                                        |
+| `geocode-batch`         | `{ totalRows, geocoded, failed }`                                              | `{ needsReview: true }` (high geocoding failure rate)          |
+| `create-events`         | `{ eventCount, duplicatesSkipped }`                                            | N/A (throws on failure)                                        |
 
 ### AWAIT_APPROVAL → NEEDS_REVIEW
 
@@ -270,7 +271,7 @@ A specific business failure. `validate-schema` returns `{ success: false, reason
 | Manual recovery          | `resetJobToStage()`                                             | Re-queue workflow or queue `import-process`        |
 | Per-stage restart        | Yes (any recovery stage)                                        | Yes (cached tasks skip, failed task re-runs)       |
 
-The `ErrorRecoveryService` and `processPendingRetries` cron job can be simplified. `failImportJob()` utility is retained for marking ImportJob records as FAILED with error context.
+The `ErrorRecoveryService` and `process-pending-retries` cron job have been removed. `markSheetFailed()` in `lib/jobs/workflows/process-sheets.ts` handles marking IngestJob records as FAILED with error context.
 
 ### What Is Removed
 
@@ -310,7 +311,7 @@ jobs: {
 }
 ```
 
-## Implementation Plan
+## Implementation Plan (Completed)
 
 ### Step 1: Define task output types
 
@@ -371,6 +372,49 @@ Key per-handler changes:
 - Test multi-sheet partial failure (sheet 1 OK, sheet 2 drift, sheet 3 OK)
 - Test workflow retry with cached tasks
 
+## Implementation Learnings
+
+### `onFail` Does Not Fire with `Promise.allSettled`
+
+When a task throws inside a workflow handler, Payload's `onFail` callback (defined on the task) only fires if the error propagates up to Payload's top-level error handler. `Promise.allSettled` catches errors before they reach that handler, so `onFail` never fires for sheets processed in the `processSheets` loop.
+
+The solution is per-sheet try/catch with an explicit `markSheetFailed` function that updates the IngestJob to `FAILED` with error details. The `ingest-process` workflow (single-job, no `Promise.allSettled`) does NOT have this issue — errors propagate normally and `onFail` fires as expected.
+
+### The `needsReview` Pattern
+
+Tasks return `{ needsReview: true }` when human review is required. This is distinct from both success and failure:
+
+- **Success** — task returns data, pipeline continues to the next task
+- **Failure** — task throws, per-sheet try/catch marks the sheet FAILED
+- **Needs review** — task returns `{ needsReview: true }`, pipeline pauses for that sheet
+
+Review checks are performed inside task handlers (e.g., high duplicate rate, schema drift, geocoding partial failure). The workflow's `processOneSheet` function inspects the `needsReview` flag after `analyze-duplicates`, `validate-schema`, and `geocode-batch` tasks.
+
+### Concurrency Keys and Queue Architecture
+
+Three queues separate concerns:
+
+| Queue         | Purpose                        | Concurrency                                                            |
+| ------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| `ingest`      | All 4 ingest workflows         | Per-resource: `file:{id}`, `sched:{id}`, `scraper:{id}`, `ingest:{id}` |
+| `default`     | `schedule-manager` trigger job | Global: `schedule-manager`                                             |
+| `maintenance` | All scheduled system jobs      | Per-job-type: `quota-reset`, `cache-cleanup`, etc.                     |
+
+In production, each queue runs in a dedicated Docker container via `pnpm payload jobs:run --cron --queue <name>`. In development, `autoRun` processes all queues within the Next.js process.
+
+### Testing Approach
+
+Integration tests run jobs in-process with `payload.jobs.run()`:
+
+- **Single process** — no external workers, no race conditions
+- **Drain loop** — call `payload.jobs.run()` repeatedly until no jobs remain
+- **Verify side effects** — check what jobs created/changed, not job records (auto-deleted)
+- **Global cleanup** — `afterEach` in `global-setup.ts` runs `DELETE FROM payload_jobs` between tests
+
+### System Jobs Use Payload's Native `schedule`
+
+System jobs (quota-reset, cache-cleanup, etc.) use the `schedule` property on task definitions instead of a custom cron mechanism. Payload automatically creates job instances at the specified cron intervals. The `schedule-manager` is the only system job on the `default` queue; all others run on `maintenance`.
+
 ## Consequences
 
 - **Explicit flows.** Each import type has a readable, linear workflow handler. New import types can be added by defining a new workflow.
@@ -379,5 +423,5 @@ Key per-handler changes:
 - **Slight overhead for single-sheet imports.** The workflow framework adds one wrapper job beyond the individual task jobs. For the current scale this is negligible.
 - **Sequential sheet processing.** Sheets within one workflow are processed sequentially. Parallel processing would require separate workflow instances per sheet, which was considered but rejected for conceptual simplicity (one upload = one workflow).
 - **Migration requires a database migration.** Renaming `AWAIT_APPROVAL` to `NEEDS_REVIEW` in the stage enum requires a Payload migration for existing ImportJob records.
-- **`ErrorRecoveryService` is simplified but not removed.** `failImportJob()` and error classification remain useful for ImportJob-level error reporting. The `processPendingRetries` cron job may be removed if workflow-level retry is sufficient.
+- **`ErrorRecoveryService` and `process-pending-retries` have been removed.** Workflow-level retry proved sufficient. `markSheetFailed()` in the shared sheet-processing logic handles IngestJob-level error reporting.
 - **Supersedes ADR 0004** (partially). The stage-based state machine described in ADR 0004 is replaced by workflow sequencing. The stages themselves remain as a progress display mechanism. Geocoding, batch processing, and error classification details in ADR 0004 are unchanged.
