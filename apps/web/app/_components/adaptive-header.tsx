@@ -30,6 +30,7 @@ import React from "react";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useSite } from "@/lib/context/site-context";
+import { useCurrentUserQuery } from "@/lib/hooks/use-auth-queries";
 import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
@@ -89,6 +90,12 @@ export const AdaptiveHeader = ({
   // Use light logo as default during SSR to prevent hydration mismatch
   const logo = mounted && resolvedTheme === "dark" ? LogoDark : LogoLight;
 
+  // Subscribe to client-side auth state so the navbar reacts to login/logout
+  // without needing a full page reload. Server prop is used during SSR and
+  // while the client query is loading to avoid a flash.
+  const { data: authData, isLoading: isAuthLoading } = useCurrentUserQuery();
+  const resolvedUser = isAuthLoading ? (user ?? null) : (authData?.user ?? null);
+
   // Explore pages use a custom full-width layout for alignment with content below
   if (isExplorePage) {
     return (
@@ -119,7 +126,7 @@ export const AdaptiveHeader = ({
       <HeaderActions>
         {/* Desktop only: auth, locale switcher, and theme toggle */}
         <div className="hidden md:block">
-          <HeaderAuth user={user} />
+          <HeaderAuth user={resolvedUser} />
         </div>
         <div className="hidden md:block">
           <LocaleSwitcher />
@@ -143,7 +150,7 @@ export const AdaptiveHeader = ({
 
             {/* Auth link for mobile */}
             <MobileNavDrawerLink active={pathname === "/login"} asChild>
-              <Link href={user ? "/dashboard" : "/login"}>{user ? t("dashboard") : t("signIn")}</Link>
+              <Link href={resolvedUser ? "/dashboard" : "/login"}>{resolvedUser ? t("dashboard") : t("signIn")}</Link>
             </MobileNavDrawerLink>
 
             {/* Theme toggle in drawer */}
