@@ -149,6 +149,10 @@ export const geocodeBatchJob = {
     { name: "reason", type: "text" as const },
   ],
   onFail: async (args: TaskCallbackArgs) => {
+    // Note: onFail does NOT fire when tasks run inside workflow handlers with Promise.allSettled.
+    // Promise.allSettled catches the TaskError before it reaches Payload's error handler.
+    // Failure marking is handled by processSheets instead. This callback is kept for
+    // standalone task execution (outside workflows).
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {
@@ -315,7 +319,7 @@ export const geocodeBatchJob = {
         // Best-effort cleanup
       }
 
-      // Re-throw — Payload retries up to `retries` count, then onFail handles failure
+      // Re-throw — caught by processSheets try/catch which marks the sheet FAILED
       throw error;
     }
   },

@@ -130,15 +130,15 @@ describe.sequential("processSheets", () => {
 
   // ── 4. Analyze fails — remaining tasks for that sheet skipped ─────────
 
-  it("should skip remaining tasks when analyze-duplicates fails", async () => {
+  it("should skip remaining tasks when analyze-duplicates throws", async () => {
     tasks["analyze-duplicates"]
-      .mockResolvedValueOnce({ success: false, reason: "error" }) // sheet 0 fails
-      .mockResolvedValueOnce({ success: true }); // sheet 1 succeeds
+      .mockRejectedValueOnce(new Error("analyze failed")) // sheet 0 throws
+      .mockResolvedValueOnce({ totalRows: 10, uniqueRows: 10 }); // sheet 1 succeeds
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0"), makeSheet(1, "j1")];
     await processSheets(tasks as any, sheets, mockReq);
 
-    // Sheet 0: only analyze called, rest skipped
+    // Sheet 0: only analyze called (threw), rest skipped via Promise.allSettled
     // Sheet 1: all tasks called
     expect(tasks["analyze-duplicates"]).toHaveBeenCalledTimes(2);
     expect(tasks["detect-schema"]).toHaveBeenCalledTimes(1);
@@ -149,8 +149,8 @@ describe.sequential("processSheets", () => {
 
   // ── 5. Detect-schema fails — same skip behavior ──────────────────────
 
-  it("should skip remaining tasks when detect-schema fails", async () => {
-    tasks["detect-schema"].mockResolvedValueOnce({ success: false, reason: "bad format" });
+  it("should skip remaining tasks when detect-schema throws", async () => {
+    tasks["detect-schema"].mockRejectedValueOnce(new Error("bad format"));
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0")];
     await processSheets(tasks as any, sheets, mockReq);
@@ -182,7 +182,7 @@ describe.sequential("processSheets", () => {
   // ── 7. Create-schema-version fails — remaining skipped ────────────────
 
   it("should skip geocode and create-events when create-schema-version fails", async () => {
-    tasks["create-schema-version"].mockResolvedValueOnce({ success: false, reason: "version conflict" });
+    tasks["create-schema-version"].mockRejectedValueOnce(new Error("version conflict"));
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0")];
     await processSheets(tasks as any, sheets, mockReq);
@@ -198,7 +198,7 @@ describe.sequential("processSheets", () => {
   // ── 8. Geocode-batch fails — create-events not called ─────────────────
 
   it("should not call create-events when geocode-batch fails", async () => {
-    tasks["geocode-batch"].mockResolvedValueOnce({ success: false, reason: "provider unavailable" });
+    tasks["geocode-batch"].mockRejectedValueOnce(new Error("provider unavailable"));
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0")];
     await processSheets(tasks as any, sheets, mockReq);
@@ -215,9 +215,9 @@ describe.sequential("processSheets", () => {
 
   it("should not create events when all sheets fail", async () => {
     tasks["analyze-duplicates"]
-      .mockResolvedValueOnce({ success: false })
-      .mockResolvedValueOnce({ success: false })
-      .mockResolvedValueOnce({ success: false });
+      .mockRejectedValueOnce(new Error("fail 1"))
+      .mockRejectedValueOnce(new Error("fail 2"))
+      .mockRejectedValueOnce(new Error("fail 3"));
 
     const sheets: SheetInfo[] = [makeSheet(0), makeSheet(1), makeSheet(2)];
     await processSheets(tasks as any, sheets, mockReq);

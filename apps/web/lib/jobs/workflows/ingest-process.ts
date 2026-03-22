@@ -47,8 +47,8 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
       const validate = (await tasks["validate-schema"]("validate", {
         input: { ingestJobId: id },
       })) as ValidateSchemaOutput;
-      if (!validate.success) {
-        logger.info("ingest-process: validate-schema failed", { ingestJobId: id, reason: validate.reason });
+      if (validate.needsReview) {
+        logger.info("ingest-process: validate-schema requires review", { ingestJobId: id });
         return;
       }
     }
