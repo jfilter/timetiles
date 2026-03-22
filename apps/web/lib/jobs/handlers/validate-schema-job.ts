@@ -248,17 +248,8 @@ const handleSchemaModeFailure = async (
 
   await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
-  return {
-    output: {
-      success: false,
-      reason: "strict-mode-violation",
-      requiresApproval: false,
-      hasBreakingChanges: validationData.isBreaking,
-      newFields: validationData.newFields.length,
-      failed: true,
-      failureReason: schemaModeResult.failureReason,
-    },
-  };
+  // Strict-mode violation is a permanent failure — throw so processSheets skips this sheet
+  throw new Error(schemaModeResult.failureReason ?? "Schema validation failed in strict mode");
 };
 
 // Apply validation result — updates the job with validation data
@@ -302,8 +293,7 @@ const applyValidationResult = async (
   if (resultData.requiresApproval) {
     return {
       output: {
-        success: false,
-        reason: "needs-review",
+        needsReview: true,
         requiresApproval: true,
         hasBreakingChanges: resultData.comparison.isBreaking,
         newFields: resultData.newFields.length,
@@ -313,7 +303,6 @@ const applyValidationResult = async (
 
   return {
     output: {
-      success: true,
       hasChanges: resultData.hasChanges,
       hasBreakingChanges: resultData.comparison.isBreaking,
       newFields: resultData.newFields.length,

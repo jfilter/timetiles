@@ -52,7 +52,7 @@ export interface DetectSchemaOutput {
 
 /** Output from `validate-schema` task. */
 export interface ValidateSchemaOutput {
-  success: boolean;
+  needsReview?: boolean;
   requiresApproval?: boolean;
   hasBreakingChanges?: boolean;
   hasChanges?: boolean;

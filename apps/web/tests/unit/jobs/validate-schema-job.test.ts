@@ -153,7 +153,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // Verify result — success: true, no stage transition (workflow controls it)
-      expect(result).toEqual({ output: { success: true, hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
+      expect(result).toEqual({ output: { hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
 
       // Schema version creation now happens in CREATE_SCHEMA_VERSION stage, not inline
       // So we should NOT expect createSchemaVersion to be called here
@@ -249,13 +249,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Verify result requires approval due to breaking changes
       expect(result).toEqual({
-        output: {
-          success: false,
-          reason: "needs-review",
-          requiresApproval: true,
-          hasBreakingChanges: true,
-          newFields: 0,
-        },
+        output: { needsReview: true, requiresApproval: true, hasBreakingChanges: true, newFields: 0 },
       });
 
       // Verify no schema version was created (needs approval)
@@ -356,13 +350,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // Verify result requires approval due to locked schema
       expect(result).toEqual({
-        output: {
-          success: false,
-          reason: "needs-review",
-          requiresApproval: true,
-          hasBreakingChanges: false,
-          newFields: 1,
-        },
+        output: { needsReview: true, requiresApproval: true, hasBreakingChanges: false, newFields: 1 },
       });
 
       // Verify job was updated to await approval (stage set for needs-review pause)
@@ -538,7 +526,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // Verify result - no approval needed, no changes, success
-      expect(result).toEqual({ output: { success: true, hasChanges: false, hasBreakingChanges: false, newFields: 0 } });
+      expect(result).toEqual({ output: { hasChanges: false, hasBreakingChanges: false, newFields: 0 } });
 
       // Verify no schema version was created (no changes)
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
@@ -665,7 +653,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       return { mockIngestJob, mockDataset, mockIngestFile };
     };
 
-    it("should fail import in strict mode when schema has changes", async () => {
+    it("should throw for strict mode when schema has changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = {
         type: "object",
@@ -675,21 +663,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       setupSchemaModeTest({ schemaMode: "strict", detectedSchema, currentSchema });
 
-      const result = await validateSchemaJob.handler(mockContext);
+      // Strict-mode violation now throws (Payload retries → onFail marks FAILED)
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Schema mismatch in strict mode");
 
-      expect(result).toEqual({
-        output: {
-          success: false,
-          reason: "strict-mode-violation",
-          requiresApproval: false,
-          hasBreakingChanges: false,
-          newFields: 1,
-          failed: true,
-          failureReason: "Schema mismatch in strict mode: 1 change(s) detected",
-        },
-      });
-
-      // Verify job was updated to FAILED stage
+      // Verify job was updated to FAILED stage (handler marks it before throwing)
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "ingest-jobs",
@@ -699,25 +676,15 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       );
     });
 
-    it("should fail import in additive mode when schema has breaking changes", async () => {
+    it("should throw for additive mode when schema has breaking changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = { type: "object", properties: { id: { type: "number" } }, required: ["id"] };
 
       setupSchemaModeTest({ schemaMode: "additive", detectedSchema, currentSchema });
 
-      const result = await validateSchemaJob.handler(mockContext);
-
-      expect(result).toEqual({
-        output: {
-          success: false,
-          reason: "strict-mode-violation",
-          requiresApproval: false,
-          hasBreakingChanges: true,
-          newFields: 0,
-          failed: true,
-          failureReason: "Breaking schema changes not allowed in additive mode",
-        },
-      });
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow(
+        "Breaking schema changes not allowed in additive mode"
+      );
 
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -743,7 +710,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
       // additive mode with non-breaking changes and no high-confidence transforms: auto-approve
       // schemaMode is set so determineRequiresApproval returns false (bypasses dataset config)
-      expect(result).toEqual({ output: { success: true, hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
+      expect(result).toEqual({ output: { hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
 
       // Workflow controls stage transition — no stage in update data
       expect(mockPayload.update).toHaveBeenCalledWith(
@@ -751,25 +718,13 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       );
     });
 
-    it("should fail import in flexible mode when schema has breaking changes", async () => {
+    it("should throw for flexible mode when schema has breaking changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = { type: "object", properties: { id: { type: "number" } }, required: ["id"] };
 
       setupSchemaModeTest({ schemaMode: "flexible", detectedSchema, currentSchema });
 
-      const result = await validateSchemaJob.handler(mockContext);
-
-      expect(result).toEqual({
-        output: {
-          success: false,
-          reason: "strict-mode-violation",
-          requiresApproval: false,
-          hasBreakingChanges: true,
-          newFields: 0,
-          failed: true,
-          failureReason: "Breaking schema changes detected",
-        },
-      });
+      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Breaking schema changes detected");
     });
 
     it("should auto-approve non-breaking changes in flexible mode", async () => {
@@ -785,7 +740,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // flexible mode: non-breaking changes auto-approve, schemaMode bypasses dataset config
-      expect(result).toEqual({ output: { success: true, hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
+      expect(result).toEqual({ output: { hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
 
       // Workflow controls stage transition — no stage in update data
       expect(mockPayload.update).toHaveBeenCalledWith(
@@ -801,7 +756,7 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const result = await validateSchemaJob.handler(mockContext);
 
       // No changes in strict mode: no failure, no approval, success
-      expect(result).toEqual({ output: { success: true, hasChanges: false, hasBreakingChanges: false, newFields: 0 } });
+      expect(result).toEqual({ output: { hasChanges: false, hasBreakingChanges: false, newFields: 0 } });
 
       // Workflow controls stage transition — no stage in update data
       expect(mockPayload.update).toHaveBeenCalledWith(

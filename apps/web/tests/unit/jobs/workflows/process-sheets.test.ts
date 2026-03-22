@@ -165,8 +165,8 @@ describe.sequential("processSheets", () => {
 
   // ── 6. Validate-schema fails (needs-review) — remaining skipped ───────
 
-  it("should skip remaining tasks when validate-schema fails", async () => {
-    tasks["validate-schema"].mockResolvedValueOnce({ success: false, requiresApproval: true, reason: "needs-review" });
+  it("should skip remaining tasks when validate-schema returns needsReview", async () => {
+    tasks["validate-schema"].mockResolvedValueOnce({ needsReview: true, requiresApproval: true });
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0")];
     await processSheets(tasks as any, sheets, mockReq);

@@ -108,18 +108,13 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo, payloa
   const validate = (await tasks["validate-schema"](`validate-${s}`, {
     input: { ingestJobId: id },
   })) as ValidateSchemaOutput;
-  if (!validate.success) {
-    logger.info(`Sheet ${s}: validate-schema stopped pipeline`, {
+  // validate-schema throws for failures (strict-mode, etc.) — caught by Promise.allSettled
+  // Only NEEDS_REVIEW is returned as output (handler already set the stage)
+  if (validate.needsReview) {
+    logger.info(`Sheet ${s}: validate-schema requires review`, {
       ...sheetCtx,
-      reason: validate.reason,
       requiresApproval: validate.requiresApproval,
-      failed: validate.failed,
     });
-    // NEEDS_REVIEW is set by the handler itself — don't mark as FAILED
-    // For other failures (strict mode, quota), mark as FAILED
-    if (validate.reason !== "needs-review") {
-      await markSheetFailed(payload, id, "validate-schema", validate.reason);
-    }
     return;
   }
 
