@@ -235,8 +235,10 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts any translation function signature
-const getTransformSummary = (transform: IngestTransform, t: (...args: any[]) => string): string => {
+const getTransformSummary = (
+  transform: IngestTransform,
+  t: (key: string, values?: Record<string, unknown>) => string
+): string => {
   switch (transform.type) {
     case "rename":
       return transform.from && transform.to ? `${transform.from} → ${transform.to}` : t("tfSelectFieldToRename");
@@ -261,5 +263,9 @@ const getTransformSummary = (transform: IngestTransform, t: (...args: any[]) => 
 
 const TransformSummary = ({ transform }: { transform: IngestTransform }) => {
   const t = useTranslations("Ingest");
-  return <p className="text-muted-foreground mt-0.5 truncate text-sm">{getTransformSummary(transform, t)}</p>;
+  return (
+    <p className="text-muted-foreground mt-0.5 truncate text-sm">
+      {getTransformSummary(transform, t as (key: string, values?: Record<string, unknown>) => string)}
+    </p>
+  );
 };

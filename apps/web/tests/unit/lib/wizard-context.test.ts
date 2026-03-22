@@ -7,6 +7,7 @@
  * @category Tests
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ZustandMiddleware from "zustand/middleware";
 
 import type { FieldMapping, SheetInfo } from "@/lib/types/ingest-wizard";
 
@@ -15,8 +16,7 @@ import type { FieldMapping, SheetInfo } from "@/lib/types/ingest-wizard";
 // The persist mock provides the `.persist` API (clearStorage, etc.) that
 // the store's complete()/reset() actions rely on.
 vi.mock("zustand/middleware", async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- vi.mock requires dynamic import
-  const actual = await importOriginal<typeof import("zustand/middleware")>();
+  const actual = await importOriginal<typeof ZustandMiddleware>();
   return {
     ...actual,
     devtools: (fn: (...args: unknown[]) => unknown) => fn,

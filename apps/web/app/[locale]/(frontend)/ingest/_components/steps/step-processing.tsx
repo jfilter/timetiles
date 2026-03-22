@@ -30,6 +30,9 @@ import { type ProgressApiResponse, useIngestProgressQuery } from "@/lib/hooks/us
 
 import { useWizardStore } from "../wizard-store";
 
+/** Loosened translate function for dynamic i18n keys not known at compile time. */
+type DynamicTranslate = (key: string) => string;
+
 export interface StepProcessingProps {
   className?: string;
 }
@@ -199,8 +202,7 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
   const t = useTranslations("Ingest");
   const duration = formatDuration(stage.startedAt, stage.completedAt);
   const i18nKey = STAGE_I18N_KEYS[stage.name];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key lookup from API stage name
-  const stageName = i18nKey ? t(i18nKey as any) : stage.displayName;
+  const stageName = i18nKey ? (t as DynamicTranslate)(i18nKey) : stage.displayName;
 
   // Determine the line segment style: solid for completed/in_progress, dashed for pending
   const lineBelow = !isLast;
@@ -349,8 +351,9 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
   const errorMessage = progress?.error ?? wizardError ?? pollError;
   const progressPercent = calculateProgressPercent(progress);
   const currentStageKey = STAGE_I18N_KEYS[progress?.currentStage ?? ""];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key lookup from API stage name
-  const stageLabel = currentStageKey ? t(currentStageKey as any) : (progress?.currentStage ?? t("processingLabel"));
+  const stageLabel = currentStageKey
+    ? (t as DynamicTranslate)(currentStageKey)
+    : (progress?.currentStage ?? t("processingLabel"));
   const progressBarStyle = { width: `${progressPercent}%` };
 
   return (

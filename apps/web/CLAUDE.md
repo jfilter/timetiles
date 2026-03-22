@@ -40,36 +40,36 @@ pnpm seed test                        # Seed test data
 
 **3-queue architecture:**
 
-| Queue | Purpose | Workers |
-|-------|---------|---------|
-| `ingest` | User-facing ingest workflows | Production: dedicated Docker container |
-| `default` | Trigger jobs (`schedule-manager`) | Production: dedicated Docker container |
-| `maintenance` | Scheduled system jobs | Production: dedicated Docker container |
+| Queue         | Purpose                           | Workers                                |
+| ------------- | --------------------------------- | -------------------------------------- |
+| `ingest`      | User-facing ingest workflows      | Production: dedicated Docker container |
+| `default`     | Trigger jobs (`schedule-manager`) | Production: dedicated Docker container |
+| `maintenance` | Scheduled system jobs             | Production: dedicated Docker container |
 
 **4 ingest workflows** (in `lib/jobs/workflows/`):
 
-| Workflow | Trigger | Pipeline |
-|----------|---------|----------|
-| `manual-ingest` | `ingest-files` afterChange hook | dataset-detection → per-sheet: analyze → detect-schema → validate → create-schema-version → geocode → create-events |
-| `scheduled-ingest` | `schedule-manager` job | url-fetch → dataset-detection → per-sheet pipeline |
-| `scraper-ingest` | `schedule-manager` job | scraper-execution → dataset-detection → per-sheet pipeline |
-| `ingest-process` | `ingest-jobs` afterChange hook (NEEDS_REVIEW approval) | create-schema-version → geocode → create-events |
+| Workflow           | Trigger                                                | Pipeline                                                                                                            |
+| ------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `manual-ingest`    | `ingest-files` afterChange hook                        | dataset-detection → per-sheet: analyze → detect-schema → validate → create-schema-version → geocode → create-events |
+| `scheduled-ingest` | `schedule-manager` job                                 | url-fetch → dataset-detection → per-sheet pipeline                                                                  |
+| `scraper-ingest`   | `schedule-manager` job                                 | scraper-execution → dataset-detection → per-sheet pipeline                                                          |
+| `ingest-process`   | `ingest-jobs` afterChange hook (NEEDS_REVIEW approval) | create-schema-version → geocode → create-events                                                                     |
 
 **Error model:** Tasks throw for failures (Payload retries), return `{ needsReview: true }` for human review, return data for success. Sheets process in parallel via `Promise.allSettled` with per-sheet try/catch.
 
 **System jobs** (Payload native `schedule` property):
 
-| Job | Queue | Schedule |
-|-----|-------|----------|
-| `schedule-manager` | default | Every minute |
-| `quota-reset` | maintenance | Daily midnight |
-| `cache-cleanup` | maintenance | Every 6 hours |
-| `schema-maintenance` | maintenance | Daily 3:00 AM |
-| `audit-log-ip-cleanup` | maintenance | Daily 4:00 AM |
-| `execute-account-deletion` | maintenance | Daily 2:00 AM |
-| `data-export-cleanup` | maintenance | Hourly |
-| `cleanup-stuck-scheduled-ingests` | maintenance | Hourly |
-| `cleanup-stuck-scrapers` | maintenance | Hourly |
+| Job                               | Queue       | Schedule       |
+| --------------------------------- | ----------- | -------------- |
+| `schedule-manager`                | default     | Every minute   |
+| `quota-reset`                     | maintenance | Daily midnight |
+| `cache-cleanup`                   | maintenance | Every 6 hours  |
+| `schema-maintenance`              | maintenance | Daily 3:00 AM  |
+| `audit-log-ip-cleanup`            | maintenance | Daily 4:00 AM  |
+| `execute-account-deletion`        | maintenance | Daily 2:00 AM  |
+| `data-export-cleanup`             | maintenance | Hourly         |
+| `cleanup-stuck-scheduled-ingests` | maintenance | Hourly         |
+| `cleanup-stuck-scrapers`          | maintenance | Hourly         |
 
 **Standalone task jobs** (queued on demand): `scraper-repo-sync`, `data-export`
 

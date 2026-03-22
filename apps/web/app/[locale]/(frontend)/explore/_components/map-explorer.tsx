@@ -17,7 +17,7 @@ import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
 
 import { ChartSection } from "./chart-section";
 import { EventsList } from "./events-list";
-import { buildEventsDescription, getFilterLabels } from "./explorer-helpers";
+import { buildEventsDescription, getFilterLabels, type TranslateFn } from "./explorer-helpers";
 import type { ExplorerChromeElements } from "./explorer-shell";
 import { ExplorerShell } from "./explorer-shell";
 import { MapPanel } from "./map-panel";
@@ -126,9 +126,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
                 totalEventsData?.total,
                 filterLabels,
                 simpleBounds != null,
-                (k, v) =>
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bridge next-intl Translator to plain fn
-                  (t as any)(k, v)
+                (k, v) => (t as TranslateFn)(k, v)
               )}
             </p>
             <EventsList

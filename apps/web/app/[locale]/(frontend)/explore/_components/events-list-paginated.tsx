@@ -20,7 +20,7 @@ import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { EventsList } from "./events-list";
 import { EventsListSkeleton } from "./events-list-skeleton";
-import { buildEventsDescription, type FilterLabels } from "./explorer-helpers";
+import { buildEventsDescription, type FilterLabels, type TranslateFn } from "./explorer-helpers";
 
 interface EventsListPaginatedProps {
   filters: FilterState;
@@ -100,8 +100,7 @@ export const EventsListPaginated = ({
       {/* Header - explains what's being shown */}
       <p className="text-muted-foreground text-sm">
         {buildEventsDescription(total, globalTotalData?.total, filterLabels, bounds != null, (k, v) =>
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bridge next-intl Translator to plain fn
-          (t as any)(k, v)
+          (t as TranslateFn)(k, v)
         )}
       </p>
 

@@ -136,8 +136,10 @@ const useTransformEditing = (
 };
 
 /** Short label for a transform chip. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts any translation function signature
-export const getTransformChipLabel = (transform: IngestTransform, t: (...args: any[]) => string): string => {
+export const getTransformChipLabel = (
+  transform: IngestTransform,
+  t: (key: string, values?: Record<string, unknown>) => string
+): string => {
   switch (transform.type) {
     case "rename":
       return transform.to ? t("tfChipRename", { name: transform.to }) : t("tfChipRenameDefault");
@@ -185,7 +187,9 @@ const TransformChip = ({ transform, isExpanded, onToggle, onRemove }: Readonly<T
         aria-label={TRANSFORM_TYPE_LABELS[transform.type]}
       >
         <Icon className={cn("h-3 w-3", TRANSFORM_COLORS[transform.type])} />
-        <span className="text-foreground max-w-[120px] truncate">{getTransformChipLabel(transform, t)}</span>
+        <span className="text-foreground max-w-[120px] truncate">
+          {getTransformChipLabel(transform, t as (key: string, values?: Record<string, unknown>) => string)}
+        </span>
       </button>
       <button
         type="button"
