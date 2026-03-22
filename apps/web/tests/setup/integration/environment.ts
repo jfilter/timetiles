@@ -906,12 +906,14 @@ const createIngestFileWithUpload = async (
 ) => {
   // Convert to Buffer (Payload expects Buffer for file uploads).
   // Avoid unnecessary copies — pass Buffer directly if already a Buffer.
-  const data_buf =
-    typeof fileContent === "string"
-      ? Buffer.from(fileContent, "utf8")
-      : Buffer.isBuffer(fileContent)
-        ? fileContent
-        : Buffer.from(fileContent);
+  let data_buf: Buffer;
+  if (typeof fileContent === "string") {
+    data_buf = Buffer.from(fileContent, "utf8");
+  } else if (Buffer.isBuffer(fileContent)) {
+    data_buf = fileContent;
+  } else {
+    data_buf = Buffer.from(fileContent);
+  }
 
   const file = { data: data_buf, mimetype: mimeType, name: fileName, size: data_buf.length };
 
