@@ -153,7 +153,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
       task: "url-fetch",
       input: expect.objectContaining({
-        scheduledIngestId: "1",
+        scheduledIngestId: 1,
         sourceUrl: "https://example.com/data.csv",
         triggeredBy: "manual",
       }),
