@@ -1,101 +1,82 @@
 # Error Recovery
 
-TimeTiles includes an automatic error recovery system that intelligently retries failed ingestion jobs based on error classification and recovery strategies.
+TimeTiles uses Payload CMS's built-in workflow retry system for error recovery. Failed tasks are automatically retried, and completed tasks return cached output on re-run so work is never repeated.
 
 ## Overview
 
-The `ErrorRecoveryService` automatically handles ingestion failures through:
+Error recovery is handled at two levels:
 
-- **Error Classification**: Analyzes error patterns to determine retry eligibility
-- **Exponential Backoff**: Prevents overwhelming external services with intelligent retry delays
-- **Quota Integration**: Respects user quota limits when scheduling retries
-- **Stage Recovery**: Restarts from the optimal recovery point in the pipeline
-- **Manual Fallback**: Provides APIs for manual intervention when automatic recovery fails
+- **Workflow level**: Payload retries failed tasks with configurable retry counts. Completed tasks are cached and skipped on retry.
+- **Sheet level**: Multi-sheet workflows use per-sheet try/catch. A failure in one sheet does not block other sheets.
 
-## Error Classification
+## Error Model
 
-Ingestion failures are classified into three categories to determine the appropriate recovery strategy.
+Task handlers use three distinct patterns to communicate results:
 
-### Recoverable Errors (Automatic Retry)
+### Transient Failures (Throw)
 
-Transient errors that typically resolve with retry:
+Tasks throw errors for unexpected or transient failures (network timeouts, database connection issues, rate limits). Payload's workflow system retries the task automatically.
 
-- **Network Errors**: Connection failures, timeouts, DNS issues (`ECONNREFUSED`, `ETIMEDOUT`)
-- **Database Issues**: Connection timeouts, deadlocks, temporary unavailability
-- **Rate Limits**: API rate limiting, 429 responses, quota exceeded
-- **Resource Constraints**: Temporary memory issues, disk space (may resolve)
+**Examples**:
 
-**Recovery Strategy**: Automatic retry with exponential backoff
+- Network connection failures (`ECONNREFUSED`, `ETIMEDOUT`)
+- Database deadlocks or connection timeouts
+- API rate limiting (429 responses)
+- Temporary resource constraints
 
-### Permanent Errors (No Retry)
+### Human Review Required (needsReview)
 
-Errors that won't resolve without intervention:
+Tasks return `{ needsReview: true }` when a human decision is needed. The pipeline pauses for that sheet only. Other sheets continue processing.
 
-- **File Errors**: File not found, invalid format (`ENOENT`)
-- **Permission Issues**: Unauthorized access, invalid credentials (401, 403)
-- **Invalid Data**: Malformed file structure, unsupported format
-- **Configuration Errors**: Missing required settings, invalid API keys
+**Examples**:
 
-**Recovery Strategy**: Manual intervention required, no automatic retry
+- Schema drift detected in automated imports
+- High duplicate rate requiring confirmation
+- High geocoding failure rate
 
-### User Action Required (May Retry After Fix)
+### Success (Return Data)
 
-Errors requiring user decisions but potentially recoverable:
+Tasks return structured data on success. The pipeline continues to the next task.
 
-- **Quota Limits**: User exceeded daily ingestion quota (retries after quota reset)
-- **Schema Changes**: Breaking changes requiring approval (retries after approval)
-- **Validation Failures**: Data validation errors requiring cleanup
+## Per-Sheet Error Isolation
 
-**Recovery Strategy**: Automatic retry after condition changes (quota reset, approval granted)
+Multi-sheet workflows (`manual-ingest`, `scheduled-ingest`, `scraper-ingest`) process sheets via `Promise.allSettled` with per-sheet try/catch. When a sheet fails:
 
-## Retry Mechanism
+1. The `markSheetFailed` function updates the ingestion job to `FAILED` with error details
+2. The workflow continues processing remaining sheets
+3. The parent import file status reflects the aggregate state
 
-### Exponential Backoff
+The `ingest-process` workflow (single job, no `Promise.allSettled`) does not use per-sheet isolation. Errors propagate normally and Payload's `onFail` callback fires as expected.
 
-Retry delays increase exponentially to prevent overwhelming services:
+**Important**: Payload's `onFail` callback does not fire when errors are caught by `Promise.allSettled`. This is why multi-sheet workflows use explicit `markSheetFailed` instead.
 
-```
-Retry 1: 30 seconds
-Retry 2: 60 seconds (30s × 2)
-Retry 3: 120 seconds (60s × 2)
-Max delay: 300 seconds (5 minutes)
-Max retries: 3 attempts
-```
+## Recovery Approaches
 
-### Configuration
+### Automatic Retry (Payload Built-In)
 
-Configure retry behavior via environment variables:
+When a task throws, Payload retries it up to the configured retry count. On retry:
 
-```bash
-RETRY_BASE_DELAY_MS=30000       # 30 seconds initial delay
-RETRY_BACKOFF_MULTIPLIER=2.0    # Double delay each retry
-RETRY_MAX_DELAY_MS=300000       # 5 minute maximum delay
-RETRY_MAX_ATTEMPTS=3            # Maximum retry attempts
-```
+- Previously completed tasks return cached output immediately
+- The failed task re-runs from the beginning
+- No duplicate work for completed tasks
 
-### Quota Integration
+### Manual Re-Queue
 
-Before scheduling a retry, the system:
+For workflows that have exhausted retries:
 
-1. Checks user's remaining import quota
-2. Verifies retry won't exceed daily limits
-3. Blocks retry if quota exhausted (retries after quota reset)
-4. Logs quota warnings for monitoring
+1. Fix the underlying issue (API key, permissions, network)
+2. Re-queue the workflow via the admin interface
+3. All previously completed tasks are skipped (cached)
+4. Processing resumes from the failed task
 
-## Recovery Stage Selection
+### NEEDS_REVIEW Resolution
 
-The system determines the optimal restart point based on where failure occurred:
+For sheets paused by `needsReview`:
 
-| Failure Stage           | Recovery Stage       | Reason                     |
-| ----------------------- | -------------------- | -------------------------- |
-| `ANALYZE_DUPLICATES`    | `ANALYZE_DUPLICATES` | Start of pipeline          |
-| `DETECT_SCHEMA`         | `DETECT_SCHEMA`      | Early stage, minimal cost  |
-| `VALIDATE_SCHEMA`       | `VALIDATE_SCHEMA`    | Schema validation specific |
-| `CREATE_SCHEMA_VERSION` | `VALIDATE_SCHEMA`    | Retry validation first     |
-| `GEOCODE_BATCH`         | `GEOCODE_BATCH`      | Resume geocoding           |
-| `CREATE_EVENTS`         | `GEOCODE_BATCH`      | Ensure geocoding complete  |
-
-**Important**: Recovery restarts from the _beginning_ of the selected stage to ensure data integrity.
+1. User reviews the issue in the admin interface (schema changes, duplicate rates, etc.)
+2. User approves or adjusts configuration
+3. The `ingest-jobs` afterChange hook automatically queues the `ingest-process` workflow
+4. `ingest-process` runs Create Schema Version, Geocode Batch, and Create Events
 
 ## API Endpoints
 
@@ -104,47 +85,6 @@ The system determines the optimal restart point based on where failure occurred:
 **Endpoint**: `POST /api/import-jobs/{id}/retry`
 
 **Purpose**: Manually trigger retry for a failed ingestion job
-
-**Example Request**:
-
-```bash
-curl -X POST https://your-domain.com/api/import-jobs/123/retry \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-**Response (Success)**:
-
-```json
-{
-  "success": true,
-  "action": "retry_scheduled",
-  "message": "Ingestion job retry scheduled successfully",
-  "retryScheduled": true,
-  "nextRetryAt": "2024-01-15T10:35:00.000Z"
-}
-```
-
-**Response (Quota Exceeded)**:
-
-```json
-{
-  "success": false,
-  "action": "quota_exceeded",
-  "error": "User has exceeded their daily ingestion quota. Retry will be attempted after quota resets.",
-  "statusCode": 403
-}
-```
-
-**Response (Not Retryable)**:
-
-```json
-{
-  "success": false,
-  "action": "not_retryable",
-  "error": "Error is not retryable: File not found (permanent error)",
-  "statusCode": 400
-}
-```
 
 **When to Use**:
 
@@ -158,205 +98,48 @@ curl -X POST https://your-domain.com/api/import-jobs/123/retry \
 
 **Purpose**: Reset ingestion job to a specific stage for fresh restart
 
-**Example Request**:
-
-```bash
-curl -X POST https://your-domain.com/api/import-jobs/123/reset \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"stage": "ANALYZE_DUPLICATES"}'
-```
-
-**Response**:
-
-```json
-{ "success": true, "message": "Ingestion job reset successfully", "stage": "ANALYZE_DUPLICATES" }
-```
-
-**Available Reset Stages**:
-
-- `ANALYZE_DUPLICATES` - Complete restart
-- `DETECT_SCHEMA` - After duplicate analysis
-- `VALIDATE_SCHEMA` - After schema detection
-- `GEOCODE_BATCH` - After schema validation/approval
-
 **When to Use**:
 
 - Need to restart from specific stage
 - Configuration changes require reprocessing
 - Data corruption requires fresh start from known good stage
-- Testing stage-specific behavior
 
 **Cautions**:
 
 - Resetting clears progress from later stages
 - May re-process data (ensure idempotency)
-- Doesn't delete already created events (use with caution)
-
-### Get Recovery Recommendations
-
-**Endpoint**: `GET /api/import-jobs/failed/recommendations`
-
-**Purpose**: Get actionable recommendations for all failed ingestion jobs
-
-**Example Request**:
-
-```bash
-curl https://your-domain.com/api/import-jobs/failed/recommendations \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-**Example Response**:
-
-```json
-{
-  "recommendations": [
-    {
-      "importJobId": 123,
-      "importFileName": "events-2024.csv",
-      "stage": "GEOCODE_BATCH",
-      "failedAt": "2024-01-15T10:00:00.000Z",
-      "errorClassification": { "type": "recoverable", "retryable": true, "reason": "Rate limit exceeded (429)" },
-      "recommendedAction": "automatic_retry",
-      "retryCount": 1,
-      "nextRetryAt": "2024-01-15T10:30:00.000Z",
-      "details": "Automatic retry scheduled. System will retry in 30 seconds with exponential backoff."
-    },
-    {
-      "importJobId": 456,
-      "importFileName": "invalid-data.csv",
-      "stage": "VALIDATE_SCHEMA",
-      "failedAt": "2024-01-15T09:00:00.000Z",
-      "errorClassification": { "type": "permanent", "retryable": false, "reason": "File not found (ENOENT)" },
-      "recommendedAction": "manual_intervention",
-      "retryCount": 0,
-      "details": "File not found. Verify file exists and is accessible. Upload file again or delete this import job."
-    }
-  ]
-}
-```
-
-**Recommendation Categories**:
-
-| Category                 | Meaning                                  | User Action                             |
-| ------------------------ | ---------------------------------------- | --------------------------------------- |
-| `automatic_retry`        | System will retry automatically          | Wait for scheduled retry                |
-| `wait_for_quota_reset`   | Blocked by quota, will retry after reset | Wait until tomorrow                     |
-| `manual_intervention`    | Permanent error, needs manual fix        | Fix underlying issue and retry          |
-| `approve_schema_changes` | Awaiting user approval                   | Review and approve schema changes       |
-| `max_retries_exceeded`   | Retry attempts exhausted                 | Investigate root cause, reset if needed |
-
-**When to Use**:
-
-- Monitoring dashboard to show failed ingestion jobs
-- Batch processing recovery for multiple failures
-- Generating user notifications about failed ingestion runs
+- Does not delete already created events (use with caution)
 
 ## Monitoring
 
 ### Logging
 
-All recovery operations are logged with context:
+All error recovery operations are logged with context:
 
 ```typescript
-// Automatic retry scheduled
-logger.info("Scheduled job recovery", {
-  importJobId: 123,
-  retryAttempt: 2,
-  recoveryStage: "GEOCODE_BATCH",
-  nextRetryAt: "2024-01-15T10:30:00.000Z",
-});
+// Task failure in multi-sheet workflow
+logger.error("Sheet processing failed", { ingestJobId: 123, sheetIndex: 2, error: "Rate limit exceeded (429)" });
 
-// Quota blocked retry
-logger.warn("Retry blocked due to quota limit", {
-  importJobId: 123,
-  userId: 456,
-  retryAttempt: 2,
-  quotaLimit: 10,
-  currentUsage: 10,
-});
-
-// Permanent error identified
-logger.error("Import job has permanent error", {
-  importJobId: 123,
-  errorType: "permanent",
-  reason: "File not found (ENOENT)",
-});
+// Workflow retry
+logger.info("Workflow task retrying", { taskSlug: "geocode-batch", retryAttempt: 2, importFileId: 456 });
 ```
 
-### Import Job State
+### Ingestion Job State
 
-Track recovery progress in import-job record:
+Track processing state in the ingestion job record:
 
-```typescript
-{
-  "id": 123,
-  "stage": "FAILED",
-  "retryAttempts": 2,
-  "lastRetryAt": "2024-01-15T10:00:00.000Z",
-  "nextRetryAt": "2024-01-15T10:30:00.000Z",
-  "errorLog": {
-    "lastError": "Rate limit exceeded (429)",
-    "recoveryAttempt": {
-      "attempt": 2,
-      "previousError": "Network timeout",
-      "recoveryStage": "GEOCODE_BATCH",
-      "classification": "recoverable"
-    }
-  }
-}
-```
+- `stage`: Current processing stage (for UI progress display)
+- `errorLog`: Error details from the last failure
+- `NEEDS_REVIEW`: Indicates human review is required
+- `FAILED`: Terminal failure state with error context
 
-## Best Practices
+## Integration with Scheduled Imports
 
-### When to Use Automatic Recovery
+For scheduled imports (automated URL-based data fetching), error recovery follows the workflow model:
 
-✅ **Good Use Cases**:
+1. **Workflow fails**: Task throws during processing
+2. **Automatic retry**: Payload retries the task up to configured limit
+3. **Retries exhausted**: Workflow marked as failed
+4. **Next scheduled run**: The next scheduled trigger creates a new workflow instance from scratch
 
-- Transient network failures
-- API rate limiting
-- Temporary resource constraints
-- Database connection issues
-
-❌ **Poor Use Cases**:
-
-- Invalid file formats (won't fix automatically)
-- Missing API credentials (needs configuration)
-- Data validation errors (needs data cleanup)
-
-### When to Use Manual Intervention
-
-Use `/retry` endpoint when:
-
-- Fixed underlying issue and want immediate retry
-- Need to retry before scheduled automatic retry
-- Testing recovery after configuration changes
-
-Use `/reset` endpoint when:
-
-- Need to restart from specific stage
-- Configuration changes require reprocessing
-- Automatic recovery not selecting optimal stage
-
-### Preventing Repeated Failures
-
-1. **Check Recommendations First**: Review `/api/import-jobs/failed/recommendations` before manual retry
-2. **Fix Root Cause**: Don't retry permanent errors without fixing underlying issue
-3. **Monitor Quota Usage**: Ensure adequate quota before scheduling retries
-4. **Test Configuration**: Verify fixes in staging before retrying production imports
-5. **Review Error Logs**: Understand why failure occurred before attempting recovery
-
-## Integration with Scheduled Ingestion
-
-For scheduled ingestion (automated URL-based data fetching), error recovery is handled automatically:
-
-1. **Ingestion Fails**: Scheduled ingestion encounters error during processing
-2. **Classification**: Error is classified (recoverable, permanent, user-action-required)
-3. **Automatic Retry**: If recoverable, system schedules retry with exponential backoff
-4. **Max Retries**: After 3 failed attempts, ingestion is marked as failed
-5. **Next Scheduled Run**: Next scheduled run will attempt ingestion again from scratch
-
-**Important**: Retry attempts are separate from scheduled runs. A scheduled ingestion that fails will:
-
-- Retry up to 3 times with exponential backoff (if recoverable)
-- Still run again at the next scheduled time regardless of retry outcome
+Each scheduled run is an independent workflow instance. Failed workflows do not block future scheduled runs.

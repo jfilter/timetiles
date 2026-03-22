@@ -1,19 +1,20 @@
 # Ingestion Stages
 
-The TimeTiles data ingestion pipeline consists of eight sequential stages, each responsible for a specific aspect of data transformation and validation. This document provides detailed conceptual explanations of each stage.
+The TimeTiles data ingestion pipeline consists of seven task handlers, sequenced by Payload Workflows. Each task is responsible for a specific aspect of data transformation and validation. This document provides detailed conceptual explanations of each task.
 
 ## Stage Overview
 
-| Stage                    | Job Handler                 | Purpose                                        | Batch Size       |
-| ------------------------ | --------------------------- | ---------------------------------------------- | ---------------- |
-| 1. Dataset Detection     | `dataset-detection-job`     | Parse file structure and create ingestion jobs | N/A              |
-| 2. Analyze Duplicates    | `analyze-duplicates-job`    | Find duplicate rows                            | 5,000            |
-| 3. Detect Schema         | `schema-detection-job`      | Build progressive schema                       | 10,000           |
-| 4. Validate Schema       | `validate-schema-job`       | Compare with existing schema                   | 10,000           |
-| 5. Await Approval        | Manual process              | Human review of changes                        | N/A              |
-| 6. Create Schema Version | `create-schema-version-job` | Persist approved schema version                | N/A              |
-| 7. Geocode Batch         | `geocode-batch-job`         | Add location data                              | Unique locations |
-| 8. Create Events         | `create-events-batch-job`   | Generate final records                         | 1,000            |
+| Task                     | Handler                 | Purpose                                        | Batch Size       |
+| ------------------------ | ----------------------- | ---------------------------------------------- | ---------------- |
+| 1. Dataset Detection     | `dataset-detection`     | Parse file structure and create ingestion jobs | N/A              |
+| 2. Analyze Duplicates    | `analyze-duplicates`    | Find duplicate rows                            | 5,000            |
+| 3. Detect Schema         | `schema-detection`      | Build progressive schema                       | 10,000           |
+| 4. Validate Schema       | `validate-schema`       | Compare with existing schema                   | 10,000           |
+| 5. Create Schema Version | `create-schema-version` | Persist approved schema version                | N/A              |
+| 6. Geocode Batch         | `geocode-batch`         | Add location data                              | Unique locations |
+| 7. Create Events         | `create-events-batch`   | Generate final records                         | 1,000            |
+
+Tasks 2-7 run per sheet within the workflow. If `validate-schema` detects schema drift requiring human review, it returns `{ needsReview: true }` and the sheet is paused. After the user approves, the `ingest-process` workflow resumes from task 5 (Create Schema Version).
 
 ## Stage 1: Dataset Detection
 
@@ -55,7 +56,7 @@ Excel files with multiple sheets create separate ingestion jobs:
 - Sheet "Workshops" → Dataset "workshops" → Ingestion Job #2
 - Sheet "Webinars" → Dataset "webinars" → Ingestion Job #3
 
-Each ingestion job progresses through all eight stages independently.
+Each ingestion job progresses through all task stages within the parent workflow.
 
 ### Ingestion File Status
 
@@ -65,9 +66,9 @@ The parent import-file status reflects the aggregate state:
 - **Completed**: When ALL ingestion jobs succeed
 - **Failed**: If ANY ingestion job fails
 
-### Next Stage
+### Next Task
 
-All created ingestion jobs automatically begin at Stage 2 (Analyze Duplicates).
+The workflow proceeds to the per-sheet pipeline, starting with Analyze Duplicates for each detected sheet.
 
 ---
 
@@ -142,9 +143,9 @@ Creates a duplicate analysis result stored in the ingestion job:
 - Summary statistics (total, unique, internal duplicates, external duplicates)
 - Strategy used for analysis
 
-### Next Stage
+### Next Task
 
-Automatically transitions to Stage 3 (Detect Schema) when complete.
+The workflow proceeds to Detect Schema.
 
 ---
 
@@ -259,9 +260,9 @@ Creates a complete JSON Schema stored in the ingestion job:
 - Field statistics for each property
 - Builder state for potential resumption
 
-### Next Stage
+### Next Task
 
-Automatically transitions to Stage 4 (Validate Schema) when complete.
+The workflow proceeds to Validate Schema.
 
 ---
 
@@ -351,15 +352,15 @@ Changes require manual approval when ANY of the following are true:
 
 **Schema Unchanged**:
 
-Proceed directly to Stage 7 (Geocode Batch), skipping approval and schema versioning.
+Task returns success. The workflow proceeds directly to Geocode Batch, skipping schema versioning.
 
 **Auto-Approved Changes**:
 
-Proceed to Stage 6 (Create Schema Version) to persist the new schema.
+Task returns success. The workflow proceeds to Create Schema Version to persist the new schema.
 
-**Requires Approval**:
+**Requires Human Review (Schema Drift)**:
 
-Proceed to Stage 5 (Await Approval) for human review.
+Task returns `{ needsReview: true }`. The ingestion job is set to `NEEDS_REVIEW`. The sheet is skipped in the current workflow. After the user reviews and approves, the `ingest-process` workflow resumes from Create Schema Version.
 
 ### Output
 
@@ -367,98 +368,37 @@ Creates a validation result stored in the ingestion job:
 
 - Complete list of breaking changes with details
 - Complete list of non-breaking changes with details
-- Approval decision (auto-approved, requires approval, or unchanged)
+- Approval decision (auto-approved, needs review, or unchanged)
 - Reason for decision
 - Changes summary for admin review
 
-### Next Stage
+### Next Task
 
-- **Unchanged**: Stage 7 (Geocode Batch)
-- **Auto-approved**: Stage 6 (Create Schema Version)
-- **Requires approval**: Stage 5 (Await Approval)
+- **Unchanged or auto-approved**: Create Schema Version (within same workflow)
+- **Needs review**: Sheet paused; `ingest-process` workflow queued after approval
 
----
+### NEEDS_REVIEW: Human Review
 
-## Stage 5: Await Approval
+When `validate-schema` detects schema drift requiring approval, the ingestion job enters the `NEEDS_REVIEW` state. This replaces the old `AWAIT_APPROVAL` blocking stage.
 
-**Stage**: `await-approval`
-**Job Handler**: Manual process (no background job)
+**Key differences from the old model**:
 
-### Purpose
+- NEEDS_REVIEW only pauses the affected sheet, not the entire pipeline
+- Other sheets in a multi-sheet file continue processing
+- Manual uploads never trigger NEEDS_REVIEW (the wizard handles schema configuration upfront)
+- Only automated imports (scheduled, scraper) can trigger NEEDS_REVIEW when schema drift is detected
 
-Pause ingestion for human review of schema changes that require approval due to breaking changes or policy requirements. This stage ensures data governance and prevents unintended schema modifications.
+**Review flow**:
 
-### Process Overview
-
-**Notification**:
-
-- Alert dataset administrators of pending approval
-- Provide link to admin interface for review
-- Include change summary in notification
-
-**Review Interface**:
-
-- Present all breaking changes with clear descriptions
-- Show all non-breaking changes for context
-- Provide side-by-side comparison of old vs new schema
-- Display sample data demonstrating changes
-
-**Decision Capture**:
-
-- Record approval or rejection
-- Capture timestamp and approving user
-- Store approval notes/reason
-- Update import-job with decision
-
-**Post-Decision Processing**:
-
-- **If approved**: Transition to Stage 6 (Create Schema Version)
-- **If rejected**: Mark import as failed, preserve data for analysis
-
-### Approval Data Structure
-
-The ingestion job stores approval information:
-
-- Approval status (pending, approved, rejected)
-- Approving user ID and timestamp
-- Approval reason or notes
-- Complete list of changes being approved
-- Original detected schema for reference
-
-### Manual Intervention Options
-
-Administrators can:
-
-- **Approve**: Accept changes and continue processing
-- **Reject**: Decline changes and stop processing
-- **Modify configuration**: Adjust dataset settings and retry
-- **Edit transformations**: Add type transformations and retry
-
-### Approval Workflow
-
-**Typical Flow**:
-
-1. Ingestion reaches await-approval stage
-2. Admin receives notification
-3. Admin reviews changes in admin interface
-4. Admin approves or rejects
-5. Approval service updates ingestion job
-6. Pipeline continues automatically
-
-**Timeout Handling**:
-
-- No automatic timeout (waits indefinitely for decision)
-- Admin can set custom timeout policies
-- Timed-out imports can be marked as failed manually
-
-### Next Stage
-
-- **If approved**: Stage 6 (Create Schema Version)
-- **If rejected**: Ingestion marked as failed (terminal state)
+1. `validate-schema` returns `{ needsReview: true }` with schema comparison details
+2. Ingestion job set to `NEEDS_REVIEW`; sheet skipped in the workflow's processing loop
+3. User reviews in admin interface, sees breaking changes, new fields, and suggested renames
+4. User approves -- `ingest-jobs` afterChange hook queues `ingest-process` workflow
+5. `ingest-process` runs Create Schema Version, Geocode Batch, and Create Events for that job
 
 ---
 
-## Stage 6: Create Schema Version
+## Stage 5: Create Schema Version
 
 **Stage**: `create-schema-version`
 **Job Handler**: `create-schema-version-job`
@@ -542,13 +482,13 @@ Each version record contains:
 **Missing Dataset**: Throws error if dataset not found (data integrity issue)
 **Creation Failure**: Marks import-job as failed, stops processing, preserves state
 
-### Next Stage
+### Next Task
 
-Automatically transitions to Stage 7 (Geocode Batch) when complete.
+The workflow proceeds to Geocode Batch.
 
 ---
 
-## Stage 7: Geocode Batch
+## Stage 6: Geocode Batch
 
 **Stage**: `geocode-batch`
 **Job Handler**: `geocode-batch-job`
@@ -663,13 +603,13 @@ Geocoding results stored in import-job:
 - Source indication (geocoded vs provided vs failed)
 - Progress tracking (current/total unique locations)
 
-### Next Stage
+### Next Task
 
-Automatically transitions to Stage 8 (Create Events) when complete.
+The workflow proceeds to Create Events.
 
 ---
 
-## Stage 8: Create Events
+## Stage 7: Create Events
 
 **Stage**: `create-events`
 **Job Handler**: `create-events-batch-job`
@@ -801,48 +741,36 @@ When all batches complete, the system:
 - Provides summary statistics
 - Links to created events for review
 
-### Next Stage
+### Completion
 
-None - this is the final stage. Ingestion transitions to "completed" status.
+This is the final task. The ingestion job transitions to "completed" status. The workflow marks the sheet as done and moves to the next sheet (if any remain).
 
 ---
 
-## Stage Transition State Machine
+## Workflow Task Sequencing
 
-The pipeline enforces strict stage transitions:
+Task sequencing is defined by the workflow handlers in `lib/jobs/workflows/`. There is no separate state machine or transition graph -- the workflow handler is a linear function that calls tasks in order:
 
-**Valid Transitions**:
+```
+dataset-detection → for each sheet:
+  analyze-duplicates → detect-schema → validate-schema →
+  create-schema-version → geocode-batch → create-events
+```
 
-- `analyze-duplicates` → `detect-schema`
-- `detect-schema` → `validate-schema`
-- `validate-schema` → `await-approval` (requires approval)
-- `validate-schema` → `create-schema-version` (auto-approved)
-- `validate-schema` → `geocode-batch` (schema unchanged)
-- `await-approval` → `create-schema-version` (approved)
-- `await-approval` → `failed` (rejected)
-- `create-schema-version` → `geocode-batch`
-- `geocode-batch` → `create-events`
-- `create-events` → `completed`
+If a task returns `{ needsReview: true }`, the sheet is skipped. If a task throws, per-sheet try/catch marks the sheet as FAILED and continues to the next sheet.
 
-**Error Transitions**:
-
-- ANY stage → `failed` (error handling)
-
-**Invalid Transitions**:
-
-All other transitions are rejected by the `StageTransitionService` to maintain state machine integrity.
+The `ingest-process` workflow (for post-review resumption) runs a shorter sequence: `create-schema-version → geocode-batch → create-events`.
 
 ## Summary
 
-These eight stages work together to ingest uploaded files into structured, validated, and enriched events:
+These seven task handlers work together to ingest uploaded files into structured, validated, and enriched events:
 
 1. **Dataset Detection** creates the foundation by parsing files and creating jobs
 2. **Analyze Duplicates** reduces processing load and prevents duplicate events
 3. **Detect Schema** understands the data structure and types
 4. **Validate Schema** ensures schema changes are intentional and safe
-5. **Await Approval** provides governance for breaking changes
-6. **Create Schema Version** persists approved schema for audit and rollback
-7. **Geocode Batch** enriches data with geographic coordinates
-8. **Create Events** produces the final, queryable event records
+5. **Create Schema Version** persists approved schema for audit and rollback
+6. **Geocode Batch** enriches data with geographic coordinates
+7. **Create Events** produces the final, queryable event records
 
-Each stage builds on the previous stages' outputs, creating a robust and maintainable data ingestion pipeline.
+Each task builds on the previous tasks' outputs, orchestrated by Payload Workflows with built-in retry and caching.

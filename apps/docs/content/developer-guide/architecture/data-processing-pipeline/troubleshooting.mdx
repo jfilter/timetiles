@@ -41,20 +41,20 @@ This guide helps you diagnose and resolve common issues with the TimeTiles data 
 
 ---
 
-### Schema Approval Needed
+### Schema Review Required (NEEDS_REVIEW)
 
 **Symptoms**:
 
-- Ingestion pauses at "await-approval" stage
-- Notification about schema changes
-- Admin interface shows pending approvals
+- Ingestion job shows `NEEDS_REVIEW` status
+- Schema drift detected in automated import
+- Admin interface shows pending reviews
 
 **Possible Causes**:
 
-1. **Breaking schema changes detected**
+1. **Breaking schema changes detected** in automated import (scheduled or scraper)
 2. **Dataset schema is locked**
 3. **Auto-approval disabled**
-4. **Manual approval required by policy**
+4. **High duplicate rate or geocoding failure rate**
 
 **Diagnosis Steps**:
 
@@ -549,13 +549,13 @@ This guide helps you diagnose and resolve common issues with the TimeTiles data 
 
 ## Automatic Error Recovery
 
-TimeTiles includes an automatic error recovery system for failed imports. See the [Error Recovery](./error-recovery) documentation for complete details on:
+TimeTiles uses Payload's built-in workflow retry system for error recovery. See the [Error Recovery](./error-recovery) documentation for complete details on:
 
-- Error classification (recoverable, permanent, user-action-required)
-- Automatic retry with exponential backoff
-- Recovery API endpoints (`/retry`, `/reset`, `/recommendations`)
+- Error model (throw for transient failures, needsReview for human review)
+- Automatic retry with cached completed tasks
+- Per-sheet error isolation in multi-sheet workflows
+- Recovery API endpoints (`/retry`, `/reset`)
 - Integration with scheduled imports
-- Best practices for error recovery
 
 ---
 

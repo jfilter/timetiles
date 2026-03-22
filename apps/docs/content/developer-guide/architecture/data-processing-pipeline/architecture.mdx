@@ -114,66 +114,54 @@ The pipeline orchestrates processing across five main Payload CMS collections:
 - Links to specific schema version used
 - Contains validation status and metadata
 
-## Event-Driven Architecture
+## Workflow Architecture
 
-### Hook-Driven Orchestration
+### 4 Payload Workflows
 
-The pipeline uses Payload CMS collection hooks for automatic stage progression:
+The pipeline uses Payload CMS Workflows to define linear task pipelines. Each workflow sequences multiple task handlers, with automatic retry and caching of completed tasks on re-run.
 
-**afterChange Hook Pattern**:
+| Workflow           | Trigger                                                | Purpose                              |
+| ------------------ | ------------------------------------------------------ | ------------------------------------ |
+| `manual-ingest`    | `ingest-files` afterChange hook                        | Full pipeline for user uploads       |
+| `scheduled-ingest` | `schedule-manager` job                                 | URL fetch + full pipeline            |
+| `scraper-ingest`   | `schedule-manager` job                                 | Scraper execution + full pipeline    |
+| `ingest-process`   | `ingest-jobs` afterChange hook (NEEDS_REVIEW approval) | Resume after schema drift resolution |
 
-- Triggered automatically when an import-job's stage changes
-- Delegates to `StageTransitionService` for validation and queueing
-- Ensures exactly-once job execution per stage transition
-- Maintains state machine integrity
+### Hook-Driven Workflow Queueing
 
-**Key Benefit**: No manual orchestration code needed - hooks handle the entire workflow automatically.
+Collection `afterChange` hooks queue workflows automatically:
 
-### StageTransitionService
+- **`ingest-files` afterChange**: Queues `manual-ingest` workflow when a file is uploaded
+- **`ingest-jobs` afterChange**: Queues `ingest-process` workflow when a NEEDS_REVIEW job is approved
 
-The `StageTransitionService` provides centralized, atomic stage transitions:
+Workflows are never queued manually from task handlers or tests. The hooks ensure exactly-once execution.
 
-**Responsibilities**:
+### Concurrency Control
 
-- Validates that transitions are legal according to the state machine
-- Prevents concurrent transitions with in-memory locking
-- Queues appropriate background jobs for the new stage
-- Ensures exactly-once job execution
+Each workflow uses a per-resource concurrency key to prevent duplicate processing:
 
-**Locking Mechanism**:
+- `manual-ingest`: `file:{importFileId}`
+- `scheduled-ingest`: `sched:{scheduledImportId}`
+- `scraper-ingest`: `scraper:{scraperId}`
+- `ingest-process`: `ingest:{ingestJobId}`
 
-- In-memory Set tracks currently-transitioning jobs
-- Atomic lock acquisition prevents race conditions
-- Locks released after job queuing completes
-- Prevents double-queueing during concurrent updates
+### Error Model
 
-**Valid Transition Map**:
+Task handlers use three distinct patterns:
 
-The service enforces a strict state machine:
+- **Throw** for transient failures -- Payload retries the task automatically
+- **Return `{ needsReview: true }`** for human review -- pipeline pauses for that sheet
+- **Return data** for success -- pipeline continues to the next task
 
-- `analyze-duplicates` → `detect-schema`
-- `detect-schema` → `validate-schema`
-- `validate-schema` → `await-approval` OR `create-schema-version` (auto-approve path)
-- `await-approval` → `create-schema-version`
-- `create-schema-version` → `geocode-batch`
-- `geocode-batch` → `create-events`
-- `create-events` → `completed`
-- ANY stage → `failed` (error handling)
-
-**Auto-Approval Bypass**: When `autoApproveNonBreaking` is enabled and no breaking changes are detected, the pipeline skips `await-approval` and jumps directly from `validate-schema` to `create-schema-version`.
+Multi-sheet workflows process sheets via `Promise.allSettled` with per-sheet try/catch. A failure in one sheet does not block other sheets.
 
 ### Background Job Lifecycle
 
-**Payload's Auto-Deletion**:
+Payload CMS automatically deletes completed jobs by default (`deleteJobOnComplete: true`). This has important implications:
 
-Payload CMS automatically deletes completed jobs by default (configurable with `deleteJobOnComplete`). This has important implications:
-
-- **No Double-Queueing**: Jobs should only be queued by hooks, not by job handlers
-- **Hook-Based Queueing**: Collection hooks handle all job queueing automatically
-- **Job Handlers Focus on Work**: Each handler performs its task without queueing the next job
-- **Testing Implications**: Tests must check side effects (events created, data changed) rather than job history
-
-**Correct Pattern**: Use `StageTransitionService` to move between stages - it handles queueing via hooks.
+- **No Double-Queueing**: Workflows are queued by hooks, not by task handlers
+- **Testing Implications**: Tests must check side effects (events created, data changed) rather than job records
+- **Drain Loop**: Tests use `payload.jobs.run()` in a loop to process chained workflow tasks
 
 ## Batch Processing Architecture
 
@@ -329,17 +317,18 @@ The pipeline provides extensive observability:
 - ❌ Requires file system management
 - ❌ Files must remain accessible
 
-### Event-Driven vs Procedural
+### Workflow-Based vs Hook-Driven State Machine
 
-**Choice**: Hook-driven automatic orchestration
+**Choice**: Payload Workflows with hook-based queueing
 
 **Trade-offs**:
 
-- ✅ Automatic stage progression
-- ✅ Declarative pipeline definition
-- ✅ No manual orchestration code
-- ❌ Implicit control flow
-- ❌ Testing requires understanding hooks
+- ✅ Explicit, linear workflow handlers (readable control flow)
+- ✅ Built-in retry with cached completed tasks
+- ✅ Per-resource concurrency control
+- ✅ One workflow per import type (clear separation)
+- ❌ Slight overhead for single-sheet imports (workflow wrapper job)
+- ❌ Sequential sheet processing within a workflow
 
 ### Batch vs Stream Processing
 
@@ -353,4 +342,4 @@ The pipeline provides extensive observability:
 - ❌ Higher latency than streaming
 - ❌ Batch size tuning required
 
-These architectural decisions create a pipeline that is scalable, maintainable, and robust while leveraging Payload CMS's built-in capabilities for state management and orchestration.
+These architectural decisions create a pipeline that is scalable, maintainable, and robust while leveraging Payload CMS Workflows for task sequencing, retry, and concurrency control.

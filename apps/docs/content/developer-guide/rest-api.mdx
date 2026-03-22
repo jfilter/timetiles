@@ -484,7 +484,7 @@ GET /api/import/:importId/progress
 1. `analyze-duplicates` - Finding duplicate rows
 2. `detect-schema` - Analyzing file structure and field types
 3. `validate-schema` - Comparing detected schema with existing dataset schema
-4. `await-approval` - User must approve breaking schema changes
+4. `needs-review` - Schema drift detected, user must review (automated imports only)
 5. `create-schema-version` - Persisting approved schema
 6. `geocode-batch` - Geocoding location fields
 7. `create-events` - Creating event records in database

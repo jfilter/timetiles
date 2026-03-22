@@ -313,14 +313,14 @@ Special considerations when processing large files or high-volume imports.
 
 Guidance for teams building on or extending the pipeline.
 
-### Respect Hook Architecture
+### Respect Workflow Architecture
 
-**Let hooks handle orchestration**:
+**Let workflows handle orchestration**:
 
-- Don't queue jobs manually from job handlers
-- Use StageTransitionService for stage changes
-- Trust the hook system to advance pipeline
-- Only queue jobs from hooks
+- Don't queue workflows manually from task handlers
+- Let `afterChange` hooks on collections queue workflows
+- Each task handler does its work and returns structured output
+- The workflow handler sequences tasks and inspects results
 
 **Why this matters**:
 
@@ -329,13 +329,13 @@ Guidance for teams building on or extending the pipeline.
 - Reduces debugging complexity
 - Follows established patterns
 
-### Job Handler Focus
+### Task Handler Focus
 
-**Keep job handlers focused**:
+**Keep task handlers focused**:
 
 - Each handler does one thing well
-- Don't queue next job from handler
-- Update stage, let hooks queue next job
+- Return structured output (data, needsReview, or throw)
+- Don't queue the next task from a handler -- the workflow handler does that
 - Maintain separation of concerns
 
 **Why this matters**:

@@ -1,60 +1,89 @@
 # Background Jobs
 
-TimeTiles uses Payload CMS's built-in job queue for all asynchronous processing. Jobs are defined in `lib/jobs/` and registered in `lib/config/payload-shared-config.ts`.
+TimeTiles uses Payload CMS's built-in job queue and workflow system for all asynchronous processing. Jobs and workflows are defined in `lib/jobs/` and registered in `lib/config/payload-shared-config.ts`.
 
 ## Key Behavior
 
 - **Auto-deletion**: Completed jobs are automatically deleted (`deleteJobOnComplete: true`)
-- **Hook-driven queueing**: Jobs are queued by collection `afterChange` hooks via `StageTransitionService`, not manually
-- **Single process**: Jobs run in the same Node.js process as the web server (no separate worker)
+- **Workflow-based orchestration**: The ingestion pipeline uses 4 Payload Workflows, queued by collection `afterChange` hooks
+- **3-queue architecture**: `ingest` (user-facing workflows), `default` (trigger jobs), `maintenance` (scheduled system jobs)
+- **Production**: 1 Docker worker container per queue via `pnpm payload jobs:run --cron --queue <name>`
+- **Development**: `autoRun` processes all queues within the Next.js process
 
-## Ingestion Pipeline Jobs
+## Ingest Workflows
 
-These 8 jobs process files through the ingestion pipeline sequentially. See [Data Ingestion Pipeline](./data-processing-pipeline) for detailed stage documentation.
+The ingestion pipeline is orchestrated by 4 Payload Workflows. Each workflow sequences multiple task handlers into a linear pipeline. See [Data Ingestion Pipeline](./data-processing-pipeline) for detailed stage documentation.
 
-| Job                     | Purpose                                     | Trigger                       |
-| ----------------------- | ------------------------------------------- | ----------------------------- |
-| `dataset-detection`     | Parse file, create ingestion jobs per sheet | File upload to `import-files` |
-| `analyze-duplicates`    | Find internal/external duplicate rows       | Stage transition              |
-| `schema-detection`      | Build progressive JSON Schema from data     | Stage transition              |
-| `validate-schema`       | Compare detected vs existing schema         | Stage transition              |
-| `create-schema-version` | Persist approved schema version             | Approval or auto-approve      |
-| `geocode-batch`         | Geocode unique locations via providers      | Stage transition              |
-| `create-events-batch`   | Create event records in database            | Stage transition              |
+| Workflow           | Trigger                                                | Pipeline                                                                                                           |
+| ------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `manual-ingest`    | `ingest-files` afterChange hook                        | dataset-detection, then per-sheet: analyze, detect-schema, validate, create-schema-version, geocode, create-events |
+| `scheduled-ingest` | `schedule-manager` job                                 | url-fetch, dataset-detection, then per-sheet pipeline                                                              |
+| `scraper-ingest`   | `schedule-manager` job                                 | scraper-execution, dataset-detection, then per-sheet pipeline                                                      |
+| `ingest-process`   | `ingest-jobs` afterChange hook (NEEDS_REVIEW approval) | create-schema-version, geocode, create-events                                                                      |
 
-## Scheduled Ingestion Jobs
+All ingest workflows run on the `ingest` queue with per-resource concurrency keys (e.g., `file:{id}`, `sched:{id}`).
 
-| Job                               | Purpose                                              | Trigger                     |
-| --------------------------------- | ---------------------------------------------------- | --------------------------- |
-| `schedule-manager`                | Check cron schedules, trigger due ingestion runs     | Periodic (runs on interval) |
-| `url-fetch`                       | Download file from URL for scheduled ingestion       | Schedule manager            |
-| `cleanup-stuck-scheduled-imports` | Reset ingestion jobs stuck in processing state       | Periodic                    |
-| `process-pending-retries`         | Retry failed ingestion jobs with exponential backoff | Periodic                    |
-| `cleanup-approval-locks`          | Release stale approval locks                         | Periodic                    |
+### Error Model
 
-## System Maintenance Jobs
+- **Throw** for transient failures -- Payload retries the task
+- **Return `{ needsReview: true }`** for human review -- pipeline pauses for that sheet
+- **Return data** for success -- pipeline continues to next task
+- Multi-sheet files use `Promise.allSettled` with per-sheet try/catch; individual sheet failures do not block other sheets
 
-| Job                        | Purpose                                                | Trigger      |
-| -------------------------- | ------------------------------------------------------ | ------------ |
-| `quota-reset`              | Reset daily user quota counters (midnight UTC)         | Periodic     |
-| `cache-cleanup`            | Clean expired cache entries                            | Periodic     |
-| `schema-maintenance`       | Clean up orphaned schema versions                      | Periodic     |
-| `audit-log-ip-cleanup`     | Clear IP addresses older than 30 days (privacy)        | Periodic     |
-| `data-export`              | Generate ZIP archive of user data                      | User request |
-| `data-export-cleanup`      | Delete expired export files                            | Periodic     |
-| `execute-account-deletion` | Process scheduled account deletions after grace period | Periodic     |
+## Ingest Task Handlers
+
+These task handlers are composed by the workflows above. They are not queued individually.
+
+| Task                    | Purpose                                     |
+| ----------------------- | ------------------------------------------- |
+| `dataset-detection`     | Parse file, create ingestion jobs per sheet |
+| `analyze-duplicates`    | Find internal/external duplicate rows       |
+| `schema-detection`      | Build progressive JSON Schema from data     |
+| `validate-schema`       | Compare detected vs existing schema         |
+| `create-schema-version` | Persist approved schema version             |
+| `geocode-batch`         | Geocode unique locations via providers      |
+| `create-events-batch`   | Create event records in database            |
+| `url-fetch`             | Download file from URL for scheduled ingest |
+| `scraper-execution`     | Run scraper in Podman container             |
+
+## System Jobs
+
+System jobs use Payload's native `schedule` property for cron-based scheduling.
+
+| Job                               | Queue       | Schedule       |
+| --------------------------------- | ----------- | -------------- |
+| `schedule-manager`                | default     | Every minute   |
+| `quota-reset`                     | maintenance | Daily midnight |
+| `cache-cleanup`                   | maintenance | Every 6 hours  |
+| `schema-maintenance`              | maintenance | Daily 3:00 AM  |
+| `audit-log-ip-cleanup`            | maintenance | Daily 4:00 AM  |
+| `execute-account-deletion`        | maintenance | Daily 2:00 AM  |
+| `data-export-cleanup`             | maintenance | Hourly         |
+| `cleanup-stuck-scheduled-ingests` | maintenance | Hourly         |
+| `cleanup-stuck-scrapers`          | maintenance | Hourly         |
+
+## Standalone Task Jobs
+
+These are queued on demand (not scheduled):
+
+| Job                 | Purpose                             | Trigger      |
+| ------------------- | ----------------------------------- | ------------ |
+| `scraper-repo-sync` | Sync scraper manifest from Git repo | Admin action |
+| `data-export`       | Generate ZIP archive of user data   | User request |
 
 ## Adding a New Job
 
 1. Create handler in `lib/jobs/handlers/my-job.ts`
 2. Export job config from `lib/jobs/import-jobs.ts`
 3. Add to `ALL_JOBS` array in `lib/config/payload-shared-config.ts`
-4. Create migration if the job needs new fields
+4. If it is a workflow task, add it to the appropriate workflow in `lib/jobs/workflows/`
+5. Create migration if the job needs new fields
 
 ## Testing Jobs
 
 See [Integration Testing Patterns](/developer-guide/development/testing-guidelines) for job testing. Key points:
 
 - Query pending jobs **before** running (`completedAt: { exists: false }`)
-- Verify **side effects** after running (not job records — they're deleted)
+- Verify **side effects** after running (not job records -- they're deleted)
 - Use `describe.sequential()` for tests that interact with the job queue
+- Use a drain loop with `payload.jobs.run()` to process chained workflow tasks in tests
