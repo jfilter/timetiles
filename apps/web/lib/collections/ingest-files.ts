@@ -328,16 +328,14 @@ const IngestFiles: CollectionConfig = {
           const quotas = quotaService.getEffectiveQuotas(user);
           const maxSizeMB = quotas.maxFileSizeMB;
           const maxSizeBytes = maxSizeMB * 1024 * 1024;
+          // Payload's local API may not preserve file.size — fall back to data.length
+          const fileSize = req.file.size ?? req.file.data?.length;
 
-          if (req.file.size > maxSizeBytes) {
+          if (fileSize && fileSize > maxSizeBytes) {
             throw new Error(`File too large. Maximum size for your trust level: ${maxSizeMB}MB`);
           }
 
-          logger.debug("File size validation passed", {
-            filesize: req.file.size,
-            maxSizeMB,
-            trustLevel: user.trustLevel,
-          });
+          logger.debug("File size validation passed", { filesize: fileSize, maxSizeMB, trustLevel: user.trustLevel });
         }
 
         return data;

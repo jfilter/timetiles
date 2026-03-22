@@ -904,12 +904,16 @@ const createIngestFileWithUpload = async (
   user?: any,
   triggerWorkflow = false
 ) => {
-  // Convert to Uint8Array which is what Payload's file-type checker expects
-  const fileBuffer =
-    typeof fileContent === "string" ? new Uint8Array(Buffer.from(fileContent, "utf8")) : new Uint8Array(fileContent);
+  // Convert to Buffer (Payload expects Buffer for file uploads).
+  // Avoid unnecessary copies — pass Buffer directly if already a Buffer.
+  const data_buf =
+    typeof fileContent === "string"
+      ? Buffer.from(fileContent, "utf8")
+      : Buffer.isBuffer(fileContent)
+        ? fileContent
+        : Buffer.from(fileContent);
 
-  // Create file object with Buffer data (Payload expects Buffer for file uploads)
-  const file = { data: Buffer.from(fileBuffer), mimetype: mimeType, name: fileName, size: fileBuffer.length };
+  const file = { data: data_buf, mimetype: mimeType, name: fileName, size: data_buf.length };
 
   // If user is provided, pass it to make req.user available in hooks
   // Otherwise use overrideAccess to bypass authentication requirements

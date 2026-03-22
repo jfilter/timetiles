@@ -102,10 +102,15 @@ describe.sequential("Import Files Collection", () => {
     const { catalog: untrustedCatalog } = await withCatalog(testEnv, { user: users.untrustedUser });
 
     // Create a CSV buffer slightly over 1MB (the UNTRUSTED limit)
-    const headerLine = "title,date,location\n";
-    const dataLine = "A".repeat(200) + ",2024-01-01,Test Location\n";
-    const repeatCount = Math.ceil((1.1 * 1024 * 1024) / dataLine.length);
-    const oversizedContent = Buffer.from(headerLine + dataLine.repeat(repeatCount));
+    // Build 1.1MB CSV without JS string concatenation (avoids V8 heap OOM in forks).
+    // Buffer.alloc + write avoids creating intermediate JS strings.
+    const targetSize = Math.ceil(1.1 * 1024 * 1024);
+    const oversizedContent = Buffer.alloc(targetSize);
+    let offset = oversizedContent.write("title,date,location\n");
+    const row = "Test,2024-01-01,Test Location\n";
+    while (offset + row.length < targetSize) {
+      offset += oversizedContent.write(row, offset);
+    }
 
     // Attempting to upload should fail with file size error
     await expect(
