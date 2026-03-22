@@ -51,7 +51,7 @@ export const POST = apiRoute({
       await payload.jobs.queue({
         task: "url-fetch",
         input: {
-          scheduledIngestId: String(numericId),
+          scheduledIngestId: numericId,
           sourceUrl: existingSchedule.sourceUrl,
           authConfig: existingSchedule.authConfig,
           originalName: existingSchedule.name,

@@ -17,9 +17,9 @@ import type { ScheduledIngest } from "@/payload-types";
 /**
  * Loads scheduled ingest configuration.
  */
-export const loadScheduledIngestConfig = async (
+export const loadScheduledImportConfig = async (
   payload: Payload,
-  scheduledIngestId: string | undefined
+  scheduledIngestId: number | undefined
 ): Promise<ScheduledIngest | null> => {
   if (!scheduledIngestId) {
     return null;
@@ -27,7 +27,7 @@ export const loadScheduledIngestConfig = async (
 
   try {
     const scheduledIngest = await payload.findByID({
-      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
       id: scheduledIngestId,
     });
 
@@ -45,10 +45,10 @@ export const loadScheduledIngestConfig = async (
 /**
  * Updates scheduled ingest status on successful execution.
  */
-export const updateScheduledIngestSuccess = async (
+export const updateScheduledImportSuccess = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
-  ingestFileId: number | string,
+  importFileId: number | string,
   duration: number
 ): Promise<void> => {
   try {
@@ -65,7 +65,7 @@ export const updateScheduledIngestSuccess = async (
     executionHistory.unshift({
       executedAt: new Date().toISOString(),
       status: "success",
-      jobId: ingestFileId.toString(),
+      jobId: importFileId.toString(),
       duration,
     });
 
@@ -75,7 +75,7 @@ export const updateScheduledIngestSuccess = async (
     }
 
     await payload.update({
-      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
       id: scheduledIngest.id,
       data: {
         lastRun: new Date().toISOString(),
@@ -99,7 +99,7 @@ export const updateScheduledIngestSuccess = async (
 /**
  * Updates scheduled ingest status on failed execution.
  */
-export const updateScheduledIngestFailure = async (
+export const updateScheduledImportFailure = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
   error: Error
@@ -119,7 +119,7 @@ export const updateScheduledIngestFailure = async (
     }
 
     await payload.update({
-      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      collection: COLLECTION_NAMES.SCHEDULED_IMPORTS,
       id: scheduledIngest.id,
       data: {
         lastRun: new Date().toISOString(),
@@ -152,7 +152,7 @@ export const checkForDuplicateContent = async (
 
   try {
     const recentFiles = await payload.find({
-      collection: COLLECTION_NAMES.INGEST_FILES,
+      collection: COLLECTION_NAMES.IMPORT_FILES,
       where: {
         catalog: { equals: catalogId },
         "metadata.urlFetch.contentHash": { equals: dataHash },

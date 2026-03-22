@@ -50,9 +50,23 @@ export interface JsonApiConfig extends JsonApiScheduleConfig {
   wasAutoDetected?: boolean;
 }
 
+export interface EditScheduleData {
+  sourceUrl: string;
+  authConfig: UrlAuthConfig | null;
+  jsonApiConfig: JsonApiConfig | null;
+  selectedCatalogId: number;
+  scheduleConfig: ScheduleConfig;
+  /** Existing dataset ID to use instead of creating "new" on re-fetch */
+  datasetId: number | null;
+}
+
 export interface WizardState {
   currentStep: WizardStep;
   startedAuthenticated: boolean;
+  editMode: boolean;
+  editScheduleId: number | null;
+  /** Dataset ID from the schedule being edited — used by setFile to pre-select instead of "new" */
+  _editDatasetId: number | null;
   previewId: string | null;
   file: { name: string; size: number; mimeType: string } | null;
   sheets: SheetInfo[];
@@ -75,6 +89,7 @@ export interface WizardState {
 
 interface WizardActions {
   initialize: (auth: { isAuthenticated: boolean; isEmailVerified: boolean }) => void;
+  initializeForEdit: (scheduleId: number, data: EditScheduleData) => void;
   goToStep: (step: WizardStep) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -113,6 +128,9 @@ type WizardStore = WizardState & WizardActions & { _initialized: boolean; _saved
 export const initialState: WizardState = {
   currentStep: 1,
   startedAuthenticated: false,
+  editMode: false,
+  editScheduleId: null,
+  _editDatasetId: null,
   previewId: null,
   file: null,
   sheets: [],
@@ -170,11 +188,31 @@ export const useWizardStore = create<WizardStore>()(
           set({ _initialized: true, startedAuthenticated: wasAuthenticated, currentStep: wasAuthenticated ? 2 : 1 });
         },
 
+        initializeForEdit: (scheduleId, data) => {
+          // Reset first to clear any previous wizard state
+          useWizardStore.persist?.clearStorage();
+          set({
+            ...initialState,
+            _initialized: true,
+            editMode: true,
+            editScheduleId: scheduleId,
+            startedAuthenticated: true,
+            currentStep: 2,
+            sourceUrl: data.sourceUrl,
+            authConfig: data.authConfig,
+            jsonApiConfig: data.jsonApiConfig,
+            selectedCatalogId: data.selectedCatalogId,
+            scheduleConfig: data.scheduleConfig,
+            _editDatasetId: data.datasetId,
+          });
+        },
+
         goToStep: (step) => set({ currentStep: step }),
 
         nextStep: () =>
           set((s) => {
-            let next = Math.min(s.currentStep + 1, 7) as WizardStep;
+            const maxStep = s.editMode ? 6 : 7;
+            let next = Math.min(s.currentStep + 1, maxStep) as WizardStep;
             // Skip Schedule step for file uploads (no URL = no schedule)
             if (next === 5 && !s.sourceUrl) next = 6;
             return { currentStep: next };
@@ -189,6 +227,7 @@ export const useWizardStore = create<WizardStore>()(
           }),
 
         setFile: (file, sheets, previewId, sourceUrl, configSuggestions) => {
+          const state = get();
           const getDatasetName = (sheet: SheetInfo) => {
             if (sheets.length === 1 && file?.name) {
               return humanizeFileName(file.name);
@@ -196,15 +235,18 @@ export const useWizardStore = create<WizardStore>()(
             return sheet.name;
           };
 
+          // In edit mode with an existing dataset, pre-select it instead of "new"
+          const editDatasetId = state.editMode ? state._editDatasetId : null;
+
           set({
             file,
             sheets,
             previewId,
-            sourceUrl: sourceUrl ?? get().sourceUrl,
+            sourceUrl: sourceUrl ?? state.sourceUrl,
             configSuggestions: configSuggestions ?? [],
             sheetMappings: sheets.map((sheet) => ({
               sheetIndex: sheet.index,
-              datasetId: "new" as const,
+              datasetId: editDatasetId ?? ("new" as const),
               newDatasetName: getDatasetName(sheet),
               similarityScore: null,
             })),
@@ -223,19 +265,20 @@ export const useWizardStore = create<WizardStore>()(
         setJsonApiConfig: (jsonApiConfig) => set({ jsonApiConfig }),
 
         clearFile: () =>
-          set({
+          set((s) => ({
             file: null,
             sheets: [],
             previewId: null,
-            sourceUrl: null,
-            authConfig: null,
-            jsonApiConfig: null,
             sheetMappings: [],
             fieldMappings: [],
             transforms: {},
             configSuggestions: [],
-            scheduleConfig: null,
-          }),
+            // In edit mode, preserve schedule-level config so it isn't lost on re-fetch
+            sourceUrl: s.editMode ? s.sourceUrl : null,
+            authConfig: s.editMode ? s.authConfig : null,
+            jsonApiConfig: s.editMode ? s.jsonApiConfig : null,
+            scheduleConfig: s.editMode ? s.scheduleConfig : null,
+          })),
 
         setCatalog: (catalogId, newCatalogName) =>
           set((s) => ({ selectedCatalogId: catalogId, newCatalogName: newCatalogName ?? s.newCatalogName })),
@@ -344,10 +387,19 @@ export const useWizardStore = create<WizardStore>()(
         name: STORAGE_KEY,
         version: 1,
         partialize: (state) => {
-          // Never persist auth credentials, internal flags, or sensitive state
-          const { startedAuthenticated, _initialized, _savedAt, authConfig, ...rest } = state;
-          // Don't save during processing
-          if (rest.currentStep === 7) return {} as Partial<WizardState>;
+          // Never persist auth credentials, internal flags, edit mode, or sensitive state
+          const {
+            startedAuthenticated,
+            _initialized,
+            _savedAt,
+            authConfig,
+            editMode,
+            editScheduleId,
+            _editDatasetId,
+            ...rest
+          } = state;
+          // Don't save during processing or in edit mode
+          if (rest.currentStep === 7 || editMode) return {} as Partial<WizardState>;
           return { ...rest, _savedAt: Date.now() } as Partial<WizardState> & { _savedAt: number };
         },
         merge: (persisted, current) => {

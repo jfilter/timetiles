@@ -70,6 +70,8 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const file = useWizardStore((s) => s.file);
   const sheets = useWizardStore((s) => s.sheets);
   const sourceUrl = useWizardStore((s) => s.sourceUrl);
+  const editMode = useWizardStore((s) => s.editMode);
+  const storeAuthConfig = useWizardStore((s) => s.authConfig);
   const nextStep = useWizardStore((s) => s.nextStep);
   const setFile = useWizardStore((s) => s.setFile);
   const setSourceUrl = useWizardStore((s) => s.setSourceUrl);
@@ -78,8 +80,8 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const clearFile = useWizardStore((s) => s.clearFile);
   const canProceed = useWizardCanProceed();
 
-  // Input mode - file upload or URL
-  const [inputMode, setInputMode] = useState<InputMode>(sourceUrl ? "url" : "file");
+  // Input mode - file upload or URL (edit mode always starts with URL)
+  const [inputMode, setInputMode] = useState<InputMode>(sourceUrl != null || editMode ? "url" : "file");
 
   const uploadMutation = usePreviewSchemaUploadMutation();
   const urlMutation = usePreviewSchemaUrlMutation();
@@ -89,16 +91,18 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const [error, setError] = useState<string | null>(null);
   const [jsonDetected, setJsonDetected] = useState(false);
 
-  // URL input state
+  // URL input state — in edit mode, pre-fill from store
   const [urlInput, setUrlInput] = useState(sourceUrl ?? "");
-  const [authConfig, setAuthConfig] = useState<UrlAuthConfig>({
-    type: "none",
-    apiKey: "",
-    apiKeyHeader: "X-API-Key",
-    bearerToken: "",
-    username: "",
-    password: "",
-  });
+  const [authConfig, setAuthConfig] = useState<UrlAuthConfig>(
+    storeAuthConfig ?? {
+      type: "none",
+      apiKey: "",
+      apiKeyHeader: "X-API-Key",
+      bearerToken: "",
+      username: "",
+      password: "",
+    }
+  );
 
   const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUrlInput(e.target.value);
@@ -367,8 +371,13 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         <p className="text-cartographic-navy/70 mt-2">{t("uploadDescription")}</p>
       </div>
 
+      {/* Edit mode info banner */}
+      {editMode && !file && (
+        <div className="bg-primary/5 border-primary/20 rounded-lg border p-4 text-sm">{t("refetchRequired")}</div>
+      )}
+
       {/* Show preview if file is already loaded */}
-      {file ? (
+      {file && (
         <>
           {renderPreview()}
           {jsonDetected && sourceUrl && (
@@ -380,7 +389,12 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
             />
           )}
         </>
-      ) : (
+      )}
+
+      {/* No file loaded: show input mode selector */}
+      {!file && editMode && renderUrlInput()}
+
+      {!file && !editMode && (
         <Tabs value={inputMode} onValueChange={handleInputModeChange}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="file" className="gap-2">

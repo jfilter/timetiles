@@ -29,12 +29,12 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 
-import { useIngestConfigureMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
+import { useImportConfigureMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
 import { TRANSFORM_TYPE_LABELS } from "@/lib/types/ingest-transforms";
 import { formatFileSize } from "@/lib/utils/format";
 
+import { useUpdateSchedule } from "../use-update-schedule";
 import { useWizardStore } from "../wizard-store";
-// Schedule config is now in step-schedule.tsx (Step 5)
 
 export interface StepReviewProps {
   className?: string;
@@ -57,10 +57,14 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const wizardPreviewId = useWizardStore((s) => s.previewId);
   const wizardTransforms = useWizardStore((s) => s.transforms);
   const wizardError = useWizardStore((s) => s.error);
+  const editMode = useWizardStore((s) => s.editMode);
+  const editScheduleId = useWizardStore((s) => s.editScheduleId);
   const prevStep = useWizardStore((s) => s.prevStep);
   const startProcessing = useWizardStore((s) => s.startProcessing);
   const nextStep = useWizardStore((s) => s.nextStep);
   const setError = useWizardStore((s) => s.setError);
+
+  const { updateSchedule, isUpdating } = useUpdateSchedule();
   const ID_STRATEGY_LABELS: Record<string, string> = {
     auto: t("idStrategyAuto"),
     external: t("idStrategyExternal"),
@@ -74,12 +78,10 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     version: t("dedupVersion"),
   };
 
-  const configureMutation = useIngestConfigureMutation();
+  const configureMutation = useImportConfigureMutation();
 
-  // useCallback required: used in useEffect dependency array below
   const handleStartImport = useCallback(async () => {
     setError(null);
-
     try {
       const createSchedule =
         sourceUrl && scheduleConfig?.enabled
@@ -95,17 +97,13 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               jsonApiConfig: jsonApiConfig ?? undefined,
             }
           : undefined;
-
-      // Build transforms payload from wizard state
       const transformsPayload = Object.entries(wizardTransforms)
         .filter(([, t]) => t.length > 0)
         .map(([idx, transforms]) => ({ sheetIndex: Number(idx), transforms }));
-
       if (selectedCatalogId == null) {
         setError(t("pleaseSelectCatalog"));
         return;
       }
-
       const data = await configureMutation.mutateAsync({
         previewId: wizardPreviewId ?? "",
         catalogId: selectedCatalogId,
@@ -117,11 +115,10 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         transforms: transformsPayload.length > 0 ? transformsPayload : undefined,
         createSchedule,
       });
-
-      startProcessing(data.ingestFileId, data.scheduledIngestId);
+      startProcessing(data.importFileId, data.scheduledIngestId);
       nextStep();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("failedToStartIngest"));
+      setError(err instanceof Error ? err.message : t("failedToStartImport"));
     }
   }, [
     sourceUrl,
@@ -143,42 +140,62 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     t,
   ]);
 
-  // Get catalog and dataset names for display
-  const catalogName = selectedCatalogId === "new" ? newCatalogName : t("catalogNumber", { id: selectedCatalogId ?? 0 });
-
-  // Get all dataset names for multi-sheet imports
-  const datasetNames = sheetMappings.map((mapping) =>
-    mapping.datasetId === "new" ? mapping.newDatasetName : t("datasetNumber", { id: mapping.datasetId })
+  const handleUpdateSchedule = useCallback(
+    (triggerRun = false) => {
+      if (!editScheduleId || !scheduleConfig) return;
+      updateSchedule(
+        {
+          editScheduleId,
+          previewId: wizardPreviewId ?? "",
+          catalogId: selectedCatalogId,
+          newCatalogName,
+          sheetMappings,
+          fieldMappings,
+          deduplicationStrategy,
+          geocodingEnabled,
+          transforms: wizardTransforms,
+          scheduleConfig,
+          authConfig,
+          jsonApiConfig,
+        },
+        triggerRun
+      );
+    },
+    [
+      editScheduleId,
+      scheduleConfig,
+      updateSchedule,
+      wizardPreviewId,
+      selectedCatalogId,
+      newCatalogName,
+      sheetMappings,
+      fieldMappings,
+      deduplicationStrategy,
+      geocodingEnabled,
+      wizardTransforms,
+      authConfig,
+      jsonApiConfig,
+    ]
   );
-  const datasetCount = sheetMappings.length;
-  const isMultiDataset = datasetCount > 1;
 
-  // Format location display for a specific mapping
+  const catalogName = selectedCatalogId === "new" ? newCatalogName : t("catalogNumber", { id: selectedCatalogId ?? 0 });
+  const datasetNames = sheetMappings.map((m) =>
+    m.datasetId === "new" ? m.newDatasetName : t("datasetNumber", { id: m.datasetId })
+  );
+  const isMultiDataset = sheetMappings.length > 1;
+
   const getLocationDisplay = (mapping: (typeof fieldMappings)[0] | undefined) => {
-    if (mapping?.locationField) {
-      return mapping.locationField;
-    }
-    if (mapping?.latitudeField && mapping?.longitudeField) {
-      return `${mapping.latitudeField}, ${mapping.longitudeField}`;
-    }
+    if (mapping?.locationField) return mapping.locationField;
+    if (mapping?.latitudeField && mapping?.longitudeField) return `${mapping.latitudeField}, ${mapping.longitudeField}`;
     return null;
   };
 
-  // Get field mappings paired with their sheet/dataset info for display
   const mappingsWithDataset = fieldMappings.map((mapping) => {
-    const sheetMapping = sheetMappings.find((sm) => sm.sheetIndex === mapping.sheetIndex);
+    const sm = sheetMappings.find((s) => s.sheetIndex === mapping.sheetIndex);
     const sheet = sheets.find((s) => s.index === mapping.sheetIndex);
-    const datasetName =
-      sheetMapping?.datasetId === "new"
-        ? sheetMapping.newDatasetName
-        : t("datasetNumber", { id: sheetMapping?.datasetId ?? 0 });
-    return {
-      mapping,
-      datasetName: datasetName ?? sheet?.name ?? t("sheetNumber", { number: mapping.sheetIndex + 1 }),
-      sheetName: sheet?.name,
-    };
+    const name = sm?.datasetId === "new" ? sm.newDatasetName : t("datasetNumber", { id: sm?.datasetId ?? 0 });
+    return { mapping, datasetName: name ?? sheet?.name ?? t("sheetNumber", { number: mapping.sheetIndex + 1 }) };
   });
-
   const totalRows = sheets.reduce((sum, s) => sum + s.rowCount, 0);
 
   return (
@@ -233,7 +250,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                 </div>
                 <div className="min-w-0">
                   <p className="text-cartographic-navy/50 text-xs">
-                    {isMultiDataset ? t("datasetsCount", { count: datasetCount }) : t("dataset")}
+                    {isMultiDataset ? t("datasetsCount", { count: sheetMappings.length }) : t("dataset")}
                   </p>
                   {isMultiDataset ? (
                     <div className="space-y-1">
@@ -418,7 +435,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
       {wizardError && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{wizardError}</div>}
 
-      {/* Sticky footer with Back + Start Import */}
+      {/* Sticky footer with Back + Start Import / Update Schedule */}
       <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={prevStep} className="gap-1.5">
@@ -426,27 +443,48 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
             {t("back")}
           </Button>
           <div className="flex items-center gap-3">
-            <span
-              className={cn(
-                "text-sm",
-                !configureMutation.isPending ? "text-cartographic-forest" : "text-cartographic-navy/50"
-              )}
-            >
-              {t("readyToStart")}
-            </span>
-            <Button
-              size="lg"
-              onClick={() => void handleStartImport()}
-              disabled={configureMutation.isPending}
-              className="gap-2"
-            >
-              {configureMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Rocket className="h-4 w-4" />
-              )}
-              {t("startIngest")}
-            </Button>
+            {editMode ? (
+              <>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => handleUpdateSchedule(true)}
+                  disabled={isUpdating}
+                  className="gap-2"
+                >
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                  {t("updateAndRunNow")}
+                </Button>
+                <Button size="lg" onClick={() => handleUpdateSchedule(false)} disabled={isUpdating} className="gap-2">
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4" />}
+                  {t("updateSchedule")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <span
+                  className={cn(
+                    "text-sm",
+                    !configureMutation.isPending ? "text-cartographic-forest" : "text-cartographic-navy/50"
+                  )}
+                >
+                  {t("readyToStart")}
+                </span>
+                <Button
+                  size="lg"
+                  onClick={() => void handleStartImport()}
+                  disabled={configureMutation.isPending}
+                  className="gap-2"
+                >
+                  {configureMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Rocket className="h-4 w-4" />
+                  )}
+                  {t("startImport")}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

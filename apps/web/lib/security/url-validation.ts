@@ -73,9 +73,15 @@ export const isPrivateIP = (ip: string): boolean => {
  * @param url - The URL string to check.
  * @returns `true` if the URL targets a private/internal address.
  */
+// Extracted to prevent Next.js build-time dead-code elimination.
+// Uses bracket notation so webpack DefinePlugin doesn't inline the value.
+// Note: NODE_ENV check was removed because `next build` always inlines NODE_ENV as "production"
+// regardless of the actual environment, making runtime checks against it impossible.
+const isPrivateUrlBypassEnabled = (): boolean => process.env["ALLOW_PRIVATE_URLS"] === "true";
+
 export const isPrivateUrl = (url: string): boolean => {
-  // Allow private URLs when explicitly opted in (e.g., integration tests with local test servers)
-  if (process.env.ALLOW_PRIVATE_URLS === "true" && process.env.NODE_ENV !== "production") {
+  // Allow private URLs when explicitly opted in (e.g., E2E tests with local test servers)
+  if (isPrivateUrlBypassEnabled()) {
     return false;
   }
 

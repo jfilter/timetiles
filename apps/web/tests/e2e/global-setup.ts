@@ -126,8 +126,8 @@ export default async function globalSetup(): Promise<void> {
     verbose: true,
   });
 
-  // Seed with E2E data
-  await seedE2ETestData(databaseUrl);
+  // NOTE: Seed AFTER build — `next build` connects to the DB for Payload
+  // migration generation, which can reset seeded data.
 
   // Build and start production server
   const webDir = path.resolve(__dirname, "../..");
@@ -138,14 +138,19 @@ export default async function globalSetup(): Promise<void> {
     NEXT_PUBLIC_PAYLOAD_URL: baseURL,
     NODE_ENV: "test" as const,
     NEXT_TELEMETRY_DISABLED: "1",
+    // Allow localhost URLs so E2E tests can use self-hosted test fixtures
+    ALLOW_PRIVATE_URLS: "true",
   };
 
   // Always rebuild to ensure test binary matches current source code.
   // A stale build (e.g. from a previous branch) silently misses new features.
   const fs = await import("node:fs");
-  console.log(`🔨 Building application (compile mode)...`);
+  console.log(`🔨 Building application...`);
   // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
-  execSync(`cd "${webDir}" && pnpm build:compile`, { env: serverEnv, stdio: "inherit" });
+  execSync(`cd "${webDir}" && pnpm exec next build`, { env: serverEnv, stdio: "inherit" });
+
+  // Seed AFTER build — `next build` connects to the DB and can wipe seeded data
+  await seedE2ETestData(databaseUrl);
 
   // Check if standalone build exists (used for production/Docker deployments)
   const standaloneServerPath = path.join(webDir, ".next", "standalone", "server.js");
@@ -185,6 +190,16 @@ export default async function globalSetup(): Promise<void> {
   await waitForServer(`${baseURL}/api/health`, 30000);
   console.log(`✅ Server ready at ${baseURL}`);
 
+  // Warm up key pages to trigger on-demand compilation before tests run.
+  // Without this, the first page request from auth.setup.ts can timeout.
+  console.log(`🔥 Warming up pages...`);
+  try {
+    await fetch(`${baseURL}/import`).catch(() => {});
+    await fetch(`${baseURL}/account/schedules`).catch(() => {});
+  } catch {
+    // Non-critical — tests will still work, just slower on first load
+  }
+
   // Start job worker process
   const workerPath = path.join(__dirname, "utils", "job-worker.ts");
   console.log(`⚙️ Starting job worker...`);
@@ -201,12 +216,16 @@ export default async function globalSetup(): Promise<void> {
 
   wp.stdout?.on("data", (data: Buffer) => {
     const message = data.toString().trim();
-    if (message) console.log(message);
+    if (message) console.log(`[Worker] ${message}`);
   });
 
   wp.stderr?.on("data", (data: Buffer) => {
     const message = data.toString().trim();
-    if (message && !message.includes("ExperimentalWarning")) console.error(message);
+    if (message && !message.includes("ExperimentalWarning")) console.error(`[Worker:ERR] ${message}`);
+  });
+
+  wp.on("exit", (code, signal) => {
+    console.log(`[Worker] Process exited (code=${code}, signal=${signal})`);
   });
 
   // Wait for worker to signal readiness (falls back to 15s timeout)

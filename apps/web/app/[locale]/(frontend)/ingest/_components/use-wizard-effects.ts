@@ -36,11 +36,13 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
   }, [initialAuth]);
 
   // 2. Validate preview file still exists (auto-resets on expiry)
+  // In edit mode, skip validation when previewId is null (before URL re-fetch)
   const previewId = useWizardStore((s) => s.previewId);
   const currentStep = useWizardStore((s) => s.currentStep);
   const startedAuthenticated = useWizardStore((s) => s.startedAuthenticated);
-  const ingestFileId = useWizardStore((s) => s.ingestFileId);
-  const validationEnabled = currentStep !== 7 && ingestFileId === null;
+  const importFileId = useWizardStore((s) => s.importFileId);
+  const editMode = useWizardStore((s) => s.editMode);
+  const validationEnabled = currentStep !== 7 && importFileId === null && !(editMode && !previewId);
   const { data: validationData } = usePreviewValidationQuery(previewId, validationEnabled);
 
   useEffect(() => {

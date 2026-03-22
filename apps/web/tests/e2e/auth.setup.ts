@@ -8,12 +8,22 @@
  * @category E2E Setup
  */
 import { expect, test as setup } from "./fixtures";
-import { IngestPage } from "./pages/ingest.page";
+import { ImportPage } from "./pages/import.page";
 
 const AUTH_FILE = "test-results/.auth/admin.json";
 
-setup("authenticate as admin", async ({ page }) => {
-  const importPage = new IngestPage(page);
+setup("authenticate as admin", async ({ page, baseURL }) => {
+  // Verify login works via API first (faster feedback than UI)
+  const apiLogin = await page.request.post(`${baseURL}/api/users/login`, {
+    data: { email: "admin@example.com", password: "admin123" },
+    headers: { "Content-Type": "application/json" },
+  });
+  if (apiLogin.status() !== 200) {
+    const body = await apiLogin.text();
+    throw new Error(`Auth setup: API login failed (${apiLogin.status()}): ${body}`);
+  }
+
+  const importPage = new ImportPage(page);
   await importPage.goto();
   await importPage.waitForWizardLoad();
   await importPage.login("admin@example.com", "admin123");

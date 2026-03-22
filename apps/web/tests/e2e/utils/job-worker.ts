@@ -55,13 +55,55 @@ const main = async () => {
   const payload = await getPayload({ config });
   console.log("[job-worker] Connected to Payload, starting job loop...");
 
+  let totalJobsProcessed = 0;
+  let loopCount = 0;
+  const HEARTBEAT_INTERVAL = 30; // Log heartbeat every N loops
+
   while (isRunning) {
     try {
+      // Check for pending jobs before running
+      const pending = await payload.find({
+        collection: "payload-jobs",
+        where: { completedAt: { exists: false } },
+        limit: 5,
+        depth: 0,
+      });
+      // Log details of pending jobs when stuck (pending > 0 but jobs.run finds nothing)
+      if (pending.totalDocs > 0 && loopCount > 5 && loopCount % 10 === 0) {
+        const jobSummary = pending.docs.map((j: any) => ({
+          id: j.id,
+          task: j.taskSlug,
+          queue: j.queue,
+          processing: j.processing,
+          hasError: !!j.hasError,
+          waitUntil: j.waitUntil,
+          error: j.hasError ? (j.error as string)?.substring(0, 200) : undefined,
+        }));
+        console.log(`[job-worker] Pending jobs detail: ${JSON.stringify(jobSummary)}`);
+      }
+
       // Queue any due scheduled jobs before running.
       await payload.jobs.handleSchedules({ allQueues: true });
       const result = await payload.jobs.run({ limit: MAX_JOBS_PER_RUN });
       // If jobs were processed, loop immediately to pick up chained jobs
-      const hadWork = result?.jobStatus && Object.keys(result.jobStatus).length > 0;
+      const jobCount = result?.jobStatus ? Object.keys(result.jobStatus).length : 0;
+      const hadWork = jobCount > 0;
+      if (hadWork) {
+        totalJobsProcessed += jobCount;
+        const taskNames = result?.jobStatus
+          ? Object.values(result.jobStatus)
+              .map((s: any) => s.taskSlug ?? "?")
+              .join(", ")
+          : "";
+        console.log(`[job-worker] Processed ${jobCount} job(s): [${taskNames}] (total: ${totalJobsProcessed})`);
+      }
+      loopCount++;
+      // Log pending count whenever there are pending jobs or every heartbeat interval
+      if (pending.totalDocs > 0 || loopCount % HEARTBEAT_INTERVAL === 0) {
+        console.log(
+          `[job-worker] Loop #${loopCount}: ${pending.totalDocs} pending, ${totalJobsProcessed} total processed`
+        );
+      }
       await new Promise((resolve) => setTimeout(resolve, hadWork ? BUSY_POLL_MS : IDLE_POLL_MS));
     } catch (error) {
       // Log but don't crash - jobs may fail for valid reasons

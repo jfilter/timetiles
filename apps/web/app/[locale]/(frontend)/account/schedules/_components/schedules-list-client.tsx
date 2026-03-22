@@ -17,6 +17,7 @@ import {
   GlobeIcon,
   Loader2Icon,
   PauseCircleIcon,
+  PencilIcon,
   PlayIcon,
   RefreshCwIcon,
   Trash2Icon,
@@ -26,13 +27,14 @@ import { useTranslations } from "next-intl";
 
 import { EmptyResourceCard } from "@/app/[locale]/(frontend)/account/_components/empty-resource-card";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useRouter } from "@/i18n/navigation";
 import { useLoadingStates } from "@/lib/hooks/use-loading-states";
 import {
-  useDeleteScheduledIngestMutation,
-  useToggleScheduledIngestMutation,
-  useTriggerScheduledIngestMutation,
+  useDeleteScheduledImportMutation,
+  useToggleScheduledImportMutation,
+  useTriggerScheduledImportMutation,
 } from "@/lib/hooks/use-scheduled-ingest-mutations";
-import { useScheduledIngestsQuery } from "@/lib/hooks/use-scheduled-ingests-query";
+import { useScheduledImportsQuery } from "@/lib/hooks/use-scheduled-ingests-query";
 import { formatDateLocale } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
@@ -72,12 +74,13 @@ interface ScheduleCardProps {
   schedule: ScheduledIngest;
   loadingState?: string;
   onToggle: () => void;
+  onEdit: () => void;
   onRun: () => void;
   onDelete: () => void;
   t: TranslateFn;
 }
 
-const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete, t }: ScheduleCardProps) => {
+const ScheduleCard = ({ schedule, loadingState, onToggle, onEdit, onRun, onDelete, t }: ScheduleCardProps) => {
   const isLoading = Boolean(loadingState);
 
   const frequencyKey = FREQUENCY_KEYS[schedule.frequency ?? "daily"];
@@ -142,6 +145,10 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete, t }: 
               {getToggleButtonIcon(loadingState, schedule.enabled ?? false)}
             </Button>
 
+            <Button variant="outline" size="sm" onClick={onEdit} disabled={isLoading} title={t("editSchedule")}>
+              <PencilIcon className="h-4 w-4" />
+            </Button>
+
             <Button variant="outline" size="sm" onClick={onRun} disabled={isLoading} title={t("runNow")}>
               {loadingState === "running" ? (
                 <Loader2Icon className="h-4 w-4 animate-spin" />
@@ -174,16 +181,21 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onRun, onDelete, t }: 
 export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientProps) => {
   const t = useTranslations("Schedules");
   const tImport = useTranslations("Ingest");
-  const { data: schedules = [] } = useScheduledIngestsQuery(initialSchedules);
+  const router = useRouter();
+  const { data: schedules = [] } = useScheduledImportsQuery(initialSchedules);
   const { states: loadingStates, setLoading, clearLoading } = useLoadingStates();
 
-  const toggleMutation = useToggleScheduledIngestMutation();
-  const deleteMutation = useDeleteScheduledIngestMutation();
-  const triggerMutation = useTriggerScheduledIngestMutation();
+  const toggleMutation = useToggleScheduledImportMutation();
+  const deleteMutation = useDeleteScheduledImportMutation();
+  const triggerMutation = useTriggerScheduledImportMutation();
 
   const handleToggleEnabled = (id: number, currentEnabled: boolean) => {
     setLoading(id, "toggling");
     toggleMutation.mutate({ id, enabled: !currentEnabled }, { onSettled: () => clearLoading(id) });
+  };
+
+  const handleEdit = (id: number) => {
+    router.push(`/import?edit=${id}`);
   };
 
   const handleManualRun = (id: number) => {
@@ -202,11 +214,12 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
       s.id,
       {
         onToggle: () => handleToggleEnabled(s.id, s.enabled ?? false),
+        onEdit: () => handleEdit(s.id),
         onRun: () => handleManualRun(s.id),
         onDelete: () => handleDelete(s.id),
       },
     ])
-  ) as Record<number, { onToggle: () => void; onRun: () => void; onDelete: () => void }>;
+  ) as Record<number, { onToggle: () => void; onEdit: () => void; onRun: () => void; onDelete: () => void }>;
 
   if (schedules.length === 0) {
     return (
@@ -214,7 +227,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
         icon={<ClockIcon className="text-muted-foreground mb-4 h-12 w-12" />}
         title={t("noSchedules")}
         description={t("noSchedulesDescription")}
-        action={{ label: tImport("ingestData"), href: "/ingest" }}
+        action={{ label: tImport("importData"), href: "/import" }}
       />
     );
   }
@@ -230,6 +243,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
             schedule={schedule}
             loadingState={loadingStates[schedule.id]}
             onToggle={callbacks.onToggle}
+            onEdit={callbacks.onEdit}
             onRun={callbacks.onRun}
             onDelete={callbacks.onDelete}
             t={t}

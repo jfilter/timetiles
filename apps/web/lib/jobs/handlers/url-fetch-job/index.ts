@@ -12,7 +12,7 @@
 import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
-import { createIngestFileAndQueueDetection } from "@/lib/ingest/create-ingest-file";
+import { createImportFileAndQueueDetection } from "@/lib/ingest/create-ingest-file";
 import {
   fetchRemoteData,
   type FetchRemoteDataOptions,
@@ -27,14 +27,14 @@ import type { ScheduledIngest, User } from "@/payload-types";
 
 import {
   checkForDuplicateContent,
-  loadScheduledIngestConfig,
-  updateScheduledIngestFailure,
-  updateScheduledIngestSuccess,
+  loadScheduledImportConfig,
+  updateScheduledImportFailure,
+  updateScheduledImportSuccess,
 } from "./scheduled-ingest-utils";
 
 export interface UrlFetchJobInput {
   // For scheduled ingests
-  scheduledIngestId?: string;
+  scheduledIngestId?: number;
   // Direct URL fetch parameters
   sourceUrl: string;
   authConfig?: ScheduledIngest["authConfig"];
@@ -48,13 +48,13 @@ interface ImportContext {
   originalName: string;
   catalogId: string | number | undefined;
   userId: string | number | undefined;
-  scheduledIngestId: string | undefined;
+  scheduledIngestId: number | undefined;
   scheduledIngest: ScheduledIngest | null;
   advancedConfig: ScheduledIngest["advancedOptions"];
 }
 
 type FetchSuccessResult = {
-  ingestFileId: number | string;
+  importFileId: number | string;
   filename: string;
   contentHash: string;
   isDuplicate: boolean;
@@ -86,16 +86,16 @@ const handleDuplicateCheck = async (
   });
 
   if (context.scheduledIngest) {
-    await updateScheduledIngestSuccess(payload, context.scheduledIngest, existingFile.id, 0);
+    await updateScheduledImportSuccess(payload, context.scheduledIngest, existingFile.id, 0);
   }
 
-  return { ingestFileId: existingFile.id, filename: existingFile.filename, contentHash: dataHash, isDuplicate: true };
+  return { importFileId: existingFile.id, filename: existingFile.filename, contentHash: dataHash, isDuplicate: true };
 };
 
 /**
  * Builds the import file data record with all conditional fields.
  */
-const buildIngestFileData = (sourceUrl: string, dataHash: string, context: ImportContext): Record<string, unknown> => {
+const buildImportFileData = (sourceUrl: string, dataHash: string, context: ImportContext): Record<string, unknown> => {
   const { originalName, catalogId, userId, scheduledIngestId, scheduledIngest } = context;
 
   const data: Record<string, unknown> = {
@@ -144,7 +144,7 @@ const createImportContext = (input: UrlFetchJobInput, scheduledIngest: Scheduled
 };
 
 const buildSuccessOutput = (
-  ingestFileId: string | number,
+  importFileId: string | number,
   filename: string,
   contentHash: string,
   isDuplicate: boolean,
@@ -153,7 +153,7 @@ const buildSuccessOutput = (
   return {
     output: {
       success: true,
-      ingestFileId,
+      importFileId,
       filename,
       contentHash,
       isDuplicate,
@@ -178,7 +178,7 @@ const loadUser = async (payload: Payload, userId: string | number | User): Promi
 const checkAndTrackQuota = async (
   payload: Payload,
   userId: string | number | User | null | undefined,
-  _scheduledIngest: ScheduledIngest | null
+  _scheduledImport: ScheduledIngest | null
 ): Promise<void> => {
   if (!userId) return;
 
@@ -242,7 +242,7 @@ const createImportFromFetchResult = async (
   input: UrlFetchJobInput,
   importContext: ImportContext,
   result: FetchRemoteDataResult
-): Promise<{ ingestFileId: string | number; filename: string }> => {
+): Promise<{ importFileId: string | number; filename: string }> => {
   if (!importContext.userId) {
     throw new Error("User ID is required to create import files");
   }
@@ -253,23 +253,23 @@ const createImportFromFetchResult = async (
 
   const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
   const filename = `url-import-${timestamp}-${uuidv4()}${result.fileExtension}`;
-  const importFileData = buildIngestFileData(input.sourceUrl, result.contentHash, importContext);
-  const { ingestFileId } = await createIngestFileAndQueueDetection({
+  const importFileData = buildImportFileData(input.sourceUrl, result.contentHash, importContext);
+  const { importFileId } = await createImportFileAndQueueDetection({
     payload,
     importFileData,
     file: { data: result.data, mimetype: result.mimeType, name: filename, size: result.data.length },
     user,
   });
 
-  logger.info("Ingest file created from URL", {
-    ingestFileId,
+  logger.info("Import file created from URL", {
+    importFileId,
     filename,
     fileSize: result.data.length,
     contentType: result.mimeType,
     sourceUrl: sanitizeUrlForLogging(input.sourceUrl),
   });
 
-  return { ingestFileId, filename };
+  return { importFileId, filename };
 };
 
 export const urlFetchJob = {
@@ -291,7 +291,7 @@ export const urlFetchJob = {
     let scheduledIngest: ScheduledIngest | null = null;
 
     try {
-      scheduledIngest = await loadScheduledIngestConfig(payload, input.scheduledIngestId);
+      scheduledIngest = await loadScheduledImportConfig(payload, input.scheduledIngestId);
 
       // Abort if scheduled ingest was requested but is disabled or not found
       if (input.scheduledIngestId && !scheduledIngest) {
@@ -324,7 +324,7 @@ export const urlFetchJob = {
       const duplicateResult = await handleDuplicateCheck(payload, importContext, result.contentHash);
       if (duplicateResult) {
         return buildSuccessOutput(
-          duplicateResult.ingestFileId,
+          duplicateResult.importFileId,
           duplicateResult.filename,
           duplicateResult.contentHash,
           true,
@@ -333,15 +333,15 @@ export const urlFetchJob = {
       }
 
       // Create import file and queue schema detection
-      const { ingestFileId, filename } = await createImportFromFetchResult(payload, input, importContext, result);
+      const { importFileId, filename } = await createImportFromFetchResult(payload, input, importContext, result);
 
       // Update scheduled ingest status if applicable
       if (scheduledIngest) {
         const duration = Date.now() - startTime;
-        await updateScheduledIngestSuccess(payload, scheduledIngest, ingestFileId, duration);
+        await updateScheduledImportSuccess(payload, scheduledIngest, importFileId, duration);
       }
 
-      return buildSuccessOutput(ingestFileId, filename, result.contentHash, false, result);
+      return buildSuccessOutput(importFileId, filename, result.contentHash, false, result);
     } catch (error) {
       const errorObj = error as Error;
       logError(errorObj, "URL fetch job failed", {
@@ -350,7 +350,7 @@ export const urlFetchJob = {
       });
 
       if (scheduledIngest) {
-        await updateScheduledIngestFailure(payload, scheduledIngest, errorObj);
+        await updateScheduledImportFailure(payload, scheduledIngest, errorObj);
       }
 
       return buildErrorOutput(errorObj);

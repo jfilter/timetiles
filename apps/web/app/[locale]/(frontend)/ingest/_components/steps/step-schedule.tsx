@@ -54,10 +54,12 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
   const authConfig = useWizardStore((s) => s.authConfig);
   const setAuthConfig = useWizardStore((s) => s.setAuthConfig);
   const file = useWizardStore((s) => s.file);
+  const editMode = useWizardStore((s) => s.editMode);
   const nextStep = useWizardStore((s) => s.nextStep);
   const prevStep = useWizardStore((s) => s.prevStep);
 
-  const isScheduleEnabled = scheduleConfig?.enabled === true;
+  // In edit mode, schedule is always enabled
+  const isScheduleEnabled = editMode || scheduleConfig?.enabled === true;
 
   const defaultScheduleName = useMemo(
     () => (file?.name ? `${humanizeFileName(file.name)} - ${new Date().toLocaleDateString()}` : ""),
@@ -147,16 +149,18 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            variant={isScheduleEnabled ? "default" : "outline"}
-            size="sm"
-            onClick={handleToggleSchedule}
-            aria-pressed={isScheduleEnabled}
-            aria-label={isScheduleEnabled ? t("disableRecurringSchedule") : t("enableRecurringSchedule")}
-          >
-            {isScheduleEnabled ? t("scheduled") : t("oneTime")}
-          </Button>
+          {!editMode && (
+            <Button
+              type="button"
+              variant={isScheduleEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={handleToggleSchedule}
+              aria-pressed={isScheduleEnabled}
+              aria-label={isScheduleEnabled ? t("disableRecurringSchedule") : t("enableRecurringSchedule")}
+            >
+              {isScheduleEnabled ? t("scheduled") : t("oneTime")}
+            </Button>
+          )}
         </div>
 
         {/* Schedule configuration (shown when enabled) */}
