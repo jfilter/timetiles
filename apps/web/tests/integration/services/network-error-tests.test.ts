@@ -406,23 +406,31 @@ describe.sequential("Network Error Handling Tests", () => {
         frequency: "daily",
       });
 
-      // Execute the job
-      const result = await urlFetchJob.handler({
-        job: { id: "test-job-8" },
-        req: { payload },
-        input: {
-          scheduledIngestId: scheduledIngest.id,
-          sourceUrl: scheduledIngest.sourceUrl,
-          authConfig: scheduledIngest.authConfig,
-          catalogId: testCatalogId as any,
-          originalName: "Test Import",
-          userId: testUser.id,
-        },
-      });
+      // Connection drop mid-download may either succeed (if partial data is valid CSV)
+      // or throw (if connection termination is detected). Either outcome is acceptable —
+      // the important thing is it doesn't hang or crash.
+      try {
+        const result = await urlFetchJob.handler({
+          job: { id: "test-job-8" },
+          req: { payload },
+          input: {
+            scheduledIngestId: scheduledIngest.id,
+            sourceUrl: scheduledIngest.sourceUrl,
+            authConfig: scheduledIngest.authConfig,
+            catalogId: testCatalogId as any,
+            originalName: "Test Import",
+            userId: testUser.id,
+          },
+        });
 
-      // May succeed if the partial data is valid CSV, or throw if connection is detected as broken
-      // The important thing is it doesn't hang or crash
-      expect(result.output.ingestFileId).toBeDefined();
+        // If it succeeds, an ingest file should be created
+        expect(result.output.ingestFileId).toBeDefined();
+      } catch (error) {
+        // If it throws due to connection termination, that's also acceptable
+        expect(error).toBeDefined();
+        const msg = error instanceof Error ? error.message : String(error);
+        expect(msg).toMatch(/terminated|abort|premature|fetch failed|socket|ECONNRESET/i);
+      }
     });
   });
 

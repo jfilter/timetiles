@@ -473,21 +473,20 @@ describe.sequential("scheduled ingests Integration", () => {
         headers: { "Content-Type": "text/plain" },
       });
 
-      const result = await urlFetchJob.handler({
-        input: {
-          sourceUrl: `${testServerUrl}/missing-data.csv`,
-          authConfig: { type: "none" },
-          catalogId: testCatalog.id,
-          originalName: "test.csv",
-          userId: testUser.id,
-        },
-        job: { id: "test-job" },
-        req: { payload },
-      });
-
-      expect(false).toBe(true); // TODO: handler now throws;
-      const failureOutput = result.output as any;
-      expect(failureOutput.error).toBe("HTTP 404");
+      // Handler now throws on failure instead of returning { success: false }
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            sourceUrl: `${testServerUrl}/missing-data.csv`,
+            authConfig: { type: "none" },
+            catalogId: testCatalog.id,
+            originalName: "test.csv",
+            userId: testUser.id,
+          },
+          job: { id: "test-job" },
+          req: { payload },
+        })
+      ).rejects.toThrow(/404/);
     });
   });
 
@@ -688,21 +687,20 @@ describe.sequential("scheduled ingests Integration", () => {
         headers: { "Content-Type": "text/csv", "Content-Length": String(2 * 1024 * 1024) },
       });
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: scheduledIngest.id,
-          sourceUrl: scheduledIngest.sourceUrl,
-          authConfig: scheduledIngest.authConfig,
-          catalogId: testCatalog.id,
-          originalName: "Large File",
-        },
-        job: { id: "job-1" },
-        req: { payload },
-      });
-
-      expect(false).toBe(true); // TODO: handler now throws;
-      const failureOutput = result.output as any;
-      expect(failureOutput.error).toMatch(/file.*too large/i);
+      // Handler now throws on failure
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: scheduledIngest.id,
+            sourceUrl: scheduledIngest.sourceUrl,
+            authConfig: scheduledIngest.authConfig,
+            catalogId: testCatalog.id,
+            originalName: "Large File",
+          },
+          job: { id: "job-1" },
+          req: { payload },
+        })
+      ).rejects.toThrow(/too large/i);
     });
 
     it("should handle custom headers in authConfig", async () => {
@@ -934,28 +932,27 @@ describe.sequential("scheduled ingests Integration", () => {
         // Set up a slow endpoint that will timeout
         testServer.respond("/timeout-test", { delay: 1000, status: 200, body: "Should timeout" });
 
-        const result = await urlFetchJob.handler({
-          input: {
-            scheduledIngestId: scheduledIngest.id,
-            sourceUrl: scheduledIngest.sourceUrl,
-            authConfig: scheduledIngest.authConfig,
-            catalogId: testCatalog.id,
-            originalName: "Timeout Test",
-          },
-          job: { id: "job-timeout" },
-          req: { payload },
-        });
+        // Handler now throws on timeout
+        await expect(
+          urlFetchJob.handler({
+            input: {
+              scheduledIngestId: scheduledIngest.id,
+              sourceUrl: scheduledIngest.sourceUrl,
+              authConfig: scheduledIngest.authConfig,
+              catalogId: testCatalog.id,
+              originalName: "Timeout Test",
+            },
+            job: { id: "job-timeout" },
+            req: { payload },
+          })
+        ).rejects.toThrow(/abort|timeout/i);
 
-        expect(false).toBe(true); // TODO: handler now throws;
-        const failureOutput = result.output as any;
-        expect(failureOutput.error).toMatch(/timeout/i);
-
-        // Verify scheduled ingest was updated with failure
+        // Verify scheduled ingest was updated with failure (handler updates before re-throwing)
         const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
         expect(updated).toMatchObject({
           lastStatus: "failed",
-          lastError: expect.stringContaining("timeout"),
+          lastError: expect.stringMatching(/abort|timeout/i),
           currentRetries: 1,
           statistics: expect.objectContaining({ totalRuns: 1, failedRuns: 1, successfulRuns: 0 }),
         });
