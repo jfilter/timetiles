@@ -27,7 +27,7 @@ import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
 
@@ -345,7 +345,7 @@ export const validateSchemaJob = {
     { name: "failureReason", type: "text" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskFailureCallbackArgs) => {
+  onFail: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {

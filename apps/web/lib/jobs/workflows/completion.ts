@@ -14,20 +14,29 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import type { SheetInfo } from "../types/task-outputs";
 
 export const updateIngestFileStatus = async (payload: Payload, sheets: SheetInfo[]): Promise<void> => {
-  const firstSheet = sheets[0];
-  if (!firstSheet) return;
-  const firstJobId = firstSheet.ingestJobId;
-  const firstJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: firstJobId });
-  const ingestFileId = extractRelationId(firstJob?.ingestFile);
-  if (!ingestFileId) return;
-  await updateIngestFileStatusById(payload, ingestFileId);
+  if (sheets.length === 0) return;
+  try {
+    const firstSheet = sheets[0];
+    if (!firstSheet) return;
+    const firstJobId = firstSheet.ingestJobId;
+    const firstJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: firstJobId });
+    const ingestFileId = extractRelationId(firstJob?.ingestFile);
+    if (!ingestFileId) return;
+    await updateIngestFileStatusById(payload, ingestFileId);
+  } catch (error) {
+    logger.error("Failed to update ingest file status", { error, sheetCount: sheets.length });
+  }
 };
 
 export const updateIngestFileStatusForJob = async (payload: Payload, ingestJobId: string | number): Promise<void> => {
-  const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
-  const ingestFileId = extractRelationId(job?.ingestFile);
-  if (!ingestFileId) return;
-  await updateIngestFileStatusById(payload, ingestFileId);
+  try {
+    const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
+    const ingestFileId = extractRelationId(job?.ingestFile);
+    if (!ingestFileId) return;
+    await updateIngestFileStatusById(payload, ingestFileId);
+  } catch (error) {
+    logger.error("Failed to update ingest file status for job", { error, ingestJobId });
+  }
 };
 
 const updateIngestFileStatusById = async (payload: Payload, ingestFileId: string | number): Promise<void> => {

@@ -104,4 +104,35 @@ describe.sequential("ingestProcessWorkflow", () => {
     expect(tasks["url-fetch"]).not.toHaveBeenCalled();
     expect(tasks["scraper-execution"]).not.toHaveBeenCalled();
   });
+
+  // ── 6. resumeFrom: "detect-schema" runs all 5 tasks ────────────────
+
+  it('resumeFrom: "detect-schema" runs all 5 tasks', async () => {
+    tasks["detect-schema"].mockResolvedValueOnce({ success: true });
+    tasks["validate-schema"].mockResolvedValueOnce({ success: true });
+
+    mockJob.input = { ingestJobId: "123", resumeFrom: "detect-schema" };
+
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+
+    expect(tasks["detect-schema"]).toHaveBeenCalledOnce();
+    expect(tasks["validate-schema"]).toHaveBeenCalledOnce();
+    expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
+    expect(tasks["geocode-batch"]).toHaveBeenCalledOnce();
+    expect(tasks["create-events"]).toHaveBeenCalledOnce();
+  });
+
+  // ── 7. resumeFrom: "create-events" skips to last task only ──────────
+
+  it('resumeFrom: "create-events" skips to last task only', async () => {
+    mockJob.input = { ingestJobId: "123", resumeFrom: "create-events" };
+
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+
+    expect(tasks["create-events"]).toHaveBeenCalledOnce();
+    expect(tasks["detect-schema"]).not.toHaveBeenCalled();
+    expect(tasks["validate-schema"]).not.toHaveBeenCalled();
+    expect(tasks["create-schema-version"]).not.toHaveBeenCalled();
+    expect(tasks["geocode-batch"]).not.toHaveBeenCalled();
+  });
 });

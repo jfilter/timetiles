@@ -27,9 +27,6 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
     { name: "originalName", type: "text", required: true },
     { name: "userId", type: "text" },
     { name: "triggeredBy", type: "text" },
-    { name: "skipDuplicateChecking", type: "checkbox" },
-    { name: "autoApproveSchema", type: "checkbox" },
-    { name: "schemaMode", type: "text" },
   ],
   concurrency: ({ input }) => `sched:${input.scheduledIngestId}`,
   handler: async ({ job, tasks, req }) => {
@@ -45,9 +42,6 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
         originalName: job.input.originalName,
         userId: job.input.userId,
         triggeredBy: job.input.triggeredBy,
-        skipDuplicateChecking: job.input.skipDuplicateChecking,
-        autoApproveSchema: job.input.autoApproveSchema,
-        schemaMode: job.input.schemaMode,
       },
     })) as UrlFetchOutput;
 

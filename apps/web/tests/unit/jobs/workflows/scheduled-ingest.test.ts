@@ -54,9 +54,6 @@ describe.sequential("scheduledIngestWorkflow", () => {
         originalName: "data.csv",
         userId: "user-1",
         triggeredBy: "schedule",
-        skipDuplicateChecking: false,
-        autoApproveSchema: true,
-        schemaMode: "auto",
       },
     };
   });
@@ -77,9 +74,6 @@ describe.sequential("scheduledIngestWorkflow", () => {
         originalName: "data.csv",
         userId: "user-1",
         triggeredBy: "schedule",
-        skipDuplicateChecking: false,
-        autoApproveSchema: true,
-        schemaMode: "auto",
       },
     });
 

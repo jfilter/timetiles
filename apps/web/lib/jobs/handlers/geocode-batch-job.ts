@@ -25,7 +25,7 @@ import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
 
@@ -148,7 +148,7 @@ export const geocodeBatchJob = {
     { name: "uniqueLocations", type: "number" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskFailureCallbackArgs) => {
+  onFail: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {

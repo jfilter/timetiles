@@ -30,7 +30,7 @@ import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-det
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { extractDuplicateRows, loadJobAndFilePath } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 
@@ -297,7 +297,7 @@ export const schemaDetectionJob = {
     { name: "totalRowsProcessed", type: "number" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskFailureCallbackArgs) => {
+  onFail: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {

@@ -13,6 +13,7 @@
  */
 import type { Payload, RunTaskFunctions } from "payload";
 
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 
 import type {
@@ -32,6 +33,24 @@ import {
   shouldReviewHighDuplicates,
 } from "./review-checks";
 
+/** Mark an IngestJob as FAILED when a task returns { success: false }. */
+const markSheetFailed = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  task: string,
+  reason?: string
+): Promise<void> => {
+  try {
+    await payload.update({
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      id: ingestJobId,
+      data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError: reason ?? `${task} failed`, context: task } },
+    });
+  } catch {
+    // Best-effort
+  }
+};
+
 /**
  * Run the 6-task ingest pipeline for a single sheet, with review checks
  * between stages that can pause processing.
@@ -47,7 +66,8 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo, payloa
     input: { ingestJobId: id },
   })) as AnalyzeDuplicatesOutput;
   if (!analyze.success) {
-    logger.info(`Sheet ${s}: analyze-duplicates failed, skipping sheet`, { ...sheetCtx, reason: analyze.reason });
+    logger.info(`Sheet ${s}: analyze-duplicates failed`, { ...sheetCtx, reason: analyze.reason });
+    await markSheetFailed(payload, id, "analyze-duplicates", analyze.reason);
     return;
   }
 
@@ -80,7 +100,8 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo, payloa
     input: { ingestJobId: id },
   })) as DetectSchemaOutput;
   if (!schema.success) {
-    logger.info(`Sheet ${s}: detect-schema failed, skipping sheet`, { ...sheetCtx, reason: schema.reason });
+    logger.info(`Sheet ${s}: detect-schema failed`, { ...sheetCtx, reason: schema.reason });
+    await markSheetFailed(payload, id, "detect-schema", schema.reason);
     return;
   }
 
@@ -94,6 +115,11 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo, payloa
       requiresApproval: validate.requiresApproval,
       failed: validate.failed,
     });
+    // NEEDS_REVIEW is set by the handler itself — don't mark as FAILED
+    // For other failures (strict mode, quota), mark as FAILED
+    if (validate.reason !== "needs-review") {
+      await markSheetFailed(payload, id, "validate-schema", validate.reason);
+    }
     return;
   }
 
@@ -101,7 +127,8 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo, payloa
     input: { ingestJobId: id },
   })) as CreateSchemaVersionOutput;
   if (!version.success) {
-    logger.info(`Sheet ${s}: create-schema-version failed, skipping sheet`, { ...sheetCtx, reason: version.reason });
+    logger.info(`Sheet ${s}: create-schema-version failed`, { ...sheetCtx, reason: version.reason });
+    await markSheetFailed(payload, id, "create-schema-version", version.reason);
     return;
   }
 
@@ -109,7 +136,8 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo, payloa
     input: { ingestJobId: id, batchNumber: 0 },
   })) as GeocodeBatchOutput;
   if (!geocode.success) {
-    logger.info(`Sheet ${s}: geocode-batch failed, skipping sheet`, { ...sheetCtx, reason: geocode.reason });
+    logger.info(`Sheet ${s}: geocode-batch failed`, { ...sheetCtx, reason: geocode.reason });
+    await markSheetFailed(payload, id, "geocode-batch", geocode.reason);
     return;
   }
 
@@ -164,10 +192,24 @@ export const processSheets = async (
 
   const results = await Promise.allSettled(sheets.map((sheet) => processOneSheet(tasks, sheet, req.payload)));
 
-  // Log any rejected promises (transient errors that tasks re-threw)
+  // Handle rejected promises (task threw after retries exhausted)
   for (const [i, result] of results.entries()) {
     if (result.status === "rejected") {
-      logger.error(`Sheet ${i}: pipeline threw an unhandled error`, { error: result.reason, sheetIndex: i });
+      const sheet = sheets[i];
+      if (sheet) {
+        logger.error(`Sheet ${i}: pipeline threw an error`, {
+          error: result.reason,
+          sheetIndex: i,
+          ingestJobId: sheet.ingestJobId,
+        });
+        // Mark the IngestJob as FAILED (onFail may have already done this, but ensure it)
+        await markSheetFailed(
+          req.payload,
+          sheet.ingestJobId,
+          "pipeline-error",
+          result.reason instanceof Error ? result.reason.message : String(result.reason)
+        );
+      }
     }
   }
 

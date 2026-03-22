@@ -15,7 +15,7 @@ import { createJobLogger, logError } from "@/lib/logger";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { loadDataset, loadIngestJob } from "../utils/resource-loading";
 
 // Helper to check if schema version creation should be skipped
@@ -59,7 +59,7 @@ export const createSchemaVersionJob = {
     { name: "skipped", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskFailureCallbackArgs) => {
+  onFail: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {

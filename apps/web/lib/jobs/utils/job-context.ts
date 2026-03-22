@@ -16,7 +16,7 @@ export type JobHandlerContext<T = unknown> = {
  * Arguments passed to onFail/onSuccess task callbacks.
  * Compatible with Payload's `TaskCallbackArgs` (which is not publicly exported).
  */
-export interface TaskFailureCallbackArgs {
+export interface TaskCallbackArgs {
   input?: object;
   job: { error?: unknown; id: number | string };
   req: { payload: Payload };

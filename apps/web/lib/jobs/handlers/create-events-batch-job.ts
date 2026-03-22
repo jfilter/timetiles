@@ -33,7 +33,7 @@ import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { BulkEventData } from "../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../utils/bulk-event-insert";
 import { createEventData } from "../utils/event-creation-helpers";
-import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { extractDuplicateRows, loadJobResources } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 import { getIngestFilePath } from "../utils/upload-path";
@@ -330,7 +330,7 @@ export const createEventsBatchJob = {
     { name: "duplicatesSkipped", type: "number" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskFailureCallbackArgs) => {
+  onFail: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {
@@ -349,7 +349,7 @@ export const createEventsBatchJob = {
       // Best-effort — don't throw in onFail
     }
   },
-  onSuccess: async (args: TaskFailureCallbackArgs) => {
+  onSuccess: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {

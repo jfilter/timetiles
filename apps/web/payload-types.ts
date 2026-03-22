@@ -5913,9 +5913,6 @@ export interface WorkflowScheduledIngest {
     originalName: string;
     userId?: string | null;
     triggeredBy?: string | null;
-    skipDuplicateChecking?: boolean | null;
-    autoApproveSchema?: boolean | null;
-    schemaMode?: string | null;
   };
 }
 /**

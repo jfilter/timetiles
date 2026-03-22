@@ -25,7 +25,7 @@ import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { Dataset } from "@/payload-types";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { getIngestFilePath } from "../utils/upload-path";
 
 interface SheetInfo {
@@ -295,7 +295,7 @@ export const datasetDetectionJob = {
     { name: "sheets", type: "json" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskFailureCallbackArgs) => {
+  onFail: async (args: TaskCallbackArgs) => {
     const ingestFileId = (args.input as Record<string, unknown> | undefined)?.ingestFileId;
     if (typeof ingestFileId !== "string" && typeof ingestFileId !== "number") return;
     try {
