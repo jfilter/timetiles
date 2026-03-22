@@ -25,8 +25,8 @@ import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
-import type { JobHandlerContext } from "../utils/job-context";
-import { failIngestJob, loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
 
 /**
@@ -139,6 +139,35 @@ const geocodeUniqueLocations = async (
 
 export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
+  retries: 3,
+  outputSchema: [
+    { name: "success", type: "checkbox" as const, required: true },
+    { name: "geocoded", type: "number" as const },
+    { name: "failed", type: "number" as const },
+    { name: "skipped", type: "number" as const },
+    { name: "uniqueLocations", type: "number" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskFailureCallbackArgs) => {
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+            context: "geocode-batch",
+          },
+        },
+        context: { skipStageTransition: true },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
 
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
     const { payload } = context.req;
@@ -151,6 +180,14 @@ export const geocodeBatchJob = {
     const startTime = Date.now();
 
     try {
+      // Set stage for UI progress tracking (workflow controls sequencing)
+      await payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
+        context: { skipStageTransition: true },
+      });
+
       // Create a geocoding service scoped to this job invocation
       const geocodingService = createGeocodingService(payload);
 
@@ -163,12 +200,7 @@ export const geocodeBatchJob = {
       if (!geocodingCandidate?.locationField) {
         logger.info("No location field detected, moving to event creation");
         await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
-        await payload.update({
-          collection: COLLECTION_NAMES.INGEST_JOBS,
-          id: ingestJobId,
-          data: { stage: PROCESSING_STAGE.CREATE_EVENTS },
-        });
-        return { output: { skipped: true } };
+        return { output: { success: true, skipped: true } };
       }
 
       const filePath = getIngestFilePath(ingestFile.filename ?? "");
@@ -213,6 +245,7 @@ export const geocodeBatchJob = {
         const errorMessage = `Geocoding failed for all ${failureCount} locations. Please check your geocoding provider configuration in the admin panel.`;
         const detailedError = `${errorMessage}\n\nFailed locations${moreCount}:\n${failedLocationsPreview.join("\n")}`;
 
+        // Mark the ingest job as FAILED — total geocoding failure is a permanent error
         await payload.update({
           collection: COLLECTION_NAMES.INGEST_JOBS,
           id: ingestJobId,
@@ -225,20 +258,21 @@ export const geocodeBatchJob = {
               failures: failures.slice(0, 10), // Store first 10 failures with details
             },
           },
+          context: { skipStageTransition: true },
         });
 
         // Also update the import file status with error message (user-facing)
-        const { ingestFile } = await loadJobResources(payload, ingestJobId);
+        const { ingestFile: failedIngestFile } = await loadJobResources(payload, ingestJobId);
         await payload.update({
           collection: COLLECTION_NAMES.INGEST_FILES,
-          id: ingestFile.id,
+          id: failedIngestFile.id,
           data: { status: "failed", errorLog: detailedError },
         });
 
         return {
           output: {
-            failed: true,
-            reason: "All geocoding failed",
+            success: false,
+            reason: "geocoding-failed",
             totalLocations: uniqueLocations.size,
             failedCount: failureCount,
           },
@@ -248,11 +282,12 @@ export const geocodeBatchJob = {
       // Complete GEOCODE_BATCH stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
 
-      // Store geocoding results
+      // Store geocoding results (workflow controls stage sequencing)
       await payload.update({
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
-        data: { geocodingResults: results, stage: PROCESSING_STAGE.CREATE_EVENTS },
+        data: { geocodingResults: results },
+        context: { skipStageTransition: true },
       });
 
       logPerformance("Unique location geocoding", Date.now() - startTime, {
@@ -265,10 +300,11 @@ export const geocodeBatchJob = {
 
       return {
         output: {
-          totalRows,
+          success: true,
+          geocoded: successCount,
+          failed: failureCount,
+          skipped: 0,
           uniqueLocations: uniqueLocations.size,
-          geocodedCount: successCount,
-          failedCount: failureCount,
         },
       };
     } catch (error) {
@@ -283,8 +319,7 @@ export const geocodeBatchJob = {
         // Best-effort cleanup
       }
 
-      await failIngestJob(payload, ingestJobId, error, "geocode-batch");
-
+      // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;
     }
   },

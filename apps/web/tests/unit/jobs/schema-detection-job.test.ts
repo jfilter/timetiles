@@ -10,6 +10,7 @@
 // Import centralized mocks FIRST (before anything that uses them)
 import "@/tests/mocks/services/logger";
 
+import { JobCancelledError } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
@@ -159,7 +160,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result — new output format
-      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 3 } });
+      expect(result).toEqual({ output: { success: true, totalBatches: 1, totalRowsProcessed: 3 } });
 
       // Verify streaming was used
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith(expect.stringContaining("test.csv"), {
@@ -257,7 +258,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 2 } });
+      expect(result).toEqual({ output: { success: true, totalBatches: 1, totalRowsProcessed: 2 } });
 
       // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();
@@ -318,7 +319,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result shows both batches
-      expect(result).toEqual({ output: { totalBatches: 2, totalRowsProcessed: 5 } });
+      expect(result).toEqual({ output: { success: true, totalBatches: 2, totalRowsProcessed: 5 } });
 
       // Verify schema builder was called for each batch
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledTimes(2);
@@ -342,13 +343,14 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result indicates zero work
-      expect(result).toEqual({ output: { totalBatches: 0, totalRowsProcessed: 0 } });
+      expect(result).toEqual({ output: { success: true, totalBatches: 0, totalRowsProcessed: 0 } });
 
-      // Verify stage transition to validation
+      // Verify stage tracking at handler start (workflow controls sequencing)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
-        data: { stage: "validate-schema" },
+        data: { stage: "detect-schema" },
+        context: { skipStageTransition: true },
       });
 
       // Should not queue any jobs
@@ -396,7 +398,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const result = await schemaDetectionJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 3 } });
+      expect(result).toEqual({ output: { success: true, totalBatches: 1, totalRowsProcessed: 3 } });
 
       // Verify schema builder was called with filtered non-duplicate rows
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(
@@ -452,21 +454,23 @@ describe.sequential("SchemaDetectionJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error when ingest job not found", async () => {
-      mockPayload.findByID.mockResolvedValueOnce(null);
+    it("should throw Error when ingest job not found (onFail handles failure marking)", async () => {
+      mockPayload.findByID.mockResolvedValue(null);
+      mockPayload.update.mockResolvedValue({});
 
-      await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
+      await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("Ingest job not found");
     });
 
-    it("should throw error when ingest file not found", async () => {
+    it("should throw Error when ingest file not found (onFail handles failure marking)", async () => {
       const mockIngestJob = createMockIngestJob();
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Ingest file not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
-    it("should handle streaming errors", async () => {
+    it("should re-throw streaming errors for Payload to retry (onFail handles failure marking)", async () => {
       const mockIngestJob = createMockIngestJob();
       const mockIngestFile = createMockIngestFile();
       const mockDataset = { id: TEST_IDS.DATASET };
@@ -478,8 +482,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         if (collection === "datasets") return Promise.resolve(mockDataset);
         return Promise.resolve(null);
       });
+      mockPayload.update.mockResolvedValue({});
 
-      // Mock streaming that throws an error on first iteration
+      // Mock streaming that throws an error
       mocks.streamBatchesFromFile.mockReturnValueOnce({
         [Symbol.asyncIterator]: () => ({
           next: async () => {
@@ -489,22 +494,15 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         }),
       });
 
+      // Error is re-thrown for Payload to retry; onFail marks job as failed after retries exhaust
       await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("File not found");
-
-      // Verify error handling updated job status
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-jobs",
-        id: "import-123",
-        data: { stage: "failed", errorLog: { lastError: "File not found", context: "schema-detection" } },
-      });
     });
 
-    it("should clean up sidecar files on error", async () => {
+    it("should re-throw transient errors for Payload to retry", async () => {
       const mockIngestJob = createMockIngestJob();
       const mockIngestFile = createMockIngestFile();
       const mockDataset = { id: TEST_IDS.DATASET };
 
-      // Use mockImplementation to handle all findByID calls (initial + error-path reload)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
@@ -512,17 +510,21 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      // Mock streaming error
+      // Mock streaming that throws a transient error (matches transient patterns)
       mocks.streamBatchesFromFile.mockReturnValueOnce({
         [Symbol.asyncIterator]: () => ({
           next: async () => {
             await Promise.resolve();
-            throw new Error("Parse error");
+            throw new Error("Connection timeout");
           },
         }),
       });
 
-      await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow("Parse error");
+      // Transient error: re-throws original error for Payload to retry (not JobCancelledError)
+      const error = await schemaDetectionJob.handler(mockContext).catch((e: unknown) => e);
+
+      expect(error).not.toBeInstanceOf(JobCancelledError);
+      expect((error as Error).message).toBe("Connection timeout");
 
       // Verify sidecar cleanup was called with the correct file path and sheet index
       expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith(
@@ -570,7 +572,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       const result = await schemaDetectionJob.handler(mockContext);
 
-      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 1 } });
+      expect(result).toEqual({ output: { success: true, totalBatches: 1, totalRowsProcessed: 1 } });
 
       // ProgressiveSchemaBuilder must be constructed with undefined (from null),
       // NOT with the persisted state — single-job pattern always starts fresh

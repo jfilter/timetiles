@@ -25,7 +25,7 @@ import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { Dataset } from "@/payload-types";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext } from "../utils/job-context";
+import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
 import { getIngestFilePath } from "../utils/upload-path";
 
 interface SheetInfo {
@@ -287,6 +287,30 @@ const processSheetWithMapping = async (
 
 export const datasetDetectionJob = {
   slug: JOB_TYPES.DATASET_DETECTION,
+  retries: 1,
+  outputSchema: [
+    { name: "success", type: "checkbox" as const, required: true },
+    { name: "sheetsDetected", type: "number" as const },
+    { name: "ingestJobsCreated", type: "number" as const },
+    { name: "sheets", type: "json" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskFailureCallbackArgs) => {
+    const ingestFileId = (args.input as Record<string, unknown> | undefined)?.ingestFileId;
+    if (typeof ingestFileId !== "string" && typeof ingestFileId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_FILES,
+        id: ingestFileId,
+        data: {
+          status: "failed",
+          errorLog: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+        },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as DatasetDetectionJobInput["input"];
@@ -304,6 +328,11 @@ export const datasetDetectionJob = {
       if (!ingestFile) {
         throw new Error("Ingest file not found");
       }
+
+      // Resolve catalogId: prefer explicit input, fall back to ingest file's catalog relation.
+      // Workflows may not pass catalogId in their input, so this ensures dataset-detection
+      // always knows which catalog to search for existing datasets.
+      const resolvedCatalogId = catalogId ?? (extractRelationId(ingestFile.catalog) as string | undefined);
 
       const filePath = getIngestFilePath(ingestFile.filename ?? "");
 
@@ -350,8 +379,8 @@ export const datasetDetectionJob = {
 
       const createdJobs =
         sheets.length === 1
-          ? [await handleSingleSheet(payload, ingestFile, catalogId, datasetMapping, userId)]
-          : await handleMultipleSheets(payload, ingestFile, sheets, catalogId, datasetMapping, userId);
+          ? [await handleSingleSheet(payload, ingestFile, resolvedCatalogId, datasetMapping, userId)]
+          : await handleMultipleSheets(payload, ingestFile, sheets, resolvedCatalogId, datasetMapping, userId);
 
       logger.info("Created import jobs", {
         ingestFileId,
@@ -359,7 +388,19 @@ export const datasetDetectionJob = {
         jobIds: createdJobs.map((j) => j.id),
       });
 
-      return { output: { sheetsDetected: sheets.length, importJobsCreated: createdJobs.length } };
+      return {
+        output: {
+          success: true,
+          sheetsDetected: sheets.length,
+          ingestJobsCreated: createdJobs.length,
+          sheets: createdJobs.map((j, i) => ({
+            index: i,
+            ingestJobId: j.id,
+            name: sheets[i]?.name ?? `Sheet ${i}`,
+            rowCount: sheets[i]?.rowCount ?? 0,
+          })),
+        },
+      };
     } catch (error) {
       logError(error, "Dataset detection failed", { jobId, ingestFileId });
 
@@ -369,7 +410,7 @@ export const datasetDetectionJob = {
         data: { status: "failed", errorLog: error instanceof Error ? error.message : "Unknown error" },
       });
 
-      throw error;
+      return { output: { success: false, reason: error instanceof Error ? error.message : "Unknown error" } };
     }
   },
 };

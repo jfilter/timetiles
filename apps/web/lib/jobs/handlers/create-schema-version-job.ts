@@ -15,8 +15,8 @@ import { createJobLogger, logError } from "@/lib/logger";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext } from "../utils/job-context";
-import { failIngestJob, loadDataset, loadIngestJob } from "../utils/resource-loading";
+import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import { loadDataset, loadIngestJob } from "../utils/resource-loading";
 
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
@@ -52,6 +52,33 @@ const getApprovedById = (approvedBy: unknown): number | null => {
 
 export const createSchemaVersionJob = {
   slug: JOB_TYPES.CREATE_SCHEMA_VERSION,
+  retries: 1,
+  outputSchema: [
+    { name: "success", type: "checkbox" as const, required: true },
+    { name: "versionNumber", type: "number" as const },
+    { name: "skipped", type: "checkbox" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskFailureCallbackArgs) => {
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+            context: "create-schema-version",
+          },
+        },
+        context: { skipStageTransition: true },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CreateSchemaVersionJobInput["input"];
@@ -64,6 +91,14 @@ export const createSchemaVersionJob = {
     try {
       // Get import job
       const job = await loadIngestJob(payload, ingestJobId);
+
+      // Set stage for UI progress tracking (workflow controls sequencing)
+      await payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { stage: PROCESSING_STAGE.CREATE_SCHEMA_VERSION },
+        context: { skipStageTransition: true },
+      });
 
       // Start CREATE_SCHEMA_VERSION stage
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
@@ -80,14 +115,7 @@ export const createSchemaVersionJob = {
         logger.info("Skipping schema version creation", { ingestJobId, reason: skipCheck.reason });
         await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
-        // Transition to next stage so the import doesn't get stranded
-        await payload.update({
-          collection: COLLECTION_NAMES.INGEST_JOBS,
-          id: ingestJobId,
-          data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
-        });
-
-        return { output: { skipped: true } };
+        return { output: { success: true, skipped: true } };
       }
 
       // Get dataset and prepare schema version data
@@ -117,6 +145,7 @@ export const createSchemaVersionJob = {
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
         data: { datasetSchemaVersion: schemaVersion.id },
+        context: { skipStageTransition: true },
       });
 
       logger.info("Schema version created successfully", { ingestJobId, schemaVersionId: schemaVersion.id });
@@ -124,19 +153,13 @@ export const createSchemaVersionJob = {
       // Complete CREATE_SCHEMA_VERSION stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
-      // Transition to next stage
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
-      });
-
-      return { output: { schemaVersionId: schemaVersion.id } };
+      return {
+        output: { success: true, versionNumber: schemaVersion.versionNumber, schemaVersionId: schemaVersion.id },
+      };
     } catch (error) {
       logError(error, "Failed to create schema version", { ingestJobId });
 
-      await failIngestJob(payload, ingestJobId, error, "schema-version-creation");
-
+      // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;
     }
   },

@@ -10,6 +10,7 @@
 // Import centralized logger mock
 import "@/tests/mocks/services/logger";
 
+import { JobCancelledError } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-version-job";
@@ -110,8 +111,10 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result
-      expect(result).toEqual({ output: { schemaVersionId: "schema-version-101" } });
+      // Verify result — includes success, versionNumber, schemaVersionId
+      expect(result).toEqual({
+        output: { success: true, versionNumber: undefined, schemaVersionId: "schema-version-101" },
+      });
 
       // Verify payload calls
       expect(mockPayload.findByID).toHaveBeenCalledTimes(2);
@@ -130,17 +133,18 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         req: mockContext.req,
       });
 
-      // Verify job updates
-      expect(mockPayload.update).toHaveBeenCalledTimes(2);
-      expect(mockPayload.update).toHaveBeenNthCalledWith(1, {
+      // Verify stage tracking update at start + schema version update (no stage transition)
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: "import-123",
+        data: { stage: "create-schema-version" },
+        context: { skipStageTransition: true },
+      });
+      expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
         data: { datasetSchemaVersion: "schema-version-101" },
-      });
-      expect(mockPayload.update).toHaveBeenNthCalledWith(2, {
-        collection: "ingest-jobs",
-        id: "import-123",
-        data: { stage: "geocode-batch" },
+        context: { skipStageTransition: true },
       });
     });
 
@@ -160,17 +164,18 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result
-      expect(result).toEqual({ output: { skipped: true } });
+      // Verify result — skip path includes success: true
+      expect(result).toEqual({ output: { success: true, skipped: true } });
 
       // Verify no schema version creation was attempted
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
-      // Bug 6 fix: should transition to next stage to avoid stranding imports
+      // Stage tracking update at start (no stage transition to next stage)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
-        data: { stage: "geocode-batch" },
+        data: { stage: "create-schema-version" },
+        context: { skipStageTransition: true },
       });
     });
 
@@ -192,8 +197,8 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result
-      expect(result).toEqual({ output: { skipped: true } });
+      // Verify result — skip path includes success: true
+      expect(result).toEqual({ output: { success: true, skipped: true } });
 
       // Verify no schema version creation was attempted
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
@@ -226,8 +231,10 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result
-      expect(result).toEqual({ output: { schemaVersionId: "schema-version-101" } });
+      // Verify result — includes success, versionNumber, schemaVersionId
+      expect(result).toEqual({
+        output: { success: true, versionNumber: undefined, schemaVersionId: "schema-version-101" },
+      });
 
       // Verify only one findByID call (no separate dataset fetch needed)
       expect(mockPayload.findByID).toHaveBeenCalledTimes(1);
@@ -275,15 +282,18 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error when ingest job not found", async () => {
-      mockPayload.findByID.mockResolvedValueOnce(null);
+    it("should throw Error when ingest job not found (onFail handles failure marking)", async () => {
+      mockPayload.findByID.mockResolvedValue(null);
+      mockPayload.update.mockResolvedValue({});
 
-      await expect(createSchemaVersionJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
+      const error = await createSchemaVersionJob.handler(mockContext).catch((e: unknown) => e);
 
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("Ingest job not found: import-123");
       expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "ingest-jobs", id: "import-123" });
     });
 
-    it("should throw error when dataset not found", async () => {
+    it("should throw Error when dataset not found (onFail handles failure marking)", async () => {
       const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
@@ -293,11 +303,12 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(createSchemaVersionJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
-    it("should handle schema version creation error and update job to failed", async () => {
+    it("should re-throw transient errors for Payload to retry", async () => {
       const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
@@ -309,25 +320,25 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
       const mockDataset = createMockDataset();
 
-      const mockError = new Error("Schema version creation failed");
+      // "Connection timeout" matches transient error patterns,
+      // so it is re-thrown for Payload to retry.
+      const mockError = new Error("Connection timeout");
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockDataset);
       mockPayload.update.mockResolvedValue({});
       mocks.getFieldStats.mockReturnValue({});
       mocks.createSchemaVersion.mockRejectedValue(mockError);
 
-      // Execute job and expect error
-      await expect(createSchemaVersionJob.handler(mockContext)).rejects.toThrow("Schema version creation failed");
+      const error = await createSchemaVersionJob.handler(mockContext).catch((e: unknown) => e);
 
-      // Verify job was updated to failed state
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-jobs",
-        id: "import-123",
-        data: {
-          stage: "failed",
-          errorLog: { lastError: "Schema version creation failed", context: "schema-version-creation" },
-        },
-      });
+      // Transient errors are re-thrown as-is (not JobCancelledError)
+      expect(error).not.toBeInstanceOf(JobCancelledError);
+      expect((error as Error).message).toBe("Connection timeout");
+
+      // Transient errors do NOT call failIngestJob -- Payload handles retries
+      expect(mockPayload.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ stage: "failed" }) })
+      );
     });
   });
 });

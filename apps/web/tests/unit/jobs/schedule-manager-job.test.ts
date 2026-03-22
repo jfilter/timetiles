@@ -41,7 +41,7 @@ describe.sequential("scheduleManagerJob", () => {
         update: vi.fn().mockResolvedValue({ docs: [{ id: "claimed" }] }),
         // triggerScheduledIngest uses atomic SQL claim via drizzle
         db: { drizzle: { execute: vi.fn().mockResolvedValue({ rows: [{ id: 1 }] }) } },
-        jobs: { queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-123" }) },
+        jobs: { queue: vi.fn().mockResolvedValue({ id: "workflow-job-123" }) },
       };
 
       const mockJob = { id: "schedule-job-123" };
@@ -131,7 +131,7 @@ describe.sequential("scheduleManagerJob", () => {
       // Should only queue the hourly import
       expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-        task: "url-fetch",
+        workflow: "scheduled-ingest",
         input: {
           scheduledIngestId: "hourly-import",
           sourceUrl: "https://api1.example.com/data",
@@ -408,7 +408,7 @@ describe.sequential("scheduleManagerJob", () => {
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-        task: "url-fetch",
+        workflow: "scheduled-ingest",
         input: expect.objectContaining({
           originalName: expect.stringMatching(
             /Template Test - \d{4}-\d{2}-\d{2} at \d{2}:\d{2}:\d{2} from api\.example\.com/

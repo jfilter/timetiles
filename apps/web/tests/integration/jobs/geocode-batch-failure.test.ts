@@ -133,7 +133,7 @@ Event 2,2024-01-02,Munich Germany
 Event 3,2024-01-03,Hamburg Germany
 `;
 
-    // Pre-create dataset with auto-approval to skip AWAIT_APPROVAL stage
+    // Pre-create dataset with auto-approval to skip NEEDS_REVIEW stage
     await withDataset(testEnv, testCatalogId, {
       name: "geocode-failure-test.csv",
       language: "eng",

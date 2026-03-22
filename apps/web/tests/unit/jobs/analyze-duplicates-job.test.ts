@@ -157,7 +157,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({ output: { skipped: true } });
+      expect(result).toEqual({ output: { success: true, skipped: true } });
 
       // Verify payload calls - includes refetch after progress initialization
       expect(mockPayload.findByID).toHaveBeenCalledTimes(4);
@@ -166,12 +166,11 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, { collection: "ingest-files", id: "file-789" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, { collection: "ingest-jobs", id: "import-123" });
 
-      // Verify update call
+      // Verify update call — no stage transition, skipStageTransition context
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
         data: {
-          stage: "detect-schema",
           duplicates: {
             strategy: "disabled",
             internal: [],
@@ -179,6 +178,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
             summary: { totalRows: 100, uniqueRows: 100, internalDuplicates: 0, externalDuplicates: 0 },
           },
         },
+        context: { skipStageTransition: true },
       });
     });
 
@@ -237,7 +237,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       // Verify result
-      expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
+      expect(result).toEqual({
+        output: { success: true, totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 },
+      });
 
       // Verify getFileRowCount was NOT called (dedup enabled skips pre-scan)
       expect(mocks.getFileRowCount).not.toHaveBeenCalled();
@@ -313,6 +315,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify result
       expect(result).toEqual({
         output: {
+          success: true,
           totalRows: 3,
           uniqueRows: 2, // uniqueIdMap.size = 2 (distinct unique IDs: id:1, id:2)
           internalDuplicates: 1,
@@ -371,6 +374,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // Verify result
       expect(result).toEqual({
         output: {
+          success: true,
           totalRows: 2,
           uniqueRows: 1, // 2 unique IDs minus 1 external duplicate
           internalDuplicates: 0,
@@ -381,23 +385,27 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should throw error when ingest job not found", async () => {
-      mockPayload.findByID.mockResolvedValueOnce(null);
+    it("should throw Error when ingest job not found (onFail handles failure marking)", async () => {
+      mockPayload.findByID.mockResolvedValue(null);
+      mockPayload.update.mockResolvedValue({});
 
-      await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
+      const error = await analyzeDuplicatesJob.handler(mockContext).catch((e: unknown) => e);
 
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("Ingest job not found: import-123");
       expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "ingest-jobs", id: "import-123" });
     });
 
-    it("should throw error when dataset not found", async () => {
+    it("should throw Error when dataset not found (onFail handles failure marking)", async () => {
       const mockIngestJob = { id: "import-123", dataset: "dataset-456", ingestFile: "file-789" };
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
-    it("should throw error when ingest file not found", async () => {
+    it("should throw Error when ingest file not found (onFail handles failure marking)", async () => {
       const mockIngestJob = { id: "import-123", dataset: "dataset-456", ingestFile: "file-789" };
 
       const mockDataset = { id: "dataset-456", deduplicationConfig: { enabled: true } };
@@ -406,6 +414,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(null); // Ingest file not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
@@ -510,7 +519,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mocks.getFileRowCount).not.toHaveBeenCalled();
 
       // Verify totalRows was derived from streaming (3 rows processed)
-      expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
+      expect(result).toEqual({
+        output: { success: true, totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 },
+      });
     });
   });
 
@@ -548,7 +559,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       // Verify result for empty file
-      expect(result).toEqual({ output: { totalRows: 0, uniqueRows: 0, internalDuplicates: 0, externalDuplicates: 0 } });
+      expect(result).toEqual({
+        output: { success: true, totalRows: 0, uniqueRows: 0, internalDuplicates: 0, externalDuplicates: 0 },
+      });
 
       // Verify no external duplicate check was made (Drizzle select not called for empty file)
       expect(drizzleMock.select).not.toHaveBeenCalled();

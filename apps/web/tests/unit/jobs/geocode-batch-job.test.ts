@@ -10,6 +10,7 @@
 // Import centralized logger mock
 import "@/tests/mocks/services/logger";
 
+import { JobCancelledError } from "payload";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
@@ -140,7 +141,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
       expect(mocks.geocode).toHaveBeenCalledWith("456 oak ave");
 
-      // Should store results as location → coordinates map
+      // Should store results (no stage transition — workflow controls sequencing)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -157,12 +158,12 @@ describe.sequential("GeocodeBatchJob Handler", () => {
               formattedAddress: "456 Oak Ave, Los Angeles, CA",
             },
           },
-          stage: "create-events",
         },
+        context: { skipStageTransition: true },
       });
 
       // Should return correct output
-      expect(result.output).toEqual({ totalRows: 3, uniqueLocations: 2, geocodedCount: 2, failedCount: 0 });
+      expect(result.output).toEqual({ success: true, geocoded: 2, failed: 0, skipped: 0, uniqueLocations: 2 });
     });
 
     it("should skip rows without location values", async () => {
@@ -192,7 +193,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
       expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
-      expect(result.output).toEqual({ totalRows: 4, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
+      expect(result.output).toEqual({ success: true, geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
     });
 
     it("should handle geocoding failures gracefully", async () => {
@@ -220,7 +221,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should geocode both, but only one succeeds
       expect(mocks.geocode).toHaveBeenCalledTimes(2);
 
-      expect(result.output).toEqual({ totalRows: 2, uniqueLocations: 2, geocodedCount: 1, failedCount: 1 });
+      expect(result.output).toEqual({ success: true, geocoded: 1, failed: 1, skipped: 0, uniqueLocations: 2 });
 
       // Should still store the successful result
       expect(mockPayload.update).toHaveBeenCalledWith(
@@ -252,14 +253,15 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.streamBatchesFromFile).not.toHaveBeenCalled();
       expect(mocks.geocode).not.toHaveBeenCalled();
 
-      // Should transition directly to CREATE_EVENTS
+      // Should set stage for UI tracking (no stage transition to next stage)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
-        data: { stage: "create-events" },
+        data: { stage: "geocode-batch" },
+        context: { skipStageTransition: true },
       });
 
-      expect(result.output).toEqual({ skipped: true });
+      expect(result.output).toEqual({ success: true, skipped: true });
     });
 
     it("should handle empty file gracefully", async () => {
@@ -275,14 +277,15 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should not call geocoding
       expect(mocks.geocode).not.toHaveBeenCalled();
 
-      // Should store empty results
+      // Should store empty results (no stage transition)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
-        data: { geocodingResults: {}, stage: "create-events" },
+        data: { geocodingResults: {} },
+        context: { skipStageTransition: true },
       });
 
-      expect(result.output).toEqual({ totalRows: 0, uniqueLocations: 0, geocodedCount: 0, failedCount: 0 });
+      expect(result.output).toEqual({ success: true, geocoded: 0, failed: 0, skipped: 0, uniqueLocations: 0 });
     });
 
     it("should trim whitespace from locations", async () => {
@@ -309,52 +312,56 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
       expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
-      expect(result.output).toEqual({ totalRows: 2, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
+      expect(result.output).toEqual({ success: true, geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
     });
   });
 
   describe("Error Handling", () => {
-    it("should handle missing import job", async () => {
-      mockPayload.findByID.mockResolvedValueOnce(null);
+    it("should throw Error when import job not found (onFail handles failure marking)", async () => {
+      mockPayload.findByID.mockResolvedValue(null);
+      mockPayload.update.mockResolvedValue({});
 
       await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Ingest job not found");
     });
 
-    it("should handle missing import file", async () => {
+    it("should throw Error when import file not found (onFail handles failure marking)", async () => {
       const mockDataset = createMockDataset();
       const mockIngestJob = {
         ...createMockIngestJob(),
         id: 123,
         dataset: mockDataset, // Use object to avoid lookup
-        ingestFile: 789, // Use string so it needs to be looked up
+        ingestFile: 789, // Use numeric so it needs to be looked up
       };
 
       // First call returns the job, second call for import file lookup returns null
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Ingest file not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
-    it("should set job to FAILED stage on error", async () => {
+    it("should re-throw transient errors for Payload to retry", async () => {
       const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
 
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
-      // Make streamBatchesFromFile throw an error
+      // Make streamBatchesFromFile throw a transient error (matches transient patterns)
       mocks.streamBatchesFromFile.mockImplementation(function* () {
         yield []; // eslint requires at least one yield in generators
-        throw new Error("File read error");
+        throw new Error("Connection timeout");
       });
 
-      await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("File read error");
+      // Transient error: re-thrown as-is (not JobCancelledError)
+      const error = await geocodeBatchJob.handler(mockContext).catch((e: unknown) => e);
 
-      // Should update job to FAILED stage with error details
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-jobs",
-        id: 123,
-        data: { stage: "failed", errorLog: { lastError: "File read error", context: "geocode-batch" } },
-      });
+      expect(error).not.toBeInstanceOf(JobCancelledError);
+      expect((error as Error).message).toBe("Connection timeout");
+
+      // Transient errors do NOT call failIngestJob -- Payload handles retries
+      expect(mockPayload.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ stage: "failed" }) })
+      );
     });
 
     it("should clean up sidecar files on error", async () => {
@@ -367,8 +374,9 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Mock findByID to return the job for all calls (including error cleanup re-load)
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
+      mockPayload.update.mockResolvedValue({});
 
-      // Make streamBatchesFromFile throw an error
+      // Make streamBatchesFromFile throw an error (permanent, not matching transient patterns)
       mocks.streamBatchesFromFile.mockImplementation(function* () {
         yield []; // eslint requires at least one yield in generators
         throw new Error("File read error");
@@ -408,7 +416,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.geocode).toHaveBeenCalledTimes(1);
       expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
 
-      expect(result.output).toEqual({ totalRows: 4, uniqueLocations: 1, geocodedCount: 1, failedCount: 0 });
+      expect(result.output).toEqual({ success: true, geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
     });
 
     it("should fail the job when all geocoding fails", async () => {
@@ -431,15 +439,10 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       const result = await geocodeBatchJob.handler(mockContext);
 
-      // Should return failure output
-      expect(result.output).toEqual({
-        failed: true,
-        reason: "All geocoding failed",
-        totalLocations: 2,
-        failedCount: 2,
-      });
+      // Should return failure output (workflow handles FAILED stage transition)
+      expect(result.output).toEqual({ success: false, reason: "geocoding-failed", totalLocations: 2, failedCount: 2 });
 
-      // Should update import job to FAILED stage with error message and failure details
+      // Should store error details and set FAILED stage (total geocoding failure is permanent)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -455,6 +458,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
             ]),
           },
         },
+        context: { skipStageTransition: true },
       });
 
       // Should also update import file status to failed with detailed error
@@ -494,7 +498,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should geocode exactly 50 unique locations, not 100
       expect(mocks.geocode).toHaveBeenCalledTimes(50);
 
-      expect(result.output).toEqual({ totalRows: 100, uniqueLocations: 50, geocodedCount: 50, failedCount: 0 });
+      expect(result.output).toEqual({ success: true, geocoded: 50, failed: 0, skipped: 0, uniqueLocations: 50 });
     });
   });
 });

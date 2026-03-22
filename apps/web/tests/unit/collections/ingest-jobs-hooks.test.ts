@@ -12,16 +12,13 @@ vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanup
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
-vi.mock("@/lib/ingest/stage-transition", () => ({ StageTransitionService: { processStageTransition: vi.fn() } }));
-
 vi.mock("@/lib/services/audit-log-service", () => ({ AUDIT_ACTIONS: {}, auditLog: vi.fn() }));
 
 vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: vi.fn() }));
 
 vi.mock("@/lib/constants/ingest-constants", () => ({
   COLLECTION_NAMES: { IMPORT_FILES: "ingest-files", IMPORT_JOBS: "ingest-jobs" },
-  JOB_TYPES: { ANALYZE_DUPLICATES: "analyze-duplicates" },
-  PROCESSING_STAGE: { COMPLETED: "completed", FAILED: "failed" },
+  PROCESSING_STAGE: { COMPLETED: "completed", FAILED: "failed", NEEDS_REVIEW: "needs-review" },
 }));
 
 vi.mock("@/lib/collections/ingest-jobs/helpers", () => ({ handleJobCompletion: vi.fn(), isJobCompleted: vi.fn() }));

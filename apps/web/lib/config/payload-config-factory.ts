@@ -30,6 +30,7 @@ import type { CollectionName } from "./payload-shared-config";
 import {
   ALL_GLOBALS,
   ALL_JOBS,
+  ALL_WORKFLOWS,
   COLLECTIONS,
   DEFAULT_DB_CONFIG,
   DEFAULT_TYPESCRIPT_CONFIG,
@@ -203,10 +204,17 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     globals: ALL_GLOBALS,
     jobs: {
       tasks: ALL_JOBS,
+      workflows: ALL_WORKFLOWS,
       enableConcurrencyControl: true,
-      // In development, run `make jobs` to process jobs
-      // In production, use external worker or Vercel Cron to call payload.jobs.run()
-      // In E2E tests, a job worker process runs alongside the server
+      // In development, auto-run jobs within the Next.js process (no separate worker needed)
+      ...(environment === "development"
+        ? {
+            autoRun: [
+              { cron: "* * * * *", queue: "default", limit: 50 },
+              { cron: "* * * * *", queue: "maintenance", limit: 10 },
+            ],
+          }
+        : {}),
     },
     plugins: [
       // Schema detection plugin (always enabled, provides language-aware field detection)

@@ -161,7 +161,7 @@ export interface Config {
       'create-events': TaskCreateEvents;
       'url-fetch': TaskUrlFetch;
       'schedule-manager': TaskScheduleManager;
-      'cleanup-stuck-scheduled-imports': TaskCleanupStuckScheduledImports;
+      'cleanup-stuck-scheduled-ingests': TaskCleanupStuckScheduledIngests;
       'cleanup-stuck-scrapers': TaskCleanupStuckScrapers;
       'process-pending-retries': TaskProcessPendingRetries;
       'quota-reset': TaskQuotaReset;
@@ -178,7 +178,12 @@ export interface Config {
         output: unknown;
       };
     };
-    workflows: unknown;
+    workflows: {
+      'manual-ingest': WorkflowManualIngest;
+      'scheduled-ingest': WorkflowScheduledIngest;
+      'scraper-ingest': WorkflowScraperIngest;
+      'ingest-process': WorkflowIngestProcess;
+    };
   };
 }
 export interface UserAuthOperations {
@@ -263,7 +268,7 @@ export interface User {
    */
   quotas?: {
     /**
-     * Maximum number of active scheduled imports (-1 for unlimited)
+     * Maximum number of active scheduled ingests (-1 for unlimited)
      */
     maxActiveSchedules?: number | null;
     /**
@@ -955,7 +960,7 @@ export interface IngestJob {
     | 'analyze-duplicates'
     | 'detect-schema'
     | 'validate-schema'
-    | 'await-approval'
+    | 'needs-review'
     | 'create-schema-version'
     | 'geocode-batch'
     | 'create-events'
@@ -1115,6 +1120,22 @@ export interface IngestJob {
     approvedAt?: string | null;
   };
   /**
+   * Why this job was paused for review
+   */
+  reviewReason?: string | null;
+  /**
+   * Detailed context for the review reason
+   */
+  reviewDetails?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
    * The schema version this import was validated against
    */
   datasetSchemaVersion?: (number | null) | DatasetSchema;
@@ -1228,14 +1249,7 @@ export interface IngestJob {
    * Last stage completed successfully before failure
    */
   lastSuccessfulStage?:
-    | (
-        | 'analyze-duplicates'
-        | 'detect-schema'
-        | 'validate-schema'
-        | 'await-approval'
-        | 'geocode-batch'
-        | 'create-events'
-      )
+    | ('analyze-duplicates' | 'detect-schema' | 'validate-schema' | 'needs-review' | 'geocode-batch' | 'create-events')
     | null;
   displayTitle?: string | null;
   updatedAt: string;
@@ -1320,7 +1334,7 @@ export interface IngestFile {
     | boolean
     | null;
   /**
-   * Processing options for scheduled imports (schemaMode, skipDuplicateChecking, etc.)
+   * Processing options for scheduled ingests (schemaMode, skipDuplicateChecking, etc.)
    */
   processingOptions?:
     | {
@@ -1332,11 +1346,11 @@ export interface IngestFile {
     | boolean
     | null;
   /**
-   * Target dataset for scheduled imports
+   * Target dataset for scheduled ingests
    */
   targetDataset?: (number | null) | Dataset;
   /**
-   * Reference to the scheduled import that triggered this file
+   * Reference to the scheduled ingest that triggered this file
    */
   scheduledIngest?: (number | null) | ScheduledIngest;
   quotaInfo?:
@@ -1370,11 +1384,11 @@ export interface IngestFile {
 export interface ScheduledIngest {
   id: number;
   /**
-   * Descriptive name for this scheduled import
+   * Descriptive name for this scheduled ingest
    */
   name: string;
   /**
-   * User who created this scheduled import
+   * User who created this scheduled ingest
    */
   createdBy: number | User;
   /**
@@ -1382,7 +1396,7 @@ export interface ScheduledIngest {
    */
   description?: string | null;
   /**
-   * Enable/disable this scheduled import
+   * Enable/disable this scheduled ingest
    */
   enabled?: boolean | null;
   /**
@@ -2095,7 +2109,7 @@ export interface UserUsage {
    */
   ingestJobsToday?: number | null;
   /**
-   * Currently active scheduled imports
+   * Currently active scheduled ingests
    */
   currentActiveSchedules?: number | null;
   /**
@@ -3655,7 +3669,7 @@ export interface PayloadJob {
           | 'create-events'
           | 'url-fetch'
           | 'schedule-manager'
-          | 'cleanup-stuck-scheduled-imports'
+          | 'cleanup-stuck-scheduled-ingests'
           | 'cleanup-stuck-scrapers'
           | 'process-pending-retries'
           | 'quota-reset'
@@ -3699,6 +3713,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
+  workflowSlug?: ('manual-ingest' | 'scheduled-ingest' | 'scraper-ingest' | 'ingest-process') | null;
   taskSlug?:
     | (
         | 'inline'
@@ -3711,7 +3726,7 @@ export interface PayloadJob {
         | 'create-events'
         | 'url-fetch'
         | 'schedule-manager'
-        | 'cleanup-stuck-scheduled-imports'
+        | 'cleanup-stuck-scheduled-ingests'
         | 'cleanup-stuck-scrapers'
         | 'process-pending-retries'
         | 'quota-reset'
@@ -4187,6 +4202,8 @@ export interface IngestJobsSelect<T extends boolean = true> {
         approvedBy?: T;
         approvedAt?: T;
       };
+  reviewReason?: T;
+  reviewDetails?: T;
   datasetSchemaVersion?: T;
   duplicates?:
     | T
@@ -5227,6 +5244,7 @@ export interface PayloadJobsSelect<T extends boolean = true> {
         error?: T;
         id?: T;
       };
+  workflowSlug?: T;
   taskSlug?: T;
   queue?: T;
   waitUntil?: T;
@@ -5476,11 +5494,11 @@ export interface Setting {
      */
     enableImportCreation?: boolean | null;
     /**
-     * When enabled, scheduled import jobs will execute automatically
+     * When enabled, scheduled ingest jobs will execute automatically
      */
     enableScheduledJobExecution?: boolean | null;
     /**
-     * When enabled, URL fetches for scheduled imports are cached to reduce requests
+     * When enabled, URL fetches for scheduled ingests are cached to reduce requests
      */
     enableUrlFetchCaching?: boolean | null;
     /**
@@ -5661,7 +5679,21 @@ export interface CollectionsWidget {
  */
 export interface TaskDatasetDetection {
   input?: unknown;
-  output?: unknown;
+  output: {
+    success: boolean;
+    sheetsDetected?: number | null;
+    ingestJobsCreated?: number | null;
+    sheets?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    reason?: string | null;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5669,7 +5701,12 @@ export interface TaskDatasetDetection {
  */
 export interface TaskDetectSchema {
   input?: unknown;
-  output?: unknown;
+  output: {
+    success: boolean;
+    fieldCount?: number | null;
+    totalRowsProcessed?: number | null;
+    reason?: string | null;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5677,7 +5714,15 @@ export interface TaskDetectSchema {
  */
 export interface TaskAnalyzeDuplicates {
   input?: unknown;
-  output?: unknown;
+  output: {
+    success: boolean;
+    totalRows?: number | null;
+    uniqueRows?: number | null;
+    internalDuplicates?: number | null;
+    externalDuplicates?: number | null;
+    skipped?: boolean | null;
+    reason?: string | null;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5685,7 +5730,16 @@ export interface TaskAnalyzeDuplicates {
  */
 export interface TaskValidateSchema {
   input?: unknown;
-  output?: unknown;
+  output: {
+    success: boolean;
+    requiresApproval?: boolean | null;
+    hasBreakingChanges?: boolean | null;
+    hasChanges?: boolean | null;
+    newFields?: number | null;
+    failed?: boolean | null;
+    failureReason?: string | null;
+    reason?: string | null;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5693,7 +5747,12 @@ export interface TaskValidateSchema {
  */
 export interface TaskCreateSchemaVersion {
   input?: unknown;
-  output?: unknown;
+  output: {
+    success: boolean;
+    versionNumber?: number | null;
+    skipped?: boolean | null;
+    reason?: string | null;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5701,7 +5760,14 @@ export interface TaskCreateSchemaVersion {
  */
 export interface TaskGeocodeBatch {
   input?: unknown;
-  output?: unknown;
+  output: {
+    success: boolean;
+    geocoded?: number | null;
+    failed?: number | null;
+    skipped?: number | null;
+    uniqueLocations?: number | null;
+    reason?: string | null;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5709,7 +5775,12 @@ export interface TaskGeocodeBatch {
  */
 export interface TaskCreateEvents {
   input?: unknown;
-  output?: unknown;
+  output: {
+    success: boolean;
+    eventCount?: number | null;
+    duplicatesSkipped?: number | null;
+    reason?: string | null;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5729,9 +5800,9 @@ export interface TaskScheduleManager {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskCleanup-stuck-scheduled-imports".
+ * via the `definition` "TaskCleanup-stuck-scheduled-ingests".
  */
-export interface TaskCleanupStuckScheduledImports {
+export interface TaskCleanupStuckScheduledIngests {
   input?: unknown;
   output?: unknown;
 }
@@ -5822,6 +5893,61 @@ export interface TaskScraperExecution {
 export interface TaskScraperRepoSync {
   input?: unknown;
   output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "WorkflowManual-ingest".
+ */
+export interface WorkflowManualIngest {
+  input: {
+    ingestFileId: string;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "WorkflowScheduled-ingest".
+ */
+export interface WorkflowScheduledIngest {
+  input: {
+    scheduledIngestId: number;
+    sourceUrl: string;
+    authConfig?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    catalogId?: string | null;
+    originalName: string;
+    userId?: string | null;
+    triggeredBy?: string | null;
+    skipDuplicateChecking?: boolean | null;
+    autoApproveSchema?: boolean | null;
+    schemaMode?: string | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "WorkflowScraper-ingest".
+ */
+export interface WorkflowScraperIngest {
+  input: {
+    scraperId: number;
+    triggeredBy: string;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "WorkflowIngest-process".
+ */
+export interface WorkflowIngestProcess {
+  input: {
+    ingestJobId: string;
+    resumeFrom?: string | null;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -126,7 +126,7 @@ export class ProgressTrackingService {
       PROCESSING_STAGE.ANALYZE_DUPLICATES,
       PROCESSING_STAGE.DETECT_SCHEMA,
       PROCESSING_STAGE.VALIDATE_SCHEMA,
-      PROCESSING_STAGE.AWAIT_APPROVAL,
+      PROCESSING_STAGE.NEEDS_REVIEW,
       PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
       PROCESSING_STAGE.GEOCODE_BATCH,
       PROCESSING_STAGE.CREATE_EVENTS,
@@ -474,7 +474,7 @@ export class ProgressTrackingService {
     for (const [stageName, stageData] of Object.entries(stages)) {
       const weight = STAGE_TIME_WEIGHTS[stageName as ProcessingStage] || 0;
 
-      // Skip stages with zero weight (AWAIT_APPROVAL, COMPLETED, FAILED)
+      // Skip stages with zero weight (NEEDS_REVIEW, COMPLETED, FAILED)
       if (weight === 0) continue;
 
       totalWeight += weight;
@@ -568,7 +568,7 @@ export class ProgressTrackingService {
       case PROCESSING_STAGE.CREATE_EVENTS:
         return BATCH_SIZES.EVENT_CREATION;
       case PROCESSING_STAGE.VALIDATE_SCHEMA:
-      case PROCESSING_STAGE.AWAIT_APPROVAL:
+      case PROCESSING_STAGE.NEEDS_REVIEW:
       case PROCESSING_STAGE.CREATE_SCHEMA_VERSION:
       case PROCESSING_STAGE.GEOCODE_BATCH:
         return null; // These stages don't use fixed batch sizes

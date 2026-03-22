@@ -30,8 +30,8 @@ import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-det
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext } from "../utils/job-context";
-import { extractDuplicateRows, failIngestJob, loadJobAndFilePath } from "../utils/resource-loading";
+import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import { extractDuplicateRows, loadJobAndFilePath } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 
 // Helper to load dataset and extract active transforms
@@ -121,11 +121,6 @@ const finalizeSchemaDetection = async (
   logger: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
   if (!schemaBuilder) {
-    await payload.update({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      id: ingestJobId,
-      data: { stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
-    });
     return;
   }
 
@@ -223,11 +218,12 @@ const finalizeSchemaDetection = async (
     },
   });
 
-  // Store field mappings and transition
+  // Store field mappings (workflow controls stage transition)
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
-    data: { detectedFieldMappings: fieldMappings, stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
+    data: { detectedFieldMappings: fieldMappings },
+    context: { skipStageTransition: true },
   });
 };
 
@@ -295,6 +291,33 @@ const updateSchemaState = async (
 
 export const schemaDetectionJob = {
   slug: JOB_TYPES.DETECT_SCHEMA,
+  retries: 1,
+  outputSchema: [
+    { name: "success", type: "checkbox" as const, required: true },
+    { name: "fieldCount", type: "number" as const },
+    { name: "totalRowsProcessed", type: "number" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskFailureCallbackArgs) => {
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+            context: "schema-detection",
+          },
+        },
+        context: { skipStageTransition: true },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as SchemaDetectionJobInput["input"];
@@ -306,6 +329,14 @@ export const schemaDetectionJob = {
     const startTime = Date.now();
 
     try {
+      // Set stage for UI progress display (workflow controls sequencing)
+      await payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { stage: PROCESSING_STAGE.DETECT_SCHEMA },
+        context: { skipStageTransition: true },
+      });
+
       // Load resources
       const { job, filePath } = await loadJobAndFilePath(payload, ingestJobId);
 
@@ -368,7 +399,7 @@ export const schemaDetectionJob = {
         totalRowsProcessed,
       });
 
-      return { output: { totalBatches: batchNumber, totalRowsProcessed } };
+      return { output: { success: true, totalBatches: batchNumber, totalRowsProcessed } };
     } catch (error) {
       logError(error, "Schema detection failed", { ingestJobId });
 
@@ -380,8 +411,7 @@ export const schemaDetectionJob = {
         // Best-effort cleanup — don't mask the original error
       }
 
-      await failIngestJob(payload, ingestJobId, error, "schema-detection");
-
+      // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;
     }
   },

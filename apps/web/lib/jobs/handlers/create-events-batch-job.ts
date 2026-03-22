@@ -33,42 +33,10 @@ import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { BulkEventData } from "../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../utils/bulk-event-insert";
 import { createEventData } from "../utils/event-creation-helpers";
-import type { JobHandlerContext } from "../utils/job-context";
-import { extractDuplicateRows, failIngestJob, loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import { extractDuplicateRows, loadJobResources } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 import { getIngestFilePath } from "../utils/upload-path";
-
-/**
- * Updates import file status based on the status of all associated jobs.
- */
-
-const updateIngestFileStatusIfAllJobsComplete = async (
-  payload: Payload,
-  ingestFileId: string | number
-): Promise<void> => {
-  // Check if all import jobs for this file are completed or failed
-  const pendingJobs = await payload.find({
-    collection: COLLECTION_NAMES.INGEST_JOBS,
-    where: {
-      ingestFile: { equals: ingestFileId },
-      stage: { not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED] },
-    },
-    limit: 1,
-  });
-
-  // If no pending jobs, check if any failed
-  if (pendingJobs.docs.length === 0) {
-    const failedJobs = await payload.find({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      where: { ingestFile: { equals: ingestFileId }, stage: { equals: PROCESSING_STAGE.FAILED } },
-      limit: 1,
-    });
-
-    // Update import file status based on job outcomes
-    const newStatus = failedJobs.docs.length > 0 ? "failed" : "completed";
-    await payload.update({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId, data: { status: newStatus } });
-  }
-};
 
 // Extract helper functions to reduce complexity
 
@@ -206,6 +174,7 @@ const markJobCompleted = async (
     (currentJob.duplicates?.summary?.internalDuplicates ?? 0) +
     (currentJob.duplicates?.summary?.externalDuplicates ?? 0);
 
+  // Store results and mark job as COMPLETED
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
@@ -218,6 +187,7 @@ const markJobCompleted = async (
         errors: currentJob.errors?.length ?? 0,
       },
     },
+    context: { skipStageTransition: true },
   });
 
   // Clean up sidecar CSV files
@@ -280,19 +250,9 @@ const updateJobErrors = async (
   return storedErrorCount + errorsToStore.length;
 };
 
-const handleJobError = async (
-  payload: Payload,
-  ingestJobId: string | number,
-  error: unknown,
-  filePath: string,
-  sheetIndex: number
-) => {
-  logError(error, "Event creation failed", { ingestJobId });
-
+const cleanupOnError = (filePath: string, sheetIndex: number) => {
   // Clean up sidecar CSV files on error
   cleanupSidecarFiles(filePath, sheetIndex);
-
-  await failIngestJob(payload, ingestJobId, error, "create-events-batch");
 };
 
 const checkEventQuotaBeforeProcessing = async (
@@ -365,6 +325,33 @@ const cleanupPriorAttempt = async (
 
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
+  retries: 1,
+  outputSchema: [
+    { name: "success", type: "checkbox" as const, required: true },
+    { name: "eventCount", type: "number" as const },
+    { name: "duplicatesSkipped", type: "number" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskFailureCallbackArgs) => {
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+            context: "create-events-batch",
+          },
+        },
+        context: { skipStageTransition: true },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CreateEventsBatchJobInput["input"];
@@ -379,6 +366,14 @@ export const createEventsBatchJob = {
     let sheetIndex = 0;
 
     try {
+      // Set stage for UI progress tracking (workflow controls sequencing)
+      await payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { stage: PROCESSING_STAGE.CREATE_EVENTS },
+        context: { skipStageTransition: true },
+      });
+
       const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);
       filePath = getIngestFilePath(ingestFile.filename ?? "");
       sheetIndex = job.sheetIndex ?? 0;
@@ -454,10 +449,8 @@ export const createEventsBatchJob = {
       // Complete the stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
-      // Mark job completed and update import file status
+      // Mark job completed
       await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);
-      const ingestFileId = extractRelationId(job.ingestFile);
-      await updateIngestFileStatusIfAllJobsComplete(payload, ingestFileId!);
 
       logPerformance("Event creation", Date.now() - startTime, {
         ingestJobId,
@@ -467,25 +460,12 @@ export const createEventsBatchJob = {
         totalErrors,
       });
 
-      return {
-        output: {
-          totalBatches: batchNumber,
-          eventsCreated: totalEventsCreated,
-          eventsSkipped: totalEventsSkipped,
-          errors: totalErrors,
-        },
-      };
+      return { output: { success: true, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
     } catch (error) {
-      await handleJobError(payload, ingestJobId, error, filePath, sheetIndex);
+      logError(error, "Event creation failed", { ingestJobId });
+      cleanupOnError(filePath, sheetIndex);
 
-      try {
-        const failedJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
-        const ingestFileId = requireRelationId(failedJob.ingestFile, "ingestJob.ingestFile");
-        await updateIngestFileStatusIfAllJobsComplete(payload, ingestFileId);
-      } catch (updateError) {
-        logError(updateError, "Failed to update import file status", { ingestJobId });
-      }
-
+      // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;
     }
   },

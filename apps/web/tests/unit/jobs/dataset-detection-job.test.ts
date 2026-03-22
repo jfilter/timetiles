@@ -335,7 +335,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       );
       // eslint-enable promise/prefer-await-to-then
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid import file ID");
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result).toEqual({ output: { success: false, reason: "Invalid import file ID" } });
 
       expect(mockPayload.create).toHaveBeenCalledTimes(1);
       expect(mockPayload.create).toHaveBeenCalledWith({
@@ -369,7 +371,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       );
       // eslint-enable promise/prefer-await-to-then
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid catalog ID");
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result).toEqual({ output: { success: false, reason: "Invalid catalog ID" } });
 
       expect(mockPayload.find).not.toHaveBeenCalled();
       expect(mockPayload.create).not.toHaveBeenCalled();
@@ -383,7 +387,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     it("should handle missing import file gracefully", async () => {
       mockPayload.findByID.mockResolvedValueOnce(null);
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result).toEqual({ output: { success: false, reason: "Ingest file not found" } });
     });
 
     it("should handle missing catalog gracefully", async () => {
@@ -400,7 +406,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Mock the find call for catalog to return empty docs
       mockPayload.find.mockResolvedValueOnce({ docs: [] });
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output).toHaveProperty("success", false);
     });
 
     it("should handle file parsing errors", async () => {
@@ -416,7 +424,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       mocks.fs.existsSync.mockReturnValue(false);
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output).toHaveProperty("success", false);
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-files",
@@ -439,7 +449,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Mock invalid CSV content that will cause parsing errors
       mocks.fs.readFileSync.mockReturnValue("invalid,csv,data\nwith,malformed\nrows");
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output).toHaveProperty("success", false);
     });
 
     it("should handle Excel parsing errors", async () => {
@@ -456,7 +468,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Mock invalid Excel content that will cause SheetJS to throw
       mocks.fs.readFileSync.mockReturnValue(Buffer.from("invalid excel content"));
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output).toHaveProperty("success", false);
     });
   });
 
@@ -478,7 +492,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Mock find calls for catalog and dataset
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output).toHaveProperty("success", false);
     });
 
     it("should handle Excel file with empty sheets", async () => {
@@ -504,7 +520,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(mockCatalog);
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("No valid sheets found in file");
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result).toEqual({ output: { success: false, reason: "No valid sheets found in file" } });
     });
 
     it("should handle unsupported file formats", async () => {
@@ -521,7 +539,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       // Mock find calls for catalog
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output).toHaveProperty("success", false);
     });
 
     it("should handle very large files gracefully", async () => {
@@ -710,7 +730,10 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
       mocks.fs.existsSync.mockReturnValue(false);
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Cannot access file");
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output).toHaveProperty("success", false);
+      expect(result.output).toHaveProperty("reason", expect.stringContaining("Cannot access file"));
     });
   });
 });

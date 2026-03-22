@@ -224,8 +224,8 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // Execute job
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // Verify result — new output format
-      expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 2, eventsSkipped: 0, errors: 0 } });
+      // Verify result — workflow-compatible output format
+      expect(result).toEqual({ output: { success: true, eventCount: 2, duplicatesSkipped: 0 } });
 
       // Verify streaming was used
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith("/mock/ingest-files/test.csv", {
@@ -281,10 +281,17 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       mockPayload.update.mockResolvedValue({});
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      await createEventsBatchJob.handler(mockContext);
+      const result = await createEventsBatchJob.handler(mockContext);
 
+      // Job handler marks the ingest job as COMPLETED; the afterChange hook
+      // on ingest-jobs handles updating the ingest file status.
+      expect(result).toEqual({ output: { success: true, eventCount: 1, duplicatesSkipped: 0 } });
       expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({ collection: "ingest-files", id: "file-789", data: { status: "completed" } })
+        expect.objectContaining({
+          collection: "ingest-jobs",
+          id: "import-123",
+          data: expect.objectContaining({ stage: "completed" }),
+        })
       );
     });
 
@@ -339,10 +346,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       expect(result).toEqual({
         output: {
-          totalBatches: 1,
-          eventsCreated: 1, // Only first row created
-          eventsSkipped: 2, // Second and third rows skipped
-          errors: 0,
+          success: true,
+          eventCount: 1, // Only first row created
+          duplicatesSkipped: 2, // Second and third rows skipped
         },
       });
 
@@ -395,7 +401,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // Should indicate all batches processed
-      expect(result).toEqual({ output: { totalBatches: 2, eventsCreated: 4, eventsSkipped: 0, errors: 0 } });
+      expect(result).toEqual({ output: { success: true, eventCount: 4, duplicatesSkipped: 0 } });
 
       // Should bulk-insert events in 2 batches (2 events each)
       expect(mocks.bulkInsertEvents).toHaveBeenCalledTimes(2);
@@ -449,7 +455,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       await createEventsBatchJob.handler(mockContext);
 
-      // Should mark as completed
+      // Should store results and mark stage as COMPLETED
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
@@ -462,6 +468,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             errors: 0,
           },
         },
+        context: { skipStageTransition: true },
       });
     });
   });
@@ -561,7 +568,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // 4 created (bulk inserted), 0 skipped (no duplicates), 1 error — no double-counting
-      expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 4, eventsSkipped: 0, errors: 1 } });
+      expect(result).toEqual({ output: { success: true, eventCount: 4, duplicatesSkipped: 0 } });
 
       // Uses updateAndCompleteBatch (combined progress + batch completion in a single DB write).
       // Single batch (batchNumber=1), so the final write after the loop fires.
@@ -620,18 +627,19 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       expect(drizzleMock.delete).toHaveBeenCalledTimes(2);
 
       // Verify the handler continued normally and produced a result
-      expect(result).toEqual({ output: { totalBatches: 1, eventsCreated: 1, eventsSkipped: 0, errors: 0 } });
+      expect(result).toEqual({ output: { success: true, eventCount: 1, duplicatesSkipped: 0 } });
     });
   });
 
   describe("Error Handling", () => {
-    it("should throw error when ingest job not found", async () => {
-      mockPayload.findByID.mockResolvedValueOnce(null);
+    it("should throw Error when ingest job not found (onFail handles failure marking)", async () => {
+      mockPayload.findByID.mockResolvedValue(null);
+      mockPayload.update.mockResolvedValue({});
 
-      await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Ingest job not found: import-123");
+      await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Ingest job not found");
     });
 
-    it("should throw error when dataset not found", async () => {
+    it("should throw Error when dataset not found (onFail handles failure marking)", async () => {
       const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
@@ -640,11 +648,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Dataset not found");
     });
 
-    it("should throw error when ingest file not found", async () => {
+    it("should throw Error when ingest file not found (onFail handles failure marking)", async () => {
       const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
@@ -658,6 +667,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(null); // Ingest file not found
+      mockPayload.update.mockResolvedValue({});
 
       await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
@@ -751,9 +761,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      expect(result).toEqual({ output: { totalBatches: 0, eventsCreated: 0, eventsSkipped: 0, errors: 0 } });
+      expect(result).toEqual({ output: { success: true, eventCount: 0, duplicatesSkipped: 0 } });
 
-      // Should mark as completed
+      // Should store results (no stage: "completed" — workflow handles that)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
@@ -766,6 +776,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
             errors: 0,
           },
         },
+        context: { skipStageTransition: true },
       });
     });
   });

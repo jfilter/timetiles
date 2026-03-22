@@ -165,9 +165,9 @@ describe.sequential("urlFetchJob", () => {
         })
       );
 
-      // Verify dataset detection was queued
+      // Verify manual-ingest workflow was queued
       expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-        task: "dataset-detection",
+        workflow: "manual-ingest",
         input: { ingestFileId: "import-123" },
       });
 

@@ -331,7 +331,7 @@ export const createMockIngestJob = (options: MockIngestJobOptions = {}) => {
       "analyze-duplicates": createStageProgress(),
       "detect-schema": createStageProgress(),
       "validate-schema": createStageProgress(),
-      "await-approval": createStageProgress(),
+      "needs-review": createStageProgress(),
       "create-schema-version": createStageProgress(),
       "geocode-batch": createStageProgress(),
       "create-events": createStageProgress(),

@@ -16,7 +16,7 @@ export const PROCESSING_STAGE = {
   ANALYZE_DUPLICATES: "analyze-duplicates",
   DETECT_SCHEMA: "detect-schema",
   VALIDATE_SCHEMA: "validate-schema",
-  AWAIT_APPROVAL: "await-approval",
+  NEEDS_REVIEW: "needs-review",
   CREATE_SCHEMA_VERSION: "create-schema-version",
   GEOCODE_BATCH: "geocode-batch",
   CREATE_EVENTS: "create-events",

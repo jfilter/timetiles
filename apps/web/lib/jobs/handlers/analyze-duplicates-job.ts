@@ -23,8 +23,8 @@ import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
-import type { JobHandlerContext } from "../utils/job-context";
-import { failIngestJob, loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
 
 interface DuplicateAnalysisResult {
@@ -49,7 +49,6 @@ const skipDeduplication = async (
       collection: COLLECTION_NAMES.INGEST_JOBS,
       id: ingestJobId,
       data: {
-        stage: PROCESSING_STAGE.DETECT_SCHEMA,
         duplicates: {
           strategy: "disabled",
           internal: [],
@@ -57,6 +56,7 @@ const skipDeduplication = async (
           summary: { totalRows, uniqueRows: totalRows, internalDuplicates: 0, externalDuplicates: 0 },
         },
       },
+      context: { skipStageTransition: true },
     });
     return true;
   }
@@ -207,8 +207,8 @@ const updateJobWithDuplicates = async (
           externalDuplicates: results.externalDuplicates.length,
         },
       },
-      stage: PROCESSING_STAGE.DETECT_SCHEMA,
     },
+    context: { skipStageTransition: true },
   });
 };
 
@@ -235,7 +235,7 @@ const handleDisabledDedup = async (
   job: IngestJob,
   dataset: Dataset,
   logger: ReturnType<typeof createJobLogger>
-): Promise<{ output: { skipped: boolean } } | null> => {
+): Promise<{ output: { success: boolean; skipped: boolean } } | null> => {
   if (dataset?.deduplicationConfig?.enabled) {
     return null;
   }
@@ -247,7 +247,7 @@ const handleDisabledDedup = async (
   const shouldSkip = await skipDeduplication(payload, ingestJobId, fileTotalRows, dataset, logger);
   if (shouldSkip) {
     await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
-    return { output: { skipped: true } };
+    return { output: { success: true, skipped: true } };
   }
 
   return null;
@@ -255,6 +255,36 @@ const handleDisabledDedup = async (
 
 export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
+  retries: 1,
+  outputSchema: [
+    { name: "success", type: "checkbox" as const, required: true },
+    { name: "totalRows", type: "number" as const },
+    { name: "uniqueRows", type: "number" as const },
+    { name: "internalDuplicates", type: "number" as const },
+    { name: "externalDuplicates", type: "number" as const },
+    { name: "skipped", type: "checkbox" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskFailureCallbackArgs) => {
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+            context: "analyze-duplicates",
+          },
+        },
+        context: { skipStageTransition: true },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as AnalyzeDuplicatesJobInput["input"];
@@ -294,6 +324,7 @@ export const analyzeDuplicatesJob = {
 
       return {
         output: {
+          success: true,
           totalRows: results.totalRows,
           uniqueRows: results.uniqueRows,
           internalDuplicates: results.internalDuplicates.length,
@@ -312,8 +343,7 @@ export const analyzeDuplicatesJob = {
         // Best-effort cleanup — don't mask the original error
       }
 
-      await failIngestJob(payload, ingestJobId, error, "analyze-duplicates");
-
+      // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;
     }
   },

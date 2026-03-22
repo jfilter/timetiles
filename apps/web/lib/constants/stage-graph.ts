@@ -1,15 +1,15 @@
 /**
  * Canonical stage graph for the import pipeline.
  *
- * Single source of truth for stage transitions, recovery stages, and
- * stage-to-job-type mapping. All consumers (StageTransitionService,
- * ErrorRecoveryService, import-jobs hooks) derive from this module.
+ * Defines stage ordering and recovery stages used by UI, hooks, and
+ * error recovery. Stage transitions and job-type mapping are handled
+ * by Payload Workflows.
  *
  * @module
  * @category Constants
  */
-import type { JobType, ProcessingStage } from "./ingest-constants";
-import { JOB_TYPES, PROCESSING_STAGE } from "./ingest-constants";
+import type { ProcessingStage } from "./ingest-constants";
+import { PROCESSING_STAGE } from "./ingest-constants";
 
 /**
  * Ordered processing stages (excludes terminal COMPLETED/FAILED).
@@ -18,7 +18,7 @@ export const STAGE_ORDER: readonly ProcessingStage[] = [
   PROCESSING_STAGE.ANALYZE_DUPLICATES,
   PROCESSING_STAGE.DETECT_SCHEMA,
   PROCESSING_STAGE.VALIDATE_SCHEMA,
-  PROCESSING_STAGE.AWAIT_APPROVAL,
+  PROCESSING_STAGE.NEEDS_REVIEW,
   PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
   PROCESSING_STAGE.GEOCODE_BATCH,
   PROCESSING_STAGE.CREATE_EVENTS,
@@ -26,7 +26,7 @@ export const STAGE_ORDER: readonly ProcessingStage[] = [
 
 /**
  * Stages that a FAILED job can recover to (as tuple for Zod enum compatibility).
- * Must be stages that queue a background job (excludes AWAIT_APPROVAL).
+ * Must be stages that queue a background job (excludes NEEDS_REVIEW).
  */
 export const RECOVERY_STAGES_LIST = [
   PROCESSING_STAGE.ANALYZE_DUPLICATES,
@@ -40,60 +40,9 @@ export const RECOVERY_STAGES_LIST = [
 export const RECOVERY_STAGES: ReadonlySet<ProcessingStage> = new Set(RECOVERY_STAGES_LIST);
 
 /**
- * Valid stage transitions.
- *
- * The FAILED entry is derived from RECOVERY_STAGES to prevent drift.
- */
-export const VALID_TRANSITIONS: Partial<Record<ProcessingStage, readonly ProcessingStage[]>> = {
-  [PROCESSING_STAGE.ANALYZE_DUPLICATES]: [PROCESSING_STAGE.DETECT_SCHEMA],
-  [PROCESSING_STAGE.DETECT_SCHEMA]: [PROCESSING_STAGE.VALIDATE_SCHEMA],
-  [PROCESSING_STAGE.VALIDATE_SCHEMA]: [
-    PROCESSING_STAGE.AWAIT_APPROVAL,
-    PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
-    PROCESSING_STAGE.GEOCODE_BATCH,
-  ],
-  [PROCESSING_STAGE.AWAIT_APPROVAL]: [PROCESSING_STAGE.CREATE_SCHEMA_VERSION],
-  [PROCESSING_STAGE.CREATE_SCHEMA_VERSION]: [PROCESSING_STAGE.GEOCODE_BATCH],
-  [PROCESSING_STAGE.GEOCODE_BATCH]: [PROCESSING_STAGE.CREATE_EVENTS],
-  [PROCESSING_STAGE.CREATE_EVENTS]: [PROCESSING_STAGE.COMPLETED],
-  [PROCESSING_STAGE.COMPLETED]: [],
-  [PROCESSING_STAGE.FAILED]: [...RECOVERY_STAGES],
-};
-
-/**
- * Maps each processing stage to its background job type.
- * Stages with no automatic job (AWAIT_APPROVAL, COMPLETED, FAILED) map to null.
- */
-export const STAGE_TO_JOB_TYPE: Partial<Record<ProcessingStage, JobType | null>> = {
-  [PROCESSING_STAGE.ANALYZE_DUPLICATES]: JOB_TYPES.ANALYZE_DUPLICATES,
-  [PROCESSING_STAGE.DETECT_SCHEMA]: JOB_TYPES.DETECT_SCHEMA,
-  [PROCESSING_STAGE.VALIDATE_SCHEMA]: JOB_TYPES.VALIDATE_SCHEMA,
-  [PROCESSING_STAGE.AWAIT_APPROVAL]: null,
-  [PROCESSING_STAGE.CREATE_SCHEMA_VERSION]: JOB_TYPES.CREATE_SCHEMA_VERSION,
-  [PROCESSING_STAGE.GEOCODE_BATCH]: JOB_TYPES.GEOCODE_BATCH,
-  [PROCESSING_STAGE.CREATE_EVENTS]: JOB_TYPES.CREATE_EVENTS,
-  [PROCESSING_STAGE.COMPLETED]: null,
-  [PROCESSING_STAGE.FAILED]: null,
-};
-
-/**
  * Check if a stage is a valid recovery target from FAILED.
  */
 export const isRecoveryStage = (stage: string): boolean => RECOVERY_STAGES.has(stage as ProcessingStage);
-
-/**
- * Check if a stage transition is valid.
- */
-export const isValidTransition = (from: string, to: string): boolean => {
-  // Any stage can transition to FAILED
-  if (to === PROCESSING_STAGE.FAILED) return true;
-
-  // Same-stage updates are allowed
-  if (from === to) return true;
-
-  const validTargets = VALID_TRANSITIONS[from as ProcessingStage] ?? [];
-  return validTargets.includes(to as ProcessingStage);
-};
 
 /**
  * Get the next recovery stage after a given lastSuccessfulStage.

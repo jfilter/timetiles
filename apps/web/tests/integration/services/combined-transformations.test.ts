@@ -81,7 +81,7 @@ describe.sequential("Combined Transformations Integration", () => {
       payload,
       ingestFileId,
       (ingestJob) =>
-        ingestJob.stage === "await-approval" || ingestJob.stage === "completed" || ingestJob.stage === "failed",
+        ingestJob.stage === "needs-review" || ingestJob.stage === "completed" || ingestJob.stage === "failed",
       { maxIterations: 20 }
     );
     expect(result.matched).toBe(true);

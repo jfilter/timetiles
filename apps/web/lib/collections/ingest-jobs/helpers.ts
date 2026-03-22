@@ -15,38 +15,46 @@ export const isJobCompleted = (doc: IngestJob): boolean => {
 };
 
 export const handleJobCompletion = async (payload: Payload, doc: IngestJob, req?: PayloadRequest): Promise<void> => {
+  logger.info("handleJobCompletion called", { ingestJobId: doc.id, stage: doc.stage });
+
   // Extract ingest file ID, handling both relationship object and direct ID cases
   const ingestFileId = requireRelationId(doc.ingestFile, "ingestJob.ingestFile");
 
-  // Check if all jobs for this ingest file are completed before marking file as completed
-  const allJobs = await payload.find({
+  // Check if all jobs for this ingest file are completed before marking file as completed.
+  // Note: The current doc may not be committed yet (afterChange fires within the transaction),
+  // so we query other jobs and use the current doc's stage directly.
+  const otherJobs = await payload.find({
     collection: COLLECTION_NAMES.INGEST_JOBS,
-    where: { ingestFile: { equals: ingestFileId } },
+    where: {
+      ingestFile: { equals: ingestFileId },
+      id: { not_equals: doc.id }, // Exclude current doc (use its live stage instead)
+    },
     pagination: false,
   });
 
-  const allCompleted = allJobs.docs.every(
+  const currentDocDone = doc.stage === PROCESSING_STAGE.COMPLETED || doc.stage === PROCESSING_STAGE.FAILED;
+  const othersDone = otherJobs.docs.every(
     (job: IngestJob) => job.stage === PROCESSING_STAGE.COMPLETED || job.stage === PROCESSING_STAGE.FAILED
   );
+  const allCompleted = currentDocDone && othersDone;
 
   if (allCompleted) {
-    // All jobs for this file are done, mark file as completed
-    const hasFailures = allJobs.docs.some((job: IngestJob) => job.stage === PROCESSING_STAGE.FAILED);
+    const hasFailures =
+      doc.stage === PROCESSING_STAGE.FAILED ||
+      otherJobs.docs.some((job: IngestJob) => job.stage === PROCESSING_STAGE.FAILED);
+
     await payload.update({
       collection: COLLECTION_NAMES.INGEST_FILES,
       id: ingestFileId,
-      req, // Pass req to stay in same transaction
+      req,
       data: { status: hasFailures ? "failed" : "completed" },
-      context: {
-        ...req?.context,
-        skipIngestFileHooks: true, // Prevent infinite loops
-      },
+      context: { ...req?.context, skipIngestFileHooks: true },
     });
 
     logger.info("Updated ingest file status", {
       ingestFileId,
       status: hasFailures ? "failed" : "completed",
-      totalJobs: allJobs.docs.length,
+      totalJobs: otherJobs.docs.length + 1,
     });
   }
 };

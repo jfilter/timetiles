@@ -382,9 +382,9 @@ const processScheduledScrapers = async (
       }
 
       try {
-        // Queue scraper execution job
+        // Queue scraper-ingest workflow
         await payload.jobs.queue({
-          task: "scraper-execution",
+          workflow: "scraper-ingest",
           input: { scraperId: scraper.id, triggeredBy: "schedule" },
         });
 

@@ -443,7 +443,7 @@ describe.sequential("Schema Approval Workflow", () => {
         data: {
           ingestFile: testIngestFileId,
           dataset: testDatasetId,
-          stage: "await-approval",
+          stage: "needs-review",
           sheetIndex: 0,
           schema: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
         },
@@ -472,15 +472,15 @@ describe.sequential("Schema Approval Workflow", () => {
       ).toBe(adminUser.id);
 
       // In a real system, the approval would trigger the import job to continue
-      // The job would move from "await-approval" to the next stage
+      // The job would move from "needs-review" to the next stage
       // We can verify the job system is available for this
       expect(payload.jobs).toBeDefined();
       expect(payload.jobs.queue).toBeDefined();
 
-      // The import record should still be in await-approval stage
+      // The import record should still be in needs-review stage
       // (actual progression would happen via hooks in production)
       const updatedImport = await payload.findByID({ collection: "ingest-jobs", id: importRecord.id });
-      expect(updatedImport.stage).toBe("await-approval");
+      expect(updatedImport.stage).toBe("needs-review");
     });
 
     it("handles multiple pending imports waiting for same schema", async () => {
@@ -489,7 +489,7 @@ describe.sequential("Schema Approval Workflow", () => {
       for (let i = 1; i <= 3; i++) {
         const imp = await payload.create({
           collection: "ingest-jobs",
-          data: { ingestFile: testIngestFileId, dataset: testDatasetId, stage: "await-approval", sheetIndex: 0 },
+          data: { ingestFile: testIngestFileId, dataset: testDatasetId, stage: "needs-review", sheetIndex: 0 },
         });
         imports.push(imp);
       }

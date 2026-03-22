@@ -8,7 +8,7 @@
  * - Determining whether the changes can be automatically approved based on the dataset's configuration.
  *
  * Next stage routing:
- * - If changes require manual approval → `AWAIT_APPROVAL` stage
+ * - If changes require manual approval → `NEEDS_REVIEW` stage
  * - If changes are auto-approved → `CREATE_SCHEMA_VERSION` stage
  * - If no schema changes → `GEOCODE_BATCH` stage
  *
@@ -20,17 +20,15 @@ import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/i
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { createQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { parseStrictInteger } from "@/lib/utils/event-params";
-import type { IngestJob, User } from "@/payload-types";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
-import type { JobHandlerContext } from "../utils/job-context";
-import { failIngestJob, loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext, TaskFailureCallbackArgs } from "../utils/job-context";
+import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
 
 // Helper function to get schema from cached builder state
@@ -187,41 +185,6 @@ const getApprovalReason = (hasHighConfidenceTransforms: boolean, isBreaking: boo
   return "Manual approval required by dataset configuration";
 };
 
-/**
- * Check quota limits for the import
- */
-const checkImportQuotas = async (payload: Payload, user: User, job: IngestJob, jobIdTyped: number): Promise<void> => {
-  const quotaService = createQuotaService(payload);
-
-  // Calculate total events to be imported (considering duplicates)
-  const totalRows = job.duplicates?.summary?.totalRows ?? 0;
-  const internalDuplicates = job.duplicates?.summary?.internalDuplicates ?? 0;
-  const externalDuplicates = job.duplicates?.summary?.externalDuplicates ?? 0;
-  const eventsToImport = totalRows - internalDuplicates - externalDuplicates;
-
-  // Check maxEventsPerImport quota
-  const eventQuotaCheck = await quotaService.checkQuota(user, "EVENTS_PER_IMPORT", eventsToImport);
-
-  if (!eventQuotaCheck.allowed) {
-    const errorMessage = `This import would create ${eventsToImport} events, exceeding your limit of ${eventQuotaCheck.limit} events per import.`;
-
-    await failIngestJob(payload, jobIdTyped, errorMessage, "validate-schema-quota");
-
-    throw new Error(errorMessage);
-  }
-
-  // Check total events quota
-  const totalEventsCheck = await quotaService.checkQuota(user, "TOTAL_EVENTS", eventsToImport);
-
-  if (!totalEventsCheck.allowed) {
-    const errorMessage = `Creating ${eventsToImport} events would exceed your total events limit (${totalEventsCheck.current}/${totalEventsCheck.limit}).`;
-
-    await failIngestJob(payload, jobIdTyped, errorMessage, "validate-schema-quota");
-
-    throw new Error(errorMessage);
-  }
-};
-
 /** Transform SchemaComparison changes into structured breaking/new-field lists for job output */
 const extractSchemaChanges = (comparison: SchemaComparison, detectedSchema: Record<string, unknown>) => {
   const breakingChanges = comparison.changes
@@ -287,6 +250,8 @@ const handleSchemaModeFailure = async (
 
   return {
     output: {
+      success: false,
+      reason: "strict-mode-violation",
       requiresApproval: false,
       hasBreakingChanges: validationData.isBreaking,
       newFields: validationData.newFields.length,
@@ -296,7 +261,8 @@ const handleSchemaModeFailure = async (
   };
 };
 
-// Apply validation result — determines next stage and updates the job
+// Apply validation result — updates the job with validation data
+// Workflow handler controls stage sequencing; this only sets stage for needs-review (pause)
 const applyValidationResult = async (
   payload: Payload,
   jobIdTyped: number,
@@ -312,38 +278,48 @@ const applyValidationResult = async (
     hasChanges: boolean;
   }
 ) => {
-  let nextStage: (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
+  const updateData: Record<string, unknown> = {
+    schema: resultData.detectedSchema,
+    schemaValidation: {
+      isCompatible: !resultData.comparison.isBreaking,
+      breakingChanges: resultData.breakingChanges,
+      newFields: resultData.newFields,
+      transformSuggestions: resultData.transformSuggestions,
+      requiresApproval: resultData.requiresApproval,
+      approvalReason: resultData.approvalReason,
+    },
+  };
+
+  // Only set stage when pausing for review — workflow handles all other transitions
   if (resultData.requiresApproval) {
-    nextStage = PROCESSING_STAGE.AWAIT_APPROVAL;
-  } else if (resultData.hasChanges) {
-    nextStage = PROCESSING_STAGE.CREATE_SCHEMA_VERSION;
-  } else {
-    nextStage = PROCESSING_STAGE.GEOCODE_BATCH;
+    updateData.stage = PROCESSING_STAGE.NEEDS_REVIEW;
   }
 
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: jobIdTyped,
-    data: {
-      schema: resultData.detectedSchema,
-      schemaValidation: {
-        isCompatible: !resultData.comparison.isBreaking,
-        breakingChanges: resultData.breakingChanges,
-        newFields: resultData.newFields,
-        transformSuggestions: resultData.transformSuggestions,
-        requiresApproval: resultData.requiresApproval,
-        approvalReason: resultData.approvalReason,
-      },
-      stage: nextStage,
-    },
+    data: updateData,
+    context: { skipStageTransition: true },
   });
 
   await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
+  if (resultData.requiresApproval) {
+    return {
+      output: {
+        success: false,
+        reason: "needs-review",
+        requiresApproval: true,
+        hasBreakingChanges: resultData.comparison.isBreaking,
+        newFields: resultData.newFields.length,
+      },
+    };
+  }
+
   return {
-    nextStage,
     output: {
-      requiresApproval: resultData.requiresApproval,
+      success: true,
+      hasChanges: resultData.hasChanges,
       hasBreakingChanges: resultData.comparison.isBreaking,
       newFields: resultData.newFields.length,
     },
@@ -363,6 +339,37 @@ const cleanupSidecarsOnError = async (payload: Payload, jobId: number): Promise<
 
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
+  retries: 1,
+  outputSchema: [
+    { name: "success", type: "checkbox" as const, required: true },
+    { name: "requiresApproval", type: "checkbox" as const },
+    { name: "hasBreakingChanges", type: "checkbox" as const },
+    { name: "hasChanges", type: "checkbox" as const },
+    { name: "newFields", type: "number" as const },
+    { name: "failed", type: "checkbox" as const },
+    { name: "failureReason", type: "text" as const },
+    { name: "reason", type: "text" as const },
+  ],
+  onFail: async (args: TaskFailureCallbackArgs) => {
+    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: {
+          stage: PROCESSING_STAGE.FAILED,
+          errorLog: {
+            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
+            context: "validate-schema",
+          },
+        },
+        context: { skipStageTransition: true },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
@@ -378,23 +385,18 @@ export const validateSchemaJob = {
     const startTime = Date.now();
 
     try {
+      // Set stage for UI progress display (workflow controls sequencing)
+      await payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
+        context: { skipStageTransition: true },
+      });
+
       const { job, dataset, ingestFile } = await loadJobResources(payload, jobIdTyped);
 
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
       await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA, uniqueRows);
-
-      // Check event quota
-      if (ingestFile.user) {
-        const user =
-          typeof ingestFile.user === "object"
-            ? ingestFile.user
-            : await payload.findByID({ collection: "users", id: ingestFile.user });
-
-        if (user) {
-          await checkImportQuotas(payload, user, job, jobIdTyped);
-          logger.info("Event quotas validated");
-        }
-      }
 
       // Schema detection and comparison
       const { detectedSchema } = await getSchemaFromCache({ schemaBuilderState: job.schemaBuilderState });
@@ -454,14 +456,14 @@ export const validateSchemaJob = {
         requiresApproval,
       });
 
-      return { output: result.output };
+      return result;
     } catch (error) {
       logError(error, "Schema validation failed", { ingestJobId });
 
       await cleanupSidecarsOnError(payload, jobIdTyped);
 
-      await failIngestJob(payload, jobIdTyped, error, "validate-schema");
-
+      // Re-throw — Payload retries up to `retries` count, then onFail handles failure.
+      // JobCancelledError (e.g. quota exceeded) skips retries entirely.
       throw error;
     }
   },

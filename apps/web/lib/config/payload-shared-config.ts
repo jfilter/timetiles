@@ -61,6 +61,8 @@ import {
   urlFetchJob,
   validateSchemaJob,
 } from "@/lib/jobs/ingest-jobs";
+// Import workflows
+export { ALL_WORKFLOWS } from "@/lib/jobs/workflows";
 // Import migrations
 import { migrations } from "@/migrations";
 

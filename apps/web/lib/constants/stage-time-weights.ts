@@ -20,14 +20,14 @@ import { PROCESSING_STAGE } from "./ingest-constants";
  * active (non-zero) weights equals TOTAL_ACTIVE_WEIGHT.
  *
  * Stages with weight 0 are excluded from progress calculations:
- * - AWAIT_APPROVAL: Manual user interaction, time unpredictable
+ * - NEEDS_REVIEW: Manual user interaction, time unpredictable
  * - COMPLETED/FAILED: Terminal states
  */
 export const STAGE_TIME_WEIGHTS = {
   [PROCESSING_STAGE.ANALYZE_DUPLICATES]: 10, // Fast, in-memory comparison
   [PROCESSING_STAGE.DETECT_SCHEMA]: 15, // File I/O, type inference
   [PROCESSING_STAGE.VALIDATE_SCHEMA]: 5, // Comparison only
-  [PROCESSING_STAGE.AWAIT_APPROVAL]: 0, // Manual - excluded from calculations
+  [PROCESSING_STAGE.NEEDS_REVIEW]: 0, // Manual - excluded from calculations
   [PROCESSING_STAGE.CREATE_SCHEMA_VERSION]: 5, // Single DB write
   [PROCESSING_STAGE.GEOCODE_BATCH]: 30, // External API calls (slowest)
   [PROCESSING_STAGE.CREATE_EVENTS]: 25, // Bulk DB inserts
@@ -53,7 +53,7 @@ export const STAGE_DISPLAY_NAMES = {
   [PROCESSING_STAGE.ANALYZE_DUPLICATES]: "Analyzing Duplicates",
   [PROCESSING_STAGE.DETECT_SCHEMA]: "Detecting Schema",
   [PROCESSING_STAGE.VALIDATE_SCHEMA]: "Validating Schema",
-  [PROCESSING_STAGE.AWAIT_APPROVAL]: "Awaiting Approval",
+  [PROCESSING_STAGE.NEEDS_REVIEW]: "Needs Review",
   [PROCESSING_STAGE.CREATE_SCHEMA_VERSION]: "Creating Schema Version",
   [PROCESSING_STAGE.GEOCODE_BATCH]: "Geocoding Locations",
   [PROCESSING_STAGE.CREATE_EVENTS]: "Creating Events",

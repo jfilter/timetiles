@@ -55,11 +55,11 @@ describe.sequential("Dataset Detection Job", () => {
     await testEnv.seedManager.truncate(collectionsToReset);
   });
 
-  it("should queue analyze-duplicates job after creating import-job", async () => {
+  it("should create import-job and complete the pipeline", async () => {
     // Create a simple CSV file
     const csvContent = "name,date\nEvent 1,2024-01-01\nEvent 2,2024-01-02\n";
 
-    // Create import file using helper
+    // Create import file using helper (triggers manual-ingest workflow via afterChange hook)
     const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: "test.csv",
       mimeType: "text/csv",
@@ -68,11 +68,11 @@ describe.sequential("Dataset Detection Job", () => {
       datasetsProcessed: 0,
     });
 
-    // NOTE: The ingest-files collection afterChange hook automatically queues dataset-detection
-    // So we just need to run the jobs, not queue manually
-
-    // Run the dataset-detection job (automatically queued by ingest-files hook)
-    await payload.jobs.run({ allQueues: true, limit: 10 });
+    // Run the workflow until completion (manual-ingest runs all stages)
+    for (let i = 0; i < 20; i++) {
+      const result = await payload.jobs.run({ allQueues: true, limit: 10 });
+      if (result.noJobsRemaining) break;
+    }
 
     // Check that import-job was created
     const importJobs = await payload.find({
@@ -82,19 +82,9 @@ describe.sequential("Dataset Detection Job", () => {
 
     expect(importJobs.docs).toHaveLength(1);
     const ingestJob = importJobs.docs[0];
-    expect(ingestJob.stage).toBe("analyze-duplicates");
 
-    // After dataset-detection, analyze-duplicates job should be queued
-    const result2 = await payload.jobs.run({ allQueues: true, limit: 10 });
-
-    // Verify analyze-duplicates job ran
-    expect(Object.keys(result2.jobStatus).length).toBeGreaterThan(0);
-
-    // Verify import-job progressed past analyze-duplicates stage
-    const updatedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob.id });
-
-    expect(updatedJob.stage).not.toBe("analyze-duplicates");
-    expect(updatedJob.stage).toBe("detect-schema"); // Should be at next stage
+    // Workflow runs all stages, so the job should have completed
+    expect(ingestJob.stage).toBe("completed");
   });
 
   it("should reuse existing dataset with matching name instead of creating new one", async () => {
@@ -163,8 +153,11 @@ describe.sequential("Dataset Detection Job", () => {
       },
     });
 
-    // Run the dataset-detection job (automatically queued by ingest-files hook)
-    await payload.jobs.run({ allQueues: true, limit: 10 });
+    // Run the workflow until completion (manual-ingest runs all stages)
+    for (let i = 0; i < 20; i++) {
+      const result = await payload.jobs.run({ allQueues: true, limit: 10 });
+      if (result.noJobsRemaining) break;
+    }
 
     // Check that import-job was created pointing to the wizard's pre-created dataset
     const importJobs = await payload.find({
@@ -175,7 +168,6 @@ describe.sequential("Dataset Detection Job", () => {
 
     expect(importJobs.docs).toHaveLength(1);
     const ingestJob = importJobs.docs[0];
-    expect(ingestJob.stage).toBe("analyze-duplicates");
 
     // Should use the dataset the wizard configured, not auto-create a new one
     const datasetId = extractRelationId(ingestJob.dataset);

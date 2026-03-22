@@ -154,11 +154,11 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
     expect(mockClaimScraperRunning).toHaveBeenCalledWith(expect.anything(), 1);
-    expect(mockPayload.jobs.queue).not.toHaveBeenCalledWith(expect.objectContaining({ task: "scraper-execution" }));
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalledWith(expect.objectContaining({ workflow: "scraper-ingest" }));
     expect(result.output.scrapersTriggered).toBe(0);
   });
 
-  it("should queue scraper-execution job for scrapers that are due", async () => {
+  it("should queue scraper-ingest workflow for scrapers that are due", async () => {
     const { mockPayload, mockJob, mockReq } = createMockContext();
 
     vi.setSystemTime(new Date("2026-03-15T12:05:00Z"));
@@ -177,7 +177,7 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
     expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-      task: "scraper-execution",
+      workflow: "scraper-ingest",
       input: { scraperId: 42, triggeredBy: "schedule" },
     });
     expect(result.output.scrapersTriggered).toBe(1);

@@ -352,7 +352,7 @@ export class ErrorRecoveryService {
             },
           },
         },
-        // Let the afterChange hook queue the appropriate job via StageTransitionService
+        // Let the afterChange hook handle the stage transition
       });
 
       if (updateResult.docs.length === 0) {
@@ -474,7 +474,7 @@ export class ErrorRecoveryService {
    * - No lastSuccessfulStage → restart from ANALYZE_DUPLICATES (beginning)
    *
    * Stage order: ANALYZE_DUPLICATES → DETECT_SCHEMA → VALIDATE_SCHEMA →
-   *              AWAIT_APPROVAL → GEOCODE_BATCH → CREATE_EVENTS
+   *              NEEDS_REVIEW → GEOCODE_BATCH → CREATE_EVENTS
    *
    * @private
    */
@@ -546,7 +546,7 @@ export class ErrorRecoveryService {
         const recoveryStage = this.determineRecoveryStage(job, classification);
 
         // Conditional update — if another process already moved this job, skip it.
-        // The afterChange hook queues the appropriate job via StageTransitionService.
+        // The afterChange hook handles the stage transition.
         const updateResult = await payload.update({
           collection: IMPORT_JOBS_COLLECTION,
           where: { id: { equals: job.id }, stage: { equals: PROCESSING_STAGE.FAILED } },
@@ -624,7 +624,7 @@ export class ErrorRecoveryService {
         updateData.retryAttempts = 0;
       }
 
-      // Let the afterChange hook queue the appropriate job via StageTransitionService
+      // Let the afterChange hook handle the stage transition
       await payload.update({ collection: IMPORT_JOBS_COLLECTION, id: job.id, data: updateData });
 
       logger.info("Manually reset job stage", {

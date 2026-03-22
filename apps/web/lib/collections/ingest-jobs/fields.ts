@@ -39,7 +39,7 @@ export const ingestJobFields: Field[] = [
       { label: "Analyze Duplicates", value: PROCESSING_STAGE.ANALYZE_DUPLICATES },
       { label: "Detect Schema", value: PROCESSING_STAGE.DETECT_SCHEMA },
       { label: "Validate Schema", value: PROCESSING_STAGE.VALIDATE_SCHEMA },
-      { label: "Await Approval", value: PROCESSING_STAGE.AWAIT_APPROVAL },
+      { label: "Needs Review", value: PROCESSING_STAGE.NEEDS_REVIEW },
       { label: "Create Schema Version", value: PROCESSING_STAGE.CREATE_SCHEMA_VERSION },
       { label: "Geocode Batch", value: PROCESSING_STAGE.GEOCODE_BATCH },
       { label: "Create Events", value: PROCESSING_STAGE.CREATE_EVENTS },
@@ -96,7 +96,7 @@ export const ingestJobFields: Field[] = [
       condition: (data) =>
         [
           PROCESSING_STAGE.VALIDATE_SCHEMA,
-          PROCESSING_STAGE.AWAIT_APPROVAL,
+          PROCESSING_STAGE.NEEDS_REVIEW,
           PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
           PROCESSING_STAGE.GEOCODE_BATCH,
           PROCESSING_STAGE.CREATE_EVENTS,
@@ -161,7 +161,7 @@ export const ingestJobFields: Field[] = [
         [
           PROCESSING_STAGE.DETECT_SCHEMA,
           PROCESSING_STAGE.VALIDATE_SCHEMA,
-          PROCESSING_STAGE.AWAIT_APPROVAL,
+          PROCESSING_STAGE.NEEDS_REVIEW,
           PROCESSING_STAGE.GEOCODE_BATCH,
           PROCESSING_STAGE.CREATE_EVENTS,
           PROCESSING_STAGE.COMPLETED,
@@ -228,6 +228,18 @@ export const ingestJobFields: Field[] = [
     ],
   },
 
+  // Review Metadata (multi-reason NEEDS_REVIEW)
+  {
+    name: "reviewReason",
+    type: "text",
+    admin: { position: "sidebar", description: "Why this job was paused for review" },
+  },
+  {
+    name: "reviewDetails",
+    type: "json",
+    admin: { position: "sidebar", description: "Detailed context for the review reason" },
+  },
+
   // Schema Version Reference
   {
     name: "datasetSchemaVersion",
@@ -248,7 +260,7 @@ export const ingestJobFields: Field[] = [
         [
           PROCESSING_STAGE.DETECT_SCHEMA,
           PROCESSING_STAGE.VALIDATE_SCHEMA,
-          PROCESSING_STAGE.AWAIT_APPROVAL,
+          PROCESSING_STAGE.NEEDS_REVIEW,
           PROCESSING_STAGE.GEOCODE_BATCH,
           PROCESSING_STAGE.CREATE_EVENTS,
           PROCESSING_STAGE.COMPLETED,
@@ -341,7 +353,7 @@ export const ingestJobFields: Field[] = [
       { label: "Analyze Duplicates", value: "analyze-duplicates" },
       { label: "Detect Schema", value: "detect-schema" },
       { label: "Validate Schema", value: "validate-schema" },
-      { label: "Await Approval", value: "await-approval" },
+      { label: "Needs Review", value: "needs-review" },
       { label: "Geocode Batch", value: "geocode-batch" },
       { label: "Create Events", value: "create-events" },
     ],
