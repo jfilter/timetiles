@@ -1,361 +1,166 @@
 # Configuration
 
-Complete reference for TimeTiles environment variables and settings.
+Environment variables and admin settings for TimeTiles.
 
-## Environment Variables
+## Required Variables
 
-### Required Variables
-
-These must be set for TimeTiles to function:
-
-```env
-# Database Connection
+```bash
 DATABASE_URL=postgresql://user:password@localhost:5432/timetiles
-
-# Security (generate with: openssl rand -base64 32)
-PAYLOAD_SECRET=your-secret-key-minimum-32-characters
+PAYLOAD_SECRET=your-secret-key-minimum-32-characters  # openssl rand -base64 32
 ```
 
-### Application Settings
+In production, also set:
 
-```env
-# Environment
-NODE_ENV=development|production
-
-# Application URLs
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_PAYLOAD_URL=http://localhost:3000
-
-# Logging
-LOG_LEVEL=info|debug|warn|error
-```
-
-### Geocoding Configuration
-
-TimeTiles supports multiple geocoding providers configured through the admin panel:
-
-#### Geocoding Providers
-
-Configure providers directly in the admin interface at `/dashboard/collections/geocoding-providers`:
-
-- **Add multiple providers** with different priorities
-- **Enable/disable providers** without restart
-- **Set API keys securely** in the admin UI
-- **Configure rate limits** per provider
-- **Tag providers** for environment-specific selection (production, development, testing)
-
-**Default Setup (Development Seeding):**
-
-- **Nominatim (OpenStreetMap)**: Enabled by default, free public instance, no API key required
-- **Google Maps**: Disabled by default, configure API key in admin panel to enable
-- **OpenCage**: Disabled by default, configure API key in admin panel to enable
-
-**Supported Providers:**
-
-- **Google Maps**: Most accurate, requires API key
-- **OpenCage**: Good alternative, requires API key
-- **Nominatim/OpenStreetMap**: Free, no API key needed
-
-Providers are tried in priority order (lower number = higher priority).
-
-#### Geocoding Settings
-
-Configure geocoding behavior at `/dashboard/globals/settings`:
-
-- **Enable/Disable Geocoding**: Toggle geocoding globally
-- **Provider Fallback**: Enable fallback to alternative providers on failure
-- **Selection Strategy**: Priority-based or tag-based provider selection
-- **Caching**: Enable/disable geocoding cache and set TTL (days)
-
-### File Upload Configuration
-
-Control file size limits and upload directories:
-
-```env
-# Maximum file sizes in bytes
-MAX_FILE_SIZE_AUTHENTICATED=104857600    # 100MB for authenticated users
-MAX_FILE_SIZE_UNAUTHENTICATED=10485760   # 10MB for unauthenticated users
-
-# Upload Directory Configuration
-# Base directory for all uploads (relative to apps/web or absolute path)
-# Subfolders are created automatically: /media and /ingest-files
-UPLOAD_DIR=uploads
-UPLOAD_TEMP_DIR=./tmp                    # Temporary directory for file processing
-```
-
-### Rate Limiting
-
-Configure rate limits for unauthenticated users:
-
-```env
-RATE_LIMIT_FILE_UPLOAD=5        # 5 uploads per hour
-RATE_LIMIT_PROGRESS_CHECK=100   # 100 progress checks per hour
-RATE_LIMIT_API_GENERAL=50       # 50 general API requests per hour
-RATE_LIMIT_WINDOW_MS=3600000    # 1 hour window in milliseconds
-```
-
-### Batch Processing
-
-Adjust these values to tune performance vs memory usage:
-
-```env
-BATCH_SIZE_DUPLICATE_ANALYSIS=5000   # Memory efficient for duplicate detection
-BATCH_SIZE_SCHEMA_DETECTION=10000    # Larger batches for schema building efficiency
-BATCH_SIZE_EVENT_CREATION=1000       # Smaller to avoid transaction timeouts
-BATCH_SIZE_DATABASE_CHUNK=1000       # Database query chunk size
-```
-
-### Cache Configuration
-
-Generic cache system settings:
-
-```env
-CACHE_BACKEND=filesystem               # Cache backend: memory or filesystem
-CACHE_DEFAULT_TTL=3600                 # Default cache TTL in seconds (1 hour)
-CACHE_MAX_SIZE_MB=500                  # Maximum cache size in MB
-CACHE_MAX_ENTRIES=1000                 # Maximum number of cache entries (memory backend)
-CACHE_DIR=.cache                       # Base cache directory (filesystem backend)
-CACHE_CLEANUP_INTERVAL_MS=3600000      # Cache cleanup interval (1 hour)
-```
-
-### Geocoding Cache
-
-Configure location cache cleanup:
-
-```env
-GEOCODING_CACHE_CLEANUP_DAYS=90   # Days before cleaning up unused cache entries
-GEOCODING_CACHE_MIN_HITS=3        # Minimum hits required to keep cache entry
-```
-
-### URL Fetch Cache
-
-For scheduled URL imports (outgoing requests):
-
-```env
-URL_FETCH_CACHE_DIR=/tmp/url-fetch-cache          # Directory for URL fetch cache storage
-URL_FETCH_CACHE_MAX_SIZE=104857600                # Maximum cache size in bytes (100MB)
-URL_FETCH_CACHE_TTL=3600                          # Default TTL in seconds
-URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=true        # Respect Cache-Control headers from external APIs
-```
-
-### Test Database Configuration
-
-Test databases are automatically derived from `DATABASE_URL`:
-
-- **E2E tests** use: `${database}_test` (e.g., `timetiles_test`)
-- **Unit/Integration tests** use: `${database}_test_${worker_id}` (e.g., `timetiles_test_1`, `timetiles_test_2`)
-
-No additional configuration needed - the test infrastructure handles this automatically.
-
-## Production vs Development
-
-### Development Settings (.env)
-
-```env
-NODE_ENV=development
-DATABASE_URL=postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
-PAYLOAD_SECRET=dev-secret-change-in-production
-LOG_LEVEL=debug
-```
-
-### Production Settings (.env.production)
-
-```env
+```bash
 NODE_ENV=production
-DATABASE_URL=postgresql://prod_user:strong_password@db.internal:5432/timetiles_prod
-PAYLOAD_SECRET=<generate-with-openssl-rand-base64-32>
-LOG_LEVEL=info
-ENABLE_SECURITY_HEADERS=true
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+LOG_LEVEL=info    # debug, info, warn, error
 ```
 
-## Configuration Files
+## Geocoding
 
-### Next.js Configuration
+TimeTiles geocodes text addresses to coordinates using multiple providers with automatic fallback. Configure providers in the admin dashboard at `/dashboard/collections/geocoding-providers`.
 
-The `apps/web/next.config.mjs` file contains:
+| Provider    | API Key Required | Notes                                                   |
+| ----------- | ---------------- | ------------------------------------------------------- |
+| Nominatim   | No               | Free, based on OpenStreetMap. Enabled by default        |
+| Google Maps | Yes              | Most accurate. Configure key in dashboard               |
+| OpenCage    | Yes              | Good international coverage. Configure key in dashboard |
 
-- Standalone output for production
-- Image optimization settings
-- Security headers
-- Webpack customizations
+Providers are tried in priority order (lower number = higher priority). If one fails, the next is tried automatically.
 
-### TypeScript Configuration
+**Global geocoding settings** at `/dashboard/globals/settings`:
 
-Strict mode is enabled across the monorepo with shared configs in `packages/typescript-config/`.
+- Enable/disable geocoding globally
+- Toggle provider fallback
+- Choose selection strategy (priority-based or tag-based)
+- Configure cache TTL
 
-### Database Configuration
-
-PostgreSQL settings can be tuned via environment variables or directly:
-
-```sql
--- For production workloads
-ALTER SYSTEM SET shared_buffers = '2GB';
-ALTER SYSTEM SET effective_cache_size = '6GB';
-ALTER SYSTEM SET work_mem = '64MB';
-ALTER SYSTEM SET maintenance_work_mem = '512MB';
-
--- Apply changes
-SELECT pg_reload_conf();
-```
-
-## Validation
-
-TimeTiles validates configuration on startup:
-
-1. **Required variables**: Checks for DATABASE_URL and PAYLOAD_SECRET
-2. **Database connection**: Verifies PostgreSQL is accessible
-3. **PostGIS extension**: Ensures spatial functions are available
-
-## Troubleshooting Configuration
-
-### Missing Environment Variables
+## File Uploads
 
 ```bash
-# Check loaded variables
-make dev
-# Look for warnings about missing configuration
+MAX_FILE_SIZE_AUTHENTICATED=104857600      # 100 MB
+MAX_FILE_SIZE_UNAUTHENTICATED=10485760     # 10 MB
+UPLOAD_DIR=uploads                         # Base directory for uploads
 ```
 
-### Invalid Database URL
+## Rate Limiting
+
+Rate limits for unauthenticated users (authenticated users have per-trust-level limits — see [Usage Limits](./usage-limits)):
 
 ```bash
-# Test connection
-psql $DATABASE_URL -c "SELECT 1"
+RATE_LIMIT_FILE_UPLOAD=5          # per hour
+RATE_LIMIT_PROGRESS_CHECK=100     # per hour
+RATE_LIMIT_API_GENERAL=50         # per hour
+RATE_LIMIT_WINDOW_MS=3600000      # 1 hour
 ```
 
-### Geocoding Issues
+## Batch Processing
 
-Check geocoding provider configuration in the admin panel at `/dashboard/collections/geocoding-providers`.
-
-To test a provider's API key directly:
+Tune performance vs. memory usage:
 
 ```bash
-# Test Google Maps API (replace YOUR_API_KEY with the key from admin panel)
-curl "https://maps.googleapis.com/maps/api/geocode/json?address=Paris&key=YOUR_API_KEY"
-
-# Test OpenCage API
-curl "https://api.opencagedata.com/geocode/v1/json?q=Paris&key=YOUR_API_KEY"
-
-# Test Nominatim (no key required)
-curl "https://nominatim.openstreetmap.org/search?q=Paris&format=json"
+BATCH_SIZE_DUPLICATE_ANALYSIS=5000    # Memory efficient for duplicate detection
+BATCH_SIZE_SCHEMA_DETECTION=10000     # Larger batches for schema building
+BATCH_SIZE_EVENT_CREATION=1000        # Smaller to avoid transaction timeouts
 ```
 
-## Dashboard
+## Caching
 
-The dashboard at `/dashboard` provides a web interface for managing data. All authenticated users can access it, with permissions based on role:
+```bash
+CACHE_BACKEND=filesystem           # memory or filesystem
+CACHE_DEFAULT_TTL=3600             # seconds (1 hour)
+CACHE_MAX_SIZE_MB=500
+CACHE_DIR=.cache
 
-- **User**: Manage their own catalogs, datasets, and imports
-- **Editor**: User permissions plus access to advanced dataset configuration and branding
-- **Admin**: Full access including user management, system settings, and feature flags
+# Geocoding cache cleanup
+GEOCODING_CACHE_CLEANUP_DAYS=90
+GEOCODING_CACHE_MIN_HITS=3
 
-## Content Management
-
-Editors and admins can manage site content through these features:
-
-### Pages
-
-Create custom pages with a block-based builder (`/dashboard/collections/pages`). Available blocks:
-
-- Hero, Features, Stats, Timeline, Testimonials
-- Rich Text, Call to Action, Newsletter forms
-
-Pages are accessible at `/{slug}`.
-
-### Navigation
-
-- **Main Menu** (`/dashboard/globals/main-menu`): Up to 6 navigation links
-- **Footer** (`/dashboard/globals/footer`): Tagline, social links, link columns, copyright
-
-### Newsletter
-
-Newsletter signup forms can be added to footer or pages. Configure the backend service URL in Settings (`/dashboard/globals/settings`) under "Newsletter Configuration".
-
-### Branding
-
-Customize site appearance in Branding (`/dashboard/globals/branding`):
-
-- **Site Name**: Displayed in header and browser tab
-- **Site Description**: Meta description for SEO
-- **Logos**: Separate uploads for light/dark themes
-- **Favicons**: Auto-generated from uploaded source images
+# URL fetch cache (for scheduled imports)
+URL_FETCH_CACHE_DIR=/tmp/url-fetch-cache
+URL_FETCH_CACHE_MAX_SIZE=104857600          # 100 MB
+URL_FETCH_CACHE_TTL=3600                    # seconds
+URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=true  # honor RFC 7234 headers
+```
 
 ## Feature Flags
 
-Feature flags are configured in Settings (`/dashboard/globals/settings`) under "Feature Flags":
+Configure in the admin dashboard at `/dashboard/globals/settings` under "Feature Flags":
 
-| Flag                           | Default | Description                                                        |
-| ------------------------------ | ------- | ------------------------------------------------------------------ |
-| Allow Private Ingestion        | On      | Users can create private ingestion runs visible only to themselves |
-| Enable Scheduled Ingestion     | On      | Users can create automated URL-based ingestion schedules           |
-| Enable Public Registration     | On      | New users can self-register accounts                               |
-| Enable Event Creation          | On      | New events can be created via ingestion or API                     |
-| Enable Dataset Creation        | On      | Users can create new datasets                                      |
-| Enable Ingestion Creation      | On      | Users can create new ingestion jobs                                |
-| Enable Scheduled Job Execution | On      | Scheduled ingestion runs automatically                             |
-| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests                      |
+| Flag                           | Default | Description                                    |
+| ------------------------------ | ------- | ---------------------------------------------- |
+| Allow Private Ingestion        | On      | Users can create private imports               |
+| Enable Scheduled Ingestion     | On      | Automated URL-based imports on a cron schedule |
+| Enable Public Registration     | On      | New users can self-register                    |
+| Enable Event Creation          | On      | Events can be created via import or API        |
+| Enable Dataset Creation        | On      | Users can create new datasets                  |
+| Enable Ingestion Creation      | On      | Users can start new imports                    |
+| Enable Scheduled Job Execution | On      | Scheduled imports run automatically            |
+| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests  |
 
-## Scheduled Ingestion
+## Dashboard
 
-Users can create automated ingestion schedules that fetch data from a URL on a cron schedule.
+The admin dashboard at `/dashboard` provides a web interface for managing data. Access levels:
 
-### Configuration
+| Role   | Permissions                                           |
+| ------ | ----------------------------------------------------- |
+| User   | Own catalogs, datasets, and imports                   |
+| Editor | User permissions + branding, advanced dataset config  |
+| Admin  | Full access: user management, settings, feature flags |
 
-- Enable/disable via the **Enable Scheduled Ingestion** feature flag
-- Users create schedules at `/dashboard/collections/scheduled-ingests`
-- Each schedule specifies: URL, cron expression, target catalog/dataset, authentication (optional)
+## Content Management
 
-### Authentication Options
+### Pages
 
-Scheduled ingestion supports several authentication methods for fetching protected URLs:
+Create custom pages with a block-based builder at `/dashboard/collections/pages`. Available blocks: Hero, Features, Stats, Timeline, Testimonials, Rich Text, Call to Action, Newsletter. Pages are accessible at `/{slug}`.
 
-- **None**: Public URLs with no authentication
-- **API Key**: Header or query parameter API key
-- **Bearer Token**: Authorization header with bearer token
-- **Basic Auth**: HTTP Basic authentication
+### Navigation
 
-### URL Fetch Caching
+- **Main Menu** (`/dashboard/globals/main-menu`) — up to 6 navigation links
+- **Footer** (`/dashboard/globals/footer`) — tagline, social links, link columns, copyright
 
-Scheduled ingestion uses HTTP caching (RFC 7234) to avoid re-downloading unchanged data. See [Usage Limits](./usage-limits#http-caching) for cache configuration.
+### Branding
 
-### Monitoring
+Customize at `/dashboard/globals/branding`:
 
-- View all schedules: `/dashboard/collections/scheduled-ingests`
-- Check schedule health: `GET /api/admin/schedule-service`
-- System automatically cleans up stuck ingestion jobs via background job
+- Site name and description (browser tab, SEO)
+- Logos for light and dark themes
+- Favicon (auto-generated from source image)
+
+### Newsletter
+
+Configure the backend service URL in Settings (`/dashboard/globals/settings`) under "Newsletter Configuration". Newsletter signup forms can be added to the footer or pages.
+
+## Scheduled Imports
+
+Users can create automated import schedules that fetch data from a URL on a cron schedule.
+
+**Authentication options** for protected URLs:
+
+- None (public URLs)
+- API Key (header or query parameter)
+- Bearer Token
+- Basic Auth
+
+**Management**: View schedules at `/dashboard/collections/scheduled-ingests`. Check schedule health via `GET /api/admin/schedule-service`. Stuck jobs are cleaned up automatically by a background job.
 
 ## Audit Log
 
-TimeTiles tracks user and admin actions for accountability and debugging.
+TimeTiles tracks user and admin actions for accountability. View logs at `/dashboard/collections/audit-log`.
 
-### What's Tracked
+**What's tracked** — 20 action types across 5 domains: account (login, registration, email/password changes, deletion), admin (role changes, trust levels, feature flags), data (catalog/dataset/event CRUD), import (start, complete, fail), system (settings, geocoding provider changes).
 
-20 action types across 5 domains:
-
-- **Account**: Login, logout, registration, email change, password change, deletion request/cancel/execute
-- **Admin**: User role change, trust level change, feature flag change
-- **Data**: Catalog/dataset/event create/update/delete
-- **Import**: Import start, import complete, import fail
-- **System**: Settings change, geocoding provider change
-
-### Privacy
-
-- IP addresses are stored for 30 days, then cleared by the `audit-log-ip-cleanup` background job
-- `performedBy` is only set when the acting user differs from the target user
-
-### Viewing Logs
-
-- Admin panel: `/dashboard/collections/audit-log`
-- Filter by user, action type, domain, or date range
+**Privacy** — IP addresses are stored for 30 days, then cleared automatically. The `performedBy` field is only set when the acting user differs from the target user.
 
 ## User Data Management
 
-TimeTiles includes self-service data management for users:
-
-- **Data Export**: Users can download all their data (catalogs, datasets, events, import history) as a ZIP archive from Account Settings
-- **Account Deletion**: Users can request account deletion with a 7-day grace period. Private data is permanently deleted; public data is transferred to an admin account for continuity.
+- **Data Export**: Users download all their data as a ZIP archive from Account Settings
+- **Account Deletion**: 7-day grace period. Private data is permanently deleted; public data is transferred to an admin account
 
 ## Next Steps
 
-- [Deploy to Production](./deployment) with your configuration
-- [Setup Monitoring](./maintenance#monitoring) for your instance
-- Review [Security Best Practices](./deployment#security)
+- [Deploy to production](./deployment)
+- [Set up backups](./maintenance)
+- [Customize the UI](./ui-customization) with themes and branding
+- [Configure usage limits](./usage-limits) and trust levels

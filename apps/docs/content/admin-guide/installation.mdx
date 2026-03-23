@@ -1,140 +1,77 @@
-# Production Installation
+# Prerequisites
 
-System requirements and preparation for production deployment.
+System requirements and server preparation for a production TimeTiles deployment.
 
 ## System Requirements
 
-### Minimum Requirements
+|         | Minimum                   | Recommended      |
+| ------- | ------------------------- | ---------------- |
+| CPU     | 2 cores                   | 4+ cores         |
+| Memory  | 4 GB RAM                  | 8+ GB RAM        |
+| Storage | 20 GB SSD                 | 50+ GB SSD       |
+| OS      | Ubuntu 22.04+, Debian 11+ | Ubuntu 24.04 LTS |
 
-- **CPU**: 2 cores
-- **Memory**: 4GB RAM (8GB for building)
-- **Storage**: 20GB SSD
-- **OS**: Linux (Ubuntu 20.04+, Debian 11+, or similar)
-- **Docker**: 20.10+
-- **Docker Compose**: 2.0+
+You also need:
 
-### Recommended
+- **Docker** (includes Docker Compose)
+- A **registered domain** with DNS control
+- Ports **80** and **443** open for Let's Encrypt
 
-- **CPU**: 4+ cores
-- **Memory**: 8GB+ RAM
-- **Storage**: 50GB+ SSD
-- **Network**: Stable internet connection for geocoding services
-- **Domain**: Registered domain name with DNS control
-- **SSL**: Port 80 and 443 available for Let's Encrypt
+## Server Setup
 
-## Server Preparation
-
-### 1. Install Docker
+### Install Docker
 
 ```bash
 # Ubuntu/Debian
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER
 # Log out and back in for group changes to take effect
 ```
 
-### 2. Install Docker Compose
+### Configure Firewall
 
 ```bash
-# Download latest Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Verify installation
-docker-compose --version
-```
-
-### 3. Configure Firewall
-
-```bash
-# Allow SSH (if using)
-sudo ufw allow 22/tcp
-
-# Allow HTTP and HTTPS
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-
-# Enable firewall
+sudo ufw allow 22/tcp    # SSH
+sudo ufw allow 80/tcp    # HTTP
+sudo ufw allow 443/tcp   # HTTPS
 sudo ufw enable
-```
-
-### 4. System Optimization
-
-```bash
-# Increase file limits
-echo "fs.file-max = 100000" | sudo tee -a /etc/sysctl.conf
-echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
-echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
-
-# Apply changes
-sudo sysctl -p
 ```
 
 ## DNS Configuration
 
-Before deploying, configure your domain:
+Point your domain to the server before deploying:
 
-1. **A Record**: Point your domain to your server's IP
+```
+Type: A
+Name: @ (or your subdomain)
+Value: YOUR_SERVER_IP
+TTL: 300
+```
 
-   ```
-   Type: A
-   Name: @ (or subdomain)
-   Value: YOUR_SERVER_IP
-   TTL: 300
-   ```
+Optional — redirect `www`:
 
-2. **WWW Record** (optional):
+```
+Type: CNAME
+Name: www
+Value: your-domain.com
+```
 
-   ```
-   Type: CNAME
-   Name: www
-   Value: your-domain.com
-   TTL: 300
-   ```
+Verify propagation:
 
-3. **Verify DNS**:
-   ```bash
-   # Check DNS propagation
-   dig your-domain.com
-   nslookup your-domain.com
-   ```
+```bash
+dig your-domain.com +short
+```
 
-## Required Services
-
-TimeTiles requires these services (all included in Docker deployment):
-
-1. **PostgreSQL 17+** with PostGIS 3.5+
-2. **Nginx** for reverse proxy and SSL
-3. **Certbot** for Let's Encrypt certificates
-
-## Optional Services
-
-Consider these for enhanced functionality:
-
-- **Geocoding API Keys**:
-  - Google Maps (most accurate)
-  - OpenCage (good alternative)
-  - Nominatim/OpenStreetMap (free, no key needed, automatic fallback)
-- **SMTP Server**: For email notifications
-- **Monitoring service**: For uptime alerts
-
-## Pre-deployment Checklist
+## Checklist
 
 Before proceeding to deployment:
 
 - [ ] Server meets minimum requirements
-- [ ] Docker and Docker Compose installed
-- [ ] Firewall configured (ports 80, 443 open)
+- [ ] Docker installed and running
+- [ ] Firewall configured (ports 80, 443, 22 open)
 - [ ] Domain DNS configured and propagated
-- [ ] SSH access configured (if remote)
-- [ ] Backup strategy planned
-- [ ] Monitoring approach decided
+- [ ] SSH access working
 
 ## Next Steps
 
-Once prerequisites are met:
-
-1. [Configure](./configuration) your environment variables
-2. [Deploy](./deployment) TimeTiles with Docker
-3. [Setup maintenance](./maintenance) procedures
+- [Deploy TimeTiles](./deployment) with Docker Compose, all-in-one, or bootstrap script

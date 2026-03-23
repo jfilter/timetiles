@@ -4,57 +4,50 @@ asIndexPage: true
 
 # Self-Hosting
 
-Documentation for deploying and operating TimeTiles.
+Everything you need to deploy, configure, and operate your own TimeTiles instance.
 
-## Overview
+import { Cards } from "nextra/components";
 
-This guide covers everything administrators need to know:
+<Cards num={3}>
+  <Cards.Card title="Prerequisites" href="./installation" arrow>
+    System requirements, Docker, firewall, and DNS setup.
+  </Cards.Card>
+  <Cards.Card title="Deployment" href="./deployment" arrow>
+    Docker Compose, all-in-one container, or automated bootstrap.
+  </Cards.Card>
+  <Cards.Card title="Configuration" href="./configuration" arrow>
+    Environment variables, geocoding, feature flags, and content management.
+  </Cards.Card>
+</Cards>
 
-- Setting up TimeTiles for development or production
-- Configuring the application, feature flags, and geocoding providers
-- Managing content (pages, branding, navigation), scheduled ingestion, and audit logs
-- Deploying with Docker and managing SSL certificates
-- Maintaining and monitoring your instance
-
-## Documentation Structure
-
-### [Installation](./installation)
-
-Prerequisites, system requirements, and initial setup for both development and production environments.
-
-### [Configuration](./configuration)
-
-Complete reference for environment variables, feature flags, content management, scheduled ingestion, audit logs, and application settings.
-
-### [Production Deployment](./deployment)
-
-Step-by-step guide for deploying TimeTiles in production with Docker, nginx, and SSL/TLS.
-
-### [Maintenance & Operations](./maintenance)
-
-Routine tasks, backups, updates, monitoring, and troubleshooting.
-
-## Quick Start
-
-- **Development**: See [Quick Start Guide](/quick-start) for local setup
-- **Production**: See [Deployment Guide](./deployment) for production deployment
+<Cards num={3}>
+  <Cards.Card title="Maintenance" href="./maintenance" arrow>
+    Backups, updates, monitoring, and troubleshooting.
+  </Cards.Card>
+  <Cards.Card title="UI Customization" href="./ui-customization" arrow>
+    Themes, branding, layout templates, and custom CSS.
+  </Cards.Card>
+  <Cards.Card title="Usage Limits" href="./usage-limits" arrow>
+    Trust levels, quotas, rate limiting, and HTTP caching.
+  </Cards.Card>
+</Cards>
 
 ## Architecture
 
-TimeTiles consists of:
+TimeTiles runs as a set of Docker containers:
 
-- **Next.js Application**: Main web application with Payload CMS
-- **PostgreSQL + PostGIS**: Spatial database for events and timelines
-- **Nginx**: Reverse proxy with SSL termination (production)
+| Service                | Role                                        |
+| ---------------------- | ------------------------------------------- |
+| **web**                | Next.js application with Payload CMS        |
+| **postgres**           | PostgreSQL 17 + PostGIS 3.5                 |
+| **worker-ingest**      | Processes file imports and geocoding        |
+| **worker-default**     | Runs scheduled imports and webhooks         |
+| **worker-maintenance** | Periodic cleanup and system jobs            |
+| **nginx**              | Reverse proxy with SSL/TLS termination      |
+| **certbot**            | Automatic Let's Encrypt certificate renewal |
 
-## Getting Help
+## Related
 
-- **Issues**: [GitHub Issues](https://github.com/jfilter/timetiles/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/jfilter/timetiles/discussions)
-- **Documentation**: You're reading it!
-
-## Related Guides
-
-- [Guide](/user-guide/getting-started) - For end users
-- [Development](/developer-guide/) - For contributors
-- [API Reference](/reference/api) - API documentation
+- [Quick Start](/quick-start) — Local development setup
+- [Guide](/user-guide) — Using TimeTiles as an end user
+- [Development](/developer-guide) — Contributing to the project

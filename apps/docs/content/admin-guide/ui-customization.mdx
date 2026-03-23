@@ -1,225 +1,120 @@
 # UI Customization
 
-TimeTiles provides a layered customization system that lets you control the visual appearance of your site — from simple color changes to full CSS overrides — all from the Payload CMS dashboard.
+TimeTiles provides a layered customization system — from simple color changes to full CSS overrides — all from the admin dashboard.
 
 ## Customization Layers
 
-The system is designed so you can start simple and go deeper as needed:
+| Layer                | What it controls                          | Where to configure                        |
+| -------------------- | ----------------------------------------- | ----------------------------------------- |
+| **Theme Presets**    | Full color/typography/style package       | `/dashboard/collections/themes`           |
+| **Site Branding**    | Per-site color and style overrides        | `/dashboard/collections/sites`            |
+| **Block Styles**     | Per-block spacing, visibility, separators | Page builder (per block)                  |
+| **Custom CSS**       | Arbitrary CSS scoped to your site         | `/dashboard/collections/sites`            |
+| **Layout Templates** | Page structure (header, footer, width)    | `/dashboard/collections/layout-templates` |
 
-| Layer                | What It Controls                          | Who It's For    | Where to Configure                        |
-| -------------------- | ----------------------------------------- | --------------- | ----------------------------------------- |
-| **Theme Presets**    | Full color/typography/style package       | Site admins     | `/dashboard/collections/themes`           |
-| **Site Branding**    | Per-site color and style overrides        | Site admins     | `/dashboard/collections/sites`            |
-| **Block Styles**     | Per-block spacing, visibility, separators | Content editors | Page builder (per block)                  |
-| **Custom CSS**       | Arbitrary CSS rules scoped to your site   | Power admins    | `/dashboard/collections/sites`            |
-| **Layout Templates** | Page structure (header, footer, width)    | Site admins     | `/dashboard/collections/layout-templates` |
-
-Each layer overrides the one above it. For example, a site's inline color settings override its assigned theme preset.
-
----
+Each layer overrides the one above it. A site's inline colors override its theme preset. Custom CSS overrides everything.
 
 ## Theme Presets
 
-Theme presets are named, reusable visual configurations that can be shared across multiple sites.
+Theme presets are reusable visual configurations shared across sites. Create one at `/dashboard/collections/themes`.
 
-### Creating a Theme
+**Colors** — 11 semantic tokens controlling the entire UI:
 
-Navigate to `/dashboard/collections/themes` and create a new theme with:
+| Token               | Controls                      | Example   |
+| ------------------- | ----------------------------- | --------- |
+| `primary`           | Navigation, headings, buttons | `#1a365d` |
+| `primaryForeground` | Text on primary backgrounds   | `#ffffff` |
+| `secondary`         | Secondary accent elements     | `#c05621` |
+| `background`        | Page background               | `#f5f0e8` |
+| `foreground`        | Default text color            | `#2d2d2d` |
+| `card`              | Card backgrounds              | `#ede8db` |
+| `muted`             | Subtle backgrounds            | `#e8e3d6` |
+| `accent`            | Success states, highlights    | `#2f6b3a` |
+| `destructive`       | Error/danger states           | `#c53030` |
+| `border`            | Border color                  | `#d4cfc2` |
+| `ring`              | Focus ring color              | `#3182ce` |
 
-**Colors (Light Mode)** — Semantic color tokens that control the entire UI:
-
-| Token               | What It Controls              | Example                |
-| ------------------- | ----------------------------- | ---------------------- |
-| `primary`           | Navigation, headings, buttons | `#1a365d` (navy)       |
-| `primaryForeground` | Text on primary backgrounds   | `#ffffff`              |
-| `secondary`         | Secondary accent elements     | `#c05621` (terracotta) |
-| `background`        | Page background               | `#f5f0e8` (parchment)  |
-| `foreground`        | Default text color            | `#2d2d2d`              |
-| `card`              | Card backgrounds              | `#ede8db`              |
-| `muted`             | Subtle backgrounds            | `#e8e3d6`              |
-| `accent`            | Success states, highlights    | `#2f6b3a` (forest)     |
-| `destructive`       | Error/danger states           | `#c53030`              |
-| `border`            | Border color                  | `#d4cfc2`              |
-| `ring`              | Focus ring color              | `#3182ce`              |
-
-**Colors (Dark Mode)** — Optional overrides for dark mode. Leave empty to use the platform's automatic dark mode derivation.
+Dark mode colors are optional — leave empty to use automatic dark mode derivation.
 
 **Typography:**
 
-| Pairing   | Headings                 | Body Text                 |
-| --------- | ------------------------ | ------------------------- |
-| Editorial | Playfair Display (serif) | DM Sans (sans-serif)      |
-| Modern    | Inter (sans-serif)       | Geist Sans (sans-serif)   |
-| Monospace | Space Mono (monospace)   | IBM Plex Mono (monospace) |
+| Pairing   | Headings                 | Body                    |
+| --------- | ------------------------ | ----------------------- |
+| Editorial | Playfair Display (serif) | DM Sans (sans-serif)    |
+| Modern    | Inter (sans-serif)       | Geist Sans (sans-serif) |
+| Monospace | Space Mono               | IBM Plex Mono           |
 
-**Visual Style:**
+**Visual style** — border radius (sharp, rounded, pill) and density (compact, default, comfortable).
 
-| Setting       | Options                                 |
-| ------------- | --------------------------------------- |
-| Border Radius | Sharp (0px), Rounded (4px), Pill (16px) |
-| Density       | Compact, Default, Comfortable           |
-
-### Assigning a Theme to a Site
-
-In the Sites collection, each site has a **Theme** relationship field under Branding. Select a theme preset and all its settings will apply to that site. Any inline color overrides on the site take precedence over the theme.
-
-### Theme Versioning
-
-Themes use Payload's built-in versioning. Every change is tracked, and you can roll back to any previous version from the dashboard.
-
----
+Themes use Payload's built-in versioning — every change is tracked and reversible.
 
 ## Site Branding
 
-Each site can override platform defaults with its own branding. Navigate to `/dashboard/collections/sites` and edit the **Branding** section.
+Each site can override its theme preset with inline settings. Edit the **Branding** section at `/dashboard/collections/sites`.
 
-### Identity
+- **Title** — overrides platform site name in browser tabs and headers
+- **Logo** — separate uploads for light and dark themes
+- **Favicon** — custom favicon for this site
+- **Color overrides** — same 11 tokens as theme presets, highest priority
+- **Typography & style** — font pairing, border radius, density
 
-- **Title** — Overrides the platform site name in browser tabs and headers
-- **Logo (Light/Dark)** — Upload separate logos for light and dark themes
-- **Favicon** — Custom favicon for this site
+Colors can be any valid CSS value: hex (`#3b82f6`), OKLCH (`oklch(0.58 0.11 220)`), RGB, or HSL.
 
-### Color Overrides
+## Block-Level Styles
 
-The same 15 semantic tokens available in theme presets are available as inline overrides on each site. These take the highest priority — they override both the platform defaults and any assigned theme preset.
+Every block in the page builder has a **Block Style** section:
 
-Enter colors as any valid CSS color value:
+| Control                | Options                                 |
+| ---------------------- | --------------------------------------- |
+| Padding top/bottom     | None, Small, Medium, Large, Extra Large |
+| Max width              | 768px, 1024px, 1152px, 1280px, Full     |
+| Background color       | Any CSS color                           |
+| Anchor ID              | Creates a `#id` scroll target           |
+| Hide on mobile/desktop | Toggle visibility by screen size        |
+| Separator              | None, Line, Gradient Fade, Wave         |
 
-- Hex: `#3b82f6`
-- OKLCH: `oklch(0.58 0.11 220)` (recommended for perceptual uniformity)
-- RGB: `rgb(59, 130, 246)`
-- HSL: `hsl(217, 91%, 60%)`
+**Use cases**: Show different hero blocks on mobile vs. desktop. Add `#pricing` anchor IDs for navigation links. Alternate padding and separators for visual rhythm.
 
-### Typography & Style
+## Custom CSS
 
-Same options as theme presets — font pairing, border radius, and density — applied as inline overrides.
+For cases where structured controls aren't enough. Edit the **Custom Code** section on any site.
 
----
+| Field           | Purpose                            |
+| --------------- | ---------------------------------- |
+| Custom CSS      | CSS rules scoped to this site      |
+| Head HTML       | Analytics, meta tags, custom fonts |
+| Body Start HTML | Tag managers, noscript fallbacks   |
+| Body End HTML   | Tracking scripts                   |
 
-## Block-Level Style Controls
+CSS is automatically scoped via `[data-site="your-site-slug"]`. Target blocks with `[data-block-type="hero"]` or `[data-block-id="abc123"]`.
 
-Every block in the page builder includes a **Block Style** section with per-block visual controls.
-
-### Available Controls
-
-| Control          | Options                                                           | What It Does                      |
-| ---------------- | ----------------------------------------------------------------- | --------------------------------- |
-| Padding Top      | None, Small, Medium, Large, Extra Large                           | Space above the block             |
-| Padding Bottom   | None, Small, Medium, Large, Extra Large                           | Space below the block             |
-| Max Width        | Small (768px), Medium (1024px), Large (1152px), XL (1280px), Full | Constrains block width            |
-| Background Color | Any CSS color value                                               | Block background                  |
-| Anchor ID        | Text (e.g., `features`)                                           | Creates `#features` scroll target |
-| Hide on Mobile   | Checkbox                                                          | Hides block on screens < 768px    |
-| Hide on Desktop  | Checkbox                                                          | Hides block on screens >= 768px   |
-| Separator        | None, Line, Gradient Fade, Wave                                   | Visual divider below the block    |
-
-### Use Cases
-
-**Responsive content**: Show a simplified hero on mobile and a detailed version on desktop by creating two hero blocks with complementary visibility settings.
-
-**Section anchoring**: Set `anchorId` to `pricing` on a block, then link to it from navigation: `/page#pricing`.
-
-**Visual rhythm**: Alternate blocks with `Large` and `None` padding, using `Gradient Fade` separators between major sections.
-
----
-
-## Custom CSS Injection
-
-For cases where the structured controls aren't enough, you can inject custom CSS scoped to your site.
-
-### Configuration
-
-In the Sites collection, open the **Custom Code** section:
-
-| Field               | Purpose                                                |
-| ------------------- | ------------------------------------------------------ |
-| **Custom CSS**      | CSS rules scoped to this site                          |
-| **Head HTML**       | Injected into `<head>` (analytics, meta tags, fonts)   |
-| **Body Start HTML** | Injected at start of `<body>` (tag managers, noscript) |
-| **Body End HTML**   | Injected at end of `<body>` (tracking scripts)         |
-
-### Writing Custom CSS
-
-Your CSS is automatically scoped to your site using the `[data-site="your-site-slug"]` selector. You can target specific blocks using data attributes:
-
-```css
-/* Change all hero block backgrounds */
-[data-block-type="hero"] {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-/* Style a specific block by ID */
-[data-block-id="abc123"] {
-  border-left: 4px solid var(--primary);
-}
-
-/* Override semantic tokens for this site */
---primary: #2563eb;
---accent: #059669;
-```
-
-### Security
-
-For security, the following CSS patterns are automatically stripped:
-
-- `@import` — prevents loading external stylesheets
-- `url()` — prevents loading external resources
-- `javascript:` — prevents script injection
-- `expression()` — prevents legacy IE script execution
-- `position: fixed` — prevents full-page overlay attacks
-
----
+**Security** — these patterns are stripped automatically: `@import`, `url()`, `javascript:`, `expression()`, `position: fixed`.
 
 ## Layout Templates
 
-Layout templates control the structural frame of pages — header style, footer variant, and content width.
+Layout templates control the structural frame of pages. Create at `/dashboard/collections/layout-templates`:
 
-### Creating a Layout Template
+| Setting           | Options                             | Default   |
+| ----------------- | ----------------------------------- | --------- |
+| Header variant    | Marketing, App, Minimal, None       | Marketing |
+| Sticky header     | Yes / No                            | Yes       |
+| Footer variant    | Full, Compact, None                 | Full      |
+| Content max width | 768px, 1024px, 1152px, 1280px, Full | 1152px    |
 
-Navigate to `/dashboard/collections/layout-templates`:
+**Assignment**: Set a site-wide default on the site, then override per page. Resolution order: page override > site default > platform default.
 
-| Setting               | Options                                                             | Default   |
-| --------------------- | ------------------------------------------------------------------- | --------- |
-| **Header Variant**    | Marketing (full nav), App (minimal), Minimal (logo only), None      | Marketing |
-| **Sticky Header**     | Yes / No                                                            | Yes       |
-| **Footer Variant**    | Full (brand + columns + newsletter), Compact (copyright only), None | Full      |
-| **Content Max Width** | Small (768px), Medium (1024px), Large (1152px), XL (1280px), Full   | Large     |
+| Template example | Header    | Footer  | Width  | Use case              |
+| ---------------- | --------- | ------- | ------ | --------------------- |
+| Landing Page     | Marketing | Full    | Full   | Homepage, marketing   |
+| Documentation    | Minimal   | Compact | Medium | Help pages, guides    |
+| App View         | App       | None    | Full   | Explore/map interface |
+| Clean            | None      | None    | Full   | Embeds, iframes       |
 
-### Assigning Templates
+## Priority Order
 
-**Site default**: In the Sites collection, set the **Default Layout** field. All pages on this site use this template unless overridden.
+When multiple layers are configured, they resolve highest priority first:
 
-**Page override**: In the Pages collection, set the **Layout Override** field on any individual page to use a different template.
-
-**Resolution order**: Page override > Site default > Platform default (marketing header, full footer, large width).
-
-### Example Templates
-
-| Template      | Header    | Footer  | Width  | Use Case                  |
-| ------------- | --------- | ------- | ------ | ------------------------- |
-| Landing Page  | Marketing | Full    | Full   | Homepage, marketing pages |
-| Documentation | Minimal   | Compact | Medium | Help pages, guides        |
-| App View      | App       | None    | Full   | The explore/map interface |
-| Clean         | None      | None    | Full   | Embeds, iframes           |
-
----
-
-## Priority & Inheritance
-
-When multiple customization layers are configured, they resolve in this order (highest priority first):
-
-1. **Custom CSS** — can override anything
-2. **Inline site branding colors** — override theme preset colors
-3. **Theme preset** — provides base visual configuration
-4. **Platform defaults** — the cartographic design system
-
-For layout:
-
-1. **Page layout override** — per-page template
-2. **Site default layout** — per-site template
-3. **Platform default** — marketing header, full footer, large width
-
-For blocks:
-
-1. **Block-level style controls** — per-instance overrides
-2. **Block type defaults** — built into each block component
+1. **Custom CSS** — overrides anything
+2. **Inline site branding** — overrides theme preset
+3. **Theme preset** — base visual configuration
+4. **Platform defaults** — built-in design system

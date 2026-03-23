@@ -1,8 +1,8 @@
 export default {
   installation: "Prerequisites",
+  deployment: "Deployment",
   configuration: "Configuration",
+  maintenance: "Maintenance",
   "ui-customization": "UI Customization",
-  deployment: "Production Deployment",
-  maintenance: "Maintenance & Operations",
-  "usage-limits": "Usage Limits & Resources",
+  "usage-limits": "Usage Limits",
 };

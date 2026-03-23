@@ -1,42 +1,80 @@
-# Production Deployment
+# Deployment
 
-This guide covers deploying TimeTiles to production using Docker and Docker Compose.
+Three ways to deploy TimeTiles to production. All include PostgreSQL, Nginx with SSL, and background workers.
 
-## Overview
+import { Tabs } from "nextra/components";
 
-TimeTiles provides a production-ready Docker deployment with:
+## Deployment Options
 
-- **Nginx** reverse proxy with SSL/TLS termination
-- **Next.js** application server (standalone build)
-- **PostgreSQL 17** with PostGIS 3.5+
-- **Certbot** for automatic SSL certificate renewal
+| Option               | Best for             | What you get                                                 |
+| -------------------- | -------------------- | ------------------------------------------------------------ |
+| **Docker Compose**   | Production           | Separate containers, horizontal scaling, standard Docker ops |
+| **All-in-One**       | Demos, small teams   | Single container with everything, simplest setup             |
+| **Bootstrap Script** | Fresh Ubuntu servers | Automated setup including security hardening                 |
 
-## Quick Start
+## Docker Compose (Recommended)
 
-### Option 1: Docker Compose (Recommended)
+<Tabs items={['Quick Start', 'Architecture']}>
+<Tabs.Tab>
 
 ```bash
-# 1. Clone deployment files
-git clone --depth 1 --filter=blob:none --sparse https://github.com/jfilter/timetiles.git
+# 1. Clone the deployment files
+git clone https://github.com/jfilter/timetiles.git
 cd timetiles
-git sparse-checkout set deployment
 
-# 2. Configure environment
+# 2. Configure
 cp deployment/.env.production.example deployment/.env.production
 nano deployment/.env.production
-# Set: DOMAIN_NAME, DB_PASSWORD, PAYLOAD_SECRET, LETSENCRYPT_EMAIL
+# Set at minimum: DOMAIN_NAME, DB_PASSWORD, PAYLOAD_SECRET, LETSENCRYPT_EMAIL
 
-# 3. Pull and start
+# 3. Pull images and start
 timetiles pull
 timetiles up
 
-# 4. Initialize SSL (after DNS is configured)
+# 4. Set up SSL (after DNS is pointing to your server)
 timetiles ssl
 ```
 
-### Option 2: All-in-One Container
+</Tabs.Tab>
+<Tabs.Tab>
 
-For demos, small teams, or quick trials:
+```
+                    ┌──────────┐
+                    │  Nginx   │ :80, :443
+                    │ (SSL/TLS)│
+                    └────┬─────┘
+                         │
+                    ┌────▼─────┐     ┌───────────┐
+                    │  Next.js │────▶│ PostgreSQL │
+                    │   Web    │     │ + PostGIS  │
+                    └──────────┘     └───────────┘
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+  ┌─────▼──────┐  ┌─────▼──────┐  ┌──────▼─────┐
+  │  Worker:   │  │  Worker:   │  │  Worker:    │
+  │  Ingest    │  │  Default   │  │ Maintenance │
+  └────────────┘  └────────────┘  └─────────────┘
+```
+
+Seven containers in production:
+
+| Container              | Role                                      | Queue         |
+| ---------------------- | ----------------------------------------- | ------------- |
+| **web**                | Next.js + Payload CMS                     | —             |
+| **postgres**           | PostgreSQL 17 + PostGIS 3.5               | —             |
+| **nginx**              | Reverse proxy, SSL termination            | —             |
+| **certbot**            | Let's Encrypt auto-renewal (every 12h)    | —             |
+| **worker-ingest**      | File imports, geocoding, event creation   | `ingest`      |
+| **worker-default**     | Scheduled imports, webhooks               | `default`     |
+| **worker-maintenance** | Cleanup, cache expiry, audit log rotation | `maintenance` |
+
+</Tabs.Tab>
+</Tabs>
+
+## All-in-One Container
+
+Everything in a single container — PostgreSQL, Nginx, and the app — managed by supervisord. Good for quick demos or personal use.
 
 ```bash
 docker run -d \
@@ -47,226 +85,147 @@ docker run -d \
   ghcr.io/jfilter/timetiles:latest-allinone
 ```
 
-### Option 3: Automated Server Setup (Ubuntu 24.04)
+## Bootstrap Script (Ubuntu 24.04)
+
+Fully automated setup on a fresh Ubuntu server. Installs Docker, configures firewall, deploys TimeTiles, sets up SSL, and enables security hardening (fail2ban, SSH hardening).
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/jfilter/timetiles/main/deployment/bootstrap/install.sh | sudo bash
 ```
 
-## Deployment Options
-
-| Option               | Best For                     | Scaling                         | Maintenance                 |
-| -------------------- | ---------------------------- | ------------------------------- | --------------------------- |
-| **Docker Compose**   | Production, teams            | Horizontal (multiple instances) | Standard Docker ops         |
-| **All-in-One**       | Demos, small teams, personal | Single server only              | Simple, self-contained      |
-| **Bootstrap Script** | Fresh Ubuntu servers         | Same as Compose                 | Includes security hardening |
-
-### Docker Compose Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Nginx     │────▶│   Next.js   │────▶│  PostgreSQL │
-│  (SSL/TLS)  │     │    App      │     │  + PostGIS  │
-└─────────────┘     └─────────────┘     └─────────────┘
-```
-
-### All-in-One Architecture
-
-```
-┌─────────────────────────────────────────┐
-│           Single Container              │
-│  ┌───────┐  ┌────────┐  ┌───────────┐  │
-│  │ Nginx │──│Next.js │──│ PostgreSQL│  │
-│  └───────┘  └────────┘  └───────────┘  │
-│         (supervisord manages all)       │
-└─────────────────────────────────────────┘
-```
-
-## Prerequisites
-
-See [Installation Guide](/admin-guide/installation) for complete system requirements and prerequisites.
-
-## File Structure
-
-After bootstrap or manual setup, files are in `/opt/timetiles/`:
-
-```
-/opt/timetiles/
-├── timetiles                   # CLI script (symlinked to /usr/local/bin/timetiles)
-├── docker-compose.prod.yml     # Service orchestration
-├── .env.production.example     # Environment template
-├── .env.production             # Your configuration
-├── nginx/                      # Nginx configuration
-│   ├── nginx.conf             # Main configuration
-│   └── sites-enabled/         # Site-specific configs
-└── backups/                    # Backup files
-```
+The script prompts for your domain, email, and other settings interactively.
 
 ## Configuration
 
-Create your environment file:
+Create your environment file from the template:
 
 ```bash
 cp deployment/.env.production.example deployment/.env.production
-nano deployment/.env.production
 ```
 
-See [Configuration Guide](/admin-guide/configuration) for all environment variables. At minimum, configure:
+**Required settings:**
 
-- `DOMAIN_NAME` - Your production domain
-- `DB_PASSWORD` - Strong database password
-- `PAYLOAD_SECRET` - Random 32+ character secret (generate with: `openssl rand -base64 32`)
-- `LETSENCRYPT_EMAIL` - Email for SSL certificate notifications
+| Variable            | Description                               |
+| ------------------- | ----------------------------------------- |
+| `DOMAIN_NAME`       | Your production domain                    |
+| `DB_PASSWORD`       | Database password (20+ characters)        |
+| `PAYLOAD_SECRET`    | Random secret (`openssl rand -base64 32`) |
+| `LETSENCRYPT_EMAIL` | Email for SSL certificate notifications   |
 
-## SSL/TLS Setup
+See [Configuration](./configuration) for the full environment variable reference.
+
+## SSL/TLS
 
 ### Let's Encrypt (Recommended)
 
-Automatic SSL certificates:
+After DNS is pointing to your server and services are running:
 
 ```bash
-# After DNS is configured and services are running
 timetiles ssl
 ```
 
-Certificates auto-renew every 12 hours via Certbot.
+Certificates auto-renew every 12 hours via the certbot container.
 
 ### Custom Certificates
 
-1. Place certificates in `deployment/nginx/ssl/`:
-   - `fullchain.pem` (certificate + chain)
-   - `privkey.pem` (private key)
-2. Update nginx config to reference your certificates
-3. Restart: `docker-compose -f deployment/docker-compose.prod.yml restart nginx`
+Place your certificate files in `deployment/nginx/ssl/`:
 
-## Deployment Commands
+- `fullchain.pem` — certificate + chain
+- `privkey.pem` — private key
 
-### Using timetiles CLI
+Then restart nginx: `timetiles restart nginx`
 
-```bash
-# Service Management
-timetiles up        # Start all services
-timetiles down      # Stop all services
-timetiles restart   # Restart services
-timetiles status    # Check service health
+## CLI Reference
 
-# Maintenance
-timetiles logs      # View logs
-timetiles update    # Pull updates and redeploy
+The `timetiles` CLI wraps Docker Compose for common operations:
 
-# Note: Database migrations run automatically on container startup
-```
+| Command             | What it does                                       |
+| ------------------- | -------------------------------------------------- |
+| `timetiles up`      | Start all services                                 |
+| `timetiles down`    | Stop all services                                  |
+| `timetiles restart` | Restart services                                   |
+| `timetiles status`  | Check service health                               |
+| `timetiles logs`    | View logs (add `-f` to follow)                     |
+| `timetiles update`  | Pull latest images and redeploy                    |
+| `timetiles pull`    | Pull images without restarting                     |
+| `timetiles ssl`     | Initialize Let's Encrypt certificates              |
+| `timetiles backup`  | Create a backup (see [Maintenance](./maintenance)) |
+| `timetiles restore` | Restore from backup                                |
 
 ### Direct Docker Compose
 
 For advanced usage:
 
 ```bash
-# Define alias for convenience
-alias dc-prod="docker-compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production"
+alias dc="docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production"
 
-# Examples
-dc-prod ps            # List containers
-dc-prod logs web      # View web logs
-dc-prod exec web sh   # Shell into web container
+dc ps              # List containers
+dc logs web        # View web logs
+dc exec web sh     # Shell into web container
+```
+
+## File Structure
+
+After setup, deployment files are in `/opt/timetiles/` (bootstrap) or `./deployment/` (manual):
+
+```
+deployment/
+├── timetiles                  # CLI script
+├── docker-compose.prod.yml    # Service orchestration
+├── .env.production            # Your configuration
+├── nginx/
+│   ├── nginx.conf             # Main nginx config
+│   └── sites-enabled/         # Site-specific configs
+└── backups/                   # Backup files (restic)
 ```
 
 ## Security
 
-### Network Security
-
-- Only ports 80 (HTTP) and 443 (HTTPS) are exposed
-- Internal services communicate on private Docker network
-- PostgreSQL is not exposed externally
-
-### Application Security
-
-- Next.js runs as non-root user
-- Environment secrets isolated
-- HTTPS enforced with security headers
-- Rate limiting on API endpoints
-
-### Security Checklist
-
-- [x] Strong database password (20+ characters)
-- [x] Random Payload secret (32+ characters)
-- [x] HTTPS enabled with valid certificate
-- [x] Firewall configured (allow only 80, 443, SSH)
-- [x] Regular security updates enabled
-- [x] Backup strategy in place
+- Only ports 80 and 443 are exposed externally
+- PostgreSQL is on an internal Docker network — not accessible from outside
+- The Next.js app runs as a non-root user in a read-only container
+- Containers have dropped capabilities and tmpfs `/tmp`
+- Nginx enforces HTTPS and sets security headers
+- Auth endpoints are rate-limited at the Nginx level (5 req/min per IP)
 
 ## Health Checks
 
-Verify deployment:
-
 ```bash
-# Check all services
+# CLI status check
 timetiles status
 
-# Check application health
+# HTTP health endpoint
 curl https://your-domain.com/api/health
-
-# Should return: {"status":"ok","timestamp":"..."}
+# Returns: {"status":"ok","timestamp":"..."}
 ```
 
-## Common Issues
-
-### Build Fails with Out of Memory
-
-Add swap space:
+## Updating
 
 ```bash
-sudo fallocate -l 4G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
+# 1. Back up first
+timetiles backup
+
+# 2. Pull and redeploy
+timetiles update
+
+# 3. Verify
+curl https://your-domain.com/api/health
 ```
 
-Or build locally and push image to registry.
+Database migrations run automatically on container startup.
 
-### SSL Certificate Fails
+## Troubleshooting
 
-Verify DNS and Let's Encrypt challenge:
-
-```bash
-# Check DNS resolves to your server
-nslookup your-domain.com
-
-# Test HTTP challenge path
-curl http://your-domain.com/.well-known/acme-challenge/test
-```
-
-For more troubleshooting, see [Maintenance Guide](/admin-guide/maintenance#troubleshooting).
+| Problem                   | Solution                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| Build fails with OOM      | Add 4 GB swap: `sudo fallocate -l 4G /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile` |
+| SSL certificate fails     | Verify DNS resolves to your server: `dig your-domain.com +short`                                  |
+| App won't start           | Check logs: `timetiles logs web`                                                                  |
+| Database connection error | Check postgres is running: `timetiles status`                                                     |
+| Port already in use       | Stop existing services: `timetiles down`                                                          |
 
 ## Next Steps
 
-After successful deployment:
-
-1. **Set up monitoring**: See [Monitoring Guide](/admin-guide/maintenance#monitoring)
-2. **Configure backups**: See [Backup Guide](/admin-guide/maintenance#backups)
-3. **Performance tuning**: See [Maintenance Guide](/admin-guide/maintenance#performance)
-4. **Review security**: See [Configuration Guide](/admin-guide/configuration#security)
-
-## Updating Production
-
-### With Pre-built Images (Default)
-
-```bash
-# Edit version in .env.production
-# TIMETILES_VERSION=v1.2.0
-
-# Pull new images and restart
-timetiles update
-```
-
-### With Local Builds
-
-If using `docker-compose.override.yml` for local builds:
-
-```bash
-git pull
-timetiles build
-timetiles up
-```
-
-See [Maintenance Guide](/admin-guide/maintenance) for routine operations.
+- [Configure](./configuration) environment variables, geocoding, and feature flags
+- [Set up backups](./maintenance) and monitoring
+- [Customize the UI](./ui-customization) with themes and branding
