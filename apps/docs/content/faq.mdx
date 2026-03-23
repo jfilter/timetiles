@@ -51,9 +51,10 @@ Currently supported:
 - **CSV files** (most common)
 - **Excel files** (.xlsx, .xls)
 - **ODS files** (OpenDocument Spreadsheet)
-- **Scheduled URL ingestion** for automated data feeds from external APIs
+- **JSON API** endpoints via URL ingestion
+- **Scheduled URL ingestion** for automated data feeds
 
-Files can be uploaded manually or fetched automatically on a schedule from a URL.
+Files can be uploaded manually or fetched automatically on a schedule from a URL. JSON API responses are automatically converted to tabular data.
 
 ### My data only has addresses, not coordinates. Will it work?
 
@@ -83,8 +84,8 @@ The main limitation is ingestion time for very large files, not runtime performa
 
 **Minimum requirements**:
 
-- 2GB RAM
-- 10GB disk space
+- 4GB RAM (8GB for building)
+- 20GB SSD
 - PostgreSQL 17+ with PostGIS 3.5+
 - Node.js 24+
 

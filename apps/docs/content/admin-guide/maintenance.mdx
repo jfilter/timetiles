@@ -216,7 +216,7 @@ docker-compose -f deployment/docker-compose.prod.yml logs postgres --tail=50
 
 # Search logs
 docker-compose -f deployment/docker-compose.prod.yml logs | grep ERROR
-docker-compose -f deployment/docker-compose.prod.yml logs | grep "import.*failed"
+docker-compose -f deployment/docker-compose.prod.yml logs | grep "ingest.*failed"
 ```
 
 ### Disk Usage
@@ -270,19 +270,19 @@ docker-compose -f deployment/docker-compose.prod.yml exec web \
   psql $DATABASE_URL -c "SELECT 1"
 ```
 
-#### Import Failures
+#### Ingest Failures
 
 ```bash
 # Check import job status
 docker-compose -f deployment/docker-compose.prod.yml exec web \
-  psql $DATABASE_URL -c "SELECT * FROM payload.import_jobs ORDER BY created_at DESC LIMIT 5;"
+  psql $DATABASE_URL -c "SELECT * FROM payload.ingest_jobs ORDER BY created_at DESC LIMIT 5;"
 
 # View error details
-docker-compose -f deployment/docker-compose.prod.yml logs web | grep -A5 "import.*error"
+docker-compose -f deployment/docker-compose.prod.yml logs web | grep -A5 "ingest.*error"
 
-# Reset stuck imports
+# Reset stuck ingests
 docker-compose -f deployment/docker-compose.prod.yml exec web \
-  psql $DATABASE_URL -c "UPDATE payload.import_jobs SET status = 'failed' WHERE status = 'processing' AND updated_at < NOW() - INTERVAL '1 hour';"
+  psql $DATABASE_URL -c "UPDATE payload.ingest_jobs SET status = 'failed' WHERE status = 'processing' AND updated_at < NOW() - INTERVAL '1 hour';"
 ```
 
 #### High Memory Usage

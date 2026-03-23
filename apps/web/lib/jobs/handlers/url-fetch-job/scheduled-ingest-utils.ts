@@ -17,7 +17,7 @@ import type { ScheduledIngest } from "@/payload-types";
 /**
  * Loads scheduled ingest configuration.
  */
-export const loadScheduledImportConfig = async (
+export const loadScheduledIngestConfig = async (
   payload: Payload,
   scheduledIngestId: number | undefined
 ): Promise<ScheduledIngest | null> => {
@@ -45,7 +45,7 @@ export const loadScheduledImportConfig = async (
 /**
  * Updates scheduled ingest status on successful execution.
  */
-export const updateScheduledImportSuccess = async (
+export const updateScheduledIngestSuccess = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
   importFileId: number | string,
@@ -99,7 +99,7 @@ export const updateScheduledImportSuccess = async (
 /**
  * Updates scheduled ingest status on failed execution.
  */
-export const updateScheduledImportFailure = async (
+export const updateScheduledIngestFailure = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
   error: Error

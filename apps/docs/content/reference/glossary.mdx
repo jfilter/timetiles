@@ -6,7 +6,7 @@
 A set of protocols and tools for building software applications. TimeTiles provides a REST API for programmatic access to data import, query, and export functionality.
 
 **Audit Log**
-A system that records user and admin actions for accountability and debugging. TimeTiles tracks 20 action types across 5 domains: account, admin, data, system, and import.
+A system that records user and admin actions for accountability and debugging. TimeTiles tracks 20 action types across 5 domains: account, admin, data, system, and ingest.
 
 ## C
 
@@ -28,7 +28,7 @@ A file format used to store tabular data. One of the primary import formats supp
 A self-service feature allowing users to download all their data (catalogs, datasets, events, import history) as a ZIP archive from Account Settings.
 
 **Data Ingestion**
-The process of bringing external data (CSV, Excel, ODS, JSON API, or scheduled URLs) into TimeTiles. The ingestion pipeline handles schema detection, deduplication, geocoding, and event creation. Called "Import" in the user interface and `import-*` in the codebase. See the [Data Ingestion guide](/user-guide/data-ingestion) and the [developer pipeline documentation](/developer-guide/architecture/data-processing-pipeline).
+The process of bringing external data (CSV, Excel, ODS, JSON API, or scheduled URLs) into TimeTiles. The ingestion pipeline handles schema detection, deduplication, geocoding, and event creation. Called "Import" in the user interface and `ingest-*` in the codebase. See the [Data Ingestion guide](/user-guide/data-ingestion) and the [developer pipeline documentation](/developer-guide/architecture/data-processing-pipeline).
 
 **Dataset**
 A collection of related events within a catalog. Datasets share a common structure (schema) and represent a specific data source or time period.
@@ -66,7 +66,7 @@ A site-wide singleton configuration in Payload CMS. TimeTiles uses four globals:
 A dynamic, explorable timeline that allows users to navigate through time and space to understand how events unfold. The primary output of TimeTiles.
 
 **Import Pipeline**
-See **Data Ingestion**. The user interface uses "Import" for this concept; the codebase uses `import-*` collection and variable names.
+See **Data Ingestion**. The user interface uses "Import" for this concept; the codebase uses `ingest-*` collection and variable names.
 
 ## J
 

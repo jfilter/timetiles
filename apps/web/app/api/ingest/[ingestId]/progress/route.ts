@@ -1,5 +1,5 @@
 /**
- * API route for fetching detailed progress of import jobs with per-stage tracking.
+ * API route for fetching detailed progress of ingest jobs with per-stage tracking.
  *
  * This endpoint provides comprehensive progress information including:
  * - Overall weighted progress across all jobs
@@ -197,7 +197,7 @@ export const GET = apiRoute({
 
     // Build comprehensive response
     return {
-      type: "import-file",
+      type: "ingest-file",
       id: ingestFile.id,
       status: ingestFile.status,
       originalName: ingestFile.originalName,

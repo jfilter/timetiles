@@ -173,7 +173,7 @@ Scraper run history and metadata are stored in PostgreSQL and included in databa
 ### Commands
 
 ```bash
-timetiles scraper-logs   # View runner logs (journalctl)
+timetiles logs --scraper # View runner logs (journalctl)
 timetiles status         # Includes runner health if configured
 timetiles check          # Includes Podman, base images, sandbox network checks
 timetiles update         # Updates runner + base images alongside main app

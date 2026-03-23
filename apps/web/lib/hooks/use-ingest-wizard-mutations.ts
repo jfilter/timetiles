@@ -3,7 +3,7 @@
  *
  * Extracts fetch logic from wizard step components into reusable
  * mutation hooks following the project convention. All request/response
- * types are imported from the canonical `import-wizard` types module.
+ * types are imported from the canonical `ingest-wizard` types module.
  * Query hooks live in `use-ingest-wizard-queries.ts`.
  *
  * @module

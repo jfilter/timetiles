@@ -2,7 +2,7 @@
  * Integration tests for dataset-detection job.
  *
  * Tests that dataset-detection:
- * 1. Creates import-jobs for each sheet/dataset
+ * 1. Creates ingest-jobs for each sheet/dataset
  * 2. Queues the first processing job (analyze-duplicates) to start the pipeline
  * 3. Reuses existing datasets by name when originalName matches
  * 4. Creates new datasets when originalName is missing
@@ -55,7 +55,7 @@ describe.sequential("Dataset Detection Job", () => {
     await testEnv.seedManager.truncate(collectionsToReset);
   });
 
-  it("should create import-job and complete the pipeline", async () => {
+  it("should create ingest-job and complete the pipeline", async () => {
     // Create a simple CSV file
     const csvContent = "name,date\nEvent 1,2024-01-01\nEvent 2,2024-01-02\n";
 
@@ -75,7 +75,7 @@ describe.sequential("Dataset Detection Job", () => {
       if (result.noJobsRemaining) break;
     }
 
-    // Check that import-job was created
+    // Check that ingest-job was created
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -113,7 +113,7 @@ describe.sequential("Dataset Detection Job", () => {
     // Run dataset-detection job (automatically queued by ingest-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
-    // Find the import-job created by dataset-detection
+    // Find the ingest-job created by dataset-detection
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -162,7 +162,7 @@ describe.sequential("Dataset Detection Job", () => {
       if (result.noJobsRemaining) break;
     }
 
-    // Check that import-job was created pointing to the wizard's pre-created dataset
+    // Check that ingest-job was created pointing to the wizard's pre-created dataset
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -198,7 +198,7 @@ describe.sequential("Dataset Detection Job", () => {
     // Run dataset-detection job (automatically queued by ingest-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
-    // Find the import-job
+    // Find the ingest-job
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
