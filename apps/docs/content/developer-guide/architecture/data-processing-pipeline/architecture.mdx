@@ -57,18 +57,18 @@ This selective storage ensures the database remains efficient while still suppor
 
 The pipeline orchestrates processing across five main Payload CMS collections:
 
-### 1. import-files
+### 1. ingest-files
 
 **Purpose**: File upload and metadata storage
 
 - Stores uploaded files on disk
 - Tracks file metadata (name, size, type, upload date)
 - Maintains overall import status
-- Links to all import-jobs created from the file
+- Links to all ingest-jobs created from the file
 
-**Multi-Sheet Handling**: A single Excel file can generate multiple import-jobs (one per sheet), all linked back to the parent import-file.
+**Multi-Sheet Handling**: A single Excel file can generate multiple ingest-jobs (one per sheet), all linked back to the parent ingest-file.
 
-### 2. import-jobs
+### 2. ingest-jobs
 
 **Purpose**: Processing state and orchestration
 
@@ -77,7 +77,7 @@ The pipeline orchestrates processing across five main Payload CMS collections:
 - Maintains duplicate analysis results
 - Caches geocoding lookups
 - Preserves schema builder state across batches
-- Links to associated dataset and import-file
+- Links to associated dataset and ingest-file
 
 **Central Role**: This collection is the heart of the pipeline, coordinating all processing activity.
 
@@ -271,7 +271,7 @@ The architecture scales effectively across multiple dimensions:
 
 **Parallelization**:
 
-- Multiple import-jobs can run concurrently
+- Multiple ingest-jobs can run concurrently
 - Different stages of different imports run simultaneously
 - Independent processing of Excel sheets
 

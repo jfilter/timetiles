@@ -165,7 +165,7 @@ const [datasets, setDatasets] = useQueryState("datasets", parseAsArrayOf(parseAs
 
 ## 🔄 Data Processing Pipeline
 
-### Import System Flow
+### Ingest System Flow
 
 ```
 File Upload → Parsing → Coordinate Detection → Geocoding → Event Creation
@@ -183,17 +183,17 @@ File Upload → Parsing → Coordinate Detection → Geocoding → Event Creatio
 
 ### Background Jobs
 
-TimeTiles runs **18 background jobs** via Payload's job queue:
+TimeTiles runs **20 background jobs** via Payload's job queue:
 
-- **Import pipeline** (7 jobs): Dataset detection → duplicates → schema → validation → geocoding → event creation
-- **Scheduling** (5 jobs): Schedule manager, URL fetch, stuck imports cleanup, pending retries, approval lock cleanup
-- **System maintenance** (6 jobs): Quota reset, cache cleanup, schema maintenance, audit log IP cleanup, data export/cleanup, account deletion
+- **Ingest pipeline** (9 task handlers): Dataset detection, duplicate analysis, schema detection, schema validation, schema version creation, geocoding, event creation, URL fetch, scraper execution
+- **System jobs** (9 scheduled): Schedule manager, quota reset, cache cleanup, schema maintenance, audit log IP cleanup, account deletion, data export cleanup, stuck ingests cleanup, stuck scrapers cleanup
+- **Standalone jobs** (2 on-demand): Scraper repo sync, data export
 
 See [Background Jobs](./background-jobs) for the complete reference.
 
 ### Real-time Updates
 
-- **Progress Polling**: React Query automatically polls import progress
+- **Progress Polling**: React Query automatically polls ingest progress
 - **Cache Invalidation**: Smart invalidation when data changes
 - **Background Sync**: Stale data refreshes without user intervention
 
@@ -246,7 +246,7 @@ const { theme, setTheme } = useTheme();
 
 - **Why**: Consistent environments and easy deployment
 - **Usage**: PostgreSQL, development environment
-- **Location**: `/docker-compose.yml`
+- **Location**: `/docker-compose.dev.yml` (development), `/deployment/docker-compose.prod.yml` (production)
 
 **Make**
 

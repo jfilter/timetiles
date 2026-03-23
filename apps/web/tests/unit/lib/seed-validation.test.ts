@@ -10,7 +10,7 @@
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
-// importSeeds removed - import jobs are created dynamically, not seeded
+// ingestSeeds removed - ingest jobs are created dynamically, not seeded
 import { userSeeds } from "../../../lib/seed/seeds/users";
 
 describe("Seed Data Validation", () => {
@@ -112,7 +112,7 @@ describe("Seed Data Validation", () => {
     });
   });
 
-  // Import Seeds tests removed - import jobs are created dynamically, not seeded
+  // Ingest Seeds tests removed - ingest jobs are created dynamically, not seeded
 
   describe("Data Consistency", () => {
     it("should generate environment-appropriate amounts of data", () => {
@@ -154,7 +154,7 @@ describe("Seed Data Validation", () => {
   });
 
   describe("Relationship Validation", () => {
-    // Import catalog reference test removed - import jobs are created dynamically, not seeded
+    // Ingest catalog reference test removed - ingest jobs are created dynamically, not seeded
 
     it("should have valid catalog references in datasets", () => {
       const environments = ["development", "production"];

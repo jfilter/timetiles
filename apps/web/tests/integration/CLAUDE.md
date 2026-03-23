@@ -89,7 +89,7 @@ Integration tests run with `isolate: false` — multiple test files share a fork
 
 ```typescript
 describe.sequential("Feature Name", () => {
-  const collectionsToReset = ["events", "import-files", "import-jobs", "payload-jobs"];
+  const collectionsToReset = ["events", "ingest-files", "ingest-jobs", "payload-jobs"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 

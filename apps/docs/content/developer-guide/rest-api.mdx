@@ -1,6 +1,6 @@
 # REST API
 
-The TimeTiles REST API provides programmatic access to event data, geospatial clustering, temporal histograms, and import progress tracking. All endpoints return JSON responses and support filtering by catalog, dataset, date range, and geographic bounds.
+The TimeTiles REST API provides programmatic access to event data, geospatial clustering, temporal histograms, and ingest progress tracking. All endpoints return JSON responses and support filtering by catalog, dataset, date range, and geographic bounds.
 
 ## Base URL
 
@@ -43,15 +43,16 @@ TimeTiles uses two categories of API endpoints with different purposes:
 | ----------------------------- | ---------------------------------------------- |
 | `/api/health`                 | System health check                            |
 | `/api/auth/register`          | User registration (enumeration-safe)           |
-| `/api/import/*`               | Ingestion schema preview, configure, validate  |
-| `/api/import-jobs/*`          | Ingestion job management (reset, retry)        |
+| `/api/ingest/*`               | Ingestion schema preview, configure, validate  |
+| `/api/ingest-jobs/*`          | Ingestion job management (reset, retry)        |
 | `/api/users/*`                | Account management (password, email, deletion) |
 | `/api/account/*`              | Account deletion summary                       |
 | `/api/admin/*`                | Admin operations (schedule, jobs)              |
 | `/api/quotas`                 | User quota status                              |
 | `/api/feature-flags`          | Feature flag state                             |
 | `/api/data-exports/*`         | Data export request and download               |
-| `/api/scheduled-imports/*`    | Manual trigger for scheduled ingestion         |
+| `/api/scheduled-ingests/*`    | Manual trigger for scheduled ingestion         |
+| `/api/legal-notices`          | Legal notices                                  |
 | `/api/catalogs/with-datasets` | Catalogs with nested datasets                  |
 | `/api/geocoding/test`         | Geocoding provider test                        |
 | `/api/newsletter/*`           | Newsletter subscription                        |
@@ -433,14 +434,14 @@ curl "https://your-instance.com/api/v1/sources/stats"
 Retrieve real-time progress information for a data ingestion operation.
 
 ```http
-GET /api/import/:importId/progress
+GET /api/ingest/:ingestId/progress
 ```
 
 **Path Parameters:**
 
 | Parameter  | Type   | Required | Description    |
 | ---------- | ------ | -------- | -------------- |
-| `importId` | string | **Yes**  | Import file ID |
+| `ingestId` | string | **Yes**  | Ingest file ID |
 
 **Response:**
 
@@ -494,10 +495,10 @@ GET /api/import/:importId/progress
 **Example:**
 
 ```bash
-curl "https://your-instance.com/api/import/123/progress"
+curl "https://your-instance.com/api/ingest/123/progress"
 ```
 
-**Implementation:** `apps/web/app/api/import/[importId]/progress/route.ts:72-139`
+**Implementation:** `apps/web/app/api/ingest/[ingestId]/progress/route.ts`
 
 ---
 
@@ -777,11 +778,11 @@ const geojson = await response.json();
 // Use with MapLibre, Leaflet, etc.
 ```
 
-### Check Import Progress
+### Check Ingest Progress
 
 ```typescript
-async function pollImportProgress(importId: string) {
-  const response = await fetch(`https://your-instance.com/api/import/${importId}/progress`);
+async function pollIngestProgress(ingestId: string) {
+  const response = await fetch(`https://your-instance.com/api/ingest/${ingestId}/progress`);
 
   const progress = await response.json();
 

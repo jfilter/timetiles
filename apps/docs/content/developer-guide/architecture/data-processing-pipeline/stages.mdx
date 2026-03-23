@@ -18,7 +18,7 @@ Tasks 2-7 run per sheet within the workflow. If `validate-schema` detects schema
 
 ## Stage 1: Dataset Detection
 
-**Trigger**: File uploaded to `import-files` collection
+**Trigger**: File uploaded to `ingest-files` collection
 **Stage**: Pre-processing (before import-job creation)
 **Job Handler**: `dataset-detection-job`
 
@@ -44,7 +44,7 @@ Parse uploaded files to detect datasets and sheets, creating individual ingestio
 
 - Create one ingestion job per dataset/sheet combination
 - Each job processes independently through all subsequent stages
-- Jobs link back to parent import-file
+- Jobs link back to parent ingest-file
 
 ### Multi-Sheet Excel Handling
 
@@ -60,7 +60,7 @@ Each ingestion job progresses through all task stages within the parent workflow
 
 ### Ingestion File Status
 
-The parent import-file status reflects the aggregate state:
+The parent ingest-file status reflects the aggregate state:
 
 - **Processing**: While ANY ingestion job is incomplete
 - **Completed**: When ALL ingestion jobs succeed
@@ -731,8 +731,8 @@ When all batches complete, the system:
 
 **Import File Update**:
 
-- Checks if ALL import-jobs completed
-- Updates import-file status if all jobs done
+- Checks if ALL ingest-jobs completed
+- Updates ingest-file status if all jobs done
 - Maintains "processing" if any jobs remain
 
 **Notification**:

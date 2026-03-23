@@ -27,7 +27,7 @@ Built with Next.js 16, React 19, PostgreSQL/PostGIS, and Payload CMS 3. Supports
 
 ### Data Import & Processing
 
-- **📁 Multiple Formats**: Import CSV, Excel, and ODS files with automatic format detection
+- **📁 Multiple Formats**: Import CSV, Excel, ODS, and JSON API sources with automatic format detection
 - **🗺️ Smart Geocoding**: Multi-provider geocoding (Nominatim, Google Maps, OpenCage) with fallback
 - **⚡ Real-time Progress**: Watch your data being processed with live updates
 - **🔄 Batch Processing**: Handle thousands of events efficiently
@@ -69,7 +69,7 @@ make init
 
 Your first chronicle:
 
-1. Navigate to http://localhost:3000/import
+1. Navigate to http://localhost:3000/ingest
 2. Drop a CSV file with columns: `title`, `date`, `location` (address or coordinates)
 3. Watch as TimeTiles geocodes and visualizes your data
 4. Share your interactive chronicle with others!

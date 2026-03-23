@@ -1,9 +1,9 @@
 // @vitest-environment node
 /**
- * Security tests verifying import job creation validates ownership.
+ * Security tests verifying ingest job creation validates ownership.
  *
  * The vulnerability: the create access rule only checks authentication and
- * a feature flag. Any authenticated user can create import-jobs referencing
+ * a feature flag. Any authenticated user can create ingest-jobs referencing
  * another user's ingestFile or private dataset, immediately triggering
  * background pipeline work against resources they don't own.
  *
@@ -57,7 +57,7 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
   });
 
   beforeEach(async () => {
-    // Create owner's catalog, dataset, and import file
+    // Create owner's catalog, dataset, and ingest file
     const catResult = await withCatalog(testEnv, { name: "Owner Private Catalog", isPublic: false, user: ownerUser });
     ownerCatalog = catResult.catalog;
 
@@ -71,7 +71,7 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
     });
     ownerIngestFile = ifResult.ingestFile;
 
-    // Create attacker's own catalog and import file
+    // Create attacker's own catalog and ingest file
     const attackerCatResult = await withCatalog(testEnv, {
       name: "Attacker Catalog",
       isPublic: false,
@@ -94,7 +94,7 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
         isPublic: false,
       });
 
-      // Attacker tries to create an import job using owner's import file
+      // Attacker tries to create an ingest job using owner's ingest file
       await expect(
         payload.create({
           collection: "ingest-jobs",
@@ -110,8 +110,8 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
     });
 
     it("should reject when attacker creates job targeting another user's private dataset", async () => {
-      // Attacker tries to create an import job targeting owner's private dataset
-      // using their own import file
+      // Attacker tries to create an ingest job targeting owner's private dataset
+      // using their own ingest file
       await expect(
         payload.create({
           collection: "ingest-jobs",
@@ -128,7 +128,7 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
   });
 
   describe("Legitimate access after fix", () => {
-    it("owner can create import job with their own ingestFile and dataset", async () => {
+    it("owner can create ingest job with their own ingestFile and dataset", async () => {
       const job = await payload.create({
         collection: "ingest-jobs",
         data: { ingestFile: ownerIngestFile.id, dataset: ownerDataset.id, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES },
@@ -138,7 +138,7 @@ describe.sequential("Import Job Creation Authorization Vulnerability", () => {
       expect(job.id).toBeDefined();
     });
 
-    it("admin can create import job for any ingestFile/dataset", async () => {
+    it("admin can create ingest job for any ingestFile/dataset", async () => {
       const job = await payload.create({
         collection: "ingest-jobs",
         data: { ingestFile: ownerIngestFile.id, dataset: ownerDataset.id, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES },

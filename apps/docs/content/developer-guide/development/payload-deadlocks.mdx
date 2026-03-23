@@ -170,7 +170,7 @@ Tests will timeout (60+ seconds) if deadlocks occur. Use short timeouts (10-15s)
 ```typescript
 test("should create schedule without hanging", async () => {
   const result = await payload.create({
-    collection: "scheduled-imports",
+    collection: "scheduled-ingests",
     data: { name: "Test", enabled: true },
     user: testUser,
   });
@@ -184,7 +184,7 @@ test("should create schedule without hanging", async () => {
 
 - [ ] **Pass `req` parameter** to all nested `payload.update()`, `payload.create()`, `payload.findByID()` calls
 - [ ] **Use `context` flags** to prevent infinite hook recursion
-  - Common flags: `skipUsageHooks`, `skipQuotaChecks`, `skipImportFileHooks`
+  - Common flags: `skipUsageHooks`, `skipQuotaChecks`, `skipIngestFileHooks`
 - [ ] **Add `overrideAccess: true`** to skip nested access control checks
 - [ ] **Avoid database queries** in access control functions when possible
 - [ ] **Read from memory** instead of querying when data is already available
@@ -206,7 +206,7 @@ If you suspect a deadlock:
 
 ### Example 1: Scheduled Imports Collection
 
-See `apps/web/lib/collections/scheduled-imports/index.ts` for a complete example of:
+See `apps/web/lib/collections/scheduled-ingests/index.ts` for a complete example of:
 
 - Quota checking in `beforeChange`
 - Usage tracking in `afterChange`
@@ -223,7 +223,7 @@ See `apps/web/lib/services/quota-service.ts` for:
 
 ### Example 3: Import Files Collection
 
-See `apps/web/lib/collections/import-files.ts` for:
+See `apps/web/lib/collections/ingest-files.ts` for:
 
 - Multiple nested `payload.update()` calls in `afterChange`
 - Context flags preventing hook recursion

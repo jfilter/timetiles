@@ -78,7 +78,7 @@ MAX_FILE_SIZE_UNAUTHENTICATED=10485760   # 10MB for unauthenticated users
 
 # Upload Directory Configuration
 # Base directory for all uploads (relative to apps/web or absolute path)
-# Subfolders are created automatically: /media and /import-files
+# Subfolders are created automatically: /media and /ingest-files
 UPLOAD_DIR=uploads
 UPLOAD_TEMP_DIR=./tmp                    # Temporary directory for file processing
 ```
@@ -301,7 +301,7 @@ Users can create automated ingestion schedules that fetch data from a URL on a c
 ### Configuration
 
 - Enable/disable via the **Enable Scheduled Ingestion** feature flag
-- Users create schedules at `/dashboard/collections/scheduled-imports`
+- Users create schedules at `/dashboard/collections/scheduled-ingests`
 - Each schedule specifies: URL, cron expression, target catalog/dataset, authentication (optional)
 
 ### Authentication Options
@@ -319,7 +319,7 @@ Scheduled ingestion uses HTTP caching (RFC 7234) to avoid re-downloading unchang
 
 ### Monitoring
 
-- View all schedules: `/dashboard/collections/scheduled-imports`
+- View all schedules: `/dashboard/collections/scheduled-ingests`
 - Check schedule health: `GET /api/admin/schedule-service`
 - System automatically cleans up stuck ingestion jobs via background job
 

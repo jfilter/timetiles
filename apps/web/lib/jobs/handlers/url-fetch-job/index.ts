@@ -27,9 +27,9 @@ import type { ScheduledIngest, User } from "@/payload-types";
 
 import {
   checkForDuplicateContent,
-  loadScheduledImportConfig,
-  updateScheduledImportFailure,
-  updateScheduledImportSuccess,
+  loadScheduledIngestConfig,
+  updateScheduledIngestFailure,
+  updateScheduledIngestSuccess,
 } from "./scheduled-ingest-utils";
 
 export interface UrlFetchJobInput {
@@ -86,7 +86,7 @@ const handleDuplicateCheck = async (
   });
 
   if (context.scheduledIngest) {
-    await updateScheduledImportSuccess(payload, context.scheduledIngest, existingFile.id, 0);
+    await updateScheduledIngestSuccess(payload, context.scheduledIngest, existingFile.id, 0);
   }
 
   return { ingestFileId: existingFile.id, filename: existingFile.filename, contentHash: dataHash, isDuplicate: true };
@@ -286,7 +286,7 @@ export const urlFetchJob = {
     let scheduledIngest: ScheduledIngest | null = null;
 
     try {
-      scheduledIngest = await loadScheduledImportConfig(payload, input.scheduledIngestId);
+      scheduledIngest = await loadScheduledIngestConfig(payload, input.scheduledIngestId);
 
       // Abort if scheduled ingest was requested but is disabled or not found
       if (input.scheduledIngestId && !scheduledIngest) {
@@ -333,7 +333,7 @@ export const urlFetchJob = {
       // Update scheduled ingest status if applicable
       if (scheduledIngest) {
         const duration = Date.now() - startTime;
-        await updateScheduledImportSuccess(payload, scheduledIngest, ingestFileId, duration);
+        await updateScheduledIngestSuccess(payload, scheduledIngest, ingestFileId, duration);
       }
 
       return buildSuccessOutput(ingestFileId, filename, result.contentHash, false, result);
@@ -345,7 +345,7 @@ export const urlFetchJob = {
       });
 
       if (scheduledIngest) {
-        await updateScheduledImportFailure(payload, scheduledIngest, errorObj);
+        await updateScheduledIngestFailure(payload, scheduledIngest, errorObj);
       }
 
       // Throw — Payload marks workflow as failed
