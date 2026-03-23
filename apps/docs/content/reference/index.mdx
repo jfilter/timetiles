@@ -6,41 +6,37 @@ asIndexPage: true
 
 Technical reference materials for TimeTiles.
 
-## Overview
+import { Cards } from "nextra/components";
 
-This section contains API documentation, scraper reference, project roadmap, changelog, and terminology reference.
+<Cards num={2}>
+  <Cards.Card title="API Reference" href="./api" arrow>
+    Auto-generated TypeDoc documentation for collections, services, jobs, and hooks.
+  </Cards.Card>
+  <Cards.Card title="REST API" href="/developer-guide/rest-api" arrow>
+    Endpoint reference for the versioned public API and internal routes.
+  </Cards.Card>
+</Cards>
 
-## Documentation Structure
+<Cards num={2}>
+  <Cards.Card title="Scrapers" href="./scrapers" arrow>
+    Run Python or Node.js scripts in isolated containers to extract event data.
+  </Cards.Card>
+  <Cards.Card title="Glossary" href="./glossary" arrow>
+    Definitions of key terms and concepts.
+  </Cards.Card>
+</Cards>
 
-### [API Reference](./api)
+<Cards num={2}>
+  <Cards.Card title="Changelog" href="./changelog" arrow>
+    Version history, features, and breaking changes.
+  </Cards.Card>
+  <Cards.Card title="Roadmap" href="./roadmap" arrow>
+    Planned features and development direction.
+  </Cards.Card>
+</Cards>
 
-Auto-generated API documentation from TypeScript source code covering collections, services, jobs, and API endpoints.
+## Related
 
-### [Scrapers](./scrapers)
-
-Run user-defined Python or Node.js scripts to extract event data from websites and APIs. Covers architecture, helper libraries, scheduling, deployment, and security.
-
-### [Changelog](./changelog)
-
-Version history, new features, bug fixes, and breaking changes.
-
-### [Glossary](./glossary)
-
-Definitions of key terms and concepts used throughout TimeTiles.
-
-### [Roadmap](./roadmap)
-
-Planned features and future development direction.
-
-## Quick Start
-
-- **API Integration**: See [API Reference](./api) for endpoint documentation
-- **Scrapers**: See [Scrapers](./scrapers) for writing and deploying data scrapers
-- **What's New**: Check [Changelog](./changelog) for recent updates
-- **Terminology**: Use [Glossary](./glossary) to understand domain concepts
-
-## Related Guides
-
-- [Guide](/user-guide/) - For end users
-- [Self-Hosting](/admin-guide/) - For operators
-- [Development](/developer-guide/) - For contributors
+- [Guide](/user-guide) — Using TimeTiles as an end user
+- [Self-Hosting](/admin-guide) — Deploying and operating TimeTiles
+- [Development](/developer-guide) — Contributing to the project

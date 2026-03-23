@@ -1,210 +1,95 @@
-# Frequently Asked Questions
+# FAQ
 
-## General Questions
+## General
 
-### What exactly is an "interactive chronicle"?
+### What is TimeTiles?
 
-An interactive chronicle is an explorable dataset that tells a story through geographic and temporal data. Unlike static reports or complex dashboards, chronicles allow readers to discover patterns by filtering, searching, and exploring the data themselves. Think of it as a guided exploration rather than a predetermined narrative.
+An open-source platform that turns spreadsheets of events into interactive maps with timeline controls. Upload a CSV with dates and locations, and it becomes an explorable interface — pan the map, scrub the timeline, filter by category.
 
-### How is TimeTiles different from other mapping tools?
+### How is it different from other tools?
 
-TimeTiles is specifically designed for **storytelling with geo-temporal data**, not general mapping or analysis:
+TimeTiles is purpose-built for **storytelling with geo-temporal data**. It sits between simple tools (TimelineJS, StoryMapJS) that handle ~200 events and complex GIS software (QGIS, ArcGIS) that requires expertise. See the [full comparison](/overview/comparison).
 
-- **vs. Google Maps/Leaflet**: Purpose-built for event chronicles, not general mapping
-- **vs. Tableau/PowerBI**: Focused on public accessibility, not expert analysis
-- **vs. QGIS/ArcGIS**: Ready-to-use platform, not a complex GIS toolkit
-- **vs. Datawrapper**: Specialized for geospatial narratives with rich temporal features
+### Do I need technical skills?
 
-### Do I need technical skills to use TimeTiles?
+**To use it**: No. Import data, configure settings, and share — all through the web interface.
 
-**For basic use**: No. TimeTiles is designed for journalists, researchers, and activists without technical backgrounds. You can import data, configure basic settings, and publish chronicles through the web interface.
+**To self-host**: Basic Docker and Linux skills. See the [Self-Hosting guide](/admin-guide).
 
-**For advanced customization**: Some technical knowledge helps for custom deployments, API integrations, or using TimeTiles as a development library.
+### Is it free?
 
-### Is TimeTiles free to use?
+Yes. TimeTiles is open source (AGPL-3.0). Self-host on your own servers at no cost.
 
-Yes, TimeTiles is **open source** and free to use. You can:
+## Data
 
-- Self-host the complete application on your own servers
-- Use and modify the code under the open source license
-- Deploy multiple instances for different projects
+### What formats can I import?
 
-_Note_: Managed hosting options may be available in the future for users who prefer not to self-host.
-
-## Data & Ingestion Questions
-
-### What types of data work best with TimeTiles?
-
-**Ideal datasets** have:
-
-- **Location data**: Coordinates (lat/lng) or geocodable addresses
-- **Timestamps**: When events occurred (dates or datetimes)
-- **Rich metadata**: Descriptions, categories, demographics, or other contextual information
-- **Sufficient volume**: 100-100,000+ events show the most interesting patterns
-
-**Examples**: Police incident reports, environmental violations, protest events, accident records, health data with geographic components.
-
-### What file formats can I import?
-
-Currently supported:
-
-- **CSV files** (most common)
-- **Excel files** (.xlsx, .xls)
-- **ODS files** (OpenDocument Spreadsheet)
-- **JSON API** endpoints via URL ingestion
-- **Scheduled URL ingestion** for automated data feeds
-
-Files can be uploaded manually or fetched automatically on a schedule from a URL. JSON API responses are automatically converted to tabular data.
+CSV, Excel (.xlsx/.xls), ODS, and JSON API endpoints via URL. Files can be uploaded manually or fetched on a schedule.
 
 ### My data only has addresses, not coordinates. Will it work?
 
-Yes! TimeTiles includes **automatic geocoding** that converts addresses to coordinates. This works for:
+Yes. TimeTiles geocodes text addresses automatically using Nominatim (free), Google Maps, or OpenCage — with fallback between providers.
 
-- Street addresses
-- City/state combinations
-- Landmark names
-- Postal codes
+### How much data can it handle?
 
-The geocoding service will attempt to find coordinates for any location text in your data.
+Tested with 100,000+ events. Server-side clustering via PostGIS keeps the map responsive regardless of dataset size. The bottleneck is import time for very large files, not runtime performance.
 
-### How much data can TimeTiles handle?
+### What fields do I need?
 
-TimeTiles is designed for **large datasets**:
+Three required fields: **title** (what happened), **date** (when), and **location** (where — address or coordinates). Any additional fields become filterable in the interface.
 
-- **Database**: Tested with 100,000+ events
-- **Performance**: Server-side clustering ensures fast loading regardless of dataset size
-- **Memory**: Efficient data loading prevents browser crashes with large datasets
-- **Scalability**: PostgreSQL backend handles millions of records
-
-The main limitation is ingestion time for very large files, not runtime performance.
-
-## Technical Questions
+## Technical
 
 ### What are the system requirements?
 
-**Minimum requirements**:
+Minimum: 2 CPU cores, 4 GB RAM, 20 GB SSD, Docker. Recommended: 4+ cores, 8+ GB RAM, 50+ GB SSD. See [Prerequisites](/admin-guide/installation).
 
-- 4GB RAM (8GB for building)
-- 20GB SSD
-- PostgreSQL 17+ with PostGIS 3.5+
-- Node.js 24+
+### Can I integrate with other systems?
 
-**Recommended for production**:
-
-- 4GB+ RAM
-- 50GB+ disk space
-- PostgreSQL 17+ with PostGIS 3.5+
-- Node.js 24+
-- Reverse proxy (nginx/Apache)
-
-### Can I integrate TimeTiles with existing systems?
-
-Yes, several integration options:
-
-**As a standalone application**:
-
-- Deploy TimeTiles as a complete web application
-- Import data through the admin interface or set up scheduled URL imports
-
-**Via API**:
-
-- Versioned REST API (`/api/v1/`) for querying events, clusters, and statistics
-- Payload CMS REST API for CRUD operations on all collections
-- Webhook triggers for automated workflows
+Yes. Versioned REST API (`/api/v1/`) for querying events, clusters, and statistics. Payload CMS REST API for CRUD on all collections. Webhook triggers for automation. Scheduled URL imports for external data feeds.
 
 ### Is my data secure?
 
-TimeTiles provides several security options:
+Your data stays on your servers when self-hosting. Access control supports public and private catalogs. HTTPS with Let's Encrypt. Rate limiting and trust levels for API protection.
 
-**Private instances**: Restrict access to authorized users only
-**Data control**: Your data stays on your servers when self-hosting
-**Access controls**: Configure who can view, edit, or administer each chronicle
-**HTTPS support**: Secure connections for all data transmission
+### What languages are supported?
 
-For sensitive data, we recommend self-hosting rather than using managed services.
-
-### Does TimeTiles support multiple languages?
-
-Yes! The user interface is available in **English** (default) and **German**. The ingestion system supports automatic field mapping detection in 7 languages (English, German, French, Spanish, Italian, Dutch, Portuguese).
-
-For non-default locales, URLs are prefixed with the locale code (e.g., `/de/explore`). The default locale uses clean URLs with no prefix.
+The UI is available in English and German. The import system detects field mappings in 7 languages (English, German, French, Spanish, Italian, Dutch, Portuguese).
 
 ### Can I customize the appearance?
 
-**Basic customization**:
+Yes — themes, branding, logos, custom CSS, and layout templates. All configurable from the admin dashboard without code changes. See [UI Customization](/admin-guide/ui-customization).
 
-- Configure site name, logos, and favicons through the Branding global in the admin dashboard
-- Customize footer links, navigation menu, and newsletter integration
-- Create custom pages with a block-based builder (Hero, Features, Stats, etc.)
+## Sharing
 
-**Advanced customization**:
+### How do I share a chronicle?
 
-- Configure Sites for multi-tenant deployments with separate branding per domain
-- Modify CSS and styling using Tailwind CSS and the shared UI component library
-- Override default components with your own implementations
+Every view has a unique URL with filters, map position, and time range encoded. Share the link — recipients see exactly what you see.
 
-## Usage & Workflow Questions
+### Can multiple people collaborate?
 
-### How do I share my chronicle with others?
+Yes. Role-based access (User, Editor, Admin), multi-dataset catalogs, and a full audit log for accountability.
 
-**Public chronicles**: Anyone with the URL can access and explore the data
-**Private chronicles**: Require user accounts and appropriate permissions
-**Data export**: Download all your data as a ZIP archive from Account Settings
-**Shareable URLs**: Filter state is preserved in the URL — bookmark or share specific views
+### Can I export my data?
 
-### Can multiple people work on the same chronicle?
-
-Yes, TimeTiles supports collaborative workflows:
-
-- **Role-based access**: Assign different permission levels to different users
-- **Data management**: Multiple administrators can import and manage data
-- **Version control**: Track changes and maintain data provenance
-- **Multi-dataset**: Different team members can work on separate datasets within the same instance
-
-### What happens if I make a mistake ingesting data?
-
-- **Preview mode**: Review data before final ingestion
-- **Rollback capability**: Remove or replace incorrectly ingested datasets
-- **Data validation**: Automatic checks catch common formatting issues
-- **Iterative ingestion**: Add new data to existing chronicles without disrupting published versions
+Yes. Download all your data as a ZIP archive from Account Settings. Includes catalogs, datasets, events, and import history.
 
 ## Troubleshooting
 
-### My map isn't loading properly
+### The map isn't loading
 
-Common solutions:
+Check that your location data contains valid coordinates (decimal degrees) or geocodable addresses. Verify geocoding completed successfully in the import progress view.
 
-1. **Check data format**: Ensure latitude/longitude columns are properly formatted numbers
-2. **Verify coordinates**: Confirm coordinates are in decimal degrees format (not degrees/minutes/seconds)
-3. **Test geocoding**: If using addresses, check that the geocoding service processed them correctly
-4. **Browser console**: Check for JavaScript errors that might indicate configuration issues
+### Import is slow
 
-### Ingestion is taking a very long time
-
-- **Large files**: Ingestion time scales with dataset size - 10,000+ records may take several minutes
-- **Geocoding**: Address-to-coordinate conversion is the slowest stage
-- **Server resources**: Ensure adequate RAM and CPU for processing
-- **Background processing**: Large ingestion runs happen in the background - you can continue using TimeTiles while they complete
+Geocoding is the slowest stage — it makes external API calls for each unique address. If your data already has coordinates, geocoding is skipped and imports are much faster. Large files (10,000+ rows) may take several minutes.
 
 ### I'm getting permission errors
 
-- **File permissions**: Ensure TimeTiles can read uploaded files
-- **Database access**: Verify PostgreSQL connection and permissions
-- **Admin access**: Confirm you have administrator privileges for data ingestion
-- **CORS issues**: Check cross-origin request settings if integrating with other domains
+Check your user role in the admin dashboard. Verify the feature flags are enabled (Settings > Feature Flags). For API access, ensure you're authenticated with a valid session.
 
-## Community & Support
+## Support
 
-### Where can I get help?
-
-- **Documentation**: Comprehensive guides (this site)
-- **GitHub Issues**: Report bugs or request features at [GitHub repository](https://github.com/jfilter/timetiles/issues)
-- **GitHub Discussions**: Connect with other users and contributors at [GitHub Discussions](https://github.com/jfilter/timetiles/discussions)
-
-### How can I contribute to TimeTiles?
-
-- **Bug reports**: Help identify and fix issues
-- **Feature requests**: Suggest improvements or new capabilities
-- **Code contributions**: Submit pull requests for bug fixes or new features
-- **Documentation**: Improve guides, examples, and tutorials
-- **Testing**: Try TimeTiles with different datasets and report your experience
+- [GitHub Issues](https://github.com/jfilter/timetiles/issues) — Bug reports and feature requests
+- [GitHub Discussions](https://github.com/jfilter/timetiles/discussions) — Questions and community
+- [Documentation](/) — You're reading it
