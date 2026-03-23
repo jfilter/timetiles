@@ -12,12 +12,12 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 
+import { getAppConfig } from "@/lib/config/app-config";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { getBaseUrl } from "@/lib/utils/base-url";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
 
-import { DELETION_GRACE_PERIOD_DAYS } from "../constants/account-constants";
 import { PROCESSING_STAGE } from "../constants/ingest-constants";
 import { createLogger, logError } from "../logger";
 import { AUDIT_ACTIONS, auditLog } from "../services/audit-log-service";
@@ -197,7 +197,8 @@ export class AccountDeletionService {
 
     const summary = await this.getDeletionSummary(userId);
     const now = new Date();
-    const deletionDate = new Date(now.getTime() + DELETION_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+    const gracePeriodDays = getAppConfig().account.deletionGracePeriodDays;
+    const deletionDate = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000);
 
     await this.payload.update({
       collection: "users",

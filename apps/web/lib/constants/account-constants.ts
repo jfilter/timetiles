@@ -2,12 +2,15 @@
  * Account lifecycle constants.
  *
  * Client-safe constants for account management features (deletion, etc.).
- * Values are loaded from `config/timetiles.yml` with hardcoded defaults.
+ * This file is imported by client components — do NOT import server-only
+ * modules (node:fs, getAppConfig, etc.) here.
+ *
+ * The server-side deletion job reads the configurable value from
+ * `getAppConfig().account.deletionGracePeriodDays` directly.
  *
  * @module
  * @category Constants
  */
-import { getAppConfig } from "@/lib/config/app-config";
 
-/** Grace period in days before account is permanently deleted. */
-export const DELETION_GRACE_PERIOD_DAYS = getAppConfig().account.deletionGracePeriodDays;
+/** Grace period in days before account is permanently deleted (display default). */
+export const DELETION_GRACE_PERIOD_DAYS = 30;
