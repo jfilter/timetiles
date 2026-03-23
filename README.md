@@ -1,168 +1,130 @@
-# TimeTiles
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="packages/assets/logos/latest/dark/no-grid/wordmark_horizontal.svg">
+  <source media="(prefers-color-scheme: light)" srcset="packages/assets/logos/latest/light/no-grid/wordmark_horizontal.svg">
+  <img alt="TimeTiles" src="packages/assets/logos/latest/light/no-grid/wordmark_horizontal.svg" height="56">
+</picture>
 
-> Transform your data into interactive, explorable timelines on a map
+### Transform your data into interactive, explorable timelines on a map
 
-**TimeTiles** is an open-source platform that helps journalists, researchers, activists, and organizations visualize events across time and space. Upload your data, and TimeTiles automatically creates an interactive map with timeline controls, filters, and rich visualizations that make complex stories accessible to everyone.
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-## What TimeTiles Does
+TimeTiles is an open-source platform for visualizing events across time and space. Upload a spreadsheet, and it becomes an interactive map with timeline controls, filters, and rich visualizations — making complex stories accessible to everyone.
 
-TimeTiles turns spreadsheets of events into interactive experiences:
+Built for **journalists** documenting events across regions, **researchers** analyzing historical patterns, **activists** tracking environmental or social issues, and **organizations** presenting data-driven narratives.
 
-- **📍 Map Visualization**: See where events happened with automatic clustering and smooth interactions
-- **📅 Timeline Controls**: Navigate through time to see how stories unfold
-- **🔍 Smart Filters**: Let viewers explore data by categories, dates, and locations
-- **📊 Data Analysis**: Built-in histograms and charts reveal patterns in your data
-- **🌐 Web-Ready**: Share your chronicles with a link or embed them in your website
+---
 
-Perfect for:
+## Features
 
-- **Journalists** documenting news events across regions
-- **Researchers** analyzing historical patterns
-- **Activists** tracking environmental or social issues
-- **Organizations** presenting data-driven narratives
+**Import & Processing** — CSV, Excel, ODS, and JSON API sources with automatic format detection. Multi-provider geocoding (Nominatim, Google Maps, OpenCage) with fallback. Scheduled URL imports, batch processing with real-time progress, intelligent caching, and optional web scrapers running in isolated containers.
 
-Built with Next.js 16, React 19, PostgreSQL/PostGIS, and Payload CMS 3. Supports English and German (via next-intl).
+**Visualization** — Interactive maps with clustering, timeline scrubbing, dynamic filters by category/date/location, automatic histograms, and customizable light/dark themes.
 
-## Key Features
+**Sharing** — Shareable URLs with filter state preserved, multi-user collaboration, public or private access control, embeddable views, and full data export.
 
-### Data Import & Processing
-
-- **📁 Multiple Formats**: Import CSV, Excel, ODS, and JSON API sources with automatic format detection
-- **🗺️ Smart Geocoding**: Multi-provider geocoding (Nominatim, Google Maps, OpenCage) with fallback
-- **⚡ Real-time Progress**: Watch your data being processed with live updates
-- **🔄 Batch Processing**: Handle thousands of events efficiently
-- **⏰ Scheduled Imports**: Automated URL-based imports on a cron schedule
-- **💾 Intelligent Caching**: Reduce API costs with smart location and URL fetch caching
-- **🕷️ Web Scrapers**: Run Python/Node.js scrapers in isolated containers for non-tabular data sources
-
-### Visualization & Exploration
-
-- **🗺️ Interactive Maps**: Pan, zoom, and explore events spatially
-- **📊 Timeline Views**: Scrub through time to see patterns emerge
-- **🎛️ Dynamic Filters**: Let users explore by categories, dates, and custom fields
-- **📈 Data Analysis**: Automatic histograms and statistical visualizations
-- **🎨 Customizable Themes**: Light/dark modes and configurable styles
-
-### Sharing & Collaboration
-
-- **🔗 Shareable Links**: Each view has a unique URL with filters preserved
-- **👥 Multi-user Support**: Collaborate with team members on datasets
-- **🔒 Access Control**: Public or private chronicles with granular permissions
-- **📦 Data Export**: Download all your data as a ZIP archive
-
-## 🚀 Quick Start
-
-### Try TimeTiles in 5 Minutes
+## Quick Start
 
 ```bash
-# Clone and initialize
 git clone https://github.com/jfilter/timetiles.git
 cd timetiles
-
-# Single command: setup + database + seed + start dev server
-make init
-
-# Open in browser
-# Main app: http://localhost:3000
-# Dashboard: http://localhost:3000/dashboard
+make init          # setup + database + seed + dev server
 ```
 
-Your first chronicle:
+Open [localhost:3000](http://localhost:3000). Go to [localhost:3000/ingest](http://localhost:3000/ingest), drop a CSV with `title`, `date`, and `location` columns, and watch your data come alive on the map.
 
-1. Navigate to http://localhost:3000/ingest
-2. Drop a CSV file with columns: `title`, `date`, `location` (address or coordinates)
-3. Watch as TimeTiles geocodes and visualizes your data
-4. Share your interactive chronicle with others!
+## Documentation
 
-## 📖 Documentation
+Full docs at **[docs.timetiles.io](https://docs.timetiles.io)**.
 
-Full documentation at **[docs.timetiles.io](https://docs.timetiles.io)**
+|                                                                            |                          |
+| -------------------------------------------------------------------------- | ------------------------ |
+| [Getting Started](https://docs.timetiles.io/user-guide/getting-started)    | Overview and first steps |
+| [Use Cases](https://docs.timetiles.io/user-guide/use-cases)                | Real-world examples      |
+| [Development Guide](https://docs.timetiles.io/developer-guide/development) | Setup and workflows      |
+| [Architecture](https://docs.timetiles.io/developer-guide/architecture)     | Technical deep dive      |
+| [REST API](https://docs.timetiles.io/developer-guide/rest-api)             | API reference            |
+| [Contributing](CONTRIBUTING.md)                                            | How to contribute        |
 
-### For Users
+## Tech Stack
 
-- [Getting Started](https://docs.timetiles.io/user-guide/getting-started) - Overview and first steps
-- [Use Cases](https://docs.timetiles.io/user-guide/use-cases) - Real-world examples
-
-### For Developers
-
-- [Development Guide](https://docs.timetiles.io/developer-guide/development) - Setup and workflows
-- [Architecture](https://docs.timetiles.io/developer-guide/architecture) - Technical deep dive
-- [API Reference](https://docs.timetiles.io/developer-guide/rest-api) - REST API documentation
-- [Contributing Guide](CONTRIBUTING.md) - How to contribute
+| Layer     | Technology                                    |
+| --------- | --------------------------------------------- |
+| Framework | Next.js 16 (App Router), React 19, TypeScript |
+| CMS       | Payload CMS 3 (integrated mode)               |
+| Database  | PostgreSQL 17 + PostGIS 3.5                   |
+| Maps      | MapLibre GL JS                                |
+| UI        | Tailwind CSS, Radix UI, shadcn/ui             |
+| i18n      | next-intl (English, German)                   |
+| Testing   | Vitest, Playwright                            |
 
 ## Development
 
 ### Prerequisites
 
-- Git, Git LFS, Make, Bash
-- Node.js 24+, pnpm 10.12.4+
+- Node.js 24+, pnpm 10.12+
 - Docker & Docker Compose **or** local PostgreSQL 17+ with PostGIS
-- PostgreSQL client, jq, curl
+- Git, Git LFS, Make
 
 ```bash
 # macOS
 brew install git git-lfs node pnpm docker postgresql jq curl
+```
 
-# Debian/Ubuntu
-sudo apt install git git-lfs make nodejs npm docker.io docker-compose postgresql-client jq curl
-sudo npm install -g pnpm
+### Commands
+
+```bash
+make dev            # Start dev server (auto-starts database)
+make check          # Lint + typecheck
+make test           # Run tests
+make test-e2e       # Run E2E tests
+make format         # Format code
+make migrate        # Run database migrations
+make seed           # Seed database
+make fresh          # Clean reset: database + migrate + seed
+make status         # Check environment health
+make help           # Show all commands
 ```
 
 ### Database Mode
 
-By default, `make dev` uses Docker for PostgreSQL. To use a local Homebrew PostgreSQL instead, set `PG_MODE=local` in your `.env`:
+Docker is the default. For local Homebrew PostgreSQL, set in `.env`:
 
 ```bash
-# .env
 PG_MODE=local
 DATABASE_URL=postgresql://timetiles_user:timetiles_password@localhost:5433/timetiles
 ```
 
-All `make` commands (`dev`, `fresh`, `db-reset`, `db-shell`, etc.) respect `PG_MODE` automatically.
+## Project Structure
 
-### Installation
+```
+apps/
+  web/              Next.js app, Payload CMS, API routes, components
+  scraper/          TimeScrape runner (optional, Podman-isolated)
+  docs/             Documentation site (Nextra)
 
-See the [Quick Start](#-quick-start) section above (`make init`). For detailed setup instructions, see our [Developer Guide](https://docs.timetiles.io/developer-guide/development).
-
-### Development Commands
-
-```bash
-# Daily workflow
-make dev        # Start development server
-make status     # Check environment health
-make kill-dev   # Stop all dev servers
-
-# Code quality
-make check      # Run lint + typecheck
-make test       # Run tests
-make test-e2e   # Run E2E tests
-make format     # Format code
-
-# Database
-make migrate    # Run migrations
-make seed       # Seed database
-make db-shell   # PostgreSQL shell
-make db-query   # Execute SQL queries
-make reset      # Reset database
-
-# All commands
-make help       # Show all available commands
+packages/
+  ui/               Shared UI components (shadcn/ui)
+  assets/           Logos and static assets
+  payload-schema-detection/   CSV/Excel schema detection
+  eslint-config/    Shared ESLint config
+  typescript-config/ Shared TypeScript config
+  prettier-config/  Shared Prettier config
 ```
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+[GNU Affero General Public License v3.0](LICENSE)
 
 ## Acknowledgments
 
-- Funded by the [Prototype Fund](https://prototypefund.de) from the German Federal Ministry of Education and Research
+Funded by the [Prototype Fund](https://prototypefund.de) from the German Federal Ministry of Education and Research.
 
-## Contact & Support
+## Contact
 
 - **Issues**: [GitHub Issues](https://github.com/jfilter/timetiles/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/jfilter/timetiles/discussions)
-- **Security**: Please report security vulnerabilities to [security@timetiles.io](mailto:security@timetiles.io)
+- **Security**: [hi@timetiles.io](mailto:hi@timetiles.io)

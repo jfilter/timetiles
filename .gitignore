@@ -46,6 +46,9 @@ test-results/
 # Vercel
 .vercel
 
+# Payload CMS auto-generated
+apps/web/app/(payload)/dashboard/importMap.js
+
 # Build Outputs
 .next/
 out/
