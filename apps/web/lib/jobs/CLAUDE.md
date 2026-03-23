@@ -39,4 +39,3 @@ All ingest workflows run on the `ingest` queue with per-resource concurrency key
 
 - **tests/integration/CLAUDE.md** — Job testing patterns
 - **lib/jobs/workflows/** — Workflow definitions and shared sheet-processing logic
-- **.claude/DEBUGGING.md** — Import pipeline debugging

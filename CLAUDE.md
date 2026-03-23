@@ -369,7 +369,6 @@ Supports CSV, Excel, ODS, and JSON API sources with:
 | Dev server won't start          | `make status` then `make fresh`              |
 | E2E tests failing               | `make test-e2e` (auto-sets up test database) |
 
-**For detailed debugging:** See `.claude/DEBUGGING.md` for log locations, import pipeline issues, PostGIS problems, and test debugging patterns.
 
 ## Important Notes
 

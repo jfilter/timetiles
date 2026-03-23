@@ -1,54 +1,107 @@
 # Contributing to TimeTiles
 
-Thank you for your interest in contributing to TimeTiles!
+Thank you for your interest in contributing! This guide covers everything you need to get started.
 
 ## Quick Start
 
 ```bash
-# Clone and initialize (uses Docker PostgreSQL by default)
 git clone https://github.com/jfilter/timetiles.git
 cd timetiles
-make init             # Complete setup + start dev server
-
-# Optional: use local PostgreSQL instead of Docker
-# Set PG_MODE=local in .env (see README for details)
-
-# Before committing
-make check-ai         # Linting & typecheck (AI-friendly)
-make test-ai          # Run tests (AI-friendly)
-make test-e2e         # Run E2E tests
+make init        # setup + database + seed + dev server
 ```
 
-## Documentation
+Open [localhost:3000](http://localhost:3000) to verify everything works. See the [Development Guide](https://docs.timetiles.io/developer-guide/development) for detailed setup instructions.
 
-See our full documentation at **[docs.timetiles.io](https://docs.timetiles.io)**:
+## Development Workflow
 
-- [Development Guide](https://docs.timetiles.io/developer-guide/development)
-- [Architecture](https://docs.timetiles.io/developer-guide/architecture)
-- [Commit Guidelines](https://docs.timetiles.io/developer-guide/development/commit-guidelines)
-- [Testing Guidelines](https://docs.timetiles.io/developer-guide/development/testing-guidelines)
+### Before you start
 
-## Pull Request Process
+- Check [open issues](https://github.com/jfilter/timetiles/issues) for something to work on
+- For larger changes, open an issue first to discuss the approach
 
-1. Fork the repository
-2. Create a feature branch from `main`
-3. Make your changes following our code standards
-4. Run `make check-ai` and fix any issues
-5. Run `make test-ai` to ensure tests pass
-6. Submit a PR with a clear description
+### Making changes
 
-We use [Conventional Commits](https://docs.timetiles.io/developer-guide/development/commit-guidelines) for commit messages.
+1. Fork the repository and create a branch from `main`
+2. Make your changes
+3. Run checks before committing:
 
-## Scraper Package
+```bash
+make check       # lint + typecheck
+make test        # unit + integration tests
+make test-e2e    # end-to-end tests (optional for non-UI changes)
+```
 
-The `apps/scraper` package (TimeScrape runner) is optional and requires Podman for container execution. See `apps/scraper/docs/SETUP.md` for setup.
+4. Commit using [conventional commits](https://docs.timetiles.io/developer-guide/development/commit-guidelines):
+
+```
+feat(import): add support for JSON API sources
+fix(geocoding): handle addresses with special characters
+docs: update API endpoint examples
+```
+
+5. Push and open a pull request against `main`
+
+### Database
+
+Docker is the default. For local PostgreSQL, set `PG_MODE=local` in your `.env`. All `make` commands respect this automatically.
+
+```bash
+make dev         # start dev server (auto-starts database)
+make db-reset    # reset database
+make fresh       # clean reset: database + migrate + seed
+make status      # check environment health
+```
+
+## Project Structure
+
+```
+apps/
+  web/           Next.js application, Payload CMS, API routes
+  scraper/       Scraper runner (optional, requires Podman)
+  docs/          Documentation site (Nextra)
+
+packages/
+  ui/            Shared UI components (shadcn/ui)
+  assets/        Logos and static assets (Git LFS)
+  payload-schema-detection/  CSV/Excel schema detection
+  eslint-config/ Shared ESLint config
+  typescript-config/  Shared TypeScript config
+  prettier-config/    Shared Prettier config
+```
+
+## Code Standards
+
+- **TypeScript strict mode** throughout
+- **Named imports** only: `import { foo } from 'bar'`
+- **No `console.log`** — use `logger.info()` / `logError()` from `@/lib/logger`
+- **React Query** for all data fetching — never fetch directly in components
+- **Coordinates** always in `[longitude, latitude]` order (GeoJSON standard)
+- **PostGIS** for all spatial queries — no client-side geo computations
+
+## Testing
+
+We use real implementations, not mocks. See the [Testing Guidelines](https://docs.timetiles.io/developer-guide/development/testing-guidelines) for details.
+
+| Type        | Location             | Framework           | What to test                                       |
+| ----------- | -------------------- | ------------------- | -------------------------------------------------- |
+| Unit        | `tests/unit/`        | Vitest              | Pure functions, business logic                     |
+| Integration | `tests/integration/` | Vitest + PostgreSQL | API endpoints, job processing, database operations |
+| E2E         | `tests/e2e/`         | Playwright          | User workflows in the browser                      |
+
+## Pull Requests
+
+- Keep PRs focused on a single concern
+- Include tests for new functionality
+- Update documentation if you change public APIs or user-facing behavior
+- All checks must pass (`make check` + `make test`)
+- Describe what changed and why in the PR description
 
 ## Need Help?
 
-- [GitHub Issues](https://github.com/jfilter/timetiles/issues) - Bug reports and feature requests
-- [GitHub Discussions](https://github.com/jfilter/timetiles/discussions) - Questions and community
-- [Documentation](https://docs.timetiles.io) - Full guides and references
+- [GitHub Discussions](https://github.com/jfilter/timetiles/discussions) — questions and ideas
+- [GitHub Issues](https://github.com/jfilter/timetiles/issues) — bug reports and feature requests
+- [Documentation](https://docs.timetiles.io) — architecture, API reference, guides
 
 ## License
 
-By contributing, you agree to license your contributions under AGPL-3.0.
+By contributing, you agree to license your contributions under the [AGPL-3.0](LICENSE).

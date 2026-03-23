@@ -168,5 +168,4 @@ lib/
 ## See Also
 
 - **Root CLAUDE.md** - Commands, code standards, test credentials
-- **.claude/DEBUGGING.md** - Import pipeline debugging, log locations, common issues
 - **tests/integration/CLAUDE.md** - Background job testing patterns

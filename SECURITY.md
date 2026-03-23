@@ -1,29 +1,45 @@
 # Security Policy
 
+## Supported Versions
+
+| Version | Supported |
+| ------- | --------- |
+| latest  | Yes       |
+
+Only the latest release on `main` receives security updates.
+
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in TimeTiles, please report it to us privately:
-
-**Email**: [security@timetiles.io](mailto:security@timetiles.io)
-
-Please include:
+**Do not open a public issue.** Instead, email [hi@timetiles.io](mailto:hi@timetiles.io) with:
 
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact
-- Any suggested fixes (optional)
+- Suggested fix (if you have one)
 
-## What to Expect
+### What to expect
 
-- We'll acknowledge your report within 48 hours
-- We'll provide a more detailed response within 7 days
-- We'll work with you to understand and resolve the issue
-- We'll credit you in the fix (unless you prefer to remain anonymous)
+- Acknowledgment within 48 hours
+- Detailed response within 7 days
+- A fix timeline based on severity
+- Credit in the release notes (unless you prefer anonymity)
 
-## Please Do Not
+### Scope
 
-- Publicly disclose the vulnerability before we've had a chance to address it
-- Test the vulnerability on production instances you don't own
-- Access or modify data that doesn't belong to you
+The following are in scope:
 
-Thank you for helping keep TimeTiles and its users safe!
+- The TimeTiles web application and API
+- Authentication and access control
+- File upload and import processing
+- Geocoding and data handling
+- Scraper container isolation
+
+Out of scope:
+
+- Vulnerabilities in upstream dependencies (report those to the respective maintainers)
+- Denial of service attacks
+- Social engineering
+
+## Responsible Disclosure
+
+Please give us reasonable time to address the issue before any public disclosure. Do not test against production instances you do not own, and do not access or modify other users' data.
