@@ -12,6 +12,7 @@
 import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
+import { getEnv } from "@/lib/config/env";
 import { createIngestFileAndQueueDetection } from "@/lib/ingest/create-ingest-file";
 import {
   fetchRemoteData,
@@ -200,7 +201,7 @@ const prepareCacheOptions = (
 // Helper to compute fetch timeout respecting test environment
 const computeTimeout = (scheduledIngest: ScheduledIngest | null): number => {
   const timeoutMinutes = scheduledIngest?.advancedOptions?.timeoutMinutes ?? 30;
-  const isTestEnv = process.env.NODE_ENV === "test";
+  const isTestEnv = getEnv().NODE_ENV === "test";
   const configuredTestTimeout = Number(process.env.URL_FETCH_TEST_TIMEOUT_MS ?? "3000");
   const testTimeout =
     Number.isFinite(configuredTestTimeout) && configuredTestTimeout > 0 ? configuredTestTimeout : 3000;

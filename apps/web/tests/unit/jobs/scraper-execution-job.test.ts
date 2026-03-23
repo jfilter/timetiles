@@ -9,6 +9,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetEnv } from "@/lib/config/env";
 import { scraperExecutionJob } from "@/lib/jobs/handlers/scraper-execution-job";
 
 // Mock dependencies
@@ -126,6 +127,7 @@ describe.sequential("scraperExecutionJob", () => {
     // Set env vars for runner
     process.env.SCRAPER_RUNNER_URL = "https://runner.example.com";
     process.env.SCRAPER_API_KEY = "test-api-key";
+    resetEnv();
   });
 
   afterEach(() => {

@@ -23,6 +23,7 @@ import type { CollectionConfig, Payload, Where } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
+import { getEnv } from "@/lib/config/env";
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
@@ -52,7 +53,8 @@ const enforceUploadRateLimit = (
     "source" in data.metadata &&
     data.metadata.source === "seed-data";
 
-  const isTestEnv = process.env.NODE_ENV === "test" || process.env.DATABASE_URL?.includes("_test");
+  const env = getEnv();
+  const isTestEnv = env.NODE_ENV === "test" || env.DATABASE_URL?.includes("_test");
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- logical OR is intentional
   if (isSeedData || isTestEnv) return undefined;
@@ -89,7 +91,7 @@ const ALLOWED_MIME_TYPES = [
 const IngestFiles: CollectionConfig = {
   slug: "ingest-files",
   ...createCommonConfig({ drafts: false }),
-  upload: { staticDir: `${process.env.UPLOAD_DIR ?? "uploads"}/ingest-files`, mimeTypes: ALLOWED_MIME_TYPES },
+  upload: { staticDir: `${getEnv().UPLOAD_DIR}/ingest-files`, mimeTypes: ALLOWED_MIME_TYPES },
   admin: {
     useAsTitle: "originalName", // Use original user-friendly filename
     defaultColumns: ["originalName", "catalog", "status", "datasetsCount", "createdAt", "user"],

@@ -9,6 +9,7 @@
  */
 import type { Payload } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails";
 import { createDataExportService } from "@/lib/export/service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
@@ -129,10 +130,8 @@ export const dataExportJob = {
       });
 
       // Generate download URL
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? getBaseUrl();
-      if (!process.env.NEXT_PUBLIC_PAYLOAD_URL && !process.env.NEXT_PUBLIC_SITE_URL) {
-        logger.warn("NEXT_PUBLIC_PAYLOAD_URL not set, using fallback for export download URL");
-      }
+      const env = getEnv();
+      const baseUrl = env.NEXT_PUBLIC_SITE_URL ?? getBaseUrl();
       const downloadUrl = `${baseUrl}/api/data-exports/${exportId}/download`;
 
       // Calculate file size in MB for email

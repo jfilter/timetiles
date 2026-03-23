@@ -1,0 +1,113 @@
+# TimeTiles Application Configuration
+#
+# Copy this file to timetiles.yml and customize as needed.
+# All values shown below are the defaults — you only need to include
+# values you want to override.
+#
+# This file is optional. If absent, all defaults apply.
+# Changes require a server restart to take effect.
+
+# ---------------------------------------------------------------------------
+# Rate Limits
+# ---------------------------------------------------------------------------
+# Per-endpoint rate limiting with multi-window support.
+# Each endpoint can have burst, hourly, and daily windows.
+# windowMs is in milliseconds.
+
+# rateLimits:
+#   FILE_UPLOAD:
+#     windows:
+#       - { limit: 1, windowMs: 5000, name: burst }
+#       - { limit: 5, windowMs: 3600000, name: hourly }
+#       - { limit: 20, windowMs: 86400000, name: daily }
+#   PROGRESS_CHECK:
+#     windows:
+#       - { limit: 10, windowMs: 1000, name: burst }
+#       - { limit: 3600, windowMs: 3600000, name: hourly }
+#   API_GENERAL:
+#     windows:
+#       - { limit: 5, windowMs: 1000, name: burst }
+#       - { limit: 50, windowMs: 3600000, name: hourly }
+#   REGISTRATION:
+#     windows:
+#       - { limit: 3, windowMs: 60000, name: burst }
+#       - { limit: 10, windowMs: 3600000, name: hourly }
+#       - { limit: 20, windowMs: 86400000, name: daily }
+
+# ---------------------------------------------------------------------------
+# User Quotas by Trust Level
+# ---------------------------------------------------------------------------
+# Trust levels: 0=Untrusted, 1=Basic, 2=Regular, 3=Trusted,
+#               4=Power User, 5=Unlimited
+# Use -1 for unlimited.
+
+# quotas:
+#   0:  # Untrusted
+#     maxActiveSchedules: 0
+#     maxUrlFetchesPerDay: 0
+#     maxFileUploadsPerDay: 1
+#     maxEventsPerImport: 100
+#     maxTotalEvents: 100
+#     maxIngestJobsPerDay: 1
+#     maxFileSizeMB: 1
+#     maxCatalogsPerUser: 1
+#     maxScraperRepos: 0
+#     maxScraperRunsPerDay: 0
+#   2:  # Regular
+#     maxActiveSchedules: 5
+#     maxFileUploadsPerDay: 10
+#     maxEventsPerImport: 10000
+#     maxTotalEvents: 50000
+#   3:  # Trusted
+#     maxActiveSchedules: 20
+#     maxFileUploadsPerDay: 50
+#     maxEventsPerImport: 50000
+#     maxTotalEvents: 500000
+
+# ---------------------------------------------------------------------------
+# Trust-Level Rate Limits
+# ---------------------------------------------------------------------------
+# Per-trust-level rate limits for file uploads and API access.
+
+# trustLevelRateLimits:
+#   0:  # Untrusted
+#     FILE_UPLOAD:
+#       windows:
+#         - { limit: 1, windowMs: 60000, name: burst }
+#         - { limit: 1, windowMs: 3600000, name: hourly }
+#     API_GENERAL:
+#       windows:
+#         - { limit: 1, windowMs: 1000, name: burst }
+#         - { limit: 10, windowMs: 3600000, name: hourly }
+
+# ---------------------------------------------------------------------------
+# Batch Sizes
+# ---------------------------------------------------------------------------
+# Processing batch sizes for the import pipeline.
+# Can also be overridden via BATCH_SIZE_* environment variables
+# (env vars take precedence over this file).
+
+# batchSizes:
+#   duplicateAnalysis: 5000
+#   schemaDetection: 10000
+#   eventCreation: 1000
+#   databaseChunk: 1000
+
+# ---------------------------------------------------------------------------
+# Cache Configuration
+# ---------------------------------------------------------------------------
+
+# cache:
+#   urlFetch:
+#     dir: /tmp/url-fetch-cache
+#     maxSizeBytes: 104857600        # 100 MB
+#     defaultTtlSeconds: 3600        # 1 hour
+#     maxTtlSeconds: 2592000         # 30 days
+#     respectCacheControl: true
+
+# ---------------------------------------------------------------------------
+# Account Settings
+# ---------------------------------------------------------------------------
+
+# account:
+#   deletionGracePeriodDays: 30

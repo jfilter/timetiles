@@ -5,6 +5,15 @@ import "@testing-library/jest-dom";
 
 import { cleanup } from "@testing-library/react";
 
+import { resetAppConfig } from "@/lib/config/app-config";
+import { resetEnv } from "@/lib/config/env";
+
+// Reset cached config before each test so vi.stubEnv() changes take effect
+beforeEach(() => {
+  resetEnv();
+  resetAppConfig();
+});
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();

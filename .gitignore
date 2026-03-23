@@ -13,6 +13,9 @@ node_modules
 # Local env files
 .env
 .env.local
+# Operator-specific app config (use timetiles.example.yml as template)
+apps/web/config/timetiles.yml
+deployment/config/timetiles.yml
 .env.development.local
 .env.test.local
 .env.production.local

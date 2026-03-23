@@ -9,6 +9,8 @@
  */
 import type { Payload } from "payload";
 
+import { getEnv } from "@/lib/config/env";
+
 /** Branding values relevant for email templates. */
 export interface EmailBranding {
   siteName: string;
@@ -27,7 +29,7 @@ export const getEmailBranding = async (payload: Payload): Promise<EmailBranding>
   if (cache && Date.now() < cache.expiry) return cache.data;
 
   const branding = await payload.findGlobal({ slug: "branding", depth: 1, overrideAccess: true });
-  const baseUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "";
+  const baseUrl = getEnv().NEXT_PUBLIC_PAYLOAD_URL;
   const logo = typeof branding.logoLight === "object" ? branding.logoLight : null;
 
   const data: EmailBranding = {

@@ -22,6 +22,7 @@ import { sql } from "@payloadcms/db-postgres";
 import { getPayload } from "payload";
 
 import config from "../payload.config";
+import { getEnv } from "./config/env";
 import { COLLECTION_NAMES } from "./constants/ingest-constants";
 import { createLogger } from "./logger";
 
@@ -87,7 +88,7 @@ const checkUploadsDirectory = async (): Promise<HealthCheckResult> => {
     currentDir = path.dirname(currentDir);
   }
 
-  const uploadDirEnv = process.env.UPLOAD_DIR ?? "uploads";
+  const uploadDirEnv = getEnv().UPLOAD_DIR;
   const uploadsDir = path.isAbsolute(uploadDirEnv) ? uploadDirEnv : path.join(projectRoot, uploadDirEnv);
 
   try {
@@ -97,7 +98,7 @@ const checkUploadsDirectory = async (): Promise<HealthCheckResult> => {
   } catch (error) {
     logger.warn("Uploads directory not writable", { path: uploadsDir, error: (error as Error).message });
     // In CI, treat missing uploads directory as a warning instead of error
-    if (process.env.CI === "true") {
+    if (getEnv().CI === "true") {
       return { status: "degraded", message: "Uploads directory not writable (CI environment)" };
     }
     return { status: "error", message: "Uploads directory not writable" };
@@ -286,8 +287,9 @@ const checkDatabaseFunctions = async (): Promise<HealthCheckResult> => {
 const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking email configuration");
 
-  const hasSmtpHost = Boolean(getEnvValue("EMAIL_SMTP_HOST"));
-  const isProduction = process.env.NODE_ENV === "production";
+  const env = getEnv();
+  const hasSmtpHost = Boolean(env.EMAIL_SMTP_HOST);
+  const isProduction = env.NODE_ENV === "production";
 
   if (isProduction && !hasSmtpHost) {
     logger.warn("SMTP not configured in production - emails will not be sent");
@@ -298,11 +300,11 @@ const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
   }
 
   if (hasSmtpHost) {
-    const hasAuth = Boolean(getEnvValue("EMAIL_SMTP_USER"));
+    const hasAuth = Boolean(env.EMAIL_SMTP_USER);
     logger.debug("SMTP configured", { hasAuth });
     return {
       status: "healthy",
-      message: `SMTP configured (${getEnvValue("EMAIL_SMTP_HOST")})${hasAuth ? " with authentication" : ""}`,
+      message: `SMTP configured (${env.EMAIL_SMTP_HOST})${hasAuth ? " with authentication" : ""}`,
     };
   }
 
@@ -336,7 +338,7 @@ const checkDatabaseSize = async (): Promise<HealthCheckResult> => {
 const checkScraperRunner = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking scraper runner connectivity");
 
-  const scraperRunnerUrl = getEnvValue("SCRAPER_RUNNER_URL");
+  const scraperRunnerUrl = getEnv().SCRAPER_RUNNER_URL;
   if (!scraperRunnerUrl) {
     logger.debug("SCRAPER_RUNNER_URL not configured");
     return { status: "degraded", message: "Scraper runner not configured (SCRAPER_RUNNER_URL not set)" };

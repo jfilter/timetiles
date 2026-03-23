@@ -14,6 +14,7 @@ import type { Payload } from "payload";
 import { z } from "zod";
 
 import { apiRoute, ForbiddenError } from "@/lib/api";
+import { getEnv } from "@/lib/config/env";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("api-admin-jobs-run");
@@ -46,7 +47,7 @@ export const POST = apiRoute({
   auth: "admin",
   body: z.object({ limit: z.number().int().positive().optional(), iterations: z.number().int().positive().optional() }),
   handler: async ({ payload, body }) => {
-    if (process.env.NODE_ENV === "production") {
+    if (getEnv().NODE_ENV === "production") {
       throw new ForbiddenError("Not available in production");
     }
 

@@ -25,6 +25,14 @@ const mocks = vi.hoisted(() => {
 // Mock external dependencies
 vi.mock("fs", () => ({ default: mocks.fs, promises: { readFile: vi.fn() } }));
 
+// Mock app-config to prevent loadFromYaml from using the mocked fs
+vi.mock("@/lib/config/app-config", () => ({
+  getAppConfig: () => ({
+    batchSizes: { duplicateAnalysis: 5000, schemaDetection: 10000, eventCreation: 1000, databaseChunk: 1000 },
+  }),
+  resetAppConfig: vi.fn(),
+}));
+
 vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     updateProgress: vi.fn().mockResolvedValue(undefined),

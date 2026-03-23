@@ -9,6 +9,8 @@
  */
 import path from "node:path";
 
+import { getEnv } from "@/lib/config/env";
+
 /**
  * Return the absolute path to an import file given its filename.
  *
@@ -16,7 +18,7 @@ import path from "node:path";
  * and resolves relative to `process.cwd()`.
  */
 export const getIngestFilePath = (filename: string): string => {
-  const uploadDir = path.resolve(process.cwd(), `${process.env.UPLOAD_DIR ?? "uploads"}/ingest-files`);
+  const uploadDir = path.resolve(process.cwd(), `${getEnv().UPLOAD_DIR}/ingest-files`);
   const resolved = path.resolve(uploadDir, filename);
   if (!resolved.startsWith(uploadDir + path.sep)) {
     throw new Error("Invalid filename: path traversal detected");

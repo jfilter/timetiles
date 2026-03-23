@@ -210,6 +210,12 @@ describe("Configuration Validation", () => {
       "media",
       "location-cache",
       "geocoding-providers",
+      "scheduled-ingests",
+      "ingest-files",
+      "ingest-jobs",
+      "scraper-repos",
+      "scrapers",
+      "scraper-runs",
     ];
 
     Object.keys(SEED_CONFIG.collections).forEach((collectionName) => {

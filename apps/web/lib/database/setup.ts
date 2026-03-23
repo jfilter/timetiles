@@ -10,6 +10,8 @@
 
 import { execSync } from "node:child_process";
 
+import { getEnv } from "@/lib/config/env";
+
 import { createLogger } from "../logger";
 import { createDatabaseClient } from "./client";
 import { createDatabase, databaseExists, dropDatabase } from "./operations";
@@ -224,7 +226,7 @@ const resolveDatabaseConnection = (
     return { dbName: parsed.database, connString: connectionString };
   }
 
-  const baseUrl = process.env.DATABASE_URL;
+  const baseUrl = getEnv().DATABASE_URL;
   if (!baseUrl) {
     throw new Error("DATABASE_URL environment variable is required");
   }

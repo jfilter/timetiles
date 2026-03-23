@@ -10,6 +10,8 @@
 
 import { Client } from "pg";
 
+import { getEnv } from "@/lib/config/env";
+
 import { parseDatabaseUrl } from "./url";
 
 /** Cached defaults parsed from DATABASE_URL */
@@ -17,9 +19,10 @@ let _envDefaults: { host: string; port: number; user: string; password: string }
 
 /** Parse DATABASE_URL once and cache the result for use as connection defaults */
 const getEnvDefaults = () => {
-  if (!_envDefaults && process.env.DATABASE_URL) {
+  const databaseUrl = getEnv().DATABASE_URL;
+  if (!_envDefaults && databaseUrl) {
     try {
-      const parsed = parseDatabaseUrl(process.env.DATABASE_URL);
+      const parsed = parseDatabaseUrl(databaseUrl);
       _envDefaults = {
         host: parsed.host,
         port: Number.parseInt(parsed.port, 10),

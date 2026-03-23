@@ -62,6 +62,8 @@ import {
 } from "@/lib/jobs/ingest-jobs";
 // Import workflows
 export { ALL_WORKFLOWS } from "@/lib/jobs/workflows";
+// Import config
+import { getEnv } from "@/lib/config/env";
 // Import migrations
 import { migrations } from "@/migrations";
 
@@ -128,7 +130,7 @@ export const DEFAULT_UPLOAD_CONFIG = {
   abortOnLimit: true,
   uploadTimeout: 600000, // 10 minutes
   useTempFiles: true,
-  tempFileDir: process.env.UPLOAD_TEMP_DIR ?? "/tmp",
+  tempFileDir: getEnv().UPLOAD_TEMP_DIR,
   safeFileNames: true,
   preserveExtension: 4,
 };

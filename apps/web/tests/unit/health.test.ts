@@ -11,6 +11,8 @@ import "@/tests/mocks/services/logger";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { resetEnv } from "@/lib/config/env";
+
 vi.mock("@payloadcms/db-postgres", () => ({ sql: { join: vi.fn() } }));
 
 const { mockGetPayload } = vi.hoisted(() => ({ mockGetPayload: vi.fn() }));
@@ -51,6 +53,7 @@ describe("health", () => {
       const origDbUrl = process.env.DATABASE_URL;
       process.env.PAYLOAD_SECRET = "test-secret";
       process.env.DATABASE_URL = "postgres://localhost/test";
+      resetEnv();
 
       try {
         const results = await runHealthChecks();
@@ -86,6 +89,7 @@ describe("health", () => {
       const origDbUrl = process.env.DATABASE_URL;
       process.env.PAYLOAD_SECRET = "test";
       process.env.DATABASE_URL = "test";
+      resetEnv();
 
       try {
         const results = await runHealthChecks();
@@ -114,6 +118,7 @@ describe("health", () => {
       const origDbUrl = process.env.DATABASE_URL;
       delete process.env.PAYLOAD_SECRET;
       delete process.env.DATABASE_URL;
+      resetEnv();
 
       try {
         const results = await runHealthChecks();
@@ -146,6 +151,7 @@ describe("health", () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
       vi.stubEnv("NODE_ENV", "production");
       delete process.env.EMAIL_SMTP_HOST;
+      resetEnv();
 
       try {
         const results = await runHealthChecks();
@@ -184,6 +190,7 @@ describe("health", () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
       process.env.EMAIL_SMTP_HOST = "smtp.example.com";
       process.env.EMAIL_SMTP_USER = "user@example.com";
+      resetEnv();
 
       try {
         const results = await runHealthChecks();
@@ -226,6 +233,7 @@ describe("health", () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
       process.env.EMAIL_SMTP_HOST = "smtp.example.com";
       delete process.env.EMAIL_SMTP_USER;
+      resetEnv();
 
       try {
         const results = await runHealthChecks();
@@ -267,6 +275,7 @@ describe("health", () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
       vi.stubEnv("NODE_ENV", "development");
       delete process.env.EMAIL_SMTP_HOST;
+      resetEnv();
 
       try {
         const results = await runHealthChecks();
@@ -301,6 +310,7 @@ describe("health", () => {
       const origDbUrl = process.env.DATABASE_URL;
       process.env.PAYLOAD_SECRET = "test-secret";
       process.env.DATABASE_URL = "postgres://localhost/test";
+      resetEnv();
 
       try {
         const results = await runHealthChecks();
@@ -330,6 +340,7 @@ describe("health", () => {
       process.env.PAYLOAD_SECRET = "test-secret";
       process.env.DATABASE_URL = "postgres://localhost/test";
       process.env.CI = "true";
+      resetEnv();
 
       try {
         const results = await runHealthChecks();

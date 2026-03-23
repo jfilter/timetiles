@@ -13,6 +13,7 @@ import { join } from "node:path";
 import type { GlobalAfterChangeHook } from "payload";
 import sharp from "sharp";
 
+import { getEnv } from "@/lib/config/env";
 import { logError, logger } from "@/lib/logger";
 
 /**
@@ -76,12 +77,10 @@ const fetchMediaBuffer = async (
     // Try to read from local file first (works in test environment)
     if (media.filename) {
       // Check the configured upload directory (UPLOAD_DIR/media) first
-      const uploadDir = process.env.UPLOAD_DIR;
-      if (uploadDir) {
-        const uploadPath = join(uploadDir, "media", media.filename);
-        if (existsSync(uploadPath)) {
-          return readFileSync(uploadPath);
-        }
+      const uploadDir = getEnv().UPLOAD_DIR;
+      const uploadPath = join(uploadDir, "media", media.filename);
+      if (existsSync(uploadPath)) {
+        return readFileSync(uploadPath);
       }
 
       // Fallback to default public/media path
@@ -92,7 +91,7 @@ const fetchMediaBuffer = async (
     }
 
     // Fall back to HTTP fetch for production/dev environments
-    const url = media.url.startsWith("http") ? media.url : `${process.env.NEXT_PUBLIC_PAYLOAD_URL}${media.url}`;
+    const url = media.url.startsWith("http") ? media.url : `${getEnv().NEXT_PUBLIC_PAYLOAD_URL}${media.url}`;
 
     const response = await fetch(url);
     if (!response.ok) {

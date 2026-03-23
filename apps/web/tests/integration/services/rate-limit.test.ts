@@ -549,7 +549,7 @@ describe.sequential("RATE_LIMITS constants", () => {
 
     // PROGRESS_CHECK
     expect(RATE_LIMITS.PROGRESS_CHECK.windows).toHaveLength(2);
-    expect(RATE_LIMITS.PROGRESS_CHECK.windows[0].name).toBe("burst");
-    expect(RATE_LIMITS.PROGRESS_CHECK.windows[1].name).toBe("hourly");
+    expect(RATE_LIMITS.PROGRESS_CHECK.windows[0]!.name).toBe("burst");
+    expect(RATE_LIMITS.PROGRESS_CHECK.windows[1]!.name).toBe("hourly");
   });
 });
