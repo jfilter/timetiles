@@ -74,7 +74,7 @@ These are queued on demand (not scheduled):
 ## Adding a New Job
 
 1. Create handler in `lib/jobs/handlers/my-job.ts`
-2. Export job config from `lib/jobs/import-jobs.ts`
+2. Export job config from `lib/jobs/ingest-jobs.ts`
 3. Add to `ALL_JOBS` array in `lib/config/payload-shared-config.ts`
 4. If it is a workflow task, add it to the appropriate workflow in `lib/jobs/workflows/`
 5. Create migration if the job needs new fields

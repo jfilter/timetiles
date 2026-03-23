@@ -402,7 +402,7 @@ When a scraper has `autoImport` enabled and a `targetDataset` configured, succes
 
 1. Scraper runs and produces CSV output.
 2. The `scraper-execution-job` decodes the base64-encoded CSV from the runner response.
-3. An `import-files` record is created from the CSV data.
+3. An `ingest-files` record is created from the CSV data.
 4. The standard import pipeline takes over: schema detection, validation, geocoding, event creation.
 5. Events appear on the map.
 

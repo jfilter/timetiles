@@ -230,10 +230,10 @@ feat(schema): implement smart field type detection
 ### Breaking Change
 
 ```
-refactor(api): change import endpoint response format
+refactor(api): change ingest endpoint response format
 
-- Changed /api/import/upload response structure
-- Now returns complete job object instead of just import ID
+- Changed /api/ingest/preview-schema/upload response structure
+- Now returns complete job object instead of just ingest ID
 - Includes detailed progress tracking information
 - Adds support for real-time status updates
 - Improves error reporting with structured error objects
@@ -288,7 +288,7 @@ Good commit messages tell a story about your changes. They should be written for
 **❌ Mechanical (just listing what changed):**
 
 ```
-fix(import): update import-jobs.ts and add validation
+fix(ingest): update ingest-jobs.ts and add validation
 
 - Modified fileParsingJob function
 - Added new validation checks
@@ -500,8 +500,8 @@ pnpm tsx scripts/validate-commit.ts --test
    - ✅ `chore(build): update .gitignore`
 
 4. **Missing scope when files suggest one**:
-   - ❌ `fix: update import validation` (when changing apps/web/app/api/import/)
-   - ✅ `fix(import): update validation`
+   - ❌ `fix: update ingest validation` (when changing apps/web/app/api/ingest/)
+   - ✅ `fix(ingest): update validation`
 
 5. **Dependencies with wrong scope**:
    - ❌ `chore(web): update dependencies` (when changing package.json)

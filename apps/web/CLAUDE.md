@@ -75,7 +75,7 @@ pnpm seed test                        # Seed test data
 
 ### File Uploads
 
-- CSV/Excel import configured via `lib/services/import-configure-service.ts`
+- CSV/Excel/ODS/JSON import configured via `lib/ingest/configure-service.ts`
 - Schema detection and processing handled by background jobs in `lib/jobs/`
 - Large files are streamed (never loaded into memory)
 - Schema detection happens in background jobs
@@ -86,11 +86,11 @@ pnpm seed test                        # Seed test data
 - Never fetch data directly in components
 - Hook naming: `use{Entity}{Action}Query` / `use{Entity}Mutations`
 
-**Query hooks**: `useEventsQueries`, `useCatalogsQuery`, `useDataSourcesQuery`, `useScheduledImportsQuery`, `useImportProgressQuery`, `useChartQuery`, `useDataSourceStats`, `useDatasetEnumFields`, `useFeatureFlags`, `usePreviewValidationQuery`, `useScraperReposQuery`, `useScrapersQuery`, `useScraperRunsQuery`
+**Query hooks**: `useEventsQueries`, `useCatalogsQuery`, `useDataSourcesQuery`, `useScheduledIngestsQuery`, `useScheduledIngestQuery`, `useIngestProgressQuery`, `useIngestFilesQuery`, `useIngestJobsQuery`, `useIngestWizardQueries`, `useChartQuery`, `useDataSourceStats`, `useDatasetEnumFields`, `useFeatureFlags`, `usePreviewValidationQuery`, `useScrapersQuery`, `useAuthQueries`, `useLegalNotices`, `useGeocodingTest`
 
-**Mutation hooks**: `useAccountMutations`, `useAuthMutations`, `useFormMutation`, `useImportWizardMutations`, `useScheduledImportMutations`, `useDataExport`, `useScraperMutations` (sync, run, delete)
+**Mutation hooks**: `useAccountMutations`, `useAuthMutations`, `useFormMutation`, `useIngestWizardMutations`, `useScheduledIngestMutations`, `useDataExport`, `useScraperMutations` (sync, run, delete)
 
-**Utility hooks**: `useFilters`, `useTimeRangeSlider`, `useChartFilters`, `useDebounce`, `useAdminFeatureFlag`, `useViewScope`, `useMediaQuery`, `useTheme`
+**Utility hooks**: `useFilters`, `useTimeRangeSlider`, `useDebounce`, `useAdminFeatureFlag`, `useViewScope`, `useMediaQuery`, `useTheme`, `useInputState`, `useLoadingPhase`, `useLoadingStates`, `queryPresets`
 
 ### API Routes
 
@@ -132,14 +132,15 @@ lib/
 ├── middleware/    # Rate limiting, auth middleware
 # Layer 2 — Domain (can import Layer 0 + 1)
 ├── import/       # Import pipeline (file readers, transforms)
+├── ingest/       # Ingest helpers (config, schema, preview, transforms)
 ├── account/      # Account lifecycle (deletion, system user)
 ├── export/       # Data export (service, emails, formatting)
 ├── email/        # Email service, templates, i18n
 ├── collections/  # Payload CMS collection configs
 # Layer 3 — Application (can import anything)
 ├── api/          # apiRoute() handler, error classes, auth helpers
-├── hooks/        # React Query hooks (27 hooks)
-├── jobs/         # Background job handlers (18 jobs)
+├── hooks/        # React Query hooks (35 hooks)
+├── jobs/         # Background job handlers (20 jobs)
 ├── blocks/       # Page builder blocks (hero, features, CTA, etc.)
 ├── config/       # Payload config factory
 ├── context/      # React contexts (site, view)
@@ -161,7 +162,7 @@ lib/
 | ------------------------- | -------------------------------------------------------------- |
 | "relation does not exist" | `make db-reset && pnpm payload:migrate`                        |
 | PostGIS function errors   | `make db-logs` to check, `make db-shell` to verify             |
-| Import jobs stuck         | Check `/dashboard/import-jobs`, jobs auto-delete on completion |
+| Ingest jobs stuck         | Check `/dashboard/ingest-jobs`, jobs auto-delete on completion |
 | Schema type errors        | `pnpm payload:migrate:create && make check-ai PACKAGE=web`     |
 
 ## See Also

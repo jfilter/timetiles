@@ -100,13 +100,14 @@ apps/web/
 │   ├── database/         # Layer 1: Database client & setup
 │   ├── middleware/        # Layer 1: Rate limiting, auth middleware
 │   ├── import/           # Layer 2: Import pipeline (readers, transforms, state)
+│   ├── ingest/           # Layer 2: Ingest helpers (config, schema, preview, transforms)
 │   ├── account/          # Layer 2: Account lifecycle (deletion, system user)
 │   ├── export/           # Layer 2: Data export (service, emails, formatting)
 │   ├── email/            # Layer 2: Email service, templates, i18n
 │   ├── collections/      # Layer 2: Payload CMS collections
 │   ├── api/              # Layer 3: API route handler, error classes
-│   ├── hooks/            # Layer 3: React Query hooks (30 hooks)
-│   ├── jobs/             # Layer 3: Background job handlers (18 jobs)
+│   ├── hooks/            # Layer 3: React Query hooks (35 hooks)
+│   ├── jobs/             # Layer 3: Background job handlers (20 jobs)
 │   ├── blocks/           # Layer 3: Page builder blocks
 │   ├── globals/          # Payload globals (Branding, Footer, MainMenu, Settings)
 │   └── config/           # Payload config factory & shared config
@@ -185,10 +186,10 @@ Always use React Query hooks from `lib/hooks/` - never fetch directly in compone
 Located in `lib/collections/`, grouped by domain:
 
 - **Data**: Events, Datasets, DatasetSchemas
-- **Import**: ImportFiles, ImportJobs, ScheduledImports
+- **Ingest**: IngestFiles, IngestJobs, ScheduledIngests
 - **Content**: Pages, Media
 - **System**: Users, UserUsage, GeocodingProviders, LocationCache, AuditLog, DataExports
-- **Configuration**: Sites, Views, Catalogs
+- **Configuration**: Sites, Views, Catalogs, CatalogOwnership, Themes, LayoutTemplates
 - **Scraper**: ScraperRepos, Scrapers, ScraperRuns
 
 ### Globals
@@ -230,12 +231,14 @@ Payload hooks (`beforeChange`, `afterChange`, `beforeRead`, `afterRead`) handle 
 - `/api/v1/sources/stats` — source statistics
 - `/api/v1/datasets/[id]/schema/infer` — schema inference
 
-**Import**:
-- `/api/import/preview-schema` — schema preview (+ `/upload`, `/url` sub-routes)
-- `/api/import/configure` — configure import mapping
-- `/api/import/validate-preview` — validate preview data
-- `/api/import/[importId]/progress` — import progress
-- `/api/import-jobs/[id]/reset`, `/retry` — job management
+**Ingest**:
+- `/api/ingest/preview-schema` — schema preview (+ `/upload`, `/url` sub-routes)
+- `/api/ingest/configure` — configure ingest mapping
+- `/api/ingest/validate-preview` — validate preview data
+- `/api/ingest/update-schedule` — update scheduled ingest settings
+- `/api/ingest/[ingestId]/progress` — ingest progress
+- `/api/ingest/jobs/failed/recommendations` — failed job recommendations
+- `/api/ingest-jobs/[id]/reset`, `/retry` — job management
 
 **Account & Auth**:
 - `/api/auth/register` — user registration
@@ -244,6 +247,7 @@ Payload hooks (`beforeChange`, `afterChange`, `beforeRead`, `afterRead`) handle 
 - `/api/account/deletion-summary` — deletion impact preview
 
 **Admin**:
+- `/api/admin/health` — admin health check
 - `/api/admin/schedule-service` — schedule management
 - `/api/admin/jobs/run` — manual job trigger
 
@@ -254,8 +258,9 @@ Payload hooks (`beforeChange`, `afterChange`, `beforeRead`, `afterRead`) handle 
 - `/api/catalogs/with-datasets` — catalogs with nested datasets
 - `/api/data-exports/request`, `[id]/download` — data export
 - `/api/geocoding/test` — geocoding provider test
+- `/api/legal-notices` — legal notices
 - `/api/newsletter/subscribe` — newsletter signup
-- `/api/scheduled-imports/[id]/trigger` — manual trigger
+- `/api/scheduled-ingests/[id]/trigger` — manual trigger
 - `/api/webhooks/trigger/[token]` — webhook triggers
 - `/api/preview` — draft content preview
 
@@ -329,7 +334,7 @@ cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '.tes
 
 ### File Processing
 
-Supports CSV and Excel files with:
+Supports CSV, Excel, ODS, and JSON API sources with:
 
 1. Schema detection
 2. User approval workflow

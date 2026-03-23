@@ -56,8 +56,8 @@ apps/docs/
 │   ├── reference/           # Reference documentation
 │   │   └── api/            # Auto-generated API docs (TypeDoc)
 │   └── user-guide/         # User guides
+├── app/                      # Next.js App Router (layout, theme config)
 ├── scripts/                 # Build scripts
-├── theme.config.tsx         # Nextra theme configuration
 ├── next.config.mjs          # Next.js configuration
 └── package.json             # Dependencies and scripts
 ```
@@ -122,13 +122,13 @@ pnpm --filter docs build
 
 ### Theme Configuration
 
-Edit `theme.config.tsx` to customize:
+Edit `app/layout.tsx` to customize (Nextra 4 uses App Router layout instead of theme.config):
 
 - Site title and logo
-- Navigation links
+- Navigation links (navbar)
 - Footer content
+- Sidebar settings
 - Search functionality
-- Social links
 
 ### Next.js Configuration
 
@@ -150,7 +150,7 @@ Edit `next.config.mjs` for:
 
 1. **Port Conflicts**: Docs run on port 3001 by default
 2. **Hot Reload**: Changes should auto-reload in development
-3. **Navigation**: Check `_meta.json` files for proper structure
+3. **Navigation**: Check `_meta.js` files for proper structure
 
 ### Deployment Issues
 
