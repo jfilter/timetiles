@@ -464,9 +464,7 @@ export const ColumnRow = ({
               <span className="text-cartographic-charcoal font-mono text-sm font-medium">{columnName}</span>
               {isAutoDetected && <ConfidenceBadge level={confidenceLevel} />}
             </div>
-            <p className="text-cartographic-navy/50 mt-0.5 truncate font-mono text-xs">
-              {formatSampleValue(sampleValue)}
-            </p>
+            <p className="text-muted-foreground mt-0.5 truncate font-mono text-xs">{formatSampleValue(sampleValue)}</p>
           </div>
         </td>
 
@@ -513,7 +511,7 @@ export const ColumnRow = ({
                 onCheckedChange={(checked) => onGeocodingChange(checked === true)}
                 className="h-3.5 w-3.5"
               />
-              <span className="text-cartographic-navy/70">{t("enableGeocoding")}</span>
+              <span className="text-muted-foreground">{t("enableGeocoding")}</span>
             </label>
           )}
         </td>

@@ -110,10 +110,10 @@ export const TimeRangeSlider = ({
     <div className="space-y-3 px-2 select-none">
       {/* Date range labels */}
       <div className="-mx-2 flex items-center justify-between">
-        <span className="text-cartographic-navy/60 dark:text-cartographic-charcoal/60 font-mono text-xs">
+        <span className="text-muted-foreground dark:text-cartographic-charcoal/60 font-mono text-xs">
           {formatShortDate(minTimestamp)}
         </span>
-        <span className="text-cartographic-navy/60 dark:text-cartographic-charcoal/60 font-mono text-xs">
+        <span className="text-muted-foreground dark:text-cartographic-charcoal/60 font-mono text-xs">
           {formatShortDate(maxTimestamp)}
         </span>
       </div>
@@ -220,7 +220,7 @@ export const TimeRangeSlider = ({
             <button
               type="button"
               onClick={handleCloseEditMode}
-              className="text-cartographic-navy/60 hover:text-cartographic-navy dark:text-cartographic-charcoal/60 dark:hover:text-cartographic-charcoal w-full text-center text-xs"
+              className="text-muted-foreground hover:text-cartographic-navy dark:text-cartographic-charcoal/60 dark:hover:text-cartographic-charcoal w-full text-center text-xs"
             >
               {tCommon("done")}
             </button>

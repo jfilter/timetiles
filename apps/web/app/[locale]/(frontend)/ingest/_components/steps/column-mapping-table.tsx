@@ -234,7 +234,7 @@ const CombinedRow = ({
               <span className="text-cartographic-charcoal font-mono text-sm font-medium">
                 {transform.to || t("combineColumns")}
               </span>
-              <p className="text-cartographic-navy/50 truncate text-xs">{summary}</p>
+              <p className="text-muted-foreground truncate text-xs">{summary}</p>
             </div>
           </button>
         </td>

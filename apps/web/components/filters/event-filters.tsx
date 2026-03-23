@@ -92,7 +92,7 @@ export const EventFilters = () => {
           <button
             type="button"
             onClick={clearDateRange}
-            className="text-cartographic-navy/50 hover:text-cartographic-terracotta dark:text-cartographic-charcoal/50 dark:hover:text-cartographic-terracotta mt-1 w-full text-center font-mono text-xs transition-colors"
+            className="text-muted-foreground hover:text-cartographic-terracotta dark:text-cartographic-charcoal/50 dark:hover:text-cartographic-terracotta mt-1 w-full text-center font-mono text-xs transition-colors"
           >
             {tExplore("clearDateFilters")}
           </button>

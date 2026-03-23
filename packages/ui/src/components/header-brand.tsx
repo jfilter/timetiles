@@ -39,7 +39,7 @@ const HeaderBrand = React.forwardRef<HTMLDivElement, HeaderBrandProps>(({ classN
       className={cn(
         "flex items-center gap-3",
         "font-serif text-xl font-bold",
-        "text-cartographic-charcoal dark:text-cartographic-parchment",
+        "text-foreground",
         "transition-transform duration-200 hover:scale-105",
         className
       )}

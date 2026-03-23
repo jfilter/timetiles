@@ -45,7 +45,7 @@ export const SheetTabButton = ({
     >
       {isComplete && <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />}
       <span>{displayName}</span>
-      <span className="text-cartographic-navy/50 font-mono text-xs">({rowCount})</span>
+      <span className="text-muted-foreground font-mono text-xs">({rowCount})</span>
     </button>
   );
 };

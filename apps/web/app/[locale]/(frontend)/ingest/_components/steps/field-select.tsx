@@ -83,7 +83,7 @@ export const FieldSelect = ({
   return (
     <div className="space-y-2" data-testid={`field-mapping-row-${field}`}>
       <Label htmlFor={id} className="text-cartographic-charcoal flex min-h-6 items-center gap-2">
-        {icon && <span className="text-cartographic-navy/50">{icon}</span>}
+        {icon && <span className="text-muted-foreground">{icon}</span>}
         {label}
         {required && <span className="text-cartographic-terracotta">*</span>}
         {isAutoDetected && confidenceLevel && confidenceLevel !== "none" && <ConfidenceBadge level={confidenceLevel} />}

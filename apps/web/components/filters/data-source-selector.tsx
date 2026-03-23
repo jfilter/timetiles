@@ -83,14 +83,14 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
       <div
         className={cn(
           "line-clamp-2 pr-5 font-serif text-xs leading-tight font-medium",
-          isSelected ? "text-cartographic-charcoal dark:text-white" : "text-cartographic-navy/70 dark:text-white/80"
+          isSelected ? "text-cartographic-charcoal dark:text-white" : "text-muted-foreground"
         )}
       >
         {catalog.name}
       </div>
 
       {/* Stats - stacked vertically */}
-      <div className="text-cartographic-navy/50 mt-1 space-y-0.5 font-mono text-[10px] dark:text-white/60">
+      <div className="text-muted-foreground mt-1 space-y-0.5 font-mono text-[10px]">
         <div>{t("datasetCount", { count: datasetCount })}</div>
         {eventCount != null && <div>{t("eventCount", { count: formatCount(eventCount) })}</div>}
       </div>
@@ -124,7 +124,7 @@ const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipPro
         "rounded-sm border px-2 py-1 text-left transition-all",
         isActive
           ? cn(colors.border, colors.bg, "text-cartographic-charcoal dark:text-cartographic-charcoal")
-          : "border-cartographic-navy/20 text-cartographic-navy/50 decoration-cartographic-navy/30 line-through"
+          : "border-cartographic-navy/20 text-muted-foreground decoration-cartographic-navy/30 line-through"
       )}
     >
       <span className="text-xs">{dataset.name}</span>
@@ -279,7 +279,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
     <div className="space-y-4">
       {/* Catalog Selection */}
       <div>
-        <div className="text-cartographic-navy/60 mb-2 font-mono text-xs tracking-wider uppercase">{t("catalogs")}</div>
+        <div className="text-muted-foreground mb-2 font-mono text-xs tracking-wider uppercase">{t("catalogs")}</div>
 
         {/* Collapsible container wraps all catalog groups */}
         <div
@@ -292,7 +292,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
             <>
               {/* My Catalogs group */}
               <div>
-                <div className="text-cartographic-navy/50 mb-1 font-mono text-[10px] tracking-wider uppercase dark:text-white/50">
+                <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wider uppercase">
                   {t("myCatalogs")}
                 </div>
                 <CatalogGrid catalogs={ownedCatalogs} {...gridProps} />
@@ -301,7 +301,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
               {/* Public Catalogs group */}
               {publicCatalogs.length > 0 && (
                 <div>
-                  <div className="text-cartographic-navy/50 mb-1 font-mono text-[10px] tracking-wider uppercase dark:text-white/50">
+                  <div className="text-muted-foreground mb-1 font-mono text-[10px] tracking-wider uppercase">
                     {t("publicCatalogs")}
                   </div>
                   <CatalogGrid catalogs={publicCatalogs} {...gridProps} />
@@ -327,7 +327,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
       {/* Dataset Selection - only show when a catalog is selected */}
       {filters.catalog != null && (
         <div className="border-cartographic-navy/10 border-t pt-4">
-          <div className="text-cartographic-navy/60 mb-2 flex items-center justify-between font-mono text-xs tracking-wider uppercase">
+          <div className="text-muted-foreground mb-2 flex items-center justify-between font-mono text-xs tracking-wider uppercase">
             <span>
               {t("datasets")}
               {activeDatasetCount < filteredDatasets.length && (
@@ -339,7 +339,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
           </div>
 
           {filteredDatasets.length === 0 ? (
-            <p className="text-cartographic-navy/50 text-sm">{t("noDatasets")}</p>
+            <p className="text-muted-foreground text-sm">{t("noDatasets")}</p>
           ) : (
             <>
               <div className="flex flex-wrap gap-2">

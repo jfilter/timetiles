@@ -23,7 +23,7 @@ export default async function NotFound() {
   const t = await getTranslations("NotFound");
 
   return (
-    <div className="bg-cartographic-parchment dark:bg-cartographic-charcoal/95 relative min-h-screen overflow-hidden">
+    <div className="bg-background relative min-h-screen overflow-hidden">
       {/* Cartographic Grid Background */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={gridBackgroundStyle} />
 
@@ -43,7 +43,7 @@ export default async function NotFound() {
             viewBox="0 0 80 80"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="text-cartographic-navy dark:text-cartographic-parchment"
+            className="text-foreground"
           >
             {/* Compass Rose - 8 points */}
             <circle cx="40" cy="40" r="2" fill="currentColor" />
@@ -70,23 +70,21 @@ export default async function NotFound() {
 
         {/* 404 Display - Large Serif Number */}
         <div className="mb-4 animate-[fade-in-up_0.6s_ease-out_forwards]">
-          <h1 className="text-cartographic-charcoal dark:text-cartographic-parchment font-serif text-9xl leading-none font-bold md:text-[12rem]">
-            {t("heading")}
-          </h1>
+          <h1 className="text-foreground font-serif text-9xl leading-none font-bold md:text-[12rem]">{t("heading")}</h1>
         </div>
 
         {/* Decorative Coordinates */}
-        <div className="text-cartographic-navy/40 dark:text-cartographic-parchment/40 mb-6 animate-[fade-in-up_0.6s_ease-out_0.1s_forwards] font-mono text-xs tracking-wider opacity-0">
+        <div className="text-muted-foreground mb-6 animate-[fade-in-up_0.6s_ease-out_0.1s_forwards] font-mono text-xs tracking-wider opacity-0">
           40.4°N, 40.4°W
         </div>
 
         {/* Headline */}
-        <h2 className="text-cartographic-charcoal dark:text-cartographic-parchment mb-4 max-w-2xl animate-[fade-in-up_0.6s_ease-out_0.2s_forwards] text-center font-serif text-3xl leading-tight font-bold opacity-0 md:text-4xl">
+        <h2 className="text-foreground mb-4 max-w-2xl animate-[fade-in-up_0.6s_ease-out_0.2s_forwards] text-center font-serif text-3xl leading-tight font-bold opacity-0 md:text-4xl">
           {t("title")}
         </h2>
 
         {/* Description */}
-        <p className="text-cartographic-navy/70 dark:text-cartographic-parchment/70 mb-12 max-w-md animate-[fade-in-up_0.6s_ease-out_0.3s_forwards] text-center font-sans text-base leading-relaxed opacity-0">
+        <p className="text-muted-foreground mb-12 max-w-md animate-[fade-in-up_0.6s_ease-out_0.3s_forwards] text-center font-sans text-base leading-relaxed opacity-0">
           {t("description")}
         </p>
 
@@ -117,7 +115,7 @@ export default async function NotFound() {
 
           <Link
             href="/explore"
-            className="border-cartographic-navy/20 text-cartographic-charcoal hover:border-cartographic-blue hover:bg-cartographic-blue/5 hover:text-cartographic-blue focus:ring-cartographic-blue dark:text-cartographic-parchment dark:hover:bg-cartographic-blue/10 group inline-flex items-center justify-center gap-2 rounded-sm border-2 bg-transparent px-8 py-4 font-sans text-sm font-medium tracking-wide transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+            className="border-cartographic-navy/20 text-foreground hover:border-cartographic-blue hover:bg-cartographic-blue/5 hover:text-cartographic-blue focus:ring-cartographic-blue dark:hover:bg-cartographic-blue/10 group inline-flex items-center justify-center gap-2 rounded-sm border-2 bg-transparent px-8 py-4 font-sans text-sm font-medium tracking-wide transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none"
           >
             {t("exploreEvents")}
           </Link>

@@ -48,7 +48,7 @@
   --muted-foreground: oklch(0.45 0.04 250);
   --accent: var(--cartographic-forest);
   --accent-foreground: var(--cartographic-parchment);
-  --destructive: oklch(0.55 0.22 25);
+  --destructive: oklch(0.45 0.22 25);
   --destructive-foreground: var(--cartographic-parchment);
   --border: oklch(0.88 0.01 250);
   --input: oklch(0.88 0.01 250);
@@ -73,10 +73,10 @@
   /* Cartographic Base Palette (Dark Mode) */
   --cartographic-parchment: oklch(0.15 0.01 250);
   --cartographic-charcoal: oklch(0.88 0.01 80);
-  --cartographic-navy: oklch(0.52 0.09 230);
+  --cartographic-navy: oklch(0.65 0.09 230);
   --cartographic-blue: oklch(0.62 0.12 210);
   --cartographic-terracotta: oklch(0.62 0.16 30);
-  --cartographic-forest: oklch(0.55 0.1 145);
+  --cartographic-forest: oklch(0.6 0.1 145);
   --cartographic-cream: oklch(0.28 0.01 250);
 
   /* Extended Palette for Dataset Badges (Dark Mode) */
@@ -87,7 +87,10 @@
   --cartographic-rose: oklch(0.62 0.15 10);
   --cartographic-olive: oklch(0.58 0.09 110);
 
-  /* Semantic Tokens (Cartographic Theme - Dark Mode) */
+  /* Semantic Tokens (Cartographic Theme - Dark Mode)
+   * In dark mode, primary/secondary/accent/destructive are LIGHTER than in light mode,
+   * so their foreground text uses the dark parchment for contrast. This gives
+   * light-bg-with-dark-text buttons that stand out against the dark UI. */
   --background: var(--cartographic-parchment);
   --foreground: var(--cartographic-charcoal);
   --card: var(--cartographic-cream);
@@ -99,10 +102,10 @@
   --secondary: var(--cartographic-terracotta);
   --secondary-foreground: var(--cartographic-parchment);
   --muted: oklch(0.22 0.01 250);
-  --muted-foreground: oklch(0.65 0.04 230);
+  --muted-foreground: oklch(0.68 0.04 230);
   --accent: var(--cartographic-forest);
   --accent-foreground: var(--cartographic-parchment);
-  --destructive: oklch(0.55 0.22 25);
+  --destructive: oklch(0.7 0.2 25);
   --destructive-foreground: var(--cartographic-parchment);
   --border: oklch(0.28 0.01 250);
   --input: oklch(0.28 0.01 250);

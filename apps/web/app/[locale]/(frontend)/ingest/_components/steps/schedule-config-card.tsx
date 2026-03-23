@@ -63,7 +63,7 @@ export const ScheduleConfigCard = ({
           <div className="flex items-start gap-3">
             <GlobeIcon className="text-cartographic-navy/40 mt-0.5 h-4 w-4" />
             <div className="min-w-0 flex-1">
-              <p className="text-cartographic-navy/70 text-xs">{t("sourceUrl")}</p>
+              <p className="text-muted-foreground text-xs">{t("sourceUrl")}</p>
               <p className="text-cartographic-charcoal truncate font-mono text-sm">{sourceUrl}</p>
             </div>
           </div>

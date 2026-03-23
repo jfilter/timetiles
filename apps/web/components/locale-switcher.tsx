@@ -30,7 +30,7 @@ export const LocaleSwitcher = () => {
     <button
       type="button"
       onClick={handleSwitch}
-      className="text-cartographic-charcoal/70 hover:text-cartographic-charcoal dark:text-cartographic-parchment/70 dark:hover:text-cartographic-parchment cursor-pointer rounded-sm px-2 py-1 font-mono text-xs font-medium tracking-wider transition-colors"
+      className="text-foreground/70 hover:text-foreground cursor-pointer rounded-sm px-2 py-1 font-mono text-xs font-medium tracking-wider transition-colors"
       aria-label={`Switch to ${nextLocale === "de" ? "German" : "English"}`}
     >
       {LOCALE_LABELS[nextLocale]}

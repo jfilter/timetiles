@@ -150,13 +150,11 @@ export const MobileFilterSheet = ({
 
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 pt-2 pb-3">
-          <h2 className="text-cartographic-charcoal dark:text-cartographic-cream font-serif text-lg font-semibold">
-            {t("filters")}
-          </h2>
+          <h2 className="text-foreground font-serif text-lg font-semibold">{t("filters")}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-cartographic-navy/70 hover:bg-cartographic-navy/10 hover:text-cartographic-navy dark:text-cartographic-cream/70 dark:hover:bg-cartographic-cream/10 dark:hover:text-cartographic-cream rounded-sm p-2 transition-colors"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-sm p-2 transition-colors"
             aria-label={t("closeFilters")}
           >
             <X className="h-5 w-5" />

@@ -67,12 +67,12 @@ export const LanguageDetectionBanner = ({
         <p className="text-cartographic-charcoal text-sm font-medium">
           {t("autoDetected", { language: language.name })}
           {language.isReliable && (
-            <span className="text-cartographic-navy/50 ml-2 font-mono text-xs">
+            <span className="text-muted-foreground ml-2 font-mono text-xs">
               {Math.round(language.confidence * 100)}%
             </span>
           )}
         </p>
-        <p className="text-cartographic-navy/70 text-xs">{t("fieldsMappedAutomatically")}</p>
+        <p className="text-muted-foreground text-xs">{t("fieldsMappedAutomatically")}</p>
       </div>
     </div>
   );
@@ -112,7 +112,7 @@ export const LocationSection = ({
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("location")}</h3>
-          <p className="text-cartographic-navy/70 text-sm">{t("locationDescription")}</p>
+          <p className="text-muted-foreground text-sm">{t("locationDescription")}</p>
         </div>
         <div className="border-cartographic-navy/10 inline-flex rounded-sm border" role="radiogroup">
           <button
@@ -123,7 +123,7 @@ export const LocationSection = ({
               "flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
               locationMode === "address"
                 ? "bg-cartographic-charcoal text-white"
-                : "text-cartographic-navy/70 hover:bg-cartographic-cream/50"
+                : "text-muted-foreground hover:bg-cartographic-cream/50"
             )}
             onClick={() => onLocationModeChange("address")}
           >
@@ -138,7 +138,7 @@ export const LocationSection = ({
               "flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
               locationMode === "coordinates"
                 ? "bg-cartographic-charcoal text-white"
-                : "text-cartographic-navy/70 hover:bg-cartographic-cream/50"
+                : "text-muted-foreground hover:bg-cartographic-cream/50"
             )}
             onClick={() => onLocationModeChange("coordinates")}
           >
@@ -175,7 +175,7 @@ export const LocationSection = ({
                 <Label htmlFor="geocoding-enabled" className="text-cartographic-charcoal">
                   {t("enableGeocoding")}
                 </Label>
-                <p className="text-cartographic-navy/70 text-sm">{t("enableGeocodingDescription")}</p>
+                <p className="text-muted-foreground text-sm">{t("enableGeocodingDescription")}</p>
               </div>
             </div>
           )}
@@ -238,7 +238,7 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
     <div className="p-6">
       <h3 className="text-cartographic-charcoal mb-3 font-serif text-lg font-semibold">{t("preview")}</h3>
       {fields.length === 0 ? (
-        <p className="text-cartographic-navy/50 text-sm">{t("noPreviewYet")}</p>
+        <p className="text-muted-foreground text-sm">{t("noPreviewYet")}</p>
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -258,7 +258,7 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
                   {fields.map((f) => (
                     <TableCell
                       key={`${f.label}-${f.columnKey}`}
-                      className={cn(f.mono ? "text-cartographic-navy/70 font-mono" : "text-cartographic-charcoal")}
+                      className={cn(f.mono ? "text-muted-foreground font-mono" : "text-cartographic-charcoal")}
                     >
                       {formatCellValue(row[f.columnKey])}
                     </TableCell>

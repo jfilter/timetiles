@@ -64,7 +64,7 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
           {title}
         </span>
         {eventCount && (
-          <span className="text-cartographic-navy/60 dark:text-cartographic-charcoal/60 font-mono text-xs">
+          <span className="text-muted-foreground dark:text-cartographic-charcoal/60 font-mono text-xs">
             {eventCount}
           </span>
         )}
@@ -152,7 +152,7 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
             <span className="text-cartographic-navy/30 dark:text-cartographic-charcoal/30">·</span>
           )}
           {mapBounds != null && (
-            <span className="text-cartographic-navy/50 dark:text-cartographic-charcoal/50 font-mono text-xs">
+            <span className="text-muted-foreground dark:text-cartographic-charcoal/50 font-mono text-xs">
               {formatCenterCoordinates(mapBounds)}
             </span>
           )}

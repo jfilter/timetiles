@@ -67,7 +67,7 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
     >
       {/* Header */}
       <div className="border-cartographic-navy/20 bg-cartographic-navy/5 flex items-center justify-between border-b px-3 py-1.5">
-        <span className="text-cartographic-navy/60 font-mono text-[10px] tracking-wide uppercase">
+        <span className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">
           {t("flowSourceColumn")}
         </span>
         <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", badgeClassName)}>{t(badgeLabelKey)}</span>
@@ -86,7 +86,7 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
               return (
                 <div
                   key={`sample-${index}-${displayValue}`}
-                  className="text-cartographic-navy/50 truncate font-mono text-xs"
+                  className="text-muted-foreground truncate font-mono text-xs"
                   title={displayValue}
                 >
                   {displayValue === "" ? (

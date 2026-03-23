@@ -202,7 +202,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
     <div className={cn("space-y-4", className)}>
       <div className="text-center">
         <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("reviewTitle")}</h2>
-        <p className="text-cartographic-navy/70 mt-2">{t("reviewDescription")}</p>
+        <p className="text-muted-foreground mt-2">{t("reviewDescription")}</p>
       </div>
 
       {/* Data Flow: Source → Destination */}
@@ -216,7 +216,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-cartographic-charcoal truncate font-serif text-lg font-semibold">{file?.name}</p>
-                <p className="text-cartographic-navy/60 mt-1 font-mono text-sm">
+                <p className="text-muted-foreground mt-1 font-mono text-sm">
                   {file ? formatFileSize(file.size) : "-"}
                   <span className="text-cartographic-navy/30 mx-2">•</span>
                   {t("rowCount", { count: totalRows.toLocaleString() })}
@@ -238,7 +238,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                   <FolderIcon className="text-cartographic-terracotta h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-cartographic-navy/50 text-xs">{t("catalog")}</p>
+                  <p className="text-muted-foreground text-xs">{t("catalog")}</p>
                   <p className="text-cartographic-charcoal truncate font-serif font-semibold">{catalogName}</p>
                 </div>
               </div>
@@ -249,7 +249,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                   <DatabaseIcon className="text-cartographic-blue h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-cartographic-navy/50 text-xs">
+                  <p className="text-muted-foreground text-xs">
                     {isMultiDataset ? t("datasetsCount", { count: sheetMappings.length }) : t("dataset")}
                   </p>
                   {isMultiDataset ? (
@@ -288,7 +288,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <TextIcon className="text-cartographic-navy/40 h-4 w-4" />
-                        <span className="text-cartographic-navy/70 text-sm">{t("fieldTitle")}</span>
+                        <span className="text-muted-foreground text-sm">{t("fieldTitle")}</span>
                       </div>
                       <span className="text-cartographic-charcoal font-mono text-sm" data-testid="title-field">
                         {mapping?.titleField ?? "\u2014"}
@@ -297,7 +297,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CalendarIcon className="text-cartographic-navy/40 h-4 w-4" />
-                        <span className="text-cartographic-navy/70 text-sm">{t("fieldDate")}</span>
+                        <span className="text-muted-foreground text-sm">{t("fieldDate")}</span>
                       </div>
                       <span className="text-cartographic-charcoal font-mono text-sm" data-testid="date-field">
                         {mapping?.dateField ?? "\u2014"}
@@ -306,7 +306,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <MapPinIcon className="text-cartographic-navy/40 h-4 w-4" />
-                        <span className="text-cartographic-navy/70 text-sm">{t("location")}</span>
+                        <span className="text-muted-foreground text-sm">{t("location")}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-cartographic-charcoal font-mono text-sm" data-testid="location-field">
@@ -343,14 +343,14 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <FingerprintIcon className="text-cartographic-navy/40 h-4 w-4" />
-                      <span className="text-cartographic-navy/70 text-sm">{t("identifyBy")}</span>
+                      <span className="text-muted-foreground text-sm">{t("identifyBy")}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-cartographic-charcoal font-mono text-sm">
                         {ID_STRATEGY_LABELS[mapping?.idStrategy ?? "auto"]}
                       </span>
                       {mapping?.idStrategy === "external" && mapping?.idField && (
-                        <span className="text-cartographic-navy/50 font-mono text-xs">({mapping.idField})</span>
+                        <span className="text-muted-foreground font-mono text-xs">({mapping.idField})</span>
                       )}
                     </div>
                   </div>
@@ -363,7 +363,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <DatabaseIcon className="text-cartographic-navy/40 h-4 w-4" />
-                    <span className="text-cartographic-navy/70 text-sm">{t("onDuplicate")}</span>
+                    <span className="text-muted-foreground text-sm">{t("onDuplicate")}</span>
                   </div>
                   <span className="text-cartographic-charcoal font-mono text-sm">
                     {DUPLICATE_LABELS[deduplicationStrategy]}
@@ -398,7 +398,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     >
                       {TRANSFORM_TYPE_LABELS[transform.type]}
                     </span>
-                    <span className="text-cartographic-navy/70 font-mono text-sm">
+                    <span className="text-muted-foreground font-mono text-sm">
                       {"from" in transform ? transform.from : ""}
                     </span>
                   </div>
@@ -465,7 +465,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                 <span
                   className={cn(
                     "text-sm",
-                    !configureMutation.isPending ? "text-cartographic-forest" : "text-cartographic-navy/50"
+                    !configureMutation.isPending ? "text-cartographic-forest" : "text-muted-foreground"
                   )}
                 >
                   {t("readyToStart")}

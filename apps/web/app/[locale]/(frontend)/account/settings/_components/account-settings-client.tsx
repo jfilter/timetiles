@@ -95,7 +95,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
           <CardDescription>{t("dangerZoneDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="bg-destructive/10 border-destructive/30 mb-4 rounded-md border p-4">
+          <div className="bg-destructive/5 border-destructive/30 mb-4 rounded-md border p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
               <div>

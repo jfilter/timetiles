@@ -124,7 +124,7 @@ const DataTable = <TData, TValue>({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <Table>
+      <Table role={renderExpandedRow ? "treegrid" : undefined}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>

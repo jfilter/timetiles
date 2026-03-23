@@ -27,13 +27,14 @@ export const ZoomToDataButton = ({ onClick, visible }: ZoomToDataButtonProps) =>
         "transition-all duration-300 ease-out",
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
       )}
-      aria-hidden={!visible}
     >
       <button
         type="button"
         onClick={onClick}
         title={t("zoomToFitAll")}
         aria-label={t("zoomToFitAll")}
+        tabIndex={visible ? 0 : -1}
+        aria-hidden={!visible}
         className={cn(
           "flex items-center gap-2 rounded bg-white px-3 py-1.5",
           "text-sm font-medium text-gray-700 shadow-md",

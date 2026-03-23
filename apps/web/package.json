@@ -87,6 +87,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.58.2",
     "@svgr/webpack": "catalog:",
     "@testing-library/dom": "^10.4.1",

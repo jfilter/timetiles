@@ -78,9 +78,7 @@ export const VisualizationPanel = ({
       <CardHeader className="flex flex-row items-start justify-between gap-4 border-b px-4 py-3 md:px-6 md:py-4">
         <div className="min-w-0 flex-1">
           {/* Section Label - cartographic monospace style */}
-          <div className="text-cartographic-navy/60 mb-1 font-mono text-xs tracking-wider uppercase">
-            {chartMeta.label}
-          </div>
+          <div className="text-muted-foreground mb-1 font-mono text-xs tracking-wider uppercase">{chartMeta.label}</div>
           {/* Heading - serif per design system */}
           <h2 className="text-foreground font-serif text-xl font-bold">{chartMeta.heading}</h2>
           {/* Subtitle - editorial polish */}
@@ -90,7 +88,10 @@ export const VisualizationPanel = ({
         {/* Chart Type Selector - only show if multiple options available */}
         {showDropdown && (
           <Select value={chartType} onValueChange={handleValueChange}>
-            <SelectTrigger className="border-cartographic-navy/20 bg-background w-auto min-w-[140px] shrink-0">
+            <SelectTrigger
+              aria-label="Chart type"
+              className="border-cartographic-navy/20 bg-background w-auto min-w-[140px] shrink-0"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

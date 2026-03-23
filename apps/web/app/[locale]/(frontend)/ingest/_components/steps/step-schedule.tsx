@@ -128,7 +128,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
       {/* Header */}
       <div className="text-center">
         <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("scheduleTitle")}</h2>
-        <p className="text-cartographic-navy/70 mt-2">{t("scheduleDescription")}</p>
+        <p className="text-muted-foreground mt-2">{t("scheduleDescription")}</p>
       </div>
 
       {/* Toggle card */}
@@ -144,7 +144,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
               <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">
                 {isScheduleEnabled ? t("repeatOnSchedule") : t("importOnce")}
               </h3>
-              <p className="text-cartographic-navy/60 text-sm">
+              <p className="text-muted-foreground text-sm">
                 {isScheduleEnabled ? t("repeatOnScheduleDescription") : t("importOnceDescription")}
               </p>
             </div>
@@ -171,7 +171,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
               <div className="flex items-start gap-3">
                 <GlobeIcon className="text-cartographic-navy/40 mt-0.5 h-4 w-4" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-cartographic-navy/70 text-xs">{t("sourceUrl")}</p>
+                  <p className="text-muted-foreground text-xs">{t("sourceUrl")}</p>
                   <p className="text-cartographic-charcoal truncate font-mono text-sm">{sourceUrl}</p>
                 </div>
               </div>
@@ -263,7 +263,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
         <Card>
           <CardContent className="space-y-3 p-4">
             <div className="flex items-center gap-2">
-              <KeyIcon className="text-cartographic-navy/60 h-4 w-4" />
+              <KeyIcon className="text-muted-foreground h-4 w-4" />
               <span className="text-sm font-medium">{t("authSection")}</span>
             </div>
             <AuthConfigFields
@@ -284,7 +284,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
             {t("back")}
           </Button>
           <div className="flex items-center gap-3">
-            <span className="text-cartographic-navy/50 text-sm">
+            <span className="text-muted-foreground text-sm">
               {isScheduleEnabled ? (
                 <span className="flex items-center gap-1.5">
                   <ClockIcon className="h-3.5 w-3.5" />

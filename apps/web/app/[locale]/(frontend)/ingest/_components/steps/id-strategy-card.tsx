@@ -118,7 +118,7 @@ export const IdStrategyCard = ({
         </div>
       )}
 
-      {locked && <p className="text-cartographic-navy/70 text-sm italic">{t("idStrategyLocked")}</p>}
+      {locked && <p className="text-muted-foreground text-sm italic">{t("idStrategyLocked")}</p>}
     </div>
   );
 
@@ -135,7 +135,7 @@ export const IdStrategyCard = ({
             <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">
               {t("identityAndDuplicates")}
             </h3>
-            <p className="text-cartographic-navy/70 text-sm">{t("identityAndDuplicatesDescription")}</p>
+            <p className="text-muted-foreground text-sm">{t("identityAndDuplicatesDescription")}</p>
           </div>
         </div>
       </div>

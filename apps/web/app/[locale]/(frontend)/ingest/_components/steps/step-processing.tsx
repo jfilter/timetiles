@@ -180,7 +180,7 @@ const StageDetails = ({ stage }: { stage: FormattedStage }) => {
       </div>
       {/* Detail text */}
       {detailParts.length > 0 && (
-        <p className="text-cartographic-navy/50 font-mono text-xs">{detailParts.join(" \u00B7 ")}</p>
+        <p className="text-muted-foreground font-mono text-xs">{detailParts.join(" \u00B7 ")}</p>
       )}
     </div>
   );
@@ -234,7 +234,7 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
             {stageName}
           </span>
           {stage.status === "completed" && duration && (
-            <span className="text-cartographic-navy/50 shrink-0 font-mono text-xs">{duration}</span>
+            <span className="text-muted-foreground shrink-0 font-mono text-xs">{duration}</span>
           )}
           {stage.status === "skipped" && (
             <span className="text-cartographic-navy/40 shrink-0 font-mono text-xs">{t("stageSkipped")}</span>
@@ -270,7 +270,7 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
           <CheckCircle2Icon className="text-cartographic-forest h-8 w-8" />
         </div>
         <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importComplete")}</h2>
-        <p className="text-cartographic-navy/70 mt-2">{t("importCompleteDescription")}</p>
+        <p className="text-muted-foreground mt-2">{t("importCompleteDescription")}</p>
       </>
     );
   }
@@ -282,7 +282,7 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
           <AlertCircleIcon className="text-destructive h-8 w-8" />
         </div>
         <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importFailed")}</h2>
-        <p className="text-cartographic-navy/70 mt-2">{t("importFailedDescription")}</p>
+        <p className="text-muted-foreground mt-2">{t("importFailedDescription")}</p>
       </>
     );
   }
@@ -293,7 +293,7 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
         <Loader2Icon className="text-cartographic-blue h-8 w-8 animate-spin" />
       </div>
       <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importingData")}</h2>
-      <p className="text-cartographic-navy/70 mt-2">{t("importingDataDescription")}</p>
+      <p className="text-muted-foreground mt-2">{t("importingDataDescription")}</p>
     </>
   );
 };
@@ -375,7 +375,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
           {status === "processing" && (!progress?.stages || progress.stages.length === 0) && (
             <div className="px-6 py-4">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-cartographic-navy/70 text-sm">{stageLabel}</span>
+                <span className="text-muted-foreground text-sm">{stageLabel}</span>
                 <span className="text-cartographic-charcoal font-mono text-sm">{progressPercent}%</span>
               </div>
               <div className="bg-cartographic-navy/10 h-2 overflow-hidden rounded-full">
@@ -402,7 +402,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
                     className="bg-cartographic-cream/50 flex items-center justify-between rounded-sm px-4 py-2"
                   >
                     <span className="text-cartographic-charcoal text-sm">{dataset.name}</span>
-                    <span className="text-cartographic-navy/60 font-mono text-sm">
+                    <span className="text-muted-foreground font-mono text-sm">
                       {t("eventsCount", { count: dataset.eventsCount.toLocaleString() })}
                     </span>
                   </div>
@@ -449,7 +449,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
 
       {/* Processing info */}
       {status === "processing" && (
-        <p className="text-cartographic-navy/50 text-center text-sm">
+        <p className="text-muted-foreground text-center text-sm">
           {t("processingInfo")}
           <br />
           {t("processingInfoLeave")}

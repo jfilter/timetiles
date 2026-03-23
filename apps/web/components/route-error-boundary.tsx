@@ -46,7 +46,7 @@ export const RouteErrorBoundary = ({
       <div className="max-w-md space-y-4 text-center">
         <AlertTriangleIcon className="text-destructive mx-auto h-12 w-12" />
         <h2 className="text-cartographic-charcoal font-serif text-xl font-semibold">{title}</h2>
-        <p className="text-cartographic-navy/70 text-sm">{description}</p>
+        <p className="text-muted-foreground text-sm">{description}</p>
         <div className="flex justify-center gap-3">
           <Button type="button" variant="outline" onClick={reset}>
             <RotateCcwIcon className="mr-2 h-4 w-4" />
