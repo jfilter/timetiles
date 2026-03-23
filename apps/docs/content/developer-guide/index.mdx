@@ -4,60 +4,62 @@ asIndexPage: true
 
 # Development
 
-Documentation for contributing to TimeTiles.
+Everything you need to contribute to TimeTiles.
 
-## Overview
+import { Cards } from "nextra/components";
 
-This guide covers everything developers need to know:
+<Cards num={2}>
+  <Cards.Card title="Architecture" href="./architecture" arrow>
+    Tech stack, data flow, state management, and design decisions.
+  </Cards.Card>
+  <Cards.Card title="Development Setup" href="./development" arrow>
+    Environment setup, workflows, code standards, and commands.
+  </Cards.Card>
+</Cards>
 
-- Understanding the architecture and technology stack
-- Setting up the development environment
-- Working with the monorepo structure
-- Building and testing features
+<Cards num={2}>
+  <Cards.Card title="REST API" href="./rest-api" arrow>
+    Endpoints, request/response formats, and authentication.
+  </Cards.Card>
+  <Cards.Card title="API Reference" href="/reference/api" arrow>
+    Auto-generated TypeDoc documentation for all modules.
+  </Cards.Card>
+</Cards>
 
-## Documentation Structure
+## Tech Stack
 
-### [Architecture & Tech Stack](./architecture)
+| Layer     | Technology                                                        |
+| --------- | ----------------------------------------------------------------- |
+| Framework | Next.js 16 (App Router, Turbopack), React 19, TypeScript (strict) |
+| CMS       | Payload CMS 3 (integrated mode, 23 collections, 4 globals)        |
+| Database  | PostgreSQL 17 + PostGIS 3.5                                       |
+| Maps      | MapLibre GL JS, server-side clustering via PostGIS                |
+| State     | React Query (server), Zustand (client), nuqs (URL)                |
+| UI        | Tailwind CSS, Radix UI, shadcn/ui                                 |
+| i18n      | next-intl (English, German)                                       |
+| Jobs      | Payload Workflows (4 ingest workflows, 9 system jobs, 3 queues)   |
+| Testing   | Vitest (unit/integration), Playwright (E2E)                       |
+| Build     | Turbo monorepo, pnpm workspaces                                   |
 
-System architecture, technology choices, data flow, and design patterns.
+## Monorepo Structure
 
-### [Development Setup](./development)
+```
+apps/
+  web/              Next.js app, Payload CMS, API routes
+  scraper/          TimeScrape runner (optional, Podman)
+  docs/             Documentation site (Nextra)
 
-Development environment setup, workflows, commit guidelines, and testing.
+packages/
+  ui/               Shared UI components (shadcn/ui)
+  assets/           Logos and static assets (Git LFS)
+  payload-schema-detection/  CSV/Excel schema detection
+  eslint-config/    Shared ESLint config
+  typescript-config/ Shared TypeScript config
+  prettier-config/  Shared Prettier config
+```
 
-### [Packages](./packages)
+## Related
 
-Monorepo package structure, shared components, and configuration.
-
-### [REST API](./rest-api)
-
-API endpoints, request/response formats, and integration patterns.
-
-## Quick Start
-
-- **Setup**: See [Development Setup](./development) for environment configuration
-- **First Contribution**: See [Commit Guidelines](./development/commit-guidelines) for workflow
-- **Testing**: See [Testing Guidelines](./development/testing-guidelines) for test practices
-
-## Architecture
-
-TimeTiles is built with:
-
-- **Next.js 16**: App Router with Turbopack, next-intl for i18n
-- **Payload CMS 3**: Headless CMS integrated with Next.js (23 collections, 4 globals)
-- **PostgreSQL 17 + PostGIS 3.5**: Spatial database with geospatial queries
-- **React Query**: Server state management (35 custom hooks)
-- **Tailwind CSS + shadcn/ui**: Component styling with Cartographic Design System
-- **Background Jobs**: 20 Payload job handlers for ingest pipeline, scheduling, and maintenance
-
-## Getting Help
-
-- **Issues**: [GitHub Issues](https://github.com/jfilter/timetiles/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/jfilter/timetiles/discussions)
-- **Documentation**: You're reading it!
-
-## Related Guides
-
-- [Guide](/user-guide/getting-started) - For end users
-- [Self-Hosting](/admin-guide/) - For operators
-- [API Reference](/reference/api) - Auto-generated API docs
+- [Guide](/user-guide) — Using TimeTiles as an end user
+- [Self-Hosting](/admin-guide) — Deploying and operating TimeTiles
+- [Contributing](https://github.com/jfilter/timetiles/blob/main/CONTRIBUTING.md) — Contribution guidelines

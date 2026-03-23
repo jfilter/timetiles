@@ -4,182 +4,106 @@ asIndexPage: true
 
 # Development Setup
 
-Welcome to TimeTiles development! This guide covers contributor-specific setup and workflows.
-
-## Prerequisites
-
-See [Installation Guide](/admin-guide/installation) for system requirements. Additionally, developers need:
-
-- **Git LFS**: For managing image assets in the assets package
+Environment setup and day-to-day development workflows for TimeTiles.
 
 ## Quick Start
 
-Single command to get started:
-
 ```bash
-# Complete initialization: setup + database + seed + start dev server
-make init
+git clone https://github.com/jfilter/timetiles.git
+cd timetiles
+make init    # installs deps, starts DB, runs migrations, seeds, starts dev server
 ```
 
-The application will be available at:
+- **App**: [localhost:3000](http://localhost:3000)
+- **Dashboard**: [localhost:3000/dashboard](http://localhost:3000/dashboard)
+- **Docs**: [localhost:3001](http://localhost:3001) (run `pnpm dev` in `apps/docs`)
 
-- **Main App**: http://localhost:3000
-- **Documentation**: http://localhost:3001
+See [Quick Start](/quick-start) for prerequisites and database mode options.
 
-> **💡 Note:** `make init` handles everything - dependencies, .env files, Git LFS, database setup, seeding, and starts the dev server.
+## Commands
 
-## Essential Commands
-
-### Development
-
-```bash
-make dev          # Start all apps with database
-make dev-full     # Start infrastructure and dev server in one step
-make check-ai     # Run lint and typecheck (ALWAYS run after changes)
-make test-ai      # Run all tests (AI-friendly output)
-```
-
-### Testing
-
-```bash
-make test                           # Run all tests
-make test-ai                        # Run tests with AI-friendly output
-cd apps/web && pnpm test:debug      # Debug tests with logs
-cd apps/web && pnpm test:e2e        # End-to-end tests
-```
-
-### Database
-
-```bash
-cd apps/web && pnpm payload:migrate:create  # Create new migration
-cd apps/web && pnpm payload:migrate         # Run migrations
-make db-reset                               # Reset database
-```
+| Command         | What it does                            |
+| --------------- | --------------------------------------- |
+| `make dev`      | Start dev server (auto-starts database) |
+| `make check`    | Lint + typecheck all packages           |
+| `make test`     | Run unit + integration tests            |
+| `make test-e2e` | Run Playwright E2E tests                |
+| `make format`   | Format code                             |
+| `make migrate`  | Run database migrations                 |
+| `make seed`     | Seed database with sample data          |
+| `make fresh`    | Full reset: database + migrate + seed   |
+| `make status`   | Check environment health                |
 
 ### Database Seeding
 
-Populate your database with test data. You can use either the Makefile command (from project root) or the pnpm command (from `apps/web`):
-
 ```bash
-# From project root (recommended)
-make seed ARGS="development"                # Seed with development preset
-make seed ARGS="testing --truncate"         # Seed with testing preset, clear first
-
-# From apps/web directory
-pnpm seed [preset] [collections...] [options]
+make seed ARGS="development"            # Rich, realistic data (default)
+make seed ARGS="testing --truncate"     # Fast, deterministic data for tests
+make seed ARGS="demo"                   # Polished data for demos
 ```
 
-**Presets** (controls data characteristics):
+Available presets: `minimal`, `testing`, `e2e`, `development`, `demo`, `benchmark`. Add `--truncate` to clear existing data first.
 
-- `minimal` - Bare minimum for production
-- `testing` - Fast, deterministic data for tests (default in CI)
-- `e2e` - Moderate data for E2E testing
-- `development` - Rich, realistic data (default)
-- `demo` - Polished data for demos
-- `benchmark` - Large volumes for performance testing
+## Workflow
 
-**Key Options**:
-
-- `--truncate` - Clear existing data before seeding
-- `--volume <level>` - Control data volume (minimal|small|medium|large|xlarge)
-- `--random` - Use random seed for different data each run
-- `--seed <number>` - Use specific seed for deterministic randomness
-
-**Examples**:
-
-```bash
-# Using Makefile (from project root)
-make seed ARGS="development"                # Seed with development preset
-make seed ARGS="testing --truncate"         # Seed testing data, clear first
-make seed ARGS="users events"               # Seed only specific collections
-
-# Using pnpm (from apps/web)
-pnpm seed                                   # Seed with development preset
-pnpm seed testing                           # Seed with testing preset
-pnpm seed users events                      # Seed only specific collections
-pnpm seed --truncate                        # Clear data and re-seed
-pnpm seed help                              # Show all options
-```
-
-## Development Workflow
-
-### Making Changes
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Make your changes following the existing code patterns
-3. **ALWAYS run**: `make check-ai` (runs lint and typecheck)
+1. Create a feature branch from `main`
+2. Make your changes
+3. Run `make check` — lint and typecheck must pass
 4. Write tests for new functionality
-5. Update documentation if needed
+5. Commit using [conventional commits](./commit-guidelines)
+6. Open a pull request
 
-### Code Standards
+## Code Standards
 
-- Use **pino logger**, never `console.log`
-- Follow existing import patterns and path aliases
-- Handle errors explicitly with proper logging
-- Use React Query for server state management
-- Follow TypeScript best practices
+- **TypeScript strict mode** — all code must pass strict type checking
+- **Named imports only** — `import { foo } from 'bar'`
+- **No `console.log`** — use `logger.info()` / `logError()` from `@/lib/logger`
+- **React Query** for all data fetching — never fetch directly in components
+- **Coordinates** in `[longitude, latitude]` order (GeoJSON standard)
+- **PostGIS** for spatial queries — no client-side geo computations
 
-### Commit Guidelines
+## Layered Architecture
 
-We use [Conventional Commits](./commit-guidelines) for consistent commit messages:
+The `lib/` directory follows a strict import hierarchy:
 
-```bash
-feat(web): add new timeline component
-fix(api): resolve import validation error
-docs(readme): update installation instructions
+```
+Layer 0 — Foundation (no lib/ deps)
+  utils/, security/, types/, constants/, geospatial/, filters/
+
+Layer 1 — Infrastructure (can import Layer 0)
+  services/, database/, middleware/
+
+Layer 2 — Domain (can import Layer 0 + 1)
+  import/, ingest/, account/, export/, email/, collections/
+
+Layer 3 — Application (can import anything)
+  api/, hooks/, jobs/, blocks/, config/, globals/
 ```
 
-## Architecture Overview
+Each layer can only import from the same layer or below. Enforced via ESLint.
 
-TimeTiles uses a modern, performant tech stack:
-
-- **Frontend**: Next.js 16 with Turbopack, React 19
-- **CMS**: Payload CMS 3 for content management
-- **Database**: PostgreSQL 17 + PostGIS 3.5 for geospatial data
-- **State Management**: React Query + Zustand + nuqs
-- **Styling**: Tailwind CSS with shadcn/ui components
-
-For detailed architecture information, see the [Architecture Documentation](../architecture).
-
-## Testing Strategy
-
-We maintain three levels of testing:
-
-1. **Unit Tests**: Fast, isolated component and utility tests
-2. **Integration Tests**: API endpoint tests with test database
-3. **E2E Tests**: Full user workflow tests with Playwright
-
-See [Testing Guidelines](./testing-guidelines) for detailed information.
-
-## Common Issues & Solutions
-
-### Port Already in Use
+## Migrations
 
 ```bash
-lsof -ti:3000 | xargs kill -9
+cd apps/web
+pnpm payload:migrate:create    # Auto-generate from schema changes
+pnpm payload:migrate           # Apply pending migrations
 ```
 
-### Database Connection Issues
+Never create migration files manually — always use Payload's generator.
 
-```bash
-make down && make up
-```
+## Troubleshooting
 
-### Clean Reset
+| Problem                         | Solution                     |
+| ------------------------------- | ---------------------------- |
+| Port 3000 in use                | `make kill-dev`              |
+| Database connection error       | `make down && make up`       |
+| Stale state                     | `make fresh`                 |
+| TypeScript errors after updates | `pnpm install && make check` |
 
-```bash
-make clean && make up
-```
+## Further Reading
 
-## Next Steps
-
-- **Architecture Deep Dive**: [Architecture & Tech Stack](../architecture)
-- **API Development**: [REST API](../rest-api)
-- **Deployment**: [Deployment Guides](/admin-guide/deployment)
-- **Contributing**: Check the project README for contribution guidelines
-
-## Need Help?
-
-- **Issues**: Report bugs on GitHub Issues
-- **Discussions**: Join community discussions
-- **Code Review**: All PRs require review before merging
+- [Commit Guidelines](./commit-guidelines) — Conventional commit format and scope rules
+- [Testing Guidelines](./testing-guidelines) — Test types, mocking rules, and patterns
+- [Documentation Guide](./documentation-guide) — TypeDoc, JSDoc, and MDX conventions
+- [Payload Deadlocks](./payload-deadlocks) — Prevention patterns for CMS hooks

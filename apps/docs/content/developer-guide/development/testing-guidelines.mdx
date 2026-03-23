@@ -1,161 +1,54 @@
 # Testing Guidelines
 
-Testing strategy for TimeTiles: unit tests for logic, integration tests for workflows, E2E tests for user journeys.
-
-## Core Principle
-
-**Use real implementations.** Only mock external paid APIs, rate-limited services, or when testing error scenarios.
+Unit tests for logic, integration tests for workflows, E2E tests for user journeys. **Use real implementations** — only mock external paid APIs or rate-limited services.
 
 ## Test Types
 
-### Unit Tests (`tests/unit/`)
+| Type        | Location             | Framework           | Speed   | What to test                                    |
+| ----------- | -------------------- | ------------------- | ------- | ----------------------------------------------- |
+| Unit        | `tests/unit/`        | Vitest              | < 100ms | Pure functions, validation, parsing, formatting |
+| Integration | `tests/integration/` | Vitest + PostgreSQL | seconds | API endpoints, job processing, access control   |
+| E2E         | `tests/e2e/`         | Playwright          | 10-30s  | Complete user workflows in the browser          |
 
-Test isolated functions and business logic.
+## Running Tests
 
-- **Framework:** Vitest
-- **Speed:** < 100ms per test
-- **Setup:** Mock payload objects, use test data factories
-- **Examples:** Coordinate parsing, date formatting, schema validation
+```bash
+# From project root
+make test                         # All tests
+make test-ai                      # AI-friendly JSON output
+make test-ai FILTER=date.test     # Single file (24-120x faster)
+make test-ai FILTER=tests/unit    # Directory
+make test-e2e                     # Playwright E2E tests
 
-### Integration Tests (`tests/integration/`)
+# From apps/web
+pnpm test                         # All tests
+pnpm test:unit                    # Unit only
+pnpm test:integration             # Integration only
+pnpm test:e2e                     # E2E tests
+```
 
-Test components working together with real database.
-
-- **Framework:** Vitest with PostgreSQL
-- **Setup:** `createIntegrationTestEnvironment()`
-- **Database:** Isolated per worker, auto cleanup
-- **Examples:** File uploads, job processing, API endpoints
-
-### E2E Tests (`tests/e2e/`)
-
-Test complete user workflows in the browser.
-
-- **Framework:** Playwright
-- **Environment:** Full application stack
-- **Examples:** Import workflow, map exploration, data filtering
+Results are saved as timestamped JSON in `apps/web/.test-results/`.
 
 ## Mocking Rules
 
 ### Never Mock
 
-- Database operations → use test database
-- Payload CMS operations → use real Payload
-- Internal services → use actual implementations
-- File system → use temp directories
-- Job queues → use real handlers
+- Database operations — use test database
+- Payload CMS — use real Payload
+- Internal services — use actual implementations
+- File system — use temp directories
+- Job queues — use real handlers
 
 ### Can Mock (Document Why)
 
-- **External paid APIs** (Google Maps) → costs and rate limits
-- **Rate-limited services** → avoid CI/CD quotas
-- **Network failures** → test error handling
-- **Time** → `vi.setSystemTime()` for date tests
+- **External paid APIs** (Google Maps) — costs and rate limits
+- **Rate-limited services** — avoid CI quotas
+- **Network failures** — test error handling
+- **Time** — `vi.setSystemTime()` for date-dependent tests
 
-### Example: Mocking External API
+## Integration Test Setup
 
-```typescript
-/**
- * Mocking acceptable because:
- * - Testing OUR caching/fallback logic
- * - Real API has costs and rate limits
- * - Need deterministic test scenarios
- */
-vi.mock("node-geocoder", () => ({ default: mockGeocoder }));
-```
-
-## Running Tests
-
-**From project root** (monorepo orchestration):
-
-```bash
-make test         # Run all tests across all packages
-make test-ai      # AI-friendly output (silent, JSON results)
-
-# Filter tests for faster iteration (24-120x faster)
-make test-ai FILTER=date.test           # Run specific test file
-make test-ai FILTER=tests/unit          # Run unit tests directory
-make test-ai FILTER=store.test          # Run store tests
-make test-ai FILTER=tests/unit/lib      # Run specific directory
-make test-ai FILTER="date|store|geo"    # Multiple patterns (pipe-separated)
-```
-
-**From `apps/web`** (package-specific commands):
-
-```bash
-# Unit and Integration
-pnpm test                    # All tests
-pnpm test:debug              # Verbose output with logs
-pnpm test:unit               # Unit tests only
-pnpm test:integration        # Integration tests only
-pnpm test:coverage           # With coverage report
-
-# E2E Tests
-pnpm test:e2e                # All E2E tests
-pnpm test:e2e:debug          # Debug mode (headed, visible)
-
-# Specific tests
-pnpm test tests/unit/services/schema-builder.test.ts
-pnpm test --grep "geocoding"
-
-# With debugging logs
-LOG_LEVEL=debug pnpm test tests/integration/services/seed-config.test.ts
-```
-
-**AI Output:** Results saved to `apps/web/.test-results/`, `apps/web/.lint-results/`, `apps/web/.typecheck-results/` (timestamped JSON files)
-
-### Analyzing Test Results
-
-When tests fail, use `jq` to extract detailed information from the latest JSON results:
-
-```bash
-# See specific failed test names
-cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '.testResults[] | select(.status=="failed") | .name'
-
-# See assertion details for failures
-cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '.testResults[] | select(.status=="failed") | .assertionResults[] | select(.status=="failed")'
-
-# Count total failures
-cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '[.testResults[] | select(.status=="failed")] | length'
-```
-
-### Analyzing Lint Results
-
-Extract lint errors and top violations (uses latest result file):
-
-```bash
-# Files with errors
-cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0) | .filePath'
-
-# Specific error messages
-cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0) | .messages[] | select(.severity == 2)'
-
-# Full error details with location
-cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '[.[] | select(.errorCount > 0) | {file: .filePath, errors: [.messages[] | select(.severity == 2) | {line, column, message, ruleId}]}]'
-```
-
-### Analyzing TypeScript Errors
-
-Extract type errors from typecheck results (uses latest result file):
-
-```bash
-# All type errors
-cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.errors'
-
-# Errors by file
-cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.summary.byFile'
-
-# Errors by error code
-cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.summary.byCode'
-
-# Specific error details
-cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.errors[] | {file, line, code, message}'
-```
-
-## Test Setup Patterns
-
-### Integration Tests (with Database)
-
-Use `createIntegrationTestEnvironment()` for tests that need real PostgreSQL and Payload CMS:
+Use `createIntegrationTestEnvironment()` for tests that need a real database:
 
 ```typescript
 import { createIntegrationTestEnvironment, withCatalog, withDataset } from "@/tests/setup/integration-test-environment";
@@ -179,11 +72,11 @@ it("processes import file", async () => {
 });
 ```
 
-**Use for:** File uploads, job processing, API endpoints, access control, geospatial queries
+Databases are isolated per worker and cleaned up automatically.
 
-### Unit Tests (with Mocks)
+## Unit Test Setup
 
-Use factories and mocks for tests that verify business logic:
+Use factories and mocks for business logic:
 
 ```typescript
 import { vi } from "vitest";
@@ -197,15 +90,28 @@ it("validates event data", () => {
 });
 ```
 
-**Use for:** Validation logic, coordinate parsing, schema building, date formatting, utility functions
+## Test Credentials
 
-### Component Tests (with Factories)
+Always use centralized test credentials to avoid hardcoded secrets:
 
 ```typescript
-import { renderWithProviders } from "@/tests/setup/test-utils";
-import { createEvent } from "@/tests/setup/factories";
+import { TEST_CREDENTIALS, TEST_EMAILS } from "../constants/test-credentials";
 
-const event = createEvent({ data: { title: "My Event" } });
-const { getByText } = renderWithProviders(<EventCard event={event} />);
-expect(getByText("My Event")).toBeInTheDocument();
+const testUser = await payload.create({
+  collection: "users",
+  data: { email: TEST_EMAILS.admin, password: TEST_CREDENTIALS.basic.password, role: "admin" },
+});
+```
+
+## Analyzing Failures
+
+```bash
+# Failed test names
+cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '.testResults[] | select(.status=="failed") | .name'
+
+# Lint errors
+cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0) | .filePath'
+
+# TypeScript errors
+cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.errors[] | {file, line, code, message}'
 ```
