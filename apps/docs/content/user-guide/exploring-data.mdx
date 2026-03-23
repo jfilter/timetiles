@@ -1,0 +1,41 @@
+# Exploring Data
+
+Once your data is imported, TimeTiles presents it as an interactive map with timeline controls, filters, and shareable URLs.
+
+## Map
+
+Events appear as markers on an interactive map powered by MapLibre GL JS. When zoomed out, nearby events are clustered into numbered circles — click a cluster to zoom in.
+
+Click any individual marker to see the full event details: title, date, location, description, and all metadata fields from your data.
+
+Pan, zoom, and rotate the map freely. The URL updates as you move — bookmark it to save your exact view.
+
+## Timeline
+
+A histogram at the bottom of the screen shows event density over time. Each bar represents a time period — taller bars mean more events.
+
+Drag the handles to narrow the time range. Only events within the selected range appear on the map. This lets you watch how patterns shift over time — useful for spotting escalation, seasonal trends, or quiet periods.
+
+## Filters
+
+Sidebar filters are generated automatically from your data schema:
+
+- **Data source** — filter by dataset when a catalog contains multiple
+- **Category fields** — fields with a small number of distinct values become checkbox filters
+- **Date range** — restrict to a specific time window
+- **Search** — find events by text across all fields
+
+Combine multiple filters to drill down. All active filters are reflected in the URL.
+
+## Sharing
+
+Every view has a unique URL. Filters, map position, time range, and selected datasets are all encoded in the link. When you share it, recipients see exactly what you see.
+
+You can also export all your data as a ZIP archive from Account Settings — includes catalogs, datasets, events, and import history.
+
+## Tips
+
+- **Use the timeline to tell a story** — narrow the range to a specific period and share the URL
+- **Combine filters** — category + time range reveals patterns that aren't visible in the full dataset
+- **Bookmark views** — the URL captures your exact state, so you can return to it anytime
+- **Click clusters** — zoom into dense areas to see individual events

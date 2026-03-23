@@ -8,27 +8,23 @@ Import data, explore it on an interactive map, and share your findings.
 
 import { Cards } from "nextra/components";
 
-<Cards num={3}>
+<Cards num={2}>
   <Cards.Card title="Getting Started" href="./getting-started" arrow>
     Import a CSV and create your first interactive chronicle.
   </Cards.Card>
-  <Cards.Card title="Data Ingestion" href="./data-ingestion" arrow>
-    Formats, schema detection, geocoding, scheduling, and troubleshooting.
+  <Cards.Card title="Data Import" href="./data-import" arrow>
+    File upload, scheduled imports, and custom scrapers.
+  </Cards.Card>
+</Cards>
+
+<Cards num={2}>
+  <Cards.Card title="Exploring Data" href="./exploring-data" arrow>
+    Map, timeline, filters, and sharing.
   </Cards.Card>
   <Cards.Card title="Use Cases" href="./use-cases" arrow>
     Real-world examples from journalism, research, and activism.
   </Cards.Card>
 </Cards>
-
-## What You Can Do
-
-**Import** — Upload CSV, Excel, or ODS files, paste a URL, or set up automated imports on a schedule. TimeTiles detects your schema and geocodes addresses automatically.
-
-**Explore** — Pan and zoom the map, scrub the timeline, filter by category or date range, and click events to see details. Every field in your data becomes a filter.
-
-**Share** — Every view has a unique URL with filters, map position, and time range encoded. Bookmark it, share it, or embed it — recipients see exactly what you see.
-
-**Manage** — Organize data into catalogs and datasets. Export everything as a ZIP archive. Delete your account with a grace period.
 
 ## Related
 

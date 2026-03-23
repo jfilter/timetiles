@@ -1,0 +1,68 @@
+# File Upload
+
+Upload CSV, Excel, or ODS files to create events. This is the simplest way to get data into TimeTiles.
+
+import { Steps } from "nextra/components";
+
+## Required Fields
+
+Each row becomes an event. Your data needs three fields:
+
+| Field    | Required | Example                                     |
+| -------- | -------- | ------------------------------------------- |
+| Title    | Yes      | "Earthquake in San Francisco"               |
+| Date     | Yes      | 2024-03-15 (ISO 8601 recommended)           |
+| Location | Yes      | "San Francisco, CA" or `37.7793, -122.4193` |
+
+Any additional fields (description, category, source, severity) become filterable in the interface.
+
+## How to Import
+
+<Steps>
+
+### Go to the import page
+
+Navigate to `/ingest` or click the import button.
+
+### Choose or create a catalog
+
+Catalogs are project-level containers. Create one for your topic or select an existing one.
+
+### Upload your file
+
+Drag and drop your CSV, Excel, or ODS file.
+
+### Review the detected schema
+
+TimeTiles identifies field types, dates, locations, and categories. Verify the mappings and adjust if needed.
+
+### Start processing
+
+Click **Start**. TimeTiles validates, geocodes, and creates events. A progress bar shows the current stage.
+
+</Steps>
+
+## Example CSV
+
+```csv
+title,date,location,category,description
+"City Council Meeting","2024-01-10","Berlin, Germany","Politics","Budget debate for 2024"
+"Factory Fire","2024-02-14","Hamburg, Germany","Incident","Chemical plant fire, no injuries"
+"Climate March","2024-03-15","Munich, Germany","Protest","5,000 participants"
+"Data Leak Published","2024-04-02","Frankfurt, Germany","Investigation","Financial records from 2019-2023"
+"River Pollution Report","2024-05-20","Cologne, Germany","Environment","Elevated lead levels detected"
+```
+
+## Tips
+
+- **Start small** — test with 100-500 events before importing large datasets
+- **Use consistent dates** — ISO 8601 (`YYYY-MM-DD`) works best
+- **Add categories** — fields with few distinct values become interactive filters
+- **Include coordinates** — if you have lat/lng, geocoding is skipped (faster and more accurate)
+- **Preview first** — review schema detection before starting the full import
+
+## Next Steps
+
+- [Scheduled Imports](./scheduled-imports) — Automate recurring data fetches
+- [Scrapers](./scrapers) — Write custom scripts for non-tabular data sources
+- [Exploring Data](/user-guide/exploring-data) — Map, timeline, filters, and sharing

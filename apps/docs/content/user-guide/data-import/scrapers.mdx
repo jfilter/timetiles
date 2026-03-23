@@ -1,0 +1,184 @@
+# Scrapers
+
+Write short Python or Node.js scripts that fetch data from websites and APIs, produce CSV output, and feed it into the TimeTiles import pipeline. Events appear on the map without manual file handling.
+
+import { Callout } from "nextra/components";
+
+<Callout>
+  Scraper functionality requires the `enableScrapers` feature flag to be enabled by an admin. See
+  [Self-Hosting > Configuration](/admin-guide/configuration) for setup.
+</Callout>
+
+## How It Works
+
+```
+Your script (Python or Node.js)
+  → Runs in an isolated Podman container
+    → Produces CSV output
+      → Feeds into the standard import pipeline
+        → Events appear on the map
+```
+
+The scraper system has two parts:
+
+| Component                              | What it does                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| **TimeScrape Runner** (`apps/scraper`) | Executes scripts in hardened containers. Stateless — no database access. |
+| **Scraper Management** (`apps/web`)    | Repos, scheduling, quotas, and import pipeline integration.              |
+
+## Quick Start
+
+### 1. Scaffold a scraper
+
+```bash
+npx timescrape init my-scraper              # Python (default)
+npx timescrape init my-scraper --runtime node
+```
+
+### 2. Write your script
+
+```python
+import requests
+from timescrape import output
+
+response = requests.get(
+    "https://date.nager.at/api/v3/PublicHolidays/2026/DE",
+    timeout=30,
+)
+response.raise_for_status()
+
+for holiday in response.json():
+    output.write_row({
+        "title": holiday["localName"],
+        "date": holiday["date"],
+        "location": "Germany",
+        "description": holiday.get("name", ""),
+    })
+
+output.save()
+```
+
+### 3. Create a manifest
+
+Add a `scrapers.yml` at the root of your repo:
+
+```yaml
+scrapers:
+  - name: "German Holidays"
+    slug: german-holidays
+    runtime: python
+    entrypoint: scraper.py
+    output: data.csv
+    schedule: "0 6 * * 1" # Every Monday at 06:00 UTC
+```
+
+### 4. Register the repo
+
+In the dashboard, go to **Scrapers > Scraper Repos** and create a new repo. Point it at your Git repository or paste code directly.
+
+### 5. Run it
+
+Trigger manually from the dashboard, via API, or let the cron schedule handle it:
+
+```bash
+curl -X POST https://your-instance.com/api/scrapers/{id}/run \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+If `autoImport` is enabled and a `targetDataset` is configured, the CSV flows through the standard import pipeline automatically.
+
+## The scrapers.yml Manifest
+
+```yaml
+scrapers:
+  - name: "My Scraper"
+    slug: my-scraper
+    runtime: python # or "node"
+    entrypoint: scraper.py
+    output: data.csv # default
+    schedule: "0 6 * * *" # optional cron expression
+    limits:
+      timeout: 120 # seconds (10-3600, default 300)
+      memory: 256 # MB (64-4096, default 512)
+
+defaults: # optional, applied to all scrapers
+  runtime: python
+  limits:
+    timeout: 120
+    memory: 256
+```
+
+## Helper Libraries
+
+### Python (`timescrape`)
+
+```python
+from timescrape import output
+
+output.write_row({"title": "Event", "date": "2026-01-01", "location": "Berlin"})
+output.write_rows([...])  # or multiple at once
+output.save()             # required — writes CSV
+print(output.row_count)
+```
+
+Pre-installed: `requests`, `beautifulsoup4`, `lxml`, `pandas`, `cssselect`.
+
+### Node.js (`@timescrape/helper`)
+
+```javascript
+import { output } from "@timescrape/helper";
+
+output.writeRow({ title: "Event", date: "2026-01-01", location: "Berlin" });
+output.save();
+console.log(output.rowCount);
+```
+
+Pre-installed: `cheerio`, `axios`.
+
+## Scheduling
+
+Set the `schedule` field in `scrapers.yml` to a standard five-field cron expression:
+
+| Expression    | Meaning                          |
+| ------------- | -------------------------------- |
+| `0 6 * * *`   | Every day at 06:00 UTC           |
+| `0 6 * * 1`   | Every Monday at 06:00 UTC        |
+| `0 */6 * * *` | Every 6 hours                    |
+| `0 0 1 * *`   | First of every month at midnight |
+
+Scrapers can also be triggered via webhook — enable it in scraper settings to get a unique URL.
+
+## Source Types
+
+| Type   | How code is provided             | Storage                           |
+| ------ | -------------------------------- | --------------------------------- |
+| Git    | HTTPS URL + branch               | External hosting (GitHub, GitLab) |
+| Upload | JSON map of filenames to content | Payload database                  |
+
+For Git repos, the runner does a shallow clone at execution time. For uploads, code is sent directly to the runner.
+
+## Quotas
+
+Scraper access requires trust level 3 (Trusted) or higher:
+
+| Trust Level    | Repos     | Runs/Day  |
+| -------------- | --------- | --------- |
+| Trusted (3)    | 3         | 10        |
+| Power User (4) | 10        | 50        |
+| Unlimited (5)  | Unlimited | Unlimited |
+
+## Management
+
+Users manage scrapers at **/account/scrapers**:
+
+- View repos with sync status
+- See scrapers with last run status and statistics
+- Force sync, trigger runs, delete repos
+- Expand run history with stdout/stderr logs
+
+## Further Reading
+
+- [Writing Scrapers](/reference/scrapers/writing-scrapers) — Detailed guide with advanced examples
+- [Scraper Deployment](/reference/scrapers/deployment) — Setting up the TimeScrape runner
+- [File Upload](./file-upload) — Manual CSV/Excel imports
+- [Scheduled Imports](./scheduled-imports) — Automated URL-based imports

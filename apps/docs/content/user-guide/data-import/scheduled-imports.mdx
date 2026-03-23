@@ -1,0 +1,60 @@
+# Scheduled Imports
+
+Fetch data from a URL automatically on a recurring schedule — hourly, daily, weekly, or custom cron expressions. The fetched data goes through the same pipeline as a manual file upload.
+
+## Setup
+
+1. In the Import wizard, choose **URL** as your data source
+2. Paste the URL and configure schema and field mappings as usual
+3. In the **Schedule** step, choose **Repeat on schedule**
+4. Set the frequency (e.g., every 6 hours, daily at midnight)
+5. Optionally add authentication headers for protected APIs
+6. Save
+
+## How It Works
+
+A background job checks for due schedules every minute. When a schedule fires, it fetches the URL and runs the full import pipeline — schema detection, deduplication, geocoding, event creation.
+
+If the source schema has changed between runs, you may be asked to approve the new mapping before processing continues.
+
+## Authentication
+
+Scheduled imports support several methods for protected URLs:
+
+| Method       | Description                            |
+| ------------ | -------------------------------------- |
+| None         | Public URLs, no authentication         |
+| API Key      | Sent as a header or query parameter    |
+| Bearer Token | `Authorization: Bearer <token>` header |
+| Basic Auth   | HTTP Basic authentication              |
+
+## Managing Schedules
+
+From the **Scheduled Imports** section in your account:
+
+- **Pause/resume** a schedule
+- **Trigger** an immediate run
+- **View history** of past runs
+- **Delete** a schedule
+
+Admins can view all schedules at `/dashboard/collections/scheduled-ingests`.
+
+## Webhook Triggers
+
+Each scheduled import can optionally expose a webhook URL. POST to it to trigger an immediate run — useful for CI/CD pipelines or external automation:
+
+```bash
+curl -X POST https://your-instance.com/api/webhooks/trigger/{token}
+```
+
+No authentication header needed — the token in the URL is the credential. Tokens are rotated when the webhook is disabled and re-enabled.
+
+## Caching
+
+Scheduled imports use HTTP caching (RFC 7234) to avoid re-downloading unchanged data. If the source server sends appropriate `Cache-Control` headers, TimeTiles respects them. See [Usage Limits](/admin-guide/usage-limits#http-caching) for cache configuration.
+
+## Next Steps
+
+- [File Upload](./file-upload) — One-time manual imports
+- [Scrapers](./scrapers) — Custom scripts for non-tabular data sources
+- [Exploring Data](/user-guide/exploring-data) — Map, timeline, filters, and sharing
