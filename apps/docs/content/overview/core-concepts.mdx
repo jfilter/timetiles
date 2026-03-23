@@ -1,223 +1,95 @@
 # Core Concepts
 
-Understanding TimeTiles' data model will help you organize and present your data effectively. TimeTiles uses a hierarchical structure to organize events, making it easy to manage multiple projects and datasets.
+TimeTiles organizes data in a hierarchy designed to scale from a single dataset to a multi-tenant platform serving multiple organizations.
 
-## 📚 Data Hierarchy
-
-TimeTiles organizes data in a hierarchy with optional multi-tenant support:
+## Data Hierarchy
 
 ```
-Site (Optional — multi-tenant)
-  └── Catalog (Project)
-        └── Dataset (Collection)
-              └── Event (Data Point)
+Site (optional — multi-tenant)
+  └── Catalog (project)
+        ├── Dataset (data source)
+        │     └── Event (data point)
+        └── View (saved display configuration)
 ```
 
-**Views** can be configured at the catalog level to create saved display configurations — defining which datasets are shown, map bounds, and active filters.
+## Events
 
-## 🗂️ Catalogs
+An **event** is a single data point — something that happened at a specific place and time. Each row in your CSV becomes an event.
 
-A **Catalog** is the top-level container for your project. Think of it as a workspace or project folder that groups related datasets together.
+Every event has three required fields:
 
-### What Catalogs Are For
+| Field        | Example                                                | Notes                                                             |
+| ------------ | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| **Title**    | "Earthquake in San Francisco"                          | What happened                                                     |
+| **Date**     | 2024-01-15                                             | When it happened (ISO 8601 recommended)                           |
+| **Location** | "City Hall, San Francisco, CA" or `37.7793, -122.4193` | Where — either an address (geocoded automatically) or coordinates |
 
-- **Project Organization**: Each research project, news story, or investigation gets its own catalog
-- **Access Control**: Set permissions at the catalog level to control who can view or edit
-- **Branding**: Customize the appearance and metadata for each catalog
+Beyond these, events carry any additional fields from your data: description, category, source, severity, URLs, images — whatever your schema includes. These become filterable and searchable in the interface.
 
-### Examples
+## Datasets
 
-- "2024 Election Coverage" catalog containing multiple election-related datasets
-- "Climate Change Research" catalog with datasets from different time periods
-- "City Crime Statistics" catalog organizing crime data by year or type
+A **dataset** is a collection of events that share the same schema (field structure). Datasets correspond to a single data source or import.
 
-### Key Properties
+- Each CSV/Excel upload creates or updates a dataset
+- Events within a dataset share the same field definitions
+- Scheduled URL imports keep a dataset updated automatically
+- Users can filter the explore interface by dataset
 
-- **Name**: Display name for your project
-- **Description**: What this catalog contains and its purpose
-- **Visibility**: Public or private access
-- **Theme**: Custom colors and styling options
+**Example**: A "2024 Election Coverage" catalog might contain datasets for "Rallies", "Polling Stations", and "Incident Reports" — each with different schemas.
 
-## 📊 Datasets
+## Catalogs
 
-A **Dataset** is a collection of related events within a catalog. Datasets share a common structure (schema) and represent a specific data source or time period.
+A **catalog** is a project-level container that groups related datasets. It's the unit of access control and the entry point for exploration.
 
-### What Datasets Are For
+- One catalog per project, investigation, or topic
+- Controls visibility (public or private) and permissions
+- Aggregates events from all its datasets into a single explorable interface
+- Has its own branding and theme settings
 
-- **Data Organization**: Group events that share the same structure and source
-- **Schema Management**: Each dataset has its own field definitions
-- **Import Management**: Data imports create or update datasets
-- **Filtering**: Users can filter the view by selecting specific datasets
+## Views
 
-### Examples
+A **view** is a saved display configuration within a catalog. Views define how data appears when someone opens the explore interface — which datasets are visible, what map bounds to show, and which filters are active.
 
-- "January 2024 Incidents" dataset within a crime statistics catalog
-- "Twitter Posts" dataset within a social media analysis catalog
-- "Historical Earthquakes 1900-1950" dataset within a geological research catalog
+- Create focused views for different audiences or stories
+- Each view has its own shareable URL
+- Useful for curating specific perspectives on the same underlying data
 
-### Key Properties
+## Sites
 
-- **Name**: Descriptive name for this collection
-- **Schema**: Field definitions and data types
-- **Source**: Where the data came from
-- **Import Settings**: How to process new data
-- **Event Count**: Number of events in this dataset
+A **site** is an optional multi-tenant layer. When enabled, a single TimeTiles installation can serve multiple independent instances, each with its own domain, branding, and catalogs.
 
-## 📍 Events
+Most deployments don't need sites — a single-site setup works out of the box.
 
-An **Event** is an individual data point with a location, time, and associated information. Events are what appear on the map and timeline.
-
-### What Events Are
-
-- **Individual Occurrences**: Each row in your CSV becomes an event
-- **Geolocated**: Must have a location (coordinates or address)
-- **Temporal**: Should have a date/time when it occurred
-- **Rich Data**: Can include any additional fields from your data
-
-### Required Fields
-
-Every event needs at least:
-
-- **Title**: What happened (e.g., "Earthquake in San Francisco")
-- **Date**: When it happened (e.g., "2024-01-15")
-- **Location**: Where it happened (address or coordinates)
-
-### Optional Fields
-
-Events can include any additional data:
-
-- **Description**: Detailed information about the event
-- **Category**: Type or classification
-- **Magnitude/Severity**: Numerical values for analysis
-- **Source**: Where the information came from
-- **Images**: Visual documentation
-- **Custom Fields**: Any data specific to your use case
-
-### Examples
-
-```javascript
-// Example event data
-{
-  title: "Protest at City Hall",
-  date: "2024-03-15T14:00:00",
-  location: "City Hall, San Francisco, CA",
-  latitude: 37.7793,  // Auto-geocoded
-  longitude: -122.4193,
-  category: "Protest",
-  participants: 500,
-  description: "Climate action protest demanding policy changes",
-  source: "Local News Network",
-  custom_field_1: "Peaceful",
-  custom_field_2: "Environmental"
-}
-```
-
-## 🔄 Data Flow
-
-Understanding how data flows through TimeTiles:
-
-1. **Import**: Upload a CSV/Excel file or configure a URL to bring data into TimeTiles (see [Data Ingestion](../user-guide/data-ingestion))
-2. **Process**: TimeTiles detects the schema, deduplicates rows, and geocodes addresses
-3. **Store**: Events are stored in the dataset within a catalog
-4. **Visualize**: Events appear on the map with filters and timeline
-5. **Explore**: Users interact with your data through the interface
-
-## 🎯 Best Practices
-
-### Organizing Your Data
-
-**Use Catalogs for Projects**
-
-- One catalog per major project or investigation
-- Keep related datasets together
-- Set appropriate access permissions
-
-**Use Datasets for Sources**
-
-- One dataset per data source or import
-- Maintain consistent schemas within datasets
-- Use descriptive names that indicate the content
-
-**Structure Events Consistently**
-
-- Use consistent date formats (ISO 8601 recommended)
-- Provide clear, descriptive titles
-- Include source information for credibility
-- Add categories for better filtering
-
-### Schema Design
-
-When preparing your data:
-
-1. **Identify Required Fields**: Ensure you have title, date, and location
-2. **Plan Categories**: Use consistent category names for filtering
-3. **Consider Analysis**: Include numerical fields for charts
-4. **Think About Display**: What information do users need to see?
-
-## 🌐 Sites
-
-A **Site** is an optional multi-tenant configuration unit. When enabled, sites allow a single TimeTiles installation to serve multiple independent instances with separate branding and domains.
-
-### What Sites Are For
-
-- **Multi-Tenancy**: Host multiple organizations or projects on one installation
-- **Custom Branding**: Each site can have its own name, logos, and appearance
-- **Domain Routing**: Route different domains to different sites
-
-Sites are optional — a simple single-site deployment works without configuring sites at all.
-
-## 👁️ Views
-
-A **View** is a saved display configuration for exploring data. Views let you define how data appears in the explore interface.
-
-### What Views Are For
-
-- **Preset Displays**: Save specific map bounds, active filters, and layout preferences
-- **Curated Experiences**: Create focused views for different audiences
-- **Shareable**: Each view has its own URL for easy sharing
-
-## 🔗 Relationships
-
-The hierarchical structure creates clear relationships:
-
-- **One-to-Many**: One catalog contains many datasets
-- **One-to-Many**: One dataset contains many events
-- **Inheritance**: Datasets inherit settings from their catalog
-- **Aggregation**: Catalogs aggregate statistics from all datasets
-
-## 💡 Common Use Cases
-
-### News Organization
+## Data Flow
 
 ```
-Catalog: "2024 News Coverage"
-  ├── Dataset: "Political Events"
-  ├── Dataset: "Natural Disasters"
-  └── Dataset: "Economic Indicators"
+Upload CSV/Excel/ODS or configure scheduled URL
+    ↓
+Schema detection — TimeTiles identifies field types and suggests mappings
+    ↓
+You review and approve the schema
+    ↓
+Geocoding — text addresses are converted to coordinates
+    ↓
+Events are created in the dataset within a catalog
+    ↓
+Events appear on the map with timeline, filters, and charts
 ```
 
-### Research Project
+For details on each processing stage, see [Data Ingestion](/user-guide/data-ingestion).
 
-```
-Catalog: "Urban Development Study"
-  ├── Dataset: "Building Permits 2020"
-  ├── Dataset: "Building Permits 2021"
-  └── Dataset: "Demographic Changes"
-```
+## Organizing Your Data
 
-### Activist Campaign
+**One catalog per project.** Keep related datasets together under a single catalog — this is what your audience will explore.
 
-```
-Catalog: "Environmental Monitoring"
-  ├── Dataset: "Pollution Reports"
-  ├── Dataset: "Wildlife Sightings"
-  └── Dataset: "Clean-up Events"
-```
+**One dataset per source.** Each import or data source gets its own dataset. This keeps schemas clean and makes it easy to update individual sources.
+
+**Consistent fields within datasets.** Use the same date format, consistent category names, and clear titles. TimeTiles generates filters from your data — consistent values produce better filters.
+
+**Include metadata for filtering.** Categories, tags, and any other classifying fields become interactive filters in the explore interface. The more structured metadata you include, the richer the exploration experience.
 
 ## Next Steps
 
-Now that you understand the core concepts:
-
-1. [Get started](../user-guide/getting-started) with TimeTiles
-2. [Explore use cases](../user-guide/use-cases) for creating chronicles
-3. [Set up and configure](../admin-guide/) your TimeTiles instance
+- **[Getting Started](/user-guide/getting-started)** — Import your first dataset
+- **[Data Ingestion](/user-guide/data-ingestion)** — Formats, geocoding, scheduling, and schema handling
+- **[Comparison](/overview/comparison)** — How TimeTiles compares to similar tools

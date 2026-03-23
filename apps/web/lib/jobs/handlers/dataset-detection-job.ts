@@ -333,7 +333,7 @@ export const datasetDetectionJob = {
       // always knows which catalog to search for existing datasets.
       const resolvedCatalogId = catalogId ?? (extractRelationId(ingestFile.catalog) as string | undefined);
 
-      const filePath = getIngestFilePath(ingestFile.filename ?? "");
+      let filePath = getIngestFilePath(ingestFile.filename ?? "");
 
       if (!fs.existsSync(filePath)) {
         throw new Error(`Cannot access file ${filePath}`);
@@ -348,7 +348,31 @@ export const datasetDetectionJob = {
         sheets = wizardSheets;
         logger.info("Using wizard metadata fast-path", { ingestFileId, sheetCount: sheets.length });
       } else {
-        const fileExtension = path.extname(filePath).toLowerCase();
+        let fileExtension = path.extname(filePath).toLowerCase();
+
+        // JSON files need conversion to CSV before processing (same pattern as preview route).
+        // Write CSV alongside original and update the ingest-file record so downstream tasks
+        // (analyze-duplicates, create-events, etc.) also read the converted CSV.
+        if (fileExtension === ".json") {
+          const { convertJsonToCsv } = await import("@/lib/ingest/json-to-csv");
+          const jsonBuffer = fs.readFileSync(filePath);
+          const result = convertJsonToCsv(jsonBuffer);
+          const csvPath = filePath.replace(/\.json$/i, ".csv");
+          fs.writeFileSync(csvPath, result.csv);
+          filePath = csvPath;
+          fileExtension = ".csv";
+
+          const csvFilename = path.basename(csvPath);
+          await payload.update({
+            collection: COLLECTION_NAMES.INGEST_FILES,
+            id: ingestFileId,
+            data: { filename: csvFilename, mimeType: "text/csv" },
+            overrideAccess: true,
+          });
+
+          logger.info("Converted JSON to CSV for dataset detection", { ingestFileId, recordCount: result.recordCount });
+        }
+
         // xlsx library handles .xls, .xlsx, and .ods files
         sheets = fileExtension === ".csv" ? processCSVFile(filePath) : processExcelFile(filePath);
       }

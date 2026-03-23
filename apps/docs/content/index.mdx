@@ -1,33 +1,53 @@
 # TimeTiles Documentation
 
-Welcome to the TimeTiles documentation!
+Transform your data into interactive, explorable timelines on a map.
 
-import { Callout } from "nextra/components";
-
-<Callout type="info">
-  TimeTiles is under active development. Documentation and features are continuously evolving. See the [GitHub
-  repository](https://github.com/jfilter/timetiles) for the latest updates or [report
-  issues](https://github.com/jfilter/timetiles/issues) if you have questions.
-</Callout>
-
-## Getting Started
-
-- [Overview](/overview) - Learn about TimeTiles concepts and architecture
-- [Quick Start Guide](/quick-start) - Get TimeTiles running in 5 minutes
-- [User Guide](/user-guide/getting-started) - Master the features
-
-## For Developers
-
-- [Developer Guide](/developer-guide) - Extend and customize TimeTiles
-- [API Reference](/reference/api) - Complete API documentation
-- [Scrapers](/reference/scrapers) - Run custom web scrapers in isolated containers
-
-## Resources
-
-- [FAQ](/faq) - Frequently asked questions
-- [GitHub Repository](https://github.com/jfilter/timetiles)
-- [Report Issues](https://github.com/jfilter/timetiles/issues)
+import { Cards } from "nextra/components";
 
 ---
 
-TimeTiles is funded by the [Prototype Fund](https://prototypefund.de) from the German Federal Ministry of Education and Research.
+## Get Started
+
+<Cards num={3}>
+  <Cards.Card title="What is TimeTiles?" href="/overview" arrow>
+    Learn what TimeTiles does, who it's for, and how it works.
+  </Cards.Card>
+  <Cards.Card title="Quick Start" href="/quick-start" arrow>
+    Install TimeTiles locally and run it in under 5 minutes.
+  </Cards.Card>
+  <Cards.Card title="Your First Chronicle" href="/user-guide/getting-started" arrow>
+    Import a CSV and create your first interactive map.
+  </Cards.Card>
+</Cards>
+
+## Explore the Docs
+
+<Cards num={3}>
+  <Cards.Card title="User Guide" href="/user-guide">
+    Data import, exploration, sharing, and use cases.
+  </Cards.Card>
+  <Cards.Card title="Admin Guide" href="/admin-guide">
+    Installation, configuration, deployment, and maintenance.
+  </Cards.Card>
+  <Cards.Card title="Developer Guide" href="/developer-guide">
+    Architecture, API reference, and extending TimeTiles.
+  </Cards.Card>
+</Cards>
+
+## Additional Resources
+
+<Cards num={3}>
+  <Cards.Card title="API Reference" href="/reference/api">
+    REST API documentation for all endpoints.
+  </Cards.Card>
+  <Cards.Card title="Scrapers" href="/reference/scrapers">
+    Run custom web scrapers in isolated containers.
+  </Cards.Card>
+  <Cards.Card title="FAQ" href="/faq">
+    Answers to common questions.
+  </Cards.Card>
+</Cards>
+
+---
+
+TimeTiles is open-source software ([AGPL-3.0](https://github.com/jfilter/timetiles/blob/main/LICENSE)) funded by the [Prototype Fund](https://prototypefund.de) from the German Federal Ministry of Education and Research.

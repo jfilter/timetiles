@@ -4,133 +4,81 @@ asIndexPage: true
 
 # What is TimeTiles?
 
-TimeTiles is an **open-source platform** that transforms spreadsheets of events into interactive, explorable chronicles on a map. Built for journalists, researchers, activists, and organizations, TimeTiles makes complex spatio-temporal data accessible and engaging for any audience.
+TimeTiles is an open-source platform that turns spreadsheets of events into interactive maps with timeline controls. Upload a CSV with dates and locations, and TimeTiles geocodes, clusters, and visualizes your data — making it explorable by anyone, no technical skills required.
 
-### 🎯 In Simple Terms
+## The Problem
 
-Upload a CSV file with events, dates, and locations → TimeTiles creates an interactive map with timeline controls → Share or embed your chronicle anywhere.
+You have a dataset of events — incidents, observations, reports — each with a date and a place. You want people to explore it. Your options:
 
-## The Problem TimeTiles Solves
+- **Spreadsheets** can't show events on a map or let readers filter by time
+- **BI dashboards** (Metabase, Superset) are powerful but built for analysts, not public audiences
+- **GIS tools** (QGIS, ArcGIS) require expertise and produce static outputs
+- **Storytelling tools** (TimelineJS, StoryMapJS) are limited to a few hundred curated events
 
-Traditional tools fall short when it comes to geospatial storytelling:
-
-- **Excel/Sheets**: Can't handle maps or large datasets effectively
-- **BI Dashboards** (Metabase, Superset): Too complex for non-experts, dashboard-focused rather than narrative
-- **GIS Tools** (QGIS, ArcGIS): Require technical expertise, not designed for public consumption
-- **Custom Solutions**: Time-intensive to build, hard to maintain
-
-TimeTiles bridges this gap by providing a **ready-made platform** specifically designed for creating interactive chronicles of geospatial events.
-
-## Core Concepts
-
-### Interactive Chronicles
-
-Unlike static reports or complex dashboards, TimeTiles creates **interactive chronicles** - explorable datasets with narrative elements that allow readers to discover patterns and stories within your data.
-
-### Event-Centric Design
-
-Every data point in TimeTiles represents an **event** that happened at a specific:
-
-- **Location** (latitude/longitude)
-- **Time** (date/timestamp)
-- **Context** (rich metadata like victim info, categories, descriptions)
-
-### Non-Expert Friendly
-
-TimeTiles is designed for **storytelling**, not analysis. Your audience doesn't need to understand SQL queries or statistical concepts - they can simply pan, zoom, and filter to explore your data intuitively
+TimeTiles fills the gap: a ready-made platform for publishing large, filterable event datasets as interactive maps — without writing code.
 
 ## How It Works
 
-### 1. Import Your Data
-
 ```
-CSV/Excel → TimeTiles → Interactive Chronicle
+Your CSV/Excel file
+    ↓
+TimeTiles detects the schema and maps fields
+    ↓
+Addresses are geocoded to coordinates
+    ↓
+Events appear on an interactive map with timeline, filters, and charts
+    ↓
+Share via URL — filter state is preserved in the link
 ```
 
-Bring your data from:
+### 1. Import
 
-- **CSV/Excel/ODS files** with location and timestamp columns
-- **Scheduled URL ingestion** for automated data feeds from external APIs
+Upload CSV, Excel, or ODS files — or point TimeTiles at a URL for scheduled automated imports. TimeTiles detects your schema and suggests field mappings. You review and confirm.
 
-### 2. Automatic Processing
+### 2. Process
 
-TimeTiles automatically:
+TimeTiles geocodes text addresses to coordinates using multiple providers (Nominatim, Google Maps, OpenCage) with automatic fallback. Events are deduplicated, validated, and stored with full metadata.
 
-- **Detects schema** and suggests optimal field mappings
-- **Geocodes addresses** when only text locations are available
-- **Clusters nearby events** for performance with large datasets
-- **Generates visualizations** appropriate for your data
+### 3. Explore
 
-### 3. Share Your Chronicle
+Your data is now an interactive map. Readers can:
 
-Deploy as:
+- Pan and zoom the map with clustered markers
+- Scrub the timeline to watch events unfold over time
+- Filter by category, date range, data source, or any field in your schema
+- Click events to see full details
+- View histograms that reveal temporal patterns
 
-- **Public website** for maximum reach
-- **Private instance** for internal research
+### 4. Share
 
-## Real-World Examples
+Every view has a unique URL. Filters, map position, and time range are encoded in the link — so when you share it, recipients see exactly what you see.
 
-### Journalist: Police Shooting Database
+## Who It's For
 
-_"I have a database of fatal police shootings and want to display it to the general public (non-experts in exploring data)."_
+**Journalists** documenting patterns across regions — police shootings, environmental violations, political events. Import investigation data and give readers an interface to explore it themselves.
 
-**Challenge**: Making 5 years of police shooting data accessible to readers who aren't data analysts.
+**Researchers** analyzing spatio-temporal datasets — conflict incidents, urban development, migration patterns. Handle 100k+ events with server-side clustering and PostGIS spatial queries.
 
-**TimeTiles Solution**: Import CSV data with victim demographics, location coordinates, and incident details. Readers can explore patterns by filtering by victim age, race, or weapon status while seeing geographic and temporal clusters.
+**Activists** tracking issues over time — pollution reports, human rights incidents, community organizing. Combine multiple data sources into a single explorable view.
 
-### Researcher: Investigation Dataset
+**Organizations** publishing data-driven narratives — disaster response, public health surveillance, historical documentation. Self-host for full control over data and presentation.
 
-_"I have a dump of 100k points coming out of a journalistic investigation and want to explore the data."_
+## Key Capabilities
 
-**Challenge**: Analyzing massive datasets to find newsworthy patterns and stories.
+| Area          | Features                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Import        | CSV, Excel, ODS, JSON API; automatic schema detection; multi-provider geocoding with fallback; scheduled URL imports; batch processing with progress tracking |
+| Visualization | Clustered map (MapLibre GL JS); timeline histogram; dynamic filters from schema; light/dark themes                                                            |
+| Platform      | Multi-language (English, German); user quotas and trust levels; content management (pages, branding); audit logging; data export                              |
+| Sharing       | Public/private access control; shareable URLs with filter state; catalog and dataset organization                                                             |
+| Scraping      | Optional Python/Node.js scrapers running in isolated Podman containers for non-tabular sources                                                                |
 
-**TimeTiles Solution**: Import the full dataset and use server-side clustering to maintain performance. Filter by metadata fields to identify trends, then create focused chronicles highlighting specific findings.
+## Tech Stack
 
-### Activist: Environmental Justice
-
-_"Document pollution incidents in marginalized communities over the past decade."_
-
-**Challenge**: Connecting environmental data to demographic patterns in a way that's compelling for policy advocacy.
-
-**TimeTiles Solution**: Combine pollution incident data with community demographic information, allowing advocates to show clear patterns of environmental racism through interactive exploration.
-
-## ⚡ Key Capabilities
-
-### Data Ingestion
-
-- Upload CSV, Excel, or ODS files
-- Automatic schema detection with field mapping
-- Batch processing for large datasets
-- Multi-provider geocoding (Nominatim, Google Maps, OpenCage) with fallback
-- Scheduled URL ingestion with cron automation
-
-### Visualization
-
-- Clustered map views for thousands of events (MapLibre GL JS)
-- Timeline histogram with date range filtering
-- Dynamic filters generated from your data schema
-- Customizable themes with light/dark modes
-
-### Platform Features
-
-- Multi-language UI (English, German)
-- User quotas and rate limiting with trust levels
-- Content management (pages, branding, navigation, footer)
-- Multi-tenant support via Sites
-- Audit logging for accountability
-- Self-service data export and account deletion
-
-### Sharing
-
-- Public or private chronicles with access control
-- Shareable links with filters preserved in URL
-- Data export (ZIP download of all user data)
+Built with Next.js 16, React 19, PostgreSQL 17 + PostGIS 3.5, Payload CMS 3, and MapLibre GL JS. Self-hostable under AGPL-3.0.
 
 ## Learn More
 
-- **[Core Concepts](./core-concepts)** - Understand events, chronicles, and data flow
-- **[Comparison](./comparison)** - See how TimeTiles differs from similar tools
-
----
-
-_TimeTiles is open-source software funded by the Prototype Fund from the German Federal Ministry of Education and Research._
+- **[Core Concepts](./core-concepts)** — Data hierarchy: sites, catalogs, datasets, events, and views
+- **[Comparison](./comparison)** — How TimeTiles compares to Timemap, uMap, Kepler.gl, TimelineJS, and others
+- **[Quick Start](/quick-start)** — Install and run TimeTiles locally in 5 minutes

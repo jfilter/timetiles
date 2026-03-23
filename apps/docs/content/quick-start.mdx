@@ -1,15 +1,22 @@
 # Quick Start Guide
 
-Get TimeTiles up and running in minutes. This guide is for developers and administrators who want to set up TimeTiles locally for development or self-hosting.
+Get TimeTiles running locally in under 5 minutes. This guide is for developers and administrators setting up a local instance.
 
-> **👤 End users:** If you're looking to import and explore data, see the [Getting Started Guide](/user-guide/getting-started) instead.
+import { Callout, Steps } from "nextra/components";
+
+<Callout>
+  **End users:** If TimeTiles is already running and you want to import data, skip to the [Getting Started
+  Guide](/user-guide/getting-started).
+</Callout>
 
 ## Prerequisites
 
-- Git, Git LFS, Make, Bash
-- Node.js 24+, pnpm 10.12.4+
-- Docker & Docker Compose
-- PostgreSQL client, jq, curl
+You need the following installed:
+
+- **Node.js 24+** and **pnpm 10.12+**
+- **Docker & Docker Compose** (for PostgreSQL) — or a local PostgreSQL 17+ with PostGIS
+- **Git** and **Git LFS**
+- **Make**
 
 ```bash
 # macOS
@@ -20,67 +27,93 @@ sudo apt install git git-lfs make nodejs npm docker.io docker-compose postgresql
 sudo npm install -g pnpm
 ```
 
-## Quick Start
+## Install and Run
+
+<Steps>
+
+### Clone the repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/jfilter/timetiles.git
 cd timetiles
+```
 
-# Single command: setup + database + seed + start dev server
+### Run the init command
+
+```bash
 make init
 ```
 
-Open http://localhost:3000 to see the application running!
+This single command handles everything: installs dependencies, starts the database, runs migrations, seeds sample data, and starts the development server.
 
-> **💡 Tip:** `make init` does everything - setup, database initialization, seeding, and starts the dev server. Run `make status` anytime to check your environment health.
+### Open the app
 
-> **✅ Next Steps:** See the [Getting Started Guide](/user-guide/getting-started) to learn how to import and explore data.
+- **Main app**: [localhost:3000](http://localhost:3000)
+- **Admin dashboard**: [localhost:3000/dashboard](http://localhost:3000/dashboard)
+- **Data import**: [localhost:3000/ingest](http://localhost:3000/ingest)
+
+</Steps>
+
+<Callout type="info">
+  Run `make status` at any time to check the health of your environment — database, server, and dependencies.
+</Callout>
+
+## Try It Out
+
+Go to [localhost:3000/ingest](http://localhost:3000/ingest) and drop a CSV file with `title`, `date`, and `location` columns. TimeTiles will detect the schema, geocode addresses, and create an interactive map you can explore.
+
+See the [Getting Started Guide](/user-guide/getting-started) for a detailed walkthrough.
 
 ## Development Commands
 
-**Monorepo commands** (from project root):
+| Command         | What it does                                           |
+| --------------- | ------------------------------------------------------ |
+| `make dev`      | Start the dev server (auto-starts database)            |
+| `make check`    | Lint and typecheck all packages                        |
+| `make test`     | Run unit and integration tests                         |
+| `make test-e2e` | Run Playwright E2E tests                               |
+| `make format`   | Format code                                            |
+| `make migrate`  | Run pending database migrations                        |
+| `make seed`     | Seed the database with sample data                     |
+| `make fresh`    | Full reset: stop, clean, start database, migrate, seed |
+| `make db-reset` | Reset the database                                     |
+| `make db-shell` | Open a PostgreSQL shell                                |
+| `make status`   | Check environment health                               |
+| `make help`     | List all available commands                            |
 
-- `make dev` - Start all services with database
-- `make check-ai` - Run lint and typecheck (AI-friendly output)
-- `make test-ai` - Run all tests (AI-friendly output)
-- `make test-e2e` - Run E2E tests (Playwright)
+## Database Mode
 
-**Package-specific commands** (from `apps/web`):
+By default, `make dev` uses **Docker** for PostgreSQL. To use a local Homebrew PostgreSQL instead, create a `.env` file:
 
-- `pnpm dev` - Start Next.js dev server only
-- `pnpm payload:migrate:create` - Create new migration
-- `pnpm payload:migrate` - Run pending migrations
-- `pnpm seed [preset]` - Seed development data
+```bash
+PG_MODE=local
+DATABASE_URL=postgresql://timetiles_user:timetiles_password@localhost:5433/timetiles
+```
 
-**Database commands** (from project root):
-
-- `make db-reset` - Reset database
-- `make db-shell` - PostgreSQL shell
-- `make seed ARGS="development"` - Seed with preset
-
-## Docker Commands
-
-- `make up` - Start PostgreSQL
-- `make down` - Stop services
-- `make logs` - View logs
+All `make` commands respect this setting automatically.
 
 ## Troubleshooting
 
-### Port 3000 in use
+**Port 3000 in use:**
 
 ```bash
-lsof -ti:3000 | xargs kill -9
+make kill-dev
 ```
 
-### Database connection issues
+**Database connection issues:**
 
 ```bash
 make down && make up
 ```
 
-### Reset everything
+**Something broken — start fresh:**
 
 ```bash
-make clean && make up
+make fresh
 ```
+
+## Next Steps
+
+- **[Getting Started](/user-guide/getting-started)** — Import data and create your first chronicle
+- **[Architecture](/developer-guide/architecture)** — Understand the technical design
+- **[Developer Guide](/developer-guide)** — Contributing, testing, and extending TimeTiles
