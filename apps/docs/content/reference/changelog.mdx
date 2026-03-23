@@ -1,11 +1,8 @@
 # Changelog
 
-All notable changes to TimeTiles will be documented in this file.
+All notable changes to TimeTiles are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
+## [0.2.0] - 2026-03-23
 
 ### Added
 
@@ -13,17 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Content management system (Pages collection with block-based builder)
 - Site branding globals (logos, favicons, site name)
 - Footer and MainMenu globals for navigation
-- Audit log system tracking user and admin actions across 5 domains
+- Audit log system tracking 20 action types across 5 domains
 - Account management: self-service deletion with 7-day grace period
 - Data export: users can download all their data as ZIP archives
 - Sites collection for multi-tenant configuration
 - Views collection for saved display configurations
 - Feature flags system (8 toggleable platform capabilities)
-- User quotas and rate limiting with trust levels (0–5)
+- User quotas and rate limiting with trust levels (0-5)
 - Scheduled URL ingestion with cron-based automation
 - Multi-provider geocoding with priority-based fallback (Nominatim, Google, OpenCage)
 - Dynamic filtering system with URL-based state (nuqs)
-- Formatter migration from Prettier to oxfmt (ADR 0014)
+- Custom scraper system (Python/Node.js scripts in isolated Podman containers)
+- Webhook triggers for scheduled imports and scrapers
+- UI customization: themes, branding, custom CSS, layout templates
+- Restic-based backup system with S3 offsite support
+- Bootstrap script for automated Ubuntu server setup
+- Comprehensive documentation site (Nextra)
 
 ### Changed
 
@@ -32,36 +34,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed service factories from `get*Service` to `create*Service`
 - Unified API response format via `apiRoute()` auto-wrapping
 - Payload config refactored into factory pattern (`payload-config-factory.ts`)
+- Import pipeline migrated from hook-driven state machine to Payload Workflows
+- Formatter migration from Prettier to oxfmt
 
 ### Fixed
 
 - Access control hardening (5 audit findings including a security bug)
 - Seed data relationship resolution
-- Various CI/CD improvements
+- E2E tests stabilized after import-to-ingest refactoring
+- WCAG 2.1 AA accessibility violations
 
 ## [0.1.0] - 2025-01-01
 
 ### Added
 
 - Initial release of TimeTiles
-- Interactive geospatial timeline visualization
+- Interactive geospatial timeline visualization with MapLibre GL JS
 - Data import system supporting CSV, Excel, and ODS formats
+- Automatic schema detection and geocoding
 - Real-time map clustering and filtering
+- Timeline histogram for event distribution over time
+- Dynamic filters synced to URL state
 - Responsive web interface
 - PostgreSQL 17 + PostGIS 3.5 backend
 - Next.js 16 frontend with Payload CMS 3
-- Comprehensive testing suite (Vitest + Playwright)
-- Advanced schema detection capabilities
-- Enhanced React Query integration for data fetching
-
-### Features
-
-- **Map Visualization**: Zoom, pan, and cluster geospatial data with MapLibre GL JS
-- **Data Import**: Automatic schema detection, geocoding, and validation
-- **Timeline**: Temporal histogram for event distribution over time
-- **Dynamic Filters**: Interactive filters synced to URL state
-- **Responsive Design**: Works on desktop and mobile devices
+- Testing suite (Vitest + Playwright)
 
 ---
 
-_This changelog will be updated with each release. For development changes, see the Git commit history._
+For development changes, see the [Git commit history](https://github.com/jfilter/timetiles/commits/main).

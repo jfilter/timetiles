@@ -224,6 +224,18 @@ Database migrations run automatically on container startup.
 | Database connection error | Check postgres is running: `timetiles status`                                                     |
 | Port already in use       | Stop existing services: `timetiles down`                                                          |
 
+## Optional: Scraper Runner
+
+If you need scrapers (custom Python/Node.js scripts for data extraction), deploy the TimeScrape runner alongside TimeTiles. The runner is a separate stateless service that executes scripts in hardened Podman containers.
+
+See [Scraper Deployment](/reference/scrapers/deployment) for full setup instructions. In short:
+
+1. Install Podman (rootless mode)
+2. Build the base container images
+3. Start the runner service
+4. Set `SCRAPER_RUNNER_URL` and `SCRAPER_API_KEY` in your `.env.production`
+5. Enable the `enableScrapers` feature flag in the admin dashboard
+
 ## Next Steps
 
 - [Configure](./configuration) environment variables, geocoding, and feature flags

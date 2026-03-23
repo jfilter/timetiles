@@ -1,85 +1,68 @@
 # Roadmap
 
-TimeTiles is in **alpha phase** - core features are functional but the system is still under active development.
+TimeTiles is in **alpha phase** — core features are functional and the system is under active development.
 
-**Current Phase:** Alpha
-
-## Completed ✅
+## Completed
 
 ### Foundation
 
 - [x] Monorepo structure with Turbo
 - [x] PostgreSQL 17 + PostGIS 3.5 database
-- [x] Payload CMS 3 integration
-- [x] Next.js 16 frontend
+- [x] Payload CMS 3 integration (integrated mode)
+- [x] Next.js 16 frontend with React 19
 - [x] Comprehensive testing (Vitest + Playwright)
 - [x] CI/CD with GitHub Actions
-- [x] Docker production deployment
+- [x] Docker production deployment (multi-container + all-in-one)
+- [x] Bootstrap script for automated server setup
 
-### Core Import System
+### Data Import
 
 - [x] File parsing (CSV, Excel, ODS)
 - [x] Progressive schema detection
 - [x] Smart deduplication strategies
-- [x] Geographic field detection
+- [x] Geographic field detection (7 languages)
 - [x] Schema approval workflow
-- [x] Batch processing with background jobs
+- [x] Batch processing with Payload Workflows (4 workflows, 3 queues)
 - [x] URL-based scheduled imports with cron automation
+- [x] Custom scrapers (Python/Node.js) in isolated Podman containers
+- [x] Webhook triggers for automated pipelines
 
 ### Data Exploration
 
-- [x] Map visualization with clustering (MapLibre GL JS)
-- [x] Dynamic filter generation
-- [x] Timeline histogram
-- [x] Event list with pagination
-- [x] Geographic filtering
+- [x] Map visualization with server-side clustering (MapLibre GL JS + PostGIS)
+- [x] Dynamic filter generation from data schema
+- [x] Timeline histogram with date range filtering
+- [x] Event detail cards with full metadata
+- [x] Shareable URLs with filter/map state encoded
 - [x] Views for saved display configurations
 
-### User & Account Management
+### Platform
 
-- [x] User quotas and rate limiting with trust levels (0–5)
-- [x] Account self-service deletion with 7-day grace period
-- [x] Data export (ZIP download of all user data)
+- [x] User quotas and rate limiting with trust levels (0-5)
+- [x] Self-service account deletion with 7-day grace period
+- [x] Data export (ZIP archive of all user data)
 - [x] Feature flags system (8 toggleable capabilities)
-- [x] Audit log tracking user and admin actions
+- [x] Audit log tracking 20 action types across 5 domains
+- [x] Multi-provider geocoding with fallback (Nominatim, Google, OpenCage)
+- [x] Internationalization (English, German) with next-intl
+- [x] Content management (pages, branding, navigation, footer)
+- [x] Multi-tenant sites with per-site theming
+- [x] UI customization (themes, custom CSS, layout templates)
+- [x] Restic-based backups with S3 offsite support
 
-### Multi-Provider Geocoding
+## In Progress
 
-- [x] Nominatim (OpenStreetMap), Google Maps, OpenCage
-- [x] Priority-based provider selection with fallback
-- [x] Location cache with TTL
-- [x] Admin-configurable provider settings
+- [ ] Import wizard UX improvements (live preview, auto-advance)
+- [ ] Scheduled imports wizard integration
+- [ ] Performance optimizations for large datasets (100k+ events)
 
-### Content Management
+## Planned
 
-- [x] Pages collection with block-based builder
-- [x] Site branding globals (logos, favicons, site name)
-- [x] Footer and MainMenu globals for navigation
-- [x] Sites collection for multi-tenant configuration
-
-### Internationalization
-
-- [x] next-intl with English and German locales
-- [x] Locale-prefix routing (`localePrefix: "as-needed"`)
-- [x] Multi-language import field mapping (7 languages)
-
-## Alpha Phase 🚧
-
-### In Progress
-
-- [ ] Advanced filter customization UI
-- [ ] Performance optimizations for large datasets
-- [ ] Enhanced error handling and validation
+- [ ] Embeddable map widgets (iframe/web component)
+- [ ] Advanced search across event fields
 - [ ] Additional UI locales beyond English and German
+- [ ] Public API authentication (API keys for external consumers)
 
-## Beta Release 📋
+---
 
-- [ ] Advanced search capabilities
-- [ ] Embeddable map widgets
-- [ ] User feedback integration
-
-## Version 1.0 🎯
-
-- [ ] Full feature set
-- [ ] Production-ready performance
-- [ ] Complete documentation
+For feature requests, see [GitHub Discussions](https://github.com/jfilter/timetiles/discussions). For bugs, see [GitHub Issues](https://github.com/jfilter/timetiles/issues).
