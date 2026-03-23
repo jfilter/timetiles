@@ -185,6 +185,25 @@ const Sites: CollectionConfig = {
       ],
     },
 
+    // ============ EMBEDDING ============
+    {
+      type: "group",
+      name: "embeddingConfig",
+      label: "Embedding",
+      admin: { description: "Control how this site's views can be embedded on external websites" },
+      fields: [
+        {
+          name: "allowedOrigins",
+          type: "array",
+          admin: {
+            description:
+              "Domains allowed to embed this site via iframe. Leave empty to allow embedding from any origin.",
+          },
+          fields: [{ name: "origin", type: "text", required: true, admin: { placeholder: "https://example.com" } }],
+        },
+      ],
+    },
+
     // ============ LAYOUT ============
     {
       name: "defaultLayout",

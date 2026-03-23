@@ -16,6 +16,8 @@
 import { cn } from "@timetiles/ui/lib/utils";
 import type { ReactNode } from "react";
 
+import { useIsEmbed } from "@/lib/context/embed-context";
+
 import { ExplorerEventModal, ExplorerFilterPanel, ExplorerMobileFilters } from "./explorer-chrome";
 import type { UseExplorerStateOptions } from "./use-explorer-state";
 import { useExplorerState } from "./use-explorer-state";
@@ -52,6 +54,7 @@ interface ExplorerShellProps {
  * within its own desktop/mobile markup.
  */
 export const ExplorerShell = ({ explorerOptions, className, children }: Readonly<ExplorerShellProps>) => {
+  const isEmbed = useIsEmbed();
   const explorer = useExplorerState(explorerOptions);
   const { selection, filters: filterState, ui } = explorer;
 
@@ -67,8 +70,12 @@ export const ExplorerShell = ({ explorerOptions, className, children }: Readonly
     />
   );
 
+  // In embed mode there is no header — only the small attribution bar (~1.25rem).
+  // In normal mode the header takes 3rem.
+  const heightClass = isEmbed ? "h-[calc(100dvh-1.25rem)]" : "h-[calc(100dvh-3rem)]";
+
   return (
-    <div className={cn("flex h-[calc(100dvh-3rem)] flex-col", className)}>
+    <div className={cn("flex flex-col", heightClass, className)}>
       {children({ explorer, filterPanel, mobileFilters })}
 
       {/* Event Detail Modal — shared across all layouts */}

@@ -1,0 +1,113 @@
+# Embedding
+
+TimeTiles views can be embedded on external websites using iframes. This lets you display an interactive map with filtering and event details directly on your own site.
+
+## Quick Start
+
+Copy this snippet into your HTML, replacing the URL with your TimeTiles instance:
+
+```html
+<iframe
+  src="https://your-timetiles-instance.com/embed"
+  width="100%"
+  height="600"
+  frameborder="0"
+  style="border: none; border-radius: 8px;"
+  allow="geolocation"
+  loading="lazy"
+></iframe>
+```
+
+## URL Patterns
+
+| URL                     | Description                      |
+| ----------------------- | -------------------------------- |
+| `/embed`                | Default view for the active site |
+| `/embed/city-events`    | Specific view by slug            |
+| `/de/embed`             | Default view in German           |
+| `/de/embed/city-events` | Specific view in German          |
+
+You can also pass a view via query parameter instead of the URL path:
+
+```
+/embed?view=city-events
+```
+
+## Finding Your View Slug
+
+1. Log in to your TimeTiles dashboard
+2. Navigate to **Configuration** &rarr; **Views**
+3. Each view has a **slug** field — this is what you use in the embed URL
+
+For example, if your view slug is `community-events`, the embed URL is:
+
+```
+https://your-instance.com/embed/community-events
+```
+
+## Responsive Embedding
+
+For responsive embeds that maintain an aspect ratio, wrap the iframe in a container:
+
+```html
+<div style="position: relative; width: 100%; aspect-ratio: 16 / 9;">
+  <iframe
+    src="https://your-instance.com/embed/community-events"
+    style="position: absolute; inset: 0; width: 100%; height: 100%; border: none; border-radius: 8px;"
+    allow="geolocation"
+    loading="lazy"
+  ></iframe>
+</div>
+```
+
+Or use a fixed height that works well on most screen sizes:
+
+```html
+<iframe
+  src="https://your-instance.com/embed/community-events"
+  width="100%"
+  height="500"
+  style="border: none; min-height: 400px; max-height: 80vh;"
+  allow="geolocation"
+  loading="lazy"
+></iframe>
+```
+
+## What's Included
+
+The embed view provides the full explore experience:
+
+- Interactive map with event markers and clustering
+- Filter panel (data sources, categories, time range)
+- Event detail view on marker click
+- Responsive layout (map on desktop, list on mobile)
+- A small "Powered by TimeTiles" attribution link
+
+The embed **does not** include:
+
+- Site header or navigation
+- Footer
+- Login/registration controls
+
+## Theming
+
+Embedded views inherit the theme configuration of the site they belong to. If the site has custom colors or a dark theme configured, the embed will reflect that. The embed also respects the visitor's system light/dark preference.
+
+## Restricting Embed Origins
+
+By default, any website can embed your views. To restrict embedding to specific domains:
+
+1. Log in to your TimeTiles dashboard
+2. Navigate to **Configuration** &rarr; **Sites**
+3. Open your site and find the **Embedding** section
+4. Add allowed origins (e.g., `https://example.com`, `https://blog.example.com`)
+
+When allowed origins are configured, the server checks the `Referer` header of incoming requests and refuses to render the embed for origins not in the list. If no origins are configured, embedding is allowed from anywhere.
+
+Note that this check relies on the browser sending a `Referer` header. If the embedding page sets `Referrer-Policy: no-referrer`, the request will be denied as a precaution.
+
+## Security
+
+Non-embed routes are protected with `X-Frame-Options: DENY` to prevent clickjacking. Embed routes use `Content-Security-Policy: frame-ancestors *` to allow iframe loading, with server-side origin enforcement when allowed origins are configured (see above).
+
+Only public data is shown in embeds — authenticated user data is not accessible.
