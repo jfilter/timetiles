@@ -1,6 +1,6 @@
 # Usage Limits
 
-Trust levels, quotas, rate limiting, and HTTP caching configuration.
+Trust levels, quotas, rate limiting, and HTTP caching configuration. All values shown are the defaults — customize them in `config/timetiles.yml` (see [Configuration](./configuration#config-file-timetilesyml)).
 
 ## Trust Levels
 
@@ -77,14 +77,19 @@ X-RateLimit-Reset: 2025-10-06T15:30:00.000Z
 
 ## HTTP Caching
 
-URL fetch caching for scheduled imports (outgoing requests). Respects RFC 7234 Cache-Control headers from external APIs.
+URL fetch caching for scheduled imports (outgoing requests). Respects RFC 7234 Cache-Control headers from external APIs. Configure in `config/timetiles.yml`:
 
-```bash
-URL_FETCH_CACHE_DIR=/var/cache/timetiles/http
-URL_FETCH_CACHE_MAX_SIZE=104857600          # 100 MB (production: 500 MB)
-URL_FETCH_CACHE_TTL=3600                    # 1 hour default
-URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=true
+```yaml
+cache:
+  urlFetch:
+    dir: /tmp/url-fetch-cache
+    maxSizeBytes: 104857600 # 100 MB
+    defaultTtlSeconds: 3600 # 1 hour
+    maxTtlSeconds: 2592000 # 30 days
+    respectCacheControl: true
 ```
+
+Can also be set via environment variables (`URL_FETCH_CACHE_DIR`, `URL_FETCH_CACHE_MAX_SIZE`, etc.).
 
 **Troubleshooting**: High cache misses — increase TTL or size. Stale data — reduce TTL or clear cache (`rm -rf $URL_FETCH_CACHE_DIR/*`). Disk space — reduce max size.
 

@@ -62,6 +62,23 @@ Every task requires three verifiable steps:
 
 ---
 
+## Configuration System
+
+Three-layer config with centralized validation:
+
+| Layer | Source | Module | Purpose |
+| --- | --- | --- | --- |
+| **Env vars** | `.env` | `lib/config/env.ts` → `getEnv()` | Secrets, infrastructure, paths |
+| **Config file** | `config/timetiles.yml` | `lib/config/app-config.ts` → `getAppConfig()` | Rate limits, quotas, batch sizes, cache |
+| **Database** | Payload CMS globals | Settings, Branding, etc. | Feature flags, geocoding, branding |
+
+- **`getEnv()`**: Zod-validated lazy singleton. All `process.env` reads in `lib/` go through this (except `ALLOW_PRIVATE_URLS` which uses bracket notation to prevent webpack inlining).
+- **`getAppConfig()`**: Reads optional `config/timetiles.yml`, deep-merges with defaults. For batch sizes: env var > YAML > default.
+- Constants files (`rate-limits.ts`, `quota-constants.ts`, `ingest-constants.ts`, `account-constants.ts`) are bridges that read from `getAppConfig()`.
+- Tests must call `resetEnv()` / `resetAppConfig()` when stubbing env vars (already in global `beforeEach`).
+
+---
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router)

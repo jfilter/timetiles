@@ -1,162 +1,246 @@
 # Configuration
 
-Environment variables and admin settings for TimeTiles.
+TimeTiles uses three configuration layers, each suited for different types of settings:
 
-## Required Variables
+| Layer                     | Format                 | What goes here                     | Changed by                      |
+| ------------------------- | ---------------------- | ---------------------------------- | ------------------------------- |
+| **Environment variables** | `.env`                 | Secrets, infrastructure, paths     | Operator (deploy-time)          |
+| **Config file**           | `config/timetiles.yml` | Rate limits, quotas, batch sizes   | Operator (deploy-time, restart) |
+| **Admin dashboard**       | Database (Payload CMS) | Feature flags, geocoding, branding | Admin (runtime UI)              |
+
+The config file and all environment variables (except `DATABASE_URL`, `PAYLOAD_SECRET`) are **optional** — sensible defaults are applied automatically.
+
+## Environment Variables
+
+### Required
 
 ```bash
 DATABASE_URL=postgresql://user:password@localhost:5432/timetiles
-PAYLOAD_SECRET=your-secret-key-minimum-32-characters  # openssl rand -base64 32
+PAYLOAD_SECRET=your-secret-key   # openssl rand -base64 32
+NEXT_PUBLIC_PAYLOAD_URL=https://your-domain.com
 ```
 
-In production, also set:
+### Infrastructure
 
 ```bash
-NODE_ENV=production
-NEXT_PUBLIC_APP_URL=https://your-domain.com
-LOG_LEVEL=info    # debug, info, warn, error
+NODE_ENV=production              # development, production, test
+NEXT_PUBLIC_SITE_URL=https://...  # If different from NEXT_PUBLIC_PAYLOAD_URL
+DEFAULT_LOCALE=en                # en or de
 ```
 
-## Geocoding
+### File Paths
 
-TimeTiles geocodes text addresses to coordinates using multiple providers with automatic fallback. Configure providers in the admin dashboard at `/dashboard/collections/geocoding-providers`.
+```bash
+UPLOAD_DIR=uploads               # Base directory (subfolders: /media, /import-files)
+UPLOAD_TEMP_DIR=/tmp             # Temporary files during upload
+DATA_EXPORT_DIR=.exports         # User data export output
+```
 
-| Provider    | API Key Required | Notes                                                   |
-| ----------- | ---------------- | ------------------------------------------------------- |
-| Nominatim   | No               | Free, based on OpenStreetMap. Enabled by default        |
-| Google Maps | Yes              | Most accurate. Configure key in dashboard               |
-| OpenCage    | Yes              | Good international coverage. Configure key in dashboard |
+### Logging
 
-Providers are tried in priority order (lower number = higher priority). If one fails, the next is tried automatically.
+```bash
+LOG_LEVEL=info                   # trace, debug, info, warn, error, fatal, silent
+LOG_FILE=/var/log/timetiles/app.log  # Optional file logging
+```
 
-**Global geocoding settings** at `/dashboard/globals/settings`:
+### Email (SMTP)
+
+Without SMTP settings, emails are logged to console in development (via ethereal.email).
+
+```bash
+EMAIL_SMTP_HOST=smtp.example.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USER=your-user
+EMAIL_SMTP_PASS=your-password
+EMAIL_FROM_ADDRESS=noreply@timetiles.app
+EMAIL_FROM_NAME=TimeTiles
+```
+
+### Security
+
+```bash
+SSRF_DNS_CHECK=true              # DNS validation for SSRF protection (recommended in production)
+ALLOW_PRIVATE_URLS=true          # Allow RFC 1918 addresses (development only!)
+```
+
+### Scraper Integration
+
+Optional — only needed if running the [TimeScrape runner](/reference/scrapers).
+
+```bash
+SCRAPER_RUNNER_URL=http://localhost:4000
+SCRAPER_API_KEY=your-api-key-min-16-chars
+```
+
+### Batch Processing Overrides
+
+Batch sizes can be set via environment variables **or** in the config file. Environment variables take precedence over the config file.
+
+```bash
+BATCH_SIZE_EVENT_CREATION=1000
+BATCH_SIZE_SCHEMA_DETECTION=10000
+BATCH_SIZE_DUPLICATE_ANALYSIS=5000
+BATCH_SIZE_DATABASE_CHUNK=1000
+```
+
+## Config File (`timetiles.yml`)
+
+For structured settings that don't fit flat environment variables — rate limits with multiple time windows, per-trust-level quotas, cache tuning.
+
+Copy the example and customize:
+
+```bash
+cp config/timetiles.example.yml config/timetiles.yml
+```
+
+The file is **optional**. If absent, all defaults apply. Changes require a server restart.
+
+In Docker, the file is mounted read-only into all containers via `CONFIG_FILE` in your `.env.production`:
+
+```bash
+CONFIG_FILE=./config/timetiles.yml
+```
+
+### Rate Limits
+
+Per-endpoint rate limiting with burst, hourly, and daily windows. `windowMs` is in milliseconds.
+
+```yaml
+rateLimits:
+  FILE_UPLOAD:
+    windows:
+      - { limit: 1, windowMs: 5000, name: burst } # 1 per 5 seconds
+      - { limit: 5, windowMs: 3600000, name: hourly } # 5 per hour
+      - { limit: 20, windowMs: 86400000, name: daily } # 20 per day
+  API_GENERAL:
+    windows:
+      - { limit: 5, windowMs: 1000, name: burst }
+      - { limit: 50, windowMs: 3600000, name: hourly }
+  REGISTRATION:
+    windows:
+      - { limit: 3, windowMs: 60000, name: burst }
+      - { limit: 10, windowMs: 3600000, name: hourly }
+      - { limit: 20, windowMs: 86400000, name: daily }
+```
+
+Available endpoint names: `FILE_UPLOAD`, `PROGRESS_CHECK`, `IMPORT_RETRY`, `ADMIN_IMPORT_RESET`, `RETRY_RECOMMENDATIONS`, `API_GENERAL`, `WEBHOOK_TRIGGER`, `NEWSLETTER_SUBSCRIBE`, `PASSWORD_CHANGE`, `EMAIL_CHANGE`, `ACCOUNT_DELETION`, `DELETION_PASSWORD_ATTEMPTS`, `DATA_EXPORT`, `REGISTRATION`.
+
+### Quotas by Trust Level
+
+Override the default quotas per trust level. Use `-1` for unlimited. You only need to include the values you want to change.
+
+```yaml
+quotas:
+  2: # Regular users
+    maxEventsPerImport: 20000
+    maxTotalEvents: 100000
+  3: # Trusted users
+    maxFileUploadsPerDay: 100
+```
+
+Trust levels: `0` = Untrusted, `1` = Basic, `2` = Regular, `3` = Trusted, `4` = Power User, `5` = Unlimited. See [Usage Limits](./usage-limits) for the full default table.
+
+### Trust-Level Rate Limits
+
+Per-trust-level rate limits for file uploads and API access:
+
+```yaml
+trustLevelRateLimits:
+  0: # Untrusted — very restrictive
+    FILE_UPLOAD:
+      windows:
+        - { limit: 1, windowMs: 60000, name: burst }
+        - { limit: 1, windowMs: 3600000, name: hourly }
+    API_GENERAL:
+      windows:
+        - { limit: 1, windowMs: 1000, name: burst }
+        - { limit: 10, windowMs: 3600000, name: hourly }
+```
+
+### Batch Sizes
+
+Tune the import pipeline's processing batch sizes. Can also be overridden via `BATCH_SIZE_*` environment variables (env vars take precedence).
+
+```yaml
+batchSizes:
+  duplicateAnalysis: 5000
+  schemaDetection: 10000
+  eventCreation: 1000
+  databaseChunk: 1000
+```
+
+### Cache
+
+URL fetch cache for scheduled imports:
+
+```yaml
+cache:
+  urlFetch:
+    dir: /tmp/url-fetch-cache
+    maxSizeBytes: 104857600 # 100 MB
+    defaultTtlSeconds: 3600 # 1 hour
+    maxTtlSeconds: 2592000 # 30 days
+    respectCacheControl: true # Honor RFC 7234 headers
+```
+
+### Account Settings
+
+```yaml
+account:
+  deletionGracePeriodDays: 30
+```
+
+## Admin Dashboard Settings
+
+These are configured at runtime through the admin UI — no restart needed.
+
+### Feature Flags
+
+Configure at `/dashboard/globals/settings` under "Feature Flags":
+
+| Flag                           | Default | Description                                   |
+| ------------------------------ | ------- | --------------------------------------------- |
+| Allow Private Imports          | On      | Users can create private imports              |
+| Enable Scheduled Ingests       | On      | Automated URL-based imports                   |
+| Enable Public Registration     | On      | Self-registration for new users               |
+| Enable Event Creation          | On      | Events can be created via import or API       |
+| Enable Dataset Creation        | On      | Users can create new datasets                 |
+| Enable Import Creation         | On      | Users can start new imports                   |
+| Enable Scheduled Job Execution | On      | Scheduled imports run automatically           |
+| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests |
+| Enable Scrapers                | Off     | Scraper repos and execution (trust level 3+)  |
+
+### Geocoding
+
+Configure providers at `/dashboard/collections/geocoding-providers`:
+
+| Provider    | API Key | Notes                                            |
+| ----------- | ------- | ------------------------------------------------ |
+| Nominatim   | No      | Free, based on OpenStreetMap. Enabled by default |
+| Google Maps | Yes     | Most accurate. Configure key in dashboard        |
+| OpenCage    | Yes     | Good international coverage                      |
+
+Global geocoding settings at `/dashboard/globals/settings`:
 
 - Enable/disable geocoding globally
 - Toggle provider fallback
-- Choose selection strategy (priority-based or tag-based)
-- Configure cache TTL
+- Selection strategy (priority-based or tag-based)
+- Cache TTL
 
-## File Uploads
+### Branding & Content
 
-```bash
-MAX_FILE_SIZE_AUTHENTICATED=104857600      # 100 MB
-MAX_FILE_SIZE_UNAUTHENTICATED=10485760     # 10 MB
-UPLOAD_DIR=uploads                         # Base directory for uploads
-```
+- **Branding** (`/dashboard/globals/branding`) — site name, description, logos, favicon
+- **Main Menu** (`/dashboard/globals/main-menu`) — navigation links
+- **Footer** (`/dashboard/globals/footer`) — tagline, social links, columns, copyright
+- **Newsletter** (`/dashboard/globals/settings`) — external newsletter service URL
 
-## Rate Limiting
-
-Rate limits for unauthenticated users (authenticated users have per-trust-level limits — see [Usage Limits](./usage-limits)):
-
-```bash
-RATE_LIMIT_FILE_UPLOAD=5          # per hour
-RATE_LIMIT_PROGRESS_CHECK=100     # per hour
-RATE_LIMIT_API_GENERAL=50         # per hour
-RATE_LIMIT_WINDOW_MS=3600000      # 1 hour
-```
-
-## Batch Processing
-
-Tune performance vs. memory usage:
-
-```bash
-BATCH_SIZE_DUPLICATE_ANALYSIS=5000    # Memory efficient for duplicate detection
-BATCH_SIZE_SCHEMA_DETECTION=10000     # Larger batches for schema building
-BATCH_SIZE_EVENT_CREATION=1000        # Smaller to avoid transaction timeouts
-```
-
-## Caching
-
-```bash
-CACHE_BACKEND=filesystem           # memory or filesystem
-CACHE_DEFAULT_TTL=3600             # seconds (1 hour)
-CACHE_MAX_SIZE_MB=500
-CACHE_DIR=.cache
-
-# Geocoding cache cleanup
-GEOCODING_CACHE_CLEANUP_DAYS=90
-GEOCODING_CACHE_MIN_HITS=3
-
-# URL fetch cache (for scheduled imports)
-URL_FETCH_CACHE_DIR=/tmp/url-fetch-cache
-URL_FETCH_CACHE_MAX_SIZE=104857600          # 100 MB
-URL_FETCH_CACHE_TTL=3600                    # seconds
-URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=true  # honor RFC 7234 headers
-```
-
-## Feature Flags
-
-Configure in the admin dashboard at `/dashboard/globals/settings` under "Feature Flags":
-
-| Flag                           | Default | Description                                    |
-| ------------------------------ | ------- | ---------------------------------------------- |
-| Allow Private Ingestion        | On      | Users can create private imports               |
-| Enable Scheduled Ingestion     | On      | Automated URL-based imports on a cron schedule |
-| Enable Public Registration     | On      | New users can self-register                    |
-| Enable Event Creation          | On      | Events can be created via import or API        |
-| Enable Dataset Creation        | On      | Users can create new datasets                  |
-| Enable Ingestion Creation      | On      | Users can start new imports                    |
-| Enable Scheduled Job Execution | On      | Scheduled imports run automatically            |
-| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests  |
-
-## Dashboard
-
-The admin dashboard at `/dashboard` provides a web interface for managing data. Access levels:
+### Roles
 
 | Role   | Permissions                                           |
 | ------ | ----------------------------------------------------- |
 | User   | Own catalogs, datasets, and imports                   |
-| Editor | User permissions + branding, advanced dataset config  |
+| Editor | User + branding, advanced dataset config              |
 | Admin  | Full access: user management, settings, feature flags |
-
-## Content Management
-
-### Pages
-
-Create custom pages with a block-based builder at `/dashboard/collections/pages`. Available blocks: Hero, Features, Stats, Timeline, Testimonials, Rich Text, Call to Action, Newsletter. Pages are accessible at `/{slug}`.
-
-### Navigation
-
-- **Main Menu** (`/dashboard/globals/main-menu`) — up to 6 navigation links
-- **Footer** (`/dashboard/globals/footer`) — tagline, social links, link columns, copyright
-
-### Branding
-
-Customize at `/dashboard/globals/branding`:
-
-- Site name and description (browser tab, SEO)
-- Logos for light and dark themes
-- Favicon (auto-generated from source image)
-
-### Newsletter
-
-Configure the backend service URL in Settings (`/dashboard/globals/settings`) under "Newsletter Configuration". Newsletter signup forms can be added to the footer or pages.
-
-## Scheduled Imports
-
-Users can create automated import schedules that fetch data from a URL on a cron schedule.
-
-**Authentication options** for protected URLs:
-
-- None (public URLs)
-- API Key (header or query parameter)
-- Bearer Token
-- Basic Auth
-
-**Management**: View schedules at `/dashboard/collections/scheduled-ingests`. Check schedule health via `GET /api/admin/schedule-service`. Stuck jobs are cleaned up automatically by a background job.
-
-## Audit Log
-
-TimeTiles tracks user and admin actions for accountability. View logs at `/dashboard/collections/audit-log`.
-
-**What's tracked** — 20 action types across 5 domains: account (login, registration, email/password changes, deletion), admin (role changes, trust levels, feature flags), data (catalog/dataset/event CRUD), import (start, complete, fail), system (settings, geocoding provider changes).
-
-**Privacy** — IP addresses are stored for 30 days, then cleared automatically. The `performedBy` field is only set when the acting user differs from the target user.
-
-## User Data Management
-
-- **Data Export**: Users download all their data as a ZIP archive from Account Settings
-- **Account Deletion**: 7-day grace period. Private data is permanently deleted; public data is transferred to an admin account
 
 ## Next Steps
 
