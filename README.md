@@ -36,14 +36,14 @@ Open [localhost:3000](http://localhost:3000). Go to [localhost:3000/ingest](http
 
 Full docs at **[docs.timetiles.io](https://docs.timetiles.io)**.
 
-|                                                                            |                          |
-| -------------------------------------------------------------------------- | ------------------------ |
-| [Getting Started](https://docs.timetiles.io/user-guide/getting-started)    | Overview and first steps |
-| [Use Cases](https://docs.timetiles.io/user-guide/use-cases)                | Real-world examples      |
-| [Development Guide](https://docs.timetiles.io/developer-guide/development) | Setup and workflows      |
-| [Architecture](https://docs.timetiles.io/developer-guide/architecture)     | Technical deep dive      |
-| [REST API](https://docs.timetiles.io/developer-guide/rest-api)             | API reference            |
-| [Contributing](CONTRIBUTING.md)                                            | How to contribute        |
+|                                                                        |                          |
+| ---------------------------------------------------------------------- | ------------------------ |
+| [Getting Started](https://docs.timetiles.io/guide/getting-started)     | Overview and first steps |
+| [Use Cases](https://docs.timetiles.io/guide/use-cases)                 | Real-world examples      |
+| [Development Guide](https://docs.timetiles.io/development/development) | Setup and workflows      |
+| [Architecture](https://docs.timetiles.io/development/architecture)     | Technical deep dive      |
+| [REST API](https://docs.timetiles.io/development/rest-api)             | API reference            |
+| [Contributing](CONTRIBUTING.md)                                        | How to contribute        |
 
 ## Tech Stack
 

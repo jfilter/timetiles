@@ -50,12 +50,12 @@ apps/docs/
 ├── content/                  # Documentation pages (MDX)
 │   ├── _meta.js             # Navigation configuration
 │   ├── index.mdx            # Homepage
-│   ├── admin-guide/         # Admin documentation
-│   ├── developer-guide/     # Developer documentation
+│   ├── guide/               # User guide
+│   ├── self-hosting/        # Deployment and admin docs
+│   ├── development/         # Developer documentation
 │   ├── overview/            # Product overview
 │   ├── reference/           # Reference documentation
 │   │   └── api/            # Auto-generated API docs (TypeDoc)
-│   └── user-guide/         # User guides
 ├── app/                      # Next.js App Router (layout, theme config)
 ├── scripts/                 # Build scripts
 ├── next.config.mjs          # Next.js configuration

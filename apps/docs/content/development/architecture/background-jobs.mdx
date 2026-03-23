@@ -81,7 +81,7 @@ These are queued on demand (not scheduled):
 
 ## Testing Jobs
 
-See [Integration Testing Patterns](/developer-guide/development/testing-guidelines) for job testing. Key points:
+See [Integration Testing Patterns](/development/development/testing-guidelines) for job testing. Key points:
 
 - Query pending jobs **before** running (`completedAt: { exists: false }`)
 - Verify **side effects** after running (not job records -- they're deleted)

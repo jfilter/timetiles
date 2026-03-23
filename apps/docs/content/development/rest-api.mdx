@@ -102,7 +102,7 @@ API requests are protected by both **rate limiting** (burst protection) and **qu
 - **Quotas**: Daily and lifetime limits on operations and resource consumption
 - **Headers**: Responses include `X-RateLimit-*` headers with limit information
 
-See [Usage Limits](/admin-guide/usage-limits) for details on rate limiting and quotas.
+See [Usage Limits](/self-hosting/usage-limits) for details on rate limiting and quotas.
 
 ## Endpoints
 
@@ -720,7 +720,7 @@ Paginated endpoints support standard pagination parameters:
 
 ### Caching
 
-The API uses URL fetch caching for scheduled imports. See [HTTP Caching](/developer-guide/architecture/http-caching) for details.
+The API uses URL fetch caching for scheduled imports. See [HTTP Caching](/development/architecture/http-caching) for details.
 
 ### Geospatial Queries
 
@@ -811,6 +811,6 @@ console.log(`Total events: ${metadata.total}`);
 
 ## See Also
 
-- [Usage Limits](/admin-guide/usage-limits) - Rate limiting, quotas, and trust levels
-- [HTTP Caching](/developer-guide/architecture/http-caching) - Caching for scheduled URL imports
+- [Usage Limits](/self-hosting/usage-limits) - Rate limiting, quotas, and trust levels
+- [HTTP Caching](/development/architecture/http-caching) - Caching for scheduled URL imports
 - [API Reference](/reference/api) - Auto-generated TypeScript documentation
