@@ -84,8 +84,6 @@
 # Batch Sizes
 # ---------------------------------------------------------------------------
 # Processing batch sizes for the import pipeline.
-# Can also be overridden via BATCH_SIZE_* environment variables
-# (env vars take precedence over this file).
 
 # batchSizes:
 #   duplicateAnalysis: 5000
