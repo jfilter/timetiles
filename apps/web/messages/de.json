@@ -784,5 +784,11 @@
     "description": "Dieser Ort erscheint auf keiner unserer Karten. Die Seite, die Sie suchen, hat sich in unbekanntes Gebiet vorgewagt.",
     "returnHome": "Zur Startseite",
     "exploreEvents": "Ereignisse erkunden"
+  },
+  "Embed": {
+    "poweredBy": "Bereitgestellt von TimeTiles",
+    "errorTitle": "Etwas ist schiefgelaufen",
+    "tryAgain": "Erneut versuchen",
+    "originNotAllowed": "Das Einbetten von diesem Ursprung ist nicht gestattet."
   }
 }

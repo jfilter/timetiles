@@ -19,10 +19,16 @@ import config from "@/payload.config";
 
 interface ExploreViewResolverProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+  /** Override the view slug directly (used by embed routes with slug in URL path). */
+  readonly viewSlug?: string;
   readonly children: React.ReactNode;
 }
 
-export const ExploreViewResolver = async ({ searchParams, children }: ExploreViewResolverProps) => {
+export const ExploreViewResolver = async ({
+  searchParams,
+  viewSlug: viewSlugProp,
+  children,
+}: ExploreViewResolverProps) => {
   const payload = await getPayload({ config });
   const headersList = await headers();
   const host = headersList.get("host");
@@ -31,7 +37,8 @@ export const ExploreViewResolver = async ({ searchParams, children }: ExploreVie
   const siteId = site?.id;
 
   const params = await searchParams;
-  const viewSlug = typeof params.view === "string" ? params.view : undefined;
+  const viewSlugFromParams = typeof params.view === "string" ? params.view : undefined;
+  const viewSlug = viewSlugProp ?? viewSlugFromParams;
   const view = await resolveView(payload, siteId, viewSlug);
 
   if (!view) {

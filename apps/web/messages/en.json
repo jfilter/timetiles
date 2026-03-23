@@ -780,5 +780,11 @@
     "description": "This location doesn't appear on any of our charts. The page you're looking for has ventured into uncharted territory.",
     "returnHome": "Return Home",
     "exploreEvents": "Explore Events"
+  },
+  "Embed": {
+    "poweredBy": "Powered by TimeTiles",
+    "errorTitle": "Something went wrong",
+    "tryAgain": "Try again",
+    "originNotAllowed": "Embedding from this origin is not permitted."
   }
 }

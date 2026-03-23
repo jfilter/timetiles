@@ -3208,6 +3208,20 @@ export interface Site {
     bodyEndHtml?: string | null;
   };
   /**
+   * Control how this site's views can be embedded on external websites
+   */
+  embeddingConfig?: {
+    /**
+     * Domains allowed to embed this site via iframe. Leave empty to allow embedding from any origin.
+     */
+    allowedOrigins?:
+      | {
+          origin: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  /**
    * Default layout template for all pages on this site
    */
   defaultLayout?: (number | null) | LayoutTemplate;
@@ -5040,6 +5054,16 @@ export interface SitesSelect<T extends boolean = true> {
         customCSS?: T;
         bodyStartHtml?: T;
         bodyEndHtml?: T;
+      };
+  embeddingConfig?:
+    | T
+    | {
+        allowedOrigins?:
+          | T
+          | {
+              origin?: T;
+              id?: T;
+            };
       };
   defaultLayout?: T;
   isPublic?: T;

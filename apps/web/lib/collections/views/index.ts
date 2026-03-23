@@ -223,6 +223,13 @@ const Views: CollectionConfig = {
       ],
     },
 
+    // ============ EMBEDDING ============
+    {
+      name: "embedSnippet",
+      type: "ui",
+      admin: { position: "sidebar", components: { Field: "/components/admin/embed-url-field#EmbedUrlField" } },
+    },
+
     // ============ ACCESS & METADATA ============
     createIsPublicField({ defaultValue: true, description: "Allow public access to this view" }),
     createCreatedByField("User who created this view"),
