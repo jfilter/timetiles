@@ -1,98 +1,96 @@
-# Getting Started Guide
+# Getting Started
 
-This guide covers the basics of using TimeTiles to create and explore interactive chronicles of historical events.
+This guide walks you through importing your first dataset and exploring it on the map.
 
-> **💻 Developers:** If you need to install TimeTiles locally, see the [Quick Start Guide](/quick-start) instead.
+import { Callout, Steps } from "nextra/components";
 
-## 1. Prepare Your Data
+<Callout>**Developers:** If you need to install TimeTiles locally, see the [Quick Start Guide](/quick-start).</Callout>
 
-TimeTiles works with CSV, Excel, or ODS files containing events. Your data needs:
+## Prepare Your Data
 
-**Required fields:**
+TimeTiles works with CSV, Excel, or ODS files. Each row becomes an event on the map. Your data needs three fields:
 
-- **Date** - When the event happened (YYYY-MM-DD format)
-- **Location** - Either coordinates (latitude, longitude) or addresses
-- **Title** - A brief description of the event
+| Field    | Required | Example                                     |
+| -------- | -------- | ------------------------------------------- |
+| Title    | Yes      | "Earthquake in San Francisco"               |
+| Date     | Yes      | 2024-03-15 (ISO 8601 recommended)           |
+| Location | Yes      | "San Francisco, CA" or `37.7793, -122.4193` |
 
-**Optional fields:**
-
-- Description - Detailed information
-- Category - For grouping events
-- Tags - For filtering
-- Any custom fields
+You can include any additional fields — description, category, source, severity, URLs. These become filterable in the interface.
 
 **Example CSV:**
 
-Create a file called `sample-events.csv`:
-
 ```csv
 title,date,location,category,description
-"Tech Conference 2024","2024-03-15","San Francisco, CA","Technology","Annual developer conference"
-"Climate Summit","2024-04-22","New York, NY","Environment","Earth Day climate action summit"
-"Music Festival","2024-06-21","Austin, TX","Culture","Summer music festival"
-"Science Fair","2024-09-10","Boston, MA","Education","Regional science competition"
-"Art Exhibition","2024-11-05","Los Angeles, CA","Culture","Modern art showcase"
+"City Council Meeting","2024-01-10","Berlin, Germany","Politics","Budget debate for 2024"
+"Factory Fire","2024-02-14","Hamburg, Germany","Incident","Chemical plant fire, no injuries"
+"Climate March","2024-03-15","Munich, Germany","Protest","5,000 participants"
+"Data Leak Published","2024-04-02","Frankfurt, Germany","Investigation","Financial records from 2019-2023"
+"River Pollution Report","2024-05-20","Cologne, Germany","Environment","Elevated lead levels detected"
 ```
 
-## 2. Import Your Data
+## Import Your Data
 
-> For a deeper look at how data ingestion works — formats, schema detection, geocoding, and scheduling — see [Data Ingestion](./data-ingestion).
+<Steps>
 
-1. **Access the Import Page**
-   - Navigate to the ingest page (usually `/ingest` or via "New Chronicle" button)
+### Go to the import page
 
-2. **Create a Catalog**
-   - Click "Create New Catalog" and give it a name (e.g., "My First Chronicle")
-   - Catalogs help organize related datasets
+Navigate to `/ingest` or click the import button in the interface.
 
-3. **Upload Your File**
-   - Drag and drop your CSV, Excel, or ODS file
-   - TimeTiles will automatically detect your data structure
+### Choose or create a catalog
 
-4. **Review Schema Detection**
-   - TimeTiles automatically identifies date, location, and title fields
-   - Verify the detected schema matches your data
-   - Adjust field mappings if needed
+Catalogs are project-level containers. Create one for your topic (e.g., "German Events 2024") or select an existing one.
 
-5. **Start Processing**
-   - Confirm the import
-   - Watch as TimeTiles:
-     - Validates your data
-     - Geocodes addresses to coordinates
-     - Creates interactive visualizations
+### Upload your file
 
-## 3. Explore Your Chronicle
+Drag and drop your CSV, Excel, or ODS file. You can also paste a URL to fetch data from a remote source.
 
-Once processing completes, you'll see your events visualized:
+### Review the detected schema
 
-- **Map View**: Events plotted on an interactive map with clustering
-- **Timeline**: Time slider to filter events by date range
-- **Filters**: Filter by category, tags, or custom fields
-- **Event Details**: Click on any event to see full information
-- **Search**: Find specific events by text search
+TimeTiles analyzes your data and identifies field types — dates, locations, categories, numbers. Verify the mappings look correct and adjust if needed.
 
-**Pro Tips:**
+### Start processing
 
-- Use the time slider to see how events unfold chronologically
-- Click map clusters to zoom into specific areas
-- Combine multiple filters for precise exploration
-- The URL updates with your filters - bookmark or share specific views!
+Click **Start**. TimeTiles will:
 
-## 4. Share Your Work
+- Validate your data
+- Geocode text addresses to coordinates (or use coordinates directly if provided)
+- Create events and add them to the map
 
-Once your chronicle is created, you can:
+A progress bar shows the current stage and estimated time remaining.
 
-- **Share publicly** - The URL includes all filter state, so bookmarks and shared links preserve the view
-- **Export data** - Download all your data as a ZIP archive from Account Settings
+</Steps>
+
+## Explore Your Chronicle
+
+Once processing completes, your data is live on the map.
+
+**Map** — Events appear as markers, clustered when zoomed out. Click a cluster to zoom in. Click an individual marker to see full event details.
+
+**Timeline** — A histogram at the bottom shows event density over time. Drag the handles to filter to a specific date range. Watch how patterns shift as you narrow the window.
+
+**Filters** — Sidebar filters are generated from your data. If you have a "category" field, you'll see checkboxes for each value. Combine multiple filters to drill down.
+
+**Search** — Find specific events by text. Search works across all fields.
+
+**URL state** — As you pan the map, adjust the timeline, or toggle filters, the URL updates. Bookmark it to save your exact view.
+
+## Share Your Work
+
+Every view has a shareable URL. Filters, map position, and time range are all encoded in the link — recipients see exactly what you see.
+
+You can also export all your data as a ZIP archive from your account settings.
 
 ## Tips
 
-- Start with a small dataset (100-500 events) to test
-- Use consistent date formats
-- Include as much metadata as possible for better filtering
-- Check the preview before confirming import
+- **Start small** — Test with 100-500 events before importing large datasets
+- **Use consistent dates** — ISO 8601 (`YYYY-MM-DD`) works best
+- **Add categories** — Fields with a small number of distinct values become interactive filters
+- **Include coordinates** — If you already have latitude/longitude, TimeTiles skips geocoding (faster and more accurate)
+- **Preview first** — Review the schema detection before starting the full import
 
 ## Next Steps
 
-- Explore the [FAQ](/faq) for common questions
-- Join [GitHub Discussions](https://github.com/jfilter/timetiles/discussions) for help
+- [Data Ingestion](./data-ingestion) — Scheduled imports, deduplication, schema evolution
+- [Use Cases](./use-cases) — Real-world examples
+- [Core Concepts](/overview/core-concepts) — Catalogs, datasets, events, and views

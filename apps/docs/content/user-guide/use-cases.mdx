@@ -1,165 +1,68 @@
 # Use Cases
 
-Examples of how TimeTiles can be used for different types of projects.
+Real-world examples of how TimeTiles can be used across different fields.
 
 ## Investigative Journalism
 
 ### Police Accountability
 
-**Scenario**: Document and analyze patterns in police use of force across multiple years and jurisdictions.
+A newsroom has a database of fatal police encounters spanning five years. The data includes victim demographics, officer information, location, and incident details.
 
-**Data Sources**:
-
-- Police incident reports (CSV exports)
-- Court records with location data
-- Victim demographic information
-
-**TimeTiles Approach**:
-
-- Import incident data with victim demographics, officer information, and outcome details
-- Enable public filtering by victim race, age, weapon status, and time of day
-- Reveal geographic clustering and temporal patterns that might indicate systemic issues
-- Allow readers to explore the data without overwhelming them with statistics
-
-**Impact**: Readers can discover patterns themselves rather than being told what to think, increasing engagement and understanding.
+**With TimeTiles**: Import the CSV, enable public filtering by victim demographics, time period, and incident type. Readers explore geographic clusters and temporal patterns themselves — discovering stories in the data rather than being told what to think.
 
 ### Environmental Investigations
 
-**Scenario**: Track industrial accidents, spills, or permit violations across time to identify regulatory patterns.
+An investigative team tracks industrial permit violations across a state. Data comes from EPA databases, corporate filings, and community health records.
 
-**Data Sources**:
-
-- EPA violation databases
-- Corporate permit records
-- News reports with geocoded locations
-- Community health data
-
-**TimeTiles Approach**:
-
-- Combine regulatory data with community demographics
-- Show correlation between industrial activity and health outcomes
-- Enable filtering by company, violation type, and demographic factors
-- Present complex environmental justice issues in an accessible format
+**With TimeTiles**: Combine regulatory data with community demographics. Show the correlation between industrial violations and neighborhood characteristics. Filters let readers drill down by company, violation type, and time period.
 
 ## Academic Research
 
 ### Conflict Documentation
 
-**Scenario**: Document human rights violations during conflicts for academic study and legal proceedings.
+Researchers document incidents during a conflict using witness testimony, satellite imagery analysis, and open source intelligence. The dataset grows to tens of thousands of entries over several years.
 
-**Data Sources**:
-
-- Witness testimony with location references
-- Satellite imagery analysis results
-- Open source intelligence (OSINT) data
-- Medical records and casualty reports
-
-**TimeTiles Approach**:
-
-- Create detailed chronicles of specific conflicts or incidents
-- Include victim information, perpetrator data, and evidence links
-- Enable temporal filtering to show escalation patterns
-- Maintain detailed metadata for legal documentation while presenting accessible public interface
+**With TimeTiles**: Import and continuously update the dataset via scheduled URL imports. Enable temporal filtering to show escalation patterns. Maintain detailed metadata for legal proceedings while presenting an accessible public interface. Server-side clustering handles the scale.
 
 ### Urban Studies
 
-**Scenario**: Analyze gentrification patterns by tracking business closures, rent increases, and demographic changes.
+A research team analyzes gentrification by tracking business closures, rent changes, and demographic shifts across a city over a decade.
 
-**Data Sources**:
+**With TimeTiles**: Import multi-year datasets as separate datasets within a single catalog. Each data source (business licenses, real estate transactions, census data) gets its own dataset with its own schema. The explore interface lets stakeholders compare patterns across time periods and neighborhoods.
 
-- Business license databases
-- Real estate transaction records
-- Census demographic data
-- Community survey responses
-
-**TimeTiles Approach**:
-
-- Import multi-year datasets showing neighborhood changes
-- Correlate business data with demographic shifts
-- Enable exploration of specific time periods and geographic areas
-- Present research findings in a format accessible to community stakeholders
-
-## Activism & Advocacy
+## Activism and Advocacy
 
 ### Community Organizing
 
-**Scenario**: Document landlord negligence across multiple properties to support tenant organizing efforts.
+A tenant organization documents landlord negligence across hundreds of properties. Data includes building violations, health citations, and complaint records.
 
-**Data Sources**:
+**With TimeTiles**: Map violations by property owner across the entire city. Reveal patterns of negligence by landlord and neighborhood. Filter by violation type, severity, and time period. The resulting chronicle becomes evidence for policy advocacy.
 
-- Building violation records
-- Tenant complaint databases
-- Property ownership records
-- Health department citations
+### Human Rights
 
-**TimeTiles Approach**:
+An NGO tracks systematic persecution across a region. Incident reports come from affected communities, leaked documents, and witness testimony.
 
-- Map violations by property owner across entire city
-- Show patterns of negligence by landlord and neighborhood
-- Enable filtering by violation type and severity
-- Create compelling evidence for policy advocacy
+**With TimeTiles**: Create private chronicles for sensitive data with appropriate access controls. Support both confidential research and public advocacy from the same dataset by configuring different views with different visibility settings.
 
-### Human Rights Documentation
-
-**Scenario**: Track and document systematic persecution or discrimination for international advocacy.
-
-**Data Sources**:
-
-- Incident reports from affected communities
-- Government document leaks
-- Witness testimony with location data
-- Medical or legal documentation
-
-**TimeTiles Approach**:
-
-- Create secure, private chronicles for sensitive documentation
-- Enable detailed metadata for legal proceedings
-- Support both public advocacy and confidential research
-- Maintain detailed provenance and verification information
-
-## NGO & Non-Profit Work
+## NGO and Non-Profit Work
 
 ### Disaster Response
 
-**Scenario**: Track disaster impacts and recovery efforts to inform resource allocation and future preparedness.
+A relief organization tracks storm damage assessments, insurance claims, and recovery milestones across affected areas.
 
-**Data Sources**:
+**With TimeTiles**: Combine immediate damage data with long-term recovery information. Show disparities in response times and resource allocation across communities. Use scheduled imports to keep the chronicle updated as new data comes in.
 
-- Damage assessment surveys
-- Insurance claim data
-- Government response records
-- Community needs assessments
+### Public Health Surveillance
 
-**TimeTiles Approach**:
+A health department monitors disease outbreaks by tracking case reports, facility data, and environmental factors.
 
-- Combine immediate impact data with long-term recovery information
-- Show disparities in response and recovery across communities
-- Enable filtering by damage type, assistance received, and demographic factors
-- Support both public transparency and internal operational planning
+**With TimeTiles**: Create interactive chronicles showing case density over time and geography. Correlate health outcomes with environmental monitoring data. Enable exploration by demographic group and area. Present complex epidemiological data in a format accessible to the public.
 
-### Public Health
+## Getting Started with Your Project
 
-**Scenario**: Document disease outbreaks or health disparities to inform policy and resource allocation.
+1. **What's the story?** — What patterns or relationships do you want to reveal?
+2. **What data do you have?** — Each row needs at minimum a date, location, and title
+3. **Who's the audience?** — Researchers, the public, policymakers, or internal teams?
+4. **One-time or ongoing?** — Will the data be imported once, or updated on a schedule?
 
-**Data Sources**:
-
-- Epidemiological surveillance data
-- Healthcare facility records
-- Environmental monitoring data
-- Social determinant indicators
-
-**TimeTiles Approach**:
-
-- Create interactive chronicles showing disease patterns over time
-- Correlate health outcomes with environmental and social factors
-- Enable exploration by demographic groups and geographic areas
-- Present complex public health data in accessible format for community education
-
-## Getting Started
-
-1. **Identify your story**: What patterns or insights do you want to reveal?
-2. **Assess your data**: Do you have location, time, and meaningful metadata?
-3. **Define your audience**: Who needs to understand this information?
-4. **Choose your approach**: Public chronicle, research tool, or advocacy platform?
-
-Ready to start building? Check out our [Admin Guide](/admin-guide/) to get your data into TimeTiles, or explore our [Quick Start](/quick-start) for a hands-on introduction.
+Ready to start? See the [Getting Started Guide](./getting-started) to import your first dataset.

@@ -4,41 +4,34 @@ asIndexPage: true
 
 # User Guide
 
-Documentation for using TimeTiles.
+Import data, explore it on an interactive map, and share your findings.
 
-## Overview
+import { Cards } from "nextra/components";
 
-This guide covers how to use TimeTiles to import, explore, and share temporal geospatial data on interactive maps.
+<Cards num={3}>
+  <Cards.Card title="Getting Started" href="./getting-started" arrow>
+    Import a CSV and create your first interactive chronicle.
+  </Cards.Card>
+  <Cards.Card title="Data Ingestion" href="./data-ingestion" arrow>
+    Formats, schema detection, geocoding, scheduling, and troubleshooting.
+  </Cards.Card>
+  <Cards.Card title="Use Cases" href="./use-cases" arrow>
+    Real-world examples from journalism, research, and activism.
+  </Cards.Card>
+</Cards>
 
-## Documentation Structure
+## What You Can Do
 
-### [Getting Started](./getting-started)
+**Import** — Upload CSV, Excel, or ODS files, paste a URL, or set up automated imports on a schedule. TimeTiles detects your schema and geocodes addresses automatically.
 
-Learn how to import data, navigate the interface, explore events, and use the timeline and map features.
+**Explore** — Pan and zoom the map, scrub the timeline, filter by category or date range, and click events to see details. Every field in your data becomes a filter.
 
-### [Data Ingestion](./data-ingestion)
+**Share** — Every view has a unique URL with filters, map position, and time range encoded. Bookmark it, share it, or embed it — recipients see exactly what you see.
 
-How the ingestion pipeline works — supported formats, schema detection, geocoding, scheduling, and troubleshooting.
+**Manage** — Organize data into catalogs and datasets. Export everything as a ZIP archive. Delete your account with a grace period.
 
-### [Use Cases](./use-cases)
+## Related
 
-Real-world examples of how to use TimeTiles for journalism, research, activism, and data exploration.
-
-## Key Features
-
-- **Import**: Upload CSV, Excel, or ODS files — or set up automated URL imports on a schedule
-- **Explore**: Interactive map with clustering, timeline histogram, and dynamic filters
-- **Manage**: Organize data into catalogs and datasets, with schema versioning and deduplication
-- **Share**: Every view has a unique URL with filters preserved — bookmark or share specific views
-- **Account**: Self-service data export (ZIP) and account deletion with grace period
-
-## Quick Start
-
-- **New Users**: Start with [Getting Started](./getting-started) to learn the basics
-- **Examples**: See [Use Cases](./use-cases) for practical applications
-
-## Related Guides
-
-- [Admin Guide](/admin-guide/) - For deploying and configuring TimeTiles
-- [Developer Guide](/developer-guide/) - For contributing to the project
-- [API Reference](/reference/api) - API documentation
+- [Core Concepts](/overview/core-concepts) — Data hierarchy: catalogs, datasets, events, views
+- [Admin Guide](/admin-guide) — Deploying and configuring TimeTiles
+- [Developer Guide](/developer-guide) — Architecture and API reference
