@@ -44,7 +44,7 @@ export class ExplorePage {
       .locator("p")
       .filter({ hasText: /Showing .* event/ })
       .first();
-    this.loadingIndicator = page.getByText("Loading events...").first();
+    this.loadingIndicator = page.getByText("Loading...").first();
     // New UI shows "Showing all 0 events" or "Showing 0 of X events" when no events match
     this.noEventsMessage = page
       .locator("p")

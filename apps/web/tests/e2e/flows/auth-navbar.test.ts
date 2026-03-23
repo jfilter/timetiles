@@ -165,9 +165,8 @@ test.describe("Navbar Authentication", () => {
       const signOutItem = page.getByRole("menuitem", { name: /sign out/i });
       await signOutItem.click();
 
-      // Wait for logout to process and reload page to update server components
-      await page.waitForResponse((resp) => resp.url().includes("/api/users/logout"), { timeout: 5000 }).catch(() => {});
-      await page.reload();
+      // Wait for logout navigation — the sign out handler navigates to "/"
+      await page.waitForURL("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
       // Should see Sign In button again

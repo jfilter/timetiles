@@ -227,7 +227,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
         icon={<ClockIcon className="text-muted-foreground mb-4 h-12 w-12" />}
         title={t("noSchedules")}
         description={t("noSchedulesDescription")}
-        action={{ label: tImport("importData"), href: "/import" }}
+        action={{ label: tImport("importData"), href: "/ingest" }}
       />
     );
   }

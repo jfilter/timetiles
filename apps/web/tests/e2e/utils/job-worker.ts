@@ -77,14 +77,14 @@ const main = async () => {
           processing: j.processing,
           hasError: !!j.hasError,
           waitUntil: j.waitUntil,
-          error: j.hasError ? (j.error as string)?.substring(0, 200) : undefined,
+          error: j.hasError ? String(j.error ?? "").substring(0, 200) : undefined,
         }));
         console.log(`[job-worker] Pending jobs detail: ${JSON.stringify(jobSummary)}`);
       }
 
       // Queue any due scheduled jobs before running.
       await payload.jobs.handleSchedules({ allQueues: true });
-      const result = await payload.jobs.run({ limit: MAX_JOBS_PER_RUN });
+      const result = await payload.jobs.run({ limit: MAX_JOBS_PER_RUN, allQueues: true });
       // If jobs were processed, loop immediately to pick up chained jobs
       const jobCount = result?.jobStatus ? Object.keys(result.jobStatus).length : 0;
       const hadWork = jobCount > 0;

@@ -221,8 +221,8 @@ test.describe("Import Wizard - JSON URL Input", () => {
     // Expand auth settings
     await authTrigger.click();
 
-    // Verify auth type selector is visible
-    const authTypeSelect = page.locator("#auth-type");
+    // Verify auth type selector is visible (id has React useId prefix)
+    const authTypeSelect = page.getByLabel(/authentication type/i);
     await expect(authTypeSelect).toBeVisible({ timeout: 5_000 });
   });
 });

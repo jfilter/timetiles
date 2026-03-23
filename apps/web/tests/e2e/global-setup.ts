@@ -69,7 +69,7 @@ const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
     await seedManager.truncate();
     await seedManager.seedWithConfig({
       preset: "e2e",
-      collections: ["users", "catalogs", "datasets", "events", "sites", "pages"],
+      collections: ["users", "catalogs", "datasets", "events", "sites", "pages", "main-menu", "footer", "settings"],
     });
     console.log("✅ Seeded E2E test data");
   } finally {

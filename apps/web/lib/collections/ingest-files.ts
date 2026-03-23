@@ -81,8 +81,7 @@ const ALLOWED_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.oasis.opendocument.spreadsheet",
   "application/vnd.google-apps.spreadsheet",
-  // Note: application/json is NOT allowed for manual uploads.
-  // JSON APIs are handled by scheduled ingests (url-fetch-job converts JSON→CSV before import).
+  "application/json",
 ];
 
 // Note: File size limits are enforced per user's trust level via quota service in beforeValidate hook

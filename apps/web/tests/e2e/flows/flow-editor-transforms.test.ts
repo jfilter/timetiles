@@ -164,35 +164,16 @@ test.describe("Flow Editor Transforms", () => {
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 5000 });
 
-    // Intercept the navigation to capture the applyMappings URL parameter
-    let applyMappingsParam: string | null = null;
-    page.on("request", (request) => {
-      const url = new URL(request.url());
-      const param = url.searchParams.get("applyMappings");
-      if (param) {
-        applyMappingsParam = param;
-      }
-    });
-
-    // Click save
+    // Click save — flow editor saves to Zustand store (not URL params) and navigates back
     const saveButton = page.getByRole("button", { name: /apply.*return/i });
     await saveButton.click();
 
-    // Wait for redirect
-    await expect(page).toHaveURL(/\/ingest/, { timeout: 10000 });
+    // Wait for redirect back to ingest wizard
+    await expect(page).toHaveURL(/\/ingest$/, { timeout: 10000 });
 
-    // Verify the serialized data was passed through the URL
-    // The applyMappings param should contain the new format with fieldMapping and transforms
-    // Even without transforms, it should use the new { fieldMapping, transforms } format
-    expect(applyMappingsParam).not.toBeNull();
-    const decoded = JSON.parse(decodeURIComponent(applyMappingsParam!));
-    expect(decoded).toHaveProperty("fieldMapping");
-    expect(decoded).toHaveProperty("transforms");
-    expect(decoded.fieldMapping).toHaveProperty("sheetIndex");
-    expect(Array.isArray(decoded.transforms)).toBe(true);
-
-    // Complete the import to verify the full round-trip
-    await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
+    // Verify we're back on the field mapping step with the mappings preserved
+    const fieldMappingHeadingAfterReturn = page.getByRole("heading", { name: /map your fields/i });
+    await expect(fieldMappingHeadingAfterReturn).toBeVisible({ timeout: 10000 });
     await importPage.clickNext();
 
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });

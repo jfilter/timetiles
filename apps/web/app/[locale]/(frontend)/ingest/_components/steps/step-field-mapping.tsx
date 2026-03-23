@@ -270,7 +270,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
             variant="outline"
             size="sm"
             onClick={() => {
-              router.push(`/import/flow-editor?previewId=${previewId}&sheetIndex=${activeSheetIndex}`);
+              router.push(`/ingest/flow-editor?previewId=${previewId}&sheetIndex=${activeSheetIndex}`);
             }}
           >
             <WorkflowIcon className="mr-2 h-4 w-4" />
