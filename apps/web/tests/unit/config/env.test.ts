@@ -210,28 +210,6 @@ describe.sequential("getEnv", () => {
 
       expect(env.SSRF_DNS_CHECK).toBe(false);
     });
-
-    it("transforms URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=false to boolean false", () => {
-      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
-      vi.stubEnv("PAYLOAD_SECRET", TEST_SECRETS.payloadSecret);
-      vi.stubEnv("URL_FETCH_CACHE_RESPECT_CACHE_CONTROL", "false");
-      resetEnv();
-
-      const env = getEnv();
-
-      expect(env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL).toBe(false);
-    });
-
-    it("transforms URL_FETCH_CACHE_RESPECT_CACHE_CONTROL=true to boolean true", () => {
-      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
-      vi.stubEnv("PAYLOAD_SECRET", TEST_SECRETS.payloadSecret);
-      vi.stubEnv("URL_FETCH_CACHE_RESPECT_CACHE_CONTROL", "true");
-      resetEnv();
-
-      const env = getEnv();
-
-      expect(env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL).toBe(true);
-    });
   });
 
   describe("number coercion", () => {
@@ -255,30 +233,6 @@ describe.sequential("getEnv", () => {
       const env = getEnv();
 
       expect(env.EMAIL_SMTP_PORT).toBe(587);
-    });
-
-    it("coerces URL_FETCH_CACHE_TTL string to number", () => {
-      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
-      vi.stubEnv("PAYLOAD_SECRET", TEST_SECRETS.payloadSecret);
-      vi.stubEnv("URL_FETCH_CACHE_TTL", "7200");
-      resetEnv();
-
-      const env = getEnv();
-
-      expect(env.URL_FETCH_CACHE_TTL).toBe(7200);
-      expect(typeof env.URL_FETCH_CACHE_TTL).toBe("number");
-    });
-
-    it("coerces BATCH_SIZE_EVENT_CREATION string to number", () => {
-      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
-      vi.stubEnv("PAYLOAD_SECRET", TEST_SECRETS.payloadSecret);
-      vi.stubEnv("BATCH_SIZE_EVENT_CREATION", "500");
-      resetEnv();
-
-      const env = getEnv();
-
-      expect(env.BATCH_SIZE_EVENT_CREATION).toBe(500);
-      expect(typeof env.BATCH_SIZE_EVENT_CREATION).toBe("number");
     });
   });
 });

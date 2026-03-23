@@ -43,6 +43,15 @@ vi.mock("fs", () => {
 vi.mock("@/lib/config/app-config", () => ({
   getAppConfig: () => ({
     batchSizes: { duplicateAnalysis: 5000, schemaDetection: 10000, eventCreation: 1000, databaseChunk: 1000 },
+    cache: {
+      urlFetch: {
+        dir: "/tmp/url-fetch-cache",
+        maxSizeBytes: 104_857_600,
+        defaultTtlSeconds: 3600,
+        maxTtlSeconds: 2_592_000,
+        respectCacheControl: true,
+      },
+    },
   }),
   resetAppConfig: vi.fn(),
 }));

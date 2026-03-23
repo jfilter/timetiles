@@ -11,7 +11,7 @@
 
 import crypto from "node:crypto";
 
-import { getEnv } from "@/lib/config/env";
+import { getAppConfig } from "@/lib/config/app-config";
 import { logger } from "@/lib/logger";
 import { safeFetch } from "@/lib/security/safe-fetch";
 import { parseDateInput } from "@/lib/utils/date";
@@ -47,12 +47,12 @@ export class UrlFetchCache {
   private readonly respectCacheControl: boolean;
 
   constructor() {
-    const env = getEnv();
-    const cacheDir = env.URL_FETCH_CACHE_DIR;
-    const maxSize = env.URL_FETCH_CACHE_MAX_SIZE;
-    this.defaultTTL = env.URL_FETCH_CACHE_TTL;
-    this.maxTTL = env.URL_FETCH_CACHE_MAX_TTL;
-    this.respectCacheControl = env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL;
+    const { urlFetch } = getAppConfig().cache;
+    const cacheDir = urlFetch.dir;
+    const maxSize = urlFetch.maxSizeBytes;
+    this.defaultTTL = urlFetch.defaultTtlSeconds;
+    this.maxTTL = urlFetch.maxTtlSeconds;
+    this.respectCacheControl = urlFetch.respectCacheControl;
 
     const storage = new FileSystemCacheStorage({ cacheDir, maxSize, defaultTTL: this.defaultTTL });
 

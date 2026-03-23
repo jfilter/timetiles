@@ -73,7 +73,7 @@ Three-layer config with centralized validation:
 | **Database** | Payload CMS globals | Settings, Branding, etc. | Feature flags, geocoding, branding |
 
 - **`getEnv()`**: Zod-validated lazy singleton. All `process.env` reads in `lib/` go through this (except `ALLOW_PRIVATE_URLS` which uses bracket notation to prevent webpack inlining).
-- **`getAppConfig()`**: Reads optional `config/timetiles.yml`, deep-merges with defaults. For batch sizes: env var > YAML > default.
+- **`getAppConfig()`**: Reads optional `config/timetiles.yml`, deep-merges with defaults. Each setting lives in exactly one place — no dual-source.
 - Constants files (`rate-limits.ts`, `quota-constants.ts`, `ingest-constants.ts`, `account-constants.ts`) are bridges that read from `getAppConfig()`.
 - Tests must call `resetEnv()` / `resetAppConfig()` when stubbing env vars (already in global `beforeEach`).
 

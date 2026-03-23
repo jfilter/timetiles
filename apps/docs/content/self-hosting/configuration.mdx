@@ -72,17 +72,6 @@ SCRAPER_RUNNER_URL=http://localhost:4000
 SCRAPER_API_KEY=your-api-key-min-16-chars
 ```
 
-### Batch Processing Overrides
-
-Batch sizes can be set via environment variables **or** in the config file. Environment variables take precedence over the config file.
-
-```bash
-BATCH_SIZE_EVENT_CREATION=1000
-BATCH_SIZE_SCHEMA_DETECTION=10000
-BATCH_SIZE_DUPLICATE_ANALYSIS=5000
-BATCH_SIZE_DATABASE_CHUNK=1000
-```
-
 ## Config File (`timetiles.yml`)
 
 For structured settings that don't fit flat environment variables — rate limits with multiple time windows, per-trust-level quotas, cache tuning.
@@ -159,7 +148,7 @@ trustLevelRateLimits:
 
 ### Batch Sizes
 
-Tune the import pipeline's processing batch sizes. Can also be overridden via `BATCH_SIZE_*` environment variables (env vars take precedence).
+Tune the import pipeline's processing batch sizes:
 
 ```yaml
 batchSizes:

@@ -17,8 +17,6 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
-import { getEnv } from "./env";
-
 // ---------------------------------------------------------------------------
 // Zod schemas
 // ---------------------------------------------------------------------------
@@ -498,8 +496,6 @@ const loadFromYaml = (): Record<string, unknown> => {
 };
 
 const buildConfig = (yamlConfig: Record<string, unknown>): AppConfig => {
-  const env = getEnv();
-
   // Rate limits: YAML overrides replace entire endpoint configs (not deep-merged)
   const rateLimits = { ...DEFAULT_RATE_LIMITS } as Record<string, RateLimitConfig>;
   if (yamlConfig.rateLimits) {
@@ -538,15 +534,13 @@ const buildConfig = (yamlConfig: Record<string, unknown>): AppConfig => {
     }
   }
 
-  // Batch sizes: env var > YAML > default
+  // Batch sizes: YAML > default
   const yamlBatch = (yamlConfig.batchSizes ?? {}) as Partial<BatchSizesConfig>;
   const batchSizes: BatchSizesConfig = {
-    duplicateAnalysis:
-      env.BATCH_SIZE_DUPLICATE_ANALYSIS ?? yamlBatch.duplicateAnalysis ?? DEFAULT_BATCH_SIZES.duplicateAnalysis,
-    schemaDetection:
-      env.BATCH_SIZE_SCHEMA_DETECTION ?? yamlBatch.schemaDetection ?? DEFAULT_BATCH_SIZES.schemaDetection,
-    eventCreation: env.BATCH_SIZE_EVENT_CREATION ?? yamlBatch.eventCreation ?? DEFAULT_BATCH_SIZES.eventCreation,
-    databaseChunk: env.BATCH_SIZE_DATABASE_CHUNK ?? yamlBatch.databaseChunk ?? DEFAULT_BATCH_SIZES.databaseChunk,
+    duplicateAnalysis: yamlBatch.duplicateAnalysis ?? DEFAULT_BATCH_SIZES.duplicateAnalysis,
+    schemaDetection: yamlBatch.schemaDetection ?? DEFAULT_BATCH_SIZES.schemaDetection,
+    eventCreation: yamlBatch.eventCreation ?? DEFAULT_BATCH_SIZES.eventCreation,
+    databaseChunk: yamlBatch.databaseChunk ?? DEFAULT_BATCH_SIZES.databaseChunk,
   };
 
   // Cache: deep-merge YAML onto defaults

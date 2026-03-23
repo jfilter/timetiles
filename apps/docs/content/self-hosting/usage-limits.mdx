@@ -89,8 +89,6 @@ cache:
     respectCacheControl: true
 ```
 
-Can also be set via environment variables (`URL_FETCH_CACHE_DIR`, `URL_FETCH_CACHE_MAX_SIZE`, etc.).
-
 **Troubleshooting**: High cache misses — increase TTL or size. Stale data — reduce TTL or clear cache (`rm -rf $URL_FETCH_CACHE_DIR/*`). Disk space — reduce max size.
 
 ## Related

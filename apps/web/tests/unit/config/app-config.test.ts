@@ -147,48 +147,6 @@ describe.sequential("getAppConfig", () => {
     });
   });
 
-  describe("batch size env var overrides", () => {
-    it("BATCH_SIZE_EVENT_CREATION env var takes precedence over default", () => {
-      vi.stubEnv("BATCH_SIZE_EVENT_CREATION", "500");
-      resetEnv();
-      resetAppConfig();
-
-      const config = getAppConfig();
-
-      expect(config.batchSizes.eventCreation).toBe(500);
-    });
-
-    it("BATCH_SIZE_SCHEMA_DETECTION env var takes precedence over default", () => {
-      vi.stubEnv("BATCH_SIZE_SCHEMA_DETECTION", "20000");
-      resetEnv();
-      resetAppConfig();
-
-      const config = getAppConfig();
-
-      expect(config.batchSizes.schemaDetection).toBe(20_000);
-    });
-
-    it("BATCH_SIZE_DUPLICATE_ANALYSIS env var takes precedence over default", () => {
-      vi.stubEnv("BATCH_SIZE_DUPLICATE_ANALYSIS", "3000");
-      resetEnv();
-      resetAppConfig();
-
-      const config = getAppConfig();
-
-      expect(config.batchSizes.duplicateAnalysis).toBe(3000);
-    });
-
-    it("BATCH_SIZE_DATABASE_CHUNK env var takes precedence over default", () => {
-      vi.stubEnv("BATCH_SIZE_DATABASE_CHUNK", "2000");
-      resetEnv();
-      resetAppConfig();
-
-      const config = getAppConfig();
-
-      expect(config.batchSizes.databaseChunk).toBe(2000);
-    });
-  });
-
   describe("account defaults", () => {
     it("deletionGracePeriodDays defaults to 30", () => {
       const config = getAppConfig();
@@ -329,23 +287,6 @@ batchSizes:
       // Other batch sizes keep defaults
       expect(config.batchSizes.schemaDetection).toBe(10_000);
       expect(config.batchSizes.duplicateAnalysis).toBe(5000);
-    });
-
-    it("env var overrides YAML batch size value", () => {
-      vi.stubEnv("BATCH_SIZE_EVENT_CREATION", "300");
-      resetEnv();
-
-      existsSyncSpy.mockReturnValue(true);
-      readFileSyncSpy.mockReturnValue(`
-batchSizes:
-  eventCreation: 2000
-`);
-      resetAppConfig();
-
-      const config = getAppConfig();
-
-      // Env var wins over YAML
-      expect(config.batchSizes.eventCreation).toBe(300);
     });
   });
 

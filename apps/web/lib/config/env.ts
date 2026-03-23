@@ -50,23 +50,6 @@ const baseSchema = {
     .default("false")
     .transform((v) => v === "true"),
 
-  // === Batch sizes (env var overrides for YAML config) ===
-  BATCH_SIZE_DUPLICATE_ANALYSIS: z.coerce.number().optional(),
-  BATCH_SIZE_SCHEMA_DETECTION: z.coerce.number().optional(),
-  BATCH_SIZE_EVENT_CREATION: z.coerce.number().optional(),
-  BATCH_SIZE_DATABASE_CHUNK: z.coerce.number().optional(),
-
-  // === URL fetch cache ===
-  // eslint-disable-next-line sonarjs/publicly-writable-directories -- configurable default, overridden in production
-  URL_FETCH_CACHE_DIR: z.string().default("/tmp/url-fetch-cache"),
-  URL_FETCH_CACHE_MAX_SIZE: z.coerce.number().default(104_857_600),
-  URL_FETCH_CACHE_TTL: z.coerce.number().default(3600),
-  URL_FETCH_CACHE_MAX_TTL: z.coerce.number().default(2_592_000),
-  URL_FETCH_CACHE_RESPECT_CACHE_CONTROL: z
-    .string()
-    .default("true")
-    .transform((v) => v !== "false"),
-
   // === Build/CI flags ===
   NEXT_PHASE: z.string().optional(),
   SKIP_DB_CHECK: z.string().optional(),
