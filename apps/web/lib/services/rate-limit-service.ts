@@ -74,6 +74,7 @@
  */
 import type { Payload } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { normalizeTrustLevel, RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import {
   RATE_LIMITS,
@@ -125,7 +126,7 @@ export class RateLimitService {
     this.instanceId = Math.random().toString(36).substring(7);
 
     // Clean up expired entries every 5 minutes (skip in test environment)
-    if (process.env.NODE_ENV !== "test") {
+    if (getEnv().NODE_ENV !== "test") {
       logger.info("Starting rate limit cleanup interval");
       this.cleanupInterval = setInterval(
         () => {

@@ -1,0 +1,127 @@
+/**
+ * Centralized environment variable validation using Zod.
+ *
+ * Provides type-safe access to all environment variables with fail-fast
+ * validation at startup. Follows the lazy singleton pattern from
+ * {@link apps/scraper/src/config.ts}.
+ *
+ * @module
+ * @category Config
+ */
+import { z } from "zod";
+
+/**
+ * Zod schema for runtime environment variables.
+ *
+ * All variables have defaults except DATABASE_URL, PAYLOAD_SECRET,
+ * and NEXT_PUBLIC_PAYLOAD_URL which are required at runtime.
+ * During build phase, a relaxed schema is used instead.
+ */
+const baseSchema = {
+  // === Infrastructure ===
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NEXT_PUBLIC_SITE_URL: z.string().optional(),
+  DEFAULT_LOCALE: z.enum(["en", "de"]).default("en"),
+
+  // === Logging ===
+  LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"]).optional(),
+  LOG_FILE: z.string().optional(),
+
+  // === File paths ===
+  UPLOAD_DIR: z.string().default("uploads"),
+  UPLOAD_TEMP_DIR: z.string().default("/tmp"),
+  DATA_EXPORT_DIR: z.string().default(".exports"),
+
+  // === Email ===
+  EMAIL_SMTP_HOST: z.string().optional(),
+  EMAIL_SMTP_PORT: z.coerce.number().default(587),
+  EMAIL_SMTP_USER: z.string().optional(),
+  EMAIL_SMTP_PASS: z.string().optional(),
+  EMAIL_FROM_ADDRESS: z.string().default("noreply@timetiles.app"),
+  EMAIL_FROM_NAME: z.string().default("TimeTiles"),
+
+  // === Scraper integration ===
+  SCRAPER_RUNNER_URL: z.string().optional(),
+  SCRAPER_API_KEY: z.string().optional(),
+
+  // === Security ===
+  SSRF_DNS_CHECK: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+
+  // === Batch sizes (env var overrides for YAML config) ===
+  BATCH_SIZE_DUPLICATE_ANALYSIS: z.coerce.number().optional(),
+  BATCH_SIZE_SCHEMA_DETECTION: z.coerce.number().optional(),
+  BATCH_SIZE_EVENT_CREATION: z.coerce.number().optional(),
+  BATCH_SIZE_DATABASE_CHUNK: z.coerce.number().optional(),
+
+  // === URL fetch cache ===
+  // eslint-disable-next-line sonarjs/publicly-writable-directories -- configurable default, overridden in production
+  URL_FETCH_CACHE_DIR: z.string().default("/tmp/url-fetch-cache"),
+  URL_FETCH_CACHE_MAX_SIZE: z.coerce.number().default(104_857_600),
+  URL_FETCH_CACHE_TTL: z.coerce.number().default(3600),
+  URL_FETCH_CACHE_MAX_TTL: z.coerce.number().default(2_592_000),
+  URL_FETCH_CACHE_RESPECT_CACHE_CONTROL: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+
+  // === Build/CI flags ===
+  NEXT_PHASE: z.string().optional(),
+  SKIP_DB_CHECK: z.string().optional(),
+  CI: z.string().optional(),
+};
+
+/**
+ * Runtime schema — required fields enforced.
+ */
+const runtimeEnvSchema = z.object({
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  PAYLOAD_SECRET: z.string().min(1, "PAYLOAD_SECRET is required"),
+  NEXT_PUBLIC_PAYLOAD_URL: z.string().default("http://localhost:3000"),
+  ...baseSchema,
+});
+
+/**
+ * Build-phase schema — all fields optional with dummy defaults.
+ * Used during `next build` when DATABASE_URL and PAYLOAD_SECRET are unavailable.
+ */
+const buildEnvSchema = z.object({
+  DATABASE_URL: z.string().default(""),
+  PAYLOAD_SECRET: z.string().default("dummy-build-secret"),
+  NEXT_PUBLIC_PAYLOAD_URL: z.string().default("http://localhost:3000"),
+  ...baseSchema,
+});
+
+export type Env = z.infer<typeof runtimeEnvSchema>;
+
+const shouldRelaxSchema = (): boolean =>
+  process.env.NEXT_PHASE === "phase-production-build" ||
+  process.env.SKIP_DB_CHECK === "true" ||
+  process.env.VITEST === "true";
+
+let _env: Env | null = null;
+
+/**
+ * Parse and validate all environment variables.
+ *
+ * Uses a relaxed schema during build phase (no required fields).
+ * Caches the result for subsequent calls.
+ *
+ * @throws {z.ZodError} If required environment variables are missing or invalid at runtime
+ */
+export const getEnv = (): Env => {
+  if (_env) return _env;
+
+  const schema = shouldRelaxSchema() ? buildEnvSchema : runtimeEnvSchema;
+  _env = schema.parse(process.env);
+  return _env;
+};
+
+/**
+ * Reset the cached environment (for testing).
+ */
+export const resetEnv = (): void => {
+  _env = null;
+};

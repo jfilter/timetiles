@@ -10,6 +10,7 @@
  */
 import type { Payload } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
@@ -31,7 +32,7 @@ export const sendExportReadyEmail = async (
   const branding = await getEmailBranding(payload);
   const t = getEmailTranslations(locale, { siteName: branding.siteName });
   const formattedDate = formatLongDate(expiresAt, true);
-  const settingsUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
+  const settingsUrl = `${getEnv().NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
 
   const html = emailLayout(
     `
@@ -99,7 +100,7 @@ export const sendExportFailedEmail = async (
 ): Promise<void> => {
   const branding = await getEmailBranding(payload);
   const t = getEmailTranslations(locale, { siteName: branding.siteName });
-  const settingsUrl = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
+  const settingsUrl = `${getEnv().NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
 
   const html = emailLayout(
     `

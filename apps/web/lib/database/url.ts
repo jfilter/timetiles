@@ -7,6 +7,7 @@
  * @module
  * @category Utils
  */
+import { getEnv } from "@/lib/config/env";
 
 /**
  * Parsed database URL components
@@ -101,7 +102,7 @@ export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOpt
  * @throws Error if required but not found
  */
 export const getDatabaseUrl = (required: boolean = true): string | undefined => {
-  const url = process.env.DATABASE_URL;
+  const url = getEnv().DATABASE_URL;
 
   if (!url && required) {
     throw new Error(

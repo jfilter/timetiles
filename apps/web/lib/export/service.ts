@@ -15,6 +15,7 @@ import path from "node:path";
 import archiver from "archiver";
 import type { Payload } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { requireRelationId } from "@/lib/utils/relation-id";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { Catalog, Dataset, Event, IngestFile, IngestJob, Media, ScheduledIngest } from "@/payload-types";
@@ -41,7 +42,7 @@ const logger = createLogger("data-export-service");
 const EVENTS_PER_CHUNK = 10000;
 
 /** Directory for storing export files */
-const EXPORT_DIR = process.env.DATA_EXPORT_DIR ?? ".exports";
+const EXPORT_DIR = getEnv().DATA_EXPORT_DIR;
 
 /**
  * Service for creating user data exports.
@@ -406,7 +407,7 @@ export class DataExportService {
     for (const mediaItem of baseData.media) {
       try {
         // Media files are stored in the uploads directory (respect UPLOAD_DIR env var)
-        const uploadDir = process.env.UPLOAD_DIR ?? "uploads";
+        const uploadDir = getEnv().UPLOAD_DIR;
         const baseDir = path.isAbsolute(uploadDir) ? uploadDir : path.join(process.cwd(), uploadDir);
         const mediaPath = path.join(baseDir, "media", mediaItem.filename);
         const fileExists = await stat(mediaPath).catch(() => null);

@@ -7,6 +7,8 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { resetEnv } from "@/lib/config/env";
+
 import {
   constructDatabaseUrl,
   deriveDatabaseUrl,
@@ -112,6 +114,7 @@ describe("Database URL Utilities", () => {
   describe("getDatabaseUrl", () => {
     it("should return DATABASE_URL when set", () => {
       process.env.DATABASE_URL = TEST_DB_URL;
+      resetEnv();
 
       const url = getDatabaseUrl();
       expect(url).toBe(TEST_DB_URL);
@@ -119,15 +122,17 @@ describe("Database URL Utilities", () => {
 
     it("should throw when required and not set", () => {
       delete process.env.DATABASE_URL;
+      resetEnv();
 
       expect(() => getDatabaseUrl(true)).toThrow("DATABASE_URL environment variable is required");
     });
 
-    it("should return undefined when not required and not set", () => {
+    it("should return falsy when not required and not set", () => {
       delete process.env.DATABASE_URL;
+      resetEnv();
 
       const url = getDatabaseUrl(false);
-      expect(url).toBeUndefined();
+      expect(url).toBeFalsy();
     });
   });
 
@@ -135,6 +140,7 @@ describe("Database URL Utilities", () => {
     it("should return test database URL for current worker", () => {
       process.env.DATABASE_URL = TEST_DB_URL;
       process.env.VITEST_WORKER_ID = "2";
+      resetEnv();
 
       const url = getTestDatabaseUrl();
       expect(url).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test_2`);
@@ -143,6 +149,7 @@ describe("Database URL Utilities", () => {
     it("should work without worker ID", () => {
       process.env.DATABASE_URL = TEST_DB_URL;
       delete process.env.VITEST_WORKER_ID;
+      resetEnv();
 
       const url = getTestDatabaseUrl();
       expect(url).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test`);

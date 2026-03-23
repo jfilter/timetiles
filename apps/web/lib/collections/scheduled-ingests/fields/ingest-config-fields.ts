@@ -15,6 +15,7 @@
 
 import type { Field, FieldHook } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { decryptField, encryptField, isEncrypted } from "@/lib/security/encryption";
 
 // ---------------------------------------------------------------------------
@@ -52,7 +53,7 @@ const schemaConfigFields: Field[] = [
 // ---------------------------------------------------------------------------
 
 const getSecret = (): string => {
-  const secret = process.env.PAYLOAD_SECRET;
+  const secret = getEnv().PAYLOAD_SECRET;
   if (!secret) {
     throw new Error("PAYLOAD_SECRET is required for credential encryption");
   }

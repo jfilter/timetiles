@@ -7,6 +7,7 @@
  */
 import dns from "node:dns";
 
+import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 
 import { isPrivateIP, isPrivateUrl } from "./url-validation";
@@ -18,8 +19,7 @@ const DEFAULT_MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 /** Whether DNS resolution checks are enabled (prevents DNS rebinding). */
-// eslint-disable-next-line turbo/no-undeclared-env-vars -- opt-in security feature, not a build dependency
-const isDnsCheckEnabled = (): boolean => process.env.SSRF_DNS_CHECK === "true";
+const isDnsCheckEnabled = (): boolean => getEnv().SSRF_DNS_CHECK;
 
 export interface SafeFetchOptions extends Omit<RequestInit, "redirect"> {
   /** Maximum number of redirects to follow (default: 5). */

@@ -12,15 +12,18 @@
  */
 import pino from "pino";
 
-const isDevelopment = process.env.NODE_ENV === "development";
-const isTest = process.env.NODE_ENV === "test";
-const isProduction = process.env.NODE_ENV === "production";
+import { getEnv } from "@/lib/config/env";
+
+const env = getEnv();
+const isDevelopment = env.NODE_ENV === "development";
+const isTest = env.NODE_ENV === "test";
+const isProduction = env.NODE_ENV === "production";
 
 // Define log level based on environment
 const getLogLevel = () => {
   if (isTest) {
     // In tests, default to silent unless LOG_LEVEL is explicitly set
-    return process.env.LOG_LEVEL ?? "silent";
+    return env.LOG_LEVEL ?? "silent";
   }
   if (isProduction) return "info";
   return "debug"; // Show all logs in development
@@ -28,14 +31,14 @@ const getLogLevel = () => {
 
 // Create base logger configuration
 const baseConfig: pino.LoggerOptions = {
-  level: process.env.LOG_LEVEL ?? getLogLevel(),
+  level: env.LOG_LEVEL ?? getLogLevel(),
   formatters: {
     level: (label) => {
       return { level: label.toUpperCase() };
     },
   },
   timestamp: pino.stdTimeFunctions.isoTime,
-  base: { env: process.env.NODE_ENV },
+  base: { env: env.NODE_ENV },
 };
 
 // Development configuration with pretty printing
@@ -56,11 +59,8 @@ const developmentConfig: pino.LoggerOptions = {
 // Create the logger instance
 // When LOG_FILE is set, write to both stdout and the file (for Docker logs + persistent file)
 const createProductionLogger = (): pino.Logger => {
-  if (process.env.LOG_FILE) {
-    return pino(
-      baseConfig,
-      pino.multistream([{ stream: process.stdout }, { stream: pino.destination(process.env.LOG_FILE) }])
-    );
+  if (env.LOG_FILE) {
+    return pino(baseConfig, pino.multistream([{ stream: process.stdout }, { stream: pino.destination(env.LOG_FILE) }]));
   }
   return pino(baseConfig);
 };

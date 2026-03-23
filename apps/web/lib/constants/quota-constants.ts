@@ -8,8 +8,13 @@
  * registry, linking the limit field, usage field, daily flag, and error message
  * in one place.
  *
+ * Numeric quota values are loaded from `config/timetiles.yml` (if present) with
+ * hardcoded defaults as fallback. See {@link getAppConfig} for details.
+ *
  * @module
  */
+import type { TrustLevelRateLimitsConfig } from "@/lib/config/app-config";
+import { getAppConfig } from "@/lib/config/app-config";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 /**
@@ -51,83 +56,10 @@ export interface UserUsage {
 }
 
 /**
- * Default quotas for each trust level.
+ * Default quotas for each trust level, loaded from app config.
  * -1 indicates unlimited.
  */
-export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = {
-  [TRUST_LEVELS.UNTRUSTED]: {
-    maxActiveSchedules: 0,
-    maxUrlFetchesPerDay: 0,
-    maxFileUploadsPerDay: 1,
-    maxEventsPerImport: 100,
-    maxTotalEvents: 100,
-    maxIngestJobsPerDay: 1,
-    maxFileSizeMB: 1,
-    maxCatalogsPerUser: 1,
-    maxScraperRepos: 0,
-    maxScraperRunsPerDay: 0,
-  },
-  [TRUST_LEVELS.BASIC]: {
-    maxActiveSchedules: 1,
-    maxUrlFetchesPerDay: 5,
-    maxFileUploadsPerDay: 3,
-    maxEventsPerImport: 1000,
-    maxTotalEvents: 5000,
-    maxIngestJobsPerDay: 5,
-    maxFileSizeMB: 10,
-    maxCatalogsPerUser: 2,
-    maxScraperRepos: 0,
-    maxScraperRunsPerDay: 0,
-  },
-  [TRUST_LEVELS.REGULAR]: {
-    maxActiveSchedules: 5,
-    maxUrlFetchesPerDay: 20,
-    maxFileUploadsPerDay: 10,
-    maxEventsPerImport: 10000,
-    maxTotalEvents: 50000,
-    maxIngestJobsPerDay: 20,
-    maxFileSizeMB: 50,
-    maxCatalogsPerUser: 5,
-    maxScraperRepos: 0,
-    maxScraperRunsPerDay: 0,
-  },
-  [TRUST_LEVELS.TRUSTED]: {
-    maxActiveSchedules: 20,
-    maxUrlFetchesPerDay: 100,
-    maxFileUploadsPerDay: 50,
-    maxEventsPerImport: 50000,
-    maxTotalEvents: 500000,
-    maxIngestJobsPerDay: 100,
-    maxFileSizeMB: 100,
-    maxCatalogsPerUser: 20,
-    maxScraperRepos: 3,
-    maxScraperRunsPerDay: 10,
-  },
-  [TRUST_LEVELS.POWER_USER]: {
-    maxActiveSchedules: 100,
-    maxUrlFetchesPerDay: 500,
-    maxFileUploadsPerDay: 200,
-    maxEventsPerImport: 200000,
-    maxTotalEvents: 2000000,
-    maxIngestJobsPerDay: 500,
-    maxFileSizeMB: 500,
-    maxCatalogsPerUser: 100,
-    maxScraperRepos: 10,
-    maxScraperRunsPerDay: 50,
-  },
-  [TRUST_LEVELS.UNLIMITED]: {
-    maxActiveSchedules: -1,
-    maxUrlFetchesPerDay: -1,
-    maxFileUploadsPerDay: -1,
-    maxEventsPerImport: -1,
-    maxTotalEvents: -1,
-    maxIngestJobsPerDay: -1,
-    maxFileSizeMB: 1000,
-    maxCatalogsPerUser: -1,
-    maxScraperRepos: -1,
-    maxScraperRunsPerDay: -1,
-  },
-};
+export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = getAppConfig().quotas as Record<TrustLevel, UserQuotas>;
 
 /**
  * Trust level labels for UI display.
@@ -265,97 +197,8 @@ export const normalizeTrustLevel = (trustLevel: string | number | null | undefin
 export type QuotaKey = keyof typeof QUOTAS;
 
 /**
- * Rate limit configurations by trust level.
+ * Rate limit configurations by trust level, loaded from app config.
  * Each level has progressively more generous limits.
  */
-export const RATE_LIMITS_BY_TRUST_LEVEL = {
-  [TRUST_LEVELS.UNTRUSTED]: {
-    FILE_UPLOAD: {
-      windows: [
-        { limit: 1, windowMs: 60 * 1000, name: "burst" }, // 1 per minute
-        { limit: 1, windowMs: 60 * 60 * 1000, name: "hourly" }, // 1 per hour
-        { limit: 1, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 1 per day
-      ],
-    },
-    API_GENERAL: {
-      windows: [
-        { limit: 1, windowMs: 1000, name: "burst" }, // 1 per second
-        { limit: 10, windowMs: 60 * 60 * 1000, name: "hourly" }, // 10 per hour
-      ],
-    },
-  },
-  [TRUST_LEVELS.BASIC]: {
-    FILE_UPLOAD: {
-      windows: [
-        { limit: 1, windowMs: 10 * 1000, name: "burst" }, // 1 per 10 seconds
-        { limit: 3, windowMs: 60 * 60 * 1000, name: "hourly" }, // 3 per hour
-        { limit: 3, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 3 per day
-      ],
-    },
-    API_GENERAL: {
-      windows: [
-        { limit: 2, windowMs: 1000, name: "burst" }, // 2 per second
-        { limit: 30, windowMs: 60 * 60 * 1000, name: "hourly" }, // 30 per hour
-      ],
-    },
-  },
-  [TRUST_LEVELS.REGULAR]: {
-    FILE_UPLOAD: {
-      windows: [
-        { limit: 1, windowMs: 5 * 1000, name: "burst" }, // 1 per 5 seconds
-        { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" }, // 5 per hour
-        { limit: 20, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 20 per day
-      ],
-    },
-    API_GENERAL: {
-      windows: [
-        { limit: 5, windowMs: 1000, name: "burst" }, // 5 per second
-        { limit: 50, windowMs: 60 * 60 * 1000, name: "hourly" }, // 50 per hour
-      ],
-    },
-  },
-  [TRUST_LEVELS.TRUSTED]: {
-    FILE_UPLOAD: {
-      windows: [
-        { limit: 2, windowMs: 5 * 1000, name: "burst" }, // 2 per 5 seconds
-        { limit: 20, windowMs: 60 * 60 * 1000, name: "hourly" }, // 20 per hour
-        { limit: 50, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 50 per day
-      ],
-    },
-    API_GENERAL: {
-      windows: [
-        { limit: 10, windowMs: 1000, name: "burst" }, // 10 per second
-        { limit: 200, windowMs: 60 * 60 * 1000, name: "hourly" }, // 200 per hour
-      ],
-    },
-  },
-  [TRUST_LEVELS.POWER_USER]: {
-    FILE_UPLOAD: {
-      windows: [
-        { limit: 5, windowMs: 5 * 1000, name: "burst" }, // 5 per 5 seconds
-        { limit: 100, windowMs: 60 * 60 * 1000, name: "hourly" }, // 100 per hour
-        { limit: 200, windowMs: 24 * 60 * 60 * 1000, name: "daily" }, // 200 per day
-      ],
-    },
-    API_GENERAL: {
-      windows: [
-        { limit: 20, windowMs: 1000, name: "burst" }, // 20 per second
-        { limit: 1000, windowMs: 60 * 60 * 1000, name: "hourly" }, // 1000 per hour
-      ],
-    },
-  },
-  [TRUST_LEVELS.UNLIMITED]: {
-    FILE_UPLOAD: {
-      windows: [
-        { limit: 10, windowMs: 1000, name: "burst" }, // 10 per second
-        { limit: 1000, windowMs: 60 * 60 * 1000, name: "hourly" }, // 1000 per hour
-      ],
-    },
-    API_GENERAL: {
-      windows: [
-        { limit: 100, windowMs: 1000, name: "burst" }, // 100 per second
-        { limit: 10000, windowMs: 60 * 60 * 1000, name: "hourly" }, // 10000 per hour
-      ],
-    },
-  },
-} as const;
+export const RATE_LIMITS_BY_TRUST_LEVEL: Record<TrustLevel, TrustLevelRateLimitsConfig> = getAppConfig()
+  .trustLevelRateLimits as Record<TrustLevel, TrustLevelRateLimitsConfig>;

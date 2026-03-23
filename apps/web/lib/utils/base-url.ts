@@ -4,11 +4,10 @@
  * @module
  * @category Utils
  */
-
-const DEFAULT_BASE_URL = "http://localhost:3000";
+import { getEnv } from "@/lib/config/env";
 
 /**
  * Get the application base URL from `NEXT_PUBLIC_PAYLOAD_URL`.
  * Falls back to `http://localhost:3000` in development.
  */
-export const getBaseUrl = (): string => process.env.NEXT_PUBLIC_PAYLOAD_URL ?? DEFAULT_BASE_URL;
+export const getBaseUrl = (): string => getEnv().NEXT_PUBLIC_PAYLOAD_URL;

@@ -11,6 +11,7 @@
 
 import crypto from "node:crypto";
 
+import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 import { safeFetch } from "@/lib/security/safe-fetch";
 import { parseDateInput } from "@/lib/utils/date";
@@ -39,11 +40,6 @@ interface CachedEntry {
   };
 }
 
-const getEnvInteger = (value: string | undefined, fallback: number): number => {
-  const parsedValue = parseStrictInteger(value);
-  return parsedValue ?? fallback;
-};
-
 export class UrlFetchCache {
   private readonly cache: Cache;
   private readonly defaultTTL: number;
@@ -51,12 +47,12 @@ export class UrlFetchCache {
   private readonly respectCacheControl: boolean;
 
   constructor() {
-    // eslint-disable-next-line sonarjs/publicly-writable-directories
-    const cacheDir = process.env.URL_FETCH_CACHE_DIR ?? "/tmp/url-fetch-cache";
-    const maxSize = getEnvInteger(process.env.URL_FETCH_CACHE_MAX_SIZE, 104857600);
-    this.defaultTTL = getEnvInteger(process.env.URL_FETCH_CACHE_TTL, 3600);
-    this.maxTTL = getEnvInteger(process.env.URL_FETCH_CACHE_MAX_TTL, 2592000); // 30 days default
-    this.respectCacheControl = process.env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL !== "false";
+    const env = getEnv();
+    const cacheDir = env.URL_FETCH_CACHE_DIR;
+    const maxSize = env.URL_FETCH_CACHE_MAX_SIZE;
+    this.defaultTTL = env.URL_FETCH_CACHE_TTL;
+    this.maxTTL = env.URL_FETCH_CACHE_MAX_TTL;
+    this.respectCacheControl = env.URL_FETCH_CACHE_RESPECT_CACHE_CONTROL;
 
     const storage = new FileSystemCacheStorage({ cacheDir, maxSize, defaultTTL: this.defaultTTL });
 

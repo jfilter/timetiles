@@ -50,7 +50,12 @@
     "SCRAPER_DEFAULT_MEMORY",
     "SCRAPER_MAX_REPO_SIZE_MB",
     "SCRAPER_MAX_OUTPUT_SIZE_MB",
-    "SCRAPER_DATA_DIR"
+    "SCRAPER_DATA_DIR",
+    "NEXT_PHASE",
+    "SKIP_DB_CHECK",
+    "NEXT_PUBLIC_SITE_URL",
+    "DEFAULT_LOCALE",
+    "SSRF_DNS_CHECK"
   ],
   "tasks": {
     "transit": { "dependsOn": ["^transit"] },

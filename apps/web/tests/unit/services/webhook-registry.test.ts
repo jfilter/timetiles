@@ -9,6 +9,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { resetEnv } from "@/lib/config/env";
 import { computeWebhookUrl, generateWebhookToken, handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 
 describe("generateWebhookToken", () => {
@@ -84,6 +85,7 @@ describe("computeWebhookUrl", () => {
 
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_PAYLOAD_URL;
+    resetEnv();
   });
 
   afterEach(() => {
@@ -126,6 +128,7 @@ describe("computeWebhookUrl", () => {
 
   it("uses NEXT_PUBLIC_PAYLOAD_URL env var if set", () => {
     process.env.NEXT_PUBLIC_PAYLOAD_URL = "https://example.com";
+    resetEnv();
 
     const data: Record<string, unknown> = { webhookEnabled: true, webhookToken: "my-token-value" };
 

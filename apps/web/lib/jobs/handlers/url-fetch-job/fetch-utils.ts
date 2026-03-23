@@ -11,6 +11,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 
+import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 import { getUrlFetchCache, type UrlFetchCache, type UrlFetchCacheOptions } from "@/lib/services/cache";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
@@ -140,7 +141,7 @@ const getCacheStatus = (headers: Record<string, string>): string | undefined =>
  */
 const getRetryDelay = (retryConfig?: RetryConfig) => {
   const retryDelayMinutes = retryConfig?.retryDelayMinutes ?? 0.1;
-  const isTestEnv = process.env.NODE_ENV === "test";
+  const isTestEnv = getEnv().NODE_ENV === "test";
   return isTestEnv ? 100 : retryDelayMinutes * 60 * 1000;
 };
 

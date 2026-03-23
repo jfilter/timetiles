@@ -10,6 +10,7 @@
  */
 import { v4 as uuidv4 } from "uuid";
 
+import { getEnv } from "@/lib/config/env";
 import { createIngestFileAndQueueDetection } from "@/lib/ingest/create-ingest-file";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -89,8 +90,9 @@ const parseEnvVars = (envVars: Scraper["envVars"]): Record<string, string> => {
  * Call the TimeScrape runner API.
  */
 const callRunner = async (request: RunnerRequest): Promise<RunnerResponse> => {
-  const runnerUrl = process.env.SCRAPER_RUNNER_URL;
-  const apiKey = process.env.SCRAPER_API_KEY;
+  const env = getEnv();
+  const runnerUrl = env.SCRAPER_RUNNER_URL;
+  const apiKey = env.SCRAPER_API_KEY;
 
   if (!runnerUrl) {
     throw new Error("SCRAPER_RUNNER_URL environment variable is not configured");
@@ -164,19 +166,18 @@ const triggerAutoImport = async (
   const filename = `scraper-import-${timestamp}-${uuidv4()}.csv`;
 
   // Download CSV from runner instead of decoding base64
-  const runnerUrl = process.env.SCRAPER_RUNNER_URL;
-  const apiKey = process.env.SCRAPER_API_KEY;
+  const env = getEnv();
 
-  if (!runnerUrl) {
+  if (!env.SCRAPER_RUNNER_URL) {
     throw new Error("SCRAPER_RUNNER_URL environment variable is not configured");
   }
 
-  const baseUrl = runnerUrl.endsWith("/") ? runnerUrl.slice(0, -1) : runnerUrl;
+  const baseUrl = env.SCRAPER_RUNNER_URL.endsWith("/") ? env.SCRAPER_RUNNER_URL.slice(0, -1) : env.SCRAPER_RUNNER_URL;
   const fullDownloadUrl = `${baseUrl}${downloadUrl}`;
 
   const headers: Record<string, string> = {};
-  if (apiKey) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
+  if (env.SCRAPER_API_KEY) {
+    headers["Authorization"] = `Bearer ${env.SCRAPER_API_KEY}`;
   }
 
   const fileResponse = await fetch(fullDownloadUrl, { headers });
@@ -376,18 +377,19 @@ const handleRunSuccess = async (
 
       // Clean up output on runner (best-effort)
       try {
-        const runnerUrl = process.env.SCRAPER_RUNNER_URL;
-        const apiKey = process.env.SCRAPER_API_KEY;
-        if (runnerUrl) {
-          const baseUrl = runnerUrl.endsWith("/") ? runnerUrl.slice(0, -1) : runnerUrl;
+        const cleanupEnv = getEnv();
+        if (cleanupEnv.SCRAPER_RUNNER_URL) {
+          const cleanupBaseUrl = cleanupEnv.SCRAPER_RUNNER_URL.endsWith("/")
+            ? cleanupEnv.SCRAPER_RUNNER_URL.slice(0, -1)
+            : cleanupEnv.SCRAPER_RUNNER_URL;
           // Extract runId from download_url: /output/{runId}/{filename}
           const urlParts = result.output.download_url.split("/");
           const runUuid = urlParts[2];
           const cleanupHeaders: Record<string, string> = {};
-          if (apiKey) {
-            cleanupHeaders["Authorization"] = `Bearer ${apiKey}`;
+          if (cleanupEnv.SCRAPER_API_KEY) {
+            cleanupHeaders["Authorization"] = `Bearer ${cleanupEnv.SCRAPER_API_KEY}`;
           }
-          await fetch(`${baseUrl}/output/${runUuid}`, { method: "DELETE", headers: cleanupHeaders });
+          await fetch(`${cleanupBaseUrl}/output/${runUuid}`, { method: "DELETE", headers: cleanupHeaders });
         }
       } catch {
         /* best-effort cleanup */

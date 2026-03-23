@@ -33,6 +33,14 @@ vi.mock("node:fs", () => ({
   default: { existsSync: mocks.mockExistsSync, readFileSync: mocks.mockReadFileSync, unlinkSync: mocks.mockUnlinkSync },
 }));
 
+// Mock app-config to prevent loadFromYaml from using the mocked fs
+vi.mock("@/lib/config/app-config", () => ({
+  getAppConfig: () => ({
+    batchSizes: { duplicateAnalysis: 5000, schemaDetection: 10000, eventCreation: 1000, databaseChunk: 1000 },
+  }),
+  resetAppConfig: vi.fn(),
+}));
+
 vi.mock("@/lib/middleware/auth", () => ({}));
 
 vi.mock("@/lib/services/quota-service", () => {

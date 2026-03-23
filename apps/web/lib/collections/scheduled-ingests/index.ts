@@ -21,6 +21,7 @@
 
 import type { CollectionConfig, Payload, PayloadRequest } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -38,7 +39,7 @@ const shouldSkipQuotaChecks = (
   req: { user?: User | null; context?: Record<string, unknown> },
   context?: Record<string, unknown>
 ): boolean =>
-  process.env.NODE_ENV === "test" ||
+  getEnv().NODE_ENV === "test" ||
   process.env.VITEST === "true" ||
   !req.user ||
   Boolean(context?.skipQuotaChecks ?? req.context?.skipQuotaChecks);

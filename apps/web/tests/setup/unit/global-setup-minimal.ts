@@ -10,10 +10,19 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { resetAppConfig } from "@/lib/config/app-config";
+import { resetEnv } from "@/lib/config/env";
+
 // Set test environment
 if (!process.env.NODE_ENV) {
   (process.env as any).NODE_ENV = "test";
 }
+
+// Reset cached config before each test so vi.stubEnv() changes take effect
+beforeEach(() => {
+  resetEnv();
+  resetAppConfig();
+});
 
 // Set upload directory environment variables for unit tests
 process.env.UPLOAD_DIR = `/tmp/uploads`;

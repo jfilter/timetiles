@@ -118,6 +118,8 @@ services:
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
       # Persistent log files (optional, set LOG_FILE=/var/log/timetiles/web.log to enable)
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+      # Application config (optional — all values have defaults)
+      - ${CONFIG_FILE:-./config/timetiles.yml}:/app/apps/web/config/timetiles.yml:ro
     networks:
       - timetiles-network
     healthcheck:
@@ -167,6 +169,7 @@ services:
     volumes:
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+      - ${CONFIG_FILE:-./config/timetiles.yml}:/app/apps/web/config/timetiles.yml:ro
     networks:
       - timetiles-network
 
@@ -215,6 +218,7 @@ services:
     volumes:
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+      - ${CONFIG_FILE:-./config/timetiles.yml}:/app/apps/web/config/timetiles.yml:ro
     networks:
       - timetiles-network
 
@@ -260,6 +264,7 @@ services:
     volumes:
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+      - ${CONFIG_FILE:-./config/timetiles.yml}:/app/apps/web/config/timetiles.yml:ro
     networks:
       - timetiles-network
 
