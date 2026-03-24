@@ -92,6 +92,10 @@ ENV DATABASE_URL=postgresql://user:pass@localhost:5432/db
 ENV PAYLOAD_SECRET=dummy_secret_for_build_only
 ENV NEXT_PUBLIC_PAYLOAD_URL=http://localhost
 
+# Build UI package (must be built before web app can resolve @timetiles/ui)
+WORKDIR /build/packages/ui
+RUN pnpm build
+
 # Build the application with experimental compile mode (no DB connection needed)
 WORKDIR /build/apps/web
 RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile --webpack

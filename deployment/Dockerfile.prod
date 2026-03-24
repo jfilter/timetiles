@@ -44,6 +44,10 @@ ENV DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@postgres:5432/db}
 ENV PAYLOAD_SECRET=${PAYLOAD_SECRET:-dummy_secret_for_build_only}
 ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
 
+# Build UI package (must be built before web app can resolve @timetiles/ui)
+WORKDIR /app/packages/ui
+RUN pnpm build
+
 # Build the application
 WORKDIR /app/apps/web
 # Use experimental build mode to avoid DB connection during build
