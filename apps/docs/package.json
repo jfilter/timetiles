@@ -5,7 +5,7 @@
   "description": "The documentation site for the TimeTiles project.",
   "type": "module",
   "scripts": {
-    "dev": "pnpm docs:api && next dev --port 3001",
+    "dev": "pnpm docs:api && next dev --port 3001 --webpack",
     "build": "pnpm docs:api && next build --webpack",
     "docs:api": "cd ../web && pnpm exec typedoc && tsx ../docs/scripts/clean-typedoc-output.ts && tsx ../docs/scripts/generate-api-meta.ts",
     "docs:api:watch": "nodemon --watch ../web/lib --ext ts --exec \"pnpm docs:api\"",

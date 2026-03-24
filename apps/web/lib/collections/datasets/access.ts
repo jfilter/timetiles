@@ -15,7 +15,7 @@
  */
 import type { Access, Where } from "payload";
 
-import { isEditorOrAdmin, isPrivileged } from "../shared-fields";
+import { denyPendingDeletion, isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
 /**
  * Read access: Datasets visible if both dataset AND catalog are public, OR if user owns the catalog.
@@ -46,17 +46,17 @@ export const read: Access = ({ req: { user } }): boolean | Where => {
 };
 
 /**
- * Create access: Any authenticated user can create datasets.
+ * Create access: Any authenticated user can create datasets (denied for pending-deletion accounts).
  * The beforeChange hook validates that users can only create in their own catalogs
  * (admins/editors can create in any catalog).
  */
-export const create: Access = async ({ req: { user, payload } }) => {
+export const create: Access = denyPendingDeletion(async ({ req: { user, payload } }) => {
   if (!user) return false;
 
   // Check feature flag - allow any authenticated user, hook validates catalog ownership/publicity
   const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
   return isFeatureEnabled(payload, "enableDatasetCreation");
-};
+});
 
 /**
  * Update access: Admins/editors can update all datasets, catalog owners can update their own.

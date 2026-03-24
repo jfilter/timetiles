@@ -29,6 +29,22 @@ export const isEditorOrAdmin: Access = ({ req: { user } }) => isPrivileged(user)
 export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
 
 /**
+ * Access control that denies create operations for users with pending account deletion.
+ * Wraps an existing Access function, adding the deletion-status guard on top.
+ * Use this for collections where pending-deletion users should not be able to create new data.
+ */
+export const denyPendingDeletion =
+  (inner: Access): Access =>
+  // eslint-disable-next-line sonarjs/function-return-type -- wrapping Access inherently returns mixed types
+  (args) => {
+    const user = args.req.user;
+    if (user && (user as { deletionStatus?: string }).deletionStatus === "pending_deletion") {
+      return false;
+    }
+    return inner(args);
+  };
+
+/**
  * Factory for ownership-based access control.
  * Returns true for editors/admins, or a WHERE clause filtering by ownership field.
  * Uses zero-query approach (WHERE clause) instead of per-document DB lookup.

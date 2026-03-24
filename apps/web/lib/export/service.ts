@@ -18,12 +18,27 @@ import type { Payload } from "payload";
 import { getEnv } from "@/lib/config/env";
 import { requireRelationId } from "@/lib/utils/relation-id";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
-import type { Catalog, Dataset, Event, IngestFile, IngestJob, Media, ScheduledIngest } from "@/payload-types";
+import type {
+  AuditLog,
+  Catalog,
+  Dataset,
+  DatasetSchema,
+  Event,
+  IngestFile,
+  IngestJob,
+  Media,
+  ScheduledIngest,
+  Scraper,
+  ScraperRepo,
+  ScraperRun,
+} from "@/payload-types";
 
 import { createLogger } from "../logger";
 import type {
+  AuditLogExportData,
   CatalogExportData,
   DatasetExportData,
+  DatasetSchemaExportData,
   EventExportData,
   ExecuteExportResult,
   ExportData,
@@ -33,6 +48,9 @@ import type {
   IngestJobExportData,
   MediaExportData,
   ScheduledIngestExportData,
+  ScraperExportData,
+  ScraperRepoExportData,
+  ScraperRunExportData,
   UserExportData,
 } from "./types";
 
@@ -59,26 +77,32 @@ export class DataExportService {
    */
   async getExportSummary(userId: number): Promise<ExportSummary> {
     // Count top-level collections in parallel
-    const [catalogs, datasets, importFilesCount, scheduledIngests, mediaFiles] = await Promise.all([
+    const [catalogs, datasets, importFilesCount, scheduledIngests, mediaFiles, scraperRepos] = await Promise.all([
       countUserDocs(this.payload, "catalogs", userId),
       countUserDocs(this.payload, "datasets", userId),
       countUserDocs(this.payload, "ingest-files", userId, { userField: "user" }),
       countUserDocs(this.payload, "scheduled-ingests", userId),
       countUserDocs(this.payload, "media", userId),
+      countUserDocs(this.payload, "scraper-repos", userId),
     ]);
 
-    // Get dataset IDs to count events
+    // Get dataset IDs to count events and dataset-schemas
     const userDatasets = await findUserDocs(this.payload, "datasets", userId, { limit: 10000 });
     const datasetIds = userDatasets.map((d) => d.id);
 
     let eventsCount = 0;
+    let datasetSchemasCount = 0;
     if (datasetIds.length > 0) {
-      const events = await this.payload.count({
-        collection: "events",
-        where: { dataset: { in: datasetIds } },
-        overrideAccess: true,
-      });
+      const [events, schemas] = await Promise.all([
+        this.payload.count({ collection: "events", where: { dataset: { in: datasetIds } }, overrideAccess: true }),
+        this.payload.count({
+          collection: "dataset-schemas",
+          where: { dataset: { in: datasetIds } },
+          overrideAccess: true,
+        }),
+      ]);
       eventsCount = events.totalDocs;
+      datasetSchemasCount = schemas.totalDocs;
     }
 
     // Count import jobs via import files
@@ -98,6 +122,21 @@ export class DataExportService {
       importJobsCount = importJobs.totalDocs;
     }
 
+    // Count audit log entries, scrapers, and scraper runs
+    const [auditLogResult, scrapersResult, scraperRunsResult] = await Promise.all([
+      this.payload.count({ collection: "audit-log", where: { userId: { equals: userId } }, overrideAccess: true }),
+      this.payload.count({
+        collection: "scrapers",
+        where: { repoCreatedBy: { equals: userId } },
+        overrideAccess: true,
+      }),
+      this.payload.count({
+        collection: "scraper-runs",
+        where: { scraperOwner: { equals: userId } },
+        overrideAccess: true,
+      }),
+    ]);
+
     return {
       catalogs,
       datasets,
@@ -106,6 +145,11 @@ export class DataExportService {
       importJobs: importJobsCount,
       scheduledIngests,
       mediaFiles,
+      datasetSchemas: datasetSchemasCount,
+      auditLogEntries: auditLogResult.totalDocs,
+      scraperRepos,
+      scrapers: scrapersResult.totalDocs,
+      scraperRuns: scraperRunsResult.totalDocs,
     };
   }
 
@@ -289,21 +333,168 @@ export class DataExportService {
   }
 
   /**
+   * Fetch dataset schemas for export.
+   */
+  private async fetchDatasetSchemas(datasetIds: number[]): Promise<DatasetSchemaExportData[]> {
+    if (datasetIds.length === 0) return [];
+
+    const result = await this.payload.find({
+      collection: "dataset-schemas",
+      where: { dataset: { in: datasetIds } },
+      limit: 10000,
+      overrideAccess: true,
+    });
+
+    return result.docs.map(
+      (s: DatasetSchema): DatasetSchemaExportData => ({
+        id: s.id,
+        datasetId: requireRelationId(s.dataset, "datasetSchema.dataset"),
+        versionNumber: s.versionNumber,
+        schema: s.schema,
+        fieldMetadata: s.fieldMetadata,
+        eventCountAtCreation: s.eventCountAtCreation,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      })
+    );
+  }
+
+  /**
+   * Fetch audit log entries for export (sanitized — no IP addresses).
+   */
+  private async fetchAuditLog(userId: number): Promise<AuditLogExportData[]> {
+    const result = await this.payload.find({
+      collection: "audit-log",
+      where: { userId: { equals: userId } },
+      limit: 10000,
+      overrideAccess: true,
+    });
+
+    return result.docs.map(
+      (a: AuditLog): AuditLogExportData => ({
+        id: a.id,
+        action: a.action,
+        timestamp: a.timestamp,
+        details: a.details,
+        createdAt: a.createdAt,
+      })
+    );
+  }
+
+  /**
+   * Fetch scraper repos for export.
+   */
+  private async fetchScraperRepos(userId: number): Promise<ScraperRepoExportData[]> {
+    const docs = await findUserDocs(this.payload, "scraper-repos", userId, { limit: 10000 });
+
+    return docs.map(
+      (r: ScraperRepo): ScraperRepoExportData => ({
+        id: r.id,
+        name: r.name,
+        sourceType: r.sourceType,
+        gitUrl: r.gitUrl,
+        gitBranch: r.gitBranch,
+        lastSyncAt: r.lastSyncAt,
+        lastSyncStatus: r.lastSyncStatus,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      })
+    );
+  }
+
+  /**
+   * Fetch scrapers for export (via repoCreatedBy denormalized field).
+   */
+  private async fetchScrapers(userId: number): Promise<ScraperExportData[]> {
+    const result = await this.payload.find({
+      collection: "scrapers",
+      where: { repoCreatedBy: { equals: userId } },
+      limit: 10000,
+      overrideAccess: true,
+    });
+
+    return result.docs.map(
+      (s: Scraper): ScraperExportData => ({
+        id: s.id,
+        name: s.name,
+        slug: s.slug,
+        repoId: requireRelationId(s.repo, "scraper.repo"),
+        runtime: s.runtime,
+        entrypoint: s.entrypoint,
+        outputFile: s.outputFile,
+        schedule: s.schedule,
+        enabled: s.enabled,
+        timeoutSecs: s.timeoutSecs,
+        memoryMb: s.memoryMb,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      })
+    );
+  }
+
+  /**
+   * Fetch scraper runs for export (via scraperOwner denormalized field).
+   */
+  private async fetchScraperRuns(userId: number): Promise<ScraperRunExportData[]> {
+    const result = await this.payload.find({
+      collection: "scraper-runs",
+      where: { scraperOwner: { equals: userId } },
+      limit: 10000,
+      overrideAccess: true,
+    });
+
+    return result.docs.map(
+      (r: ScraperRun): ScraperRunExportData => ({
+        id: r.id,
+        scraperId: requireRelationId(r.scraper, "scraperRun.scraper"),
+        status: r.status,
+        triggeredBy: r.triggeredBy,
+        startedAt: r.startedAt,
+        finishedAt: r.finishedAt,
+        durationMs: r.durationMs,
+        exitCode: r.exitCode,
+        outputRows: r.outputRows,
+        outputBytes: r.outputBytes,
+        createdAt: r.createdAt,
+      })
+    );
+  }
+
+  /**
    * Fetch all user data for export (except events which are batched).
    */
   async fetchAllUserData(userId: number): Promise<Omit<ExportData, "events">> {
-    const [user, catalogs, datasets, importFiles, scheduledIngests, media] = await Promise.all([
+    const [
+      user,
+      catalogs,
+      datasets,
+      importFiles,
+      scheduledIngests,
+      media,
+      auditLog,
+      scraperRepos,
+      scrapers,
+      scraperRuns,
+    ] = await Promise.all([
       this.fetchUserProfile(userId),
       this.fetchCatalogs(userId),
       this.fetchDatasets(userId),
       this.fetchIngestFiles(userId),
       this.fetchScheduledIngests(userId),
       this.fetchMedia(userId),
+      this.fetchAuditLog(userId),
+      this.fetchScraperRepos(userId),
+      this.fetchScrapers(userId),
+      this.fetchScraperRuns(userId),
     ]);
 
-    // Fetch import jobs using the import file IDs
+    // Fetch dependent collections using parent IDs
     const importFileIds = importFiles.map((f) => f.id);
-    const importJobs = await this.fetchIngestJobs(importFileIds);
+    const datasetIds = datasets.map((d) => d.id);
+    const [importJobs, datasetSchemas] = await Promise.all([
+      this.fetchIngestJobs(importFileIds),
+      this.fetchDatasetSchemas(datasetIds),
+    ]);
 
     return {
       exportedAt: new Date().toISOString(),
@@ -315,6 +506,11 @@ export class DataExportService {
       importJobs,
       scheduledIngests,
       media,
+      datasetSchemas,
+      auditLog,
+      scraperRepos,
+      scrapers,
+      scraperRuns,
     };
   }
 
@@ -368,10 +564,15 @@ export class DataExportService {
       // Add collections
       archive.append(JSON.stringify(baseData.catalogs, null, 2), { name: "catalogs.json" });
       archive.append(JSON.stringify(baseData.datasets, null, 2), { name: "datasets.json" });
+      archive.append(JSON.stringify(baseData.datasetSchemas, null, 2), { name: "dataset-schemas.json" });
       archive.append(JSON.stringify(baseData.importFiles, null, 2), { name: "ingest-files.json" });
       archive.append(JSON.stringify(baseData.importJobs, null, 2), { name: "import-jobs.json" });
       archive.append(JSON.stringify(baseData.scheduledIngests, null, 2), { name: "scheduled-ingests.json" });
       archive.append(JSON.stringify(baseData.media, null, 2), { name: "media/metadata.json" });
+      archive.append(JSON.stringify(baseData.auditLog, null, 2), { name: "audit-log.json" });
+      archive.append(JSON.stringify(baseData.scraperRepos, null, 2), { name: "scraper-repos.json" });
+      archive.append(JSON.stringify(baseData.scrapers, null, 2), { name: "scrapers.json" });
+      archive.append(JSON.stringify(baseData.scraperRuns, null, 2), { name: "scraper-runs.json" });
 
       // Process events and media asynchronously, then finalize
       void (async () => {

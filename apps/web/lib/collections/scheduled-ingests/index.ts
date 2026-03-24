@@ -27,7 +27,7 @@ import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 
-import { createCommonConfig, createOwnershipAccess, isPrivileged } from "../shared-fields";
+import { createCommonConfig, createOwnershipAccess, denyPendingDeletion, isPrivileged } from "../shared-fields";
 import { coreFields } from "./fields/core-fields";
 import { importConfigFields } from "./fields/ingest-config-fields";
 import { runtimeFields } from "./fields/runtime-fields";
@@ -243,16 +243,16 @@ const ScheduledIngests: CollectionConfig = {
       return { createdBy: { equals: user.id } };
     },
 
-    // Anyone authenticated can create, but createdBy will be set automatically
+    // Anyone authenticated can create (denied for pending-deletion accounts), but createdBy will be set automatically
     // Quota check moved to beforeChange hook to avoid deadlock
-    create: async ({ req: { user, payload } }) => {
+    create: denyPendingDeletion(async ({ req: { user, payload } }) => {
       if (!user) return false;
 
       // Check feature flag - even admins can't create if disabled
       const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
       // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
       return await isFeatureEnabled(payload, "enableScheduledIngests");
-    },
+    }),
 
     // Users can only update their own scheduled ingests, editors and admins can update all
     update: createOwnershipAccess("scheduled-ingests"),

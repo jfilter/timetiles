@@ -1,4 +1,5 @@
 export default {
+  "data-flow": "Data Flow",
   "data-processing-pipeline": "Data Ingestion Pipeline",
   "background-jobs": "Background Jobs",
   "dynamic-filters": "Dynamic Filters",

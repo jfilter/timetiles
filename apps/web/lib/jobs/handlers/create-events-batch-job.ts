@@ -332,6 +332,15 @@ export const createEventsBatchJob = {
   onFail: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
+    // Clean up orphaned events from successful batches before the failure.
+    // Wrapped separately so cleanup failure doesn't prevent status update.
+    const failLogger = createJobLogger(String(ingestJobId), "create-events-batch-onFail");
+    try {
+      await cleanupPriorAttempt(args.req.payload, ingestJobId, failLogger);
+    } catch {
+      // Best-effort cleanup — log handled inside cleanupPriorAttempt
+    }
+
     try {
       await args.req.payload.update({
         collection: COLLECTION_NAMES.INGEST_JOBS,

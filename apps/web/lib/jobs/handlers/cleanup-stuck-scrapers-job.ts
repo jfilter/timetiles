@@ -2,8 +2,13 @@
  * Job handler for cleaning up stuck scrapers.
  *
  * Identifies and resets scrapers that have been stuck in "running" status
- * for too long (default 2 hours). This prevents permanent blocking of
- * scrapers due to job failures or system crashes.
+ * for too long (default 4 hours). The threshold is intentionally generous
+ * because `lastRunAt` records the trigger/queue time, not when processing
+ * actually started — there can be significant delay due to queue backlog
+ * or worker restarts.
+ *
+ * Before resetting, also checks whether a Payload job is still actively
+ * processing the scraper to avoid killing in-progress work.
  *
  * Mirrors the behavior of cleanup-stuck-scheduled-ingests-job.ts.
  *
@@ -18,10 +23,11 @@ import { parseDateInput } from "@/lib/utils/date";
 import type { Scraper } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
-import { isResourceStuck } from "../utils/stuck-detection";
+import { hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
 
 export interface CleanupStuckScrapersJobInput {
-  /** Hours after which a running scraper is considered stuck (default: 2) */
+  /** Hours after which a running scraper is considered stuck (default: 4).
+   * Uses 4h because `lastRunAt` is the trigger time, not when processing started. */
   stuckThresholdHours?: number;
   /** Whether to run in dry-run mode (default: false) */
   dryRun?: boolean;
@@ -64,7 +70,9 @@ export const cleanupStuckScrapersJob = {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CleanupStuckScrapersJobInput;
 
-    const stuckThresholdHours = input?.stuckThresholdHours ?? 2;
+    // Default 4h threshold accounts for the gap between trigger time (lastRunAt) and
+    // actual processing start. See stuck-detection.ts for details.
+    const stuckThresholdHours = input?.stuckThresholdHours ?? 4;
     const dryRun = input?.dryRun ?? false;
     const currentTime = new Date();
 
@@ -95,8 +103,18 @@ export const cleanupStuckScrapersJob = {
       for (const scraper of runningScrapers.docs) {
         try {
           if (isResourceStuck(scraper.lastRunStatus, "running", scraper.lastRunAt, currentTime, stuckThresholdHours)) {
-            stuckCount++;
+            // Secondary safety check: verify no Payload job is actively processing this scraper
+            const isActive = await hasActivePayloadJob(payload, "input.scraperId", scraper.id);
 
+            if (isActive) {
+              logger.info("Scraper appears stuck but has active Payload job, skipping reset", {
+                scraperId: scraper.id,
+                name: scraper.name,
+              });
+              continue;
+            }
+
+            stuckCount++;
             if (!dryRun) {
               await resetStuckScraper(payload, scraper, currentTime);
               resetCount++;

@@ -36,7 +36,10 @@ export const GET = apiRoute({
     }
 
     // Build access control condition
-    const catalogIdList = sql.join(accessibleCatalogIds, sql`, `);
+    const catalogIdList = sql.join(
+      accessibleCatalogIds.map((id) => sql`${id}`),
+      sql`, `
+    );
     const accessCondition = accessibleCatalogIds.length > 0 ? sql`d.catalog_id IN (${catalogIdList})` : sql`1=0`;
 
     // Query event counts by catalog

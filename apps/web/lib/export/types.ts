@@ -19,6 +19,11 @@ export interface ExportSummary {
   importJobs: number;
   scheduledIngests: number;
   mediaFiles: number;
+  datasetSchemas: number;
+  auditLogEntries: number;
+  scraperRepos: number;
+  scrapers: number;
+  scraperRuns: number;
 }
 
 /**
@@ -161,6 +166,82 @@ export interface MediaExportData {
 }
 
 /**
+ * Dataset schema data for export.
+ */
+export interface DatasetSchemaExportData {
+  id: number;
+  datasetId: number;
+  versionNumber: number;
+  schema: unknown;
+  fieldMetadata: unknown;
+  eventCountAtCreation?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Audit log entry for export (sanitized — no IP addresses).
+ */
+export interface AuditLogExportData {
+  id: number;
+  action: string;
+  timestamp: string;
+  details?: unknown;
+  createdAt: string;
+}
+
+/**
+ * Scraper repo data for export.
+ */
+export interface ScraperRepoExportData {
+  id: number;
+  name: string;
+  sourceType: string;
+  gitUrl?: string | null;
+  gitBranch?: string | null;
+  lastSyncAt?: string | null;
+  lastSyncStatus?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Scraper data for export.
+ */
+export interface ScraperExportData {
+  id: number;
+  name: string;
+  slug: string;
+  repoId: number;
+  runtime: string;
+  entrypoint: string;
+  outputFile?: string | null;
+  schedule?: string | null;
+  enabled?: boolean | null;
+  timeoutSecs?: number | null;
+  memoryMb?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Scraper run data for export.
+ */
+export interface ScraperRunExportData {
+  id: number;
+  scraperId: number;
+  status: string;
+  triggeredBy?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  durationMs?: number | null;
+  exitCode?: number | null;
+  outputRows?: number | null;
+  outputBytes?: number | null;
+  createdAt: string;
+}
+
+/**
  * Complete export data structure.
  */
 export interface ExportData {
@@ -174,6 +255,11 @@ export interface ExportData {
   importJobs: IngestJobExportData[];
   scheduledIngests: ScheduledIngestExportData[];
   media: MediaExportData[];
+  datasetSchemas: DatasetSchemaExportData[];
+  auditLog: AuditLogExportData[];
+  scraperRepos: ScraperRepoExportData[];
+  scrapers: ScraperExportData[];
+  scraperRuns: ScraperRunExportData[];
 }
 
 /**
