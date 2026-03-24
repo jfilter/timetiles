@@ -166,9 +166,14 @@ export const runMigrations = (connectionString: string): void => {
   try {
     // Mask password in log output
     const safeUrl = connectionString.replace(/\/\/[^/]+@/, "//***:***@");
-    console.log(`[migrations] Running payload migrate against ${safeUrl}`);
-    console.log(
-      `[migrations] env: PAYLOAD_SECRET=${process.env.PAYLOAD_SECRET ? "set" : "MISSING"}, NEXT_PUBLIC_PAYLOAD_URL=${process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "MISSING"}, cwd=${process.cwd()}`
+    logger.info(`Running payload migrate against ${safeUrl}`);
+    logger.info(
+      {
+        PAYLOAD_SECRET_set: !!process.env.PAYLOAD_SECRET,
+        NEXT_PUBLIC_PAYLOAD_URL: process.env.NEXT_PUBLIC_PAYLOAD_URL,
+        cwd: process.cwd(),
+      },
+      "Migration env check"
     );
 
     const env = { ...process.env, DATABASE_URL: connectionString };
@@ -176,9 +181,9 @@ export const runMigrations = (connectionString: string): void => {
     // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
     execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate`, { stdio: "inherit", env });
 
-    console.log("[migrations] Migrations completed successfully");
+    logger.info("Migrations completed successfully");
   } catch (error) {
-    console.error("[migrations] Migration FAILED:", error);
+    logger.error("Migration FAILED:", error);
     throw new Error(`Failed to run migrations: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
@@ -256,9 +261,7 @@ const shouldSkipSetup = async (
   verbose: boolean
 ): Promise<boolean> => {
   const exists = await databaseExists(dbName);
-  console.log(
-    `[db-setup] shouldSkipSetup: db=${dbName}, exists=${exists}, skipIfExists=${skipIfExists}, dropIfExists=${dropIfExists}`
-  );
+  logger.info({ dbName, exists, skipIfExists, dropIfExists }, "shouldSkipSetup check");
 
   if (exists && skipIfExists && !dropIfExists) {
     logVerbose(verbose, `Database ${dbName} already exists, skipping setup`);

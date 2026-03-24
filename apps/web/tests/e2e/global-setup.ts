@@ -124,14 +124,17 @@ export default async function globalSetup(): Promise<void> {
   }
 
   // Create database with migrations
+  console.log(`🗄️  setupDatabase: name=${databaseName}, url=${safeDatabaseUrl}`);
   await setupDatabase({
     databaseName,
     connectionString: databaseUrl,
     enablePostGIS: true,
     createPayloadSchema: true,
     runMigrations: true,
+    skipIfExists: false,
     verbose: true,
   });
+  console.log(`✅ setupDatabase completed`);
 
   // NOTE: Seed AFTER build — `next build` connects to the DB for Payload
   // migration generation, which can reset seeded data.
