@@ -105,7 +105,7 @@ const createDrizzleMock = () => {
     for (const m of ["select", "from", "where", "limit", "insert", "values", "returning", "delete"]) {
       chain[m] = vi.fn().mockReturnValue(chain);
     }
-    // oxlint-disable-next-line unicorn/no-thenable -- intentional thenable for Drizzle mock
+    // oxlint-disable-next-line unicorn/no-thenable, promise/prefer-await-to-then -- intentional thenable for Drizzle mock
     chain.then = (resolve: any, reject?: any) => Promise.resolve(resolveValue).then(resolve, reject);
     return chain;
   };
