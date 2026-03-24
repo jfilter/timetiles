@@ -1,0 +1,528 @@
+# UI Customization Architecture
+
+TimeTiles implements a six-layer UI customization system documented in ADR 0015. This page covers the architecture and extension points for developers.
+
+## System Overview
+
+```
+┌─────────────────────────────────────────────────┐
+│                   CSS Output                     │
+│  Semantic tokens + custom CSS + block styles     │
+├─────────────────────────────────────────────────┤
+│                  SiteBranding                    │
+│  Injects CSS custom properties from context      │
+├─────────────────────────────────────────────────┤
+│                 SiteContext                       │
+│  Resolves: theme preset → site overrides         │
+├─────────────────────────────────────────────────┤
+│              Payload CMS Data                    │
+│  Themes · Sites · Pages · Layout Templates       │
+├─────────────────────────────────────────────────┤
+│             Block Registry                       │
+│  Field definitions + style fields + renderers    │
+└─────────────────────────────────────────────────┘
+```
+
+### Key Files
+
+| File                                      | Purpose                                               |
+| ----------------------------------------- | ----------------------------------------------------- |
+| `packages/ui/src/themes/cartographic.css` | Cartographic theme (default) — all tokens             |
+| `packages/ui/src/themes/modern.css`       | Modern theme — scoped to `.theme-modern`              |
+| `packages/ui/src/styles/globals.css`      | Tailwind setup, imports theme, `@theme inline` bridge |
+| `packages/ui/src/provider.tsx`            | UIProvider — chart themes, map colors, newsletter     |
+| `lib/hooks/use-theme-preset.ts`           | Runtime theme switching via CSS class                 |
+| `app/_components/theme-preset-picker.tsx` | Palette icon UI for theme switching                   |
+| `lib/blocks/registry.ts`                  | Block plugin registry                                 |
+| `lib/blocks/block-style-fields.ts`        | Shared block style field definitions                  |
+| `lib/blocks/*.ts`                         | Individual block definitions                          |
+| `lib/collections/themes.ts`               | Themes collection (CMS presets)                       |
+| `lib/collections/layout-templates.ts`     | Layout templates collection                           |
+| `lib/collections/sites/index.ts`          | Sites with branding + custom code                     |
+| `lib/context/site-context.tsx`            | Site context with expanded branding types             |
+| `components/site-branding.tsx`            | CSS custom property injection                         |
+| `components/block-renderer.tsx`           | Block rendering with style wrapper                    |
+| `components/layout/layout-shell.tsx`      | Layout template resolution                            |
+| `lib/utils/css-sanitizer.ts`              | CSS sanitization for injection                        |
+
+For the full theming API (semantic tokens, UIProvider, dark mode, fonts), see the [UI package documentation](/development/packages/ui).
+
+---
+
+## Block Registry
+
+The block registry allows developers to add new block types to the page builder without modifying core code.
+
+### Architecture
+
+```
+lib/blocks/
+├── registry.ts          # Core registry (registerBlock, getPayloadBlocks)
+├── block-style-fields.ts # Shared style fields (auto-appended)
+├── shared.ts            # Shared options (icons, accents)
+├── index.ts             # Barrel import (triggers registration)
+├── hero.ts              # Built-in block definitions
+├── features.ts
+├── stats.ts
+├── details-grid.ts
+├── timeline.ts
+├── testimonials.ts
+├── rich-text.ts
+├── cta.ts
+├── newsletter-form.ts
+└── newsletter-cta.ts
+```
+
+### BlockPlugin Interface
+
+```typescript
+interface BlockPlugin {
+  /** Unique slug for this block type */
+  slug: string;
+  /** Labels for the Payload admin UI */
+  labels: { singular: string; plural: string };
+  /** Payload CMS field definitions */
+  fields: PayloadBlock["fields"];
+  /** Optional React render function */
+  render?: (block: Record<string, unknown>, key: string) => React.ReactElement;
+}
+```
+
+### Registering a Custom Block
+
+Create a new file in `lib/blocks/`:
+
+```typescript
+// lib/blocks/pricing-table.ts
+import type { Field } from "payload";
+
+import { registerBlock } from "./registry";
+
+registerBlock({
+  slug: "pricingTable",
+  labels: { singular: "Pricing Table", plural: "Pricing Tables" },
+  fields: [
+    { name: "title", type: "text", required: true, localized: true },
+    {
+      name: "tiers",
+      type: "array",
+      required: true,
+      minRows: 1,
+      fields: [
+        { name: "name", type: "text", required: true },
+        { name: "price", type: "text", required: true },
+        { name: "description", type: "textarea" },
+        { name: "features", type: "array", fields: [{ name: "text", type: "text", required: true }] },
+        { name: "ctaText", type: "text", defaultValue: "Get Started" },
+        { name: "ctaLink", type: "text", required: true },
+        { name: "highlighted", type: "checkbox", defaultValue: false },
+      ],
+    },
+  ],
+});
+```
+
+Then add the import to `lib/blocks/index.ts`:
+
+```typescript
+import "./pricing-table";
+```
+
+### How It Works
+
+1. Each block file calls `registerBlock()` at module load, adding its definition to an in-memory `Map`.
+2. `lib/blocks/index.ts` imports all block files to trigger registration.
+3. `lib/collections/pages.ts` imports the barrel and calls `getPayloadBlocks()`, which:
+   - Iterates all registered plugins
+   - Automatically appends `blockStyleFields` to each block's fields
+   - Returns Payload-compatible `Block[]` definitions
+4. The block style fields (`paddingTop`, `paddingBottom`, `maxWidth`, etc.) are added automatically — you don't need to include them in your block definition.
+
+### Adding a Renderer
+
+To render your custom block, add it to the `blockRenderers` map in `components/block-renderer.tsx`:
+
+```typescript
+import type { Block } from "@/lib/types/cms-blocks";
+
+// Add to the blockRenderers map
+const blockRenderers: Record<string, (block: Block, key: string) => React.ReactElement> = {
+  // ... existing renderers
+  pricingTable: (block, key) => {
+    const b = block as Record<string, unknown>;
+    return <PricingTable key={key} tiers={b.tiers as Tier[]} title={b.title as string} />;
+  },
+};
+```
+
+### Adding Types
+
+Add a TypeScript interface for your block to `lib/types/cms-blocks.ts`:
+
+```typescript
+export interface PricingTableBlock {
+  blockType: "pricingTable";
+  title: string;
+  tiers: Array<{
+    name: string;
+    price: string;
+    description?: string | null;
+    features?: Array<{ text: string; id?: string | null }> | null;
+    ctaText?: string | null;
+    ctaLink: string;
+    highlighted?: boolean | null;
+    id?: string | null;
+  }>;
+  blockStyle?: BlockStyle | null;
+  id?: string | null;
+  blockName?: string | null;
+}
+```
+
+Add it to the `Block` union type:
+
+```typescript
+export type Block =
+  | HeroBlock
+  | FeaturesBlock
+  // ...existing types
+  | PricingTableBlock;
+```
+
+### Registry API
+
+```typescript
+import {
+  registerBlock, // Register a new block plugin
+  getRegisteredBlocks, // Get all registered BlockPlugin[]
+  getBlock, // Get a single plugin by slug
+  getPayloadBlocks, // Get Payload Block[] with style fields
+  getBlockRenderers, // Get render map from plugins with renderers
+} from "@/lib/blocks/registry";
+```
+
+---
+
+## Block Style System
+
+Every block automatically receives style controls via the `blockStyleFields` definition in `lib/blocks/block-style-fields.ts`.
+
+### How Styles Are Applied
+
+The `BlockStyleWrapper` component in `block-renderer.tsx` wraps every rendered block:
+
+```
+BlockRenderer
+  └── for each block:
+        └── BlockStyleWrapper
+              ├── <div> with classes + inline styles (if style configured)
+              │     └── rendered block content
+              └── separator element (if configured)
+```
+
+### Style Resolution
+
+```typescript
+// Padding maps to Tailwind classes
+const PADDING_MAP = {
+  none: "py-0", // → pt-0 or pb-0
+  sm: "py-4",
+  md: "py-8",
+  lg: "py-16",
+  xl: "py-24",
+};
+
+// Max width maps to Tailwind classes
+const MAX_WIDTH_MAP = { sm: "max-w-3xl", md: "max-w-5xl", lg: "max-w-6xl", xl: "max-w-7xl", full: "max-w-full" };
+```
+
+### Data Attributes for CSS Targeting
+
+Each wrapped block receives data attributes that custom CSS can target:
+
+```html
+<div data-block-type="hero" data-block-id="abc123">
+  <!-- block content -->
+</div>
+```
+
+The `<body>` element receives `data-site="site-slug"`, enabling site-scoped CSS.
+
+### Database Name Compression
+
+Block style fields use short `dbName` values to avoid exceeding PostgreSQL's 63-character identifier limit when nested inside blocks with long slugs (e.g., `newsletterCTA`):
+
+| Field                | dbName |
+| -------------------- | ------ |
+| `blockStyle` (group) | `bs`   |
+| `paddingTop`         | `pt`   |
+| `paddingBottom`      | `pb`   |
+| `maxWidth`           | `mw`   |
+| `separator`          | `sep`  |
+
+---
+
+## Theme Token System
+
+### CSS Architecture
+
+Theme colors are defined in standalone CSS files under `packages/ui/src/themes/`. The main stylesheet imports the active theme:
+
+```
+Theme CSS file (cartographic.css or modern.css)
+    ↓
+globals.css (@import "../themes/cartographic.css")
+    ↓
+@theme inline (bridges CSS vars → Tailwind utilities)
+    ↓
+Components (bg-primary, text-foreground, border-border, etc.)
+```
+
+Each theme file defines a base palette and maps it to semantic tokens (`--primary`, `--background`, `--foreground`, etc.). Components only use semantic tokens — never base palette variables like `--cartographic-navy` directly. This means switching themes is just swapping which CSS class is active.
+
+### Built-in Themes
+
+| Theme        | CSS file                  | Selector                               | Description                          |
+| ------------ | ------------------------- | -------------------------------------- | ------------------------------------ |
+| Cartographic | `themes/cartographic.css` | `:root` / `.dark`                      | Default — warm earth tones           |
+| Modern       | `themes/modern.css`       | `.theme-modern` / `.theme-modern.dark` | Vibrant, high-contrast, system fonts |
+
+The Cartographic theme uses `:root` so it applies by default. The Modern theme is scoped to `.theme-modern` and activates when that class is added to `<html>` and `<body>`.
+
+### Runtime Theme Switching
+
+The `useThemePreset()` hook (`lib/hooks/use-theme-preset.ts`) manages runtime switching:
+
+- Persists the user's selection to `localStorage` under the key `timetiles-theme-preset`
+- Applies/removes the `.theme-{id}` CSS class on both `<html>` and `<body>`
+- The default preset (Cartographic) uses no class — it is the `:root` default
+- Other presets add `.theme-{id}` (e.g., `.theme-modern`)
+
+The `ThemePresetPicker` component renders the Palette icon in the header. It cycles through available presets on click.
+
+### Flash Prevention
+
+A blocking `<script>` in `<head>` reads `localStorage` and applies the theme class before the first paint, preventing a flash of the wrong theme:
+
+```tsx
+// In app/[locale]/(frontend)/layout.tsx — <head>
+<script
+  dangerouslySetInnerHTML={{
+    __html: `(function(){try{var p=localStorage.getItem("timetiles-theme-preset");
+    if(p&&p!=="cartographic"){document.documentElement.classList.add("theme-"+p)}}catch(e){}})()`,
+  }}
+/>
+```
+
+A matching script runs at the start of `<body>` to apply the class there too, because `next/font` sets font CSS variables on `<body>`.
+
+### UIProvider
+
+The `UIProvider` component (`packages/ui/src/provider.tsx`) configures runtime behavior that CSS alone cannot control:
+
+- **Chart themes** — ECharts color configuration for light and dark modes
+- **Map colors** — MapLibre point, cluster gradient, and stroke colors
+- **Newsletter handler** — custom submission callback
+
+```tsx
+<UIProvider
+  resolveTheme={() => theme ?? "light"}
+  lightChartTheme={chartTheme}
+  darkChartTheme={darkChartTheme}
+  mapColors={mapColors}
+  onNewsletterSubmit={handleNewsletter}
+>
+  {children}
+</UIProvider>
+```
+
+### How Site Branding Overrides Work
+
+The `SiteBranding` component (`components/site-branding.tsx`) injects CSS custom properties that override semantic tokens:
+
+```typescript
+// Maps SiteBrandingColors keys to CSS custom properties
+const COLOR_TOKEN_MAP = {
+  primary: "--primary",
+  primaryForeground: "--primary-foreground",
+  secondary: "--secondary",
+  background: "--background",
+  foreground: "--foreground",
+  // ... 15 tokens total
+};
+```
+
+Since all components use semantic tokens (e.g., `bg-background`, `text-primary`), overriding these variables automatically re-themes the entire UI. CMS theme presets and site branding both work by redefining the same semantic tokens that the built-in themes set.
+
+### SiteContext Types
+
+```typescript
+interface SiteContextValue {
+  site: Site | null;
+  hasSite: boolean;
+  branding: {
+    title?: string;
+    logoUrl?: string;
+    logoDarkUrl?: string;
+    faviconUrl?: string;
+    colors?: SiteBrandingColors; // 15 semantic color tokens
+    typography?: SiteTypography; // fontPairing
+    style?: SiteStyle; // borderRadius, density
+  };
+  customCode?: SiteCustomCode; // headHtml, customCSS, bodyStartHtml, bodyEndHtml
+}
+```
+
+---
+
+## Layout Templates
+
+### Resolution Logic
+
+Layout templates resolve using a priority chain:
+
+```typescript
+import {
+  resolveLayoutTemplate,
+  getContentMaxWidthClass,
+  shouldShowHeader,
+  shouldShowFooter,
+  DEFAULT_LAYOUT,
+} from "@/components/layout/layout-shell";
+
+// Resolution: page override > site default > platform default
+const template = resolveLayoutTemplate(pageLayout ?? siteLayout ?? null);
+
+// Use in layout
+if (shouldShowHeader(template)) {
+  /* render header */
+}
+if (shouldShowFooter(template)) {
+  /* render footer */
+}
+const widthClass = getContentMaxWidthClass(template.contentMaxWidth);
+```
+
+### LayoutTemplateConfig
+
+```typescript
+interface LayoutTemplateConfig {
+  headerVariant: "marketing" | "app" | "minimal" | "none";
+  footerVariant: "full" | "compact" | "none";
+  contentMaxWidth: "sm" | "md" | "lg" | "xl" | "full";
+  stickyHeader: boolean;
+}
+```
+
+### Platform Defaults
+
+When no layout template is assigned:
+
+```typescript
+const DEFAULT_LAYOUT: LayoutTemplateConfig = {
+  headerVariant: "marketing",
+  footerVariant: "full",
+  contentMaxWidth: "lg",
+  stickyHeader: true,
+};
+```
+
+---
+
+## CSS Sanitization
+
+Custom CSS injected via the CMS passes through `lib/utils/css-sanitizer.ts` before rendering:
+
+### Sanitized Patterns
+
+| Pattern                         | Reason                                                  |
+| ------------------------------- | ------------------------------------------------------- |
+| `@import`                       | Prevents loading external stylesheets                   |
+| `url()`                         | Prevents loading external resources / data exfiltration |
+| `javascript:`                   | Prevents script injection                               |
+| `expression()`                  | Prevents legacy IE script execution                     |
+| `behavior:`                     | Prevents HTC behavior injection                         |
+| `-moz-binding:`                 | Prevents XBL binding injection                          |
+| `@charset`, `@namespace`        | Prevents encoding manipulation                          |
+| `position: fixed`               | Prevents full-page overlay attacks                      |
+| `<script>`, `<style>`, `<link>` | Prevents HTML injection via CSS                         |
+
+### Scoping
+
+Custom CSS is wrapped in a site-specific scope:
+
+```css
+[data-site="my-site-slug"] {
+  /* admin's custom CSS here */
+}
+```
+
+This prevents cross-site style leakage in multi-tenant deployments.
+
+---
+
+## Collections Reference
+
+### Themes
+
+```
+Slug: themes
+Group: Configuration
+Access: Read (public), Write (editor/admin)
+Versioning: Yes (with drafts)
+
+Fields:
+  name (text, required)
+  description (textarea)
+  colors (group) — 15 semantic tokens for light mode
+  darkColors (group) — 15 semantic tokens for dark mode
+  typography.fontPairing (select)
+  style.borderRadius (select)
+  style.density (select)
+  createdBy (relationship → users)
+```
+
+### Layout Templates
+
+```
+Slug: layout-templates
+Group: Configuration
+Access: Read (public), Write (editor/admin)
+Versioning: Yes (with drafts)
+
+Fields:
+  name (text, required)
+  description (textarea)
+  headerVariant (select: marketing/app/minimal/none)
+  stickyHeader (checkbox)
+  footerVariant (select: full/compact/none)
+  contentMaxWidth (select: sm/md/lg/xl/full)
+  createdBy (relationship → users)
+```
+
+### Sites (New Fields)
+
+```
+Added to existing Sites collection:
+
+branding.colors — expanded from 3 to 15 semantic tokens
+branding.typography.fontPairing (select)
+branding.style.borderRadius (select)
+branding.style.density (select)
+branding.theme (relationship → themes)
+customCode.headHtml (textarea)
+customCode.customCSS (textarea)
+customCode.bodyStartHtml (textarea)
+customCode.bodyEndHtml (textarea)
+defaultLayout (relationship → layout-templates)
+```
+
+### Pages (New Fields)
+
+```
+Added to existing Pages collection:
+
+layoutOverride (relationship → layout-templates)
+pageBuilder blocks — now loaded from block registry
+  each block includes blockStyle group (auto-appended)
+```
