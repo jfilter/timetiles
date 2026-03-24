@@ -137,7 +137,6 @@ export class SeedManager extends SeedManagerBase {
    * await seedManager.truncate(['users', 'catalogs']); // Truncate only users and catalogs (+ their dependents via CASCADE)
    * ```
    */
-  // eslint-disable-next-line sonarjs/cognitive-complexity -- truncation logic has inherent branching (all vs specific, Payload vs direct SQL, retry)
   async truncate(collections: string[] = []): Promise<void> {
     await this.initialize();
 
