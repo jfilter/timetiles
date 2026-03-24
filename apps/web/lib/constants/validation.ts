@@ -10,7 +10,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 /**
  * Validate a password and its confirmation value.
  *
- * Throws an {@link Error} when the password is too short or when the two
+ * Throws an `Error` when the password is too short or when the two
  * values do not match.  Designed to be called inside a `mutationFn` so the
  * thrown error surfaces through the form's error state.
  */
