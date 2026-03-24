@@ -156,11 +156,10 @@ export default async function globalSetup(): Promise<void> {
   // A stale build (e.g. from a previous branch) silently misses new features.
   const fs = await import("node:fs");
   console.log(`🔨 Building application...`);
-  // Generate Payload import map before build (required by Next.js for admin components)
+  // Use build:compile which runs payload generate:types (applies migrations as side effect)
+  // then next build with compile mode (no static generation, no DB connection needed)
   // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
-  execSync(`cd "${webDir}" && pnpm exec payload generate:importmap --silent`, { env: serverEnv, stdio: "inherit" });
-  // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
-  execSync(`cd "${webDir}" && pnpm exec next build`, { env: serverEnv, stdio: "inherit" });
+  execSync(`cd "${webDir}" && pnpm build:compile`, { env: serverEnv, stdio: "inherit" });
 
   // Seed AFTER build — `next build` connects to the DB and can wipe seeded data
   await seedE2ETestData(databaseUrl);
