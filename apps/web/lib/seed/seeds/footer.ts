@@ -14,10 +14,9 @@ export type FooterSeed = Omit<Footer, "id" | "createdAt" | "updatedAt">;
 export const footerSeedDe: FooterSeed = {
   tagline: "Räumliche und zeitliche Datenanalyse für alle zugänglich machen.",
   socialLinks: [
-    { platform: "x", url: "https://x.com/timetiles" },
     { platform: "bluesky", url: "https://bsky.app/profile/timetiles.io" },
-    { platform: "mastodon", url: "https://mastodon.social/@timetiles" },
-    { platform: "github", url: "https://github.com/timetiles" },
+    { platform: "mastodon", url: "https://fakten.daten.cool/@timetiles" },
+    { platform: "github", url: "https://github.com/jfilter/timetiles" },
   ],
   columns: [
     {
@@ -33,8 +32,8 @@ export const footerSeedDe: FooterSeed = {
       title: "Gemeinschaft",
       links: [
         { label: "Über uns", url: "/about" },
-        { label: "Mitwirken", url: "https://github.com/timetiles/timetiles/blob/main/CONTRIBUTING.md" },
-        { label: "GitHub-Diskussionen", url: "https://github.com/timetiles/timetiles/discussions" },
+        { label: "Mitwirken", url: "https://github.com/jfilter/timetiles/blob/main/CONTRIBUTING.md" },
+        { label: "GitHub-Diskussionen", url: "https://github.com/jfilter/timetiles/discussions" },
         { label: "Blog", url: "/blog" },
       ],
     },
@@ -44,7 +43,7 @@ export const footerSeedDe: FooterSeed = {
         { label: "Anleitungen", url: "/tutorials" },
         { label: "Anwendungsfälle", url: "/use-cases" },
         { label: "Roadmap", url: "/roadmap" },
-        { label: "Hilfe", url: "https://github.com/timetiles/timetiles/issues" },
+        { label: "Hilfe", url: "https://github.com/jfilter/timetiles/issues" },
         { label: "Datenschutz", url: "/privacy" },
         { label: "Nutzungsbedingungen", url: "/terms" },
       ],
@@ -63,10 +62,9 @@ export const footerSeedDe: FooterSeed = {
 export const footerSeed: FooterSeed = {
   tagline: "Making spatial and temporal data analysis accessible to everyone.",
   socialLinks: [
-    { platform: "x", url: "https://x.com/timetiles" },
     { platform: "bluesky", url: "https://bsky.app/profile/timetiles.io" },
-    { platform: "mastodon", url: "https://mastodon.social/@timetiles" },
-    { platform: "github", url: "https://github.com/timetiles" },
+    { platform: "mastodon", url: "https://fakten.daten.cool/@timetiles" },
+    { platform: "github", url: "https://github.com/jfilter/timetiles" },
   ],
   columns: [
     {
@@ -82,8 +80,8 @@ export const footerSeed: FooterSeed = {
       title: "Community",
       links: [
         { label: "About", url: "/about" },
-        { label: "Contributing", url: "https://github.com/timetiles/timetiles/blob/main/CONTRIBUTING.md" },
-        { label: "GitHub Discussions", url: "https://github.com/timetiles/timetiles/discussions" },
+        { label: "Contributing", url: "https://github.com/jfilter/timetiles/blob/main/CONTRIBUTING.md" },
+        { label: "GitHub Discussions", url: "https://github.com/jfilter/timetiles/discussions" },
         { label: "Blog", url: "/blog" },
       ],
     },
@@ -93,7 +91,7 @@ export const footerSeed: FooterSeed = {
         { label: "Tutorials", url: "/tutorials" },
         { label: "Use Cases", url: "/use-cases" },
         { label: "Roadmap", url: "/roadmap" },
-        { label: "Support", url: "https://github.com/timetiles/timetiles/issues" },
+        { label: "Support", url: "https://github.com/jfilter/timetiles/issues" },
         { label: "Privacy Policy", url: "/privacy" },
         { label: "Terms of Service", url: "/terms" },
       ],

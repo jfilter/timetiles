@@ -13,9 +13,6 @@ A system that records user and admin actions for accountability and debugging. T
 **Catalog**
 The top-level container for organizing related datasets. Each catalog represents a project or workspace with its own access control and branding.
 
-**Chronicle**
-An interactive timeline that combines geospatial data with temporal visualization to tell a story or document events over time. The core concept behind TimeTiles.
-
 **Clustering**
 The automatic grouping of nearby events or data points to improve visualization clarity and performance. TimeTiles clusters both spatially (by location) and temporally (by time).
 
@@ -39,7 +36,7 @@ Interactive controls that allow users to filter and explore data in real-time wi
 ## E
 
 **Event**
-A single data point in TimeTiles representing something that happened at a specific time and place. Events are the basic building blocks of chronicles.
+A single data point in TimeTiles representing something that happened at a specific time and place. Events are the basic building blocks of datasets.
 
 ## F
 
@@ -61,9 +58,6 @@ Information that includes location data (coordinates, addresses, place names) al
 A site-wide singleton configuration in Payload CMS. TimeTiles uses four globals: Branding, Footer, MainMenu, and Settings.
 
 ## I
-
-**Interactive Chronicle**
-A dynamic, explorable timeline that allows users to navigate through time and space to understand how events unfold. The primary output of TimeTiles.
 
 **Import Pipeline**
 See **Data Ingestion**. The user interface uses "Import" for this concept; the codebase uses `ingest-*` collection and variable names.
@@ -125,7 +119,7 @@ A fast bundler for JavaScript and TypeScript, used by Next.js 16 in TimeTiles fo
 ## U
 
 **URL Parameters**
-Web address parameters that store filter and view states, allowing users to share specific views of their chronicles.
+Web address parameters that store filter and view states, allowing users to share specific views of their data.
 
 ## V
 
