@@ -1,0 +1,614 @@
+---
+title: Scrapers
+description: Run user-defined scripts to extract event data from websites and APIs, then feed results into the TimeTiles ingestion pipeline.
+asIndexPage: true
+---
+
+# Scrapers
+
+Scrapers let you write short Python or Node.js scripts that fetch data from websites and APIs, produce CSV output, and optionally feed that output straight into the TimeTiles ingestion pipeline. Events appear on the map without any manual file handling.
+
+## Architecture
+
+The scraper system has two parts:
+
+| Component              | Location          | Responsibility                                                                                                       |
+| ---------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **TimeScrape Runner**  | `apps/timescrape` | Executes user code inside isolated Podman containers. Stateless -- no database, no user management.                  |
+| **Scraper Management** | `apps/web`        | Payload CMS collections for repos, scrapers, and runs. Scheduling, auth, quotas, and ingestion pipeline integration. |
+
+```
+TimeTiles (apps/web)                    TimeScrape Runner (apps/timescrape)
++--------------------------+            +------------------------+
+| Payload Collections:     |            |  POST /run             |
+|  scraper-repos           |   API      |    |                   |
+|  scrapers                |   key      |  Podman container      |
+|  scraper-runs            |----------->|  (rootless, hardened)  |
+|                          |            |    |                   |
+| Payload Jobs:            |<-----------|  Returns: CSV + logs   |
+|  scraper-execution-job   |            +------------------------+
+|  scraper-repo-sync-job   |
+|                          |            Stateless. No DB. No users.
+| Ingestion Pipeline:      |            Just an API key + Podman.
+|  scraper CSV -> ingest   |
+|  -> existing pipeline    |
++--------------------------+
+```
+
+The runner is an optional deployment target. If you do not need scraping, skip it entirely. The main TimeTiles application works without it.
+
+### Feature Flag
+
+Scraper functionality is gated behind the `enableScrapers` feature flag, which is **off** by default. Enable it in the admin panel at **Settings > Feature Flags**.
+
+When the flag is off:
+
+- Users cannot create scraper repos.
+- Queued scraper execution jobs return immediately without running.
+
+## Quick Start
+
+### 1. Enable the feature flag
+
+Log in as an admin. Go to **Settings** in the Payload dashboard and enable **enableScrapers**.
+
+### 2. Add runner connection details
+
+Set two environment variables in your TimeTiles `.env` file:
+
+```env
+SCRAPER_RUNNER_URL=http://localhost:4000
+SCRAPER_API_KEY=your-secret-key-at-least-16-chars
+```
+
+The `SCRAPER_API_KEY` value must match the key configured on the runner. See [Deployment](./deployment) for full runner setup.
+
+### 3. Scaffold a new scraper
+
+Use the CLI tool to create a new scraper project:
+
+```bash
+npx @timetiles/scraper init my-scraper              # Python (default)
+npx @timetiles/scraper init my-scraper --runtime node
+```
+
+This creates a `my-scraper/` directory with a `scrapers.yml` manifest, a starter entrypoint script, `.gitignore`, and a `README.md`.
+
+### 4. Create a scraper repo
+
+In the Payload dashboard, go to **Scrapers > Scraper Repos** and create a new repo.
+
+**Git source**: Point to a GitHub repository that contains a `scrapers.yml` manifest and your scraper scripts.
+
+**Upload source**: Paste your scraper code directly as a JSON map of filenames to content.
+
+When you save the repo, TimeTiles automatically syncs the manifest and creates scraper records.
+
+### 5. Write a scraper
+
+Create a Python script that uses the `timetiles.scraper` helper:
+
+```python
+import requests
+from timetiles.scraper import output
+
+response = requests.get(
+    "https://date.nager.at/api/v3/PublicHolidays/2026/DE",
+    timeout=30,
+)
+response.raise_for_status()
+
+for holiday in response.json():
+    output.write_row({
+        "title": holiday["localName"],
+        "date": holiday["date"],
+        "location": "Germany",
+        "description": holiday.get("name", ""),
+    })
+
+output.save()
+print(f"Scraped {output.row_count} events")
+```
+
+Add a `scrapers.yml` manifest at the root of the repo:
+
+```yaml
+scrapers:
+  - name: "German Holidays"
+    slug: german-holidays
+    runtime: python
+    entrypoint: scraper.py
+    output: data.csv
+```
+
+### 6. Trigger a run
+
+Use the manual trigger API:
+
+```bash
+curl -X POST https://your-timetiles-instance/api/scrapers/{id}/run \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Or enable a cron schedule in the manifest to run automatically.
+
+### 7. View results
+
+After a successful run, check the scraper's run history in the dashboard or the management UI at **/account/scrapers**. If `autoImport` is enabled and a `targetDataset` is configured, the CSV flows through the standard ingestion pipeline and events appear on the map.
+
+### Management UI
+
+Users can manage their scrapers at **/account/scrapers**. The page shows:
+
+- Scraper repos with sync status and source details
+- Scrapers within each repo with last run status and statistics
+- Action buttons: force sync, trigger run, delete repo
+- Expandable run history with stdout/stderr log viewer
+
+---
+
+## Scraper Repos
+
+A scraper repo is a container for source code. It holds either a Git URL or uploaded code, plus a `scrapers.yml` manifest that declares one or more scrapers.
+
+### Source Types
+
+| Type     | How code is provided                  | Storage                                     |
+| -------- | ------------------------------------- | ------------------------------------------- |
+| `git`    | HTTPS Git URL + branch name           | External Git hosting (GitHub, GitLab, etc.) |
+| `upload` | JSON map of `{"filename": "content"}` | Stored in the Payload database              |
+
+For `git` repos, the runner performs a shallow clone (`--depth 1`) at execution time. Maximum clone size is configurable (default 50 MB).
+
+For `upload` repos, the code map is sent directly to the runner's `/run` endpoint. Filenames cannot contain `..` or start with `/` (path traversal is rejected).
+
+### Auto-Sync
+
+When you create or update a scraper repo, TimeTiles automatically queues a sync job that:
+
+1. Reads the `scrapers.yml` manifest from the repo root
+2. Validates it against the manifest schema
+3. Creates, updates, or deletes scraper records to match the manifest
+
+If the git URL, branch, or uploaded code changes, a new sync runs automatically.
+
+### Force Sync
+
+To re-sync a repo on demand:
+
+```bash
+curl -X POST https://your-timetiles-instance/api/scraper-repos/{id}/sync \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## The scrapers.yml Manifest
+
+Every scraper repo needs a `scrapers.yml` file at its root. This manifest declares the scrapers in the repo and their configuration.
+
+### Minimal Example
+
+```yaml
+scrapers:
+  - name: "My Scraper"
+    slug: my-scraper
+    entrypoint: scraper.py
+```
+
+### Full Example
+
+```yaml
+scrapers:
+  - name: "German Holidays"
+    slug: german-holidays
+    runtime: python
+    entrypoint: scrapers/germany.py
+    output: output/germany.csv
+    schedule: "0 6 * * 1"
+    limits:
+      timeout: 120
+      memory: 256
+
+  - name: "Austrian Holidays"
+    slug: austrian-holidays
+    runtime: python
+    entrypoint: scrapers/austria.py
+    output: output/austria.csv
+    schedule: "0 6 * * 1"
+
+defaults:
+  runtime: python
+  limits:
+    timeout: 120
+    memory: 256
+```
+
+### Schema Reference
+
+#### Top-level fields
+
+| Field      | Type   | Required | Description                                                   |
+| ---------- | ------ | -------- | ------------------------------------------------------------- |
+| `scrapers` | array  | Yes      | List of scraper definitions. Must contain at least one entry. |
+| `defaults` | object | No       | Default values applied to all scrapers unless overridden.     |
+
+#### Scraper entry fields
+
+| Field            | Type                   | Required | Default                                  | Description                                                                                                             |
+| ---------------- | ---------------------- | -------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `name`           | string                 | Yes      | --                                       | Human-readable name (max 255 characters).                                                                               |
+| `slug`           | string                 | Yes      | --                                       | URL-safe identifier. Lowercase letters, numbers, and hyphens only (max 128 characters). Must be unique within the repo. |
+| `runtime`        | `"python"` or `"node"` | No       | From `defaults.runtime`, or `"python"`   | Execution runtime.                                                                                                      |
+| `entrypoint`     | string                 | Yes      | --                                       | Script path relative to the repo root. Must not contain `..`.                                                           |
+| `output`         | string                 | No       | `"data.csv"`                             | Output CSV filename.                                                                                                    |
+| `schedule`       | string                 | No       | None (manual only)                       | Cron expression for automatic execution.                                                                                |
+| `limits.timeout` | integer                | No       | From `defaults.limits.timeout`, or `300` | Max execution time in seconds (10--3600).                                                                               |
+| `limits.memory`  | integer                | No       | From `defaults.limits.memory`, or `512`  | Memory limit in MB (64--4096).                                                                                          |
+
+#### Defaults block
+
+| Field                     | Type                   | Description                       |
+| ------------------------- | ---------------------- | --------------------------------- |
+| `defaults.runtime`        | `"python"` or `"node"` | Default runtime for all scrapers. |
+| `defaults.limits.timeout` | integer                | Default timeout in seconds.       |
+| `defaults.limits.memory`  | integer                | Default memory limit in MB.       |
+
+Individual scraper fields always take precedence over defaults.
+
+---
+
+## Helper Libraries
+
+Each runtime ships with a helper library that handles CSV output. You do not need to write CSV formatting code yourself.
+
+### Python: `timetiles.scraper`
+
+```python
+from timetiles.scraper import output
+
+# Write rows one at a time
+output.write_row({"title": "Event", "date": "2026-01-01", "location": "Berlin"})
+output.write_row({"title": "Concert", "date": "2026-02-01", "location": "Munich"})
+
+# Or write many rows at once
+output.write_rows([
+    {"title": "Festival", "date": "2026-03-01", "location": "Hamburg"},
+    {"title": "Meetup", "date": "2026-04-01", "location": "Cologne"},
+])
+
+# Save to the output file (required -- nothing is written until you call save)
+output.save()
+
+# Check how many rows were collected
+print(f"Wrote {output.row_count} rows")
+```
+
+**API:**
+
+| Method                                | Description                                                          |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `output.write_row(row: dict)`         | Append one row. Headers are auto-detected from the first row's keys. |
+| `output.write_rows(rows: list[dict])` | Append multiple rows.                                                |
+| `output.save(filename=None)`          | Write all rows to CSV. Optional `filename` overrides the default.    |
+| `output.row_count`                    | Number of rows written so far.                                       |
+| `output.to_csv_string()`              | Return rows as a CSV string (for debugging).                         |
+
+**Pre-installed Python libraries:**
+
+- `requests` -- HTTP client
+- `beautifulsoup4` -- HTML parsing
+- `lxml` -- Fast XML/HTML parser
+- `pandas` -- Data manipulation
+- `cssselect` -- CSS selector support for lxml
+
+### Node.js: `@timetiles/scraper`
+
+```javascript
+import { output } from "@timetiles/scraper";
+
+output.writeRow({ title: "Event", date: "2026-01-01", location: "Berlin" });
+output.writeRow({ title: "Concert", date: "2026-02-01", location: "Munich" });
+
+output.save();
+console.log(`Wrote ${output.rowCount} rows`);
+```
+
+**API:**
+
+| Method                   | Description                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| `output.writeRow(row)`   | Append one row. Headers are auto-detected from the first row's keys. |
+| `output.writeRows(rows)` | Append multiple rows.                                                |
+| `output.save(filename?)` | Write all rows to CSV. Optional `filename` overrides the default.    |
+| `output.rowCount`        | Number of rows written so far.                                       |
+| `output.toCsvString()`   | Return rows as a CSV string (for debugging).                         |
+
+**Pre-installed Node.js libraries:**
+
+- `cheerio` -- HTML parsing with jQuery-like API
+- `axios` -- HTTP client
+
+---
+
+## Scheduling
+
+### Cron Expressions
+
+Set the `schedule` field in `scrapers.yml` to a standard five-field cron expression:
+
+```yaml
+scrapers:
+  - name: "Daily Scraper"
+    slug: daily-scraper
+    entrypoint: scraper.py
+    schedule: "0 6 * * *" # Every day at 06:00 UTC
+```
+
+Common patterns:
+
+| Expression    | Meaning                              |
+| ------------- | ------------------------------------ |
+| `0 6 * * *`   | Every day at 06:00 UTC               |
+| `0 6 * * 1`   | Every Monday at 06:00 UTC            |
+| `0 */6 * * *` | Every 6 hours                        |
+| `0 0 1 * *`   | First day of every month at midnight |
+
+### How Scheduling Works
+
+The existing `schedule-manager-job` (which also handles scheduled URL imports) checks enabled scrapers every 60 seconds. When a scraper is due, it queues a `scraper-execution-job` via the Payload job queue.
+
+Guards prevent duplicate runs:
+
+- If a scraper's `lastRunStatus` is `"running"`, no new run is queued.
+- Stuck jobs (running longer than expected) are cleaned up automatically.
+
+The minimum effective schedule interval is one minute, matching the check frequency.
+
+### Manual Triggers
+
+Trigger a scraper run via the API:
+
+```bash
+curl -X POST https://your-timetiles-instance/api/scrapers/{id}/run \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Webhook Triggers
+
+Enable webhook triggers on a scraper to get a unique URL that starts a run when called:
+
+1. In the scraper settings, enable **Webhook Enabled**.
+2. A unique webhook URL is generated automatically.
+3. POST to that URL to trigger a run:
+
+```bash
+curl -X POST https://your-timetiles-instance/api/webhooks/trigger/{token}
+```
+
+No authentication header is needed -- the token in the URL serves as the credential. Tokens are 64-character hex strings generated with `crypto.randomBytes(32)`.
+
+The webhook endpoint is shared with scheduled imports. The system resolves the token to the correct resource type automatically.
+
+If you disable and re-enable the webhook, the token is rotated for security.
+
+---
+
+## Auto-Import
+
+When a scraper has `autoImport` enabled and a `targetDataset` configured, successful runs feed directly into the TimeTiles import pipeline.
+
+### How It Works
+
+1. Scraper runs and produces CSV output.
+2. The `scraper-execution-job` decodes the base64-encoded CSV from the runner response.
+3. An `ingest-files` record is created from the CSV data.
+4. The standard import pipeline takes over: schema detection, validation, geocoding, event creation.
+5. Events appear on the map.
+
+The entire existing import pipeline is reused with zero changes. Scraper output is treated exactly like a manually uploaded CSV file.
+
+### Configuration
+
+Set these fields on the scraper record (via the manifest or the admin UI):
+
+- **targetDataset**: The dataset to import events into.
+- **autoImport**: Must be `true` to enable the pipeline.
+
+If either field is missing, the CSV is still saved to the run record but not imported automatically.
+
+---
+
+## API Reference
+
+### POST /api/scrapers/\{id\}/run
+
+Trigger a manual scraper run.
+
+**Authentication**: Bearer token (authenticated user with access to the scraper).
+
+**Response**: `200 OK` with the queued job details.
+
+### POST /api/scraper-repos/\{id\}/sync
+
+Force a manifest sync for a scraper repo. Re-reads `scrapers.yml` and updates scraper records.
+
+**Authentication**: Bearer token (repo owner or admin).
+
+**Response**: `200 OK` when the sync job is queued.
+
+### POST /api/webhooks/trigger/\{token\}
+
+Trigger a scraper (or scheduled import) via webhook token.
+
+**Authentication**: None -- the token in the URL is the credential.
+
+**Response**: `200 OK` if the run was queued, `404` if the token is invalid or the webhook is disabled.
+
+### Runner API (internal)
+
+These endpoints are on the TimeScrape runner (default port 4000) and are called by TimeTiles, not by end users.
+
+| Method | Path               | Auth   | Description                                                  |
+| ------ | ------------------ | ------ | ------------------------------------------------------------ |
+| `POST` | `/run`             | Bearer | Execute a scraper in a Podman container. Returns CSV + logs. |
+| `POST` | `/stop/{run_id}`   | Bearer | Kill a running container.                                    |
+| `GET`  | `/status/{run_id}` | Bearer | Check if a run is still active.                              |
+| `GET`  | `/health`          | None   | Health check. Returns `{"status": "ok", "active_runs": N}`.  |
+| `GET`  | `/metrics`         | None   | Runner metrics (total runs, success/fail counts, uptime).    |
+
+All endpoints except `/health` require `Authorization: Bearer {SCRAPER_API_KEY}`.
+
+#### POST /run Request Body
+
+```json
+{
+  "run_id": "550e8400-e29b-41d4-a716-446655440000",
+  "runtime": "python",
+  "entrypoint": "scraper.py",
+  "output_file": "data.csv",
+  "code_url": "https://github.com/user/repo.git#main",
+  "env": { "API_KEY": "..." },
+  "limits": { "timeout_secs": 300, "memory_mb": 512 }
+}
+```
+
+| Field                 | Type                     | Required                    | Description                                    |
+| --------------------- | ------------------------ | --------------------------- | ---------------------------------------------- |
+| `run_id`              | UUID                     | Yes                         | Unique identifier for this run.                |
+| `runtime`             | `"python"` or `"node"`   | Yes                         | Which container image to use.                  |
+| `entrypoint`          | string                   | Yes                         | Script path relative to the code root.         |
+| `output_file`         | string                   | No                          | Expected output filename.                      |
+| `code_url`            | HTTPS URL                | One of `code_url` or `code` | Git repo URL to clone.                         |
+| `code`                | `Record<string, string>` | One of `code_url` or `code` | Inline code as filename-to-content map.        |
+| `env`                 | `Record<string, string>` | No                          | Environment variables passed to the container. |
+| `limits.timeout_secs` | integer                  | No                          | Max execution time (1--3600 seconds).          |
+| `limits.memory_mb`    | integer                  | No                          | Memory limit (64--4096 MB).                    |
+
+#### POST /run Response
+
+```json
+{
+  "status": "success",
+  "exit_code": 0,
+  "duration_ms": 4523,
+  "stdout": "Scraped 12 events\n",
+  "stderr": "",
+  "output": { "rows": 12, "bytes": 1847, "content_base64": "dGl0bGUsZGF0ZSxsb2NhdGlvbi4uLg==" }
+}
+```
+
+The `output` field is present only when the scraper produced a valid CSV file. The `status` field is one of `"success"`, `"failed"`, or `"timeout"`.
+
+---
+
+## Quotas and Permissions
+
+### Trust Levels
+
+Scraper access requires trust level 3 (Trusted) or higher:
+
+| Trust Level           | Scraper Access       |
+| --------------------- | -------------------- |
+| 0 (Untrusted)         | No access            |
+| 1 (Basic)             | No access            |
+| 2 (Regular)           | No access            |
+| 3 (Trusted)           | Yes -- with quotas   |
+| 4 (Power User)        | Yes -- higher quotas |
+| 5 (Unlimited) / Admin | Yes -- no limits     |
+
+### Quota Limits
+
+| Quota                    | Trusted (Level 3) | Power User (Level 4) | Unlimited / Admin |
+| ------------------------ | ----------------- | -------------------- | ----------------- |
+| Max scraper repos        | 3                 | 10                   | Unlimited         |
+| Max scraper runs per day | 10                | 50                   | Unlimited         |
+
+Quota checks happen at two points:
+
+- **Repo creation**: The `SCRAPER_REPOS` quota is checked in the `beforeChange` hook.
+- **Run execution**: The `SCRAPER_RUNS_PER_DAY` quota is checked before calling the runner.
+
+Daily quotas reset at midnight UTC.
+
+### Feature Flag
+
+The `enableScrapers` feature flag must be enabled for any scraper functionality to work. When disabled, the `create` access control on `scraper-repos` returns `false` and the execution job exits immediately.
+
+---
+
+## Security Model
+
+Scraper code is user-authored and potentially untrusted. The system uses defense-in-depth container isolation to minimize risk.
+
+### Container Isolation
+
+Every scraper runs inside a Podman rootless container with the following hardening layers:
+
+| Layer                     | Podman Flag                        | What It Prevents                            |
+| ------------------------- | ---------------------------------- | ------------------------------------------- |
+| Rootless Podman           | (default mode)                     | Host root escalation. No daemon, no socket. |
+| Drop all capabilities     | `--cap-drop=ALL`                   | Kernel capability exploits.                 |
+| No privilege escalation   | `--security-opt=no-new-privileges` | setuid/setgid escalation.                   |
+| Custom seccomp profile    | `--security-opt=seccomp=...`       | Restricts to ~100 allowed syscalls.         |
+| Read-only filesystem      | `--read-only`                      | Persistence, malware installation.          |
+| Writable /tmp with noexec | `--tmpfs=/tmp:rw,size=64m,noexec`  | Downloaded binary execution.                |
+| Process limit             | `--pids-limit=256`                 | Fork bombs.                                 |
+| Memory and CPU limits     | `--memory`, `--cpus`               | Resource exhaustion, crypto mining.         |
+| User namespace remapping  | `--userns=auto`                    | Container escape to host root.              |
+| Network isolation         | `--network=scraper-sandbox`        | Lateral movement to internal services.      |
+| External DNS only         | `--dns=1.1.1.1`                    | DNS-based internal service discovery.       |
+
+### Filesystem Layout Inside the Container
+
+| Path            | Permissions        | Contents                                           |
+| --------------- | ------------------ | -------------------------------------------------- |
+| `/scraper`      | Read-only          | User's scraper code                                |
+| `/output`       | Read-write         | CSV output (only writable location for results)    |
+| `/tmp`          | Read-write, noexec | Temporary files (64 MB limit, no binary execution) |
+| Everything else | Read-only          | Base image filesystem                              |
+
+### No Dependency Installation
+
+Scrapers can only use pre-installed libraries. There is no `pip install`, no `npm install`, no network access to package registries during execution. This prevents supply chain attacks and ensures reproducible execution.
+
+To add a new library, rebuild the base image and redeploy the runner.
+
+### Network Isolation
+
+Scraper containers run on the `scraper-sandbox` Podman network. This network allows outbound internet access (so scrapers can fetch web pages) but cannot reach internal services such as PostgreSQL, the TimeTiles web app, or the runner API.
+
+### API Key Security
+
+The `SCRAPER_API_KEY` is the sole authentication mechanism between TimeTiles and the runner. If compromised, an attacker could submit code for container execution (within the hardening limits above). Rotate the key periodically and store it securely.
+
+---
+
+## Data Model
+
+Three Payload CMS collections store scraper data:
+
+```
+scraper-repos (1) --> scrapers (N) --> scraper-runs (N)
+```
+
+### scraper-repos
+
+Source code repositories. Fields: `name`, `slug`, `sourceType` (git/upload), `gitUrl`, `gitBranch`, `code`, `catalog`, `createdBy`, sync status fields.
+
+### scrapers
+
+Individual scraper definitions. Fields: `name`, `slug`, `repo`, `runtime`, `entrypoint`, `outputFile`, `schedule`, `enabled`, `envVars`, `timeoutSecs`, `memoryMb`, `targetDataset`, `autoImport`, runtime stats, webhook fields.
+
+### scraper-runs
+
+Execution history. Fields: `scraper`, `status` (queued/running/success/failed/timeout), `triggeredBy` (schedule/manual/webhook), timing fields, `exitCode`, `stdout`, `stderr`, `error`, output metrics, `resultFile`.
+
+---
+
+## Related Documentation
+
+- [Writing Scrapers](./writing-scrapers) -- Detailed guide for scraper authors
+- [Deployment](./deployment) -- Setting up the TimeScrape runner
+- [Configuration](/self-hosting/configuration) -- Environment variables reference
+- [Usage Limits](/self-hosting/usage-limits) -- Full quota system documentation
