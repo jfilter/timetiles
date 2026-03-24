@@ -86,7 +86,7 @@ describe.sequential("Database-backed Seed Operations", () => {
   });
 
   describe.sequential("Truncation Operations", () => {
-    it("should truncate all collections when no specific collections provided", async () => {
+    it("should truncate specified collections", async () => {
       // Seed a subset of collections that reliably succeed in test environments
       await testEnv.seedManager.seedWithConfig({
         preset: "testing",
@@ -95,30 +95,16 @@ describe.sequential("Database-backed Seed Operations", () => {
       });
 
       // Verify we have data before truncation
-      const collections = ["users", "catalogs"] as const;
-      const countsBefore: Record<string, number> = {};
-      for (const collection of collections) {
-        const result = await payload.find({ collection, limit: 1 });
-        countsBefore[collection] = result.totalDocs;
-      }
-      const hasData = Object.values(countsBefore).some((count) => count > 0);
-      expect(hasData).toBe(true); // Ensure we have data to truncate
+      const collections = ["catalogs"] as const;
+      const countsBefore = await payload.find({ collection: "catalogs", limit: 1 });
+      expect(countsBefore.totalDocs).toBeGreaterThan(0);
 
       // Truncate — completes without throwing
       await testEnv.seedManager.truncate([...collections]);
 
-      // Verify truncation removed data (or at minimum didn't throw)
-      const countsAfter: Record<string, number> = {};
-      for (const collection of collections) {
-        const result = await payload.find({ collection, limit: 1 });
-        countsAfter[collection] = result.totalDocs;
-      }
-
-      // At least one collection should have fewer items after truncation
-      const removedFromAny = collections.some(
-        (c) => (countsBefore[c] ?? 0) > 0 && (countsAfter[c] ?? 0) < (countsBefore[c] ?? 0)
-      );
-      expect(removedFromAny).toBe(true);
+      // Verify truncation cleared the data
+      const countsAfter = await payload.find({ collection: "catalogs", limit: 1 });
+      expect(countsAfter.totalDocs).toBe(0);
     }, 90000); // 90 second timeout (increases when running full suite)
   });
 
