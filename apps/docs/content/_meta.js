@@ -4,7 +4,7 @@
  * @module
  */
 export default {
-  index: "Home",
+  index: { title: "Home", type: "page", display: "hidden" },
   overview: "Overview",
   "quick-start": "Quick Start Guide",
   guide: "Guide",

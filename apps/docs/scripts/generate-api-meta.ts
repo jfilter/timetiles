@@ -98,14 +98,8 @@ const getDirectoryItems = (dir: string): { files: string[]; dirs: string[] } => 
 
   // Second pass: collect file names, excluding those that have a corresponding directory
   for (const item of items) {
-    // Skip _meta files, index files, and route files (Next.js API routes)
-    if (
-      item.startsWith("_meta") ||
-      item === "index.mdx" ||
-      item === "index.md" ||
-      item === "route.mdx" ||
-      item === "route.md"
-    ) {
+    // Skip _meta files and index files (route.mdx is already renamed by clean script)
+    if (item.startsWith("_meta") || item === "index.mdx" || item === "index.md") {
       continue;
     }
 

@@ -135,6 +135,57 @@ const convertMdToMdx = (dir: string): void => {
 };
 
 /**
+ * Next.js reserved filenames that cannot be used as MDX content pages.
+ * These are treated specially by Next.js/SWC even outside the `app/` directory,
+ * causing build errors when Nextra adds `export const metadata` to them.
+ * @see https://nextjs.org/docs/app/api-reference/file-conventions
+ */
+const NEXTJS_RESERVED_FILENAMES = new Set([
+  "route",
+  "page",
+  "layout",
+  "loading",
+  "error",
+  "template",
+  "not-found",
+  "default",
+  "middleware",
+]);
+
+/**
+ * Rename Next.js reserved filenames to index.mdx to avoid build conflicts.
+ * For example, TypeDoc generates `route.mdx` from API route handlers, but
+ * Next.js treats `route.*` as an API route definition and forbids metadata exports.
+ */
+const renameReservedFilenames = (dir: string): void => {
+  if (!fs.existsSync(dir)) return;
+
+  const items = fs.readdirSync(dir);
+
+  for (const item of items) {
+    const fullPath = path.join(dir, item);
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      renameReservedFilenames(fullPath);
+    } else if (item.endsWith(".mdx")) {
+      const baseName = item.replace(/\.mdx$/, "");
+      if (NEXTJS_RESERVED_FILENAMES.has(baseName)) {
+        const indexPath = path.join(dir, "index.mdx");
+        if (!fs.existsSync(indexPath)) {
+          fs.renameSync(fullPath, indexPath);
+          console.log(`Renamed reserved file: ${path.relative(API_DIR, fullPath)} -> index.mdx`);
+        } else {
+          // index.mdx already exists — remove the conflicting file
+          fs.rmSync(fullPath);
+          console.log(`Removed conflicting reserved file: ${path.relative(API_DIR, fullPath)}`);
+        }
+      }
+    }
+  }
+};
+
+/**
  * Clean up invalid references in a file
  */
 const cleanupFileContent = (filePath: string): void => {
@@ -196,46 +247,33 @@ const cleanupFileContent = (filePath: string): void => {
     modified = true;
   }
 
-  // Also handle unescaped object-like patterns in text (not already in backticks)
-  // Pattern: { key, key, key } -> `{ key, key, key }`
-  // Only match simple comma-separated identifiers to avoid false positives
-  // eslint-disable-next-line security/detect-unsafe-regex -- bounded input from TypeDoc output
-  const objectPatternRegex = /(?<!`)(\{ [a-z][a-z0-9]*(?:, [a-z][a-z0-9]*)+ \})(?!`)/gi;
-  if (objectPatternRegex.test(content)) {
-    content = content.replace(objectPatternRegex, "`$1`");
-    modified = true;
-  }
-
-  // Escape {{...}} template placeholders to prevent MDX JSX interpretation.
-  // TypeDoc comments like "Replaces {{name}}, {{date}}" cause ReferenceError
-  // because MDX evaluates {name} as a JSX expression.
-  const templatePattern = /\{\{([^}]+)\}\}/g;
-  if (templatePattern.test(content)) {
-    content = content.replace(templatePattern, "\\{\\{$1\\}\\}");
-    modified = true;
-  }
-
-  // Escape <= and >= symbols in MDX content (outside code blocks)
-  // These can cause MDX parsing errors when interpreted as JSX
+  // Escape bare { and } outside code spans/blocks to prevent MDX JSX interpretation.
+  // MDX treats { } as JSX expression delimiters, causing acorn parse errors for
+  // object literals, template placeholders, and nested backtick edge cases.
   const lines = content.split("\n");
+  let inCodeBlock = false;
   const escapedLines = lines.map((line) => {
-    // Skip code blocks and code spans
-    if (line.startsWith("```") || line.startsWith("    ") || line.match(/^>\s*`/)) {
+    if (line.startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
       return line;
     }
-    // Don't escape inside backticks
-    if (line.includes("`")) {
-      return line;
-    }
-    // Escape <= and >= outside of code
-    if (line.includes("<=") || line.includes(">=")) {
-      const escapedLine = line.replace(/<=(?![^<]*`)/g, "&lt;=").replace(/>=(?![^>]*`)/g, "&gt;=");
-      if (escapedLine !== line) {
-        modified = true;
-      }
-      return escapedLine;
-    }
-    return line;
+    if (inCodeBlock || line.startsWith("    ")) return line;
+
+    // Split by backtick code spans — odd indices are inside backticks
+    const parts = line.split(/(`[^`]*`)/);
+    const escapedParts = parts.map((part, i) => {
+      if (i % 2 === 1) return part; // inside backticks, leave alone
+
+      // Escape bare { } (not already escaped with backslash)
+      let escaped = part.replace(/(?<!\\)\{/g, "\\{").replace(/(?<!\\)\}/g, "\\}");
+
+      // Escape <= and >= (MDX interprets as JSX)
+      escaped = escaped.replace(/<=/g, "&lt;=").replace(/>=/g, "&gt;=");
+
+      if (escaped !== part) modified = true;
+      return escaped;
+    });
+    return escapedParts.join("");
   });
 
   if (modified) {
@@ -374,12 +412,16 @@ const main = (): void => {
   console.log("\nStep 2: Converting .md files to .mdx...");
   convertMdToMdx(API_DIR);
 
-  // Step 3: Clean up file contents
-  console.log("\nStep 3: Cleaning up invalid references...");
+  // Step 3: Rename Next.js reserved filenames (e.g. route.mdx -> index.mdx)
+  console.log("\nStep 3: Renaming Next.js reserved filenames...");
+  renameReservedFilenames(API_DIR);
+
+  // Step 4: Clean up file contents
+  console.log("\nStep 4: Cleaning up invalid references...");
   cleanupAllFiles(API_DIR);
 
-  // Step 4: Fix multi-line function signatures
-  console.log("\nStep 4: Fixing function signatures...");
+  // Step 5: Fix multi-line function signatures
+  console.log("\nStep 5: Fixing function signatures...");
   fixFunctionSignatures(API_DIR);
 
   console.log("\n✓ TypeDoc output cleaned successfully!");
@@ -390,4 +432,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 
-export { cleanupAllFiles, convertMdToMdx, fixFunctionSignatures, removeBracketDirectories, removeEmptyDirectories };
+export {
+  cleanupAllFiles,
+  convertMdToMdx,
+  fixFunctionSignatures,
+  removeBracketDirectories,
+  removeEmptyDirectories,
+  renameReservedFilenames,
+};
