@@ -102,7 +102,8 @@ FROM base AS production
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     && apt-get remove -y --purge curl gnupg && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /root/.cache/node /usr/lib/node_modules/npm
+    && rm -rf /root/.cache/node /usr/lib/node_modules/npm \
+    && rm -f /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/certs/ssl-cert-snakeoil.pem
 
 WORKDIR /app
 
