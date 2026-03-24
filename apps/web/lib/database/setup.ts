@@ -166,40 +166,19 @@ export const runMigrations = (connectionString: string): void => {
   try {
     // Mask password in log output
     const safeUrl = connectionString.replace(/\/\/[^/]+@/, "//***:***@");
-    logger.info({ url: safeUrl }, "Running Payload migrations...");
-
-    const env = { ...process.env, DATABASE_URL: connectionString };
-    logger.info(
-      {
-        DATABASE_URL_set: !!env.DATABASE_URL,
-        PAYLOAD_SECRET_set: !!process.env.PAYLOAD_SECRET,
-        NEXT_PUBLIC_PAYLOAD_URL: process.env.NEXT_PUBLIC_PAYLOAD_URL,
-        cwd: process.cwd(),
-      },
-      "Migration env check"
+    console.log(`[migrations] Running payload migrate against ${safeUrl}`);
+    console.log(
+      `[migrations] env: PAYLOAD_SECRET=${process.env.PAYLOAD_SECRET ? "set" : "MISSING"}, NEXT_PUBLIC_PAYLOAD_URL=${process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "MISSING"}, cwd=${process.cwd()}`
     );
 
+    const env = { ...process.env, DATABASE_URL: connectionString };
+
     // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
-    const output = execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate`, {
-      stdio: "pipe",
-      env,
-      encoding: "utf-8",
-    });
+    execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate`, { stdio: "inherit", env });
 
-    // Log migration output so CI shows what happened
-    if (output.trim()) {
-      for (const line of output.trim().split("\n")) {
-        logger.info(line);
-      }
-    }
-
-    logger.info("Migrations completed successfully");
+    console.log("[migrations] Migrations completed successfully");
   } catch (error) {
-    // execSync throws with stdout/stderr attached
-    const execError = error as { stdout?: string; stderr?: string };
-    if (execError.stdout) logger.error({ stdout: execError.stdout }, "Migration stdout");
-    if (execError.stderr) logger.error({ stderr: execError.stderr }, "Migration stderr");
-    logger.error("Migration failed:", error);
+    console.error("[migrations] Migration FAILED:", error);
     throw new Error(`Failed to run migrations: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
@@ -277,7 +256,9 @@ const shouldSkipSetup = async (
   verbose: boolean
 ): Promise<boolean> => {
   const exists = await databaseExists(dbName);
-  logger.info({ dbName, exists, skipIfExists, dropIfExists }, "shouldSkipSetup check");
+  console.log(
+    `[db-setup] shouldSkipSetup: db=${dbName}, exists=${exists}, skipIfExists=${skipIfExists}, dropIfExists=${dropIfExists}`
+  );
 
   if (exists && skipIfExists && !dropIfExists) {
     logVerbose(verbose, `Database ${dbName} already exists, skipping setup`);
