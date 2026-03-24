@@ -33,7 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # SSL and utilities
     openssl \
     # Clean up
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/certs/ssl-cert-snakeoil.pem
 
 # Install Node.js 24 from NodeSource (must match Dockerfile.prod's node:24-alpine)
 RUN mkdir -p /etc/apt/keyrings \
@@ -102,8 +103,7 @@ FROM base AS production
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     && apt-get remove -y --purge curl gnupg && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /root/.cache/node /usr/lib/node_modules/npm \
-    && rm -f /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/certs/ssl-cert-snakeoil.pem
+    && rm -rf /root/.cache/node /usr/lib/node_modules/npm
 
 WORKDIR /app
 
