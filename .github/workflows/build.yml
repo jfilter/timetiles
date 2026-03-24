@@ -31,6 +31,10 @@ jobs:
         timeout-minutes: 1
         run: ./scripts/check-theme-abstraction.sh
 
+      - name: Check CVA variant duplicates
+        timeout-minutes: 1
+        run: ./scripts/check-cva-variants.sh packages/ui/src
+
       - name: Check formatting (oxfmt)
         timeout-minutes: 2
         # --threads=1 works around oxc-project/oxc#20033: race condition in
@@ -64,6 +68,11 @@ jobs:
       - name: Build UI package
         timeout-minutes: 2
         run: pnpm build
+        working-directory: packages/ui
+
+      - name: Build Storybook
+        timeout-minutes: 3
+        run: pnpm storybook:build
         working-directory: packages/ui
 
       - name: Build web app

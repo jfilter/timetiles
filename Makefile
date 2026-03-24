@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra jobs dev timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE from .env (default: docker)
 -include .env
@@ -175,6 +175,10 @@ dev: ensure-infra
 	@echo "🚀 Starting development server..."
 	exec pnpm dev
 
+# Start Storybook component explorer for the UI package
+storybook:
+	pnpm --filter @timetiles/ui storybook
+
 # Start scraper runner in dev mode (separate from main dev server)
 timescrape-dev:
 	@echo "🔧 Starting TimeScrape runner..."
@@ -269,6 +273,10 @@ test-ai:
 # Verify no hardcoded theme colors leaked into components
 check-theme:
 	@./scripts/check-theme-abstraction.sh
+
+# Check for CVA variants with duplicate values
+check-cva:
+	@./scripts/check-cva-variants.sh packages/ui/src
 
 check-ai:
 	@if [ -n "$(FILES)" ]; then \
@@ -499,6 +507,7 @@ help:
 		'  fresh       - Nuclear reset (wipes everything + rebuild)' '' \
 		'🚀 Daily Development:' \
 		'  dev         - Start development server (auto-starts infrastructure)' \
+		'  storybook   - Start Storybook UI component explorer (port 6006)' \
 		'  status      - Check development environment health' \
 		'  kill-dev    - Stop all development servers and processes' \
 		'  reset       - Reset database (wipe db + migrate + seed)' \
@@ -510,6 +519,7 @@ help:
 		'  check       - Run lint + typecheck' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
 		'                Usage: make check-ai [PACKAGE=web|docs|ui|scraper] [FILES="..."]' \
+		'  check-cva   - Check for duplicate/empty CVA variant values' \
 		'  format      - Format code with oxfmt' '' \
 		'🧪 Testing:' \
 		'  test        - Run tests (standard output)' \

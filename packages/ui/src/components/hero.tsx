@@ -13,18 +13,22 @@ import * as React from "react";
 
 import { heroGridStyle } from "../lib/grid-backgrounds";
 
-const heroVariants = cva("relative flex items-center justify-center overflow-hidden bg-background", {
+const heroVariants = cva("relative flex items-center overflow-hidden", {
   variants: {
-    variant: { centered: "text-center", split: "text-left", "full-bleed": "min-h-screen" },
+    variant: {
+      centered: "justify-center text-center",
+      split: "justify-start text-left",
+      "full-bleed": "justify-center text-center min-h-screen",
+    },
     size: {
       default: "min-h-[70vh] py-24 md:py-32",
       sm: "min-h-[50vh] py-16 md:py-20",
       lg: "min-h-[85vh] py-32 md:py-40",
     },
     background: {
-      grid: "", // Grid background applied via separate element
-      solid: "",
-      none: "",
+      grid: "bg-background", // Grid pattern applied via separate JSX element
+      solid: "bg-card", // Solid surface color, no grid
+      none: "bg-transparent",
     },
   },
   defaultVariants: { variant: "centered", size: "default", background: "grid" },
@@ -40,7 +44,11 @@ const Hero = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> & V
         )}
 
         {/* Content container */}
-        <div className="relative z-10 container mx-auto w-full max-w-5xl px-6">{children}</div>
+        <div
+          className={cn("relative z-10 container mx-auto w-full px-6", variant === "split" ? "max-w-7xl" : "max-w-5xl")}
+        >
+          {children}
+        </div>
       </section>
     );
   }

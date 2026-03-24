@@ -13,8 +13,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-const featuresVariants = cva("py-24 bg-card", {
-  variants: { layout: { grid: "", list: "", cards: "" } },
+const featuresVariants = cva("py-24", {
+  variants: { layout: { grid: "bg-card", list: "bg-background", cards: "bg-muted/30" } },
   defaultVariants: { layout: "grid" },
 });
 
@@ -89,7 +89,15 @@ const featureVariants = cva(
     "hover:bg-accent/[0.02]",
   ],
   {
-    variants: { accent: { primary: "", secondary: "", accent: "", muted: "", none: "" } },
+    variants: {
+      accent: {
+        primary: "border-primary/20 hover:border-primary/40",
+        secondary: "border-secondary/20 hover:border-secondary/40",
+        accent: "border-accent/20 hover:border-accent/40",
+        muted: "border-muted/30 hover:border-muted/50",
+        none: "",
+      },
+    },
     defaultVariants: { accent: "none" },
   }
 );

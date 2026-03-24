@@ -38,7 +38,7 @@ const callToActionContentVariants = cva("", {
     variant: {
       centered: "text-center",
       split: "grid grid-cols-1 md:grid-cols-2 gap-12 items-center",
-      banner: "text-center",
+      banner: "text-center max-w-3xl mx-auto",
     },
   },
   defaultVariants: { variant: "centered" },
