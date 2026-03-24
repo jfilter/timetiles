@@ -87,24 +87,22 @@ describe.sequential("Database-backed Seed Operations", () => {
 
   describe.sequential("Truncation Operations", () => {
     it("should truncate specified collections", async () => {
-      // Seed a subset of collections that reliably succeed in test environments
-      await testEnv.seedManager.seedWithConfig({
-        preset: "testing",
-        collections: ["users", "catalogs"],
-        exitOnFailure: false,
+      // Create a known catalog directly so we control the data
+      const testCatalog = await payload.create({
+        collection: "catalogs",
+        data: { name: `Truncate Test ${Date.now()}`, isPublic: true },
       });
 
-      // Capture a specific catalog ID before truncation
-      const catalogsBefore = await payload.find({ collection: "catalogs", limit: 1 });
-      expect(catalogsBefore.totalDocs).toBeGreaterThan(0);
-      const catalogId = catalogsBefore.docs[0]!.id;
+      // Verify it exists
+      const before = await payload.findByID({ collection: "catalogs", id: testCatalog.id });
+      expect(before).toBeTruthy();
 
-      // Truncate all seed collections (full list avoids FK constraint issues)
-      await testEnv.seedManager.truncate(seedCollections);
+      // Truncate catalogs (CASCADE handles FK dependencies)
+      await testEnv.seedManager.truncate(["catalogs"]);
 
-      // Verify the specific catalog no longer exists
-      const catalogAfter = await payload.find({ collection: "catalogs", where: { id: { equals: catalogId } } });
-      expect(catalogAfter.totalDocs).toBe(0);
+      // Verify the catalog no longer exists
+      const after = await payload.find({ collection: "catalogs", where: { id: { equals: testCatalog.id } } });
+      expect(after.totalDocs).toBe(0);
     }, 90000); // 90 second timeout (increases when running full suite)
   });
 

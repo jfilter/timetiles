@@ -17,8 +17,9 @@ import path from "node:path";
 import dotenv from "dotenv";
 import { vi } from "vitest";
 
-// Load environment variables from .env.local
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+// Load environment variables — .env.local overrides .env
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true });
 
 import { createDatabaseClient } from "@/lib/database/client";
 import { cloneDatabase, databaseExists, dropDatabase } from "@/lib/database/operations";

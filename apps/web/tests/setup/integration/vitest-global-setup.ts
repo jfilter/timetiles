@@ -12,8 +12,9 @@ import path from "node:path";
 
 import dotenv from "dotenv";
 
-// Load environment variables first
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+// Load environment variables — .env.local overrides .env
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true });
 
 import { createDatabaseClient } from "@/lib/database/client";
 import { databaseExists, dropDatabase } from "@/lib/database/operations";
