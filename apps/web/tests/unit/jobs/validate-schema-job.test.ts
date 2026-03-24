@@ -134,6 +134,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
 
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
       // Mock current schema lookup
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
 
@@ -232,6 +234,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
 
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
       // Mock current schema lookup
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
 
@@ -333,6 +337,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
 
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
       // Mock current schema lookup
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockCurrentSchema }] });
 
@@ -421,6 +427,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
 
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
+
       // Mock getSchemaBuilderState to return null (missing state)
       mocks.getSchemaBuilderState.mockReturnValueOnce(null);
       mockPayload.update.mockResolvedValue({});
@@ -442,6 +451,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
+
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
 
       // Make getSchemaBuilderState throw a transient error (matches transient patterns)
       mocks.getSchemaBuilderState.mockImplementationOnce(() => {
@@ -510,6 +522,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
 
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
       // Mock current schema lookup (same as detected)
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
 
@@ -592,6 +606,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
 
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
 
       // Mock getSchemaBuilderState to return cached state (no file reading needed)
@@ -643,6 +659,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
 
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: options.currentSchema }] });
 
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
@@ -778,6 +796,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile);
+      // Mock concurrent review check (no conflicting jobs)
+      mockPayload.find.mockResolvedValueOnce({ docs: [] });
       mockPayload.find.mockResolvedValueOnce({ docs: [{ schema: mockSchema }] });
       mocks.getSchemaBuilderState.mockReturnValueOnce(mockSchemaBuilderState);
       mockSchemaBuilderInstance.getSchema.mockResolvedValueOnce(mockSchema);
