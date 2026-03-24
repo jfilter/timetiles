@@ -53,6 +53,8 @@ Every task requires three verifiable steps:
 | Run E2E tests        | `make test-e2e`               | Playwright tests              |
 | Check scraper        | `make check-ai PACKAGE=scraper`            | Lint + typecheck              |
 | Start dev server     | `make dev`                    | Auto-starts infrastructure    |
+| Start Storybook      | `make storybook`              | UI component explorer on :6006|
+| Check CVA variants   | `make check-cva`              | Detect duplicate/empty CVA    |
 | Reset database       | `make db-reset`               | Full reset                    |
 | Fresh start          | `make fresh`                  | Clean + up + migrate + seed   |
 

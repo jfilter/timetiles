@@ -76,6 +76,8 @@
       "outputs": [".typecheck-results/**"]
     },
     "dev": { "cache": false, "persistent": true },
+    "storybook": { "cache": false, "persistent": true },
+    "storybook:build": { "dependsOn": ["^build"], "outputs": ["storybook-static/**"] },
     "test": {
       "dependsOn": ["^build"],
       "inputs": [
