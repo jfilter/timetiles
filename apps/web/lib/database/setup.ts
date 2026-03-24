@@ -172,8 +172,8 @@ export const runMigrations = (connectionString: string): void => {
     logger.info(
       {
         DATABASE_URL_set: !!env.DATABASE_URL,
-        PAYLOAD_SECRET_set: !!env.PAYLOAD_SECRET,
-        NEXT_PUBLIC_PAYLOAD_URL: env.NEXT_PUBLIC_PAYLOAD_URL,
+        PAYLOAD_SECRET_set: !!process.env.PAYLOAD_SECRET,
+        NEXT_PUBLIC_PAYLOAD_URL: process.env.NEXT_PUBLIC_PAYLOAD_URL,
         cwd: process.cwd(),
       },
       "Migration env check"

@@ -66,7 +66,7 @@ export const hasActivePayloadJob = async (
 ): Promise<boolean> => {
   try {
     const activeJobs = await payload.find({
-      collection: "payload-jobs" as "payload-jobs",
+      collection: "payload-jobs" as const,
       where: {
         and: [
           { [resourceFieldPath]: { equals: String(resourceId) } },

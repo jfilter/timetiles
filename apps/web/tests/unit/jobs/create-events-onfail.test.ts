@@ -55,6 +55,7 @@ describe.sequential("create-events-batch onFail isolation", () => {
       }
       // oxlint-disable-next-line unicorn/no-thenable, promise/prefer-await-to-then -- intentional thenable for Drizzle mock
       chain.then = (resolve: any, reject?: any) =>
+        // oxlint-disable-next-line promise/prefer-await-to-then
         rejectWith
           ? Promise.reject(rejectWith).then(resolve, reject)
           : Promise.resolve(resolveValue).then(resolve, reject);
