@@ -197,7 +197,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     admin: {
       user: collections?.includes("users") ? Users.slug : undefined,
       disable: disableAdmin || environment === "test",
-      components: { header: ["/components/admin/admin-header"] },
+      components: { header: ["/components/admin/admin-header"], providers: ["/components/admin/admin-i18n-provider"] },
     },
     logger: getLogger(logLevel, environment),
     debug: environment === "development",

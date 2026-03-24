@@ -11,6 +11,8 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -20,16 +22,20 @@ import { EnumFieldDropdown } from "./enum-field-dropdown";
 /**
  * Loading skeleton for categorical filters.
  */
-const CategoricalFiltersSkeleton = () => (
-  <div className="space-y-3" role="status" aria-label="Loading filters">
-    {[1, 2, 3].map((i) => (
-      <div key={i} className="space-y-1">
-        <div className="bg-muted h-3 w-20 animate-pulse rounded" />
-        <div className="bg-muted h-9 w-full animate-pulse rounded-sm" />
-      </div>
-    ))}
-  </div>
-);
+const CategoricalFiltersSkeleton = () => {
+  const t = useTranslations("Common");
+
+  return (
+    <div className="space-y-3" role="status" aria-label={t("loadingFilters")}>
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="space-y-1">
+          <div className="bg-muted h-3 w-20 animate-pulse rounded" />
+          <div className="bg-muted h-9 w-full animate-pulse rounded-sm" />
+        </div>
+      ))}
+    </div>
+  );
+};
 
 /** Props for the CategoricalFilters component */
 export interface CategoricalFiltersProps {

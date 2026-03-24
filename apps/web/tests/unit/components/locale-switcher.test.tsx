@@ -14,7 +14,7 @@ import { describe, expect, it, vi } from "vitest";
 import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { LocaleSwitcher } from "../../../components/locale-switcher";
-import { fireEvent, render, renderWithProviders, screen } from "../../setup/unit/react-render";
+import { fireEvent, renderWithProviders, screen } from "../../setup/unit/react-render";
 
 describe("LocaleSwitcher", () => {
   it("renders a button with the alternate locale label", () => {
@@ -51,7 +51,7 @@ describe("LocaleSwitcher", () => {
       prefetch: vi.fn(),
     });
 
-    const { container } = render(<LocaleSwitcher />);
+    const { container } = renderWithProviders(<LocaleSwitcher />);
 
     const button = container.querySelector<HTMLButtonElement>('button[aria-label="Switch to German"]')!;
     expect(button).toBeTruthy();

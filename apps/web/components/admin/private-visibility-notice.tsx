@@ -12,6 +12,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import React from "react";
 
 import { useAdminFeatureFlag } from "@/lib/hooks/use-admin-feature-flag";
@@ -21,6 +22,7 @@ import { AdminNotice } from "./admin-notice";
 const INFO_ICON = "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z";
 
 export const PrivateVisibilityNotice = () => {
+  const t = useTranslations("Admin");
   const { isEnabled } = useAdminFeatureFlag("allowPrivateImports");
 
   // Don't render anything while loading or if private imports are allowed
@@ -30,8 +32,7 @@ export const PrivateVisibilityNotice = () => {
 
   return (
     <AdminNotice variant="info" icon={INFO_ICON}>
-      Private visibility is currently restricted. All new catalogs and datasets must be public. Contact an administrator
-      to enable private content.
+      {t("privateVisibilityRestricted")}
     </AdminNotice>
   );
 };

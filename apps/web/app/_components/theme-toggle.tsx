@@ -11,6 +11,7 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 
@@ -23,6 +24,7 @@ export const ThemeToggle = ({
   className = "hover:bg-accent/50 flex items-center justify-center rounded p-2",
   iconClassName = "h-4 w-4",
 }: ThemeToggleProps = {}) => {
+  const t = useTranslations("Common");
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
 
@@ -33,14 +35,14 @@ export const ThemeToggle = ({
   // Render placeholder during SSR/hydration to avoid mismatch
   if (!mounted) {
     return (
-      <button type="button" className={className} aria-label="Toggle theme">
+      <button type="button" className={className} aria-label={t("toggleTheme")}>
         <Sun className={iconClassName} />
       </button>
     );
   }
 
   const Icon = resolvedTheme === "dark" ? Sun : Moon;
-  const label = resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  const label = resolvedTheme === "dark" ? t("switchToLightMode") : t("switchToDarkMode");
 
   return (
     <button type="button" onClick={toggleTheme} title={label} aria-label={label} className={className}>

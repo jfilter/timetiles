@@ -13,18 +13,22 @@ import type { Catalog, Dataset } from "@/payload-types";
 export const buildDynamicTitle = (
   filters: { catalog?: string | null; datasets: string[]; startDate?: string | null; endDate?: string | null },
   catalogs: Catalog[],
-  datasets: Dataset[]
+  datasets: Dataset[],
+  t: (
+    key: "allEvents" | "eventsLabel" | "countDatasets" | "dateRangeFrom" | "dateRangeUntil",
+    values?: Record<string, string | number>
+  ) => string
 ): { title: string; dateRange: string | null } => {
   // Build title based on catalog/dataset selection
-  let title = "All Events";
+  let title = t("allEvents");
 
   if (filters.catalog) {
     const catalog = catalogs.find((c) => String(c.id) === filters.catalog);
-    title = catalog?.name ?? "Events";
+    title = catalog?.name ?? t("eventsLabel");
   } else if (filters.datasets.length > 0) {
     if (filters.datasets.length === 1) {
       const dataset = datasets.find((d) => String(d.id) === filters.datasets[0]);
-      title = dataset?.name ?? "Events";
+      title = dataset?.name ?? t("eventsLabel");
     } else if (filters.datasets.length <= 2) {
       const names = filters.datasets
         .map((id) => datasets.find((d) => String(d.id) === id)?.name)
@@ -32,7 +36,7 @@ export const buildDynamicTitle = (
         .slice(0, 2);
       title = names.join(", ");
     } else {
-      title = `${filters.datasets.length} Datasets`;
+      title = t("countDatasets", { count: filters.datasets.length });
     }
   }
 
@@ -44,9 +48,9 @@ export const buildDynamicTitle = (
   if (hasStart && hasEnd) {
     dateRange = `${formatShortDate(filters.startDate!)} – ${formatShortDate(filters.endDate!)}`;
   } else if (hasStart) {
-    dateRange = `From ${formatShortDate(filters.startDate!)}`;
+    dateRange = t("dateRangeFrom", { date: formatShortDate(filters.startDate!) });
   } else if (hasEnd) {
-    dateRange = `Until ${formatShortDate(filters.endDate!)}`;
+    dateRange = t("dateRangeUntil", { date: formatShortDate(filters.endDate!) });
   }
 
   return { title, dateRange };

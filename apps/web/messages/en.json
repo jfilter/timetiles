@@ -38,7 +38,13 @@
     "startOver": "Start over",
     "showLess": "Show less",
     "showAll": "Show all ({count} more)",
-    "showAllDatasets": "Show all datasets"
+    "showAllDatasets": "Show all datasets",
+    "toggleTheme": "Toggle theme",
+    "switchToLightMode": "Switch to light mode",
+    "switchToDarkMode": "Switch to dark mode",
+    "loadingFilters": "Loading filters",
+    "switchToGerman": "Switch to German",
+    "switchToEnglish": "Switch to English"
   },
   "Auth": {
     "welcomeBack": "Welcome back",
@@ -136,7 +142,19 @@
     "descFilteredBy": ", filtered by {filters}",
     "descSpanning": ", spanning {dateRange}",
     "descJoinTwo": "{first} and {second}",
-    "descJoinMore": "{first}, {second} and {count} more"
+    "descJoinMore": "{first}, {second} and {count} more",
+    "eventFallbackTitle": "Event {id}",
+    "startDateSlider": "Start date: {date}",
+    "endDateSlider": "End date: {date}",
+    "timelineHistogram": "Timeline histogram - click to set date range",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "histogramBarTitle": "{date}: {count} events",
+    "allEvents": "All Events",
+    "eventsLabel": "Events",
+    "countDatasets": "{count} Datasets",
+    "dateRangeFrom": "From {date}",
+    "dateRangeUntil": "Until {date}"
   },
   "Filters": {
     "dataSources": "Data Sources",
@@ -151,7 +169,12 @@
     "myCatalogs": "My Catalogs",
     "publicCatalogs": "Public Catalogs",
     "noDatasets": "No datasets available",
-    "more": "+{count} more"
+    "more": "+{count} more",
+    "selectCatalog": "Select catalog {name}",
+    "deselectCatalog": "Deselect catalog {name}",
+    "enableDataset": "Enable dataset {name}",
+    "disableDataset": "Disable dataset {name}",
+    "clearFieldFilter": "Clear {label} filter"
   },
   "Events": {
     "title": "Events",
@@ -186,7 +209,8 @@
     "dataset": "Dataset",
     "location": "Location",
     "noEventsFound": "No events found",
-    "showingRecentEvents": "Showing up to 50 most recent events"
+    "showingRecentEvents": "Showing up to 50 most recent events",
+    "statusUnknown": "unknown"
   },
   "Account": {
     "settings": "Account Settings",
@@ -786,5 +810,31 @@
     "errorTitle": "Something went wrong",
     "tryAgain": "Try again",
     "originNotAllowed": "Embedding from this origin is not permitted."
+  },
+  "Admin": {
+    "backToSite": "Back to Site",
+    "switchToLightMode": "Switch to light mode",
+    "switchToDarkMode": "Switch to dark mode",
+    "testGeocoding": "Test Geocoding",
+    "testGeocodingDescription": "Test your geocoding providers with a sample address.",
+    "enterAddress": "Enter an address...",
+    "testing": "Testing...",
+    "test": "Test",
+    "notConfigured": "Not configured",
+    "success": "Success",
+    "failed": "Failed",
+    "confidence": "Confidence: {value}%",
+    "unknownError": "Unknown error",
+    "google": "Google",
+    "nominatim": "Nominatim",
+    "opencage": "OpenCage",
+    "embedSaveHint": "Save this view to generate an embed URL.",
+    "embedUrl": "Embed URL",
+    "iframeCode": "iframe Code",
+    "copied": "Copied!",
+    "copyIframeCode": "Copy iframe Code",
+    "scheduledImportsDisabled": "Scheduled Imports Disabled",
+    "scheduledImportsDisabledDescription": "Creating new scheduled imports is currently disabled by an administrator. Existing schedules can still be viewed and edited.",
+    "privateVisibilityRestricted": "Private visibility is currently restricted. All new catalogs and datasets must be public. Contact an administrator to enable private content."
   }
 }

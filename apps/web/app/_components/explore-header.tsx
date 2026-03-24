@@ -32,13 +32,14 @@ export interface ExploreNavigationProps {
  */
 const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps, "currentView">) => {
   const t = useTranslations("Common");
+  const tExplore = useTranslations("Explore");
   const { filters } = useFilters();
 
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const mapStats = useUIStore((state) => state.ui.mapStats);
   const { data: totalEventsData } = useEventsTotalQuery(filters);
 
-  const { title } = buildDynamicTitle(filters, catalogs, datasets);
+  const { title } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
 
   // Format event count as (visible/total)
   const totalEvents = totalEventsData?.total;
@@ -90,6 +91,7 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
  */
 const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
   const t = useTranslations("Common");
+  const tExplore = useTranslations("Explore");
   const { filters } = useFilters();
 
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
@@ -114,7 +116,7 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
     }
   }, [isFilterDrawerOpen]);
 
-  const { title, dateRange } = buildDynamicTitle(filters, catalogs, datasets);
+  const { title, dateRange } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
   const totalEvents = totalEventsData?.total;
   const eventCount =
     mapStats != null && totalEvents != null ? formatEventCount(mapStats.visibleEvents, totalEvents) : null;

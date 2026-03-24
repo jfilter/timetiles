@@ -50,7 +50,7 @@ export const EventFilters = () => {
           type="button"
           onClick={clearAllFilters}
           className="hover:bg-muted mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm transition-colors hover:border-solid"
-          aria-label="Clear all filters"
+          aria-label={tExplore("clearFilters")}
         >
           <X className="h-4 w-4" />
           <span>{tExplore("clearFilters")}</span>

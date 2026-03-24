@@ -63,7 +63,7 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
     <button
       type="button"
       onClick={handleClick}
-      aria-label={`${isSelected ? "Deselect" : "Select"} catalog ${catalog.name}`}
+      aria-label={t(isSelected ? "deselectCatalog" : "selectCatalog", { name: catalog.name })}
       className={cn(
         "relative w-full break-inside-avoid rounded-sm border p-2 text-left transition-all",
         "hover:bg-card/50 dark:hover:bg-white/10",
@@ -109,6 +109,7 @@ interface DatasetChipProps {
 }
 
 const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipProps) => {
+  const t = useTranslations("Filters");
   const handleClick = () => {
     onToggle(String(dataset.id));
   };
@@ -119,7 +120,7 @@ const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipPro
     <button
       type="button"
       onClick={handleClick}
-      aria-label={`${isActive ? "Disable" : "Enable"} dataset ${dataset.name}`}
+      aria-label={t(isActive ? "disableDataset" : "enableDataset", { name: dataset.name })}
       className={cn(
         "rounded-sm border px-2 py-1 text-left transition-all",
         isActive
@@ -332,7 +333,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
               {t("datasets")}
               {activeDatasetCount < filteredDatasets.length && (
                 <span className="text-secondary ml-1">
-                  ({activeDatasetCount}/{filteredDatasets.length} active)
+                  {t("active", { active: activeDatasetCount, total: filteredDatasets.length })}
                 </span>
               )}
             </span>
@@ -355,7 +356,9 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
 
                 {/* Show "+X more" indicator when collapsed */}
                 {useDatasetCollapse && !datasetsExpanded && hiddenDatasetCount > 0 && (
-                  <span className="text-primary/40 self-center font-mono text-xs">+{hiddenDatasetCount} more</span>
+                  <span className="text-primary/40 self-center font-mono text-xs">
+                    {t("more", { count: hiddenDatasetCount })}
+                  </span>
                 )}
               </div>
 
