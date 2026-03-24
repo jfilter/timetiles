@@ -7,13 +7,9 @@ RUN pip install --no-cache-dir \
     lxml==5.3.1 \
     pandas==2.2.3 \
     cssselect==1.2.0 \
-    timetiles
-
-# Create non-root user
-RUN useradd -m -u 1000 -s /bin/false scraper
-
-# Create working directories
-RUN mkdir -p /scraper /output && chown scraper:scraper /output
+    timetiles==0.1.0 \
+ && useradd -m -u 1000 -s /bin/false scraper \
+ && mkdir -p /scraper /output && chown scraper:scraper /output
 
 USER scraper
 WORKDIR /scraper
