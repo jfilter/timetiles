@@ -93,7 +93,7 @@ ENV NEXT_PUBLIC_PAYLOAD_URL=http://localhost
 
 # Build the application with experimental compile mode (no DB connection needed)
 WORKDIR /build/apps/web
-RUN pnpm exec next build --experimental-build-mode compile --webpack
+RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile --webpack
 
 # Production stage: final image
 FROM base AS production
