@@ -1,0 +1,61 @@
+# Python SDK
+
+Python SDK for building TimeTiles scrapers. Provides a CSV output helper with the same API shape as the [Node.js SDK](/development/packages/scraper).
+
+**PyPI**: [`timetiles`](https://pypi.org/project/timetiles/)
+
+The `timetiles` package is a namespace package -- currently it provides `timetiles.scraper`, and the namespace is extensible for future sub-packages.
+
+## Install
+
+```bash
+pip install timetiles
+```
+
+## Usage
+
+```python
+from timetiles.scraper import output
+
+events = fetch_events()
+
+for event in events:
+    output.write_row({
+        "title": event["name"],
+        "date": event["date"],
+        "location": event["venue"],
+    })
+
+output.save()
+print(f"Wrote {output.row_count} events")
+```
+
+## API
+
+### `output` (singleton)
+
+| Method / Property            | Description                                                               |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `output.write_row(row)`      | Append a dict as a CSV row. Headers are auto-detected from the first row. |
+| `output.write_rows(rows)`    | Append multiple rows at once.                                             |
+| `output.save(filename=None)` | Write CSV to disk. Default filename: `data.csv`.                          |
+| `output.row_count`           | Number of rows written so far.                                            |
+| `output.to_csv_string()`     | Return CSV content as a string (useful for debugging).                    |
+
+### `OutputWriter` (class)
+
+Create custom instances with a specific output directory:
+
+```python
+from timetiles.scraper import OutputWriter
+
+writer = OutputWriter(output_dir="./output")
+writer.write_row({"title": "Event", "date": "2026-01-01"})
+writer.save("events.csv")
+```
+
+## Environment
+
+| Variable                | Default   | Description                                                                    |
+| ----------------------- | --------- | ------------------------------------------------------------------------------ |
+| `TIMESCRAPE_OUTPUT_DIR` | `/output` | Output directory for CSV files. Set automatically inside TimeTiles containers. |

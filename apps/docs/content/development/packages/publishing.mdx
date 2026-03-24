@@ -1,0 +1,168 @@
+# Publishing Packages
+
+How to publish the three TimeTiles packages to npm and PyPI.
+
+## Package Overview
+
+| Package            | Registry | Name                 | Workflow                     | Tag Pattern  |
+| ------------------ | -------- | -------------------- | ---------------------------- | ------------ |
+| UI Components      | npm      | `@timetiles/ui`      | `publish-ui.yml`             | `ui-v*`      |
+| Scraper SDK (Node) | npm      | `@timetiles/scraper` | `publish-scraper.yml`        | `scraper-v*` |
+| Python SDK         | PyPI     | `timetiles`          | `publish-scraper-python.yml` | `python-v*`  |
+
+## How Publishing Works
+
+### npm (UI + Scraper SDK)
+
+Both npm packages use **OIDC Trusted Publishing**. No long-lived tokens are stored as secrets.
+
+1. Pushing a tag (e.g., `ui-v0.2.0`) triggers the corresponding workflow.
+2. The workflow has `permissions: { id-token: write }`, which lets GitHub mint an OIDC token.
+3. `npm publish --provenance` exchanges the OIDC token for a short-lived publish credential with the npm registry.
+4. The `--provenance` flag also adds [supply chain attestation](https://docs.npmjs.com/generating-provenance-statements) to the published package.
+
+Each package has a Trusted Publisher configured on npmjs.com that links a specific GitHub repository and workflow file to publish permission.
+
+### PyPI (Python SDK)
+
+The Python SDK uses a classic API token stored as a GitHub Actions secret (`PYPI_TOKEN`).
+
+1. Pushing a tag (e.g., `python-v0.1.0`) triggers `publish-scraper-python.yml`.
+2. The workflow builds with `python -m build` (using Hatchling as the build backend).
+3. Twine uploads the distribution files to PyPI.
+
+## Publishing a New Version
+
+### 1. Update the version number
+
+**npm packages** -- edit the `version` field in:
+
+- `packages/ui/package.json` for `@timetiles/ui`
+- `packages/scraper/package.json` for `@timetiles/scraper`
+
+**Python package** -- edit the `version` field in:
+
+- `packages/python/pyproject.toml` for `timetiles`
+
+### 2. Commit the version bump
+
+```bash
+git add packages/ui/package.json
+git commit -m "chore: bump @timetiles/ui to v0.2.0"
+```
+
+### 3. Tag and push
+
+```bash
+git tag ui-v0.2.0
+git push origin main --tags
+```
+
+The matching workflow triggers automatically on the tag push.
+
+**Tag naming convention:**
+
+| Package       | Tag format           | Example          |
+| ------------- | -------------------- | ---------------- |
+| UI Components | `ui-v{version}`      | `ui-v0.2.0`      |
+| Scraper SDK   | `scraper-v{version}` | `scraper-v0.2.0` |
+| Python SDK    | `python-v{version}`  | `python-v0.1.1`  |
+
+### What the workflows do
+
+**npm packages** (`publish-ui.yml`, `publish-scraper.yml`):
+
+1. Check out the code
+2. Install dependencies with `pnpm install --frozen-lockfile`
+3. Build the package (`tsup`)
+4. Run tests (UI only)
+5. Publish to npm with `--provenance` attestation
+
+**Python package** (`publish-scraper-python.yml`):
+
+1. Check out the code
+2. Set up Python 3.12
+3. Build with `python -m build`
+4. Upload to PyPI with Twine
+
+## Manual Publishing
+
+Use these steps if the GitHub Actions workflow fails and you need to publish immediately.
+
+### npm
+
+You need to be logged in to npm (`npm login`) and have publish access to the package.
+
+```bash
+cd packages/ui
+pnpm exec tsup
+pnpm publish --access public --no-git-checks
+```
+
+For the scraper SDK:
+
+```bash
+cd packages/scraper
+pnpm exec tsup
+pnpm publish --access public --no-git-checks
+```
+
+Manual publishes will not have provenance attestation since that requires the OIDC environment only available in GitHub Actions.
+
+### PyPI
+
+You need a PyPI API token with upload permission for the `timetiles` project.
+
+```bash
+cd packages/python
+python3 -m build
+python3 -m twine upload dist/*
+```
+
+Twine will prompt for credentials. Use `__token__` as the username and the API token as the password.
+
+## Trusted Publisher Setup (npm)
+
+Each npm package has a Trusted Publisher configured at:
+
+- [npmjs.com/@timetiles/ui/access](https://www.npmjs.com/package/@timetiles/ui/access)
+- [npmjs.com/@timetiles/scraper/access](https://www.npmjs.com/package/@timetiles/scraper/access)
+
+Settings for each:
+
+| Field        | Value                                     |
+| ------------ | ----------------------------------------- |
+| Publisher    | GitHub Actions                            |
+| Organization | `jfilter`                                 |
+| Repository   | `timetiles`                               |
+| Workflow     | `publish-ui.yml` or `publish-scraper.yml` |
+| Environment  | (empty)                                   |
+
+To modify a Trusted Publisher, go to the package's access settings on npmjs.com and update the GitHub Actions configuration under "Publishing access."
+
+## Secrets Required
+
+| Secret       | Where                  | Purpose                                               |
+| ------------ | ---------------------- | ----------------------------------------------------- |
+| `NPM_TOKEN`  | Not needed             | Trusted Publishing via OIDC replaces token-based auth |
+| `PYPI_TOKEN` | GitHub Actions secrets | PyPI API token for Python package uploads             |
+
+## Troubleshooting
+
+### npm
+
+**"OIDC token not found"** -- Check that the workflow has `permissions: { id-token: write }` at the job level.
+
+**"403 Forbidden" on npm publish** -- Verify the Trusted Publisher configuration on npmjs.com matches the exact workflow filename. The organization, repository, and workflow must all match.
+
+**Build fails** -- Run `pnpm exec tsup` locally in the package directory to debug. Check for TypeScript errors with `make check-ai PACKAGE=ui` (or `PACKAGE=scraper`).
+
+**"--provenance requires a supported CI/CD provider"** -- The `--provenance` flag only works inside GitHub Actions. For local publishes, omit `--provenance`.
+
+### PyPI
+
+**Upload fails with authentication error** -- Check that the `PYPI_TOKEN` secret is set in the GitHub repository settings and has not expired.
+
+**Build fails** -- Run `python3 -m build` locally in `packages/python/` to debug. Verify `hatchling` is installed (`pip install hatchling`).
+
+**"File already exists" error** -- PyPI does not allow overwriting an existing version. Bump the version number in `pyproject.toml` and create a new tag.

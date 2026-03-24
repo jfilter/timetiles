@@ -1,22 +1,36 @@
 # UI Customization
 
-TimeTiles provides a layered customization system — from simple color changes to full CSS overrides — all from the admin dashboard.
+TimeTiles provides a layered customization system — from simple color changes to full CSS overrides — with both built-in themes and admin dashboard controls.
+
+## Built-in Themes
+
+The `@timetiles/ui` package ships two built-in themes that users can switch between at runtime:
+
+| Theme            | Description                                           |
+| ---------------- | ----------------------------------------------------- |
+| **Cartographic** | Earth-tone palette inspired by vintage maps (default) |
+| **Modern**       | Clean, contemporary design with vibrant accents       |
+
+Users switch themes using the **Palette** icon in the site header. The selection persists in the browser via localStorage. Both themes include full light and dark mode support.
+
+Built-in themes support custom themes via CSS variables. See the [UI package documentation](/development/packages/ui) for details on creating additional themes.
 
 ## Customization Layers
 
 | Layer                | What it controls                          | Where to configure                        |
 | -------------------- | ----------------------------------------- | ----------------------------------------- |
-| **Theme Presets**    | Full color/typography/style package       | `/dashboard/collections/themes`           |
+| **Built-in Themes**  | Two bundled color/style packages          | Palette icon in header (user-facing)      |
+| **Theme Presets**    | Custom CMS-managed theme packages         | `/dashboard/collections/themes`           |
 | **Site Branding**    | Per-site color and style overrides        | `/dashboard/collections/sites`            |
 | **Block Styles**     | Per-block spacing, visibility, separators | Page builder (per block)                  |
 | **Custom CSS**       | Arbitrary CSS scoped to your site         | `/dashboard/collections/sites`            |
 | **Layout Templates** | Page structure (header, footer, width)    | `/dashboard/collections/layout-templates` |
 
-Each layer overrides the one above it. A site's inline colors override its theme preset. Custom CSS overrides everything.
+Each layer overrides the one above it. CMS theme presets override the built-in themes. A site's inline colors override its theme preset. Custom CSS overrides everything.
 
-## Theme Presets
+## Theme Presets (CMS)
 
-Theme presets are reusable visual configurations shared across sites. Create one at `/dashboard/collections/themes`.
+Theme presets are reusable visual configurations shared across sites. Create one at `/dashboard/collections/themes`. These override the built-in themes when assigned to a site.
 
 **Colors** — 11 semantic tokens controlling the entire UI:
 
@@ -116,5 +130,6 @@ When multiple layers are configured, they resolve highest priority first:
 
 1. **Custom CSS** — overrides anything
 2. **Inline site branding** — overrides theme preset
-3. **Theme preset** — base visual configuration
-4. **Platform defaults** — built-in design system
+3. **CMS theme preset** — overrides built-in themes
+4. **Built-in themes** — Cartographic (default) or Modern, selected by the user
+5. **Platform defaults** — base design system

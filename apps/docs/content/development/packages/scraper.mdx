@@ -1,0 +1,80 @@
+# Scraper SDK (Node.js)
+
+SDK for building TimeTiles scrapers in JavaScript and TypeScript. Provides type-safe CSV output and project scaffolding.
+
+**npm**: [`@timetiles/scraper`](https://www.npmjs.com/package/@timetiles/scraper)
+
+## Install
+
+```bash
+npm install @timetiles/scraper
+```
+
+## Scaffold a New Project
+
+The CLI generates a ready-to-run scraper project:
+
+```bash
+npx @timetiles/scraper init my-scraper
+npx @timetiles/scraper init my-scraper --runtime node
+```
+
+## Usage
+
+```js
+import { output } from "@timetiles/scraper";
+
+const events = await fetchEvents();
+
+for (const event of events) {
+  output.writeRow({ title: event.name, date: event.date, location: event.venue });
+}
+
+output.save();
+console.log(`Wrote ${output.rowCount} events`);
+```
+
+## TypeScript Support
+
+Use generics on `OutputWriter` for type-safe row schemas:
+
+```ts
+import { OutputWriter } from "@timetiles/scraper";
+
+interface Event {
+  title: string;
+  date: string;
+  location: string;
+  url: string;
+}
+
+const writer = new OutputWriter<Event>();
+writer.writeRow({ title: "Concert", date: "2026-02-01", location: "Berlin", url: "..." });
+writer.save("events.csv");
+```
+
+## API
+
+### `output` (singleton)
+
+| Method / Property        | Description                                                 |
+| ------------------------ | ----------------------------------------------------------- |
+| `output.writeRow(row)`   | Append a row. Headers are auto-detected from the first row. |
+| `output.writeRows(rows)` | Append multiple rows at once.                               |
+| `output.save(filename?)` | Write CSV to disk. Default filename: `data.csv`.            |
+| `output.rowCount`        | Number of rows written so far.                              |
+| `output.toCsvString()`   | Return CSV content as a string (useful for debugging).      |
+
+### `OutputWriter<T>` (class)
+
+Create custom instances with a typed schema:
+
+```ts
+const writer = new OutputWriter<MySchema>(outputDir);
+```
+
+## Environment
+
+| Variable                | Default   | Description                                                                    |
+| ----------------------- | --------- | ------------------------------------------------------------------------------ |
+| `TIMESCRAPE_OUTPUT_DIR` | `/output` | Output directory for CSV files. Set automatically inside TimeTiles containers. |

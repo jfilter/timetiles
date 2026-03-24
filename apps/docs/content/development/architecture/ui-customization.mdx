@@ -25,19 +25,27 @@ TimeTiles implements a six-layer UI customization system documented in ADR 0015.
 
 ### Key Files
 
-| File                                  | Purpose                                   |
-| ------------------------------------- | ----------------------------------------- |
-| `lib/blocks/registry.ts`              | Block plugin registry                     |
-| `lib/blocks/block-style-fields.ts`    | Shared block style field definitions      |
-| `lib/blocks/*.ts`                     | Individual block definitions              |
-| `lib/collections/themes.ts`           | Themes collection                         |
-| `lib/collections/layout-templates.ts` | Layout templates collection               |
-| `lib/collections/sites/index.ts`      | Sites with branding + custom code         |
-| `lib/context/site-context.tsx`        | Site context with expanded branding types |
-| `components/site-branding.tsx`        | CSS custom property injection             |
-| `components/block-renderer.tsx`       | Block rendering with style wrapper        |
-| `components/layout/layout-shell.tsx`  | Layout template resolution                |
-| `lib/utils/css-sanitizer.ts`          | CSS sanitization for injection            |
+| File                                      | Purpose                                               |
+| ----------------------------------------- | ----------------------------------------------------- |
+| `packages/ui/src/themes/cartographic.css` | Cartographic theme (default) — all tokens             |
+| `packages/ui/src/themes/modern.css`       | Modern theme — scoped to `.theme-modern`              |
+| `packages/ui/src/styles/globals.css`      | Tailwind setup, imports theme, `@theme inline` bridge |
+| `packages/ui/src/provider.tsx`            | UIProvider — chart themes, map colors, newsletter     |
+| `lib/hooks/use-theme-preset.ts`           | Runtime theme switching via CSS class                 |
+| `app/_components/theme-preset-picker.tsx` | Palette icon UI for theme switching                   |
+| `lib/blocks/registry.ts`                  | Block plugin registry                                 |
+| `lib/blocks/block-style-fields.ts`        | Shared block style field definitions                  |
+| `lib/blocks/*.ts`                         | Individual block definitions                          |
+| `lib/collections/themes.ts`               | Themes collection (CMS presets)                       |
+| `lib/collections/layout-templates.ts`     | Layout templates collection                           |
+| `lib/collections/sites/index.ts`          | Sites with branding + custom code                     |
+| `lib/context/site-context.tsx`            | Site context with expanded branding types             |
+| `components/site-branding.tsx`            | CSS custom property injection                         |
+| `components/block-renderer.tsx`           | Block rendering with style wrapper                    |
+| `components/layout/layout-shell.tsx`      | Layout template resolution                            |
+| `lib/utils/css-sanitizer.ts`              | CSS sanitization for injection                        |
+
+For the full theming API (semantic tokens, UIProvider, dark mode, fonts), see the [UI package documentation](/development/packages/ui).
 
 ---
 
@@ -256,24 +264,81 @@ Block style fields use short `dbName` values to avoid exceeding PostgreSQL's 63-
 
 ## Theme Token System
 
-### Three-Layer Architecture
+### CSS Architecture
 
-The CSS theming follows a three-layer architecture defined in `packages/ui/src/styles/globals.css`:
+Theme colors are defined in standalone CSS files under `packages/ui/src/themes/`. The main stylesheet imports the active theme:
 
 ```
-Layer 1: Base Colors (Cartographic Palette)
-  --cartographic-parchment, --cartographic-navy, etc.
-      ↓
-Layer 2: Semantic Tokens
-  --background, --foreground, --primary, --accent, etc.
-      ↓
-Layer 3: Component Usage
-  bg-background, text-foreground, border-border, etc.
+Theme CSS file (cartographic.css or modern.css)
+    ↓
+globals.css (@import "../themes/cartographic.css")
+    ↓
+@theme inline (bridges CSS vars → Tailwind utilities)
+    ↓
+Components (bg-primary, text-foreground, border-border, etc.)
+```
+
+Each theme file defines a base palette and maps it to semantic tokens (`--primary`, `--background`, `--foreground`, etc.). Components only use semantic tokens — never base palette variables like `--cartographic-navy` directly. This means switching themes is just swapping which CSS class is active.
+
+### Built-in Themes
+
+| Theme        | CSS file                  | Selector                               | Description                          |
+| ------------ | ------------------------- | -------------------------------------- | ------------------------------------ |
+| Cartographic | `themes/cartographic.css` | `:root` / `.dark`                      | Default — warm earth tones           |
+| Modern       | `themes/modern.css`       | `.theme-modern` / `.theme-modern.dark` | Vibrant, high-contrast, system fonts |
+
+The Cartographic theme uses `:root` so it applies by default. The Modern theme is scoped to `.theme-modern` and activates when that class is added to `<html>` and `<body>`.
+
+### Runtime Theme Switching
+
+The `useThemePreset()` hook (`lib/hooks/use-theme-preset.ts`) manages runtime switching:
+
+- Persists the user's selection to `localStorage` under the key `timetiles-theme-preset`
+- Applies/removes the `.theme-{id}` CSS class on both `<html>` and `<body>`
+- The default preset (Cartographic) uses no class — it is the `:root` default
+- Other presets add `.theme-{id}` (e.g., `.theme-modern`)
+
+The `ThemePresetPicker` component renders the Palette icon in the header. It cycles through available presets on click.
+
+### Flash Prevention
+
+A blocking `<script>` in `<head>` reads `localStorage` and applies the theme class before the first paint, preventing a flash of the wrong theme:
+
+```tsx
+// In app/[locale]/(frontend)/layout.tsx — <head>
+<script
+  dangerouslySetInnerHTML={{
+    __html: `(function(){try{var p=localStorage.getItem("timetiles-theme-preset");
+    if(p&&p!=="cartographic"){document.documentElement.classList.add("theme-"+p)}}catch(e){}})()`,
+  }}
+/>
+```
+
+A matching script runs at the start of `<body>` to apply the class there too, because `next/font` sets font CSS variables on `<body>`.
+
+### UIProvider
+
+The `UIProvider` component (`packages/ui/src/provider.tsx`) configures runtime behavior that CSS alone cannot control:
+
+- **Chart themes** — ECharts color configuration for light and dark modes
+- **Map colors** — MapLibre point, cluster gradient, and stroke colors
+- **Newsletter handler** — custom submission callback
+
+```tsx
+<UIProvider
+  resolveTheme={() => theme ?? "light"}
+  lightChartTheme={chartTheme}
+  darkChartTheme={darkChartTheme}
+  mapColors={mapColors}
+  onNewsletterSubmit={handleNewsletter}
+>
+  {children}
+</UIProvider>
 ```
 
 ### How Site Branding Overrides Work
 
-The `SiteBranding` component (`components/site-branding.tsx`) injects CSS custom properties that override Layer 2 tokens:
+The `SiteBranding` component (`components/site-branding.tsx`) injects CSS custom properties that override semantic tokens:
 
 ```typescript
 // Maps SiteBrandingColors keys to CSS custom properties
@@ -287,7 +352,7 @@ const COLOR_TOKEN_MAP = {
 };
 ```
 
-Since all components use semantic tokens (e.g., `bg-background`, `text-primary`), overriding these variables automatically re-themes the entire UI.
+Since all components use semantic tokens (e.g., `bg-background`, `text-primary`), overriding these variables automatically re-themes the entire UI. CMS theme presets and site branding both work by redefining the same semantic tokens that the built-in themes set.
 
 ### SiteContext Types
 

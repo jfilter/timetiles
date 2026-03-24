@@ -13,7 +13,13 @@
 import { createContext, type ReactNode, useContext } from "react";
 
 import type { ChartTheme } from "./components/charts/types";
-import type { MapColors } from "./lib/chart-themes";
+
+/** Map point and cluster visualization colors (duplicated from chart-themes to avoid cross-build import). */
+interface MapColors {
+  mapPoint: string;
+  mapClusterGradient: readonly [string, string, string, string, string];
+  mapStroke: string;
+}
 
 interface UIConfig {
   /** Returns the current theme name ("light" | "dark"). Defaults to "light" when omitted. */
