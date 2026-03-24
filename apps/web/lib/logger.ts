@@ -12,18 +12,21 @@
  */
 import pino from "pino";
 
-import { getEnv } from "@/lib/config/env";
-
-const env = getEnv();
-const isDevelopment = env.NODE_ENV === "development";
-const isTest = env.NODE_ENV === "test";
-const isProduction = env.NODE_ENV === "production";
+// Logger reads process.env directly (not getEnv()) because it initializes at
+// module load time — before dotenv runs in test setups. Using getEnv() here
+// would cache an incomplete environment and break database connections.
+const nodeEnv = process.env.NODE_ENV ?? "development";
+const logLevel = process.env.LOG_LEVEL;
+const logFile = process.env.LOG_FILE;
+const isDevelopment = nodeEnv === "development";
+const isTest = nodeEnv === "test";
+const isProduction = nodeEnv === "production";
 
 // Define log level based on environment
 const getLogLevel = () => {
   if (isTest) {
     // In tests, default to silent unless LOG_LEVEL is explicitly set
-    return env.LOG_LEVEL ?? "silent";
+    return logLevel ?? "silent";
   }
   if (isProduction) return "info";
   return "debug"; // Show all logs in development
@@ -31,14 +34,14 @@ const getLogLevel = () => {
 
 // Create base logger configuration
 const baseConfig: pino.LoggerOptions = {
-  level: env.LOG_LEVEL ?? getLogLevel(),
+  level: logLevel ?? getLogLevel(),
   formatters: {
     level: (label) => {
       return { level: label.toUpperCase() };
     },
   },
   timestamp: pino.stdTimeFunctions.isoTime,
-  base: { env: env.NODE_ENV },
+  base: { env: nodeEnv },
 };
 
 // Development configuration with pretty printing
@@ -59,8 +62,8 @@ const developmentConfig: pino.LoggerOptions = {
 // Create the logger instance
 // When LOG_FILE is set, write to both stdout and the file (for Docker logs + persistent file)
 const createProductionLogger = (): pino.Logger => {
-  if (env.LOG_FILE) {
-    return pino(baseConfig, pino.multistream([{ stream: process.stdout }, { stream: pino.destination(env.LOG_FILE) }]));
+  if (logFile) {
+    return pino(baseConfig, pino.multistream([{ stream: process.stdout }, { stream: pino.destination(logFile) }]));
   }
   return pino(baseConfig);
 };
