@@ -1,53 +1,83 @@
-# TimeTiles Documentation
+<div className="tt-hero">
+  <h1 className="tt-hero-title">{"TimeTiles Documentation"}</h1>
+  <div className="tt-hero-subtitle">
+    {
+      "Learn how to turn your spreadsheets into interactive, explorable timelines on a map. Guides, API reference, and self-hosting instructions."
+    }
+  </div>
+  <div className="tt-hero-actions">
+    <a href="/quick-start" className="tt-hero-btn tt-hero-btn-primary">
+      {"Get Started"}
+    </a>
+    <a href="/overview" className="tt-hero-btn tt-hero-btn-secondary">
+      {"What is TimeTiles?"}
+    </a>
+    <a
+      href="https://github.com/jfilter/timetiles"
+      className="tt-hero-btn tt-hero-btn-secondary"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {"GitHub"}
+    </a>
+  </div>
+</div>
 
-Transform your data into interactive, explorable timelines on a map.
+<div className="tt-section-title">{"Get Started"}</div>
 
-import { Cards } from "nextra/components";
+<div className="tt-cards">
+  <a href="/overview" className="tt-card">
+    <span className="tt-card-title">{"What is TimeTiles?"}</span>
+    <span className="tt-card-desc">{"Learn what TimeTiles does, who it's for, and how it works."}</span>
+  </a>
+  <a href="/quick-start" className="tt-card">
+    <span className="tt-card-title">{"Quick Start"}</span>
+    <span className="tt-card-desc">{"Install TimeTiles locally and run it in under 5 minutes."}</span>
+  </a>
+  <a href="/guide/getting-started" className="tt-card">
+    <span className="tt-card-title">{"Your First Dataset"}</span>
+    <span className="tt-card-desc">{"Import a CSV and create your first interactive map."}</span>
+  </a>
+</div>
 
----
+<div className="tt-section-title">{"Explore the Docs"}</div>
 
-## Get Started
+<div className="tt-cards">
+  <a href="/guide" className="tt-card">
+    <span className="tt-card-title">{"Guide"}</span>
+    <span className="tt-card-desc">{"Data import, exploration, sharing, and use cases."}</span>
+  </a>
+  <a href="/self-hosting" className="tt-card">
+    <span className="tt-card-title">{"Self-Hosting"}</span>
+    <span className="tt-card-desc">{"Installation, configuration, deployment, and maintenance."}</span>
+  </a>
+  <a href="/development" className="tt-card">
+    <span className="tt-card-title">{"Development"}</span>
+    <span className="tt-card-desc">{"Architecture, API reference, and extending TimeTiles."}</span>
+  </a>
+</div>
 
-<Cards num={3}>
-  <Cards.Card title="What is TimeTiles?" href="/overview" arrow>
-    Learn what TimeTiles does, who it's for, and how it works.
-  </Cards.Card>
-  <Cards.Card title="Quick Start" href="/quick-start" arrow>
-    Install TimeTiles locally and run it in under 5 minutes.
-  </Cards.Card>
-  <Cards.Card title="Your First Chronicle" href="/guide/getting-started" arrow>
-    Import a CSV and create your first interactive map.
-  </Cards.Card>
-</Cards>
+<div className="tt-section-title">{"Reference"}</div>
 
-## Explore the Docs
+<div className="tt-cards">
+  <a href="/reference/api" className="tt-card">
+    <span className="tt-card-title">{"REST API"}</span>
+    <span className="tt-card-desc">{"Full API documentation for all endpoints."}</span>
+  </a>
+  <a href="/guide/data-import/scrapers" className="tt-card">
+    <span className="tt-card-title">{"Scrapers"}</span>
+    <span className="tt-card-desc">{"Run custom scripts to extract data from websites and APIs."}</span>
+  </a>
+  <a href="/faq" className="tt-card">
+    <span className="tt-card-title">{"FAQ"}</span>
+    <span className="tt-card-desc">{"Answers to common questions."}</span>
+  </a>
+</div>
 
-<Cards num={3}>
-  <Cards.Card title="Guide" href="/guide">
-    Data import, exploration, sharing, and use cases.
-  </Cards.Card>
-  <Cards.Card title="Self-Hosting" href="/self-hosting">
-    Installation, configuration, deployment, and maintenance.
-  </Cards.Card>
-  <Cards.Card title="Development" href="/development">
-    Architecture, API reference, and extending TimeTiles.
-  </Cards.Card>
-</Cards>
-
-## Additional Resources
-
-<Cards num={3}>
-  <Cards.Card title="API Reference" href="/reference/api">
-    REST API documentation for all endpoints.
-  </Cards.Card>
-  <Cards.Card title="Scrapers" href="/guide/data-import/scrapers">
-    Run custom scripts to extract data from websites and APIs.
-  </Cards.Card>
-  <Cards.Card title="FAQ" href="/faq">
-    Answers to common questions.
-  </Cards.Card>
-</Cards>
-
----
-
-TimeTiles is open-source software ([AGPL-3.0](https://github.com/jfilter/timetiles/blob/main/LICENSE)) funded by the [Prototype Fund](https://prototypefund.de) from the German Federal Ministry of Education and Research.
+<div className="tt-funded">
+  {"TimeTiles is open-source software ("}
+  <a href="https://github.com/jfilter/timetiles/blob/main/LICENSE">{"AGPL-3.0"}</a>
+  {") funded by the "}
+  <a href="https://prototypefund.de">{"Prototype Fund"}</a>
+  {" from the German Federal Ministry of Education and Research (BMBF)."}
+</div>

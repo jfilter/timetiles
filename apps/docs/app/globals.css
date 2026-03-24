@@ -2,14 +2,442 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Increase sidebar width for long API documentation names */
+/* ── Dark mode logo switching ─────────────────────────────────── */
+.tt-logo {
+  display: flex;
+  align-items: center;
+}
+
+.tt-logo-dark {
+  display: none;
+}
+
+:is(html[class~="dark"]) .tt-logo-light {
+  display: none;
+}
+
+:is(html[class~="dark"]) .tt-logo-dark {
+  display: block;
+}
+
+/* ── Navbar links ─────────────────────────────────────────────── */
+.tt-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-left: auto;
+}
+
+.tt-nav-link {
+  text-decoration: none;
+  color: inherit;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: color 0.15s;
+}
+
+.tt-nav-link:hover {
+  color: hsl(var(--nextra-primary-hue, 212) 100% 45%);
+}
+
+/* ── Hero section on landing page ─────────────────────────────── */
+.tt-hero {
+  text-align: center;
+  padding: 3rem 0 2rem;
+}
+
+.tt-hero-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, hsl(212 100% 45%), hsl(260 80% 55%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+:is(html[class~="dark"]) .tt-hero-title {
+  background: linear-gradient(135deg, hsl(212 100% 65%), hsl(260 80% 75%));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.tt-hero-subtitle {
+  font-size: 1.2rem;
+  color: rgb(107 114 128);
+  max-width: 600px;
+  margin: 0 auto 2rem;
+  line-height: 1.6;
+}
+
+:is(html[class~="dark"]) .tt-hero-subtitle {
+  color: rgb(156 163 175);
+}
+
+.tt-hero-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.tt-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.tt-hero-btn-primary {
+  background: hsl(212 100% 45%);
+  color: white;
+}
+
+.tt-hero-btn-primary:hover {
+  background: hsl(212 100% 38%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.tt-hero-btn-secondary {
+  background: rgb(243 244 246);
+  color: rgb(55 65 81);
+  border: 1px solid rgb(229 231 235);
+}
+
+.tt-hero-btn-secondary:hover {
+  background: rgb(229 231 235);
+}
+
+:is(html[class~="dark"]) .tt-hero-btn-secondary {
+  background: rgb(31 41 55);
+  color: rgb(209 213 219);
+  border-color: rgb(55 65 81);
+}
+
+:is(html[class~="dark"]) .tt-hero-btn-secondary:hover {
+  background: rgb(55 65 81);
+}
+
+/* ── Feature cards ────────────────────────────────────────────── */
+.tt-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(212 100% 45%);
+  margin-bottom: 0.5rem;
+}
+
+:is(html[class~="dark"]) .tt-section-title {
+  color: hsl(212 100% 65%);
+}
+
+/* Custom cards grid */
+.tt-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.tt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(229 231 235);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+.tt-card:hover {
+  border-color: hsl(212 100% 45% / 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+:is(html[class~="dark"]) .tt-card {
+  border-color: rgb(55 65 81);
+}
+
+:is(html[class~="dark"]) .tt-card:hover {
+  border-color: hsl(212 100% 65% / 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.tt-card-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: rgb(17 24 39);
+}
+
+:is(html[class~="dark"]) .tt-card-title {
+  color: rgb(243 244 246);
+}
+
+.tt-card-desc {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: rgb(107 114 128);
+}
+
+:is(html[class~="dark"]) .tt-card-desc {
+  color: rgb(156 163 175);
+}
+
+@media (max-width: 768px) {
+  .tt-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Nextra Cards global fix (used on sub-pages) ──────────────── */
+.nextra-card {
+  flex-direction: column-reverse !important;
+  padding: 1.25rem !important;
+  border-radius: 0.75rem !important;
+  transition: all 0.2s ease !important;
+  gap: 0.5rem !important;
+}
+
+.nextra-card:hover {
+  border-color: hsl(212 100% 45% / 0.4) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+  transform: translateY(-2px);
+}
+
+.nextra-card > p {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  color: rgb(107 114 128) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.nextra-card > span {
+  padding: 0 !important;
+}
+
+:is(html[class~="dark"]) .nextra-card {
+  border-color: rgb(55 65 81) !important;
+}
+
+:is(html[class~="dark"]) .nextra-card:hover {
+  border-color: hsl(212 100% 65% / 0.4) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+:is(html[class~="dark"]) .nextra-card > p {
+  color: rgb(156 163 175) !important;
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.tt-footer {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 1.5rem;
+}
+
+.tt-footer-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+:is(html[class~="dark"]) .tt-footer-top {
+  border-color: rgb(55 65 81);
+}
+
+.tt-footer-brand {
+  max-width: 280px;
+}
+
+.tt-footer-tagline {
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
+  line-height: 1.5;
+}
+
+:is(html[class~="dark"]) .tt-footer-tagline {
+  color: rgb(156 163 175);
+}
+
+.tt-footer-links {
+  display: flex;
+  gap: 4rem;
+}
+
+.tt-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tt-footer-col a {
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.tt-footer-col a:hover {
+  color: hsl(212 100% 45%);
+}
+
+:is(html[class~="dark"]) .tt-footer-col a {
+  color: rgb(156 163 175);
+}
+
+:is(html[class~="dark"]) .tt-footer-col a:hover {
+  color: hsl(212 100% 65%);
+}
+
+.tt-footer-heading {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgb(17 24 39);
+  margin-bottom: 0.25rem;
+}
+
+:is(html[class~="dark"]) .tt-footer-heading {
+  color: rgb(243 244 246);
+}
+
+.tt-footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.tt-footer-social {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.tt-social-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  color: rgb(107 114 128);
+  transition: all 0.15s;
+}
+
+.tt-social-icon:hover {
+  color: hsl(212 100% 45%);
+  background: hsl(212 100% 45% / 0.08);
+}
+
+:is(html[class~="dark"]) .tt-social-icon {
+  color: rgb(156 163 175);
+}
+
+:is(html[class~="dark"]) .tt-social-icon:hover {
+  color: hsl(212 100% 65%);
+  background: hsl(212 100% 65% / 0.1);
+}
+
+.tt-footer-copy {
+  font-size: 0.8rem;
+  color: rgb(156 163 175);
+}
+
+.tt-footer-copy a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tt-footer-copy a:hover {
+  color: hsl(212 100% 45%);
+}
+
+:is(html[class~="dark"]) .tt-footer-copy a:hover {
+  color: hsl(212 100% 65%);
+}
+
+/* ── Funding badge ────────────────────────────────────────────── */
+.tt-funded {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  border-radius: 0.75rem;
+  background: rgb(249 250 251);
+  border: 1px solid rgb(229 231 235);
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
+}
+
+:is(html[class~="dark"]) .tt-funded {
+  background: rgb(17 24 39);
+  border-color: rgb(55 65 81);
+  color: rgb(156 163 175);
+}
+
+.tt-funded a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tt-funded a:hover {
+  color: hsl(212 100% 45%);
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .tt-hero-title {
+    font-size: 1.75rem;
+  }
+
+  .tt-hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .tt-footer-top {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .tt-footer-links {
+    gap: 2rem;
+  }
+
+  .tt-footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ── Sidebar (wider for API docs) ─────────────────────────────── */
 @media (min-width: 1024px) {
   .nextra-sidebar-container {
     width: 320px !important;
     max-width: 320px !important;
   }
 
-  /* Adjust main content to account for wider sidebar */
   .nextra-content {
     margin-left: 320px !important;
   }
