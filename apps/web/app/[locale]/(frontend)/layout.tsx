@@ -29,7 +29,7 @@ import {
   NewsletterForm,
 } from "@timetiles/ui";
 import type { Metadata } from "next";
-import { DM_Sans, Playfair_Display, Space_Mono } from "next/font/google";
+import { DM_Sans, Inter, JetBrains_Mono, Playfair_Display, Space_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import Image from "next/image";
 import { NextIntlClientProvider } from "next-intl";
@@ -53,6 +53,10 @@ const fontSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans", display:
 const fontSerif = Playfair_Display({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
 
 const fontMono = Space_Mono({ subsets: ["latin"], variable: "--font-mono", weight: ["400", "700"], display: "swap" });
+
+// Modern theme fonts (loaded alongside cartographic fonts — CSS variables switch which is active)
+const fontInter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const fontJetBrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", display: "swap" });
 
 const getFooterData = async (locale: Locale): Promise<FooterType> => {
   const payload = await getPayload({ config });
@@ -190,10 +194,24 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* Blocking script to apply theme preset before paint — prevents font/color flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=localStorage.getItem("timetiles-theme-preset");if(p&&p!=="cartographic"){document.documentElement.classList.add("theme-"+p)}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body
-        className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} font-sans antialiased`}
+        className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} ${fontInter.variable} ${fontJetBrains.variable} font-sans antialiased`}
         data-site={site?.slug ?? undefined}
       >
+        {/* Apply theme class to body for font variable override (next/font sets vars on body) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=localStorage.getItem("timetiles-theme-preset");if(p&&p!=="cartographic"){document.body.classList.add("theme-"+p)}}catch(e){}})()`,
+          }}
+        />
         {bodyStartHtmlContent && <div dangerouslySetInnerHTML={bodyStartHtmlContent} />}
         <NextIntlClientProvider messages={messages}>
           <Providers>

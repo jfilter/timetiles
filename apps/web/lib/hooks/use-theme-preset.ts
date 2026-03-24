@@ -61,19 +61,23 @@ export const useThemePreset = (): UseThemePresetReturn => {
   return { preset, setPreset, presets: THEME_PRESETS };
 };
 
-/** Apply or remove theme CSS class on <html> */
+/** Apply or remove theme CSS class on both <html> and <body>.
+ *  Both elements need the class because next/font sets font CSS variables
+ *  on <body> via generated classes — the theme must override at the same level. */
 const applyPresetClass = (preset: ThemePresetId): void => {
-  const html = document.documentElement;
+  const targets = [document.documentElement, document.body];
 
-  // Remove all theme classes
-  for (const p of THEME_PRESETS) {
-    if (p.id !== DEFAULT_PRESET) {
-      html.classList.remove(`theme-${p.id}`);
+  for (const el of targets) {
+    // Remove all theme classes
+    for (const p of THEME_PRESETS) {
+      if (p.id !== DEFAULT_PRESET) {
+        el.classList.remove(`theme-${p.id}`);
+      }
     }
-  }
 
-  // Add the new theme class (default has no class — uses :root)
-  if (preset !== DEFAULT_PRESET) {
-    html.classList.add(`theme-${preset}`);
+    // Add the new theme class (default has no class — uses :root)
+    if (preset !== DEFAULT_PRESET) {
+      el.classList.add(`theme-${preset}`);
+    }
   }
 };
