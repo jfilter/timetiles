@@ -61,6 +61,11 @@ jobs:
 
           pnpm lint:devops
 
+      - name: Build UI package
+        timeout-minutes: 2
+        run: pnpm build
+        working-directory: packages/ui
+
       - name: Build web app
         timeout-minutes: 10
         run: pnpm build:compile
