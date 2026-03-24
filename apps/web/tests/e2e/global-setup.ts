@@ -146,6 +146,9 @@ export default async function globalSetup(): Promise<void> {
   // A stale build (e.g. from a previous branch) silently misses new features.
   const fs = await import("node:fs");
   console.log(`🔨 Building application...`);
+  // Generate Payload import map before build (required by Next.js for admin components)
+  // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
+  execSync(`cd "${webDir}" && pnpm exec payload generate:importmap --silent`, { env: serverEnv, stdio: "inherit" });
   // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
   execSync(`cd "${webDir}" && pnpm exec next build`, { env: serverEnv, stdio: "inherit" });
 

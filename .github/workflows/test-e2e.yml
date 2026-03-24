@@ -47,6 +47,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build UI package
+        timeout-minutes: 2
+        run: pnpm build
+        working-directory: packages/ui
+
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:
