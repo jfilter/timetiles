@@ -104,15 +104,15 @@ export const MobileFilterSheet = ({
         onClick={onOpen}
         className={cn(
           "fixed right-4 bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300 md:hidden",
-          "bg-cartographic-navy hover:bg-cartographic-navy/90 text-white",
-          "dark:bg-cartographic-cream dark:text-cartographic-charcoal dark:hover:bg-cartographic-cream/90",
+          "bg-primary hover:bg-primary/90 text-white",
+          "dark:bg-card dark:text-foreground dark:hover:bg-card/90",
           isOpen && "pointer-events-none scale-0 opacity-0"
         )}
         aria-label={t("openFilters")}
       >
         <Filter className="h-6 w-6" />
         {activeFilterCount > 0 && (
-          <span className="bg-cartographic-terracotta absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white">
+          <span className="bg-secondary absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white">
             {activeFilterCount}
           </span>
         )}
@@ -145,7 +145,7 @@ export const MobileFilterSheet = ({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="bg-cartographic-navy/20 dark:bg-cartographic-cream/30 h-1 w-10 rounded-full" />
+          <div className="bg-primary/20 dark:bg-card/30 h-1 w-10 rounded-full" />
         </div>
 
         {/* Header */}

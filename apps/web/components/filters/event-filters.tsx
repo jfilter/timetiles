@@ -60,7 +60,7 @@ export const EventFilters = () => {
 
       {/* Data Sources Section */}
       <FilterSection title={t("dataSources")} defaultOpen activeCount={dataSourcesActiveCount}>
-        {isStatsError && <p className="text-cartographic-terracotta mb-2 text-xs">{t("failedToLoadCounts")}</p>}
+        {isStatsError && <p className="text-secondary mb-2 text-xs">{t("failedToLoadCounts")}</p>}
         <DataSourceSelector
           eventCountsByCatalog={statsData?.catalogCounts}
           eventCountsByDataset={statsData?.datasetCounts}
@@ -92,7 +92,7 @@ export const EventFilters = () => {
           <button
             type="button"
             onClick={clearDateRange}
-            className="text-muted-foreground hover:text-cartographic-terracotta dark:text-cartographic-charcoal/50 dark:hover:text-cartographic-terracotta mt-1 w-full text-center font-mono text-xs transition-colors"
+            className="text-muted-foreground hover:text-secondary dark:text-foreground/50 dark:hover:text-secondary mt-1 w-full text-center font-mono text-xs transition-colors"
           >
             {tExplore("clearDateFilters")}
           </button>

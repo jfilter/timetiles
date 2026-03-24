@@ -22,7 +22,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 const footerVariants = cva(
-  "relative border-t border-charcoal/20 bg-gradient-to-b from-parchment/30 via-parchment/20 to-background overflow-hidden",
+  "relative border-t border-border bg-gradient-to-b from-background/30 via-background/20 to-background overflow-hidden",
   { variants: { size: { default: "py-24", sm: "py-16", lg: "py-32" } }, defaultVariants: { size: "default" } }
 );
 
@@ -42,10 +42,10 @@ const Footer = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> &
         <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={gridOverlayStyle} />
 
         {/* Decorative corner coordinates */}
-        <div className="text-charcoal/30 pointer-events-none absolute top-8 left-8 font-mono text-[10px] tracking-widest">
+        <div className="text-foreground/30 pointer-events-none absolute top-8 left-8 font-mono text-[10px] tracking-widest">
           40.7128°N, 74.0060°W
         </div>
-        <div className="text-charcoal/30 pointer-events-none absolute top-8 right-8 font-mono text-[10px] tracking-widest">
+        <div className="text-foreground/30 pointer-events-none absolute top-8 right-8 font-mono text-[10px] tracking-widest">
           SCALE 1:1,000,000
         </div>
 
@@ -120,7 +120,7 @@ const FooterTagline = React.forwardRef<HTMLParagraphElement, React.HTMLAttribute
   ({ className, children, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-charcoal/70 dark:text-parchment/70 max-w-md text-base leading-relaxed", className)}
+      className={cn("text-foreground/70 dark:text-foreground/70 max-w-md text-base leading-relaxed", className)}
       {...props}
     >
       {children}
@@ -143,9 +143,9 @@ const FooterSectionTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttrib
     <h3
       ref={ref}
       className={cn(
-        "text-navy dark:text-parchment mb-6 font-serif text-sm font-bold tracking-[0.2em] uppercase",
+        "text-primary dark:text-foreground mb-6 font-serif text-sm font-bold tracking-[0.2em] uppercase",
         "relative pb-2",
-        "after:bg-terracotta/40 after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-8",
+        "after:bg-secondary/40 after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-8",
         className
       )}
       {...props}
@@ -170,8 +170,8 @@ const FooterLink = React.forwardRef<HTMLLIElement, React.HTMLAttributes<HTMLLIEl
     <li
       ref={ref}
       className={cn(
-        "text-charcoal/60 text-[15px] leading-relaxed transition-all duration-200",
-        "hover:text-navy dark:text-parchment/60 dark:hover:text-parchment hover:translate-x-1",
+        "text-foreground/60 text-[15px] leading-relaxed transition-all duration-200",
+        "hover:text-primary dark:text-foreground/60 dark:hover:text-foreground hover:translate-x-1",
         "group relative",
         className
       )}
@@ -189,8 +189,8 @@ const FooterBottom = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
     <div
       ref={ref}
       className={cn(
-        "border-charcoal/10 relative mt-16 border-t pt-10",
-        "before:via-terracotta/20 before:absolute before:top-0 before:left-0 before:h-[1px] before:w-full before:bg-gradient-to-r before:from-transparent before:to-transparent",
+        "border-border relative mt-16 border-t pt-10",
+        "before:via-secondary/20 before:absolute before:top-0 before:left-0 before:h-[1px] before:w-full before:bg-gradient-to-r before:from-transparent before:to-transparent",
         className
       )}
       {...props}
@@ -214,7 +214,7 @@ const FooterCopyright = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
   ({ className, children, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-charcoal/50 dark:text-parchment/50 text-sm", "font-mono tracking-wide", className)}
+      className={cn("text-foreground/50 dark:text-foreground/50 text-sm", "font-mono tracking-wide", className)}
       {...props}
     >
       {children}
@@ -227,7 +227,7 @@ const FooterCredits = React.forwardRef<HTMLParagraphElement, React.HTMLAttribute
   ({ className, children, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-charcoal/40 dark:text-parchment/40 text-xs", "font-mono tracking-wider", className)}
+      className={cn("text-foreground/40 dark:text-foreground/40 text-xs", "font-mono tracking-wider", className)}
       {...props}
     >
       {children}

@@ -21,9 +21,7 @@ export const ForgotPasswordContent = () => {
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-3xl font-bold">
-            {t("resetYourPassword")}
-          </h1>
+          <h1 className="text-foreground dark:text-foreground text-3xl font-bold">{t("resetYourPassword")}</h1>
           <p className="text-muted-foreground mt-2">{t("resetDescription")}</p>
         </div>
         <ForgotPasswordForm />

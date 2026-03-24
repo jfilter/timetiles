@@ -20,7 +20,7 @@ All emails flow through Payload's `sendEmail` method, backed by `@payloadcms/ema
 | Development | ethereal.email | Auto-created test account, credentials cached to `.ethereal-credentials.json` and memory  |
 | Test        | JSON transport | In-memory `jsonTransport: true`, no network calls                                         |
 
-All environments share `EMAIL_FROM_ADDRESS` (default `noreply@timetiles.app`) and `EMAIL_FROM_NAME` (default `TimeTiles`).
+All environments share `EMAIL_FROM_ADDRESS` (default `noreply@timetiles.io`) and `EMAIL_FROM_NAME` (default `TimeTiles`).
 
 **Reference:** `lib/config/payload-config-factory.ts`
 

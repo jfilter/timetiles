@@ -14,6 +14,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { ContentState } from "@timetiles/ui";
+import { useMapColors } from "@timetiles/ui/hooks/use-chart-theme";
 import { Loader2 } from "lucide-react";
 import type { LngLatBounds } from "maplibre-gl";
 import { useTranslations } from "next-intl";
@@ -27,16 +28,17 @@ import Map, {
   Source,
 } from "react-map-gl/maplibre";
 
-import { type ClusterStats, MAP_STYLES } from "@/lib/constants/map";
+import { type ClusterStats, MAP_STYLES, MAP_STYLES_BY_PRESET } from "@/lib/constants/map";
 import { useTheme } from "@/lib/hooks/use-theme";
+import { useThemePreset } from "@/lib/hooks/use-theme-preset";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import {
   buildClusterLayerConfig,
+  buildEventPointLayerConfig,
   computeGlobalStats,
   computeViewportStats,
   DEFAULT_CLUSTERS,
-  eventPointLayerConfig,
   fitMapToBounds,
   getValidCoordinates,
   INITIAL_VIEW_STATE,
@@ -111,9 +113,12 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
   ) => {
     const t = useTranslations("Explore");
     const { resolvedTheme } = useTheme();
+    const { preset } = useThemePreset();
+    const mapColors = useMapColors();
     const [popupInfo, setPopupInfo] = useState<{ longitude: number; latitude: number; title: string } | null>(null);
     const mapRef = useRef<MapRef | null>(null);
-    const mapStyleUrl = MAP_STYLES[resolvedTheme];
+    const presetStyles = MAP_STYLES_BY_PRESET[preset] ?? MAP_STYLES;
+    const mapStyleUrl = presetStyles[resolvedTheme];
     const closePopup = () => setPopupInfo(null);
 
     useImperativeHandle(ref, () => ({
@@ -186,8 +191,8 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const geojsonData = { type: "FeatureCollection" as const, features: clusters };
     const eventPointFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-point"];
     const clusterFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-cluster"];
-    const eventPointLayer = { ...eventPointLayerConfig, filter: eventPointFilter };
-    const clusterLayer = buildClusterLayerConfig(globalStats, viewportStats, clusterFilter);
+    const eventPointLayer = { ...buildEventPointLayerConfig(mapColors), filter: eventPointFilter };
+    const clusterLayer = buildClusterLayerConfig(globalStats, viewportStats, clusterFilter, mapColors);
 
     return (
       <div className="relative h-full w-full">

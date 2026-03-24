@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "A data explorer for spatio-temporal data with custom metadata.",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

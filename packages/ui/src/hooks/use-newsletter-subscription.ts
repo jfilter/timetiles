@@ -6,12 +6,15 @@
  * Handles email input, status transitions, and auto-reset with proper timer
  * cleanup. Accepts an optional `onSubmit` handler so the consuming app can
  * control how the subscription request is made. When `onSubmit` is omitted the
- * hook falls back to a built-in `fetch("/api/newsletter/subscribe")` call.
+ * hook checks the UIProvider's `onNewsletterSubmit`, and finally falls back to
+ * a built-in `fetch("/api/newsletter/subscribe")` call.
  *
  * @module
  * @category Hooks
  */
 import { useEffect, useRef, useState } from "react";
+
+import { useUIConfig } from "../provider";
 
 type SubmitStatus = "idle" | "loading" | "success" | "error";
 
@@ -40,6 +43,7 @@ export const useNewsletterSubscription = ({
   additionalData,
   onSubmit,
 }: UseNewsletterSubscriptionConfig = {}): UseNewsletterSubscriptionReturn => {
+  const { onNewsletterSubmit } = useUIConfig();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [message, setMessage] = useState("");
@@ -64,6 +68,8 @@ export const useNewsletterSubscription = ({
     try {
       if (onSubmit) {
         await onSubmit(email, additionalData);
+      } else if (onNewsletterSubmit) {
+        await onNewsletterSubmit(email, additionalData);
       } else {
         const response = await fetch("/api/newsletter/subscribe", {
           method: "POST",

@@ -37,10 +37,10 @@ const toDisplayString = (value: unknown): string => {
 };
 
 const TYPE_BADGE_CLASSES: Record<SourceColumnNodeData["inferredType"], string> = {
-  string: "bg-cartographic-blue/10 text-cartographic-blue",
-  number: "bg-cartographic-forest/10 text-cartographic-forest",
-  date: "bg-cartographic-terracotta/10 text-cartographic-terracotta",
-  boolean: "bg-cartographic-navy/10 text-cartographic-navy",
+  string: "bg-ring/10 text-ring",
+  number: "bg-accent/10 text-accent",
+  date: "bg-secondary/10 text-secondary",
+  boolean: "bg-primary/10 text-primary",
   mixed: "bg-muted text-muted-foreground",
 };
 
@@ -60,13 +60,13 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
   return (
     <div
       className={cn(
-        "bg-cartographic-cream min-w-[180px] rounded-sm border-2 shadow-sm transition-all duration-200",
-        data.isConnected ? "border-cartographic-forest" : "border-cartographic-navy/30",
-        selected && "ring-cartographic-blue ring-2 ring-offset-2"
+        "bg-card min-w-[180px] rounded-sm border-2 shadow-sm transition-all duration-200",
+        data.isConnected ? "border-accent" : "border-primary/30",
+        selected && "ring-ring ring-2 ring-offset-2"
       )}
     >
       {/* Header */}
-      <div className="border-cartographic-navy/20 bg-cartographic-navy/5 flex items-center justify-between border-b px-3 py-1.5">
+      <div className="border-primary/20 bg-primary/5 flex items-center justify-between border-b px-3 py-1.5">
         <span className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">
           {t("flowSourceColumn")}
         </span>
@@ -75,7 +75,7 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
 
       {/* Content */}
       <div className="px-3 py-2">
-        <h4 className="text-cartographic-charcoal font-serif font-semibold">{data.columnName}</h4>
+        <h4 className="text-foreground font-serif font-semibold">{data.columnName}</h4>
 
         {/* Sample values */}
         {data.sampleValues.length > 0 && (
@@ -107,8 +107,8 @@ const SourceColumnNodeComponent = ({ data, selected }: Readonly<SourceColumnNode
         type="source"
         position={Position.Right}
         className={cn(
-          "!bg-cartographic-navy !h-3 !w-3 !border-2 !border-white transition-colors",
-          data.isConnected && "!bg-cartographic-forest"
+          "!bg-primary !h-3 !w-3 !border-2 !border-white transition-colors",
+          data.isConnected && "!bg-accent"
         )}
       />
     </div>

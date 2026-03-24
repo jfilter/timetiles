@@ -164,7 +164,7 @@ During bootstrap, pass `--scraper` or set `SKIP_SCRAPER=false` in your bootstrap
 4. Installs the runner as a systemd service
 5. Generates and configures `SCRAPER_API_KEY`
 
-For manual setup, see `apps/scraper/docs/SETUP.md`.
+For manual setup, see `apps/timescrape/docs/SETUP.md`.
 
 ### Backup considerations
 

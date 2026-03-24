@@ -22,7 +22,7 @@ The TimeTiles design system embodies **refined cartographic elegance** — a vis
 Building a component?
   ├─ Form component (Input, Button, Select)? → Use semantic tokens (bg-background, border-input)
   ├─ Layout/branding (Hero, Header, Footer)? → Check component-specific guidance below
-  └─ Data visualization (charts, maps)? → Use cartographic palette from chart-themes.ts
+  └─ Data visualization (charts, maps)? → Use ChartTheme via useChartTheme() hook
 ```
 
 ### Decision: Where Does This Component Go?
@@ -51,8 +51,8 @@ What am I styling?
 
 | Mistake                          | Why It's Wrong                 | Fix                                                    |
 | -------------------------------- | ------------------------------ | ------------------------------------------------------ |
-| `bg-[#f8f5f0]`                   | Hardcoded colors break theming | Use `bg-cartographic-parchment` or `bg-background`     |
-| `bg-cartographic-blue` in Button | Breaks multi-theme support     | Use `bg-primary` (semantic token)                      |
+| `bg-[#f8f5f0]`                   | Hardcoded colors break theming | Use `bg-background` (semantic token)                   |
+| `bg-cartographic-*` in component | Breaks multi-theme support     | Use `bg-primary` (semantic token)                      |
 | DatasetCard in packages/ui       | Domain-specific, not reusable  | Move to apps/web/components                            |
 | `font-sans` for hero headline    | Wrong hierarchy                | Use `font-serif` for display typography                |
 | Creating new generic component   | May already exist              | Check [COMPONENT_STATUS.md](COMPONENT_STATUS.md) first |
@@ -402,13 +402,13 @@ transition-transform duration-300 /* Transforms (scale, translate) */
 
 ```css
 /* Buttons */
-hover:bg-cartographic-blue       /* Color shift */
+hover:bg-ring       /* Color shift */
 
 /* Cards */
 hover:shadow-lg                  /* Elevation increase */
 
 /* Links */
-hover:text-cartographic-blue     /* Color change */
+hover:text-ring     /* Color change */
 hover:underline                  /* Underline appearance */
 ```
 
@@ -651,22 +651,22 @@ These components use semantic design tokens (`bg-background`, `text-foreground`,
 
 These components adapt to any theme (cartographic, ocean, sunset, etc.) by changing the semantic token mappings in CSS.
 
-### Intentionally Cartographic Layout Components
+### Theme-Agnostic Layout Components
 
-These components are **specifically designed for cartographic-themed landing pages** and intentionally use cartographic color tokens:
+These components now use semantic tokens and adapt to any theme:
 
-- **Hero** - Uses cartographic grid backgrounds, parchment/cream colors
-- **Features** - Uses cartographic accent colors (blue, terracotta, forest)
-- **Stats** - Uses cartographic navy backgrounds and parchment text
-- **CallToAction** - Uses cartographic parchment, navy, and cream colors
-- **Footer** - Uses cartographic navy borders and parchment backgrounds
-
-**Why intentionally cartographic?** These components form the visual identity of a cartographic-themed landing page. They're meant to be used together as a cohesive design system for geographic/mapping applications. If you need generic landing page components, consider creating theme-agnostic variants or using these as inspiration.
+- **Hero** - Uses `text-foreground`, grid backgrounds via `var(--color-foreground)`
+- **Header** - Uses `bg-card`, `bg-background`, `border-primary`
+- **Footer** - Uses `text-foreground`, `text-primary`, `border-border`
+- **Features** - Uses `text-accent`, `border-accent`, `bg-card`
+- **CallToAction** - Uses `bg-primary`, `bg-card`, `text-foreground`
+- **Newsletter** - Uses `bg-primary`, `text-accent`, `border-border`
 
 ### Data Visualization Components
 
-- **BaseChart** - Loading states use semantic tokens (`bg-muted`, `border-primary`)
-- **BarChart**, **TimeHistogram** - Use cartographic color palette for data visualization consistency
+- **BaseChart** - Loading states use semantic tokens (`bg-muted`, `border-ring`)
+- **BarChart**, **TimeHistogram** - Use `ChartTheme` from UIProvider (overridable via `lightChartTheme`/`darkChartTheme`)
+- **Map clusters** - Use `MapColors` from UIProvider (overridable via `mapColors`)
 
 ## Component Library & Status
 
@@ -696,57 +696,27 @@ All components use semantic design tokens for full theme compatibility.
 
 ## Theming Architecture
 
-**See [THEMING.md](THEMING.md) for complete theming documentation.**
+**See [THEMING.md](docs/THEMING.md) for the complete customization guide.**
 
 **Key concepts:**
 
-- **Three-layer architecture**: Base colors → Semantic tokens → Component usage
-- **Making components themable**: Use semantic tokens (`bg-background`, `text-foreground`, `border-border`)
-- **Available semantic tokens**: Brand colors (brand-primary, brand-accent), Surface colors (surface-primary, surface-secondary), Text colors (text-primary, text-secondary)
-- **Custom themes**: Override semantic tokens or create new base palettes
-- **Dark mode**: Automatic support via CSS variables
-
-Always use semantic tokens for maximum theme compatibility. Only use cartographic tokens for intentionally branded components (Hero, Header, Footer).
+- **Three-layer architecture**: Base palette (OKLCH) → Semantic tokens (`--primary`, `--background`) → Tailwind utilities (`bg-primary`, `text-foreground`)
+- **All components use semantic tokens**: `bg-background`, `text-foreground`, `border-border`, `bg-primary`, `text-accent`, etc.
+- **UIProvider** configures chart themes, map colors, and newsletter handler
+- **Custom themes**: Redefine semantic CSS variables — all components adapt automatically
+- **Dark mode**: Automatic via `.dark` class and `UIProvider.resolveTheme`
 
 ## Data Visualization
 
 ### Chart Theming
 
-All charts use the cartographic color palette for consistency with the design system.
+Charts use the `ChartTheme` interface, configurable via UIProvider's `lightChartTheme`/`darkChartTheme`. Default colors come from `defaultColors` in `chart-themes.ts`.
 
-**Color Palette** (exported from `chart-themes.ts`):
-
-```typescript
-cartographicColors = {
-  parchment: "#f8f5f0", // oklch(0.96 0.01 80)
-  charcoal: "#404040", // oklch(0.25 0 0)
-  navy: "#4a5568", // oklch(0.35 0.06 250)
-  blue: "#6495ed", // oklch(0.58 0.11 220)
-  terracotta: "#cd853f", // oklch(0.56 0.14 35)
-  forest: "#5f9e6e", // oklch(0.42 0.08 145)
-  cream: "#e8e4dd", // oklch(0.88 0.01 80)
-};
-```
-
-**Default Light Theme**:
-
-- Background: Transparent
-- Text: Charcoal
-- Axis lines: Navy at 30% opacity
-- Split lines: Navy at 10% opacity
-- Item color: Blue
-
-**Default Dark Theme**:
-
-- Background: Transparent
-- Text: Charcoal
-- Axis lines: Charcoal at 40% opacity
-- Split lines: Charcoal at 20% opacity
-- Item color: Blue
+Map visualizations use the `MapColors` interface, configurable via UIProvider's `mapColors`.
 
 **Loading States**:
 
-- Loading overlay: Parchment at 50% opacity with blue spinner
+- Loading overlay: uses `bg-muted` with `border-ring` spinner
 - Updating badge: White/Cream background with navy border and blue spinner
 
 ### Design System Evolution

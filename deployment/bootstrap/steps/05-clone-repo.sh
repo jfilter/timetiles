@@ -40,7 +40,7 @@ run_step() {
     git config core.sparseCheckout true
     echo "deployment/" > .git/info/sparse-checkout
     if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
-        echo "apps/scraper/" >> .git/info/sparse-checkout
+        echo "apps/timescrape/" >> .git/info/sparse-checkout
     fi
 
     retry 3 5 git fetch --depth 1 origin "$repo_branch"

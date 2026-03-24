@@ -8,7 +8,7 @@
  * along with the site footer.
  * @module
  */
-import "@timetiles/ui/globals.css";
+import "@/app/styles/app.css";
 
 import LogoCompactDark from "@timetiles/assets/logos/latest/dark/no-grid/png/wordmark_compact_512.png";
 import LogoCompactLight from "@timetiles/assets/logos/latest/light/no-grid/png/wordmark_compact_512.png";
@@ -129,7 +129,7 @@ const SiteFooter = ({ footerData }: Readonly<{ footerData: FooterType }>) => {
                   href={social.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-charcoal/60 hover:text-navy dark:text-parchment/60 dark:hover:text-parchment transition-colors"
+                  className="text-foreground/60 hover:text-primary dark:text-background/60 dark:hover:text-background transition-colors"
                   aria-label={`Visit us on ${social.platform}`}
                 >
                   <IconMapper name={social.platform} size={20} />

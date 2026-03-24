@@ -90,7 +90,7 @@ export const VisualizationPanel = ({
           <Select value={chartType} onValueChange={handleValueChange}>
             <SelectTrigger
               aria-label="Chart type"
-              className="border-cartographic-navy/20 bg-background w-auto min-w-[140px] shrink-0"
+              className="border-primary/20 bg-background w-auto min-w-[140px] shrink-0"
             >
               <SelectValue />
             </SelectTrigger>

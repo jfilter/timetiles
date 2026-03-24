@@ -66,15 +66,15 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
       aria-label={`${isSelected ? "Deselect" : "Select"} catalog ${catalog.name}`}
       className={cn(
         "relative w-full break-inside-avoid rounded-sm border p-2 text-left transition-all",
-        "hover:bg-cartographic-cream/50 dark:hover:bg-white/10",
+        "hover:bg-card/50 dark:hover:bg-white/10",
         isSelected
-          ? "border-cartographic-terracotta bg-cartographic-cream/30 dark:bg-white/15"
-          : "border-cartographic-navy/20 bg-transparent dark:border-white/30"
+          ? "border-secondary bg-card/30 dark:bg-white/15"
+          : "border-primary/20 bg-transparent dark:border-white/30"
       )}
     >
       {/* Checkmark for selected state */}
       {isSelected && (
-        <div className="bg-cartographic-terracotta absolute top-1 right-1 rounded-full p-0.5">
+        <div className="bg-secondary absolute top-1 right-1 rounded-full p-0.5">
           <Check className="h-2.5 w-2.5 text-white" />
         </div>
       )}
@@ -83,7 +83,7 @@ const CatalogCard = ({ catalog, isSelected, datasetCount, eventCount, onSelect }
       <div
         className={cn(
           "line-clamp-2 pr-5 font-serif text-xs leading-tight font-medium",
-          isSelected ? "text-cartographic-charcoal dark:text-white" : "text-muted-foreground"
+          isSelected ? "text-foreground dark:text-white" : "text-muted-foreground"
         )}
       >
         {catalog.name}
@@ -123,13 +123,13 @@ const DatasetChip = ({ dataset, isActive, eventCount, onToggle }: DatasetChipPro
       className={cn(
         "rounded-sm border px-2 py-1 text-left transition-all",
         isActive
-          ? cn(colors.border, colors.bg, "text-cartographic-charcoal dark:text-cartographic-charcoal")
-          : "border-cartographic-navy/20 text-muted-foreground decoration-cartographic-navy/30 line-through"
+          ? cn(colors.border, colors.bg, "text-foreground dark:text-foreground")
+          : "border-primary/20 text-muted-foreground decoration-primary/30 line-through"
       )}
     >
       <span className="text-xs">{dataset.name}</span>
       {eventCount != null && (
-        <span className="text-cartographic-navy/40 ml-1 font-mono text-[10px]">{formatCount(eventCount)}</span>
+        <span className="text-primary/40 ml-1 font-mono text-[10px]">{formatCount(eventCount)}</span>
       )}
     </button>
   );
@@ -151,7 +151,7 @@ const ExpandCollapseButton = ({
     <button
       type="button"
       onClick={onToggle}
-      className="text-cartographic-blue hover:text-cartographic-blue/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
+      className="text-ring hover:text-ring/80 mt-2 flex items-center gap-1 font-mono text-xs transition-colors"
     >
       {isExpanded ? (
         <>
@@ -326,12 +326,12 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
 
       {/* Dataset Selection - only show when a catalog is selected */}
       {filters.catalog != null && (
-        <div className="border-cartographic-navy/10 border-t pt-4">
+        <div className="border-primary/10 border-t pt-4">
           <div className="text-muted-foreground mb-2 flex items-center justify-between font-mono text-xs tracking-wider uppercase">
             <span>
               {t("datasets")}
               {activeDatasetCount < filteredDatasets.length && (
-                <span className="text-cartographic-terracotta ml-1">
+                <span className="text-secondary ml-1">
                   ({activeDatasetCount}/{filteredDatasets.length} active)
                 </span>
               )}
@@ -355,9 +355,7 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
 
                 {/* Show "+X more" indicator when collapsed */}
                 {useDatasetCollapse && !datasetsExpanded && hiddenDatasetCount > 0 && (
-                  <span className="text-cartographic-navy/40 self-center font-mono text-xs">
-                    +{hiddenDatasetCount} more
-                  </span>
+                  <span className="text-primary/40 self-center font-mono text-xs">+{hiddenDatasetCount} more</span>
                 )}
               </div>
 

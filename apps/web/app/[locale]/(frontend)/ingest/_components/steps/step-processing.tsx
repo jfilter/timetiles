@@ -136,20 +136,20 @@ const calculateProgressPercent = (progress: ImportProgress | null): number => {
 
 const StageIndicator = ({ status }: { status: StageStatus }) => {
   if (status === "completed") {
-    return <CheckCircle2Icon className="text-cartographic-forest h-5 w-5 shrink-0" />;
+    return <CheckCircle2Icon className="text-accent h-5 w-5 shrink-0" />;
   }
   if (status === "in_progress") {
     return (
       <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
-        <span className="bg-cartographic-blue/30 absolute h-full w-full animate-ping rounded-full" />
-        <span className="bg-cartographic-blue relative h-3 w-3 rounded-full" />
+        <span className="bg-ring/30 absolute h-full w-full animate-ping rounded-full" />
+        <span className="bg-ring relative h-3 w-3 rounded-full" />
       </span>
     );
   }
   if (status === "skipped") {
-    return <MinusIcon className="text-cartographic-navy/40 h-5 w-5 shrink-0" />;
+    return <MinusIcon className="text-primary/40 h-5 w-5 shrink-0" />;
   }
-  return <CircleIcon className="text-cartographic-navy/30 h-5 w-5 shrink-0" />;
+  return <CircleIcon className="text-primary/30 h-5 w-5 shrink-0" />;
 };
 
 const StageDetails = ({ stage }: { stage: FormattedStage }) => {
@@ -172,11 +172,8 @@ const StageDetails = ({ stage }: { stage: FormattedStage }) => {
   return (
     <div className="mt-1.5 space-y-1.5">
       {/* Mini progress bar */}
-      <div className="bg-cartographic-navy/10 h-1.5 overflow-hidden rounded-full">
-        <div
-          className="bg-cartographic-blue h-full transition-all duration-300"
-          style={{ width: `${stage.progress}%` }}
-        />
+      <div className="bg-primary/10 h-1.5 overflow-hidden rounded-full">
+        <div className="bg-ring h-full transition-all duration-300" style={{ width: `${stage.progress}%` }} />
       </div>
       {/* Detail text */}
       {detailParts.length > 0 && (
@@ -208,8 +205,8 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
   const lineBelow = !isLast;
   const lineBelowStyle =
     stage.status === "completed" || stage.status === "in_progress"
-      ? "border-cartographic-navy/20"
-      : "border-dashed border-cartographic-navy/15";
+      ? "border-primary/20"
+      : "border-dashed border-primary/15";
 
   return (
     <div className="flex gap-3">
@@ -225,10 +222,10 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
           <span
             className={cn(
               "text-sm font-medium",
-              stage.status === "completed" && "text-cartographic-charcoal",
-              stage.status === "in_progress" && "text-cartographic-blue",
-              stage.status === "pending" && "text-cartographic-navy/40",
-              stage.status === "skipped" && "text-cartographic-navy/40 line-through"
+              stage.status === "completed" && "text-foreground",
+              stage.status === "in_progress" && "text-ring",
+              stage.status === "pending" && "text-primary/40",
+              stage.status === "skipped" && "text-primary/40 line-through"
             )}
           >
             {stageName}
@@ -237,7 +234,7 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
             <span className="text-muted-foreground shrink-0 font-mono text-xs">{duration}</span>
           )}
           {stage.status === "skipped" && (
-            <span className="text-cartographic-navy/40 shrink-0 font-mono text-xs">{t("stageSkipped")}</span>
+            <span className="text-primary/40 shrink-0 font-mono text-xs">{t("stageSkipped")}</span>
           )}
         </div>
         {stage.status === "in_progress" && <StageDetails stage={stage} />}
@@ -266,10 +263,10 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
   if (status === "completed") {
     return (
       <>
-        <div className="bg-cartographic-forest/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-          <CheckCircle2Icon className="text-cartographic-forest h-8 w-8" />
+        <div className="bg-accent/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+          <CheckCircle2Icon className="text-accent h-8 w-8" />
         </div>
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importComplete")}</h2>
+        <h2 className="text-foreground font-serif text-3xl font-bold">{t("importComplete")}</h2>
         <p className="text-muted-foreground mt-2">{t("importCompleteDescription")}</p>
       </>
     );
@@ -281,7 +278,7 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
         <div className="bg-destructive/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           <AlertCircleIcon className="text-destructive h-8 w-8" />
         </div>
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importFailed")}</h2>
+        <h2 className="text-foreground font-serif text-3xl font-bold">{t("importFailed")}</h2>
         <p className="text-muted-foreground mt-2">{t("importFailedDescription")}</p>
       </>
     );
@@ -289,10 +286,10 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
 
   return (
     <>
-      <div className="bg-cartographic-blue/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-        <Loader2Icon className="text-cartographic-blue h-8 w-8 animate-spin" />
+      <div className="bg-ring/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+        <Loader2Icon className="text-ring h-8 w-8 animate-spin" />
       </div>
-      <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("importingData")}</h2>
+      <h2 className="text-foreground font-serif text-3xl font-bold">{t("importingData")}</h2>
       <p className="text-muted-foreground mt-2">{t("importingDataDescription")}</p>
     </>
   );
@@ -376,32 +373,29 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
             <div className="px-6 py-4">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-muted-foreground text-sm">{stageLabel}</span>
-                <span className="text-cartographic-charcoal font-mono text-sm">{progressPercent}%</span>
+                <span className="text-foreground font-mono text-sm">{progressPercent}%</span>
               </div>
-              <div className="bg-cartographic-navy/10 h-2 overflow-hidden rounded-full">
-                <div className="bg-cartographic-blue h-full transition-all duration-300" style={progressBarStyle} />
+              <div className="bg-primary/10 h-2 overflow-hidden rounded-full">
+                <div className="bg-ring h-full transition-all duration-300" style={progressBarStyle} />
               </div>
             </div>
           )}
 
           {/* Error message */}
           {errorMessage && (
-            <div className="border-cartographic-navy/10 border-t px-6 py-4">
+            <div className="border-primary/10 border-t px-6 py-4">
               <div className="bg-destructive/10 text-destructive rounded-sm p-4 text-sm">{errorMessage}</div>
             </div>
           )}
 
           {/* Completion details */}
           {status === "completed" && progress?.datasets && progress.datasets.length > 0 && (
-            <div className="border-cartographic-navy/10 border-t px-6 py-4">
-              <p className="text-cartographic-charcoal mb-3 text-sm font-medium">{t("importedDatasets")}</p>
+            <div className="border-primary/10 border-t px-6 py-4">
+              <p className="text-foreground mb-3 text-sm font-medium">{t("importedDatasets")}</p>
               <div className="space-y-2">
                 {progress.datasets.map((dataset) => (
-                  <div
-                    key={dataset.id}
-                    className="bg-cartographic-cream/50 flex items-center justify-between rounded-sm px-4 py-2"
-                  >
-                    <span className="text-cartographic-charcoal text-sm">{dataset.name}</span>
+                  <div key={dataset.id} className="bg-card/50 flex items-center justify-between rounded-sm px-4 py-2">
+                    <span className="text-foreground text-sm">{dataset.name}</span>
                     <span className="text-muted-foreground font-mono text-sm">
                       {t("eventsCount", { count: dataset.eventsCount.toLocaleString() })}
                     </span>

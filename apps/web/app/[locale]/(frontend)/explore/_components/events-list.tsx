@@ -70,7 +70,7 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
     <Card
       className={cn(
         "border-border bg-background border-2 p-5",
-        onEventClick && "hover:border-cartographic-blue cursor-pointer transition-colors duration-200",
+        onEventClick && "hover:border-ring cursor-pointer transition-colors duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       )}
       onClick={onEventClick ? handleClick : undefined}

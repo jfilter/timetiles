@@ -32,8 +32,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 const getBorderClass = (isConnected: boolean, required: boolean): string => {
-  if (isConnected) return "border-cartographic-forest";
-  if (required) return "border-cartographic-terracotta/50";
+  if (isConnected) return "border-accent";
+  if (required) return "border-secondary/50";
   return "border-border";
 };
 
@@ -47,7 +47,7 @@ const TargetFieldNodeComponent = ({ data, selected }: Readonly<TargetFieldNodePr
       className={cn(
         "min-w-[180px] rounded-sm border-2 bg-white shadow-sm transition-all duration-200",
         borderClass,
-        selected && "ring-cartographic-blue ring-2 ring-offset-2"
+        selected && "ring-ring ring-2 ring-offset-2"
       )}
     >
       {/* Input handle (left side) */}
@@ -55,8 +55,8 @@ const TargetFieldNodeComponent = ({ data, selected }: Readonly<TargetFieldNodePr
         type="target"
         position={Position.Left}
         className={cn(
-          "!bg-cartographic-navy !h-3 !w-3 !border-2 !border-white transition-colors",
-          data.isConnected && "!bg-cartographic-forest"
+          "!bg-primary !h-3 !w-3 !border-2 !border-white transition-colors",
+          data.isConnected && "!bg-accent"
         )}
       />
 
@@ -64,15 +64,13 @@ const TargetFieldNodeComponent = ({ data, selected }: Readonly<TargetFieldNodePr
       <div
         className={cn(
           "flex items-center gap-2 border-b px-3 py-1.5",
-          data.required ? "border-cartographic-terracotta/20 bg-cartographic-terracotta/5" : "border-border bg-muted/30"
+          data.required ? "border-secondary/20 bg-secondary/5" : "border-border bg-muted/30"
         )}
       >
-        <Icon
-          className={cn("h-3.5 w-3.5", data.required ? "text-cartographic-terracotta" : "text-cartographic-forest")}
-        />
+        <Icon className={cn("h-3.5 w-3.5", data.required ? "text-secondary" : "text-accent")} />
         <span className="text-muted-foreground font-mono text-[10px] tracking-wide uppercase">
           {t("flowTargetField")}
-          {data.required && <span className="text-cartographic-terracotta ml-1">*</span>}
+          {data.required && <span className="text-secondary ml-1">*</span>}
         </span>
       </div>
 
@@ -82,8 +80,8 @@ const TargetFieldNodeComponent = ({ data, selected }: Readonly<TargetFieldNodePr
 
         {data.isConnected && data.connectedColumn ? (
           <div className="mt-1 flex items-center gap-1">
-            <span className="text-cartographic-forest text-xs">←</span>
-            <span className="text-cartographic-forest truncate font-mono text-xs">{data.connectedColumn}</span>
+            <span className="text-accent text-xs">←</span>
+            <span className="text-accent truncate font-mono text-xs">{data.connectedColumn}</span>
           </div>
         ) : (
           <p className="text-muted-foreground mt-1 text-xs">{data.description}</p>

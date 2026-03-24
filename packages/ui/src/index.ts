@@ -6,6 +6,9 @@
  * @module
  */
 
+// Provider
+export { type UIConfig, UIProvider, useUIConfig } from "./provider";
+
 // Core components used by BlockRenderer
 export { Button } from "./components/button";
 export {

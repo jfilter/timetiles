@@ -15,9 +15,10 @@ interface EChartsSeriesItem {
 // Type guard to check if a value is a valid series item
 const isSeriesItem = (value: unknown): value is EChartsSeriesItem => typeof value === "object" && value !== null;
 
-// Cartographic color palette (OKLCH converted to hex for ECharts)
-// These match the design system defined in packages/ui/DESIGN_SYSTEM.md
-const cartographicColors = {
+// Default color palette (hex values for ECharts compatibility).
+// Matches the Cartographic design system. Override via UIProvider's
+// lightChartTheme / darkChartTheme for custom palettes.
+const defaultColors = {
   parchment: "#f8f5f0", // oklch(0.96 0.01 80)
   charcoal: "#404040", // oklch(0.25 0 0)
   navy: "#4a5568", // oklch(0.35 0.06 250)
@@ -40,22 +41,45 @@ const cartographicColors = {
 
 export const defaultLightTheme: ChartTheme = {
   backgroundColor: "transparent",
-  textColor: cartographicColors.charcoal,
-  axisLineColor: `${cartographicColors.navy}4D`, // navy at 30% opacity
-  splitLineColor: `${cartographicColors.navy}1A`, // navy at 10% opacity
-  itemColor: cartographicColors.blue,
+  textColor: defaultColors.charcoal,
+  axisLineColor: `${defaultColors.navy}4D`, // navy at 30% opacity
+  splitLineColor: `${defaultColors.navy}1A`, // navy at 10% opacity
+  itemColor: defaultColors.blue,
+  tooltipBackground: defaultColors.parchment,
+  tooltipForeground: defaultColors.charcoal,
+  emphasisColor: defaultColors.navy,
 };
 
 export const defaultDarkTheme: ChartTheme = {
   backgroundColor: "transparent",
-  textColor: cartographicColors.charcoal,
-  axisLineColor: `${cartographicColors.charcoal}66`, // charcoal at 40% opacity
-  splitLineColor: `${cartographicColors.charcoal}33`, // charcoal at 20% opacity
-  itemColor: cartographicColors.blue,
+  textColor: defaultColors.charcoal,
+  axisLineColor: `${defaultColors.charcoal}66`, // charcoal at 40% opacity
+  splitLineColor: `${defaultColors.charcoal}33`, // charcoal at 20% opacity
+  itemColor: defaultColors.blue,
+  tooltipBackground: defaultColors.charcoal,
+  tooltipForeground: defaultColors.parchment,
+  emphasisColor: defaultColors.navy,
+};
+
+/** Configuration for map point and cluster visualization colors. */
+export interface MapColors {
+  /** Color for individual event points on the map. */
+  mapPoint: string;
+  /** 5-level gradient for cluster circles (lightest to darkest). */
+  mapClusterGradient: readonly [string, string, string, string, string];
+  /** Stroke color for point and cluster circles. */
+  mapStroke: string;
+}
+
+/** Default map visualization colors (matches the cartographic palette). */
+export const defaultMapColors: MapColors = {
+  mapPoint: defaultColors.mapPoint,
+  mapClusterGradient: defaultColors.mapClusterGradient,
+  mapStroke: defaultColors.mapStroke,
 };
 
 // Export color palette for use in other charts
-export { cartographicColors };
+export { defaultColors };
 
 // Helper function to safely spread axis options
 const safeSpreadAxis = (axis: unknown): Record<string, unknown> => {

@@ -9,7 +9,7 @@ import { type ReactNode } from "react";
 export type StatusVariant = "success" | "error" | "warning" | "muted" | "info";
 
 const variantStyles: Record<StatusVariant, string> = {
-  success: "bg-cartographic-forest/10 text-cartographic-forest",
+  success: "bg-accent/10 text-accent",
   error: "bg-destructive/10 text-destructive",
   warning: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   muted: "bg-muted text-muted-foreground",

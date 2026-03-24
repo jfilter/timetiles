@@ -10,6 +10,12 @@ export interface ChartTheme {
   axisLineColor?: string;
   splitLineColor?: string;
   itemColor?: string | string[];
+  /** Tooltip background color. Falls back to foreground color if omitted. */
+  tooltipBackground?: string;
+  /** Tooltip text color. Falls back to background color if omitted. */
+  tooltipForeground?: string;
+  /** Color for hover emphasis on chart items. Falls back to primary/navy if omitted. */
+  emphasisColor?: string;
 }
 
 // ECharts event parameter types

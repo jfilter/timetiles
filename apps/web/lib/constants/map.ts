@@ -6,13 +6,17 @@
  */
 
 /**
- * Map style URLs for light and dark themes.
- * These point to the locally-served VersaTiles cartographic styles.
+ * Map style URLs per theme preset and mode.
  */
-export const MAP_STYLES = {
-  light: "/map-styles/cartographic-light.json",
-  dark: "/map-styles/cartographic-dark.json",
-} as const;
+export const MAP_STYLES_BY_PRESET: Record<string, { light: string; dark: string }> = {
+  cartographic: { light: "/map-styles/cartographic-light.json", dark: "/map-styles/cartographic-dark.json" },
+  modern: { light: "/map-styles/modern-light.json", dark: "/map-styles/modern-dark.json" },
+};
+
+/**
+ * Map style URLs for light and dark themes (default preset).
+ */
+export const MAP_STYLES = MAP_STYLES_BY_PRESET.cartographic!;
 
 /**
  * Default cluster statistics used when no data is available.

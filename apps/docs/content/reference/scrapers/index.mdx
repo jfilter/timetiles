@@ -12,13 +12,13 @@ Scrapers let you write short Python or Node.js scripts that fetch data from webs
 
 The scraper system has two parts:
 
-| Component              | Location       | Responsibility                                                                                                       |
-| ---------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **TimeScrape Runner**  | `apps/scraper` | Executes user code inside isolated Podman containers. Stateless -- no database, no user management.                  |
-| **Scraper Management** | `apps/web`     | Payload CMS collections for repos, scrapers, and runs. Scheduling, auth, quotas, and ingestion pipeline integration. |
+| Component              | Location          | Responsibility                                                                                                       |
+| ---------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **TimeScrape Runner**  | `apps/timescrape` | Executes user code inside isolated Podman containers. Stateless -- no database, no user management.                  |
+| **Scraper Management** | `apps/web`        | Payload CMS collections for repos, scrapers, and runs. Scheduling, auth, quotas, and ingestion pipeline integration. |
 
 ```
-TimeTiles (apps/web)                    TimeScrape Runner (apps/scraper)
+TimeTiles (apps/web)                    TimeScrape Runner (apps/timescrape)
 +--------------------------+            +------------------------+
 | Payload Collections:     |            |  POST /run             |
 |  scraper-repos           |   API      |    |                   |
@@ -68,8 +68,8 @@ The `SCRAPER_API_KEY` value must match the key configured on the runner. See [De
 Use the CLI tool to create a new scraper project:
 
 ```bash
-npx timescrape init my-scraper              # Python (default)
-npx timescrape init my-scraper --runtime node
+npx @timetiles/scraper init my-scraper              # Python (default)
+npx @timetiles/scraper init my-scraper --runtime node
 ```
 
 This creates a `my-scraper/` directory with a `scrapers.yml` manifest, a starter entrypoint script, `.gitignore`, and a `README.md`.
@@ -86,11 +86,11 @@ When you save the repo, TimeTiles automatically syncs the manifest and creates s
 
 ### 5. Write a scraper
 
-Create a Python script that uses the `timescrape` helper:
+Create a Python script that uses the `timetiles.scraper` helper:
 
 ```python
 import requests
-from timescrape import output
+from timetiles.scraper import output
 
 response = requests.get(
     "https://date.nager.at/api/v3/PublicHolidays/2026/DE",
@@ -262,10 +262,10 @@ Individual scraper fields always take precedence over defaults.
 
 Each runtime ships with a helper library that handles CSV output. You do not need to write CSV formatting code yourself.
 
-### Python: `timescrape`
+### Python: `timetiles.scraper`
 
 ```python
-from timescrape import output
+from timetiles.scraper import output
 
 # Write rows one at a time
 output.write_row({"title": "Event", "date": "2026-01-01", "location": "Berlin"})
@@ -302,10 +302,10 @@ print(f"Wrote {output.row_count} rows")
 - `pandas` -- Data manipulation
 - `cssselect` -- CSS selector support for lxml
 
-### Node.js: `@timescrape/helper`
+### Node.js: `@timetiles/scraper`
 
 ```javascript
-import { output } from "@timescrape/helper";
+import { output } from "@timetiles/scraper";
 
 output.writeRow({ title: "Event", date: "2026-01-01", location: "Berlin" });
 output.writeRow({ title: "Concert", date: "2026-02-01", location: "Munich" });

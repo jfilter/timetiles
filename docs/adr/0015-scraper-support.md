@@ -18,15 +18,15 @@ The key constraint is security: scraper code is user-authored and potentially un
 
 The system is split into two components:
 
-| Component              | Location       | Responsibility                                                                                                         |
-| ---------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **TimeScrape Runner**  | `apps/scraper` | Execute user code in isolated Podman containers. Stateless, no database, no user management.                           |
-| **Scraper Management** | `apps/web`     | Payload collections for repos/scrapers/runs, scheduling via existing job queue, UI, auth, import pipeline integration. |
+| Component              | Location          | Responsibility                                                                                                         |
+| ---------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **TimeScrape Runner**  | `apps/timescrape` | Execute user code in isolated Podman containers. Stateless, no database, no user management.                           |
+| **Scraper Management** | `apps/web`        | Payload collections for repos/scrapers/runs, scheduling via existing job queue, UI, auth, import pipeline integration. |
 
 This split exists because the only operation requiring isolation is executing untrusted code. Everything else (auth, scheduling, UI, storage, import pipeline) already exists in TimeTiles and should not be duplicated.
 
 ```
-TimeTiles (apps/web)                    TimeScrape Runner (apps/scraper)
+TimeTiles (apps/web)                    TimeScrape Runner (apps/timescrape)
 ┌────────────────────────────┐         ┌──────────────────────────┐
 │ Payload Collections:       │         │  POST /run               │
 │  scraper-repos             │  API    │    ↓                     │
@@ -98,7 +98,7 @@ For `git` repos, the runner performs a shallow clone (`--depth 1`) with a config
 
 For `upload` repos, the JSON code map is passed directly to the runner's `/run` endpoint. Path traversal is prevented by rejecting filenames containing `..` or starting with `/`.
 
-Source: `apps/scraper/src/services/code-prep.ts`
+Source: `apps/timescrape/src/services/code-prep.ts`
 
 ### Named Runtimes with Helper Libraries
 
@@ -106,19 +106,19 @@ Users select a named runtime rather than specifying language and library version
 
 | Runtime  | Base             | Pre-installed libraries                           | Helper lib           |
 | -------- | ---------------- | ------------------------------------------------- | -------------------- |
-| `python` | Python 3.12-slim | requests, beautifulsoup4, lxml, pandas, cssselect | `timescrape`         |
-| `node`   | Node.js 24-slim  | cheerio, axios                                    | `@timescrape/helper` |
+| `python` | Python 3.12-slim | requests, beautifulsoup4, lxml, pandas, cssselect | `timetiles`          |
+| `node`   | Node.js 24-slim  | cheerio, axios                                    | `@timetiles/scraper` |
 
 No dependency installation at runtime. Scrapers can only use pre-installed libraries. No `pip install`, no `npm install`. This prevents supply chain attacks and simplifies execution.
 
 All base images run as non-root user (UID 1000). Library versions are pinned per image release.
 
-Source: `apps/scraper/images/python/Dockerfile`, `apps/scraper/images/node/Dockerfile`
+Source: `apps/timescrape/images/python/Dockerfile`, `apps/timescrape/images/node/Dockerfile`
 
 **Helper libraries** make CSV output trivial:
 
 ```python
-from timescrape import output
+from timetiles.scraper import output
 for event in scrape_events():
     output.write_row({"title": event["name"], "date": event["date"], "location": event["venue"]})
 output.save()
@@ -126,7 +126,7 @@ output.save()
 
 The helper handles CSV formatting, headers (auto-detected from first row), and writing to the correct output path (`/output/{configured_filename}`).
 
-Source: `apps/scraper/images/python/timescrape/output.py`, `apps/scraper/images/node/timescrape-helper/index.js`
+Source: `packages/python/src/timetiles/scraper/output.py`, `packages/scraper/` (the `@timetiles/scraper` npm package)
 
 ### Container Isolation: Podman Rootless
 
@@ -148,7 +148,7 @@ Scraper containers run under Podman in rootless mode with defense-in-depth harde
 
 Podman rootless was chosen over Docker because it requires no daemon (eliminating the Docker socket attack vector), has zero CVEs in 2025, and provides rootless operation by default.
 
-Source: `apps/scraper/src/security/container-config.ts`, `apps/scraper/src/security/seccomp-profile.json`
+Source: `apps/timescrape/src/security/container-config.ts`, `apps/timescrape/src/security/seccomp-profile.json`
 
 **Filesystem isolation:**
 
@@ -172,7 +172,7 @@ TimeTiles calls the runner via HTTP with a shared API key (`SCRAPER_API_KEY`).
 
 All endpoints except `/health` require `Authorization: Bearer {SCRAPER_API_KEY}`.
 
-Source: `apps/scraper/src/api/run.ts`, `apps/scraper/src/index.ts`
+Source: `apps/timescrape/src/api/run.ts`, `apps/timescrape/src/index.ts`
 
 **Request format (POST /run):**
 
@@ -193,7 +193,7 @@ Either `code_url` (Git) or `code` (inline) must be provided. The response includ
 
 **Concurrency:** The runner tracks active runs in memory and rejects new requests when `SCRAPER_MAX_CONCURRENT` is reached (default 3).
 
-Source: `apps/scraper/src/services/runner.ts`
+Source: `apps/timescrape/src/services/runner.ts`
 
 ### Output Validation
 
@@ -206,7 +206,7 @@ After each run, the runner validates the output file before returning it:
 | Size limit     | `SCRAPER_MAX_OUTPUT_SIZE_MB` (default 100MB) | `INVALID_OUTPUT`              |
 | Has header row | First non-empty line                         | `INVALID_OUTPUT`              |
 
-Source: `apps/scraper/src/services/output-validator.ts`
+Source: `apps/timescrape/src/services/output-validator.ts`
 
 ### Payload Collections
 
@@ -299,7 +299,7 @@ Quotas are checked in `beforeChange` hooks on collection create and in the `scra
 
 ### Environment Variables
 
-**apps/scraper (runner):**
+**apps/timescrape (runner):**
 
 | Variable                     | Default           | Purpose                              |
 | ---------------------------- | ----------------- | ------------------------------------ |
@@ -312,7 +312,7 @@ Quotas are checked in `beforeChange` hooks on collection create and in the `scra
 | `SCRAPER_MAX_OUTPUT_SIZE_MB` | `100`             | Max CSV output size                  |
 | `SCRAPER_DATA_DIR`           | `/tmp/timescrape` | Temp directory for run workspaces    |
 
-Source: `apps/scraper/src/config.ts`
+Source: `apps/timescrape/src/config.ts`
 
 **apps/web (additions):**
 
@@ -339,7 +339,7 @@ The TimeScrape runner server lives on the internal network (needs access to Time
 
 ## Consequences
 
-- The runner (`apps/scraper`) is a separate deployment target. Operators who do not need scraping can skip it entirely. The main TimeTiles application functions without it — the feature flag ensures graceful degradation.
+- The runner (`apps/timescrape`) is a separate deployment target. Operators who do not need scraping can skip it entirely. The main TimeTiles application functions without it — the feature flag ensures graceful degradation.
 - Podman must be installed on the host running the runner. This is an additional infrastructure requirement not present in the base TimeTiles deployment.
 - No dependency installation at runtime means users cannot use libraries beyond what is pre-installed. New runtimes or library additions require rebuilding base images. This is an intentional trade-off for security.
 - The `scraper-sandbox` network must be configured to allow internet access but block access to internal services. Misconfiguration could allow scrapers to reach the database or web application.

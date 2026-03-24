@@ -1,0 +1,125 @@
+/**
+ * Modern Theme — clean, contemporary design with cool blue-gray tones.
+ *
+ * Scoped to .theme-modern class. Apply to <html> to activate.
+ * Works with both light and dark modes.
+ */
+
+.theme-modern {
+  /* Base Palette (Light Mode) */
+  --background: oklch(0.985 0.002 260);
+  --foreground: oklch(0.15 0.01 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.01 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.01 260);
+  --primary: oklch(0.45 0.2 260);
+  --primary-foreground: oklch(0.98 0.005 260);
+  --secondary: oklch(0.55 0.15 200);
+  --secondary-foreground: oklch(0.98 0.005 260);
+  --muted: oklch(0.95 0.005 260);
+  --muted-foreground: oklch(0.45 0.02 260);
+  --accent: oklch(0.55 0.18 160);
+  --accent-foreground: oklch(0.98 0.005 260);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.005 260);
+  --border: oklch(0.91 0.005 260);
+  --input: oklch(0.91 0.005 260);
+  --ring: oklch(0.55 0.2 260);
+  --chart-1: oklch(0.55 0.2 260);
+  --chart-2: oklch(0.55 0.15 200);
+  --chart-3: oklch(0.55 0.18 160);
+  --chart-4: oklch(0.45 0.2 260);
+  --chart-5: oklch(0.6 0.15 300);
+  --radius: 0.5rem;
+
+  /* Sidebar */
+  --sidebar: oklch(0.975 0.003 260);
+  --sidebar-foreground: oklch(0.15 0.01 260);
+  --sidebar-primary: oklch(0.45 0.2 260);
+  --sidebar-primary-foreground: oklch(0.98 0.005 260);
+  --sidebar-accent: oklch(0.55 0.2 260);
+  --sidebar-accent-foreground: oklch(0.98 0.005 260);
+  --sidebar-border: oklch(0.91 0.005 260);
+  --sidebar-ring: oklch(0.55 0.2 260);
+
+  /* Layout & Style */
+  --shadow-card: 0 1px 3px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04);
+  --shadow-card-hover: 0 8px 25px oklch(0 0 0 / 0.12);
+  --heading-font: var(--font-sans);
+  --density-gap: 1.25rem;
+  --density-padding: 2rem;
+
+  /* Categorical palette */
+  --palette-1: oklch(0.55 0.2 260);
+  --palette-2: oklch(0.55 0.15 200);
+  --palette-3: oklch(0.55 0.18 160);
+  --palette-4: oklch(0.6 0.12 190);
+  --palette-5: oklch(0.6 0.15 70);
+  --palette-6: oklch(0.5 0.15 310);
+  --palette-7: oklch(0.6 0.15 20);
+  --palette-8: oklch(0.55 0.1 140);
+  --palette-9: oklch(0.4 0.15 270);
+  --palette-10: oklch(0.5 0.03 260);
+
+  /* No paper texture */
+  --texture-tint: transparent;
+  --texture-accent: transparent;
+  --texture-line: transparent;
+}
+
+.theme-modern.dark,
+.dark .theme-modern {
+  /* Base Palette (Dark Mode) */
+  --background: oklch(0.13 0.01 260);
+  --foreground: oklch(0.93 0.005 260);
+  --card: oklch(0.17 0.01 260);
+  --card-foreground: oklch(0.93 0.005 260);
+  --popover: oklch(0.17 0.01 260);
+  --popover-foreground: oklch(0.93 0.005 260);
+  --primary: oklch(0.65 0.2 260);
+  --primary-foreground: oklch(0.13 0.01 260);
+  --secondary: oklch(0.6 0.15 200);
+  --secondary-foreground: oklch(0.13 0.01 260);
+  --muted: oklch(0.2 0.01 260);
+  --muted-foreground: oklch(0.65 0.02 260);
+  --accent: oklch(0.6 0.18 160);
+  --accent-foreground: oklch(0.13 0.01 260);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.13 0.01 260);
+  --border: oklch(0.25 0.01 260);
+  --input: oklch(0.25 0.01 260);
+  --ring: oklch(0.65 0.2 260);
+  --chart-1: oklch(0.65 0.2 260);
+  --chart-2: oklch(0.6 0.15 200);
+  --chart-3: oklch(0.6 0.18 160);
+  --chart-4: oklch(0.55 0.2 260);
+  --chart-5: oklch(0.65 0.15 300);
+
+  /* Sidebar */
+  --sidebar: oklch(0.15 0.01 260);
+  --sidebar-foreground: oklch(0.93 0.005 260);
+  --sidebar-primary: oklch(0.65 0.2 260);
+  --sidebar-primary-foreground: oklch(0.13 0.01 260);
+  --sidebar-accent: oklch(0.65 0.2 260);
+  --sidebar-accent-foreground: oklch(0.13 0.01 260);
+  --sidebar-border: oklch(0.25 0.01 260);
+  --sidebar-ring: oklch(0.65 0.2 260);
+
+  /* Categorical palette (Dark Mode) */
+  --palette-1: oklch(0.65 0.2 260);
+  --palette-2: oklch(0.6 0.15 200);
+  --palette-3: oklch(0.6 0.18 160);
+  --palette-4: oklch(0.65 0.12 190);
+  --palette-5: oklch(0.65 0.15 70);
+  --palette-6: oklch(0.6 0.15 310);
+  --palette-7: oklch(0.65 0.15 20);
+  --palette-8: oklch(0.6 0.1 140);
+  --palette-9: oklch(0.5 0.15 270);
+  --palette-10: oklch(0.6 0.03 260);
+
+  /* No paper texture */
+  --texture-tint: transparent;
+  --texture-accent: transparent;
+  --texture-line: transparent;
+}

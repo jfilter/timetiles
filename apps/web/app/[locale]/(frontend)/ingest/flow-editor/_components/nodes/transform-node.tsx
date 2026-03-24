@@ -33,18 +33,10 @@ const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
 };
 
 const TRANSFORM_COLORS: Record<TransformType, { bg: string; border: string; text: string }> = {
-  rename: { bg: "bg-cartographic-blue/5", border: "border-cartographic-blue/50", text: "text-cartographic-blue" },
-  "date-parse": {
-    bg: "bg-cartographic-terracotta/5",
-    border: "border-cartographic-terracotta/50",
-    text: "text-cartographic-terracotta",
-  },
-  "string-op": {
-    bg: "bg-cartographic-forest/5",
-    border: "border-cartographic-forest/50",
-    text: "text-cartographic-forest",
-  },
-  concatenate: { bg: "bg-cartographic-navy/5", border: "border-cartographic-navy/50", text: "text-cartographic-navy" },
+  rename: { bg: "bg-ring/5", border: "border-ring/50", text: "text-ring" },
+  "date-parse": { bg: "bg-secondary/5", border: "border-secondary/50", text: "text-secondary" },
+  "string-op": { bg: "bg-accent/5", border: "border-accent/50", text: "text-accent" },
+  concatenate: { bg: "bg-primary/5", border: "border-primary/50", text: "text-primary" },
   split: { bg: "bg-purple-500/5", border: "border-purple-500/50", text: "text-purple-600" },
 };
 
@@ -112,8 +104,8 @@ const TransformNodeComponent = ({ data, selected }: Readonly<TransformNodeProps>
         "min-w-[200px] rounded-md border-2 shadow-sm transition-all duration-200",
         colors.bg,
         transform.active ? colors.border : "border-muted",
-        selected && "ring-cartographic-blue ring-2 ring-offset-2",
-        isEditing && "ring-cartographic-terracotta ring-2 ring-offset-2"
+        selected && "ring-ring ring-2 ring-offset-2",
+        isEditing && "ring-secondary ring-2 ring-offset-2"
       )}
     >
       {/* Input handle (left side) */}

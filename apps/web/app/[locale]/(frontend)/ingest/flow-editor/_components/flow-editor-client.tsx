@@ -43,11 +43,11 @@ interface FlowEditorClientProps {
 // Define custom node types
 const nodeTypes = { "source-column": SourceColumnNode, "target-field": TargetFieldNode, transform: TransformNode };
 
-// Minimap color function
+// Minimap color function — uses CSS custom properties for theme support
 const getNodeColor = (node: Node): string => {
-  if (node.type === "source-column") return "oklch(0.85 0.02 85)"; // cream
-  if (node.type === "target-field") return "oklch(0.95 0.01 100)"; // white
-  return "oklch(0.58 0.11 220)"; // blue
+  if (node.type === "source-column") return "var(--card)";
+  if (node.type === "target-field") return "var(--background)";
+  return "var(--ring)";
 };
 
 // ReactFlow options

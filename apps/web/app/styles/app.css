@@ -1,0 +1,8 @@
+@import "@timetiles/ui/globals.css";
+@import "@timetiles/ui/themes/modern.css";
+@import "./maplibre-dark.css";
+
+/* App-specific source paths for Tailwind class scanning */
+@source "../../components/**/*.{ts,tsx}";
+@source "../../app/**/*.{ts,tsx}";
+@source "../../lib/**/*.{ts,tsx}";

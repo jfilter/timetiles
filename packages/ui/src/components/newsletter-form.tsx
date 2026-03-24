@@ -64,9 +64,9 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
         ref={ref}
         className={cn(
           "relative overflow-hidden rounded-sm",
-          "border-charcoal/10 dark:border-parchment/10 border",
-          "from-parchment/20 via-cream/30 to-parchment/20 bg-gradient-to-br",
-          "dark:from-charcoal/20 dark:via-cream/5 dark:to-charcoal/20",
+          "border-border dark:border-border border",
+          "from-background/20 via-card/30 to-background/20 bg-gradient-to-br",
+          "dark:from-muted/20 dark:via-card/5 dark:to-muted/20",
           "p-6",
           className
         )}
@@ -90,7 +90,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
 
         <div className="relative">
           {headline && (
-            <h3 className="text-navy dark:text-parchment mb-4 font-serif text-lg font-semibold">{headline}</h3>
+            <h3 className="text-primary dark:text-foreground mb-4 font-serif text-lg font-semibold">{headline}</h3>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -103,14 +103,14 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
                 disabled={status === "loading" || status === "success"}
                 className={cn(
                   "h-11 w-full rounded-sm border px-4 py-2",
-                  "border-charcoal/20 dark:border-parchment/20",
+                  "border-border dark:border-border",
                   "bg-background/50 backdrop-blur-sm",
                   "text-foreground font-mono text-sm",
                   "placeholder:text-muted-foreground placeholder:font-sans",
                   "transition-all duration-200",
-                  "focus:border-navy focus:ring-navy/20 focus:ring-2 focus:outline-none",
+                  "focus:border-primary focus:ring-primary/20 focus:ring-2 focus:outline-none",
                   "disabled:cursor-not-allowed disabled:opacity-50",
-                  status === "success" && "border-forest"
+                  status === "success" && "border-accent"
                 )}
                 required
               />
@@ -122,14 +122,14 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
               disabled={status === "loading" || status === "success"}
               className={cn(
                 "group relative h-11 w-full overflow-hidden rounded-sm",
-                "bg-navy text-parchment",
+                "bg-primary text-primary-foreground",
                 "font-sans text-sm font-medium tracking-wide",
                 "transition-all duration-300",
-                "hover:bg-navy/90 hover:shadow-lg",
-                "focus:ring-navy focus:ring-2 focus:ring-offset-2 focus:outline-none",
+                "hover:bg-primary/90 hover:shadow-lg",
+                "focus:ring-primary focus:ring-2 focus:ring-offset-2 focus:outline-none",
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 "active:scale-[0.98]",
-                status === "success" && "bg-forest hover:bg-forest/90"
+                status === "success" && "bg-accent hover:bg-accent/90"
               )}
             >
               <span className="relative z-10">
@@ -146,7 +146,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
             <p
               className={cn(
                 "animate-fade-in mt-3 font-mono text-xs tracking-wide",
-                status === "success" && "text-forest dark:text-forest",
+                status === "success" && "text-accent dark:text-accent",
                 status === "error" && "text-destructive"
               )}
             >

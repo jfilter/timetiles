@@ -12,7 +12,7 @@
 
 import type { EChartsOption } from "echarts";
 
-import { cartographicColors, defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
+import { defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
 import { ChartEmptyState } from "./chart-empty-state";
 import type { ChartTheme, EChartsEventParams } from "./types";
@@ -213,14 +213,11 @@ export const TimeHistogram = ({
     },
   });
 
-  const getTooltipConfig = (chartTheme: ChartTheme, darkMode: boolean, bucketSeconds: number | null | undefined) => ({
+  const getTooltipConfig = (chartTheme: ChartTheme, _darkMode: boolean, bucketSeconds: number | null | undefined) => ({
     trigger: "axis",
-    backgroundColor: darkMode ? cartographicColors.charcoal : cartographicColors.parchment,
+    backgroundColor: chartTheme.tooltipBackground,
     borderColor: chartTheme.axisLineColor,
-    textStyle: {
-      // Use contrasting text color: light text on dark background, dark text on light background
-      color: darkMode ? cartographicColors.parchment : chartTheme.textColor,
-    },
+    textStyle: { color: chartTheme.tooltipForeground },
     formatter: (
       params: Array<{
         value: [number, number, number];
@@ -253,7 +250,7 @@ export const TimeHistogram = ({
         color: Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor,
         borderRadius: [2, 2, 0, 0],
       },
-      emphasis: { itemStyle: { color: cartographicColors.navy } },
+      emphasis: { itemStyle: { color: chartTheme.emphasisColor } },
     },
   ];
 

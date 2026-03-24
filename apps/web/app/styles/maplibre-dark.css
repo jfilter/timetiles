@@ -1,0 +1,36 @@
+/* MapLibre GL controls dark mode support — uses semantic tokens */
+.dark .maplibregl-ctrl-group {
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
+.dark .maplibregl-ctrl-group button {
+  background-color: var(--card);
+}
+
+.dark .maplibregl-ctrl-group button:hover {
+  background-color: var(--muted);
+}
+
+.dark .maplibregl-ctrl-group button + button {
+  border-top-color: var(--border);
+}
+
+/* Style the zoom and other control icons for dark mode */
+.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+
+/* MapLibre attribution control dark mode */
+.dark .maplibregl-ctrl-attrib {
+  background-color: color-mix(in oklch, var(--card), transparent 20%) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.dark .maplibregl-ctrl-attrib a {
+  color: var(--ring) !important;
+}
+
+.dark .maplibregl-ctrl-attrib-button {
+  filter: invert(1) !important;
+}

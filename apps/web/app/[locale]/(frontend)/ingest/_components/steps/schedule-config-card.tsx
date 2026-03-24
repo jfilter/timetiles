@@ -42,10 +42,10 @@ export const ScheduleConfigCard = ({
 
   return (
     <Card className="overflow-hidden">
-      <div className="border-cartographic-navy/10 bg-cartographic-cream/30 flex items-center justify-between border-b px-6 py-4">
+      <div className="border-primary/10 bg-card/30 flex items-center justify-between border-b px-6 py-4">
         <div className="flex items-center gap-3">
-          <ClockIcon className="text-cartographic-navy h-5 w-5" />
-          <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("scheduledIngest")}</h3>
+          <ClockIcon className="text-primary h-5 w-5" />
+          <h3 className="text-foreground font-serif text-lg font-semibold">{t("scheduledIngest")}</h3>
         </div>
         <Button
           type="button"
@@ -61,10 +61,10 @@ export const ScheduleConfigCard = ({
         <CardContent className="space-y-6 p-6">
           {/* Source URL display */}
           <div className="flex items-start gap-3">
-            <GlobeIcon className="text-cartographic-navy/40 mt-0.5 h-4 w-4" />
+            <GlobeIcon className="text-primary/40 mt-0.5 h-4 w-4" />
             <div className="min-w-0 flex-1">
               <p className="text-muted-foreground text-xs">{t("sourceUrl")}</p>
-              <p className="text-cartographic-charcoal truncate font-mono text-sm">{sourceUrl}</p>
+              <p className="text-foreground truncate font-mono text-sm">{sourceUrl}</p>
             </div>
           </div>
 

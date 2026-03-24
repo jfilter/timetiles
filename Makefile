@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra jobs dev scraper-dev scraper-images scraper-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra jobs dev timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE from .env (default: docker)
 -include .env
@@ -176,25 +176,25 @@ dev: ensure-infra
 	exec pnpm dev
 
 # Start scraper runner in dev mode (separate from main dev server)
-scraper-dev:
+timescrape-dev:
 	@echo "🔧 Starting TimeScrape runner..."
-	@if [ ! -f apps/scraper/.env ]; then \
-		echo "⚠️  No apps/scraper/.env found. Copying from .env.example..."; \
-		cp apps/scraper/.env.example apps/scraper/.env; \
-		echo "⚠️  Please update SCRAPER_API_KEY in apps/scraper/.env"; \
+	@if [ ! -f apps/timescrape/.env ]; then \
+		echo "⚠️  No apps/timescrape/.env found. Copying from .env.example..."; \
+		cp apps/timescrape/.env.example apps/timescrape/.env; \
+		echo "⚠️  Please update SCRAPER_API_KEY in apps/timescrape/.env"; \
 	fi
-	pnpm --filter scraper dev
+	pnpm --filter timescrape dev
 
 # Build scraper base container images (requires Podman)
-scraper-images:
+timescrape-images:
 	@echo "🐳 Building scraper base images..."
-	podman build -t timescrape-python apps/scraper/images/python/
-	podman build -t timescrape-node apps/scraper/images/node/
+	podman build -t timescrape-python apps/timescrape/images/python/
+	podman build -t timescrape-node apps/timescrape/images/node/
 	@echo "✅ Base images built: timescrape-python, timescrape-node"
 
 # Run scraper tests
-scraper-test:
-	pnpm --filter scraper test
+timescrape-test:
+	pnpm --filter timescrape test
 
 # Kill all development servers and processes
 kill-dev:
@@ -253,7 +253,7 @@ test:
 test-ai:
 	@if [ -z "$(FILTER)" ]; then \
 		TEST_WORKERS="$(or $(WORKERS),)" \
-		pnpm turbo run test:ai --filter=web --filter=scraper; \
+		pnpm turbo run test:ai --filter=web --filter=timescrape; \
 	else \
 		TEST_WORKERS="$(or $(WORKERS),)" \
 		bash -c 'cd apps/web && pnpm test:ai "$(FILTER)"'; \
@@ -266,6 +266,10 @@ test-ai:
 #   make check-ai PACKAGE=docs                          # Check only apps/docs
 #   make check-ai FILES="lib/foo.ts components/bar.tsx" # Check specific files (defaults to web)
 #   make check-ai PACKAGE=ui FILES="src/index.ts"       # Check files in specific package
+# Verify no hardcoded theme colors leaked into components
+check-theme:
+	@./scripts/check-theme-abstraction.sh
+
 check-ai:
 	@if [ -n "$(FILES)" ]; then \
 		PKG=$${PACKAGE:-web}; \
@@ -273,7 +277,7 @@ check-ai:
 			web) PKG_DIR="apps/web" ;; \
 			docs) PKG_DIR="apps/docs" ;; \
 			ui) PKG_DIR="packages/ui" ;; \
-			scraper) PKG_DIR="apps/scraper" ;; \
+			timescrape|scraper) PKG_DIR="apps/timescrape" ;; \
 			*) echo "❌ Unknown package: $$PKG"; exit 1 ;; \
 		esac; \
 		pnpm exec tsx scripts/check-ai-files.ts "$$PKG_DIR" $(FILES); \
@@ -285,11 +289,11 @@ check-ai:
 		pnpm --filter docs lint && pnpm --filter docs typecheck; \
 	elif [ "$(PACKAGE)" = "ui" ]; then \
 		pnpm --filter ui lint && pnpm --filter ui typecheck; \
-	elif [ "$(PACKAGE)" = "scraper" ]; then \
-		pnpm --filter scraper lint && pnpm --filter scraper typecheck; \
+	elif [ "$(PACKAGE)" = "timescrape" ]; then \
+		pnpm --filter timescrape lint && pnpm --filter timescrape typecheck; \
 	else \
 		echo "❌ Unknown package: $(PACKAGE)"; \
-		echo "Available packages: web, docs, ui, scraper"; \
+		echo "Available packages: web, docs, ui, timescrape"; \
 		exit 1; \
 	fi
 

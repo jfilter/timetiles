@@ -1,0 +1,169 @@
+/**
+ * Cartographic Theme — earth-tone palette inspired by vintage maps.
+ *
+ * This is the default theme for @timetiles/ui.
+ * To create a new theme, copy this file and change the OKLCH values.
+ * All semantic tokens (--primary, --background, etc.) are defined here.
+ */
+
+:root {
+  /* Base Palette (Light Mode) */
+  --cartographic-parchment: oklch(0.96 0.01 80);
+  --cartographic-charcoal: oklch(0.25 0 0);
+  --cartographic-navy: oklch(0.35 0.06 250);
+  --cartographic-blue: oklch(0.58 0.11 220);
+  --cartographic-terracotta: oklch(0.56 0.14 35);
+  --cartographic-forest: oklch(0.42 0.08 145);
+  --cartographic-cream: oklch(0.88 0.01 80);
+
+  /* Extended Palette for Dataset Badges (Light Mode) */
+  --cartographic-teal: oklch(0.52 0.1 185);
+  --cartographic-amber: oklch(0.62 0.15 70);
+  --cartographic-plum: oklch(0.45 0.12 320);
+  --cartographic-slate: oklch(0.48 0.02 260);
+  --cartographic-rose: oklch(0.55 0.14 10);
+  --cartographic-olive: oklch(0.5 0.08 110);
+
+  /* Categorical palette for dataset badges and data distinction */
+  --palette-1: var(--cartographic-blue);
+  --palette-2: var(--cartographic-terracotta);
+  --palette-3: var(--cartographic-forest);
+  --palette-4: var(--cartographic-teal);
+  --palette-5: var(--cartographic-amber);
+  --palette-6: var(--cartographic-plum);
+  --palette-7: var(--cartographic-rose);
+  --palette-8: var(--cartographic-olive);
+  --palette-9: var(--cartographic-navy);
+  --palette-10: var(--cartographic-slate);
+
+  /* Additional base palette (Light Mode) */
+  --cartographic-muted: oklch(0.93 0.01 80);
+  --cartographic-muted-foreground: oklch(0.45 0.04 250);
+  --cartographic-destructive: oklch(0.45 0.22 25);
+  --cartographic-border: oklch(0.88 0.01 250);
+  --cartographic-chart-5: oklch(0.65 0.12 300);
+
+  /* Body texture tints (Light Mode) */
+  --texture-tint: var(--cartographic-parchment);
+  --texture-accent: var(--cartographic-blue);
+  --texture-line: var(--cartographic-charcoal);
+
+  /* Semantic Tokens (Light Mode) */
+  --background: var(--cartographic-parchment);
+  --foreground: var(--cartographic-charcoal);
+  --card: var(--cartographic-cream);
+  --card-foreground: var(--cartographic-charcoal);
+  --popover: var(--cartographic-cream);
+  --popover-foreground: var(--cartographic-charcoal);
+  --primary: var(--cartographic-navy);
+  --primary-foreground: var(--cartographic-parchment);
+  --secondary: var(--cartographic-terracotta);
+  --secondary-foreground: var(--cartographic-parchment);
+  --muted: var(--cartographic-muted);
+  --muted-foreground: var(--cartographic-muted-foreground);
+  --accent: var(--cartographic-forest);
+  --accent-foreground: var(--cartographic-parchment);
+  --destructive: var(--cartographic-destructive);
+  --destructive-foreground: var(--cartographic-parchment);
+  --border: var(--cartographic-border);
+  --input: var(--cartographic-border);
+  --ring: var(--cartographic-blue);
+  --chart-1: var(--cartographic-blue);
+  --chart-2: var(--cartographic-terracotta);
+  --chart-3: var(--cartographic-forest);
+  --chart-4: var(--cartographic-navy);
+  --chart-5: var(--cartographic-chart-5);
+  --radius: 0.125rem;
+  --sidebar: var(--cartographic-cream);
+  --sidebar-foreground: var(--cartographic-charcoal);
+  --sidebar-primary: var(--cartographic-navy);
+  --sidebar-primary-foreground: var(--cartographic-parchment);
+  --sidebar-accent: var(--cartographic-blue);
+  --sidebar-accent-foreground: var(--cartographic-parchment);
+  --sidebar-border: var(--cartographic-border);
+  --sidebar-ring: var(--cartographic-blue);
+
+  /* Layout & Style */
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.05);
+  --shadow-card-hover: 0 4px 12px oklch(0 0 0 / 0.1);
+  --heading-font: var(--font-serif);
+  --density-gap: 1rem;
+  --density-padding: 1.5rem;
+}
+
+.dark {
+  /* Base Palette (Dark Mode) */
+  --cartographic-parchment: oklch(0.15 0.01 250);
+  --cartographic-charcoal: oklch(0.88 0.01 80);
+  --cartographic-navy: oklch(0.65 0.09 230);
+  --cartographic-blue: oklch(0.62 0.12 210);
+  --cartographic-terracotta: oklch(0.62 0.16 30);
+  --cartographic-forest: oklch(0.6 0.1 145);
+  --cartographic-cream: oklch(0.28 0.01 250);
+
+  /* Extended Palette for Dataset Badges (Dark Mode) */
+  --cartographic-teal: oklch(0.58 0.11 185);
+  --cartographic-amber: oklch(0.68 0.16 70);
+  --cartographic-plum: oklch(0.55 0.14 320);
+  --cartographic-slate: oklch(0.58 0.03 260);
+  --cartographic-rose: oklch(0.62 0.15 10);
+  --cartographic-olive: oklch(0.58 0.09 110);
+
+  /* Categorical palette (Dark Mode) */
+  --palette-1: var(--cartographic-blue);
+  --palette-2: var(--cartographic-terracotta);
+  --palette-3: var(--cartographic-forest);
+  --palette-4: var(--cartographic-teal);
+  --palette-5: var(--cartographic-amber);
+  --palette-6: var(--cartographic-plum);
+  --palette-7: var(--cartographic-rose);
+  --palette-8: var(--cartographic-olive);
+  --palette-9: var(--cartographic-navy);
+  --palette-10: var(--cartographic-slate);
+
+  /* Additional base palette (Dark Mode) */
+  --cartographic-muted: oklch(0.22 0.01 250);
+  --cartographic-muted-foreground: oklch(0.68 0.04 230);
+  --cartographic-destructive: oklch(0.7 0.2 25);
+  --cartographic-border: oklch(0.28 0.01 250);
+  --cartographic-chart-5: oklch(0.65 0.12 300);
+
+  /* Body texture tints (Dark Mode) */
+  --texture-tint: var(--cartographic-parchment);
+  --texture-accent: var(--cartographic-blue);
+  --texture-line: var(--cartographic-charcoal);
+
+  /* Semantic Tokens (Dark Mode) */
+  --background: var(--cartographic-parchment);
+  --foreground: var(--cartographic-charcoal);
+  --card: var(--cartographic-cream);
+  --card-foreground: var(--cartographic-charcoal);
+  --popover: var(--cartographic-cream);
+  --popover-foreground: var(--cartographic-charcoal);
+  --primary: var(--cartographic-navy);
+  --primary-foreground: var(--cartographic-parchment);
+  --secondary: var(--cartographic-terracotta);
+  --secondary-foreground: var(--cartographic-parchment);
+  --muted: var(--cartographic-muted);
+  --muted-foreground: var(--cartographic-muted-foreground);
+  --accent: var(--cartographic-forest);
+  --accent-foreground: var(--cartographic-parchment);
+  --destructive: var(--cartographic-destructive);
+  --destructive-foreground: var(--cartographic-parchment);
+  --border: var(--cartographic-border);
+  --input: var(--cartographic-border);
+  --ring: var(--cartographic-blue);
+  --chart-1: var(--cartographic-blue);
+  --chart-2: var(--cartographic-terracotta);
+  --chart-3: var(--cartographic-forest);
+  --chart-4: var(--cartographic-navy);
+  --chart-5: var(--cartographic-chart-5);
+  --sidebar: var(--cartographic-cream);
+  --sidebar-foreground: var(--cartographic-charcoal);
+  --sidebar-primary: var(--cartographic-navy);
+  --sidebar-primary-foreground: var(--cartographic-parchment);
+  --sidebar-accent: var(--cartographic-blue);
+  --sidebar-accent-foreground: var(--cartographic-parchment);
+  --sidebar-border: var(--cartographic-border);
+  --sidebar-ring: var(--cartographic-blue);
+}

@@ -315,8 +315,8 @@ const StringOpEditor = ({
                 className={cn(
                   "rounded-sm border px-2 py-0.5 text-xs transition-colors",
                   expression === preset.expression
-                    ? "border-cartographic-forest bg-cartographic-forest/10 text-cartographic-forest"
-                    : "border-cartographic-navy/15 text-muted-foreground hover:bg-cartographic-cream/60"
+                    ? "border-accent bg-accent/10 text-accent"
+                    : "border-primary/15 text-muted-foreground hover:bg-card/60"
                 )}
               >
                 {t(preset.labelKey)}
@@ -354,8 +354,8 @@ const FieldToggleButton = ({
     }
     className={`rounded-md border px-2 py-1 text-sm transition-colors ${
       isSelected
-        ? "border-cartographic-forest bg-cartographic-forest/10 text-cartographic-forest"
-        : "border-border text-muted-foreground hover:border-cartographic-forest/50"
+        ? "border-accent bg-accent/10 text-accent"
+        : "border-border text-muted-foreground hover:border-accent/50"
     }`}
   >
     {column}

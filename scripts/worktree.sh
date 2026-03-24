@@ -60,10 +60,10 @@ copy_env_files() {
     fi
 
     # scraper env if present
-    if [ -f "$REPO_ROOT/apps/scraper/.env" ]; then
-        mkdir -p "$target/apps/scraper"
-        cp "$REPO_ROOT/apps/scraper/.env" "$target/apps/scraper/.env"
-        info "Copied apps/scraper/.env"
+    if [ -f "$REPO_ROOT/apps/timescrape/.env" ]; then
+        mkdir -p "$target/apps/timescrape"
+        cp "$REPO_ROOT/apps/timescrape/.env" "$target/apps/timescrape/.env"
+        info "Copied apps/timescrape/.env"
         copied=$((copied + 1))
     fi
 

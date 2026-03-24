@@ -101,7 +101,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
 
   return (
     <div className="space-y-1">
-      <div className="text-muted-foreground dark:text-cartographic-charcoal/60 font-mono text-xs tracking-wider uppercase">
+      <div className="text-muted-foreground dark:text-foreground/60 font-mono text-xs tracking-wider uppercase">
         {label}
       </div>
       <DropdownMenu>
@@ -111,7 +111,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
             className={cn(
               "flex w-full items-center justify-between gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
               "bg-background hover:bg-accent",
-              hasSelection ? "border-cartographic-blue/30 text-foreground" : "border-input text-muted-foreground"
+              hasSelection ? "border-ring/30 text-foreground" : "border-input text-muted-foreground"
             )}
           >
             <span className="truncate">
@@ -139,11 +139,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
           <DropdownMenuLabel className="flex items-center justify-between">
             <span>{label}</span>
             {hasSelection && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="text-cartographic-terracotta text-xs hover:underline"
-              >
+              <button type="button" onClick={handleClear} className="text-secondary text-xs hover:underline">
                 {t("clear")}
               </button>
             )}

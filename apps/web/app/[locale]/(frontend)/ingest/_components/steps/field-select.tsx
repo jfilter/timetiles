@@ -23,7 +23,7 @@ export const ConfidenceBadge = ({ level, className }: Readonly<{ level: Confiden
   if (level === "none") return null;
 
   const styles = {
-    high: "bg-cartographic-forest/10 text-cartographic-forest",
+    high: "bg-accent/10 text-accent",
     medium: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
     low: "bg-muted text-muted-foreground",
   };
@@ -82,10 +82,10 @@ export const FieldSelect = ({
 
   return (
     <div className="space-y-2" data-testid={`field-mapping-row-${field}`}>
-      <Label htmlFor={id} className="text-cartographic-charcoal flex min-h-6 items-center gap-2">
+      <Label htmlFor={id} className="text-foreground flex min-h-6 items-center gap-2">
         {icon && <span className="text-muted-foreground">{icon}</span>}
         {label}
-        {required && <span className="text-cartographic-terracotta">*</span>}
+        {required && <span className="text-secondary">*</span>}
         {isAutoDetected && confidenceLevel && confidenceLevel !== "none" && <ConfidenceBadge level={confidenceLevel} />}
       </Label>
       <Select value={value ?? "__none__"} onValueChange={handleValueChange} disabled={disabled}>
@@ -93,8 +93,8 @@ export const FieldSelect = ({
           id={id}
           className={cn(
             "h-11",
-            required && !value && "border-cartographic-terracotta/50",
-            isAutoDetected && confidenceLevel === "high" && "border-cartographic-forest/40 border-dashed",
+            required && !value && "border-secondary/50",
+            isAutoDetected && confidenceLevel === "high" && "border-accent/40 border-dashed",
             disabled && "cursor-not-allowed opacity-60"
           )}
         >
@@ -109,7 +109,7 @@ export const FieldSelect = ({
           ))}
         </SelectContent>
       </Select>
-      {validationMessage && <p className="text-cartographic-terracotta text-xs">{validationMessage}</p>}
+      {validationMessage && <p className="text-secondary text-xs">{validationMessage}</p>}
     </div>
   );
 };

@@ -4,7 +4,7 @@
  * @module
  * @category Components
  */
-import { cartographicColors } from "@timetiles/ui/lib/chart-themes";
+import { defaultMapColors, type MapColors } from "@timetiles/ui/lib/chart-themes";
 import type { Feature } from "geojson";
 import type { LayerSpecification } from "maplibre-gl";
 import type { MapRef } from "react-map-gl/maplibre";
@@ -32,18 +32,22 @@ export const MAP_COMPONENT_STYLE = { width: "100%", height: "100%", minHeight: "
 /** Layer IDs that respond to click events */
 export const INTERACTIVE_LAYER_IDS = ["event-clusters", "unclustered-point"];
 
-/** Event point layer configuration */
-export const eventPointLayerConfig = {
-  id: "unclustered-point",
-  type: "circle" as const,
-  paint: {
-    "circle-color": cartographicColors.mapPoint,
-    "circle-radius": 6,
-    "circle-opacity": 1,
-    "circle-stroke-width": 1,
-    "circle-stroke-color": cartographicColors.mapStroke,
-  },
-} satisfies CircleLayerConfig;
+/** Build event point layer configuration with the given map colors. */
+export const buildEventPointLayerConfig = (colors: MapColors = defaultMapColors) =>
+  ({
+    id: "unclustered-point",
+    type: "circle" as const,
+    paint: {
+      "circle-color": colors.mapPoint,
+      "circle-radius": 6,
+      "circle-opacity": 1,
+      "circle-stroke-width": 1,
+      "circle-stroke-color": colors.mapStroke,
+    },
+  }) satisfies CircleLayerConfig;
+
+/** Event point layer configuration (default colors) */
+export const eventPointLayerConfig = buildEventPointLayerConfig();
 
 /** Extract valid coordinates from a GeoJSON feature */
 export const getValidCoordinates = (feature: Feature): [number, number] | null => {
@@ -111,7 +115,8 @@ export const computeViewportStats = (clusters: ClusterFeature[]): ClusterStats =
 export const buildClusterLayerConfig = (
   globalStats: ClusterStats,
   viewportStats: ClusterStats,
-  clusterFilter: ["==", ["get", string], string]
+  clusterFilter: ["==", ["get", string], string],
+  colors: MapColors = defaultMapColors
 ) =>
   ({
     id: "event-clusters",
@@ -136,15 +141,15 @@ export const buildClusterLayerConfig = (
       "circle-color": [
         "step",
         ["get", "count"],
-        cartographicColors.mapClusterGradient[0], // Level 1: very light terracotta (0-p20)
+        colors.mapClusterGradient[0], // Level 1 (0-p20)
         globalStats.p20,
-        cartographicColors.mapClusterGradient[1], // Level 2: light terracotta (p20-p40)
+        colors.mapClusterGradient[1], // Level 2 (p20-p40)
         globalStats.p40,
-        cartographicColors.mapClusterGradient[2], // Level 3: medium terracotta (p40-p60)
+        colors.mapClusterGradient[2], // Level 3 (p40-p60)
         globalStats.p60,
-        cartographicColors.mapClusterGradient[3], // Level 4: dark terracotta (p60-p80)
+        colors.mapClusterGradient[3], // Level 4 (p60-p80)
         globalStats.p80,
-        cartographicColors.mapClusterGradient[4], // Level 5: very dark terracotta (p80-p100)
+        colors.mapClusterGradient[4], // Level 5 (p80-p100)
       ],
       // Opacity based on VIEWPORT percentiles (shows relative density in current view)
       "circle-opacity": [
@@ -161,7 +166,7 @@ export const buildClusterLayerConfig = (
         0.9, // Level 5: max opacity (p80-p100)
       ],
       "circle-stroke-width": 2,
-      "circle-stroke-color": cartographicColors.mapStroke,
+      "circle-stroke-color": colors.mapStroke,
       "circle-stroke-opacity": 0.8,
     },
   }) satisfies CircleLayerConfig;
