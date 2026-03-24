@@ -118,9 +118,7 @@ describe.sequential("Database-backed Seed Operations", () => {
       const removedFromAny = collections.some(
         (c) => (countsBefore[c] ?? 0) > 0 && (countsAfter[c] ?? 0) < (countsBefore[c] ?? 0)
       );
-      // If truncation had no effect (known limitation in shared test environments),
-      // verify at minimum that the operation completed without error
-      expect(removedFromAny || true).toBe(true);
+      expect(removedFromAny).toBe(true);
     }, 90000); // 90 second timeout (increases when running full suite)
   });
 

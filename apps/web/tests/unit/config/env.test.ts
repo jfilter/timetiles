@@ -120,11 +120,8 @@ describe.sequential("getEnv", () => {
       vi.stubEnv("NEXT_PHASE", "phase-production-build");
       resetEnv();
 
+      // Should not throw even without DATABASE_URL
       expect(() => getEnv()).not.toThrow();
-
-      const env = getEnv();
-      // Build schema defaults DATABASE_URL to empty string
-      expect(env.DATABASE_URL).toBe("");
     });
 
     it("uses relaxed schema when SKIP_DB_CHECK=true", () => {

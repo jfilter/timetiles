@@ -84,10 +84,10 @@ cp config/timetiles.example.yml config/timetiles.yml
 
 The file is **optional**. If absent, all defaults apply. Changes require a server restart.
 
-In Docker, the file is mounted read-only into all containers via `CONFIG_FILE` in your `.env.production`:
+In Docker, the config directory is mounted read-only into all containers via `CONFIG_DIR` in your `.env.production`:
 
 ```bash
-CONFIG_FILE=./config/timetiles.yml
+CONFIG_DIR=./config
 ```
 
 ### Rate Limits

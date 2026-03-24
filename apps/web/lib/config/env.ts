@@ -13,8 +13,8 @@ import { z } from "zod";
 /**
  * Zod schema for runtime environment variables.
  *
- * All variables have defaults except DATABASE_URL, PAYLOAD_SECRET,
- * and NEXT_PUBLIC_PAYLOAD_URL which are required at runtime.
+ * All variables have defaults except DATABASE_URL and PAYLOAD_SECRET
+ * which are required at runtime.
  * During build phase, a relaxed schema is used instead.
  */
 const baseSchema = {
