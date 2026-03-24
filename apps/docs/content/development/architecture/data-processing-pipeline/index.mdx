@@ -4,17 +4,16 @@ asIndexPage: true
 
 # Data Ingestion Pipeline
 
-> **Terminology**: The ingestion pipeline is called "Import" in the UI and `import-*` in the codebase.
+> **Terminology**: The ingestion pipeline is called "Import" in the UI and `ingest-*` in the codebase.
 
 The TimeTiles data ingestion pipeline uses Payload CMS Workflows to transform uploaded files into structured events. Four workflows orchestrate task handlers into linear pipelines, with collection `afterChange` hooks triggering workflow execution.
 
 ## Quick Links
 
 - **[Architecture & Design](./architecture)** - Design principles, core collections, and data flow
-- **[Processing Stages](./stages)** - Detailed explanation of all 8 pipeline stages
+- **[Processing Stages](./stages)** - Detailed explanation of all 7 pipeline stages
 - **[Configuration](./configuration)** - Dataset and system configuration options
-- **[Troubleshooting](./troubleshooting)** - Common issues and debugging tools
-- **[Best Practices](./best-practices)** - Guidelines for data providers and administrators
+- **[Troubleshooting & Recovery](./troubleshooting)** - Error model, common issues, debugging, and recovery
 
 ## Pipeline Overview
 

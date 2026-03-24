@@ -8,11 +8,11 @@ The TimeTiles data ingestion pipeline consists of seven task handlers, sequenced
 | ------------------------ | ----------------------- | ---------------------------------------------- | ---------------- |
 | 1. Dataset Detection     | `dataset-detection`     | Parse file structure and create ingestion jobs | N/A              |
 | 2. Analyze Duplicates    | `analyze-duplicates`    | Find duplicate rows                            | 5,000            |
-| 3. Detect Schema         | `schema-detection`      | Build progressive schema                       | 10,000           |
+| 3. Detect Schema         | `detect-schema`         | Build progressive schema                       | 10,000           |
 | 4. Validate Schema       | `validate-schema`       | Compare with existing schema                   | 10,000           |
 | 5. Create Schema Version | `create-schema-version` | Persist approved schema version                | N/A              |
 | 6. Geocode Batch         | `geocode-batch`         | Add location data                              | Unique locations |
-| 7. Create Events         | `create-events-batch`   | Generate final records                         | 1,000            |
+| 7. Create Events         | `create-events`         | Generate final records                         | 1,000            |
 
 Tasks 2-7 run per sheet within the workflow. If `validate-schema` detects schema drift requiring human review, it returns `{ needsReview: true }` and the sheet is paused. After the user approves, the `ingest-process` workflow resumes from task 5 (Create Schema Version).
 
@@ -20,7 +20,7 @@ Tasks 2-7 run per sheet within the workflow. If `validate-schema` detects schema
 
 **Trigger**: File uploaded to `ingest-files` collection
 **Stage**: Pre-processing (before import-job creation)
-**Job Handler**: `dataset-detection-job`
+**Job Handler**: `dataset-detection`
 
 ### Purpose
 
@@ -75,7 +75,7 @@ The workflow proceeds to the per-sheet pipeline, starting with Analyze Duplicate
 ## Stage 2: Analyze Duplicates
 
 **Stage**: `analyze-duplicates`
-**Job Handler**: `analyze-duplicates-job`
+**Job Handler**: `analyze-duplicates`
 **Batch Size**: 5,000 rows
 
 ### Purpose
@@ -111,19 +111,19 @@ Identify duplicate rows early in the process to reduce processing volume for sub
 
 ### Deduplication Strategies
 
-**External ID Strategy**:
+**External ID Strategy** (`"external-id"`):
 
 Uses a specific field as the unique identifier (e.g., "event_id", "uuid"). Best for data with explicit IDs.
 
-**Computed Hash Strategy**:
+**Computed Hash Strategy** (`"computed-hash"`):
 
 Hashes a combination of specific fields (e.g., "name" + "date" + "location"). Best for data without explicit IDs but with identifying field combinations.
 
-**Content Hash Strategy**:
+**Auto Strategy** (`"auto"`):
 
-Hashes the entire row content. Best for ensuring absolutely no duplicate rows regardless of which fields differ.
+Generates a content hash of the entire row for duplicate detection. New IDs use a timestamp plus cryptographically secure random bytes for uniqueness. Best for datasets without explicit IDs or identifying field combinations.
 
-**Hybrid Strategy**:
+**Hybrid Strategy** (`"hybrid"`):
 
 Tries external ID first, falls back to computed hash if external ID is missing. Best for datasets with partial ID coverage.
 
@@ -152,7 +152,7 @@ The workflow proceeds to Detect Schema.
 ## Stage 3: Detect Schema
 
 **Stage**: `detect-schema`
-**Job Handler**: `schema-detection-job`
+**Job Handler**: `detect-schema`
 **Batch Size**: 10,000 rows
 
 ### Purpose
@@ -269,7 +269,7 @@ The workflow proceeds to Validate Schema.
 ## Stage 4: Validate Schema
 
 **Stage**: `validate-schema`
-**Job Handler**: `validate-schema-job`
+**Job Handler**: `validate-schema`
 **Batch Size**: 10,000 rows (completes schema detection if needed)
 
 ### Purpose
@@ -401,7 +401,7 @@ When `validate-schema` detects schema drift requiring approval, the ingestion jo
 ## Stage 5: Create Schema Version
 
 **Stage**: `create-schema-version`
-**Job Handler**: `create-schema-version-job`
+**Job Handler**: `create-schema-version`
 **Batch Size**: N/A (single operation)
 
 ### Purpose
@@ -491,7 +491,7 @@ The workflow proceeds to Geocode Batch.
 ## Stage 6: Geocode Batch
 
 **Stage**: `geocode-batch`
-**Job Handler**: `geocode-batch-job`
+**Job Handler**: `geocode-batch`
 **Batch Processing**: Unique locations (not row-based batching)
 
 ### Purpose
@@ -502,22 +502,21 @@ Enrich data with geographic coordinates by geocoding addresses or validating pro
 
 **Candidate Evaluation**:
 
-- Check if geocoding candidates were detected in Stage 3
-- Skip stage entirely if no location fields found
-- Determine geocoding mode (address vs coordinates)
+- Check if a location field was detected in Stage 3
+- Skip stage entirely if no location field found
 
 **Unique Location Extraction**:
 
 - Read entire file to extract ALL unique location values
 - Geocoding is NOT batched by rows
-- Each unique address/coordinate pair processed once
-- Results stored in lookup map by row number
+- Each unique address processed once
+- Results stored in lookup map keyed by normalized address
 
-**Geocoding or Validation**:
+**Geocoding**:
 
-- **Address mode**: Send addresses to geocoding API
-- **Coordinate mode**: Validate provided lat/lng pairs
-- **Hybrid mode**: Use coordinates if present, geocode address otherwise
+- Send unique addresses to geocoding API
+- This stage only geocodes addresses; it does not validate or process coordinates
+- Coordinate extraction and validation happen in Stage 7 (Create Events)
 
 **Result Storage**:
 
@@ -531,30 +530,14 @@ Enrich data with geographic coordinates by geocoding addresses or validating pro
 
 When the data contains address fields:
 
-- Extract full address strings from rows
+- Extract unique address strings from all rows
+- Normalize addresses so variants (e.g., "123 Main St" vs "123 MAIN ST") are deduplicated
 - Send to geocoding API (Nominatim, Google, etc.)
 - Receive coordinates with confidence score
 - Store formatted address from geocoding service
 - Handle partial matches and low-confidence results
 
-**Coordinate Validation**:
-
-When the data contains latitude/longitude fields:
-
-- Extract numeric coordinate pairs
-- Validate ranges (lat: -90 to 90, lng: -180 to 180)
-- Verify coordinates are valid numbers
-- Mark as high confidence (provided data)
-- Store as-is with validation flag
-
-**Hybrid Approach**:
-
-When both addresses and coordinates are present:
-
-- Prefer provided coordinates if valid
-- Fall back to address geocoding if coordinates invalid
-- Cross-validate coordinates against geocoded address
-- Flag discrepancies for review
+Note: This stage does not handle coordinate fields. If the data contains latitude/longitude fields instead of addresses, this stage is skipped entirely. Coordinate extraction and range validation (lat: -90 to 90, lng: -180 to 180) happen in Stage 7 (Create Events) via the `extractCoordinates` function.
 
 ### Why Not Batched Like Other Stages?
 
@@ -612,7 +595,7 @@ The workflow proceeds to Create Events.
 ## Stage 7: Create Events
 
 **Stage**: `create-events`
-**Job Handler**: `create-events-batch-job`
+**Job Handler**: `create-events`
 **Batch Size**: 1,000 rows
 
 ### Purpose
@@ -638,12 +621,12 @@ Create the final event records in the database with all processing results appli
 - Generate unique ID using dataset's configured strategy
 - External ID from specified field
 - Computed hash from field combination
-- Auto-increment for datasets without IDs
+- Auto-generated (timestamp + cryptographically secure random) for datasets without IDs
 - Hybrid approach (external ID with fallback)
 
 **Data Enrichment**:
 
-- Apply geocoding results from Stage 7 lookup
+- Apply geocoding results from Stage 6 lookup
 - Extract timestamp from data or use current time
 - Extract location display name if present
 - Determine coordinate source (geocoded, provided, none)
@@ -652,7 +635,7 @@ Create the final event records in the database with all processing results appli
 
 - Create records in `events` collection
 - Link to dataset and import-job
-- Reference schema version from Stage 6
+- Reference schema version from Stage 5
 - Set validation status (pending initial validation)
 
 **Progress Tracking**:

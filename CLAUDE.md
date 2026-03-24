@@ -364,13 +364,23 @@ Supports CSV, Excel, ODS, and JSON API sources with:
 
 ### Job Processing Stages
 
-1. `UPLOAD` - File uploaded
-2. `SCHEMA_DETECTION` - Detect file structure
-3. `AWAITING_APPROVAL` - User reviews schema
-4. `VALIDATION` - Validate data
-5. `GEOCODING` - Geocode locations
-6. `PROCESSING` - Create events
-7. `COMPLETED` - Import finished
+The import pipeline uses 4 Payload Workflows:
+
+**Pre-processing (file-level):**
+1. `DATASET_DETECTION` - Detect sheets and datasets in the uploaded file
+
+**Per-sheet pipeline:**
+2. `ANALYZE_DUPLICATES` - Check for duplicate events
+3. `DETECT_SCHEMA` - Detect field types, dates, locations
+4. `VALIDATE_SCHEMA` - Validate detected schema
+5. `NEEDS_REVIEW` - User reviews and approves schema mapping
+6. `CREATE_SCHEMA_VERSION` - Create versioned schema record
+7. `GEOCODE_BATCH` - Geocode location fields to coordinates
+8. `CREATE_EVENTS` - Create event records from processed data
+
+**Terminal states:**
+- `COMPLETED` - Import finished successfully
+- `FAILED` - Import failed
 
 ## Performance Considerations
 

@@ -83,7 +83,7 @@ Three layers, each for a different type of state:
 CSV/Excel upload or scheduled URL fetch
   → Payload Workflow queued (ingest queue)
     → Dataset detection, schema analysis
-      → User reviews schema (AWAITING_APPROVAL)
+      → User reviews schema (NEEDS_REVIEW)
         → Geocoding via providers (Nominatim → Google → OpenCage)
           → Events created in PostgreSQL
             → PostGIS spatial indexing
