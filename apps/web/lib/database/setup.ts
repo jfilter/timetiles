@@ -179,8 +179,12 @@ export const runMigrations = (connectionString: string): void => {
     const env = { ...process.env, DATABASE_URL: connectionString };
     process.stdout.write(`[migrate] target=${safeUrl} cwd=${process.cwd()}\n`);
 
-    // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
-    const result = execSync(`pnpm payload migrate 2>&1`, { env, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024 });
+    // Use pnpm exec to run payload directly and capture all output
+    const result = execSync(`pnpm exec payload migrate 2>&1 || echo "[migrate] EXIT CODE: $?"`, {
+      env,
+      encoding: "utf-8",
+      maxBuffer: 10 * 1024 * 1024,
+    });
 
     process.stdout.write(`[migrate] output length=${result.length} lines=${result.split("\n").length}\n`);
     // Print full migration output
