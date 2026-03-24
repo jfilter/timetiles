@@ -27,7 +27,6 @@ vi.mock("zustand/middleware", async (importOriginal) => {
       return (set: AnySet, get: AnyGet, api: AnyApi) => {
         api.persist = {
           clearStorage: () => {},
-          // eslint-disable-next-line promise/prefer-await-to-then -- no-op stub, not a real promise chain
           rehydrate: () => Promise.resolve(),
           hasHydrated: () => true,
           onHydrate: () => () => {},

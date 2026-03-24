@@ -90,7 +90,6 @@ describe.sequential("Expression Transforms Integration", () => {
         catalog: testCatalog.id,
         language: "eng",
         schemaConfig: { allowTransformations: true },
-        /* eslint-disable @typescript-eslint/no-explicit-any -- Payload-generated types not yet regenerated */
         ingestTransforms: [
           {
             id: "transform-age",
@@ -109,7 +108,7 @@ describe.sequential("Expression Transforms Integration", () => {
             active: true,
           },
         ] as any,
-        /* eslint-enable @typescript-eslint/no-explicit-any */
+
         idStrategy: { type: "external", externalIdPath: "id" },
       },
     });
@@ -166,7 +165,6 @@ describe.sequential("Expression Transforms Integration", () => {
         catalog: testCatalog.id,
         language: "eng",
         schemaConfig: { allowTransformations: false },
-        /* eslint-disable @typescript-eslint/no-explicit-any -- Payload-generated types not yet regenerated */
         ingestTransforms: [
           {
             id: "transform-age-disabled",
@@ -177,7 +175,7 @@ describe.sequential("Expression Transforms Integration", () => {
             active: false,
           },
         ] as any,
-        /* eslint-enable @typescript-eslint/no-explicit-any */
+
         idStrategy: { type: "external", externalIdPath: "id" },
       },
     });

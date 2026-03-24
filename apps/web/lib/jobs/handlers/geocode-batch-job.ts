@@ -11,7 +11,7 @@
  * @module
  * @category Jobs
  */
-/* eslint-disable sonarjs/max-lines-per-function -- Batch geocoding requires sequential processing steps */
+
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
