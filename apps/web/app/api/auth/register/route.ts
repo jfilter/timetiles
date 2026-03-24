@@ -16,13 +16,12 @@ import { z } from "zod";
 
 import { apiRoute, requireFeatureEnabled } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
-import { getEmailBranding } from "@/lib/email/branding";
-import { getEmailTranslations } from "@/lib/email/i18n";
+import { getEmailContext } from "@/lib/email/context";
 import { safeSendEmail } from "@/lib/email/send";
 import { generateAccountExistsEmailHTML } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
-import { withTimingPad } from "@/lib/security/timing-pad";
+import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
 export const POST = apiRoute({
@@ -36,7 +35,7 @@ export const POST = apiRoute({
     const { email: normalizedEmail, password } = body;
 
     // Prevent timing side-channel from distinguishing "email exists" vs "new registration"
-    return withTimingPad(1500, async () => {
+    return withTimingPad(TIMING_PAD_MS.REGISTRATION, async () => {
       const successResponse = { message: "Please check your email to verify your account." };
 
       // Check if user already exists
@@ -55,8 +54,7 @@ export const POST = apiRoute({
         // Generate password reset URL so user can recover their account
         const baseUrl = getBaseUrl();
         const resetUrl = `${baseUrl}/forgot-password`;
-        const branding = await getEmailBranding(payload);
-        const t = getEmailTranslations(existingUserDoc?.locale, { siteName: branding.siteName });
+        const { branding, t } = await getEmailContext(payload, existingUserDoc?.locale);
 
         await safeSendEmail(
           payload,

@@ -9,9 +9,9 @@
  */
 import { z } from "zod";
 
-import { apiRoute, AppError, ConflictError } from "@/lib/api";
+import { apiRoute, ConflictError } from "@/lib/api";
+import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { loadManageableScraper } from "@/lib/api/scraper-helpers";
-import { logError } from "@/lib/logger";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
 
 export const POST = apiRoute({
@@ -28,18 +28,11 @@ export const POST = apiRoute({
     }
 
     // Queue execution job — revert "running" status on failure
-    try {
-      await payload.jobs.queue({ task: "scraper-execution", input: { scraperId: scraper.id, triggeredBy: "manual" } });
-    } catch (error) {
-      logError(error, "Failed to queue scraper execution, reverting status", { scraperId: scraper.id });
-      await payload.update({
-        collection: "scrapers",
-        id: scraper.id,
-        overrideAccess: true,
-        data: { lastRunStatus: "failed" },
-      });
-      throw new AppError(500, "Failed to queue scraper execution");
-    }
+    await queueJobWithRollback(
+      payload,
+      { task: "scraper-execution", input: { scraperId: scraper.id, triggeredBy: "manual" } },
+      { collection: "scrapers", id: scraper.id, data: { lastRunStatus: "failed" } }
+    );
 
     return { message: "Scraper run queued" };
   },

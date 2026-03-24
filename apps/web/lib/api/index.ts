@@ -25,3 +25,4 @@ export {
 } from "./errors";
 export { apiRoute } from "./handler";
 export { fetchJson, HttpError } from "./http-error";
+export { queueJobWithRollback } from "./job-helpers";

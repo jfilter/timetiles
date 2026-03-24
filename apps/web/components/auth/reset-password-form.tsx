@@ -18,6 +18,8 @@ import { validatePasswords } from "@/lib/constants/validation";
 import { resetPasswordRequest } from "@/lib/hooks/use-auth-mutations";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
+import { FormError } from "./form-feedback";
+
 export interface ResetPasswordFormProps {
   /** Reset token from the email link */
   token: string;
@@ -83,11 +85,7 @@ export const ResetPasswordForm = ({ token, onSuccess, className }: Readonly<Rese
         />
       </div>
 
-      {error && (
-        <p className="text-destructive text-sm" role="alert">
-          {error.message}
-        </p>
-      )}
+      <FormError error={error} />
 
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? t("resetting") : t("resetPassword")}

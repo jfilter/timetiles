@@ -11,6 +11,7 @@
 import type { Payload } from "payload";
 
 import { apiRoute, ConflictError } from "@/lib/api";
+import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { createDataExportService } from "@/lib/export/service";
 import { logger } from "@/lib/logger";
 import type { RequestExportResponse } from "@/lib/types/data-export-api";
@@ -66,17 +67,15 @@ export const POST = apiRoute({
     }
 
     // Queue background job -- if queueing fails, mark the record as failed
-    try {
-      await payload.jobs.queue({ task: "data-export", input: { exportId: exportRecord.id } });
-    } catch (queueError) {
-      await payload.update({
+    await queueJobWithRollback(
+      payload,
+      { task: "data-export", input: { exportId: exportRecord.id } },
+      {
         collection: DATA_EXPORTS_COLLECTION,
         id: exportRecord.id,
         data: { status: "failed", errorLog: "Failed to queue export job" },
-        overrideAccess: true,
-      });
-      throw queueError;
-    }
+      }
+    );
 
     logger.info({ userId: user.id, exportId: exportRecord.id }, "Data export requested");
 

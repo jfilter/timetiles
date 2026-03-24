@@ -9,6 +9,14 @@
  * @category Security
  */
 
+/** Minimum durations for timing-sensitive auth operations. */
+export const TIMING_PAD_MS = {
+  /** Registration: checks for existing user + sends verification email */
+  REGISTRATION: 1500,
+  /** Email change: validates + sends confirmation email */
+  EMAIL_CHANGE: 1000,
+} as const;
+
 /**
  * Execute a function with a minimum execution time guarantee.
  *

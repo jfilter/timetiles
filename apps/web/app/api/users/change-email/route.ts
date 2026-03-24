@@ -15,13 +15,12 @@ import { z } from "zod";
 
 import { apiRoute, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
-import { getEmailBranding } from "@/lib/email/branding";
-import { getEmailTranslations } from "@/lib/email/i18n";
+import { getEmailContext } from "@/lib/email/context";
 import { safeSendEmail } from "@/lib/email/send";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { hashEmail } from "@/lib/security/hash";
-import { withTimingPad } from "@/lib/security/timing-pad";
+import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 import { getBaseUrl } from "@/lib/utils/base-url";
@@ -49,8 +48,7 @@ const updateEmailAndNotify = async (
   const baseUrl = getBaseUrl();
   const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
   const firstName = user.firstName ?? "";
-  const branding = await getEmailBranding(payload);
-  const t = getEmailTranslations(user.locale, { siteName: branding.siteName });
+  const { branding, t } = await getEmailContext(payload, user.locale);
 
   await safeSendEmail(
     payload,
@@ -106,7 +104,7 @@ export const POST = apiRoute({
     // Constant-time response: both paths return after the same elapsed time
     // to prevent timing side-channel attacks from distinguishing "email exists"
     // vs "email changed". The minimum floor ensures the fake path isn't instant.
-    return withTimingPad(1000, async () => {
+    return withTimingPad(TIMING_PAD_MS.EMAIL_CHANGE, async () => {
       const successResponse = {
         message: "Email changed successfully. Please check your new email address for a verification link.",
         verificationRequired: true,

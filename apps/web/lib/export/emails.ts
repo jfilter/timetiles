@@ -11,8 +11,7 @@
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
-import { getEmailBranding } from "@/lib/email/branding";
-import { getEmailTranslations } from "@/lib/email/i18n";
+import { getEmailContext } from "@/lib/email/context";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { safeSendEmail } from "@/lib/email/send";
 import { formatLongDate } from "@/lib/utils/date";
@@ -29,8 +28,7 @@ export const sendExportReadyEmail = async (
   fileSizeMB: number,
   locale?: string | null
 ): Promise<void> => {
-  const branding = await getEmailBranding(payload);
-  const t = getEmailTranslations(locale, { siteName: branding.siteName });
+  const { branding, t } = await getEmailContext(payload, locale);
   const formattedDate = formatLongDate(expiresAt, true);
   const settingsUrl = `${getEnv().NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
 
@@ -98,8 +96,7 @@ export const sendExportFailedEmail = async (
   errorReason?: string,
   locale?: string | null
 ): Promise<void> => {
-  const branding = await getEmailBranding(payload);
-  const t = getEmailTranslations(locale, { siteName: branding.siteName });
+  const { branding, t } = await getEmailContext(payload, locale);
   const settingsUrl = `${getEnv().NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
 
   const html = emailLayout(

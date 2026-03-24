@@ -11,8 +11,7 @@
  */
 import type { Payload } from "payload";
 
-import { getEmailBranding } from "@/lib/email/branding";
-import { getEmailTranslations } from "@/lib/email/i18n";
+import { getEmailContext } from "@/lib/email/context";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { safeSendEmail } from "@/lib/email/send";
 import { formatLongDate } from "@/lib/utils/date";
@@ -28,8 +27,7 @@ export const sendDeletionScheduledEmail = async (
   cancelUrl: string,
   locale?: string | null
 ): Promise<void> => {
-  const branding = await getEmailBranding(payload);
-  const t = getEmailTranslations(locale, { siteName: branding.siteName });
+  const { branding, t } = await getEmailContext(payload, locale);
   const formattedDate = formatLongDate(deletionScheduledAt);
 
   const html = emailLayout(
@@ -72,8 +70,7 @@ export const sendDeletionCancelledEmail = async (
   firstName: string | null | undefined,
   locale?: string | null
 ): Promise<void> => {
-  const branding = await getEmailBranding(payload);
-  const t = getEmailTranslations(locale, { siteName: branding.siteName });
+  const { branding, t } = await getEmailContext(payload, locale);
 
   const html = emailLayout(
     `
@@ -108,8 +105,7 @@ export const sendDeletionCompletedEmail = async (
   dataDeleted: { catalogs: number; datasets: number; events: number },
   locale?: string | null
 ): Promise<void> => {
-  const branding = await getEmailBranding(payload);
-  const t = getEmailTranslations(locale, { siteName: branding.siteName });
+  const { branding, t } = await getEmailContext(payload, locale);
 
   const html = emailLayout(
     `

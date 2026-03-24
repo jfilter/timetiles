@@ -12,8 +12,8 @@
  */
 import { z } from "zod";
 
-import { apiRoute, AppError, ConflictError, safeFindByID } from "@/lib/api";
-import { logError } from "@/lib/logger";
+import { apiRoute, ConflictError, safeFindByID } from "@/lib/api";
+import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import type { ScheduledIngest } from "@/payload-types";
 
 export const POST = apiRoute({
@@ -46,9 +46,10 @@ export const POST = apiRoute({
       throw new ConflictError("Import is already running");
     }
 
-    try {
-      // Queue the URL fetch job for manual trigger
-      await payload.jobs.queue({
+    // Queue the URL fetch job — revert status on failure
+    await queueJobWithRollback(
+      payload,
+      {
         task: "url-fetch",
         input: {
           scheduledIngestId: numericId,
@@ -57,22 +58,14 @@ export const POST = apiRoute({
           originalName: existingSchedule.name,
           triggeredBy: "manual",
         },
-      });
-
-      return { message: "Import triggered" };
-    } catch (error) {
-      // Revert status so the schedule doesn't get stuck as "running"
-      logError(error, "Error triggering scheduled ingest, reverting status", {
-        scheduleId: numericId,
-        userId: user.id,
-      });
-      await payload.update({
+      },
+      {
         collection: "scheduled-ingests",
         where: { id: { equals: numericId } },
         data: { lastStatus: "failed", lastError: "Failed to queue import job" },
-        overrideAccess: true,
-      });
-      throw new AppError(500, "Internal server error");
-    }
+      }
+    );
+
+    return { message: "Import triggered" };
   },
 });

@@ -60,7 +60,7 @@ const getChartHeight = (type: ChartType): number => {
 
 export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSectionProps>) => {
   const getChartMeta = useChartMeta();
-  const [chartType, setChartType] = useState<ChartType>("histogram");
+  const [selectedChartType, setSelectedChartType] = useState<ChartType>("histogram");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Get filter state to determine which chart types are relevant
@@ -85,12 +85,8 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
     return types;
   }, [filters.datasets.length, filters.catalog]);
 
-  // If current chart type becomes unavailable, switch to histogram
-  useEffect(() => {
-    if (!availableChartTypes.includes(chartType)) {
-      setChartType("histogram");
-    }
-  }, [availableChartTypes, chartType]);
+  // Derive effective chart type — falls back to histogram if selection becomes unavailable
+  const chartType = availableChartTypes.includes(selectedChartType) ? selectedChartType : "histogram";
 
   const transitionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -105,7 +101,7 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
 
     // After fade out, swap chart type
     transitionTimer.current = setTimeout(() => {
-      setChartType(newType);
+      setSelectedChartType(newType);
       // Small delay then fade in
       requestAnimationFrame(() => {
         setIsTransitioning(false);
