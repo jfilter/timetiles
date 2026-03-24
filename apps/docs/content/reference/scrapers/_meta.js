@@ -1,1 +1,1 @@
-export default { index: "Scrapers", "writing-scrapers": "Writing Scrapers", deployment: "Deployment" };
+export default { "writing-scrapers": "Writing Scrapers", deployment: "Deployment" };
