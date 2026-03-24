@@ -63,7 +63,7 @@ describe.sequential("getEnv", () => {
 
       const env = getEnv();
 
-      expect(env.EMAIL_FROM_ADDRESS).toBe("noreply@timetiles.app");
+      expect(env.EMAIL_FROM_ADDRESS).toBe("noreply@timetiles.io");
     });
 
     it("applies default for DATA_EXPORT_DIR", () => {

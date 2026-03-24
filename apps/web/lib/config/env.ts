@@ -3,7 +3,7 @@
  *
  * Provides type-safe access to all environment variables with fail-fast
  * validation at startup. Follows the lazy singleton pattern from
- * {@link apps/scraper/src/config.ts}.
+ * {@link apps/timescrape/src/config.ts}.
  *
  * @module
  * @category Config
@@ -37,7 +37,7 @@ const baseSchema = {
   EMAIL_SMTP_PORT: z.coerce.number().default(587),
   EMAIL_SMTP_USER: z.string().optional(),
   EMAIL_SMTP_PASS: z.string().optional(),
-  EMAIL_FROM_ADDRESS: z.string().default("noreply@timetiles.app"),
+  EMAIL_FROM_ADDRESS: z.string().default("noreply@timetiles.io"),
   EMAIL_FROM_NAME: z.string().default("TimeTiles"),
 
   // === Scraper integration ===
