@@ -69,6 +69,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
+# Copy node_modules for Payload CLI (workers need `payload jobs:run` which is
+# not included in Next.js standalone output — see payloadcms/payload#7176)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+
 # Create uploads directory with proper ownership for volume mount
 RUN mkdir -p /app/apps/web/uploads \
     && chown -R nextjs:nodejs /app/apps/web/uploads
