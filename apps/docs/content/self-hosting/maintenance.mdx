@@ -135,6 +135,16 @@ docker compose -f deployment/docker-compose.prod.yml exec certbot certbot renew 
 docker compose -f deployment/docker-compose.prod.yml restart nginx
 ```
 
+## Health Check
+
+TimeTiles exposes a health endpoint for monitoring and load balancer integration:
+
+```bash
+curl https://your-instance.com/api/health
+```
+
+Returns `200` when the system is healthy. Use this for Docker health checks or uptime monitoring (e.g., [UptimeRobot](https://uptimerobot.com/), [Gatus](https://gatus.io/)).
+
 ## Troubleshooting
 
 | Problem         | Diagnosis                       | Solution                                                                                        |

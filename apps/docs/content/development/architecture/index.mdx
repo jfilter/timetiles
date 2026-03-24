@@ -18,29 +18,11 @@ import { Cards } from "nextra/components";
 </Cards>
 
 <Cards num={2}>
-  <Cards.Card title="Dynamic Filters" href="./dynamic-filters" arrow>
-    Schema-driven filter generation and SQL/Payload adapters.
-  </Cards.Card>
   <Cards.Card title="Resource Protection" href="./resource-protection" arrow>
     Trust levels, quotas, and rate limiting.
   </Cards.Card>
-</Cards>
-
-<Cards num={2}>
-  <Cards.Card title="UI Customization" href="./ui-customization" arrow>
-    Themes, branding, layout templates, and custom CSS.
-  </Cards.Card>
   <Cards.Card title="HTTP Caching" href="./http-caching" arrow>
     RFC 7234 caching for scheduled URL imports.
-  </Cards.Card>
-</Cards>
-
-<Cards num={2}>
-  <Cards.Card title="Language Support" href="./language-support" arrow>
-    Multi-language field mapping for event data.
-  </Cards.Card>
-  <Cards.Card title="Content Localization" href="./content-localization" arrow>
-    Payload CMS content i18n with next-intl.
   </Cards.Card>
 </Cards>
 
@@ -83,7 +65,7 @@ Three layers, each for a different type of state:
 CSV/Excel upload or scheduled URL fetch
   → Payload Workflow queued (ingest queue)
     → Dataset detection, schema analysis
-      → User reviews schema (AWAITING_APPROVAL)
+      → User reviews schema (NEEDS_REVIEW)
         → Geocoding via providers (Nominatim → Google → OpenCage)
           → Events created in PostgreSQL
             → PostGIS spatial indexing

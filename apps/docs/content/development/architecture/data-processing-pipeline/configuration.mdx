@@ -26,12 +26,12 @@ Controls how unique identifiers are generated and how duplicates are detected.
 - Requires specifying which fields to include in hash
 - More flexible than external ID, but slightly slower
 
-**Auto-Increment**:
+**Auto** (Auto-detect Duplicates by Content):
 
-- Automatically generates sequential IDs
-- Best for datasets where uniqueness isn't critical
-- Simplest strategy, no configuration needed
-- Cannot detect duplicates (all rows considered unique)
+- Automatically detects duplicates by comparing event content
+- Best for datasets without explicit IDs where content uniqueness matters
+- No configuration needed beyond enabling
+- Default strategy for new datasets
 
 **Hybrid**:
 
@@ -59,9 +59,9 @@ Controls early duplicate detection in Stage 2 (Analyze Duplicates).
 
 **Strategy**:
 
-- Same options as ID strategy (external-id, computed-hash, content-hash, hybrid)
-- Should typically match ID strategy for consistency
-- Can differ if deduplication logic differs from ID generation
+- Same options as duplicate strategy: skip, update, or version
+- Controls what happens when a duplicate is found during early detection
+- Should typically match the ID strategy's duplicate strategy for consistency
 
 **Field Specification**:
 
@@ -111,73 +111,52 @@ Controls schema behavior, validation, and evolution.
 - Typical values: 3-5 levels
 - Higher values increase schema complexity and query costs
 
-### Type Transformations
-
-Automatic conversions between data types to handle common mismatches.
-
-**Transformation Configuration**:
-
-Each transformation specifies:
-
-- **Field Path**: Which field to transform (supports nested paths)
-- **From Type**: Expected incoming type
-- **To Type**: Desired target type
-- **Strategy**: How to perform the transformation
-- **Enabled**: Whether this transformation is active
-
-**Transformation Strategies**:
-
-**Parse**:
-
-- Smart parsing with type inference
-- Examples: "123" → 123, "true" → true, "2024-01-15" → Date
-- Best for well-formatted data with predictable patterns
-- Most commonly used strategy
-
-**Cast**:
-
-- Simple type coercion
-- Examples: 123 → "123", true → "true"
-- Best for simple type conversions
-- Faster than parsing but less intelligent
-
-**Custom**:
-
-- User-defined transformation function
-- Handles complex cases (e.g., European number formats, custom date formats)
-- Most flexible but requires custom code
-- Use when parse/cast aren't sufficient
-
-**Reject**:
-
-- Fail validation on type mismatch
-- Strict type checking with no forgiveness
-- Use for high-quality data where mismatches indicate errors
-
 ### Ingestion Transforms
 
-Field renaming and restructuring during ingestion.
+Transform rules applied to incoming data before validation. Each transform has a type, relevant source/target fields, and an active toggle.
 
-**Transform Configuration**:
+**Transform Types**:
 
-Each transform specifies:
+**Rename** (`rename`):
 
-- **Source Field**: Original field name in import file
-- **Target Field**: Desired field name in events
-- **Transform Type**: Rename, restructure, or extract
+- Moves a field from one path to another
+- Specify `from` (source field path) and `to` (target field path)
+- Use for standardizing field names across different data sources (e.g., "EventName" to "name")
 
-**Use Cases**:
+**Date Parse** (`date-parse`):
 
-- Standardizing field names across different data sources
-- Extracting nested fields to top level
-- Combining multiple source fields into one
-- Splitting single field into multiple fields
+- Parses date strings from one format to another
+- Specify `from` (source field), `inputFormat`, and `outputFormat`
+- Supported input formats: `DD/MM/YYYY`, `MM/DD/YYYY`, `YYYY-MM-DD`, `DD-MM-YYYY`, `MM-DD-YYYY`, `DD.MM.YYYY`
+- Supported output formats: `YYYY-MM-DD` (ISO, default), `DD/MM/YYYY`, `MM/DD/YYYY`
+- Optional `timezone` field (e.g., "America/New_York")
 
-**Example Scenarios**:
+**String Operation** (`string-op`):
 
-- Rename "EventName" to "name" for consistency
-- Extract "address.city" to "city"
-- Combine "firstName" + "lastName" to "fullName"
+- Applies a string operation to a source field
+- Specify `from` (source field) and `operation`
+- Operations: `uppercase`, `lowercase`, `trim`, `replace` (with `pattern` and `replacement` fields), `expression` (custom safe expression using built-in functions)
+- Expression functions include: `upper`, `lower`, `trim`, `concat`, `replace`, `substring`, `toNumber`, `parseDate`, `parseBool`, `round`, `floor`, `ceil`, `abs`, `len`, `ifEmpty`
+
+**Concatenate** (`concatenate`):
+
+- Joins multiple source fields into a single target field
+- Specify `fromFields` (JSON array of source field paths), `to` (target field), and `separator` (default: space)
+- Example: combine "firstName" + "lastName" into "fullName"
+
+**Split** (`split`):
+
+- Splits a single field by a delimiter into multiple target fields
+- Specify `from` (source field), `delimiter` (default: comma), and `toFields` (JSON array of target field names)
+- Example: split "full_name" into "first_name" and "last_name"
+
+**Common Fields**:
+
+Each transform rule also includes:
+
+- **active**: Checkbox to disable a transform without deleting it (default: true)
+- **autoDetected**: Whether the transform was suggested by auto-detection
+- **confidence**: Confidence score (0-100) for auto-detected transforms
 
 ### Field Mapping Overrides
 
@@ -252,35 +231,7 @@ Controls automatic detection of location fields for geocoding.
 - Must be specified if latitude path is specified
 - Use when field name doesn't match common patterns
 
-**Address Path**:
-
-- Specify exact field containing full address strings
-- Overrides auto-detection
-- Use when field name doesn't match common patterns ("venue", "place", etc.)
-
-### Processing Limits
-
-Controls resource usage and prevents runaway processing.
-
-**Max Concurrent Jobs**:
-
-- Maximum number of ingest-jobs for this dataset running simultaneously
-- Prevents resource exhaustion when processing multiple files
-- Typical values: 1-5 depending on dataset complexity and size
-
-**Processing Timeout**:
-
-- Maximum time (milliseconds) for entire import to complete
-- Timeout stops processing and marks import as failed
-- Prevents hung imports from consuming resources indefinitely
-- Typical values: 3600000 (1 hour) to 86400000 (24 hours)
-
-**Max File Size**:
-
-- Maximum file size (bytes) for imports to this dataset
-- Files exceeding limit are rejected at upload
-- Prevents memory exhaustion from extremely large files
-- Typical values: 104857600 (100MB) to 1073741824 (1GB)
+Note that the `geoFieldDetection` group does not include an address/location path field. Location field mapping is configured separately in the `fieldMappingOverrides` group via `locationPath` (see [Field Mapping Overrides](#field-mapping-overrides)).
 
 ---
 
@@ -288,52 +239,34 @@ Controls resource usage and prevents runaway processing.
 
 Global pipeline settings that affect all datasets and ingestion runs.
 
-### File Processing Configuration
-
-**Supported Formats**:
-
-- List of allowed file extensions (e.g., .csv, .xlsx, .xls, .ods)
-- Files with other extensions are rejected at upload
-- Standard configuration: .csv, .xlsx, .xls, .ods
-
-**Max File Size**:
-
-- Global maximum file size (can be overridden per dataset)
-- System-wide safety limit
-- Typical value: 100MB to 1GB depending on infrastructure
-
 ### Batch Size Configuration
 
-Controls how many rows are processed in each batch for various stages.
+Controls how many rows are processed in each batch for various stages. Batch sizes are configured via `config/timetiles.yml` (under the `batchSizes` key) and fall back to hardcoded defaults when the YAML file is absent. There are no environment variable overrides for batch sizes.
 
-**Duplicate Analysis Batch Size**:
+**Duplicate Analysis Batch Size** (`batchSizes.duplicateAnalysis`):
 
 - Default: 5,000 rows
-- Environment variable: `BATCH_SIZE_DUPLICATE_ANALYSIS`
 - Memory-efficient for hash map operations
 - Larger values: faster but more memory
 - Smaller values: slower but less memory
 
-**Schema Detection Batch Size**:
+**Schema Detection Batch Size** (`batchSizes.schemaDetection`):
 
 - Default: 10,000 rows
-- Environment variable: `BATCH_SIZE_SCHEMA_DETECTION`
 - Larger batches for schema building efficiency
 - Larger values: faster schema convergence
 - Smaller values: more batches, slower convergence
 
-**Event Creation Batch Size**:
+**Event Creation Batch Size** (`batchSizes.eventCreation`):
 
 - Default: 1,000 rows
-- Environment variable: `BATCH_SIZE_EVENT_CREATION`
 - Balances throughput with transaction reliability
 - Larger values: faster but higher transaction timeout risk
 - Smaller values: slower but more reliable
 
-**Database Chunk Size**:
+**Database Chunk Size** (`batchSizes.databaseChunk`):
 
 - Default: 1,000 records
-- Environment variable: `BATCH_SIZE_DATABASE_CHUNK`
 - Batch size for bulk database operations
 - Affects memory and transaction duration
 
@@ -344,150 +277,13 @@ Controls how many rows are processed in each batch for various stages.
 - Extracts unique addresses/coordinates from entire file first
 - Results cached in lookup map for all rows
 
-### Concurrency Configuration
+### Geocoding
 
-**Max Concurrent Ingestion Runs**:
+Geocoding providers are configured via the Payload CMS Settings global (`/dashboard/globals/settings`), not via config files. See the [Self-Hosting Configuration](/self-hosting/configuration) docs for setup details.
 
-- Maximum number of files being ingested simultaneously across all datasets
-- Prevents system overload from too many concurrent operations
-- Typical values: 10-50 depending on infrastructure
+### Workers
 
-**Job Worker Count**:
-
-- Number of background job workers processing pipeline stages
-- Higher values: more parallelism, more resource usage
-- Lower values: less parallelism, more queuing
-- Typical values: 4-16 workers
-
-### Retry Configuration
-
-**Retry Attempts**:
-
-- Number of times to retry failed operations
-- Applies to transient failures (network errors, temporary database issues)
-- Typical values: 3-5 retries
-
-**Retry Backoff**:
-
-- Strategy for delaying retries
-- **Exponential**: Delay doubles each retry (1s, 2s, 4s, 8s, ...)
-- **Linear**: Delay increases linearly (1s, 2s, 3s, 4s, ...)
-- **Constant**: Same delay each retry
-- Recommended: Exponential for most scenarios
-
-### Geocoding API Configuration
-
-**API Provider**:
-
-- Which geocoding service to use (Nominatim, Google Maps, etc.)
-- Affects accuracy, cost, and rate limits
-
-**API Key**:
-
-- Authentication key for geocoding service
-- Required for most commercial providers
-- Free services (Nominatim) may not require key
-
-**Rate Limit**:
-
-- Maximum requests per minute/second
-- Must match API provider's limit
-- Typical values: 50-2500 requests/minute depending on plan
-
-**Timeout**:
-
-- Maximum time to wait for geocoding response
-- Longer timeout: more patient, slower on failures
-- Shorter timeout: faster failure detection, may miss slow responses
-- Typical values: 5000-30000 milliseconds (5-30 seconds)
-
-### Storage Configuration
-
-**Import File Directory**:
-
-- Path where uploaded files are stored
-- Must be persistent across deployments
-- Should be backed up regularly
-
-**Temp Directory**:
-
-- Path for temporary files during processing
-- Can be ephemeral (cleared on restart)
-- Should have ample space for largest expected file
-
-### Monitoring Configuration
-
-**Log Level**:
-
-- Verbosity of logging (error, warn, info, debug, trace)
-- Higher levels: more detail, more storage/performance impact
-- Production: info or warn
-- Development: debug or trace
-
-**Metrics Collection**:
-
-- Enable/disable performance metrics collection
-- Tracks processing times, throughput, success rates
-- Minimal performance impact when enabled
-
-**Error Reporting**:
-
-- Integration with error tracking services (Sentry, etc.)
-- Automatic error notification and aggregation
-- Helps identify systemic issues quickly
-
----
-
-## Configuration Best Practices
-
-### Development Environment
-
-- Stricter validation to catch issues early
-- Smaller batch sizes for faster iteration
-- Verbose logging for debugging
-- Shorter timeouts to fail fast
-- Lower concurrency to avoid resource competition
-
-### Staging Environment
-
-- Production-like configuration
-- Medium batch sizes
-- Moderate logging
-- Production timeouts
-- Production concurrency levels
-- Test auto-approval and transformations
-
-### Production Environment
-
-- Optimized batch sizes for your infrastructure
-- Error-level logging only
-- Conservative timeouts (allow completion)
-- Appropriate concurrency (based on capacity testing)
-- Enable metrics and monitoring
-- Careful approval settings (prefer manual review initially)
-
-### Per-Dataset Tuning
-
-**High-Volume Datasets**:
-
-- Larger batch sizes for throughput
-- Higher concurrency limits
-- Longer processing timeouts
-- Auto-approval for non-breaking changes
-
-**High-Quality Datasets**:
-
-- Strict validation enabled
-- Locked schemas
-- Manual approval required
-- Reject transformation strategy
-
-**Experimental Datasets**:
-
-- Auto-grow enabled
-- Allow transformations
-- Parse transformation strategy
-- Auto-approve non-breaking
+Background job workers run as separate processes, one per queue. In production, each queue gets a dedicated Docker container started with `pnpm payload jobs:run --cron --queue <name>`. Concurrency is controlled by the number of containers deployed, not by a configuration setting. Retry behavior is handled by Payload's built-in workflow system.
 
 ---
 
@@ -504,41 +300,9 @@ Most dataset configuration changes take effect immediately for new imports:
 
 ### Requires Restart
 
-Some system configuration changes require application restart:
-
-- Batch size environment variables
-- Worker count changes
-- API keys and credentials
-- Storage paths
+- Batch size changes in `config/timetiles.yml` (loaded once at startup via `getAppConfig()`)
 
 ### Migration Required
 
-Some configuration changes may require data migration:
-
 - Changing ID strategy on datasets with existing events
-- Modifying schema depth limits
 - Changing deduplication strategy significantly
-
----
-
-## Recommended Starting Configuration
-
-For new TimeTiles installations, start with these conservative settings:
-
-**Dataset Defaults**:
-
-- ID Strategy: External (with hybrid fallback)
-- Schema: Unlocked, Auto-grow enabled, Auto-approve non-breaking
-- Validation: Non-strict, Allow transformations
-- Transformations: Parse strategy
-- Max Schema Depth: 3
-
-**System Defaults**:
-
-- Batch Sizes: Default values (5k, 10k, 1k)
-- Max Concurrent Imports: 10
-- Job Workers: 8
-- Retry Attempts: 3
-- Retry Backoff: Exponential
-
-Adjust these settings based on your specific needs, infrastructure capacity, and data quality requirements.

@@ -1,6 +1,6 @@
 # Background Jobs
 
-TimeTiles uses Payload CMS's built-in job queue and workflow system for all asynchronous processing. Jobs and workflows are defined in `lib/jobs/` and registered in `lib/config/payload-shared-config.ts`.
+TimeTiles uses [Payload CMS's built-in job queue and workflow system](https://payloadcms.com/docs/jobs-queue/overview) for all asynchronous processing. Jobs and workflows are defined in `lib/jobs/` and registered in `lib/config/payload-shared-config.ts`. See the Payload docs for [tasks](https://payloadcms.com/docs/jobs-queue/tasks), [workflows](https://payloadcms.com/docs/jobs-queue/workflows), and [queues](https://payloadcms.com/docs/jobs-queue/queues).
 
 ## Key Behavior
 
@@ -81,7 +81,7 @@ These are queued on demand (not scheduled):
 
 ## Testing Jobs
 
-See [Integration Testing Patterns](/development/development/testing-guidelines) for job testing. Key points:
+See [Integration Testing Patterns](/development/contributing/testing-guidelines) for job testing. Key points:
 
 - Query pending jobs **before** running (`completedAt: { exists: false }`)
 - Verify **side effects** after running (not job records -- they're deleted)

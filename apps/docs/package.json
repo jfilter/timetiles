@@ -5,10 +5,8 @@
   "description": "The documentation site for the TimeTiles project.",
   "type": "module",
   "scripts": {
-    "dev": "pnpm docs:api && next dev --port 3001 --webpack",
-    "build": "pnpm docs:api && next build --webpack",
-    "docs:api": "cd ../web && pnpm exec typedoc && tsx ../docs/scripts/clean-typedoc-output.ts && tsx ../docs/scripts/generate-api-meta.ts",
-    "docs:api:watch": "nodemon --watch ../web/lib --ext ts --exec \"pnpm docs:api\"",
+    "dev": "next dev --port 3001 --webpack",
+    "build": "next build --webpack",
     "start": "next start --port 3001",
     "lint": "oxlint --config ../../.oxlintrc.json . && mkdir -p .lint-results && eslint app content scripts --cache --format json --output-file .lint-results/latest.json; eslint app content scripts --cache && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
     "lint:all": "eslint app content scripts --cache && tsx scripts/check-links.ts",
@@ -34,10 +32,7 @@
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
     "glob": "^13.0.6",
-    "nodemon": "^3.1.14",
     "tsx": "catalog:",
-    "typedoc": "^0.28.17",
-    "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "catalog:"
   }
 }

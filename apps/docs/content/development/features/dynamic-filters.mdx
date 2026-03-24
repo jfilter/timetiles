@@ -1,0 +1,59 @@
+# Dynamic Filters
+
+TimeTiles auto-generates filters from dataset field metadata collected during schema detection. When a file is imported, the schema builder analyzes each field's values and marks low-cardinality string fields as enum candidates. These candidates power the categorical filter dropdowns on the explore page without any manual configuration.
+
+## Filter Components
+
+The explore sidebar (`EventFilters`) assembles three filter sections, each backed by its own component.
+
+### DataSourceSelector
+
+Displays catalog cards in a two-column grid and dataset chips underneath. Selecting a catalog automatically activates all of its datasets; individual datasets can then be toggled off. Catalogs are grouped into "My Catalogs" and "Public Catalogs" for authenticated users. Long lists collapse with a "show more" toggle.
+
+### TimeRangeSlider
+
+A dual-handle range slider overlaid on a mini histogram of event counts per time bucket. The histogram is fetched via React Query and re-fetches when other filters change. Users drag handles to set `startDate`/`endDate`, or click the date labels to type exact dates. Bars inside the selected range are highlighted; bars outside are dimmed.
+
+### CategoricalFilters and EnumFieldDropdown
+
+Shown only when exactly one dataset is selected. `CategoricalFilters` fetches enum field metadata for the dataset via `useDatasetEnumFieldsQuery` and renders one `EnumFieldDropdown` per field. Each dropdown is a Radix multi-select with checkboxes, showing value counts and percentages. The top 15 values are displayed; additional values show a "more" indicator.
+
+## Enum Detection
+
+During import, the schema builder calls `enrichEnumFields` after all batches are processed. A field becomes an enum candidate when:
+
+- It contains string values.
+- Its unique value count is greater than 1 and less than the total occurrence count.
+- It passes the configured threshold (either absolute count or percentage of unique-to-total, controlled by `enumThreshold` and `enumMode` in the schema builder config).
+
+At query time, `useDatasetEnumFieldsQuery` fetches the dataset's `fieldMetadata` and calls `selectTopEnumFields`, which applies further filtering:
+
+- Only fields with 2--30 unique values are included.
+- The field must appear in at least 50% of records (`occurrencePercent >= 50`).
+- Fields are ranked by proximity to an ideal cardinality of 10 (preferring 5--15 unique values).
+- A maximum of 5 fields are returned (configurable via `maxFields`).
+
+## API Query Parameters
+
+All event API endpoints (`/api/v1/events`, `/api/v1/events/geo`, etc.) accept the same filter parameters, validated by `EventFiltersSchema`:
+
+| Parameter   | Type         | Description                                                |
+| ----------- | ------------ | ---------------------------------------------------------- |
+| `catalog`   | number       | Single catalog ID                                          |
+| `datasets`  | number[]     | Dataset IDs to include                                     |
+| `startDate` | string (ISO) | Start of date range                                        |
+| `endDate`   | string (ISO) | End of date range (normalized to end-of-day)               |
+| `bounds`    | object       | Geographic bounding box (`north`, `south`, `east`, `west`) |
+| `ff`        | JSON string  | Field filters as `{"fieldPath": ["value1", "value2"]}`     |
+
+These parameters are parsed into a `CanonicalEventFilters` object by `buildCanonicalFilters`, which applies access control (intersecting requested catalogs with accessible ones), normalizes the end date, validates field filter keys via `sanitizeFieldFilters`, and applies view-level scope constraints.
+
+## URL State
+
+All filter state lives in the URL query string via [nuqs](https://nuqs.47ng.com/). The `useFilters` hook manages five parameters: `catalog`, `datasets`, `startDate`, `endDate`, and `ff` (JSON-encoded field filters). Changing a catalog clears datasets and field filters. Changing datasets clears field filters. This makes every filter combination a shareable, bookmarkable link.
+
+Map position (`lat`, `lng`, `zoom`) and selected event (`event`) are also stored in the URL through separate nuqs hooks (`useMapPosition`, `useSelectedEvent`).
+
+## Future Work
+
+Editor control over which filters are exposed, support for additional filter types (numeric ranges, boolean toggles), and per-field operator selection are planned but not yet implemented. See [ADR 0031](https://github.com/jfilter/timetiles/blob/main/docs/adr/0031-advanced-filter-system.md) for the design.

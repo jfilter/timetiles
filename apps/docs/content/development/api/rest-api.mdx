@@ -253,14 +253,16 @@ GET /api/v1/events/temporal
 
 **Query Parameters:**
 
-| Parameter     | Type     | Required | Description                                                        |
-| ------------- | -------- | -------- | ------------------------------------------------------------------ |
-| `catalog`     | string   | No       | Filter by catalog slug                                             |
-| `datasets`    | string[] | No       | Filter by dataset slugs                                            |
-| `bounds`      | JSON     | No       | Geographic bounding box `{north, south, east, west}`               |
-| `startDate`   | ISO 8601 | No       | Filter events after this date                                      |
-| `endDate`     | ISO 8601 | No       | Filter events before this date                                     |
-| `granularity` | string   | No       | Time bucket size: `day`, `week`, `month`, `auto` (default: `auto`) |
+| Parameter       | Type     | Required | Description                                                |
+| --------------- | -------- | -------- | ---------------------------------------------------------- |
+| `catalog`       | string   | No       | Filter by catalog slug                                     |
+| `datasets`      | string[] | No       | Filter by dataset slugs                                    |
+| `bounds`        | JSON     | No       | Geographic bounding box `{north, south, east, west}`       |
+| `startDate`     | ISO 8601 | No       | Filter events after this date                              |
+| `endDate`       | ISO 8601 | No       | Filter events before this date                             |
+| `targetBuckets` | integer  | No       | Target number of histogram buckets (default: 30, max: 500) |
+| `minBuckets`    | integer  | No       | Minimum number of buckets (default: 20, max: 500)          |
+| `maxBuckets`    | integer  | No       | Maximum number of buckets (default: 50, max: 500)          |
 
 **Response:**
 
@@ -279,6 +281,8 @@ GET /api/v1/events/temporal
       min: string | null,
       max: string | null
     },
+    bucketSizeSeconds: number | null,
+    bucketCount: number,
     counts: {
       datasets: number,
       catalogs: number
@@ -289,12 +293,9 @@ GET /api/v1/events/temporal
 }
 ```
 
-**Granularity Selection:**
+**Bucket Sizing:**
 
-- `auto` - Automatically selects appropriate granularity based on date range
-- `day` - Daily buckets
-- `week` - Weekly buckets
-- `month` - Monthly buckets
+The PostgreSQL function `calculate_event_histogram` automatically determines optimal bucket sizes based on the data range and the `targetBuckets`/`minBuckets`/`maxBuckets` parameters. The actual bucket size used is returned in `metadata.bucketSizeSeconds`.
 
 **Example:**
 
@@ -447,30 +448,47 @@ GET /api/ingest/:ingestId/progress
 
 ```typescript
 {
-  type: "import-file",
+  type: "ingest-file",
   id: string | number,
   status: string,
   originalName: string,
+  catalogId: number | null,
   datasetsCount: number,
   datasetsProcessed: number,
-  overallProgress: number,    // 0-100
+  overallProgress: number,              // 0-100
+  estimatedCompletionTime: string | null,
   jobs: [
     {
       id: string | number,
       datasetId: string | number,
       datasetName?: string,
-      stage: string,
-      progress: number,         // 0-100
-      rowsTotal: number,
-      rowsProcessed: number,
-      batchNumber: number,
+      currentStage: string,
+      overallProgress: number,            // 0-100
+      estimatedCompletionTime: string | null,
+      stages: [
+        {
+          name: string,
+          displayName: string,
+          status: "pending" | "in_progress" | "completed" | "skipped",
+          progress: number,               // 0-100
+          weight: number,
+          startedAt: string | null,
+          completedAt: string | null,
+          batches: { current: number, total: number },
+          currentBatch: {
+            rowsProcessed: number,
+            rowsTotal: number,
+            percentage: number
+          },
+          performance: {
+            rowsPerSecond: number | null,
+            estimatedSecondsRemaining: number | null
+          }
+        }
+      ],
       errors: number,
-      duplicates: {
-        internal: number,
-        external: number
-      },
+      duplicates: { internal: number, external: number },
       schemaValidation?: {...},
-      geocodingProgress?: {...},
       results?: {...}
     }
   ],
@@ -518,34 +536,20 @@ GET /api/quotas
 
 ```typescript
 {
-  user: {
-    id: string | number,
-    email: string,
-    role: "admin" | "user",
-    trustLevel: "0" | "1" | "2" | "3" | "4" | "5"
-  },
   quotas: {
     fileUploadsPerDay: {
       used: number,
       limit: number,
-      remaining: number,
-      allowed: boolean,
-      resetTime: string,
-      description: "Maximum file uploads allowed per day"
+      remaining: number
     },
-    urlFetchesPerDay: {...},
-    importJobsPerDay: {...},
-    activeSchedules: {...},
-    totalEvents: {...},
-    eventsPerImport: {...},
+    urlFetchesPerDay: {...},    // same shape
+    importJobsPerDay: {...},    // same shape
+    activeSchedules: {...},     // same shape
+    totalEvents: {...},         // same shape
+    eventsPerImport: {...},     // same shape
     maxFileSizeMB: {
-      limit: number,
-      description: "Maximum file size in megabytes"
+      limit: number
     }
-  },
-  summary: {
-    hasUnlimitedAccess: boolean,
-    nextResetTime: string
   }
 }
 ```
@@ -560,14 +564,6 @@ GET /api/quotas
 - `eventsPerImport` - Single import size limit
 - `maxFileSizeMB` - File size limit
 
-**Response Headers:**
-
-```
-X-RateLimit-Limit: <limit>
-X-RateLimit-Remaining: <remaining>
-X-RateLimit-Reset: <ISO 8601 timestamp>
-```
-
 **Example:**
 
 ```bash
@@ -575,7 +571,7 @@ curl -H "Cookie: payload-token=..." \
   "https://your-instance.com/api/quotas"
 ```
 
-**Implementation:** `apps/web/app/api/quotas/route.ts:29-108`
+**Implementation:** `apps/web/app/api/quotas/route.ts`
 
 ---
 
@@ -735,7 +731,7 @@ The API uses URL fetch caching for scheduled imports. See [HTTP Caching](/develo
 
 ## TypeScript Types
 
-The API routes have comprehensive TypeScript documentation. See the [API Reference](/reference/api) for auto-generated documentation from source code.
+The API routes have comprehensive TypeScript documentation in the source code.
 
 Key type definitions:
 
@@ -813,4 +809,3 @@ console.log(`Total events: ${metadata.total}`);
 
 - [Usage Limits](/self-hosting/usage-limits) - Rate limiting, quotas, and trust levels
 - [HTTP Caching](/development/architecture/http-caching) - Caching for scheduled URL imports
-- [API Reference](/reference/api) - Auto-generated TypeScript documentation

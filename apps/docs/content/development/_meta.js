@@ -1,6 +1,7 @@
 export default {
-  architecture: "Architecture & Tech Stack",
-  development: "Development Setup",
+  architecture: "Architecture",
+  features: "Features",
+  contributing: "Contributing",
   packages: "Packages",
-  "rest-api": "REST API",
+  api: "API",
 };

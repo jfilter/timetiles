@@ -1,0 +1,93 @@
+# Documentation Guide
+
+This guide explains how documentation works in the TimeTiles project.
+
+## Documentation Structure
+
+All documentation lives under `/apps/docs/content/` as hand-written MDX files:
+
+- **Getting Started** (`/getting-started/`) - Installation, quick start guides
+- **Guide** (`/guide/`) - Features, use cases, tutorials
+- **Development** (`/development/`) - Architecture, development guides, API docs
+- **Self-Hosting** (`/self-hosting/`) - Deployment, configuration, maintenance
+- **Reference** (`/reference/`) - Glossary, changelog, roadmap
+
+API documentation is hand-written in `apps/docs/content/development/api/`. For implementation details beyond what the docs cover, read the source code in `apps/web/app/api/`.
+
+## Working with Documentation
+
+### Creating New Pages
+
+1. Create an `.mdx` file in the appropriate directory:
+
+```bash
+apps/docs/content/development/guides/my-new-guide.mdx
+```
+
+2. Write your content using MDX (Markdown + JSX):
+
+```mdx
+# My Guide Title
+
+import { Callout } from "nextra/components";
+
+<Callout type="info">Important information here</Callout>
+
+## Section with code
+
+\`\`\`typescript
+const example = "code here"
+\`\`\`
+```
+
+3. Update the navigation by editing `_meta.json` in the same directory:
+
+```json
+{ "existing-page": "Existing Page", "my-new-guide": "My New Guide" }
+```
+
+### Best Practices for Manual Docs
+
+- Use clear, descriptive titles
+- Include practical examples
+- Add screenshots where helpful
+- Link to related documentation
+- Keep content up-to-date with code changes
+
+## Development Workflow
+
+1. Edit `.mdx` files directly in `apps/docs/content/`
+2. Preview with `pnpm dev` from the `apps/docs` directory
+3. Commit the documentation changes
+
+## Troubleshooting
+
+### Common Issues
+
+#### Navigation not updating
+
+- Edit the appropriate `_meta.js` file in the same directory
+
+#### Broken links in documentation
+
+- Use relative paths for internal links
+- Check for typos in paths
+
+## Best Practices
+
+1. **User-focused**: Write for your audience
+2. **Practical examples**: Show real-world usage
+3. **Visual aids**: Include diagrams/screenshots where helpful
+4. **Cross-reference**: Link to related guides
+5. **Keep concise**: Avoid unnecessary verbosity
+
+### Documentation Review Checklist
+
+- [ ] Guides updated if behavior changed
+- [ ] Navigation (`_meta.js`) updated if needed
+- [ ] Links verified and working
+
+## Resources
+
+- [Nextra Documentation](https://nextra.site)
+- [MDX Documentation](https://mdxjs.com)

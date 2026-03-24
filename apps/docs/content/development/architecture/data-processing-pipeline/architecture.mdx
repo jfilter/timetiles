@@ -157,7 +157,7 @@ Multi-sheet workflows process sheets via `Promise.allSettled` with per-sheet try
 
 ### Background Job Lifecycle
 
-Payload CMS automatically deletes completed jobs by default (`deleteJobOnComplete: true`). This has important implications:
+Payload CMS deletes completed jobs by default. This has important implications:
 
 - **No Double-Queueing**: Workflows are queued by hooks, not by task handlers
 - **Testing Implications**: Tests must check side effects (events created, data changed) rather than job records
@@ -167,33 +167,12 @@ Payload CMS automatically deletes completed jobs by default (`deleteJobOnComplet
 
 ### Configurable Batch Sizes
 
-Different stages use different batch sizes optimized for their specific needs:
+Different stages use different batch sizes optimized for their specific needs. See [Processing Stages](./stages) for batch sizes per stage.
 
-**Duplicate Analysis** (5,000 rows):
-
-- Memory-efficient for hash map operations
-- Balances throughput with memory usage
-- Allows pause/resume at batch boundaries
-
-**Schema Detection** (10,000 rows):
-
-- Larger batches for efficiency
-- Progressive schema building across batches
-- Builder state persisted between batches
-
-**Geocoding** (Unique locations, not batched):
-
-- Processes ALL unique locations in a single pass
-- Extracts unique location strings from entire file
-- Each unique value geocoded once
-- Results stored by row number for lookup during event creation
-- Small API batch sizes respect rate limits
-
-**Event Creation** (1,000 rows):
-
-- Avoids database transaction timeouts
-- Balances throughput with reliability
-- Individual row failures don't stop batch
+- **Duplicate analysis** — memory-efficient for hash map operations; allows pause/resume at batch boundaries
+- **Schema detection** — larger batches for efficiency; builder state persisted between batches for progressive schema building
+- **Geocoding** — processes all unique locations in a single pass (not batched by row); each unique value geocoded once, with small API batch sizes to respect rate limits
+- **Event creation** — smaller batches to avoid database transaction timeouts; individual row failures don't stop the batch
 
 ### Progressive Processing
 
@@ -341,5 +320,25 @@ The pipeline provides extensive observability:
 - ✅ Tunable performance
 - ❌ Higher latency than streaming
 - ❌ Batch size tuning required
+
+## Development Guidelines
+
+### Respect Workflow Architecture
+
+- Let `afterChange` hooks on collections queue workflows -- never queue workflows manually from task handlers or tests
+- Each task handler does its work and returns structured output; the workflow handler sequences tasks and inspects results
+- This prevents double-queueing and maintains exactly-once semantics
+
+### Task Handler Focus
+
+- Each handler does one thing well
+- Return structured output: data for success, `needsReview: true` for human review, or throw for transient failures
+- Never queue the next task from a handler -- the workflow handler owns sequencing
+
+### Testing Implications
+
+- Jobs are deleted after completion (`deleteJobOnComplete: true`) -- check side effects (events created, data changed), not job history
+- Use a drain loop with `payload.jobs.run()` to process chained workflow tasks in tests
+- Verify progress and state changes on the ingest-job record, then query actual results
 
 These architectural decisions create a pipeline that is scalable, maintainable, and robust while leveraging Payload CMS Workflows for task sequencing, retry, and concurrency control.

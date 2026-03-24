@@ -55,7 +55,6 @@ apps/docs/
 │   ├── development/         # Developer documentation
 │   ├── overview/            # Product overview
 │   ├── reference/           # Reference documentation
-│   │   └── api/            # Auto-generated API docs (TypeDoc)
 ├── app/                      # Next.js App Router (layout, theme config)
 ├── scripts/                 # Build scripts
 ├── next.config.mjs          # Next.js configuration

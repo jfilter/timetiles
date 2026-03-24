@@ -40,7 +40,7 @@ Server specifies caching behavior:
 - `max-age=N` - Cache for N seconds
 - `no-cache` - Revalidate before using cached response
 - `no-store` - Never cache
-- `private` - Do not cache (browser-only directive)
+- `private` - Not cacheable (response is rejected by the cacheability check, same effect as `no-store`)
 
 ## Cache Flow
 
@@ -109,7 +109,7 @@ The cache uses **persistent disk storage**:
 **Structure:**
 
 ```
-/var/cache/timetiles/http/
+/tmp/url-fetch-cache/
 ├── index.json          # Cache metadata and key index
 └── entries/
     ├── abc123.cache    # Individual cache entries
@@ -178,4 +178,3 @@ The cache adds `X-Cache` header for debugging:
 
 - [Usage Limits Configuration](/self-hosting/usage-limits) - HTTP cache environment variables
 - [Resource Protection](/development/architecture/resource-protection) - How caching affects quotas
-- [API Reference](/reference/api/lib/services/cache) - Cache service implementation
