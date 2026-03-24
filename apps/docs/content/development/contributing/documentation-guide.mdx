@@ -1,31 +1,20 @@
 # Documentation Guide
 
-This guide explains how documentation works in the TimeTiles project, including both manual documentation and auto-generated API references.
+This guide explains how documentation works in the TimeTiles project.
 
 ## Documentation Structure
 
-The TimeTiles documentation is divided into two main categories:
-
-### 1. Manual Documentation
-
-**Location:** Various directories under `/apps/docs/content/`
+All documentation lives under `/apps/docs/content/` as hand-written MDX files:
 
 - **Getting Started** (`/getting-started/`) - Installation, quick start guides
 - **Guide** (`/guide/`) - Features, use cases, tutorials
-- **Development** (`/development/`) - Architecture, development guides
+- **Development** (`/development/`) - Architecture, development guides, API docs
 - **Self-Hosting** (`/self-hosting/`) - Deployment, configuration, maintenance
+- **Reference** (`/reference/`) - Glossary, changelog, roadmap
 
-These are **hand-written MDX files** that you edit directly.
+API documentation is hand-written in `apps/docs/content/development/api/`. For implementation details beyond what the docs cover, read the source code in `apps/web/app/api/`.
 
-### 2. Auto-generated API Documentation
-
-**Location:** `/apps/docs/content/reference/api/`
-
-- Generated from JSDoc comments in source code
-- Created using TypeDoc with post-processing
-- **Should NOT be edited manually** (changes will be overwritten)
-
-## Working with Manual Documentation
+## Working with Documentation
 
 ### Creating New Pages
 
@@ -65,203 +54,26 @@ const example = "code here"
 - Link to related documentation
 - Keep content up-to-date with code changes
 
-## Working with Auto-generated API Documentation
-
-### How It Works
-
-1. **Source**: JSDoc comments in TypeScript files
-   - Located in `apps/web/lib/`, `apps/web/app/api/`
-2. **Generation**: TypeDoc processes JSDoc comments
-   - Configuration in `apps/web/typedoc.json`
-3. **Output**: Markdown files in `apps/docs/content/reference/api/`
-   - Automatically organized by module
-4. **Post-processing**: Script cleans and converts output
-   - Converts `.md` to `.mdx`
-   - Generates navigation files
-
-### Writing JSDoc Comments
-
-Currently, we primarily use file-level documentation to describe modules:
-
-```typescript
-/**
- * Handles import job processing with support for CSV and Excel files.
- *
- * This module manages the complete import pipeline including
- * file parsing, schema detection, validation, geocoding, and event creation.
- *
- * @module
- * @category Services
- */
-```
-
-Key tags we use:
-
-- `@module` - Marks file-level documentation
-- `@category` - Groups related modules (Services, Collections, Jobs, etc.)
-
-### Generating API Documentation
-
-#### One-time Generation
-
-```bash
-# From project root
-pnpm docs:api
-
-# Or from docs directory
-cd apps/docs
-pnpm docs:api
-```
-
-#### Watch Mode (Development)
-
-For active development on API documentation:
-
-```bash
-# From docs directory
-cd apps/docs
-pnpm docs:api:watch
-```
-
-This watches `apps/web/lib/` for changes and automatically regenerates documentation.
-
-#### What Gets Generated
-
-The TypeDoc configuration (`apps/web/typedoc.json`) specifies:
-
-- **Entry points**: `lib/collections`, `lib/services`, `lib/jobs`, `app/api`, etc.
-- **Output location**: `apps/docs/content/reference/api/`
-- **Exclusions**: Test files, internal functions
-- **Organization**: Grouped by category
-
-### Processing Steps
-
-The `pnpm docs:api` command:
-
-1. Runs TypeDoc to generate markdown files
-2. Converts `.md` files to `.mdx` (via `clean-typedoc-output.ts`)
-3. Cleans up problematic references
-4. Navigation is derived from the file structure (Nextra auto-indexes without `_meta.json`)
-
-## Git Configuration
-
-### What's Tracked vs Ignored
-
-The `.gitignore` excludes all generated API documentation:
-
-```gitignore
-apps/docs/content/reference/api/**/*.md
-apps/docs/content/reference/api/**/*.mdx
-apps/docs/content/reference/api/**/_meta.json
-!apps/docs/content/reference/api/index.mdx
-```
-
-Everything in the API reference directory is regenerated from source code on each build.
-
-This means:
-
-- ✅ Generated docs don't clutter git history
-- ✅ Can regenerate anytime from source
-- ✅ Navigation is derived from file structure (Nextra auto-indexes directories)
-- ✅ Consistent with source code structure
-
-**Note**: The top-level `content/reference/_meta.json` IS manually maintained and tracked in git.
-
 ## Development Workflow
 
-### When Adding New Features
-
-1. **Write the code** with comprehensive JSDoc comments
-2. **Run tests** to ensure everything works
-3. **Generate docs** with `pnpm docs:api`
-4. **Write guides** if needed (manual documentation)
-5. **Review** the generated documentation
-6. **Commit** code changes (docs are regenerated in CI)
-
-### When Updating Documentation
-
-#### For API Changes:
-
-1. Update JSDoc comments in source files
-2. Run `pnpm docs:api` to regenerate
-3. Verify the output looks correct
-4. Commit the source code changes
-
-#### For Guides/Tutorials:
-
-1. Edit the `.mdx` files directly
-2. Preview with `pnpm dev`
+1. Edit `.mdx` files directly in `apps/docs/content/`
+2. Preview with `pnpm dev` from the `apps/docs` directory
 3. Commit the documentation changes
-
-## CI/CD Integration
-
-The documentation build process:
-
-1. **Development**: Docs generated on-demand
-2. **Pull Requests**: Docs built to verify they compile
-3. **Production**: Docs generated fresh during build
-
-Build command:
-
-```json
-{ "build": "pnpm docs:api && next build" }
-```
-
-This ensures documentation is always up-to-date with the code.
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### Generated docs look wrong
-
-- Check JSDoc syntax in source files
-- Verify TypeDoc configuration
-- Run `pnpm docs:api` with clean output directory
-
 #### Navigation not updating
 
-- Edit the appropriate `_meta.json` file
-- These are NOT auto-generated
+- Edit the appropriate `_meta.js` file in the same directory
 
 #### Broken links in documentation
 
 - Use relative paths for internal links
-- Verify file exists after generation
 - Check for typos in paths
 
-#### TypeDoc warnings
-
-- Missing type exports: Export the type from index
-- Unresolved references: Ensure proper imports
-- Private members documented: Add `@internal` tag
-
-### Debugging Commands
-
-```bash
-# Clean generated docs
-rm -rf apps/docs/content/reference/api/lib
-rm -rf apps/docs/content/reference/api/app
-
-# Regenerate fresh
-cd apps/docs && pnpm docs:api
-
-# Check what's ignored by git
-git check-ignore apps/docs/content/reference/api/**
-
-# See TypeDoc configuration
-cat apps/web/typedoc.json
-```
-
 ## Best Practices
-
-### For Module Documentation
-
-1. **Clear purpose**: Describe what the module does
-2. **Keep updated**: Update when functionality changes
-3. **Use categories**: Group related modules together
-
-### For Manual Documentation
 
 1. **User-focused**: Write for your audience
 2. **Practical examples**: Show real-world usage
@@ -271,15 +83,11 @@ cat apps/web/typedoc.json
 
 ### Documentation Review Checklist
 
-- [ ] Module-level JSDoc comments added for new files
-- [ ] Manual guides updated if behavior changed
-- [ ] Navigation (`_meta.json`) updated if needed
+- [ ] Guides updated if behavior changed
+- [ ] Navigation (`_meta.js`) updated if needed
 - [ ] Links verified and working
-- [ ] Generated docs reviewed for accuracy
 
 ## Resources
 
 - [Nextra Documentation](https://nextra.site)
-- [TypeDoc Documentation](https://typedoc.org)
-- [JSDoc Reference](https://jsdoc.app)
 - [MDX Documentation](https://mdxjs.com)

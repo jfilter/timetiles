@@ -3,5 +3,5 @@ export default {
   features: "Features",
   contributing: "Contributing",
   packages: "Packages",
-  "rest-api": "REST API",
+  api: "API",
 };

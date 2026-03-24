@@ -40,8 +40,8 @@ const navbar = (
       <Link href="/overview" className="tt-nav-link">
         Docs
       </Link>
-      <Link href="/reference/api" className="tt-nav-link">
-        API Reference
+      <Link href="/development/api" className="tt-nav-link">
+        API
       </Link>
     </div>
   </Navbar>
@@ -75,7 +75,7 @@ const footer = (
             <Link href="/overview">Overview</Link>
             <Link href="/quick-start">Quick Start</Link>
             <Link href="/guide">Guide</Link>
-            <Link href="/reference/api">API Reference</Link>
+            <Link href="/development/api">API</Link>
           </div>
           <div className="tt-footer-col">
             <h4 className="tt-footer-heading">Community</h4>

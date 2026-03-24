@@ -54,14 +54,7 @@ interface LinkInfo {
 
 const findAllMdxFiles = async (): Promise<string[]> => {
   const pattern = path.join(docsDir, "**/*.{md,mdx}");
-  return glob(pattern, {
-    ignore: [
-      "**/reference/api/**/*.md",
-      "**/reference/api/**/*.mdx",
-      "!**/reference/api/_meta.json",
-      "!**/reference/api/index.mdx",
-    ],
-  });
+  return glob(pattern);
 };
 
 const extractLinks = (content: string): string[] => {

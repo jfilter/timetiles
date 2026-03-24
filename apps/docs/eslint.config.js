@@ -4,17 +4,7 @@ import mdxConfig, { defaultIgnores } from "@timetiles/eslint-config/mdx";
 export default [
   // Global ignores from shared config + app-specific ignores
   defaultIgnores,
-  {
-    // Auto-generated API documentation (global ignores in flat config)
-    ignores: [
-      "content/reference/api/**/*.md",
-      "content/reference/api/**/*.mdx",
-      "content/reference/api/**/_meta.js",
-      // Keep manual files (negation)
-      "!content/reference/api/index.mdx",
-    ],
-  },
-  // Apply MDX config to all MDX/MD files (except those ignored above)
+  // Apply MDX config to all MDX/MD files
   ...mdxConfig,
   // Override for MDX files to handle JSX imports
   {

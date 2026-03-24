@@ -15,14 +15,5 @@
     "app/**/*",
     "content/**/*"
   ],
-  "exclude": [
-    "node_modules",
-    ".next",
-    ".turbo",
-    "coverage",
-    "dist",
-    "content/reference/api/**/*.md",
-    "content/reference/api/**/*.mdx",
-    "!content/reference/api/index.mdx"
-  ]
+  "exclude": ["node_modules", ".next", ".turbo", "coverage", "dist"]
 }
