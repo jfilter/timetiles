@@ -36,6 +36,7 @@ import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
 import { ExploreFullHeader } from "./explore-header";
 import { HeaderAuth } from "./header-auth";
+import { ThemePresetPicker } from "./theme-preset-picker";
 import { ThemeToggle } from "./theme-toggle";
 
 /** Stable empty arrays to avoid creating new references on each render. */
@@ -131,7 +132,8 @@ export const AdaptiveHeader = ({
         <div className="hidden md:block">
           <LocaleSwitcher />
         </div>
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-1 md:flex">
+          <ThemePresetPicker />
           <ThemeToggle />
         </div>
 
@@ -146,7 +148,7 @@ export const AdaptiveHeader = ({
             ))}
 
             {/* Divider */}
-            <div className="border-cartographic-navy/20 dark:border-cartographic-navy/40 my-2 border-t" />
+            <div className="border-primary/20 dark:border-primary/40 my-2 border-t" />
 
             {/* Auth link for mobile */}
             <MobileNavDrawerLink active={pathname === "/login"} asChild>
@@ -155,9 +157,7 @@ export const AdaptiveHeader = ({
 
             {/* Theme toggle in drawer */}
             <div className="flex items-center justify-between px-6 py-4">
-              <span className="text-cartographic-charcoal dark:text-cartographic-charcoal font-serif text-lg">
-                {t("theme")}
-              </span>
+              <span className="text-foreground dark:text-foreground font-serif text-lg">{t("theme")}</span>
               <ThemeToggle />
             </div>
           </MobileNavDrawerContent>

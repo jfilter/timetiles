@@ -20,7 +20,7 @@ const cardVariants = cva("rounded-sm border transition-all duration-200", {
       ghost: "bg-muted/50 text-foreground border-transparent",
       // New variant inspired by logo preview cards
       showcase:
-        "bg-background dark:bg-card text-card-foreground border-2 border-cartographic-navy dark:border-border shadow-sm hover:shadow-lg hover:-translate-y-1",
+        "bg-background dark:bg-card text-card-foreground border-2 border-primary dark:border-border shadow-sm hover:shadow-lg hover:-translate-y-1",
     },
     padding: { none: "", sm: "p-4", default: "p-6", lg: "p-8" },
   },
@@ -77,10 +77,7 @@ const CardVersion = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        "text-cartographic-blue dark:text-cartographic-blue mb-2 font-mono text-xs font-bold tracking-wide uppercase",
-        className
-      )}
+      className={cn("text-ring dark:text-ring mb-2 font-mono text-xs font-bold tracking-wide uppercase", className)}
       {...props}
     />
   )
@@ -133,7 +130,7 @@ const CardSpecItem = React.forwardRef<HTMLDivElement, CardSpecItemProps>(
     <div
       ref={ref}
       className={cn(
-        "from-cartographic-parchment to-cartographic-cream dark:from-muted dark:to-muted/50 border-cartographic-blue dark:border-primary rounded-sm border-l-2 bg-gradient-to-br p-3",
+        "from-background to-card dark:from-muted dark:to-muted/50 border-ring dark:border-primary rounded-sm border-l-2 bg-gradient-to-br p-3",
         className
       )}
       {...props}

@@ -11,7 +11,7 @@
 
 import type { EChartsOption } from "echarts";
 
-import { cartographicColors } from "../../lib/chart-themes";
+import { defaultLightTheme } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
 import { ChartEmptyState } from "./chart-empty-state";
 import type { BarChartDataItem, ChartTheme } from "./types";
@@ -92,7 +92,9 @@ export const BarChart = ({
           value,
           name: labels[index], // Track by name
           itemStyle: {
-            color: Array.isArray(theme?.itemColor) ? theme.itemColor[0] : (theme?.itemColor ?? cartographicColors.blue),
+            color: Array.isArray(theme?.itemColor)
+              ? theme.itemColor[0]
+              : (theme?.itemColor ?? (defaultLightTheme.itemColor as string)),
           },
         })),
         universalTransition: true,

@@ -33,9 +33,9 @@ const MobileNavDrawerTrigger = React.forwardRef<
   <DialogPrimitive.Trigger
     ref={ref}
     className={cn(
-      "hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 rounded-sm p-2 transition-colors md:hidden",
-      "text-cartographic-navy dark:text-cartographic-charcoal",
-      "focus:ring-cartographic-navy/50 focus:ring-2 focus:ring-offset-2 focus:outline-none",
+      "hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm p-2 transition-colors md:hidden",
+      "text-primary dark:text-foreground",
+      "focus:ring-primary/50 focus:ring-2 focus:ring-offset-2 focus:outline-none",
       className
     )}
     aria-label="Open navigation menu"
@@ -81,8 +81,8 @@ const MobileNavDrawerContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed inset-y-0 right-0 z-50 w-72 md:hidden",
-        "bg-cartographic-cream dark:bg-cartographic-parchment",
-        "border-cartographic-navy/20 dark:border-cartographic-navy/40 border-l",
+        "bg-card dark:bg-background",
+        "border-primary/20 dark:border-primary/40 border-l",
         "shadow-2xl",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
@@ -93,16 +93,16 @@ const MobileNavDrawerContent = React.forwardRef<
       {...props}
     >
       {/* Header with close button */}
-      <div className="border-cartographic-navy/20 dark:border-cartographic-navy/40 flex items-center justify-between border-b px-6 py-4">
-        <DialogPrimitive.Title className="text-cartographic-charcoal dark:text-cartographic-charcoal font-serif text-lg font-semibold">
+      <div className="border-primary/20 dark:border-primary/40 flex items-center justify-between border-b px-6 py-4">
+        <DialogPrimitive.Title className="text-foreground dark:text-foreground font-serif text-lg font-semibold">
           Navigation
         </DialogPrimitive.Title>
         <DialogPrimitive.Description className="sr-only">Site navigation menu</DialogPrimitive.Description>
         <DialogPrimitive.Close
           className={cn(
-            "hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 rounded-sm p-2 transition-colors",
-            "text-cartographic-navy dark:text-cartographic-charcoal",
-            "focus:ring-cartographic-navy/50 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+            "hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm p-2 transition-colors",
+            "text-primary dark:text-foreground",
+            "focus:ring-primary/50 focus:ring-2 focus:ring-offset-2 focus:outline-none"
           )}
           aria-label="Close navigation menu"
         >
@@ -136,15 +136,11 @@ const MobileNavDrawerItem = React.forwardRef<HTMLAnchorElement, MobileNavDrawerI
         className={cn(
           "block px-6 py-4 transition-colors",
           "font-serif text-lg",
-          "text-cartographic-charcoal dark:text-cartographic-charcoal",
-          "border-cartographic-navy/10 dark:border-cartographic-navy/20 border-b",
-          "hover:bg-cartographic-navy/5 dark:hover:bg-cartographic-charcoal/5",
-          "focus:ring-cartographic-navy/50 focus:ring-2 focus:outline-none focus:ring-inset",
-          active && [
-            "border-l-cartographic-terracotta border-l-[3px]",
-            "bg-cartographic-navy/5 dark:bg-cartographic-charcoal/5",
-            "pl-[calc(1.5rem-3px)]",
-          ],
+          "text-foreground dark:text-foreground",
+          "border-primary/10 dark:border-primary/20 border-b",
+          "hover:bg-primary/5 dark:hover:bg-foreground/5",
+          "focus:ring-primary/50 focus:ring-2 focus:outline-none focus:ring-inset",
+          active && ["border-l-secondary border-l-[3px]", "bg-primary/5 dark:bg-foreground/5", "pl-[calc(1.5rem-3px)]"],
           className
         )}
         aria-current={active ? "page" : undefined}
@@ -172,15 +168,11 @@ const MobileNavDrawerLink = React.forwardRef<
     className={cn(
       "block px-6 py-4 transition-colors",
       "font-serif text-lg",
-      "text-cartographic-charcoal dark:text-cartographic-charcoal",
-      "border-cartographic-navy/10 dark:border-cartographic-navy/20 border-b",
-      "hover:bg-cartographic-navy/5 dark:hover:bg-cartographic-charcoal/5",
-      "focus:ring-cartographic-navy/50 focus:ring-2 focus:outline-none focus:ring-inset",
-      active && [
-        "border-l-cartographic-terracotta border-l-[3px]",
-        "bg-cartographic-navy/5 dark:bg-cartographic-charcoal/5",
-        "pl-[calc(1.5rem-3px)]",
-      ],
+      "text-foreground dark:text-foreground",
+      "border-primary/10 dark:border-primary/20 border-b",
+      "hover:bg-primary/5 dark:hover:bg-foreground/5",
+      "focus:ring-primary/50 focus:ring-2 focus:outline-none focus:ring-inset",
+      active && ["border-l-secondary border-l-[3px]", "bg-primary/5 dark:bg-foreground/5", "pl-[calc(1.5rem-3px)]"],
       className
     )}
     {...props}

@@ -93,7 +93,7 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
   return (
     <div className={cn("flex flex-col items-center justify-center py-8", className)}>
       <div className="mb-8 text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("signInTitle")}</h2>
+        <h2 className="text-foreground font-serif text-3xl font-bold">{t("signInTitle")}</h2>
         <p className="text-muted-foreground mt-2">{t("signInDescription")}</p>
       </div>
 

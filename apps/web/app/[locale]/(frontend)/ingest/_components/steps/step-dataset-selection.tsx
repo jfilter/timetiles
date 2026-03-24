@@ -210,7 +210,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   return (
     <div className={cn("space-y-4", className)}>
       <div className="text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("selectDestination")}</h2>
+        <h2 className="text-foreground font-serif text-3xl font-bold">{t("selectDestination")}</h2>
         <p className="text-muted-foreground mt-2">{t("selectDestinationDescription")}</p>
       </div>
 
@@ -219,10 +219,10 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
       {/* Info banner when catalog + datasets were auto-selected from previous import */}
       {wasAutoApplied && (
         <div
-          className="border-cartographic-forest/20 bg-cartographic-forest/5 flex items-center justify-between rounded-sm border px-4 py-3"
+          className="border-accent/20 bg-accent/5 flex items-center justify-between rounded-sm border px-4 py-3"
           data-testid="dataset-suggestion-applied"
         >
-          <span className="text-cartographic-forest text-sm">
+          <span className="text-accent text-sm">
             {t("configLoadedFromDataset", { name: configSuggestions[0]?.datasetName ?? "" })}
           </span>
           <Button
@@ -242,8 +242,8 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           {/* Catalog section */}
-          <div className="border-cartographic-terracotta/30 border-l-4 p-6">
-            <h3 className="text-cartographic-charcoal mb-1 font-serif text-lg font-semibold">{t("catalog")}</h3>
+          <div className="border-secondary/30 border-l-4 p-6">
+            <h3 className="text-foreground mb-1 font-serif text-lg font-semibold">{t("catalog")}</h3>
             <p className="text-muted-foreground mb-4 text-sm">
               {catalogs.length === 0 ? t("createCatalogPrompt") : t("selectOrCreateCatalog")}
             </p>
@@ -252,7 +252,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
               {/* Show dropdown only if user has existing catalogs */}
               {catalogs.length > 0 && (
                 <div className="space-y-2">
-                  <Label htmlFor="catalog-select" className="text-cartographic-charcoal">
+                  <Label htmlFor="catalog-select" className="text-foreground">
                     {t("selectCatalog")}
                   </Label>
                   <Select
@@ -276,7 +276,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
               {(selectedCatalogId === "new" || catalogs.length === 0) && (
                 <div className="space-y-2">
-                  <Label htmlFor="new-catalog-name" className="text-cartographic-charcoal">
+                  <Label htmlFor="new-catalog-name" className="text-foreground">
                     {t("catalogName")}
                   </Label>
                   <Input
@@ -292,11 +292,11 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
           </div>
 
           {/* Divider */}
-          <div className="border-cartographic-navy/10 border-t" />
+          <div className="border-primary/10 border-t" />
 
           {/* Dataset section */}
           <div className={cn("p-6", noCatalogSelected && "opacity-50")}>
-            <h3 className="text-cartographic-charcoal mb-1 font-serif text-lg font-semibold">{t("dataset")}</h3>
+            <h3 className="text-foreground mb-1 font-serif text-lg font-semibold">{t("dataset")}</h3>
             <p className="text-muted-foreground mb-4 text-sm">
               {sheets.length <= 1 ? t("nameYourDataset") : t("mapSheetsToDatasets")}
             </p>
@@ -305,7 +305,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
               // Simplified single-sheet view
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dataset-name-0" className="text-cartographic-charcoal">
+                  <Label htmlFor="dataset-name-0" className="text-foreground">
                     {t("datasetName")}
                   </Label>
                   <Input
@@ -364,14 +364,11 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                     selectedCatalogId === "new" ? EMPTY_DATASETS : (selectedCatalog?.datasets ?? EMPTY_DATASETS);
 
                   return (
-                    <div
-                      key={sheet.index}
-                      className="border-cartographic-navy/10 bg-cartographic-cream/20 rounded-sm border p-4"
-                    >
+                    <div key={sheet.index} className="border-primary/10 bg-card/20 rounded-sm border p-4">
                       {/* Sheet info header */}
                       <div className="mb-3 flex items-center gap-3">
                         <FileSpreadsheetIcon className="text-muted-foreground h-4 w-4" />
-                        <span className="text-cartographic-charcoal font-medium">{sheet.name}</span>
+                        <span className="text-foreground font-medium">{sheet.name}</span>
                         <span className="text-muted-foreground font-mono text-xs">
                           {t("rowCount", { count: sheet.rowCount.toLocaleString() })}
                         </span>
@@ -399,7 +396,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                       {/* Schema similarity indicator */}
                       {mapping?.similarityScore !== null && mapping?.similarityScore !== undefined && (
                         <div className="mt-3 flex items-center gap-2 text-sm">
-                          <span className="bg-cartographic-forest/10 text-cartographic-forest rounded px-2 py-0.5 font-mono text-xs">
+                          <span className="bg-accent/10 text-accent rounded px-2 py-0.5 font-mono text-xs">
                             {t("percentMatch", { percent: Math.round(mapping.similarityScore * 100) })}
                           </span>
                           <span className="text-muted-foreground">{t("schemaSimilarity")}</span>
@@ -417,7 +414,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
       {/* Sticky continue button */}
       <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">
         <div className="flex items-center justify-between">
-          <span className={cn("text-sm", canProceed ? "text-cartographic-forest" : "text-muted-foreground")}>
+          <span className={cn("text-sm", canProceed ? "text-accent" : "text-muted-foreground")}>
             {t(statusMessageKey)}
           </span>
           <Button size="lg" onClick={nextStep} disabled={!canProceed} className="gap-2">

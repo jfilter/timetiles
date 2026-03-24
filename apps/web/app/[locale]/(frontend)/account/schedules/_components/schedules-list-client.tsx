@@ -94,7 +94,7 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onEdit, onRun, onDelet
           {/* Main info */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-cartographic-charcoal truncate font-serif text-lg font-semibold">{schedule.name}</h3>
+              <h3 className="text-foreground truncate font-serif text-lg font-semibold">{schedule.name}</h3>
               {getStatusBadge(schedule, t)}
             </div>
 

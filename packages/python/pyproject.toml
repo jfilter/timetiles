@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "timetiles"
+version = "0.1.0"
+description = "SDK for building TimeTiles scrapers — CSV output helper"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries",
+]
+keywords = ["timetiles", "scraper", "csv", "events"]
+
+[project.urls]
+Homepage = "https://docs.timetiles.io"
+Repository = "https://github.com/jfilter/timetiles"
+Documentation = "https://docs.timetiles.io/reference/scrapers"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/timetiles"]

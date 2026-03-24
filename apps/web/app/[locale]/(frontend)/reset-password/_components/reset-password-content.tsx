@@ -46,9 +46,7 @@ const ResetPasswordInner = () => {
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm text-center">
           <AlertCircle className="text-destructive mx-auto mb-4 h-12 w-12" />
-          <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-2xl font-bold">
-            {t("invalidResetLink")}
-          </h1>
+          <h1 className="text-foreground dark:text-foreground text-2xl font-bold">{t("invalidResetLink")}</h1>
           <p className="text-muted-foreground mt-2 text-sm">{t("noResetToken")}</p>
           <div className="mt-6">
             <Link href="/forgot-password" className="text-primary text-sm hover:underline">
@@ -65,9 +63,7 @@ const ResetPasswordInner = () => {
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm text-center">
           <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
-          <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-2xl font-bold">
-            {t("passwordResetSuccess")}
-          </h1>
+          <h1 className="text-foreground dark:text-foreground text-2xl font-bold">{t("passwordResetSuccess")}</h1>
           <p className="text-muted-foreground mt-2 text-sm">{t("passwordResetSuccessMessage")}</p>
           <div className="mt-6">
             <Link href="/login" className="text-primary text-sm hover:underline">
@@ -83,9 +79,7 @@ const ResetPasswordInner = () => {
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-3xl font-bold">
-            {t("setNewPassword")}
-          </h1>
+          <h1 className="text-foreground dark:text-foreground text-3xl font-bold">{t("setNewPassword")}</h1>
           <p className="text-muted-foreground mt-2">{t("setNewPasswordDescription")}</p>
         </div>
         <ResetPasswordForm token={token} onSuccess={handleSuccess} />

@@ -12,16 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Cartographic color palette (from packages/ui/src/lib/chart-themes.ts)
-const cartographicColors = {
-  parchment: "#f8f5f0", // oklch(0.96 0.01 80)
-  charcoal: "#404040", // oklch(0.25 0 0)
-  navy: "#4a5568", // oklch(0.35 0.06 250)
-  blue: "#0089a7", // oklch(0.58 0.11 220)
-  terracotta: "#cd853f", // oklch(0.56 0.14 35)
-  forest: "#5f9e6e", // oklch(0.42 0.08 145)
-  cream: "#e8e4dd", // oklch(0.88 0.01 80)
-};
+import { defaultColors } from "@timetiles/ui/lib/chart-themes";
 
 // Dark mode base colors
 const darkModeColors = {
@@ -59,25 +50,25 @@ interface MapColorPalette {
 
 // Light mode color palette
 const lightMapColors: MapColorPalette = {
-  land: cartographicColors.parchment,
+  land: defaultColors.parchment,
   water: "#b8dce8", // Light blue tint
   waterDark: "#9fd0e0", // Slightly darker for rivers
-  forest: cartographicColors.forest,
+  forest: defaultColors.forest,
   parkLight: "#c5ddc8",
   parkMedium: "#a8d1ae",
-  building: cartographicColors.cream,
+  building: defaultColors.cream,
   buildingStroke: "#d4cfc7",
-  roadMajor: cartographicColors.cream,
+  roadMajor: defaultColors.cream,
   roadMinor: "#ffffff",
   roadSecondary: "#f0ebe4",
   roadOutline: "#d4cfc7",
-  textPrimary: cartographicColors.charcoal,
-  textSecondary: cartographicColors.navy,
-  textHalo: cartographicColors.parchment,
+  textPrimary: defaultColors.charcoal,
+  textSecondary: defaultColors.navy,
+  textHalo: defaultColors.parchment,
   boundary: "#c4b9a8",
   rail: "#b3b3b3",
   sand: "#f0e8d8",
-  industrial: cartographicColors.cream,
+  industrial: defaultColors.cream,
   commercial: "#f0ebe4",
   agriculture: "#e8e4d0",
 };
@@ -340,6 +331,55 @@ interface StyleVariant {
   description: string;
 }
 
+// Modern theme - cool gray palette
+const modernLightMapColors: MapColorPalette = {
+  land: "#f8fafc",
+  water: "#dbeafe",
+  waterDark: "#bfdbfe",
+  forest: "#86efac",
+  parkLight: "#dcfce7",
+  parkMedium: "#bbf7d0",
+  building: "#f1f5f9",
+  buildingStroke: "#e2e8f0",
+  roadMajor: "#ffffff",
+  roadMinor: "#ffffff",
+  roadSecondary: "#f1f5f9",
+  roadOutline: "#cbd5e1",
+  textPrimary: "#1e293b",
+  textSecondary: "#475569",
+  textHalo: "#f8fafc",
+  boundary: "#94a3b8",
+  rail: "#94a3b8",
+  sand: "#fef9c3",
+  industrial: "#f1f5f9",
+  commercial: "#f8fafc",
+  agriculture: "#f0fdf4",
+};
+
+const modernDarkMapColors: MapColorPalette = {
+  land: "#0f172a",
+  water: "#1e3a5f",
+  waterDark: "#172554",
+  forest: "#14532d",
+  parkLight: "#1a2e1a",
+  parkMedium: "#162816",
+  building: "#1e293b",
+  buildingStroke: "#334155",
+  roadMajor: "#334155",
+  roadMinor: "#1e293b",
+  roadSecondary: "#1e293b",
+  roadOutline: "#475569",
+  textPrimary: "#f1f5f9",
+  textSecondary: "#94a3b8",
+  textHalo: "#0f172a",
+  boundary: "#475569",
+  rail: "#475569",
+  sand: "#1c1917",
+  industrial: "#1e293b40",
+  commercial: "#1e293b40",
+  agriculture: "#14291440",
+};
+
 const styleVariants: StyleVariant[] = [
   {
     name: "timetiles-cartographic-light",
@@ -352,6 +392,18 @@ const styleVariants: StyleVariant[] = [
     filename: "cartographic-dark.json",
     colors: darkMapColors,
     description: "Dark mode map style using TimeTiles cartographic design system",
+  },
+  {
+    name: "timetiles-modern-light",
+    filename: "modern-light.json",
+    colors: modernLightMapColors,
+    description: "Light mode map style using TimeTiles modern design system",
+  },
+  {
+    name: "timetiles-modern-dark",
+    filename: "modern-dark.json",
+    colors: modernDarkMapColors,
+    description: "Dark mode map style using TimeTiles modern design system",
   },
 ];
 

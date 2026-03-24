@@ -1,9 +1,9 @@
 {
   "version": 8,
-  "name": "timetiles-cartographic",
+  "name": "timetiles-cartographic-light",
   "metadata": {
     "license": "https://creativecommons.org/publicdomain/zero/1.0/",
-    "timetiles:generated": "2025-11-25T15:49:28.063Z",
+    "timetiles:generated": "2026-03-24T02:03:30.440Z",
     "timetiles:source": "https://tiles.versatiles.org/assets/styles/colorful/style.json",
     "timetiles:description": "Light mode map style using TimeTiles cartographic design system",
     "timetiles:variant": "light"
@@ -6657,7 +6657,7 @@
       "source-layer": "street_labels",
       "filter": ["==", "kind", "pedestrian"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -6684,7 +6684,7 @@
       "source-layer": "street_labels",
       "filter": ["==", "kind", "living_street"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -6711,7 +6711,7 @@
       "source-layer": "street_labels",
       "filter": ["==", "kind", "residential"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -6738,7 +6738,7 @@
       "source-layer": "street_labels",
       "filter": ["==", "kind", "unclassified"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -6765,7 +6765,7 @@
       "source-layer": "street_labels",
       "filter": ["==", "kind", "tertiary"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -6792,7 +6792,7 @@
       "source-layer": "street_labels",
       "filter": ["==", "kind", "secondary"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -6819,7 +6819,7 @@
       "source-layer": "street_labels",
       "filter": ["==", "kind", "primary"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -6846,7 +6846,7 @@
       "source-layer": "street_labels",
       "filter": ["==", "kind", "trunk"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "symbol-placement": "line",
         "text-anchor": "center",
@@ -6873,7 +6873,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "neighbourhood"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": { "stops": [[14, 12]] },
         "text-transform": "uppercase"
@@ -6894,7 +6894,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "quarter"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": { "stops": [[13, 13]] },
         "text-transform": "uppercase"
@@ -6915,7 +6915,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "suburb"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": {
           "stops": [
@@ -6941,7 +6941,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "hamlet"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": {
           "stops": [
@@ -6966,7 +6966,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "village"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": {
           "stops": [
@@ -6991,7 +6991,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "town"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": {
           "stops": [
@@ -7016,7 +7016,7 @@
       "source-layer": "boundary_labels",
       "filter": ["in", "admin_level", 4, "4"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-transform": "uppercase",
         "text-anchor": "top",
@@ -7046,7 +7046,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "city"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": {
           "stops": [
@@ -7071,7 +7071,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "state_capital"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": {
           "stops": [
@@ -7096,7 +7096,7 @@
       "source-layer": "place_labels",
       "filter": ["==", "kind", "capital"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-size": {
           "stops": [
@@ -7121,7 +7121,7 @@
       "source-layer": "boundary_labels",
       "filter": ["all", ["in", "admin_level", 2, "2"], ["<=", "way_area", 10000000]],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-transform": "uppercase",
         "text-anchor": "top",
@@ -7151,7 +7151,7 @@
       "source-layer": "boundary_labels",
       "filter": ["all", ["in", "admin_level", 2, "2"], ["<", "way_area", 90000000], [">", "way_area", 10000000]],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-transform": "uppercase",
         "text-anchor": "top",
@@ -7181,7 +7181,7 @@
       "source-layer": "boundary_labels",
       "filter": ["all", ["in", "admin_level", 2, "2"], [">=", "way_area", 90000000]],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "text-font": ["noto_sans_regular"],
         "text-transform": "uppercase",
         "text-anchor": "top",
@@ -7287,7 +7287,7 @@
       "source-layer": "public_transport",
       "filter": ["==", "kind", "bus_stop"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "icon-size": {
           "stops": [
             [16, 0.5],
@@ -7319,7 +7319,7 @@
       "source-layer": "public_transport",
       "filter": ["==", "kind", "tram_stop"],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "icon-size": {
           "stops": [
             [15, 0.5],
@@ -7351,7 +7351,7 @@
       "source-layer": "public_transport",
       "filter": ["all", ["in", "kind", "station", "halt"], ["==", "station", "subway"]],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "icon-size": {
           "stops": [
             [14, 0.5],
@@ -7383,7 +7383,7 @@
       "source-layer": "public_transport",
       "filter": ["all", ["in", "kind", "station", "halt"], ["==", "station", "light_rail"]],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "icon-size": {
           "stops": [
             [14, 0.5],
@@ -7415,7 +7415,7 @@
       "source-layer": "public_transport",
       "filter": ["all", ["in", "kind", "station", "halt"], ["!in", "station", "light_rail", "subway"]],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "icon-size": {
           "stops": [
             [13, 0.5],
@@ -7447,7 +7447,7 @@
       "source-layer": "public_transport",
       "filter": ["all", ["==", "kind", "aerodrome"], ["!has", "iata"]],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "icon-size": {
           "stops": [
             [13, 0.5],
@@ -7479,7 +7479,7 @@
       "source-layer": "public_transport",
       "filter": ["all", ["==", "kind", "aerodrome"], ["has", "iata"]],
       "layout": {
-        "text-field": "{name}",
+        "text-field": ["get", "name"],
         "icon-size": {
           "stops": [
             [12, 0.5],

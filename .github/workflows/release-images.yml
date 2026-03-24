@@ -49,7 +49,7 @@ jobs:
     uses: ./.github/workflows/build-image.yml
     with:
       image-name: ghcr.io/${{ github.repository }}-scraper
-      dockerfile: apps/scraper/Dockerfile
+      dockerfile: apps/timescrape/Dockerfile
       # Scope uses "scraper-runner" to avoid artifact pattern overlap with scraper-python/node
       scope: scraper-runner
       timeout-minutes: 15
@@ -59,8 +59,8 @@ jobs:
     uses: ./.github/workflows/build-image.yml
     with:
       image-name: ghcr.io/${{ github.repository }}-scraper-python
-      dockerfile: apps/scraper/images/python/Dockerfile
-      context: apps/scraper/images/python
+      dockerfile: apps/timescrape/images/python/Dockerfile
+      context: apps/timescrape/images/python
       scope: scraper-python
       timeout-minutes: 15
     secrets: inherit
@@ -69,8 +69,8 @@ jobs:
     uses: ./.github/workflows/build-image.yml
     with:
       image-name: ghcr.io/${{ github.repository }}-scraper-node
-      dockerfile: apps/scraper/images/node/Dockerfile
-      context: apps/scraper/images/node
+      dockerfile: apps/timescrape/images/node/Dockerfile
+      context: apps/timescrape/images/node
       scope: scraper-node
       timeout-minutes: 15
     secrets: inherit

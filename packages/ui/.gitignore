@@ -2,3 +2,6 @@
 src/**/*.js
 src/**/*.d.ts
 src/**/*.d.ts.map
+
+# tsup build output (published to npm)
+dist/

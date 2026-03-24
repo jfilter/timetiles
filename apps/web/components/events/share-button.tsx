@@ -54,7 +54,7 @@ export const ShareButton = ({ title }: { title: string }) => {
       aria-label={shareState === "copied" ? t("linkCopied") : t("shareEvent")}
     >
       {shareState === "copying" && <Loader2 className="h-5 w-5 animate-spin" />}
-      {shareState === "copied" && <Check className="text-cartographic-forest h-5 w-5" />}
+      {shareState === "copied" && <Check className="text-accent h-5 w-5" />}
       {shareState === "error" && <Copy className="text-destructive h-5 w-5" />}
       {shareState === "idle" && <Share2 className="h-5 w-5" />}
     </Button>

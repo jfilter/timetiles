@@ -32,7 +32,7 @@ export const EventMetadataCard = ({ event }: { event: Event }) => {
             <p className="text-muted-foreground">{t("validation")}</p>
             <p
               className={cn(
-                event.validationStatus === "valid" && "text-cartographic-forest",
+                event.validationStatus === "valid" && "text-accent",
                 event.validationStatus !== "valid" && "text-destructive"
               )}
             >

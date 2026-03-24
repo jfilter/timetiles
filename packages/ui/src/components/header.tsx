@@ -18,9 +18,8 @@ import { cn } from "../lib/utils";
 const headerVariants = cva("sticky top-0 z-50 w-full border-b backdrop-blur-sm transition-all duration-200", {
   variants: {
     variant: {
-      marketing:
-        "bg-cartographic-cream/95 border-cartographic-navy/20 dark:bg-cartographic-parchment/95 dark:border-cartographic-navy/40",
-      app: "bg-cartographic-parchment/95 border-cartographic-navy/30 dark:bg-cartographic-cream/95 dark:border-cartographic-navy/50",
+      marketing: "bg-card/95 border-primary/20 dark:bg-background/95 dark:border-primary/40",
+      app: "bg-background/95 border-primary/30 dark:bg-card/95 dark:border-primary/50",
     },
     decorative: { true: "relative overflow-hidden", false: "" },
   },

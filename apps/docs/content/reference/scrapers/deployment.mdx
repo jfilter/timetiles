@@ -48,10 +48,10 @@ This must return `true`. If it does not, consult the [Podman rootless tutorial](
 
 ### 2. Build Base Images
 
-The runner spawns containers from two pre-built base images. Build them from the `apps/scraper/images/` directory:
+The runner spawns containers from two pre-built base images. Build them from the `apps/timescrape/images/` directory:
 
 ```bash
-cd apps/scraper
+cd apps/timescrape
 
 # Python runtime (requests, beautifulsoup4, lxml, pandas, cssselect)
 podman build -t timescrape-python images/python/
@@ -86,7 +86,7 @@ Without this network, scraper containers could reach the database, the web app, 
 
 ### 4. Configure Environment
 
-Create an `.env` file in `apps/scraper/`:
+Create an `.env` file in `apps/timescrape/`:
 
 ```env
 # REQUIRED: Shared secret for API authentication (minimum 16 characters).
@@ -160,7 +160,7 @@ The server starts on the configured port (default 4000).
 Build and run directly on the host machine:
 
 ```bash
-cd apps/scraper
+cd apps/timescrape
 pnpm build
 node dist/index.js
 ```
@@ -196,7 +196,7 @@ sudo systemctl start timescrape-runner
 Build and run the runner itself as a Podman container:
 
 ```bash
-cd apps/scraper
+cd apps/timescrape
 
 podman build -t timescrape-runner .
 
@@ -237,7 +237,7 @@ If you run TimeTiles with Docker Compose, you can add the runner as an additiona
 services:
   timescrape-runner:
     build:
-      context: ./apps/scraper
+      context: ./apps/timescrape
       dockerfile: Dockerfile
     ports:
       - "4000:4000"
@@ -268,7 +268,7 @@ docker compose -f docker-compose.prod.yml -f docker-compose.scraper.yml up -d
 
 ## Environment Variables Reference
 
-### Runner Variables (apps/scraper)
+### Runner Variables (apps/timescrape)
 
 | Variable                     | Default           | Required | Description                                                                     |
 | ---------------------------- | ----------------- | -------- | ------------------------------------------------------------------------------- |
@@ -397,13 +397,13 @@ There is no persistent state on the runner itself. All durable data lives in the
 
 What to back up:
 
-| Data                                 | Location                                         | Backup Strategy                                      |
-| ------------------------------------ | ------------------------------------------------ | ---------------------------------------------------- |
-| Scraper repos, scrapers, run history | PostgreSQL (apps/web)                            | Standard database backup                             |
-| Scraper source code (git type)       | External Git hosting                             | Backed up by Git host                                |
-| Scraper source code (upload type)    | PostgreSQL (apps/web)                            | Standard database backup                             |
-| Runner configuration                 | `.env` file on runner host                       | Include in host backup or config management          |
-| Base images                          | Built from Dockerfiles in `apps/scraper/images/` | Rebuild from source, or push to a container registry |
+| Data                                 | Location                                            | Backup Strategy                                      |
+| ------------------------------------ | --------------------------------------------------- | ---------------------------------------------------- |
+| Scraper repos, scrapers, run history | PostgreSQL (apps/web)                               | Standard database backup                             |
+| Scraper source code (git type)       | External Git hosting                                | Backed up by Git host                                |
+| Scraper source code (upload type)    | PostgreSQL (apps/web)                               | Standard database backup                             |
+| Runner configuration                 | `.env` file on runner host                          | Include in host backup or config management          |
+| Base images                          | Built from Dockerfiles in `apps/timescrape/images/` | Rebuild from source, or push to a container registry |
 
 ---
 
@@ -439,7 +439,7 @@ The `SCRAPER_API_KEY` is the sole authentication mechanism between TimeTiles and
 To rotate the key:
 
 1. Generate a new key: `openssl rand -hex 32`
-2. Update `SCRAPER_API_KEY` in both `apps/scraper/.env` and `apps/web/.env`.
+2. Update `SCRAPER_API_KEY` in both `apps/timescrape/.env` and `apps/web/.env`.
 3. Restart both the runner and the TimeTiles web app.
 
 Rotate the key periodically and whenever you suspect it may have been exposed.
@@ -498,7 +498,7 @@ podman run --rm --network=scraper-sandbox timescrape-python \
 
 When new library versions are available or you need to add a library:
 
-1. Update the Dockerfile in `apps/scraper/images/python/` or `apps/scraper/images/node/`.
+1. Update the Dockerfile in `apps/timescrape/images/python/` or `apps/timescrape/images/node/`.
 2. Rebuild the image: `podman build -t timescrape-python images/python/`.
 3. New scraper runs will use the updated image immediately (no runner restart needed).
 

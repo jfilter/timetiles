@@ -132,9 +132,8 @@ apps/web/
 ├── tests/               # Test suites
 └── payload.config.ts    # Payload CMS configuration
 
-apps/scraper/              # TimeScrape runner (optional)
+apps/timescrape/              # TimeScrape runner (optional)
 ├── src/                   # Hono API server
-├── src/cli/               # `timescrape init` CLI tool
 ├── images/                # Base container images (Python, Node.js)
 └── examples/              # Example scrapers
 ```
@@ -146,6 +145,8 @@ Located in `packages/`:
 | Package                    | Purpose                            |
 | -------------------------- | ---------------------------------- |
 | `ui`                       | Shared UI components (shadcn/ui)   |
+| `scraper`                  | Scraper SDK for Node.js (`@timetiles/scraper`) |
+| `python`                   | Python SDK (`pip install timetiles`)           |
 | `assets`                   | Logos and static assets (Git LFS)  |
 | `payload-schema-detection` | CSV/Excel schema detection         |
 | `eslint-config`            | Shared ESLint configuration        |

@@ -18,7 +18,7 @@ import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
 import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date";
 
 const DATE_INPUT_CLASS =
-  "border-cartographic-navy/20 focus:border-cartographic-terracotta focus:ring-cartographic-terracotta/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none";
+  "border-primary/20 focus:border-secondary focus:ring-secondary/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none";
 
 const DateInput = ({
   value,
@@ -110,10 +110,10 @@ export const TimeRangeSlider = ({
     <div className="space-y-3 px-2 select-none">
       {/* Date range labels */}
       <div className="-mx-2 flex items-center justify-between">
-        <span className="text-muted-foreground dark:text-cartographic-charcoal/60 font-mono text-xs">
+        <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
           {formatShortDate(minTimestamp)}
         </span>
-        <span className="text-muted-foreground dark:text-cartographic-charcoal/60 font-mono text-xs">
+        <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
           {formatShortDate(maxTimestamp)}
         </span>
       </div>
@@ -127,18 +127,18 @@ export const TimeRangeSlider = ({
         onPointerLeave={handlePointerUp}
       >
         {/* Track background */}
-        <div className="bg-cartographic-navy/10 dark:bg-cartographic-charcoal/10 absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full" />
+        <div className="bg-primary/10 dark:bg-foreground/10 absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full" />
 
         {/* Selected range highlight */}
         <div
-          className="bg-cartographic-terracotta/60 dark:bg-cartographic-terracotta/50 absolute top-1/2 h-1 -translate-y-1/2 rounded-full transition-[left,right] duration-75"
+          className="bg-secondary/60 dark:bg-secondary/50 absolute top-1/2 h-1 -translate-y-1/2 rounded-full transition-[left,right] duration-75"
           style={rangeStyle}
         />
 
         {/* Start handle */}
         <button
           type="button"
-          className="bg-cartographic-parchment dark:bg-cartographic-charcoal border-cartographic-terracotta focus-visible:ring-cartographic-blue absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
+          className="bg-background dark:bg-foreground border-secondary focus-visible:ring-ring absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
           style={startHandleStyle}
           onPointerDown={handlePointerDown("start")}
           role="slider"
@@ -151,7 +151,7 @@ export const TimeRangeSlider = ({
         {/* End handle */}
         <button
           type="button"
-          className="bg-cartographic-parchment dark:bg-cartographic-charcoal border-cartographic-terracotta focus-visible:ring-cartographic-blue absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
+          className="bg-background dark:bg-foreground border-secondary focus-visible:ring-ring absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
           style={endHandleStyle}
           onPointerDown={handlePointerDown("end")}
           role="slider"
@@ -183,9 +183,7 @@ export const TimeRangeSlider = ({
             <div
               key={bar.date}
               className={`pointer-events-none flex-1 rounded-t-sm transition-colors duration-150 ${
-                isBarInRange(bar.date, bar.dateEnd)
-                  ? "bg-cartographic-blue dark:bg-cartographic-blue/80"
-                  : "bg-cartographic-navy/20 dark:bg-cartographic-charcoal/20"
+                isBarInRange(bar.date, bar.dateEnd) ? "bg-ring dark:bg-ring/80" : "bg-primary/20 dark:bg-foreground/20"
               }`}
               style={{ height: `${Math.max(4, bar.normalizedHeight * 100)}%` }}
               title={`${formatShortDate(bar.date)}: ${bar.count} events`}
@@ -206,7 +204,7 @@ export const TimeRangeSlider = ({
                 max={endDate ?? formatISODate(maxTimestamp)}
                 label="Start date"
               />
-              <span className="text-cartographic-navy/40 dark:text-cartographic-charcoal/40 text-xs" aria-hidden="true">
+              <span className="text-primary/40 dark:text-foreground/40 text-xs" aria-hidden="true">
                 →
               </span>
               <DateInput
@@ -220,7 +218,7 @@ export const TimeRangeSlider = ({
             <button
               type="button"
               onClick={handleCloseEditMode}
-              className="text-muted-foreground hover:text-cartographic-navy dark:text-cartographic-charcoal/60 dark:hover:text-cartographic-charcoal w-full text-center text-xs"
+              className="text-muted-foreground hover:text-primary dark:text-foreground/60 dark:hover:text-foreground w-full text-center text-xs"
             >
               {tCommon("done")}
             </button>
@@ -229,9 +227,9 @@ export const TimeRangeSlider = ({
           <button
             type="button"
             onClick={handleOpenEditMode}
-            className="hover:bg-cartographic-navy/5 dark:hover:bg-cartographic-charcoal/5 w-full rounded py-1 text-center transition-colors"
+            className="hover:bg-primary/5 dark:hover:bg-foreground/5 w-full rounded py-1 text-center transition-colors"
           >
-            <span className="text-cartographic-charcoal dark:text-cartographic-charcoal font-mono text-xs">
+            <span className="text-foreground dark:text-foreground font-mono text-xs">
               {startDate == null ? formatShortDate(minTimestamp) : formatShortDate(parseISODate(startDate))}
               {" → "}
               {endDate == null ? formatShortDate(maxTimestamp) : formatShortDate(parseISODate(endDate))}

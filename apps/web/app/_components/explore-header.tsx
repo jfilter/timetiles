@@ -52,21 +52,17 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
       {/* Back button */}
       <Link
         href="/"
-        className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 ml-6 flex items-center rounded-sm p-2 transition-colors"
+        className="hover:bg-primary/10 dark:hover:bg-foreground/10 ml-6 flex items-center rounded-sm p-2 transition-colors"
         title={t("backToHome")}
       >
-        <ArrowLeft className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
+        <ArrowLeft className="text-primary dark:text-foreground h-5 w-5" />
       </Link>
 
       {/* Centered title and event count */}
       <div className="flex flex-col items-center">
-        <span className="text-cartographic-charcoal dark:text-cartographic-charcoal font-sans text-sm font-semibold">
-          {title}
-        </span>
+        <span className="text-foreground dark:text-foreground font-sans text-sm font-semibold">{title}</span>
         {eventCount && (
-          <span className="text-muted-foreground dark:text-cartographic-charcoal/60 font-mono text-xs">
-            {eventCount}
-          </span>
+          <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">{eventCount}</span>
         )}
       </div>
 
@@ -74,11 +70,11 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
       <button
         type="button"
         onClick={toggleFilterDrawer}
-        className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 mr-6 rounded-sm p-2 transition-colors"
+        className="hover:bg-primary/10 dark:hover:bg-foreground/10 mr-6 rounded-sm p-2 transition-colors"
         title={t("showFilters")}
         aria-label={t("showFilters")}
       >
-        <Filter className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
+        <Filter className="text-primary dark:text-foreground h-5 w-5" />
       </button>
     </div>
   );
@@ -130,10 +126,10 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
         {/* Back button */}
         <Link
           href="/"
-          className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 ml-8 flex items-center rounded-sm p-2 transition-colors"
+          className="hover:bg-primary/10 dark:hover:bg-foreground/10 ml-8 flex items-center rounded-sm p-2 transition-colors"
           title={t("backToHome")}
         >
-          <ArrowLeft className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
+          <ArrowLeft className="text-primary dark:text-foreground h-5 w-5" />
         </Link>
 
         {/* View Toggle */}
@@ -143,16 +139,10 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
 
         {/* Centered stats */}
         <div className="flex flex-1 items-center justify-center gap-2">
-          {eventCount && (
-            <span className="text-cartographic-navy dark:text-cartographic-charcoal font-mono text-xs">
-              {eventCount}
-            </span>
-          )}
-          {eventCount && mapBounds != null && (
-            <span className="text-cartographic-navy/30 dark:text-cartographic-charcoal/30">·</span>
-          )}
+          {eventCount && <span className="text-primary dark:text-foreground font-mono text-xs">{eventCount}</span>}
+          {eventCount && mapBounds != null && <span className="text-primary/30 dark:text-foreground/30">·</span>}
           {mapBounds != null && (
-            <span className="text-muted-foreground dark:text-cartographic-charcoal/50 font-mono text-xs">
+            <span className="text-muted-foreground dark:text-foreground/50 font-mono text-xs">
               {formatCenterCoordinates(mapBounds)}
             </span>
           )}
@@ -163,15 +153,11 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
       <div className="flex flex-1 items-center border-l">
         {/* Centered title and date range */}
         <div className="flex flex-1 items-center justify-center gap-3">
-          <span className="text-cartographic-charcoal dark:text-cartographic-charcoal font-sans text-sm font-semibold">
-            {title}
-          </span>
+          <span className="text-foreground dark:text-foreground font-sans text-sm font-semibold">{title}</span>
           {dateRange && (
             <>
-              <span className="text-cartographic-navy/30 dark:text-cartographic-charcoal/30">·</span>
-              <span className="text-cartographic-navy dark:text-cartographic-charcoal font-sans text-sm">
-                {dateRange}
-              </span>
+              <span className="text-primary/30 dark:text-foreground/30">·</span>
+              <span className="text-primary dark:text-foreground font-sans text-sm">{dateRange}</span>
             </>
           )}
         </div>
@@ -181,11 +167,11 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
           <button
             type="button"
             onClick={toggleFilterDrawer}
-            className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 mr-4 rounded-sm p-2 transition-colors"
+            className="hover:bg-primary/10 dark:hover:bg-foreground/10 mr-4 rounded-sm p-2 transition-colors"
             title={t("showFilters")}
             aria-label={t("showFilters")}
           >
-            <Filter className="text-cartographic-navy dark:text-cartographic-charcoal h-5 w-5" />
+            <Filter className="text-primary dark:text-foreground h-5 w-5" />
           </button>
         )}
       </div>
@@ -200,11 +186,11 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
         <button
           type="button"
           onClick={toggleFilterDrawer}
-          className="hover:bg-cartographic-navy/10 dark:hover:bg-cartographic-charcoal/10 rounded-sm px-3 py-1 transition-colors"
+          className="hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm px-3 py-1 transition-colors"
           title={t("hideFilters")}
           aria-label={t("hideFilters")}
         >
-          <span className="text-cartographic-charcoal font-sans text-sm font-semibold">{t("filters")}</span>
+          <span className="text-foreground font-sans text-sm font-semibold">{t("filters")}</span>
         </button>
       </div>
     </div>

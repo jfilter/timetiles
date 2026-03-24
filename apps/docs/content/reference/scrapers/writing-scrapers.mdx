@@ -17,7 +17,7 @@ Python is the default runtime. The base image includes Python 3.12 with several 
 """Scrape German public holidays from a public API."""
 
 import requests
-from timescrape import output
+from timetiles.scraper import output
 
 response = requests.get(
     "https://date.nager.at/api/v3/PublicHolidays/2026/DE",
@@ -47,7 +47,7 @@ print(f"Scraped {output.row_count} events")
 
 import requests
 from bs4 import BeautifulSoup
-from timescrape import output
+from timetiles.scraper import output
 
 response = requests.get("https://example.com/events", timeout=30)
 response.raise_for_status()
@@ -76,7 +76,7 @@ print(f"Scraped {output.row_count} events")
 """Scrape a paginated API with retry logic."""
 
 import requests
-from timescrape import output
+from timetiles.scraper import output
 
 BASE_URL = "https://api.example.com/events"
 MAX_PAGES = 50
@@ -127,7 +127,7 @@ print(f"Scraped {output.row_count} events across {page - 1} pages")
 
 import pandas as pd
 import requests
-from timescrape import output
+from timetiles.scraper import output
 
 response = requests.get("https://api.example.com/dataset.json", timeout=60)
 response.raise_for_status()
@@ -159,7 +159,7 @@ Scrapers can receive environment variables for API keys and configuration. Set t
 
 import os
 import requests
-from timescrape import output
+from timetiles.scraper import output
 
 API_KEY = os.environ.get("EVENT_API_KEY")
 if not API_KEY:
@@ -187,14 +187,14 @@ output.save()
 
 These libraries are pre-installed in the Python runtime image. No other libraries can be imported.
 
-| Library          | Version  | Purpose                                             |
-| ---------------- | -------- | --------------------------------------------------- |
-| `requests`       | Latest   | HTTP client                                         |
-| `beautifulsoup4` | Latest   | HTML/XML parsing                                    |
-| `lxml`           | Latest   | Fast XML/HTML parser, used as BeautifulSoup backend |
-| `pandas`         | Latest   | Data manipulation and analysis                      |
-| `cssselect`      | Latest   | CSS selector support for lxml                       |
-| `timescrape`     | Built-in | CSV output helper (always available)                |
+| Library             | Version  | Purpose                                             |
+| ------------------- | -------- | --------------------------------------------------- |
+| `requests`          | Latest   | HTTP client                                         |
+| `beautifulsoup4`    | Latest   | HTML/XML parsing                                    |
+| `lxml`              | Latest   | Fast XML/HTML parser, used as BeautifulSoup backend |
+| `pandas`            | Latest   | Data manipulation and analysis                      |
+| `cssselect`         | Latest   | CSS selector support for lxml                       |
+| `timetiles.scraper` | Built-in | CSV output helper (always available)                |
 
 Standard library modules (`json`, `csv`, `re`, `os`, `datetime`, `urllib`, etc.) are always available.
 
@@ -212,7 +212,7 @@ The Node.js runtime uses Node.js 24 with ESM module support.
  */
 
 import axios from "axios";
-import { output } from "@timescrape/helper";
+import { output } from "@timetiles/scraper";
 
 const response = await axios.get("https://date.nager.at/api/v3/PublicHolidays/2026/AT", { timeout: 30_000 });
 
@@ -235,7 +235,7 @@ console.log(`Scraped ${output.rowCount} events`);
 ```javascript
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { output } from "@timescrape/helper";
+import { output } from "@timetiles/scraper";
 
 const { data: html } = await axios.get("https://example.com/events", { timeout: 30_000 });
 const $ = cheerio.load(html);
@@ -258,7 +258,7 @@ console.log(`Scraped ${output.rowCount} events`);
 
 ```javascript
 import axios from "axios";
-import { output } from "@timescrape/helper";
+import { output } from "@timetiles/scraper";
 
 const BASE_URL = "https://api.example.com/events";
 const MAX_PAGES = 50;
@@ -296,7 +296,7 @@ console.log(`Scraped ${output.rowCount} events`);
 | -------------------- | -------- | ------------------------------------ |
 | `cheerio`            | Latest   | HTML parsing with jQuery-like API    |
 | `axios`              | Latest   | HTTP client                          |
-| `@timescrape/helper` | Built-in | CSV output helper (always available) |
+| `@timetiles/scraper` | Built-in | CSV output helper (always available) |
 
 Node.js built-in modules (`fs`, `path`, `url`, `crypto`, `https`, etc.) are always available.
 
@@ -311,7 +311,7 @@ If your scraper exits with a non-zero exit code, the run is marked as `failed`. 
 ```python
 import sys
 import requests
-from timescrape import output
+from timetiles.scraper import output
 
 try:
     response = requests.get("https://api.example.com/events", timeout=30)

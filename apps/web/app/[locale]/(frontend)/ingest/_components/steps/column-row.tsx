@@ -174,8 +174,8 @@ const TransformChip = ({ transform, isExpanded, onToggle, onRemove }: Readonly<T
       className={cn(
         "inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 text-xs",
         isExpanded
-          ? "border-cartographic-navy/30 bg-cartographic-navy/5 ring-cartographic-blue ring-1"
-          : "border-cartographic-navy/15 bg-cartographic-cream/30 hover:bg-cartographic-cream/60",
+          ? "border-primary/30 bg-primary/5 ring-ring ring-1"
+          : "border-primary/15 bg-card/30 hover:bg-card/60",
         !transform.active && "opacity-50"
       )}
     >
@@ -287,16 +287,16 @@ const SplitChildRow = ({
   return (
     <>
       <tr
-        className="border-cartographic-navy/5 border-b bg-purple-50/30 last:border-0 dark:bg-purple-950/10"
+        className="border-primary/5 border-b bg-purple-50/30 last:border-0 dark:bg-purple-950/10"
         data-testid={`split-child-row-${parentColumn}-${childName}`}
       >
         {/* Indented source cell with tree connector */}
         <td className="px-4 py-2 pl-10">
           <div className="flex items-center gap-2">
-            <span className="text-cartographic-navy/40 text-xs" aria-hidden="true">
+            <span className="text-primary/40 text-xs" aria-hidden="true">
               {isLast ? "\u2514\u2500" : "\u251C\u2500"}
             </span>
-            <span className="text-cartographic-charcoal font-mono text-sm">{childName}</span>
+            <span className="text-foreground font-mono text-sm">{childName}</span>
           </div>
         </td>
 
@@ -314,12 +314,12 @@ const SplitChildRow = ({
                     onRemove={() => editing.setDeleteTargetId(transform.id)}
                   />
                 ))}
-                <span className="text-cartographic-navy/30 mx-0.5 text-xs" aria-hidden="true">
+                <span className="text-primary/30 mx-0.5 text-xs" aria-hidden="true">
                   &rarr;
                 </span>
               </>
             ) : (
-              <span className="text-cartographic-navy/20 mr-2 text-xs" aria-hidden="true">
+              <span className="text-primary/20 mr-2 text-xs" aria-hidden="true">
                 &mdash;&mdash;&rarr;
               </span>
             )}
@@ -396,7 +396,7 @@ const ExpandedEditorRow = ({
   const Icon = TRANSFORM_ICONS[expandedTransform.type];
 
   return (
-    <tr className={cn("border-cartographic-navy/5 border-b last:border-0", bgClass)}>
+    <tr className={cn("border-primary/5 border-b last:border-0", bgClass)}>
       <td colSpan={4} className="bg-muted/30 px-6 py-4">
         <div className="max-w-2xl">
           <div className="mb-2 flex items-center gap-2">
@@ -451,17 +451,14 @@ export const ColumnRow = ({
   return (
     <>
       <tr
-        className={cn(
-          "border-cartographic-navy/5 border-b last:border-0",
-          targetField && "bg-cartographic-forest/[0.02]"
-        )}
+        className={cn("border-primary/5 border-b last:border-0", targetField && "bg-accent/[0.02]")}
         data-testid={`column-row-${columnName}`}
       >
         {/* Source column cell */}
         <td className="px-4 py-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-cartographic-charcoal font-mono text-sm font-medium">{columnName}</span>
+              <span className="text-foreground font-mono text-sm font-medium">{columnName}</span>
               {isAutoDetected && <ConfidenceBadge level={confidenceLevel} />}
             </div>
             <p className="text-muted-foreground mt-0.5 truncate font-mono text-xs">{formatSampleValue(sampleValue)}</p>
@@ -483,12 +480,12 @@ export const ColumnRow = ({
                   />
                 ))}
                 {/* Arrow indicator when transforms exist */}
-                <span className="text-cartographic-navy/30 mx-0.5 text-xs" aria-hidden="true">
+                <span className="text-primary/30 mx-0.5 text-xs" aria-hidden="true">
                   &rarr;
                 </span>
               </>
             ) : (
-              <span className="text-cartographic-navy/20 mr-2 text-xs" aria-hidden="true">
+              <span className="text-primary/20 mr-2 text-xs" aria-hidden="true">
                 &mdash;&mdash;&rarr;
               </span>
             )}

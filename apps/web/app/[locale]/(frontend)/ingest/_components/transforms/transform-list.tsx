@@ -47,10 +47,10 @@ const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
 };
 
 const TRANSFORM_COLORS: Record<TransformType, string> = {
-  rename: "text-cartographic-blue",
-  "date-parse": "text-cartographic-terracotta",
-  "string-op": "text-cartographic-forest",
-  concatenate: "text-cartographic-navy",
+  rename: "text-ring",
+  "date-parse": "text-secondary",
+  "string-op": "text-accent",
+  concatenate: "text-primary",
   split: "text-purple-600",
 };
 
@@ -117,7 +117,7 @@ const TransformItem = ({
       className={cn(
         "rounded-lg border p-3 transition-colors",
         !transform.active && "opacity-50",
-        isEditing && "ring-cartographic-blue ring-2"
+        isEditing && "ring-ring ring-2"
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -127,7 +127,7 @@ const TransformItem = ({
             <div className="flex items-center gap-2">
               <span className="text-foreground font-medium">{TRANSFORM_TYPE_LABELS[transform.type]}</span>
               {!isValid && (
-                <span className="bg-cartographic-terracotta/10 text-cartographic-terracotta rounded px-1.5 py-0.5 text-[10px] font-medium">
+                <span className="bg-secondary/10 text-secondary rounded px-1.5 py-0.5 text-[10px] font-medium">
                   {t("tfIncomplete")}
                 </span>
               )}
@@ -143,7 +143,7 @@ const TransformItem = ({
             onClick={handleToggleActive}
             title={transform.active ? t("tfDisable") : t("tfEnable")}
           >
-            <span className={cn("h-2 w-2 rounded-full", transform.active ? "bg-cartographic-forest" : "bg-muted")} />
+            <span className={cn("h-2 w-2 rounded-full", transform.active ? "bg-accent" : "bg-muted")} />
           </Button>
           <Button
             variant="ghost"

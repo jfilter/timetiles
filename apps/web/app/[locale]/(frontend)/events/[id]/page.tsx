@@ -47,8 +47,8 @@ interface EventDetailsPageProps {
 
 // Draft mode banner component
 const DraftModeBanner = ({ previewMode, draftPreview }: { previewMode: string; draftPreview: string }) => (
-  <div className="border-cartographic-gold bg-cartographic-gold/10 mb-6 rounded-sm border px-4 py-3">
-    <p className="text-cartographic-gold font-serif font-bold">{previewMode}</p>
+  <div className="border-ring bg-ring/10 mb-6 rounded-sm border px-4 py-3">
+    <p className="text-ring font-serif font-bold">{previewMode}</p>
     <p className="text-muted-foreground text-sm">{draftPreview}</p>
   </div>
 );

@@ -146,6 +146,7 @@
     "no-restricted-imports": [
       "error",
       {
+        "paths": [{ "name": "@timescrape/helper", "message": "Use @timetiles/scraper instead" }],
         "patterns": [
           { "group": ["../**/apps/*"], "message": "Don't import across app boundaries" },
           { "group": ["*/index", "*/index.js", "*/index.ts", "*/index.tsx"], "message": "Avoid barrel imports" },
@@ -467,6 +468,27 @@
       "files": ["**/*.spec.{ts,tsx,js,jsx}"],
       "rules": { "unicorn/filename-case": ["error", { "case": "kebabCase", "ignore": ["$^"] }] }
     },
-    { "files": ["**/*.jsx"], "rules": { "no-console": "off" } }
+    { "files": ["**/*.jsx"], "rules": { "no-console": "off" } },
+    {
+      "files": [
+        "**/packages/ui/src/components/**/*.{ts,tsx}",
+        "**/apps/web/components/**/*.{ts,tsx}",
+        "**/apps/web/app/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/chart-themes", "**/chart-themes.js", "**/chart-themes.ts"],
+                "importNames": ["defaultColors"],
+                "message": "Don't use defaultColors directly in components. Use ChartTheme via useChartTheme() or MapColors via useMapColors() instead."
+              }
+            ]
+          }
+        ]
+      }
+    }
   ]
 }

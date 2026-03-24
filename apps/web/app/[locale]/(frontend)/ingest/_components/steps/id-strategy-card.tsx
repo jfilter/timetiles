@@ -61,7 +61,7 @@ export const IdStrategyCard = ({
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="id-strategy" className="text-cartographic-charcoal">
+          <Label htmlFor="id-strategy" className="text-foreground">
             {t("idGeneration")}
           </Label>
           <Select value={idStrategy} onValueChange={handleStrategyChange} disabled={locked}>
@@ -79,7 +79,7 @@ export const IdStrategyCard = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="dedup-strategy" className="text-cartographic-charcoal">
+          <Label htmlFor="dedup-strategy" className="text-foreground">
             {t("duplicateHandling")}
           </Label>
           <Select value={deduplicationStrategy} onValueChange={onDeduplicationChange} disabled={locked}>
@@ -99,7 +99,7 @@ export const IdStrategyCard = ({
 
       {showIdField && (
         <div className="space-y-2">
-          <Label htmlFor="id-field" className="text-cartographic-charcoal">
+          <Label htmlFor="id-field" className="text-foreground">
             {t("idField")}
           </Label>
           <Select value={idField ?? "__none__"} onValueChange={handleIdFieldChange} disabled={locked}>
@@ -126,15 +126,13 @@ export const IdStrategyCard = ({
 
   return (
     <Card className="overflow-hidden">
-      <div className="border-cartographic-navy/10 bg-cartographic-cream/30 border-b px-6 py-4">
+      <div className="border-primary/10 bg-card/30 border-b px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="bg-cartographic-navy/10 flex h-10 w-10 items-center justify-center rounded-sm">
-            <HashIcon className="text-cartographic-navy h-5 w-5" />
+          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-sm">
+            <HashIcon className="text-primary h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">
-              {t("identityAndDuplicates")}
-            </h3>
+            <h3 className="text-foreground font-serif text-lg font-semibold">{t("identityAndDuplicates")}</h3>
             <p className="text-muted-foreground text-sm">{t("identityAndDuplicatesDescription")}</p>
           </div>
         </div>

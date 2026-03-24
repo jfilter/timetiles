@@ -1,33 +1,301 @@
 {
   "name": "@timetiles/ui",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Themeable UI component library with shadcn/ui patterns — buttons, cards, charts, and page blocks",
+  "keywords": [
+    "components",
+    "react",
+    "shadcn",
+    "tailwind",
+    "timetiles",
+    "ui"
+  ],
+  "homepage": "https://docs.timetiles.io",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jfilter/timetiles",
+    "directory": "packages/ui"
+  },
+  "files": [
+    "dist",
+    "src/styles",
+    "src/themes",
+    "DESIGN_SYSTEM.md"
+  ],
   "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "source": "./src/index.ts",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./provider": {
+      "source": "./src/provider.tsx",
+      "import": {
+        "types": "./dist/provider.d.ts",
+        "default": "./dist/provider.js"
+      }
+    },
     "./globals.css": "./src/styles/globals.css",
+    "./tokens.css": "./src/styles/tokens.css",
+    "./themes/cartographic.css": "./src/themes/cartographic.css",
+    "./themes/modern.css": "./src/themes/modern.css",
     "./postcss.config": "./postcss.config.mjs",
     "./design-system": "./DESIGN_SYSTEM.md",
-    "./charts": "./src/components/charts/index.ts",
-    "./icons": "./src/components/icons/index.ts",
-    "./lib/utils": "./src/lib/utils.ts",
-    "./lib/chart-themes": "./src/lib/chart-themes.ts",
-    "./components/button": "./src/components/button.tsx",
-    "./components/card": "./src/components/card.tsx",
-    "./components/dropdown-menu": "./src/components/dropdown-menu.tsx",
-    "./components/input": "./src/components/input.tsx",
-    "./components/label": "./src/components/label.tsx",
-    "./components/select": "./src/components/select.tsx",
-    "./components/data-table": "./src/components/data-table.tsx"
+    "./charts": {
+      "source": "./src/components/charts/index.ts",
+      "import": {
+        "types": "./dist/components/charts/index.d.ts",
+        "default": "./dist/components/charts/index.js"
+      }
+    },
+    "./icons": {
+      "source": "./src/components/icons/index.ts",
+      "import": {
+        "types": "./dist/components/icons/index.d.ts",
+        "default": "./dist/components/icons/index.js"
+      }
+    },
+    "./lib/utils": {
+      "source": "./src/lib/utils.ts",
+      "import": {
+        "types": "./dist/lib/utils.d.ts",
+        "default": "./dist/lib/utils.js"
+      }
+    },
+    "./lib/chart-themes": {
+      "source": "./src/lib/chart-themes.ts",
+      "import": {
+        "types": "./dist/lib/chart-themes.d.ts",
+        "default": "./dist/lib/chart-themes.js"
+      }
+    },
+    "./components/button": {
+      "source": "./src/components/button.tsx",
+      "import": {
+        "types": "./dist/components/button.d.ts",
+        "default": "./dist/components/button.js"
+      }
+    },
+    "./components/card": {
+      "source": "./src/components/card.tsx",
+      "import": {
+        "types": "./dist/components/card.d.ts",
+        "default": "./dist/components/card.js"
+      }
+    },
+    "./components/checkbox": {
+      "source": "./src/components/checkbox.tsx",
+      "import": {
+        "types": "./dist/components/checkbox.d.ts",
+        "default": "./dist/components/checkbox.js"
+      }
+    },
+    "./components/collapsible": {
+      "source": "./src/components/collapsible.tsx",
+      "import": {
+        "types": "./dist/components/collapsible.d.ts",
+        "default": "./dist/components/collapsible.js"
+      }
+    },
+    "./components/confirm-dialog": {
+      "source": "./src/components/confirm-dialog.tsx",
+      "import": {
+        "types": "./dist/components/confirm-dialog.d.ts",
+        "default": "./dist/components/confirm-dialog.js"
+      }
+    },
+    "./components/content-state": {
+      "source": "./src/components/content-state.tsx",
+      "import": {
+        "types": "./dist/components/content-state.d.ts",
+        "default": "./dist/components/content-state.js"
+      }
+    },
+    "./components/call-to-action": {
+      "source": "./src/components/call-to-action.tsx",
+      "import": {
+        "types": "./dist/components/call-to-action.d.ts",
+        "default": "./dist/components/call-to-action.js"
+      }
+    },
+    "./components/data-table": {
+      "source": "./src/components/data-table.tsx",
+      "import": {
+        "types": "./dist/components/data-table.d.ts",
+        "default": "./dist/components/data-table.js"
+      }
+    },
+    "./components/details-grid": {
+      "source": "./src/components/details-grid.tsx",
+      "import": {
+        "types": "./dist/components/details-grid.d.ts",
+        "default": "./dist/components/details-grid.js"
+      }
+    },
+    "./components/dialog": {
+      "source": "./src/components/dialog.tsx",
+      "import": {
+        "types": "./dist/components/dialog.d.ts",
+        "default": "./dist/components/dialog.js"
+      }
+    },
+    "./components/dropdown-menu": {
+      "source": "./src/components/dropdown-menu.tsx",
+      "import": {
+        "types": "./dist/components/dropdown-menu.d.ts",
+        "default": "./dist/components/dropdown-menu.js"
+      }
+    },
+    "./components/features": {
+      "source": "./src/components/features.tsx",
+      "import": {
+        "types": "./dist/components/features.d.ts",
+        "default": "./dist/components/features.js"
+      }
+    },
+    "./components/footer": {
+      "source": "./src/components/footer.tsx",
+      "import": {
+        "types": "./dist/components/footer.d.ts",
+        "default": "./dist/components/footer.js"
+      }
+    },
+    "./components/header": {
+      "source": "./src/components/header.tsx",
+      "import": {
+        "types": "./dist/components/header.d.ts",
+        "default": "./dist/components/header.js"
+      }
+    },
+    "./components/header-actions": {
+      "source": "./src/components/header-actions.tsx",
+      "import": {
+        "types": "./dist/components/header-actions.d.ts",
+        "default": "./dist/components/header-actions.js"
+      }
+    },
+    "./components/header-brand": {
+      "source": "./src/components/header-brand.tsx",
+      "import": {
+        "types": "./dist/components/header-brand.d.ts",
+        "default": "./dist/components/header-brand.js"
+      }
+    },
+    "./components/header-nav": {
+      "source": "./src/components/header-nav.tsx",
+      "import": {
+        "types": "./dist/components/header-nav.d.ts",
+        "default": "./dist/components/header-nav.js"
+      }
+    },
+    "./components/hero": {
+      "source": "./src/components/hero.tsx",
+      "import": {
+        "types": "./dist/components/hero.d.ts",
+        "default": "./dist/components/hero.js"
+      }
+    },
+    "./components/input": {
+      "source": "./src/components/input.tsx",
+      "import": {
+        "types": "./dist/components/input.d.ts",
+        "default": "./dist/components/input.js"
+      }
+    },
+    "./components/label": {
+      "source": "./src/components/label.tsx",
+      "import": {
+        "types": "./dist/components/label.d.ts",
+        "default": "./dist/components/label.js"
+      }
+    },
+    "./components/mobile-nav-drawer": {
+      "source": "./src/components/mobile-nav-drawer.tsx",
+      "import": {
+        "types": "./dist/components/mobile-nav-drawer.d.ts",
+        "default": "./dist/components/mobile-nav-drawer.js"
+      }
+    },
+    "./components/newsletter-cta": {
+      "source": "./src/components/newsletter-cta.tsx",
+      "import": {
+        "types": "./dist/components/newsletter-cta.d.ts",
+        "default": "./dist/components/newsletter-cta.js"
+      }
+    },
+    "./components/newsletter-form": {
+      "source": "./src/components/newsletter-form.tsx",
+      "import": {
+        "types": "./dist/components/newsletter-form.d.ts",
+        "default": "./dist/components/newsletter-form.js"
+      }
+    },
+    "./components/select": {
+      "source": "./src/components/select.tsx",
+      "import": {
+        "types": "./dist/components/select.d.ts",
+        "default": "./dist/components/select.js"
+      }
+    },
+    "./components/table": {
+      "source": "./src/components/table.tsx",
+      "import": {
+        "types": "./dist/components/table.d.ts",
+        "default": "./dist/components/table.js"
+      }
+    },
+    "./components/tabs": {
+      "source": "./src/components/tabs.tsx",
+      "import": {
+        "types": "./dist/components/tabs.d.ts",
+        "default": "./dist/components/tabs.js"
+      }
+    },
+    "./components/testimonials": {
+      "source": "./src/components/testimonials.tsx",
+      "import": {
+        "types": "./dist/components/testimonials.d.ts",
+        "default": "./dist/components/testimonials.js"
+      }
+    },
+    "./components/timeline": {
+      "source": "./src/components/timeline.tsx",
+      "import": {
+        "types": "./dist/components/timeline.d.ts",
+        "default": "./dist/components/timeline.js"
+      }
+    },
+    "./components/textarea": {
+      "source": "./src/components/textarea.tsx",
+      "import": {
+        "types": "./dist/components/textarea.d.ts",
+        "default": "./dist/components/textarea.js"
+      }
+    },
+    "./hooks/use-chart-theme": {
+      "source": "./src/hooks/use-chart-theme.ts",
+      "import": {
+        "types": "./dist/hooks/use-chart-theme.d.ts",
+        "default": "./dist/hooks/use-chart-theme.js"
+      }
+    }
   },
   "scripts": {
-    "build": "tsc --build",
-    "build:watch": "tsc --build --watch",
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "lint": "mkdir -p .lint-results && eslint . --cache --format json --output-file .lint-results/latest.json; eslint . --cache",
     "format": "eslint . --fix --quiet --cache && oxfmt --write .",
-    "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "tsup"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -44,9 +312,6 @@
     "echarts": "catalog:",
     "echarts-for-react": "catalog:",
     "lucide-react": "^0.577.0",
-    "next-themes": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
     "tailwind-merge": "^3.5.0",
     "tw-animate-css": "^1.4.0",
     "zod": "catalog:"
@@ -64,8 +329,15 @@
     "@types/react-dom": "catalog:",
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "tailwindcss": "^4.2.2",
+    "tsup": "^8.5.1",
     "typescript": "catalog:",
     "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

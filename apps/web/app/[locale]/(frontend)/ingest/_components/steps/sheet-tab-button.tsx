@@ -37,13 +37,11 @@ export const SheetTabButton = ({
       data-testid={`sheet-tab-${sheetIndex}`}
       className={cn(
         "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
-        isActive
-          ? "border-cartographic-blue bg-cartographic-blue/10 text-cartographic-blue"
-          : "border-cartographic-navy/20 hover:border-cartographic-navy/40 text-cartographic-charcoal",
-        isComplete && !isActive && "border-cartographic-forest/40 bg-cartographic-forest/5"
+        isActive ? "border-ring bg-ring/10 text-ring" : "border-primary/20 hover:border-primary/40 text-foreground",
+        isComplete && !isActive && "border-accent/40 bg-accent/5"
       )}
     >
-      {isComplete && <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />}
+      {isComplete && <CheckCircleIcon className="text-accent h-4 w-4" />}
       <span>{displayName}</span>
       <span className="text-muted-foreground font-mono text-xs">({rowCount})</span>
     </button>

@@ -225,12 +225,12 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   return (
     <div className={cn("space-y-4", className)}>
       <div className="text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("mapFields")}</h2>
+        <h2 className="text-foreground font-serif text-3xl font-bold">{t("mapFields")}</h2>
         <p className="text-muted-foreground mt-2">{t("mapFieldsDescription")}</p>
       </div>
 
       {/* Sheet context bar */}
-      <div className="border-cartographic-navy/10 bg-cartographic-cream/30 flex items-center justify-between rounded-sm border px-4 py-3">
+      <div className="border-primary/10 bg-card/30 flex items-center justify-between rounded-sm border px-4 py-3">
         <div className="flex items-center gap-4">
           {sheets.length > 1 ? (
             <div className="flex flex-wrap gap-2" data-testid="sheet-tabs">
@@ -256,7 +256,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           ) : (
             <div className="flex items-center gap-2">
               <FileSpreadsheetIcon className="text-muted-foreground h-5 w-5" />
-              <span className="text-cartographic-charcoal font-serif font-semibold">
+              <span className="text-foreground font-serif font-semibold">
                 {sheetMappings.find((m) => m.sheetIndex === activeSheetIndex)?.newDatasetName ?? activeSheet.name}
               </span>
               <span className="text-muted-foreground text-sm">
@@ -327,7 +327,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
       {/* Advanced settings collapsible */}
       <Collapsible>
-        <CollapsibleTrigger className="text-muted-foreground hover:text-cartographic-charcoal flex w-full items-center justify-between py-2 text-sm font-medium">
+        <CollapsibleTrigger className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between py-2 text-sm font-medium">
           {t("advancedSettings")}
           <ChevronDownIcon className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-180" />
         </CollapsibleTrigger>
@@ -350,7 +350,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
       {/* Sticky continue button */}
       <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">
         <div className="flex items-center justify-between">
-          <span className={cn("text-sm", isComplete ? "text-cartographic-forest" : "text-muted-foreground")}>
+          <span className={cn("text-sm", isComplete ? "text-accent" : "text-muted-foreground")}>
             {isComplete ? t("readyToContinue") : t("completeRequiredFields")}
           </span>
           <Button size="lg" onClick={nextStep} disabled={!canProceed} className="gap-2">

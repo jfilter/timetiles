@@ -31,9 +31,7 @@ const LoginContent = () => {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">
       <div className="mb-8 text-center">
-        <h1 className="text-cartographic-charcoal dark:text-cartographic-charcoal text-3xl font-bold">
-          {t("welcomeBack")}
-        </h1>
+        <h1 className="text-foreground dark:text-foreground text-3xl font-bold">{t("welcomeBack")}</h1>
         <p className="text-muted-foreground mt-2">{t("signInDescription")}</p>
       </div>
       <AuthTabs onSuccess={handleSuccess} />

@@ -63,7 +63,7 @@ export const createGridBackgroundStyle = (options: GridBackgroundOptions): CSSPr
  * Intended to be rendered inside a container with low opacity.
  */
 export const headerGridStyle: CSSProperties = {
-  ...createGridBackgroundStyle({ color: "var(--cartographic-navy)", cellSize: 40 }),
+  ...createGridBackgroundStyle({ color: "var(--color-primary)", cellSize: 40 }),
   opacity: "0.1",
 };
 

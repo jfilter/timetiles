@@ -1,0 +1,141 @@
+/**
+ * Modern Theme — minimal, geometric design with vibrant accents.
+ *
+ * A radical departure from the Cartographic theme:
+ * - Pure white/black base with saturated accent colors
+ * - System font stack (no custom web fonts needed)
+ * - Large border radius (pill-shaped buttons)
+ * - Elevated card shadows with blur
+ * - No serif fonts, no texture, no decorative elements
+ * - Generous spacing and whitespace
+ *
+ * Scoped to .theme-modern class. Apply to <html> to activate.
+ */
+
+.theme-modern {
+  /* Colors — pure, high-contrast, vibrant */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.1 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.1 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.1 0 0);
+  --primary: oklch(0.5 0.25 265);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.55 0.2 330);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.6 0.22 145);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.55 0.25 30);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.5 0.25 265);
+  --chart-1: oklch(0.5 0.25 265);
+  --chart-2: oklch(0.55 0.2 330);
+  --chart-3: oklch(0.6 0.22 145);
+  --chart-4: oklch(0.6 0.18 50);
+  --chart-5: oklch(0.55 0.15 200);
+
+  /* Large radius — pill-shaped buttons, rounded cards */
+  --radius: 0.75rem;
+
+  /* Sidebar */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.1 0 0);
+  --sidebar-primary: oklch(0.5 0.25 265);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.5 0.25 265);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-ring: oklch(0.5 0.25 265);
+
+  /* Layout & Style — generous spacing, elevated shadows */
+  --shadow-card: 0 2px 8px oklch(0 0 0 / 0.06), 0 1px 3px oklch(0 0 0 / 0.04);
+  --shadow-card-hover: 0 12px 32px oklch(0 0 0 / 0.12), 0 4px 12px oklch(0 0 0 / 0.06);
+  --heading-font: var(--font-sans);
+  --density-gap: 1.5rem;
+  --density-padding: 2.5rem;
+
+  /* Categorical palette — vibrant, high-saturation */
+  --palette-1: oklch(0.5 0.25 265);
+  --palette-2: oklch(0.55 0.2 330);
+  --palette-3: oklch(0.6 0.22 145);
+  --palette-4: oklch(0.6 0.18 50);
+  --palette-5: oklch(0.55 0.15 200);
+  --palette-6: oklch(0.5 0.2 290);
+  --palette-7: oklch(0.6 0.2 15);
+  --palette-8: oklch(0.55 0.15 170);
+  --palette-9: oklch(0.4 0.2 265);
+  --palette-10: oklch(0.5 0.05 0);
+
+  /* No texture — clean, flat background */
+  --texture-tint: transparent;
+  --texture-accent: transparent;
+  --texture-line: transparent;
+}
+
+/* Font overrides must target body to beat next/font specificity */
+body.theme-modern {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", "Cascadia Code", monospace;
+}
+
+.theme-modern.dark,
+.dark .theme-modern {
+  /* Colors — dark mode with vibrant accents */
+  --background: oklch(0.1 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.14 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.14 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.7 0.2 265);
+  --primary-foreground: oklch(0.1 0 0);
+  --secondary: oklch(0.65 0.18 330);
+  --secondary-foreground: oklch(0.1 0 0);
+  --muted: oklch(0.18 0 0);
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.65 0.2 145);
+  --accent-foreground: oklch(0.1 0 0);
+  --destructive: oklch(0.65 0.22 30);
+  --destructive-foreground: oklch(0.1 0 0);
+  --border: oklch(0.22 0 0);
+  --input: oklch(0.22 0 0);
+  --ring: oklch(0.7 0.2 265);
+  --chart-1: oklch(0.7 0.2 265);
+  --chart-2: oklch(0.65 0.18 330);
+  --chart-3: oklch(0.65 0.2 145);
+  --chart-4: oklch(0.65 0.18 50);
+  --chart-5: oklch(0.6 0.15 200);
+
+  /* Sidebar */
+  --sidebar: oklch(0.12 0 0);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.7 0.2 265);
+  --sidebar-primary-foreground: oklch(0.1 0 0);
+  --sidebar-accent: oklch(0.7 0.2 265);
+  --sidebar-accent-foreground: oklch(0.1 0 0);
+  --sidebar-border: oklch(0.22 0 0);
+  --sidebar-ring: oklch(0.7 0.2 265);
+
+  /* Categorical palette (Dark Mode) */
+  --palette-1: oklch(0.7 0.2 265);
+  --palette-2: oklch(0.65 0.18 330);
+  --palette-3: oklch(0.65 0.2 145);
+  --palette-4: oklch(0.65 0.18 50);
+  --palette-5: oklch(0.6 0.15 200);
+  --palette-6: oklch(0.6 0.18 290);
+  --palette-7: oklch(0.65 0.18 15);
+  --palette-8: oklch(0.6 0.15 170);
+  --palette-9: oklch(0.55 0.2 265);
+  --palette-10: oklch(0.6 0.05 0);
+
+  /* No texture */
+  --texture-tint: transparent;
+  --texture-accent: transparent;
+  --texture-line: transparent;
+}

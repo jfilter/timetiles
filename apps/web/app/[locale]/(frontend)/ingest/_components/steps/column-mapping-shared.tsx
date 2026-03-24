@@ -28,10 +28,10 @@ export const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
 };
 
 export const TRANSFORM_COLORS: Record<TransformType, string> = {
-  rename: "text-cartographic-blue",
-  "date-parse": "text-cartographic-terracotta",
-  "string-op": "text-cartographic-forest",
-  concatenate: "text-cartographic-navy",
+  rename: "text-ring",
+  "date-parse": "text-secondary",
+  "string-op": "text-accent",
+  concatenate: "text-primary",
   split: "text-purple-600",
 };
 
@@ -98,9 +98,9 @@ export const TargetSelect = ({
       value={targetField ?? "__none__"}
       onChange={handleChange}
       className={cn(
-        "border-cartographic-navy/20 bg-background text-foreground h-9 w-full min-w-[180px] rounded-sm border px-2 text-sm",
-        "focus-visible:ring-cartographic-navy/30 focus-visible:ring-2 focus-visible:ring-offset-1",
-        targetField && "border-cartographic-forest/40 font-medium"
+        "border-primary/20 bg-background text-foreground h-9 w-full min-w-[180px] rounded-sm border px-2 text-sm",
+        "focus-visible:ring-primary/30 focus-visible:ring-2 focus-visible:ring-offset-1",
+        targetField && "border-accent/40 font-medium"
       )}
       aria-label={t("flowTargetField")}
     >

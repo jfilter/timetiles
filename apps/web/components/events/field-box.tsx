@@ -31,7 +31,7 @@ export const FieldBox = ({ label, value, mono, capitalize, status }: FieldBoxPro
         "text-sm",
         mono && "font-mono",
         capitalize && "capitalize",
-        status === "success" && "text-cartographic-forest",
+        status === "success" && "text-accent",
         status === "failed" && "text-destructive"
       )}
     >

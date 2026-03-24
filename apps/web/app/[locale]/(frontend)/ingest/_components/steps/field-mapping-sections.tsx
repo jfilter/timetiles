@@ -57,14 +57,14 @@ export const LanguageDetectionBanner = ({
 
   return (
     <div
-      className="border-cartographic-forest/20 bg-cartographic-forest/5 flex items-center gap-3 rounded-sm border px-4 py-3"
+      className="border-accent/20 bg-accent/5 flex items-center gap-3 rounded-sm border px-4 py-3"
       data-testid="language-detection-banner"
     >
-      <div className="bg-cartographic-forest/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-sm">
-        <SparklesIcon className="text-cartographic-forest h-4 w-4" />
+      <div className="bg-accent/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-sm">
+        <SparklesIcon className="text-accent h-4 w-4" />
       </div>
       <div>
-        <p className="text-cartographic-charcoal text-sm font-medium">
+        <p className="text-foreground text-sm font-medium">
           {t("autoDetected", { language: language.name })}
           {language.isReliable && (
             <span className="text-muted-foreground ml-2 font-mono text-xs">
@@ -108,22 +108,20 @@ export const LocationSection = ({
   const t = useTranslations("Ingest");
 
   return (
-    <div className="border-cartographic-terracotta/30 border-l-4 p-6">
+    <div className="border-secondary/30 border-l-4 p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="text-cartographic-charcoal font-serif text-lg font-semibold">{t("location")}</h3>
+          <h3 className="text-foreground font-serif text-lg font-semibold">{t("location")}</h3>
           <p className="text-muted-foreground text-sm">{t("locationDescription")}</p>
         </div>
-        <div className="border-cartographic-navy/10 inline-flex rounded-sm border" role="radiogroup">
+        <div className="border-primary/10 inline-flex rounded-sm border" role="radiogroup">
           <button
             type="button"
             role="radio"
             aria-checked={locationMode === "address"}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
-              locationMode === "address"
-                ? "bg-cartographic-charcoal text-white"
-                : "text-muted-foreground hover:bg-cartographic-cream/50"
+              locationMode === "address" ? "bg-foreground text-white" : "text-muted-foreground hover:bg-card/50"
             )}
             onClick={() => onLocationModeChange("address")}
           >
@@ -136,9 +134,7 @@ export const LocationSection = ({
             aria-checked={locationMode === "coordinates"}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
-              locationMode === "coordinates"
-                ? "bg-cartographic-charcoal text-white"
-                : "text-muted-foreground hover:bg-cartographic-cream/50"
+              locationMode === "coordinates" ? "bg-foreground text-white" : "text-muted-foreground hover:bg-card/50"
             )}
             onClick={() => onLocationModeChange("coordinates")}
           >
@@ -164,7 +160,7 @@ export const LocationSection = ({
           />
 
           {activeMapping.locationField && (
-            <div className="border-cartographic-blue/20 bg-cartographic-blue/5 flex items-start gap-3 rounded-sm border p-4">
+            <div className="border-ring/20 bg-ring/5 flex items-start gap-3 rounded-sm border p-4">
               <Checkbox
                 id="geocoding-enabled"
                 checked={geocodingEnabled}
@@ -172,7 +168,7 @@ export const LocationSection = ({
                 className="mt-0.5"
               />
               <div>
-                <Label htmlFor="geocoding-enabled" className="text-cartographic-charcoal">
+                <Label htmlFor="geocoding-enabled" className="text-foreground">
                   {t("enableGeocoding")}
                 </Label>
                 <p className="text-muted-foreground text-sm">{t("enableGeocodingDescription")}</p>
@@ -236,16 +232,16 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
 
   return (
     <div className="p-6">
-      <h3 className="text-cartographic-charcoal mb-3 font-serif text-lg font-semibold">{t("preview")}</h3>
+      <h3 className="text-foreground mb-3 font-serif text-lg font-semibold">{t("preview")}</h3>
       {fields.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("noPreviewYet")}</p>
       ) : (
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-cartographic-navy/10 bg-cartographic-cream/20">
+              <TableRow className="border-primary/10 bg-card/20">
                 {fields.map((f) => (
-                  <TableHead key={`${f.label}-${f.columnKey}`} className="text-cartographic-charcoal font-medium">
+                  <TableHead key={`${f.label}-${f.columnKey}`} className="text-foreground font-medium">
                     {f.label}
                   </TableHead>
                 ))}
@@ -254,11 +250,11 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
             <TableBody>
               {sampleData.slice(0, 3).map((row, i) => (
                 // eslint-disable-next-line @eslint-react/no-array-index-key -- sample data rows have no unique ID
-                <TableRow key={`preview-row-${i}`} className="border-cartographic-navy/5 last:border-0">
+                <TableRow key={`preview-row-${i}`} className="border-primary/5 last:border-0">
                   {fields.map((f) => (
                     <TableCell
                       key={`${f.label}-${f.columnKey}`}
-                      className={cn(f.mono ? "text-muted-foreground font-mono" : "text-cartographic-charcoal")}
+                      className={cn(f.mono ? "text-muted-foreground font-mono" : "text-foreground")}
                     >
                       {formatCellValue(row[f.columnKey])}
                     </TableCell>
@@ -295,8 +291,8 @@ export const CompletionStatusBar = ({
       className={cn(
         "flex items-center gap-2 rounded-sm px-4 py-2 text-sm",
         isComplete
-          ? "border-cartographic-forest/20 bg-cartographic-forest/5 text-cartographic-forest border"
-          : "border-cartographic-terracotta/20 bg-cartographic-terracotta/5 text-cartographic-terracotta border"
+          ? "border-accent/20 bg-accent/5 text-accent border"
+          : "border-secondary/20 bg-secondary/5 text-secondary border"
       )}
     >
       {isComplete ? (
@@ -308,7 +304,7 @@ export const CompletionStatusBar = ({
         <>
           {t("requiredFieldsRemaining", { count: remainingCount })}
           {missingFields && missingFields.length > 0 && (
-            <span className="text-cartographic-terracotta/70">
+            <span className="text-secondary/70">
               ({missingFields.map((f) => t(f as Parameters<typeof t>[0])).join(", ")})
             </span>
           )}
@@ -342,14 +338,12 @@ export const ConfigSuggestionBanner = ({
   if (isApplied) {
     return (
       <div
-        className="border-cartographic-forest/20 bg-cartographic-forest/5 flex items-center justify-between rounded-sm border px-4 py-3"
+        className="border-accent/20 bg-accent/5 flex items-center justify-between rounded-sm border px-4 py-3"
         data-testid="config-suggestion-applied"
       >
         <div className="flex items-center gap-2">
-          <CheckCircleIcon className="text-cartographic-forest h-4 w-4" />
-          <span className="text-cartographic-forest text-sm">
-            {t("configLoadedFromDataset", { name: suggestion.datasetName })}
-          </span>
+          <CheckCircleIcon className="text-accent h-4 w-4" />
+          <span className="text-accent text-sm">{t("configLoadedFromDataset", { name: suggestion.datasetName })}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={onReset}>
           {t("resetToAutoDetected")}
@@ -360,10 +354,10 @@ export const ConfigSuggestionBanner = ({
 
   return (
     <div
-      className="border-cartographic-blue/20 bg-cartographic-blue/5 flex items-center justify-between rounded-sm border px-4 py-3"
+      className="border-ring/20 bg-ring/5 flex items-center justify-between rounded-sm border px-4 py-3"
       data-testid="config-suggestion-banner"
     >
-      <span className="text-cartographic-blue text-sm">
+      <span className="text-ring text-sm">
         {t("similarConfig", { name: suggestion.datasetName, score: suggestion.score })}
       </span>
       <div className="flex gap-2">

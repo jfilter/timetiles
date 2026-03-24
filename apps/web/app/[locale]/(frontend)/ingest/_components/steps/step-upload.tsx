@@ -272,7 +272,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
       {/* Auth Configuration */}
       <Collapsible>
-        <CollapsibleTrigger className="text-muted-foreground hover:text-cartographic-charcoal py-2 text-sm font-medium">
+        <CollapsibleTrigger className="text-muted-foreground hover:text-foreground py-2 text-sm font-medium">
           {t("authSettings")}
           <ChevronDownIcon className="h-4 w-4 transition-transform" />
         </CollapsibleTrigger>
@@ -289,12 +289,10 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const renderPreview = () => (
     <Card className="overflow-hidden">
       {/* Success header bar */}
-      <div className="bg-cartographic-forest/10 border-cartographic-forest/20 border-b px-4 py-2">
+      <div className="bg-accent/10 border-accent/20 border-b px-4 py-2">
         <div className="flex items-center gap-2">
-          <CheckCircle2Icon className="text-cartographic-forest h-4 w-4" />
-          <span className="text-cartographic-forest text-sm font-medium">
-            {sourceUrl ? t("urlDataReady") : t("fileReady")}
-          </span>
+          <CheckCircle2Icon className="text-accent h-4 w-4" />
+          <span className="text-accent text-sm font-medium">{sourceUrl ? t("urlDataReady") : t("fileReady")}</span>
         </div>
       </div>
 
@@ -302,21 +300,21 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         <div className="flex items-start justify-between gap-4">
           {/* File info */}
           <div className="flex items-start gap-4">
-            <div className="bg-cartographic-cream border-cartographic-navy/20 flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border">
+            <div className="bg-card border-primary/20 flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border">
               {sourceUrl ? (
-                <GlobeIcon className="text-cartographic-navy h-6 w-6" />
+                <GlobeIcon className="text-primary h-6 w-6" />
               ) : (
-                <FileSpreadsheetIcon className="text-cartographic-navy h-6 w-6" />
+                <FileSpreadsheetIcon className="text-primary h-6 w-6" />
               )}
             </div>
             <div className="min-w-0 space-y-1">
-              <h3 className="text-cartographic-charcoal truncate font-serif text-lg font-medium">{file!.name}</h3>
+              <h3 className="text-foreground truncate font-serif text-lg font-medium">{file!.name}</h3>
               {sourceUrl && <p className="text-muted-foreground truncate font-mono text-xs">{sourceUrl}</p>}
               <div className="text-muted-foreground flex items-center gap-3 font-mono text-sm">
                 {file!.size > 0 && (
                   <>
                     <span>{formatFileSize(file!.size)}</span>
-                    <span className="text-cartographic-navy/30">·</span>
+                    <span className="text-primary/30">·</span>
                   </>
                 )}
                 {sheets.length === 1 ? (
@@ -335,7 +333,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
             size="icon"
             onClick={handleRemoveFile}
             aria-label={t("removeFile")}
-            className="text-muted-foreground hover:text-cartographic-charcoal shrink-0"
+            className="text-muted-foreground hover:text-foreground shrink-0"
           >
             <XIcon className="h-4 w-4" />
           </Button>
@@ -343,15 +341,12 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
         {/* Multi-sheet details */}
         {sheets.length > 1 && (
-          <div className="border-cartographic-navy/10 mt-4 border-t pt-4">
-            <p className="text-cartographic-charcoal mb-2 text-sm font-medium">{t("sheets")}</p>
+          <div className="border-primary/10 mt-4 border-t pt-4">
+            <p className="text-foreground mb-2 text-sm font-medium">{t("sheets")}</p>
             <ul className="space-y-1">
               {sheets.map((sheet) => (
-                <li
-                  key={sheet.index}
-                  className="bg-cartographic-cream/50 flex items-center justify-between rounded-sm px-3 py-2"
-                >
-                  <span className="text-cartographic-charcoal text-sm">{sheet.name}</span>
+                <li key={sheet.index} className="bg-card/50 flex items-center justify-between rounded-sm px-3 py-2">
+                  <span className="text-foreground text-sm">{sheet.name}</span>
                   <span className="text-muted-foreground font-mono text-xs">
                     {t("rowCount", { count: sheet.rowCount.toLocaleString() })}
                   </span>
@@ -367,7 +362,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   return (
     <div className={cn("space-y-4", className)}>
       <div className="text-center">
-        <h2 className="text-cartographic-charcoal font-serif text-3xl font-bold">{t("uploadTitle")}</h2>
+        <h2 className="text-foreground font-serif text-3xl font-bold">{t("uploadTitle")}</h2>
         <p className="text-muted-foreground mt-2">{t("uploadDescription")}</p>
       </div>
 
@@ -421,7 +416,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       {/* Sticky continue footer */}
       <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">
         <div className="flex items-center justify-between">
-          <span className={cn("text-sm", canProceed ? "text-cartographic-forest" : "text-muted-foreground")}>
+          <span className={cn("text-sm", canProceed ? "text-accent" : "text-muted-foreground")}>
             {canProceed ? t("fileReadyToContinue") : t("uploadFileToStart")}
           </span>
           <Button size="lg" onClick={nextStep} disabled={!canProceed} className="gap-2">

@@ -226,12 +226,12 @@ const CombinedRow = ({
 
   return (
     <>
-      <tr className="border-cartographic-navy/5 border-b bg-amber-50/30 last:border-0 dark:bg-amber-950/10">
+      <tr className="border-primary/5 border-b bg-amber-50/30 last:border-0 dark:bg-amber-950/10">
         <td className="px-4 py-3">
           <button type="button" className="flex items-center gap-2 text-left" onClick={() => setExpanded(!expanded)}>
-            <ArrowLeftRight className="text-cartographic-navy h-4 w-4 shrink-0" />
+            <ArrowLeftRight className="text-primary h-4 w-4 shrink-0" />
             <div className="min-w-0">
-              <span className="text-cartographic-charcoal font-mono text-sm font-medium">
+              <span className="text-foreground font-mono text-sm font-medium">
                 {transform.to || t("combineColumns")}
               </span>
               <p className="text-muted-foreground truncate text-xs">{summary}</p>
@@ -263,11 +263,11 @@ const CombinedRow = ({
       </tr>
 
       {expanded && (
-        <tr className="border-cartographic-navy/5 border-b bg-amber-50/20 last:border-0">
+        <tr className="border-primary/5 border-b bg-amber-50/20 last:border-0">
           <td colSpan={4} className="px-6 py-4">
             <div className="max-w-2xl space-y-4">
               <div className="space-y-2">
-                <Label className="text-cartographic-charcoal text-sm">
+                <Label className="text-foreground text-sm">
                   {t("sourceColumn")} {t("tfSelectMultiple")}
                 </Label>
                 <div className="flex flex-wrap gap-2">
@@ -279,8 +279,8 @@ const CombinedRow = ({
                       className={cn(
                         "rounded-md border px-2 py-1 text-sm transition-colors",
                         transform.fromFields.includes(col)
-                          ? "border-cartographic-forest bg-cartographic-forest/10 text-cartographic-forest"
-                          : "border-border text-muted-foreground hover:border-cartographic-forest/50"
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border text-muted-foreground hover:border-accent/50"
                       )}
                     >
                       {col}
@@ -441,10 +441,10 @@ export const ColumnMappingTable = ({
       <div className="overflow-x-auto rounded-sm border">
         <Table>
           <TableHeader>
-            <TableRow className="border-cartographic-navy/10 bg-cartographic-cream/20">
-              <TableHead className="text-cartographic-charcoal w-[30%] font-medium">{t("sourceColumn")}</TableHead>
-              <TableHead className="text-cartographic-charcoal w-[35%] font-medium">{t("flowTransforms")}</TableHead>
-              <TableHead className="text-cartographic-charcoal w-[25%] font-medium">{t("flowTargetField")}</TableHead>
+            <TableRow className="border-primary/10 bg-card/20">
+              <TableHead className="text-foreground w-[30%] font-medium">{t("sourceColumn")}</TableHead>
+              <TableHead className="text-foreground w-[35%] font-medium">{t("flowTransforms")}</TableHead>
+              <TableHead className="text-foreground w-[25%] font-medium">{t("flowTargetField")}</TableHead>
               <TableHead className="w-[10%]" />
             </TableRow>
           </TableHeader>

@@ -11,11 +11,15 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { UIProvider } from "@timetiles/ui/provider";
 import dynamic from "next/dynamic";
+import { useTheme } from "next-themes";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { type ReactNode, useState } from "react";
 
 import { HttpError } from "@/lib/api/http-error";
+import { PRESET_THEMES } from "@/lib/constants/theme-presets";
+import { useThemePreset } from "@/lib/hooks/use-theme-preset";
 
 // Lazy load DevTools - only in development to reduce production bundle
 const ReactQueryDevtools = dynamic(
@@ -27,6 +31,24 @@ const ReactQueryDevtools = dynamic(
 );
 
 import { ThemeProvider } from "./theme-provider";
+
+/** Bridges next-themes and theme presets into the UI library's provider. */
+const UIBridge = ({ children }: Readonly<{ children: ReactNode }>) => {
+  const { theme } = useTheme();
+  const { preset } = useThemePreset();
+  const presetConfig = PRESET_THEMES[preset];
+
+  return (
+    <UIProvider
+      resolveTheme={() => theme ?? "light"}
+      lightChartTheme={presetConfig?.light}
+      darkChartTheme={presetConfig?.dark}
+      mapColors={presetConfig?.map}
+    >
+      {children}
+    </UIProvider>
+  );
+};
 
 export const Providers = ({ children }: Readonly<{ children: ReactNode }>) => {
   const [queryClient] = useState(
@@ -52,7 +74,9 @@ export const Providers = ({ children }: Readonly<{ children: ReactNode }>) => {
   return (
     <QueryClientProvider client={queryClient}>
       <NuqsAdapter>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <UIBridge>{children}</UIBridge>
+        </ThemeProvider>
       </NuqsAdapter>
       {process.env.NODE_ENV === "development" && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>

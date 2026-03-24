@@ -1,233 +1,357 @@
-# Theming Architecture
+# Theming & Customization Guide
 
-> **Part of the TimeTiles Cartographic Design System**
-> See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for complete design guidance
->
-> **CMS-Driven Customization**: TimeTiles also supports runtime theming via the Payload CMS dashboard.
-> Sites can override all semantic tokens, assign theme presets, and inject custom CSS.
-> See ADR 0015 and the UI Customization docs for the full system.
+> How to customize the look of `@timetiles/ui` and the TimeTiles web application.
+> All components use semantic CSS tokens — switch the entire visual identity by redefining CSS variables.
 
-## Multi-Theme Support
+## Architecture Overview
 
-The design system supports multiple themes through **semantic design tokens** that map to underlying color values. This allows components to work with different visual themes without code changes.
+```
+Base palette (OKLCH values)
+  └── Semantic tokens (--primary, --background, ...)
+        └── Tailwind utilities (bg-primary, text-foreground, ...)
+              └── Components (Button, Card, Header, ...)
+```
 
-## Theme Layers
+Components **never** reference the base palette directly. They use semantic tokens like `bg-primary`, `text-foreground`, `border-border`. Swapping a theme means redefining the semantic tokens — every component adapts automatically.
 
-**Layer 1: Base Colors** - The actual color values (cartographic palette, original palette, custom palettes)
+---
+
+## Quick Start: Creating a Second Theme
+
+### 1. Define your theme CSS
+
+Create a CSS file that redefines the semantic tokens:
 
 ```css
-:root {
-  /* Cartographic palette */
-  --cartographic-parchment: oklch(0.96 0.01 80);
-  --cartographic-charcoal: oklch(0.25 0 0);
-  --cartographic-navy: oklch(0.35 0.06 250);
-  --cartographic-blue: oklch(0.58 0.11 220);
-
-  /* Original shadcn/ui palette */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-}
-```
-
-**Layer 2: Semantic Tokens** - Purpose-driven tokens that reference base colors
-
-```css
-@theme inline {
-  /* Semantic tokens can be remapped per theme */
-  --color-brand-primary: var(--cartographic-blue);
-  --color-brand-accent: var(--cartographic-terracotta);
-  --color-brand-success: var(--cartographic-forest);
-  --color-surface-primary: var(--background);
-  --color-surface-secondary: var(--card);
-  --color-text-primary: var(--foreground);
-  --color-text-secondary: var(--muted-foreground);
-}
-```
-
-**Layer 3: Component Usage** - Components reference semantic tokens
-
-```tsx
-// ✅ Good: Uses semantic tokens (themable)
-<div className="bg-surface-primary text-text-primary">
-
-// ✅ Also good: Uses shadcn/ui tokens (themable)
-<div className="bg-background text-foreground">
-
-// ⚠️ Avoid: Direct color references (not themable)
-<div className="bg-cartographic-parchment text-cartographic-charcoal">
-```
-
-## Making Components Themable
-
-**1. Use Semantic Design Tokens**
-
-Components should reference semantic tokens instead of specific colors:
-
-```tsx
-// ❌ Not themable - hardcoded colors
-const Button = () => <button className="bg-cartographic-blue text-white">Click me</button>;
-
-// ✅ Themable - uses semantic tokens
-const Button = () => <button className="bg-brand-primary text-text-on-brand">Click me</button>;
-
-// ✅ Also themable - uses shadcn/ui tokens
-const Button = () => <button className="bg-primary text-primary-foreground">Click me</button>;
-```
-
-**2. Provide Semantic Variants**
-
-Offer semantic variants that adapt to any theme:
-
-```tsx
-const buttonVariants = cva("base-button-styles", {
-  variants: {
-    variant: {
-      // Semantic variants (adapt to any theme)
-      default: "bg-primary text-primary-foreground",
-      secondary: "bg-secondary text-secondary-foreground",
-      outline: "border border-input bg-background",
-      ghost: "hover:bg-accent hover:text-accent-foreground",
-      destructive: "bg-destructive text-destructive-foreground",
-    },
-  },
-});
-```
-
-**3. Support Dark Mode**
-
-All colors defined with `.dark` variants automatically work:
-
-```css
-:root {
-  --cartographic-parchment: oklch(0.96 0.01 80); /* Light */
-}
-
-.dark {
-  --cartographic-parchment: oklch(0.15 0.01 250); /* Dark */
-}
-```
-
-Components using `bg-cartographic-parchment` automatically adapt when `.dark` class is applied to `<html>` or `<body>`.
-
-## Creating Custom Themes
-
-**Option 1: Override Semantic Tokens**
-
-Create a new theme by remapping semantic tokens to different base colors:
-
-```css
-/* app-custom-theme.css */
+/* themes/ocean.css */
 .theme-ocean {
-  /* Remap semantic tokens to ocean colors */
-  --color-brand-primary: oklch(0.55 0.15 220); /* Deep ocean blue */
-  --color-brand-accent: oklch(0.65 0.18 180); /* Teal */
-  --color-brand-success: oklch(0.5 0.12 160); /* Sea green */
+  --background: oklch(0.97 0.01 220);
+  --foreground: oklch(0.2 0.02 230);
+  --card: oklch(0.95 0.02 215);
+  --card-foreground: oklch(0.2 0.02 230);
+  --popover: oklch(0.95 0.02 215);
+  --popover-foreground: oklch(0.2 0.02 230);
+  --primary: oklch(0.45 0.15 240);
+  --primary-foreground: oklch(0.97 0.01 220);
+  --secondary: oklch(0.55 0.12 180);
+  --secondary-foreground: oklch(0.97 0.01 220);
+  --muted: oklch(0.92 0.02 220);
+  --muted-foreground: oklch(0.45 0.03 230);
+  --accent: oklch(0.5 0.14 160);
+  --accent-foreground: oklch(0.97 0.01 220);
+  --destructive: oklch(0.5 0.2 25);
+  --destructive-foreground: oklch(0.97 0.01 220);
+  --border: oklch(0.88 0.02 220);
+  --input: oklch(0.88 0.02 220);
+  --ring: oklch(0.55 0.15 240);
+  --chart-1: oklch(0.55 0.15 240);
+  --chart-2: oklch(0.55 0.12 180);
+  --chart-3: oklch(0.5 0.14 160);
+  --chart-4: oklch(0.45 0.15 240);
+  --chart-5: oklch(0.6 0.1 280);
+  --radius: 0.5rem;
+
+  /* Sidebar */
+  --sidebar: oklch(0.95 0.02 215);
+  --sidebar-foreground: oklch(0.2 0.02 230);
+  --sidebar-primary: oklch(0.45 0.15 240);
+  --sidebar-primary-foreground: oklch(0.97 0.01 220);
+  --sidebar-accent: oklch(0.55 0.15 240);
+  --sidebar-accent-foreground: oklch(0.97 0.01 220);
+  --sidebar-border: oklch(0.88 0.02 220);
+  --sidebar-ring: oklch(0.55 0.15 240);
+
+  /* Categorical palette for dataset badges */
+  --palette-1: oklch(0.55 0.15 240);
+  --palette-2: oklch(0.55 0.12 180);
+  --palette-3: oklch(0.5 0.14 160);
+  --palette-4: oklch(0.6 0.12 200);
+  --palette-5: oklch(0.6 0.14 60);
+  --palette-6: oklch(0.5 0.12 300);
+  --palette-7: oklch(0.55 0.14 10);
+  --palette-8: oklch(0.5 0.08 140);
+  --palette-9: oklch(0.45 0.1 250);
+  --palette-10: oklch(0.5 0.03 230);
+
+  /* Body texture tints */
+  --texture-tint: var(--background);
+  --texture-accent: var(--ring);
+  --texture-line: var(--foreground);
 }
 ```
 
-```tsx
-<div className="theme-ocean">
-  {/* All components use ocean theme */}
-  <Button variant="default">Ocean Blue</Button>
-</div>
-```
-
-**Option 2: Create New Base Palette**
-
-Define a completely new color palette:
-
-```css
-.theme-sunset {
-  /* New base colors */
-  --sunset-orange: oklch(0.65 0.2 40);
-  --sunset-pink: oklch(0.7 0.18 10);
-  --sunset-purple: oklch(0.45 0.15 300);
-
-  /* Map to semantic tokens */
-  --color-brand-primary: var(--sunset-orange);
-  --color-brand-accent: var(--sunset-pink);
-  --color-brand-success: var(--sunset-purple);
-}
-```
-
-## Theme Switching
-
-**Static Theme (build-time)**
-
-Set theme via class name:
+### 2. Apply the theme
 
 ```tsx
-// app/layout.tsx
-export default function RootLayout({ children }) {
+// In your layout or root component
+import "./themes/ocean.css";
+
+export default function Layout({ children }) {
   return (
-    <html lang="en" className="theme-cartographic">
+    <html className="theme-ocean">
       <body>{children}</body>
     </html>
   );
 }
 ```
 
-**Dynamic Theme (runtime)**
-
-Allow users to switch themes:
+### 3. Configure the UIProvider for charts and maps
 
 ```tsx
-"use client";
+import { UIProvider } from "@timetiles/ui/provider";
+import type { ChartTheme } from "@timetiles/ui/charts";
+import type { MapColors } from "@timetiles/ui/lib/chart-themes";
 
-export function ThemeSwitcher() {
-  const [theme, setTheme] = useState("cartographic");
+const oceanChartTheme: ChartTheme = {
+  backgroundColor: "transparent",
+  textColor: "#1a3050",
+  axisLineColor: "#1a305040",
+  splitLineColor: "#1a305015",
+  itemColor: "#2563eb",
+  tooltipBackground: "#f0f7ff",
+  tooltipForeground: "#1a3050",
+  emphasisColor: "#1e40af",
+};
 
-  useEffect(() => {
-    document.documentElement.className = `theme-${theme}`;
-  }, [theme]);
+const oceanMapColors: MapColors = {
+  mapPoint: "#2563eb",
+  mapClusterGradient: ["#dbeafe", "#93c5fd", "#3b82f6", "#1d4ed8", "#1e3a5f"],
+  mapStroke: "#ffffff",
+};
 
-  return (
-    <select value={theme} onChange={(e) => setTheme(e.target.value)}>
-      <option value="cartographic">Cartographic</option>
-      <option value="ocean">Ocean</option>
-      <option value="sunset">Sunset</option>
-    </select>
-  );
+<UIProvider
+  resolveTheme={() => theme ?? "light"}
+  lightChartTheme={oceanChartTheme}
+  darkChartTheme={oceanDarkChartTheme}
+  mapColors={oceanMapColors}
+>
+  {children}
+</UIProvider>;
+```
+
+That's it. Every component — buttons, cards, headers, footers, charts, maps, dataset badges — renders in ocean colors.
+
+---
+
+## Semantic Token Reference
+
+### Core tokens
+
+Every theme **must** define these. All components depend on them.
+
+| Token                      | Purpose                       | Example usage                 |
+| -------------------------- | ----------------------------- | ----------------------------- |
+| `--background`             | Page background               | `bg-background`               |
+| `--foreground`             | Primary text                  | `text-foreground`             |
+| `--card`                   | Elevated surfaces             | `bg-card`                     |
+| `--card-foreground`        | Text on cards                 | `text-card-foreground`        |
+| `--popover`                | Dropdown/popover bg           | `bg-popover`                  |
+| `--popover-foreground`     | Popover text                  | `text-popover-foreground`     |
+| `--primary`                | Primary actions, headings     | `bg-primary`, `text-primary`  |
+| `--primary-foreground`     | Text on primary bg            | `text-primary-foreground`     |
+| `--secondary`              | Secondary actions, highlights | `bg-secondary`                |
+| `--secondary-foreground`   | Text on secondary bg          | `text-secondary-foreground`   |
+| `--muted`                  | Muted backgrounds             | `bg-muted`                    |
+| `--muted-foreground`       | Muted/placeholder text        | `text-muted-foreground`       |
+| `--accent`                 | Success, secondary actions    | `bg-accent`, `text-accent`    |
+| `--accent-foreground`      | Text on accent bg             | `text-accent-foreground`      |
+| `--destructive`            | Error, danger                 | `bg-destructive`              |
+| `--destructive-foreground` | Text on destructive bg        | `text-destructive-foreground` |
+| `--border`                 | Default borders               | `border-border`               |
+| `--input`                  | Input borders                 | `border-input`                |
+| `--ring`                   | Focus rings, interactive      | `ring-ring`, `text-ring`      |
+| `--radius`                 | Border radius base            | `rounded-lg` etc.             |
+
+### Chart tokens
+
+Used by chart components (via `@theme inline`):
+
+| Token                           | Purpose                   |
+| ------------------------------- | ------------------------- |
+| `--chart-1` through `--chart-5` | Data visualization colors |
+
+### Palette tokens
+
+Used by dataset badges and categorical data:
+
+| Token                                | Purpose                                             |
+| ------------------------------------ | --------------------------------------------------- |
+| `--palette-1` through `--palette-10` | Distinct colors for dataset/category identification |
+
+### Sidebar tokens
+
+Used by sidebar navigation:
+
+| Token                                               | Purpose                 |
+| --------------------------------------------------- | ----------------------- |
+| `--sidebar`, `--sidebar-foreground`                 | Sidebar background/text |
+| `--sidebar-primary`, `--sidebar-primary-foreground` | Active sidebar item     |
+| `--sidebar-accent`, `--sidebar-accent-foreground`   | Hover state             |
+| `--sidebar-border`, `--sidebar-ring`                | Borders/focus           |
+
+### Texture tokens
+
+Control the subtle body background pattern:
+
+| Token              | Purpose                   |
+| ------------------ | ------------------------- |
+| `--texture-tint`   | Soft radial glow tint     |
+| `--texture-accent` | Secondary radial accent   |
+| `--texture-line`   | Fine repeating grid lines |
+
+Set all three to `transparent` to disable the texture effect entirely.
+
+### Fonts
+
+Components use Tailwind's generic font classes — not hardcoded font names:
+
+| Class        | CSS variable   | Default (Cartographic) | Controls                          |
+| ------------ | -------------- | ---------------------- | --------------------------------- |
+| `font-serif` | `--font-serif` | Playfair Display       | Headings, titles, brand text      |
+| `font-sans`  | `--font-sans`  | DM Sans                | Body text, UI elements, labels    |
+| `font-mono`  | `--font-mono`  | Space Mono             | Coordinates, code, version labels |
+
+To use different fonts, load them in your layout (e.g., via `next/font`) and set the CSS variables:
+
+```tsx
+import { Inter, Merriweather, JetBrains_Mono } from "next/font/google";
+
+const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const serif = Merriweather({ subsets: ["latin"], variable: "--font-serif" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
+
+<body className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
+```
+
+The typographic hierarchy is fixed: `font-serif` for headings, `font-sans` for body, `font-mono` for data. A theme controls which specific fonts fill those roles.
+
+---
+
+## UIProvider API
+
+The `UIProvider` component configures runtime behavior that CSS alone can't control.
+
+```tsx
+import { UIProvider } from "@timetiles/ui/provider";
+
+<UIProvider
+  resolveTheme={() => "light" | "dark"}
+  lightChartTheme={ChartTheme}
+  darkChartTheme={ChartTheme}
+  mapColors={MapColors}
+  onNewsletterSubmit={(email, data) => Promise<void>}
+>
+```
+
+### `resolveTheme`
+
+Returns the current theme mode (`"light"` or `"dark"`). Used by chart components to pick the right color scheme.
+
+If omitted, defaults to `"light"`.
+
+### `lightChartTheme` / `darkChartTheme`
+
+Override ECharts colors for light and dark modes. Falls back to the built-in defaults.
+
+```typescript
+interface ChartTheme {
+  backgroundColor?: string;
+  textColor?: string;
+  axisLineColor?: string;
+  splitLineColor?: string;
+  itemColor?: string | string[];
+  tooltipBackground?: string;
+  tooltipForeground?: string;
+  emphasisColor?: string;
 }
 ```
 
-## Best Practices
+### `mapColors`
 
-1. **Default to semantic tokens**: Use `bg-background`, `text-foreground`, `border-border` for maximum theme compatibility
-2. **Offer theme-specific variants**: Provide `cartographic` variant for components that benefit from the earth-tone aesthetic
-3. **Document theme assumptions**: If a component only works with certain themes, document this clearly
-4. **Test in both light and dark**: Always verify components work in both modes
-5. **Avoid opacity tricks**: Use explicit dark mode colors instead of light mode colors with opacity
+Override MapLibre point and cluster visualization colors.
 
-## Available Semantic Tokens
+```typescript
+interface MapColors {
+  mapPoint: string; // Individual event point color
+  mapClusterGradient: readonly [string, string, string, string, string]; // 5-level cluster gradient
+  mapStroke: string; // Circle stroke color
+}
+```
 
-**Brand Colors**:
+### `onNewsletterSubmit`
 
-- `brand-primary` - Main brand color (blue)
-- `brand-accent` - Secondary brand color (terracotta)
-- `brand-success` - Success/positive states (forest)
+Custom newsletter submission handler. When omitted, components fall back to `POST /api/newsletter/subscribe`.
 
-**Surface Colors**:
+---
 
-- `surface-primary` - Main background (background)
-- `surface-secondary` - Card/elevated surfaces (card)
-- `surface-muted` - Muted backgrounds (muted)
+## Dark Mode
 
-**Text Colors**:
+Dark mode is controlled by the `.dark` class on `<html>`. The default theme defines both `:root` (light) and `.dark` (dark) token sets.
 
-- `text-primary` - Main text color (foreground)
-- `text-secondary` - Muted text (muted-foreground)
-- `text-on-brand` - Text on brand color backgrounds (white)
+For custom themes, define a dark variant:
 
-**Standard shadcn/ui tokens** (always available):
+```css
+.theme-ocean.dark {
+  --background: oklch(0.15 0.02 230);
+  --foreground: oklch(0.9 0.01 220);
+  /* ... all tokens for dark mode ... */
+}
+```
 
-- `background`, `foreground`
-- `card`, `card-foreground`
-- `popover`, `popover-foreground`
-- `primary`, `primary-foreground`
-- `secondary`, `secondary-foreground`
-- `muted`, `muted-foreground`
-- `accent`, `accent-foreground`
-- `destructive`, `destructive-foreground`
-- `border`, `input`, `ring`
+Use `next-themes` or any class-based dark mode toggle. Wire it to `UIProvider.resolveTheme` so charts also adapt.
+
+---
+
+## What's Customizable vs. Not
+
+### Fully customizable (via CSS tokens + UIProvider)
+
+- All component colors (buttons, cards, headers, footers, dialogs, etc.)
+- Chart colors (axes, bars, tooltips, emphasis)
+- Map point and cluster colors
+- Dataset badge colors (palette tokens)
+- Body texture effect
+- Border radius
+- Dark mode
+
+### Customizable with code changes
+
+- **Map tile styles** — Run `scripts/generate-map-style.ts` with different base colors. The script already imports from the shared `defaultColors` palette. Generate new JSON style files per theme.
+- **Map style file paths** — Update `lib/constants/map.ts` to point to your generated style files.
+- **Font families** — Fonts are loaded in `layout.tsx` via `next/font`. Change the font imports and the `--font-sans`, `--font-serif`, `--font-mono` CSS variables.
+
+### Not customizable (by design)
+
+- **Payload admin panel** — Uses inline styles outside the Tailwind system. Admin components (`admin-notice.tsx`, `geocoding-test-panel.tsx`) have hardcoded colors for Payload compatibility.
+- **Global error page** (`global-error.tsx`) — Last-resort crash boundary that can't load external CSS. Uses hardcoded inline styles intentionally.
+- **Email templates** — HTML emails don't support CSS variables. Colors are hardcoded in `lib/email/` templates.
+
+---
+
+## Default Theme: Cartographic
+
+The built-in theme uses a warm earth-tone palette inspired by vintage maps:
+
+| Role                   | Color           | OKLCH                  |
+| ---------------------- | --------------- | ---------------------- |
+| Primary (navy)         | Dark blue-gray  | `oklch(0.35 0.06 250)` |
+| Secondary (terracotta) | Warm brown      | `oklch(0.56 0.14 35)`  |
+| Accent (forest)        | Muted green     | `oklch(0.42 0.08 145)` |
+| Ring (blue)            | Teal-blue       | `oklch(0.58 0.11 220)` |
+| Background (parchment) | Warm off-white  | `oklch(0.96 0.01 80)`  |
+| Card (cream)           | Light warm gray | `oklch(0.88 0.01 80)`  |
+| Foreground (charcoal)  | Near-black      | `oklch(0.25 0 0)`      |
+
+The base palette is defined in `globals.css` as `--cartographic-*` variables. Semantic tokens reference these via `var()`. A new theme can either redefine the `--cartographic-*` values or skip them entirely and set semantic tokens directly.
+
+---
+
+## File Reference
+
+| File                           | Purpose                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `src/styles/globals.css`       | Full Tailwind setup + base palette + semantic tokens + body styles |
+| `src/styles/tokens.css`        | Standalone tokens (no Tailwind) for consumers with their own setup |
+| `src/provider.tsx`             | UIProvider for chart themes, map colors, newsletter handler        |
+| `src/hooks/use-chart-theme.ts` | `useChartTheme()` and `useMapColors()` hooks                       |
+| `src/lib/chart-themes.ts`      | Default chart colors, `MapColors` interface, `defaultMapColors`    |

@@ -21,25 +21,25 @@ Your script (Python or Node.js)
 
 The scraper system has two parts:
 
-| Component                              | What it does                                                             |
-| -------------------------------------- | ------------------------------------------------------------------------ |
-| **TimeScrape Runner** (`apps/scraper`) | Executes scripts in hardened containers. Stateless — no database access. |
-| **Scraper Management** (`apps/web`)    | Repos, scheduling, quotas, and import pipeline integration.              |
+| Component                                 | What it does                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------------ |
+| **TimeScrape Runner** (`apps/timescrape`) | Executes scripts in hardened containers. Stateless — no database access. |
+| **Scraper Management** (`apps/web`)       | Repos, scheduling, quotas, and import pipeline integration.              |
 
 ## Quick Start
 
 ### 1. Scaffold a scraper
 
 ```bash
-npx timescrape init my-scraper              # Python (default)
-npx timescrape init my-scraper --runtime node
+npx @timetiles/scraper init my-scraper              # Python (default)
+npx @timetiles/scraper init my-scraper --runtime node
 ```
 
 ### 2. Write your script
 
 ```python
 import requests
-from timescrape import output
+from timetiles.scraper import output
 
 response = requests.get(
     "https://date.nager.at/api/v3/PublicHolidays/2026/DE",
@@ -110,10 +110,10 @@ defaults: # optional, applied to all scrapers
 
 ## Helper Libraries
 
-### Python (`timescrape`)
+### Python (`timetiles.scraper`)
 
 ```python
-from timescrape import output
+from timetiles.scraper import output
 
 output.write_row({"title": "Event", "date": "2026-01-01", "location": "Berlin"})
 output.write_rows([...])  # or multiple at once
@@ -123,10 +123,10 @@ print(output.row_count)
 
 Pre-installed: `requests`, `beautifulsoup4`, `lxml`, `pandas`, `cssselect`.
 
-### Node.js (`@timescrape/helper`)
+### Node.js (`@timetiles/scraper`)
 
 ```javascript
-import { output } from "@timescrape/helper";
+import { output } from "@timetiles/scraper";
 
 output.writeRow({ title: "Event", date: "2026-01-01", location: "Berlin" });
 output.save();

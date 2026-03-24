@@ -13,8 +13,8 @@ import { Link } from "@/i18n/navigation";
 
 const gridBackgroundStyle = {
   backgroundImage: `
-    linear-gradient(to right, oklch(0.35 0.06 250) 1px, transparent 1px),
-    linear-gradient(to bottom, oklch(0.35 0.06 250) 1px, transparent 1px)
+    linear-gradient(to right, var(--color-primary) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-primary) 1px, transparent 1px)
   `,
   backgroundSize: "40px 40px",
 } as const;
@@ -28,10 +28,10 @@ export default async function NotFound() {
       <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={gridBackgroundStyle} />
 
       {/* Decorative Corner Ornaments */}
-      <div className="border-cartographic-navy/20 pointer-events-none absolute top-8 left-8 h-16 w-16 border-t-2 border-l-2" />
-      <div className="border-cartographic-navy/20 pointer-events-none absolute top-8 right-8 h-16 w-16 border-t-2 border-r-2" />
-      <div className="border-cartographic-navy/20 pointer-events-none absolute bottom-8 left-8 h-16 w-16 border-b-2 border-l-2" />
-      <div className="border-cartographic-navy/20 pointer-events-none absolute right-8 bottom-8 h-16 w-16 border-r-2 border-b-2" />
+      <div className="border-primary/20 pointer-events-none absolute top-8 left-8 h-16 w-16 border-t-2 border-l-2" />
+      <div className="border-primary/20 pointer-events-none absolute top-8 right-8 h-16 w-16 border-t-2 border-r-2" />
+      <div className="border-primary/20 pointer-events-none absolute bottom-8 left-8 h-16 w-16 border-b-2 border-l-2" />
+      <div className="border-primary/20 pointer-events-none absolute right-8 bottom-8 h-16 w-16 border-r-2 border-b-2" />
 
       {/* Main Content */}
       <div className="relative flex min-h-screen flex-col items-center justify-center px-6 py-24">
@@ -92,7 +92,7 @@ export default async function NotFound() {
         <div className="flex animate-[fade-in-up_0.6s_ease-out_0.4s_forwards] flex-col gap-4 opacity-0 sm:flex-row">
           <Link
             href="/"
-            className="bg-cartographic-blue hover:bg-cartographic-blue/90 focus:ring-cartographic-blue group inline-flex items-center justify-center gap-2 rounded-sm px-8 py-4 font-sans text-sm font-medium tracking-wide text-white shadow-sm transition-all duration-200 hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:outline-none"
+            className="bg-ring hover:bg-ring/90 focus:ring-ring group inline-flex items-center justify-center gap-2 rounded-sm px-8 py-4 font-sans text-sm font-medium tracking-wide text-white shadow-sm transition-all duration-200 hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:outline-none"
           >
             {t("returnHome")}
             <svg
@@ -115,14 +115,14 @@ export default async function NotFound() {
 
           <Link
             href="/explore"
-            className="border-cartographic-navy/20 text-foreground hover:border-cartographic-blue hover:bg-cartographic-blue/5 hover:text-cartographic-blue focus:ring-cartographic-blue dark:hover:bg-cartographic-blue/10 group inline-flex items-center justify-center gap-2 rounded-sm border-2 bg-transparent px-8 py-4 font-sans text-sm font-medium tracking-wide transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+            className="border-primary/20 text-foreground hover:border-ring hover:bg-ring/5 hover:text-ring focus:ring-ring dark:hover:bg-ring/10 group inline-flex items-center justify-center gap-2 rounded-sm border-2 bg-transparent px-8 py-4 font-sans text-sm font-medium tracking-wide transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none"
           >
             {t("exploreEvents")}
           </Link>
         </div>
 
         {/* Decorative Divider Line */}
-        <div className="via-cartographic-navy/20 mt-16 h-px w-32 animate-[fade-in_0.8s_ease-out_0.5s_forwards] bg-gradient-to-r from-transparent to-transparent opacity-0" />
+        <div className="via-primary/20 mt-16 h-px w-32 animate-[fade-in_0.8s_ease-out_0.5s_forwards] bg-gradient-to-r from-transparent to-transparent opacity-0" />
       </div>
     </div>
   );

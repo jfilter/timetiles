@@ -55,9 +55,9 @@ export const NewsletterStatusIndicator = ({
       )}
     >
       {status === "loading" && (
-        <div className={cn("border-navy animate-spin rounded-full border-2 border-t-transparent", spinnerSize)} />
+        <div className={cn("border-primary animate-spin rounded-full border-2 border-t-transparent", spinnerSize)} />
       )}
-      {status === "success" && <MapPinIcon className={cn("text-forest", iconSize)} />}
+      {status === "success" && <MapPinIcon className={cn("text-accent", iconSize)} />}
       {status === "error" && <ErrorIcon className={cn("text-destructive", iconSize)} />}
     </div>
   );
