@@ -12,8 +12,11 @@ import path from "node:path";
 
 import dotenv from "dotenv";
 
-// Load environment variables first
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+// Load environment variables from repo root — .env.local overrides .env
+// process.cwd() is apps/web/, but .env lives at the monorepo root
+const repoRoot = path.resolve(process.cwd(), "../..");
+dotenv.config({ path: path.resolve(repoRoot, ".env") });
+dotenv.config({ path: path.resolve(repoRoot, ".env.local"), override: true });
 
 import { createDatabaseClient } from "@/lib/database/client";
 import { databaseExists, dropDatabase } from "@/lib/database/operations";

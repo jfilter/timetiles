@@ -102,7 +102,9 @@ export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOpt
  * @throws Error if required but not found
  */
 export const getDatabaseUrl = (required: boolean = true): string | undefined => {
-  const url = getEnv().DATABASE_URL;
+  // Read directly from process.env (not cached getEnv()) because tests
+  // override DATABASE_URL per worker after the env singleton is initialized.
+  const url = process.env.DATABASE_URL ?? getEnv().DATABASE_URL;
 
   if (!url && required) {
     throw new Error(
