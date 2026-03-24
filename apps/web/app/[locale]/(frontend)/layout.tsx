@@ -10,8 +10,8 @@
  */
 import "@timetiles/ui/globals.css";
 
-import LogoCompactDark from "@timetiles/assets/logos/latest/dark/no-grid/png/wordmark_compact_512.png";
-import LogoCompactLight from "@timetiles/assets/logos/latest/light/no-grid/png/wordmark_compact_512.png";
+import LogoCompactDark from "@timetiles/assets/logos/latest/dark/transparent/png/wordmark_compact_512.png";
+import LogoCompactLight from "@timetiles/assets/logos/latest/light/transparent/png/wordmark_compact_512.png";
 import {
   Footer,
   FooterBottom,

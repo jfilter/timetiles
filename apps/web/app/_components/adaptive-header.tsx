@@ -10,8 +10,8 @@
  */
 "use client";
 
-import LogoDark from "@timetiles/assets/logos/latest/dark/no-grid/png/wordmark_horizontal_512.png";
-import LogoLight from "@timetiles/assets/logos/latest/light/no-grid/png/wordmark_horizontal_512.png";
+import LogoDark from "@timetiles/assets/logos/latest/dark/transparent/png/wordmark_horizontal_512.png";
+import LogoLight from "@timetiles/assets/logos/latest/light/transparent/png/wordmark_horizontal_512.png";
 import {
   Header,
   HeaderActions,
