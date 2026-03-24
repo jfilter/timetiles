@@ -54,7 +54,7 @@ const fixCircularReferences = (filePath: string) => {
 
   // Add AnyPgColumn import if needed
   let finalContent = fixedContent;
-  if (needsImport && !finalContent.includes("import { type AnyPgColumn }")) {
+  if (needsImport && !finalContent.includes("AnyPgColumn")) {
     finalContent = finalContent.replace(
       /(from\s+["']@payloadcms\/db-postgres\/drizzle\/pg-core["'];?\n)/,
       `$1import { type AnyPgColumn } from "@payloadcms/db-postgres/drizzle/pg-core";\n`

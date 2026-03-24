@@ -40,7 +40,9 @@
     "SKIP_DB_CHECK",
     "NEXT_PUBLIC_SITE_URL",
     "DEFAULT_LOCALE",
-    "SSRF_DNS_CHECK"
+    "SSRF_DNS_CHECK",
+    "URL_FETCH_CACHE_DIR",
+    "URL_FETCH_CACHE_TTL"
   ],
   "tasks": {
     "transit": { "dependsOn": ["^transit"] },

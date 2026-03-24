@@ -898,7 +898,6 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
     "schedule-manager",
     "cleanup-stuck-scheduled-ingests",
     "cleanup-stuck-scrapers",
-    "process-pending-retries",
     "quota-reset",
     "cache-cleanup",
     "schema-maintenance",
@@ -933,7 +932,6 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
     "schedule-manager",
     "cleanup-stuck-scheduled-ingests",
     "cleanup-stuck-scrapers",
-    "process-pending-retries",
     "quota-reset",
     "cache-cleanup",
     "schema-maintenance",
@@ -1017,7 +1015,7 @@ export const catalogs = db_schema.table(
     name: varchar("name"),
     description: jsonb("description"),
     slug: varchar("slug"),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     isPublic: boolean("is_public").default(false),
@@ -1056,14 +1054,13 @@ export const _catalogs_v = db_schema.table(
   "_catalogs_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => catalogs.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => catalogs.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_description: jsonb("version_description"),
     version_slug: varchar("version_slug"),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -1138,7 +1135,7 @@ export const data_exports = db_schema.table(
     id: serial("id").primaryKey(),
     user: integer("user_id")
       .notNull()
-      .references(() => users.id, {
+      .references((): AnyPgColumn => users.id, {
         onDelete: "set null",
       }),
     status: enum_data_exports_status("status").notNull().default("pending"),
@@ -1237,7 +1234,7 @@ export const datasets_ingest_transforms = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    addedBy: integer("added_by_id").references(() => users.id, {
+    addedBy: integer("added_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     confidence: numeric("confidence", { mode: "number" }),
@@ -1262,14 +1259,14 @@ export const datasets = db_schema.table(
     name: varchar("name"),
     description: jsonb("description"),
     slug: varchar("slug"),
-    catalog: integer("catalog_id").references(() => catalogs.id, {
+    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
       onDelete: "set null",
     }),
     catalogCreatorId: numeric("catalog_creator_id", { mode: "number" }),
     catalogIsPublic: boolean("catalog_is_public").default(false),
     language: varchar("language"),
     isPublic: boolean("is_public").default(false),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     metadata: jsonb("metadata"),
@@ -1343,8 +1340,7 @@ export const datasets = db_schema.table(
     fieldMappingOverrides_locationPath: varchar(
       "field_mapping_overrides_location_path",
     ),
-    schemaDetector: integer("schema_detector_id").references(
-      () => schema_detectors.id,
+    schemaDetector: integer("schema_detector_id").references((): AnyPgColumn => schema_detectors.id,
       {
         onDelete: "set null",
       },
@@ -1443,7 +1439,7 @@ export const _datasets_v_version_ingest_transforms = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    addedBy: integer("added_by_id").references(() => users.id, {
+    addedBy: integer("added_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     confidence: numeric("confidence", { mode: "number" }),
@@ -1469,14 +1465,13 @@ export const _datasets_v = db_schema.table(
   "_datasets_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => datasets.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => datasets.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_description: jsonb("version_description"),
     version_slug: varchar("version_slug"),
-    version_catalog: integer("version_catalog_id").references(
-      () => catalogs.id,
+    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
       {
         onDelete: "set null",
       },
@@ -1489,8 +1484,7 @@ export const _datasets_v = db_schema.table(
     ),
     version_language: varchar("version_language"),
     version_isPublic: boolean("version_is_public").default(false),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -1581,8 +1575,7 @@ export const _datasets_v = db_schema.table(
     version_fieldMappingOverrides_locationPath: varchar(
       "version_field_mapping_overrides_location_path",
     ),
-    version_schemaDetector: integer("version_schema_detector_id").references(
-      () => schema_detectors.id,
+    version_schemaDetector: integer("version_schema_detector_id").references((): AnyPgColumn => schema_detectors.id,
       {
         onDelete: "set null",
       },
@@ -1764,7 +1757,7 @@ export const dataset_schemas_ingest_sources = db_schema.table(
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
-    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
+    ingestJob: integer("ingest_job_id").references((): AnyPgColumn => ingest_jobs.id, {
       onDelete: "set null",
     }),
     recordCount: numeric("record_count", { mode: "number" }),
@@ -1788,7 +1781,7 @@ export const dataset_schemas = db_schema.table(
   "dataset_schemas",
   {
     id: serial("id").primaryKey(),
-    dataset: integer("dataset_id").references(() => datasets.id, {
+    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
       onDelete: "set null",
     }),
     datasetIsPublic: boolean("dataset_is_public").default(false),
@@ -1804,7 +1797,7 @@ export const dataset_schemas = db_schema.table(
       mode: "number",
     }),
     approvalRequired: boolean("approval_required"),
-    approvedBy: integer("approved_by_id").references(() => users.id, {
+    approvedBy: integer("approved_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     approvalNotes: varchar("approval_notes"),
@@ -1959,7 +1952,7 @@ export const _dataset_schemas_v_version_ingest_sources = db_schema.table(
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: serial("id").primaryKey(),
-    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
+    ingestJob: integer("ingest_job_id").references((): AnyPgColumn => ingest_jobs.id, {
       onDelete: "set null",
     }),
     recordCount: numeric("record_count", { mode: "number" }),
@@ -1988,11 +1981,10 @@ export const _dataset_schemas_v = db_schema.table(
   "_dataset_schemas_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => dataset_schemas.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => dataset_schemas.id, {
       onDelete: "set null",
     }),
-    version_dataset: integer("version_dataset_id").references(
-      () => datasets.id,
+    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
       {
         onDelete: "set null",
       },
@@ -2017,8 +2009,7 @@ export const _dataset_schemas_v = db_schema.table(
       { mode: "number" },
     ),
     version_approvalRequired: boolean("version_approval_required"),
-    version_approvedBy: integer("version_approved_by_id").references(
-      () => users.id,
+    version_approvedBy: integer("version_approved_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -2121,7 +2112,7 @@ export const audit_log = db_schema.table(
     action: varchar("action").notNull(),
     userId: numeric("user_id", { mode: "number" }).notNull(),
     userEmailHash: varchar("user_email_hash").notNull(),
-    performedBy: integer("performed_by_id").references(() => users.id, {
+    performedBy: integer("performed_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     timestamp: timestamp("timestamp", {
@@ -2162,12 +2153,12 @@ export const ingest_files = db_schema.table(
   {
     id: serial("id").primaryKey(),
     originalName: varchar("original_name"),
-    catalog: integer("catalog_id").references(() => catalogs.id, {
+    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
       onDelete: "set null",
     }),
     user: integer("user_id")
       .notNull()
-      .references(() => users.id, {
+      .references((): AnyPgColumn => users.id, {
         onDelete: "set null",
       }),
     status: enum_ingest_files_status("status").default("pending"),
@@ -2191,7 +2182,7 @@ export const ingest_files = db_schema.table(
     rateLimitInfo: jsonb("rate_limit_info"),
     metadata: jsonb("metadata"),
     processingOptions: jsonb("processing_options"),
-    targetDataset: integer("target_dataset_id").references(() => datasets.id, {
+    targetDataset: integer("target_dataset_id").references((): AnyPgColumn => datasets.id, {
       onDelete: "set null",
     }),
     scheduledIngest: integer("scheduled_ingest_id").references(
@@ -2272,19 +2263,18 @@ export const _ingest_files_v = db_schema.table(
   "_ingest_files_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => ingest_files.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => ingest_files.id, {
       onDelete: "set null",
     }),
     version_originalName: varchar("version_original_name"),
-    version_catalog: integer("version_catalog_id").references(
-      () => catalogs.id,
+    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
       {
         onDelete: "set null",
       },
     ),
     version_user: integer("version_user_id")
       .notNull()
-      .references(() => users.id, {
+      .references((): AnyPgColumn => users.id, {
         onDelete: "set null",
       }),
     version_status:
@@ -2311,14 +2301,12 @@ export const _ingest_files_v = db_schema.table(
     version_rateLimitInfo: jsonb("version_rate_limit_info"),
     version_metadata: jsonb("version_metadata"),
     version_processingOptions: jsonb("version_processing_options"),
-    version_targetDataset: integer("version_target_dataset_id").references(
-      () => datasets.id,
+    version_targetDataset: integer("version_target_dataset_id").references((): AnyPgColumn => datasets.id,
       {
         onDelete: "set null",
       },
     ),
-    version_scheduledIngest: integer("version_scheduled_ingest_id").references(
-      () => scheduled_ingests.id,
+    version_scheduledIngest: integer("version_scheduled_ingest_id").references((): AnyPgColumn => scheduled_ingests.id,
       {
         onDelete: "set null",
       },
@@ -2444,12 +2432,12 @@ export const ingest_jobs = db_schema.table(
     id: serial("id").primaryKey(),
     ingestFile: integer("ingest_file_id")
       .notNull()
-      .references(() => ingest_files.id, {
+      .references((): AnyPgColumn => ingest_files.id, {
         onDelete: "set null",
       }),
     dataset: integer("dataset_id")
       .notNull()
-      .references(() => datasets.id, {
+      .references((): AnyPgColumn => datasets.id, {
         onDelete: "set null",
       }),
     sheetIndex: numeric("sheet_index", { mode: "number" }),
@@ -2505,7 +2493,7 @@ export const ingest_jobs = db_schema.table(
     schemaValidation_approved: boolean("schema_validation_approved"),
     schemaValidation_approvedBy: integer(
       "schema_validation_approved_by_id",
-    ).references(() => users.id, {
+    ).references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     schemaValidation_approvedAt: timestamp("schema_validation_approved_at", {
@@ -2515,8 +2503,7 @@ export const ingest_jobs = db_schema.table(
     }),
     reviewReason: varchar("review_reason"),
     reviewDetails: jsonb("review_details"),
-    datasetSchemaVersion: integer("dataset_schema_version_id").references(
-      () => dataset_schemas.id,
+    datasetSchemaVersion: integer("dataset_schema_version_id").references((): AnyPgColumn => dataset_schemas.id,
       {
         onDelete: "set null",
       },
@@ -2615,17 +2602,17 @@ export const _ingest_jobs_v = db_schema.table(
   "_ingest_jobs_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => ingest_jobs.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => ingest_jobs.id, {
       onDelete: "set null",
     }),
     version_ingestFile: integer("version_ingest_file_id")
       .notNull()
-      .references(() => ingest_files.id, {
+      .references((): AnyPgColumn => ingest_files.id, {
         onDelete: "set null",
       }),
     version_dataset: integer("version_dataset_id")
       .notNull()
-      .references(() => datasets.id, {
+      .references((): AnyPgColumn => datasets.id, {
         onDelete: "set null",
       }),
     version_sheetIndex: numeric("version_sheet_index", { mode: "number" }),
@@ -2688,7 +2675,7 @@ export const _ingest_jobs_v = db_schema.table(
     ),
     version_schemaValidation_approvedBy: integer(
       "version_schema_validation_approved_by_id",
-    ).references(() => users.id, {
+    ).references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     version_schemaValidation_approvedAt: timestamp(
@@ -2699,7 +2686,7 @@ export const _ingest_jobs_v = db_schema.table(
     version_reviewDetails: jsonb("version_review_details"),
     version_datasetSchemaVersion: integer(
       "version_dataset_schema_version_id",
-    ).references(() => dataset_schemas.id, {
+    ).references((): AnyPgColumn => dataset_schemas.id, {
       onDelete: "set null",
     }),
     version_duplicates_strategy: varchar("version_duplicates_strategy"),
@@ -2806,7 +2793,7 @@ export const scheduled_ingests_multi_sheet_config_sheets = db_schema.table(
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
     sheetIdentifier: varchar("sheet_identifier"),
-    dataset: integer("dataset_id").references(() => datasets.id, {
+    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
       onDelete: "set null",
     }),
     skipIfMissing: boolean("skip_if_missing").default(false),
@@ -2865,16 +2852,16 @@ export const scheduled_ingests = db_schema.table(
   {
     id: serial("id").primaryKey(),
     name: varchar("name"),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     description: varchar("description"),
     enabled: boolean("enabled").default(true),
     sourceUrl: varchar("source_url"),
-    catalog: integer("catalog_id").references(() => catalogs.id, {
+    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
       onDelete: "set null",
     }),
-    dataset: integer("dataset_id").references(() => datasets.id, {
+    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
       onDelete: "set null",
     }),
     multiSheetConfig_enabled: boolean("multi_sheet_config_enabled").default(
@@ -3048,7 +3035,7 @@ export const _scheduled_ingests_v_version_multi_sheet_config_sheets =
       _parentID: integer("_parent_id").notNull(),
       id: serial("id").primaryKey(),
       sheetIdentifier: varchar("sheet_identifier"),
-      dataset: integer("dataset_id").references(() => datasets.id, {
+      dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
         onDelete: "set null",
       }),
       skipIfMissing: boolean("skip_if_missing").default(false),
@@ -3111,12 +3098,11 @@ export const _scheduled_ingests_v = db_schema.table(
   "_scheduled_ingests_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => scheduled_ingests.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => scheduled_ingests.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -3124,14 +3110,12 @@ export const _scheduled_ingests_v = db_schema.table(
     version_description: varchar("version_description"),
     version_enabled: boolean("version_enabled").default(true),
     version_sourceUrl: varchar("version_source_url"),
-    version_catalog: integer("version_catalog_id").references(
-      () => catalogs.id,
+    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
       {
         onDelete: "set null",
       },
     ),
-    version_dataset: integer("version_dataset_id").references(
-      () => datasets.id,
+    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
       {
         onDelete: "set null",
       },
@@ -3154,7 +3138,7 @@ export const _scheduled_ingests_v = db_schema.table(
     ).default("additive"),
     version_sourceIngestFile: integer(
       "version_source_ingest_file_id",
-    ).references(() => ingest_files.id, {
+    ).references((): AnyPgColumn => ingest_files.id, {
       onDelete: "set null",
     }),
     version_authConfig_type: enum__scheduled_ingests_v_version_auth_config_type(
@@ -3356,7 +3340,7 @@ export const scraper_repos = db_schema.table(
     name: varchar("name").notNull(),
     description: jsonb("description"),
     slug: varchar("slug"),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     sourceType: enum_scraper_repos_source_type("source_type")
@@ -3365,7 +3349,7 @@ export const scraper_repos = db_schema.table(
     gitUrl: varchar("git_url"),
     gitBranch: varchar("git_branch").default("main"),
     code: jsonb("code"),
-    catalog: integer("catalog_id").references(() => catalogs.id, {
+    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
       onDelete: "set null",
     }),
     lastSyncAt: timestamp("last_sync_at", {
@@ -3413,7 +3397,7 @@ export const scrapers = db_schema.table(
     slug: varchar("slug").notNull(),
     repo: integer("repo_id")
       .notNull()
-      .references(() => scraper_repos.id, {
+      .references((): AnyPgColumn => scraper_repos.id, {
         onDelete: "set null",
       }),
     repoCreatedBy: numeric("repo_created_by", { mode: "number" }),
@@ -3425,7 +3409,7 @@ export const scrapers = db_schema.table(
     timeoutSecs: numeric("timeout_secs", { mode: "number" }).default(300),
     memoryMb: numeric("memory_mb", { mode: "number" }).default(512),
     envVars: jsonb("env_vars").default(sql`'{}'::jsonb`),
-    targetDataset: integer("target_dataset_id").references(() => datasets.id, {
+    targetDataset: integer("target_dataset_id").references((): AnyPgColumn => datasets.id, {
       onDelete: "set null",
     }),
     autoImport: boolean("auto_import").default(false),
@@ -3484,7 +3468,7 @@ export const scraper_runs = db_schema.table(
     id: serial("id").primaryKey(),
     scraper: integer("scraper_id")
       .notNull()
-      .references(() => scrapers.id, {
+      .references((): AnyPgColumn => scrapers.id, {
         onDelete: "set null",
       }),
     scraperOwner: numeric("scraper_owner", { mode: "number" }),
@@ -3508,7 +3492,7 @@ export const scraper_runs = db_schema.table(
     error: varchar("error"),
     outputRows: numeric("output_rows", { mode: "number" }),
     outputBytes: numeric("output_bytes", { mode: "number" }),
-    resultFile: integer("result_file_id").references(() => ingest_files.id, {
+    resultFile: integer("result_file_id").references((): AnyPgColumn => ingest_files.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -3540,12 +3524,12 @@ export const events = db_schema.table(
   "events",
   {
     id: serial("id").primaryKey(),
-    dataset: integer("dataset_id").references(() => datasets.id, {
+    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
       onDelete: "set null",
     }),
     datasetIsPublic: boolean("dataset_is_public").default(false),
     catalogOwnerId: numeric("catalog_owner_id", { mode: "number" }),
-    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
+    ingestJob: integer("ingest_job_id").references((): AnyPgColumn => ingest_jobs.id, {
       onDelete: "set null",
     }),
     originalData: jsonb("original_data"),
@@ -3660,11 +3644,10 @@ export const _events_v = db_schema.table(
   "_events_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => events.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => events.id, {
       onDelete: "set null",
     }),
-    version_dataset: integer("version_dataset_id").references(
-      () => datasets.id,
+    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
       {
         onDelete: "set null",
       },
@@ -3675,8 +3658,7 @@ export const _events_v = db_schema.table(
     version_catalogOwnerId: numeric("version_catalog_owner_id", {
       mode: "number",
     }),
-    version_ingestJob: integer("version_ingest_job_id").references(
-      () => ingest_jobs.id,
+    version_ingestJob: integer("version_ingest_job_id").references((): AnyPgColumn => ingest_jobs.id,
       {
         onDelete: "set null",
       },
@@ -3997,7 +3979,7 @@ export const user_usage = db_schema.table(
     id: serial("id").primaryKey(),
     user: integer("user_id")
       .notNull()
-      .references(() => users.id, {
+      .references((): AnyPgColumn => users.id, {
         onDelete: "set null",
       }),
     urlFetchesToday: numeric("url_fetches_today", { mode: "number" }).default(
@@ -4060,7 +4042,7 @@ export const media = db_schema.table(
   "media",
   {
     id: serial("id").primaryKey(),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     alt: varchar("alt"),
@@ -4139,11 +4121,10 @@ export const _media_v = db_schema.table(
   "_media_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => media.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => media.id, {
       onDelete: "set null",
     }),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -4331,7 +4312,7 @@ export const _location_cache_v = db_schema.table(
   "_location_cache_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => location_cache.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => location_cache.id, {
       onDelete: "set null",
     }),
     version_originalAddress: varchar("version_original_address"),
@@ -4566,7 +4547,7 @@ export const _geocoding_providers_v = db_schema.table(
   "_geocoding_providers_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => geocoding_providers.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => geocoding_providers.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -5516,16 +5497,15 @@ export const pages = db_schema.table(
   {
     id: serial("id").primaryKey(),
     slug: varchar("slug"),
-    site: integer("site_id").references(() => sites.id, {
+    site: integer("site_id").references((): AnyPgColumn => sites.id, {
       onDelete: "set null",
     }),
-    layoutOverride: integer("layout_override_id").references(
-      () => layout_templates.id,
+    layoutOverride: integer("layout_override_id").references((): AnyPgColumn => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -6399,21 +6379,19 @@ export const _pages_v = db_schema.table(
   "_pages_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => pages.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => pages.id, {
       onDelete: "set null",
     }),
     version_slug: varchar("version_slug"),
-    version_site: integer("version_site_id").references(() => sites.id, {
+    version_site: integer("version_site_id").references((): AnyPgColumn => sites.id, {
       onDelete: "set null",
     }),
-    version_layoutOverride: integer("version_layout_override_id").references(
-      () => layout_templates.id,
+    version_layoutOverride: integer("version_layout_override_id").references((): AnyPgColumn => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -6504,6 +6482,29 @@ export const _pages_v_locales = db_schema.table(
   ],
 );
 
+export const sites_embedding_config_allowed_origins = db_schema.table(
+  "sites_embedding_config_allowed_origins",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    origin: varchar("origin"),
+  },
+  (columns) => [
+    index("sites_embedding_config_allowed_origins_order_idx").on(
+      columns._order,
+    ),
+    index("sites_embedding_config_allowed_origins_parent_id_idx").on(
+      columns._parentID,
+    ),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [sites.id],
+      name: "sites_embedding_config_allowed_origins_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const sites = db_schema.table(
   "sites",
   {
@@ -6513,17 +6514,15 @@ export const sites = db_schema.table(
     domain: varchar("domain"),
     isDefault: boolean("is_default").default(false),
     branding_title: varchar("branding_title"),
-    branding_logo: integer("branding_logo_id").references(() => media.id, {
+    branding_logo: integer("branding_logo_id").references((): AnyPgColumn => media.id, {
       onDelete: "set null",
     }),
-    branding_logoDark: integer("branding_logo_dark_id").references(
-      () => media.id,
+    branding_logoDark: integer("branding_logo_dark_id").references((): AnyPgColumn => media.id,
       {
         onDelete: "set null",
       },
     ),
-    branding_favicon: integer("branding_favicon_id").references(
-      () => media.id,
+    branding_favicon: integer("branding_favicon_id").references((): AnyPgColumn => media.id,
       {
         onDelete: "set null",
       },
@@ -6561,21 +6560,20 @@ export const sites = db_schema.table(
     branding_style_density: enum_sites_branding_style_density(
       "branding_style_density",
     ),
-    branding_theme: integer("branding_theme_id").references(() => themes.id, {
+    branding_theme: integer("branding_theme_id").references((): AnyPgColumn => themes.id, {
       onDelete: "set null",
     }),
     customCode_headHtml: varchar("custom_code_head_html"),
     customCode_customCSS: varchar("custom_code_custom_c_s_s"),
     customCode_bodyStartHtml: varchar("custom_code_body_start_html"),
     customCode_bodyEndHtml: varchar("custom_code_body_end_html"),
-    defaultLayout: integer("default_layout_id").references(
-      () => layout_templates.id,
+    defaultLayout: integer("default_layout_id").references((): AnyPgColumn => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
     isPublic: boolean("is_public").default(true),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -6617,11 +6615,36 @@ export const sites = db_schema.table(
   ],
 );
 
+export const _sites_v_version_embedding_config_allowed_origins =
+  db_schema.table(
+    "_sites_v_version_embedding_config_allowed_origins",
+    {
+      _order: integer("_order").notNull(),
+      _parentID: integer("_parent_id").notNull(),
+      id: serial("id").primaryKey(),
+      origin: varchar("origin"),
+      _uuid: varchar("_uuid"),
+    },
+    (columns) => [
+      index("_sites_v_version_embedding_config_allowed_origins_order_idx").on(
+        columns._order,
+      ),
+      index(
+        "_sites_v_version_embedding_config_allowed_origins_parent_id_idx",
+      ).on(columns._parentID),
+      foreignKey({
+        columns: [columns["_parentID"]],
+        foreignColumns: [_sites_v.id],
+        name: "_sites_v_version_embedding_config_allowed_origins_parent_id_fk",
+      }).onDelete("cascade"),
+    ],
+  );
+
 export const _sites_v = db_schema.table(
   "_sites_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => sites.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => sites.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -6629,19 +6652,17 @@ export const _sites_v = db_schema.table(
     version_domain: varchar("version_domain"),
     version_isDefault: boolean("version_is_default").default(false),
     version_branding_title: varchar("version_branding_title"),
-    version_branding_logo: integer("version_branding_logo_id").references(
-      () => media.id,
+    version_branding_logo: integer("version_branding_logo_id").references((): AnyPgColumn => media.id,
       {
         onDelete: "set null",
       },
     ),
     version_branding_logoDark: integer(
       "version_branding_logo_dark_id",
-    ).references(() => media.id, {
+    ).references((): AnyPgColumn => media.id, {
       onDelete: "set null",
     }),
-    version_branding_favicon: integer("version_branding_favicon_id").references(
-      () => media.id,
+    version_branding_favicon: integer("version_branding_favicon_id").references((): AnyPgColumn => media.id,
       {
         onDelete: "set null",
       },
@@ -6691,8 +6712,7 @@ export const _sites_v = db_schema.table(
       enum__sites_v_version_branding_style_density(
         "version_branding_style_density",
       ),
-    version_branding_theme: integer("version_branding_theme_id").references(
-      () => themes.id,
+    version_branding_theme: integer("version_branding_theme_id").references((): AnyPgColumn => themes.id,
       {
         onDelete: "set null",
       },
@@ -6705,15 +6725,13 @@ export const _sites_v = db_schema.table(
     version_customCode_bodyEndHtml: varchar(
       "version_custom_code_body_end_html",
     ),
-    version_defaultLayout: integer("version_default_layout_id").references(
-      () => layout_templates.id,
+    version_defaultLayout: integer("version_default_layout_id").references((): AnyPgColumn => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
     version_isPublic: boolean("version_is_public").default(true),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -6836,7 +6854,7 @@ export const themes = db_schema.table(
     ),
     style_borderRadius: enum_themes_style_border_radius("style_border_radius"),
     style_density: enum_themes_style_density("style_density"),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -6873,7 +6891,7 @@ export const _themes_v = db_schema.table(
   "_themes_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => themes.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => themes.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -6934,8 +6952,7 @@ export const _themes_v = db_schema.table(
     version_style_density: enum__themes_v_version_style_density(
       "version_style_density",
     ),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -7017,7 +7034,7 @@ export const layout_templates = db_schema.table(
       enum_layout_templates_content_max_width("content_max_width").default(
         "lg",
       ),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -7054,7 +7071,7 @@ export const _layout_templates_v = db_schema.table(
   "_layout_templates_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => layout_templates.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => layout_templates.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -7069,8 +7086,7 @@ export const _layout_templates_v = db_schema.table(
     version_contentMaxWidth: enum__layout_templates_v_version_content_max_width(
       "version_content_max_width",
     ).default("lg"),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -7171,7 +7187,7 @@ export const views = db_schema.table(
     id: serial("id").primaryKey(),
     name: varchar("name"),
     slug: varchar("slug"),
-    site: integer("site_id").references(() => sites.id, {
+    site: integer("site_id").references((): AnyPgColumn => sites.id, {
       onDelete: "set null",
     }),
     isDefault: boolean("is_default").default(false),
@@ -7215,7 +7231,7 @@ export const views = db_schema.table(
     ).default("default"),
     mapSettings_customStyleUrl: varchar("map_settings_custom_style_url"),
     isPublic: boolean("is_public").default(true),
-    createdBy: integer("created_by_id").references(() => users.id, {
+    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -7314,12 +7330,12 @@ export const _views_v = db_schema.table(
   "_views_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references(() => views.id, {
+    parent: integer("parent_id").references((): AnyPgColumn => views.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_slug: varchar("version_slug"),
-    version_site: integer("version_site_id").references(() => sites.id, {
+    version_site: integer("version_site_id").references((): AnyPgColumn => sites.id, {
       onDelete: "set null",
     }),
     version_isDefault: boolean("version_is_default").default(false),
@@ -7372,8 +7388,7 @@ export const _views_v = db_schema.table(
       "version_map_settings_custom_style_url",
     ),
     version_isPublic: boolean("version_is_public").default(true),
-    version_createdBy: integer("version_created_by_id").references(
-      () => users.id,
+    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
       {
         onDelete: "set null",
       },
@@ -8420,20 +8435,18 @@ export const branding = db_schema.table(
   "branding",
   {
     id: serial("id").primaryKey(),
-    logoLight: integer("logo_light_id").references(() => media.id, {
+    logoLight: integer("logo_light_id").references((): AnyPgColumn => media.id, {
       onDelete: "set null",
     }),
-    logoDark: integer("logo_dark_id").references(() => media.id, {
+    logoDark: integer("logo_dark_id").references((): AnyPgColumn => media.id, {
       onDelete: "set null",
     }),
-    faviconSourceLight: integer("favicon_source_light_id").references(
-      () => media.id,
+    faviconSourceLight: integer("favicon_source_light_id").references((): AnyPgColumn => media.id,
       {
         onDelete: "set null",
       },
     ),
-    faviconSourceDark: integer("favicon_source_dark_id").references(
-      () => media.id,
+    faviconSourceDark: integer("favicon_source_dark_id").references((): AnyPgColumn => media.id,
       {
         onDelete: "set null",
       },
@@ -10266,7 +10279,17 @@ export const relations__pages_v = relations(_pages_v, ({ one, many }) => ({
     relationName: "_locales",
   }),
 }));
-export const relations_sites = relations(sites, ({ one }) => ({
+export const relations_sites_embedding_config_allowed_origins = relations(
+  sites_embedding_config_allowed_origins,
+  ({ one }) => ({
+    _parentID: one(sites, {
+      fields: [sites_embedding_config_allowed_origins._parentID],
+      references: [sites.id],
+      relationName: "embeddingConfig_allowedOrigins",
+    }),
+  }),
+);
+export const relations_sites = relations(sites, ({ one, many }) => ({
   branding_logo: one(media, {
     fields: [sites.branding_logo],
     references: [media.id],
@@ -10287,6 +10310,9 @@ export const relations_sites = relations(sites, ({ one }) => ({
     references: [themes.id],
     relationName: "branding_theme",
   }),
+  embeddingConfig_allowedOrigins: many(sites_embedding_config_allowed_origins, {
+    relationName: "embeddingConfig_allowedOrigins",
+  }),
   defaultLayout: one(layout_templates, {
     fields: [sites.defaultLayout],
     references: [layout_templates.id],
@@ -10298,7 +10324,15 @@ export const relations_sites = relations(sites, ({ one }) => ({
     relationName: "createdBy",
   }),
 }));
-export const relations__sites_v = relations(_sites_v, ({ one }) => ({
+export const relations__sites_v_version_embedding_config_allowed_origins =
+  relations(_sites_v_version_embedding_config_allowed_origins, ({ one }) => ({
+    _parentID: one(_sites_v, {
+      fields: [_sites_v_version_embedding_config_allowed_origins._parentID],
+      references: [_sites_v.id],
+      relationName: "version_embeddingConfig_allowedOrigins",
+    }),
+  }));
+export const relations__sites_v = relations(_sites_v, ({ one, many }) => ({
   parent: one(sites, {
     fields: [_sites_v.parent],
     references: [sites.id],
@@ -10324,6 +10358,12 @@ export const relations__sites_v = relations(_sites_v, ({ one }) => ({
     references: [themes.id],
     relationName: "version_branding_theme",
   }),
+  version_embeddingConfig_allowedOrigins: many(
+    _sites_v_version_embedding_config_allowed_origins,
+    {
+      relationName: "version_embeddingConfig_allowedOrigins",
+    },
+  ),
   version_defaultLayout: one(layout_templates, {
     fields: [_sites_v.version_defaultLayout],
     references: [layout_templates.id],
@@ -11232,7 +11272,9 @@ type DatabaseSchema = {
   _pages_v_blocks_newsletter_c_t_a_locales: typeof _pages_v_blocks_newsletter_c_t_a_locales;
   _pages_v: typeof _pages_v;
   _pages_v_locales: typeof _pages_v_locales;
+  sites_embedding_config_allowed_origins: typeof sites_embedding_config_allowed_origins;
   sites: typeof sites;
+  _sites_v_version_embedding_config_allowed_origins: typeof _sites_v_version_embedding_config_allowed_origins;
   _sites_v: typeof _sites_v;
   themes: typeof themes;
   _themes_v: typeof _themes_v;
@@ -11397,7 +11439,9 @@ type DatabaseSchema = {
   relations__pages_v_blocks_newsletter_c_t_a: typeof relations__pages_v_blocks_newsletter_c_t_a;
   relations__pages_v_locales: typeof relations__pages_v_locales;
   relations__pages_v: typeof relations__pages_v;
+  relations_sites_embedding_config_allowed_origins: typeof relations_sites_embedding_config_allowed_origins;
   relations_sites: typeof relations_sites;
+  relations__sites_v_version_embedding_config_allowed_origins: typeof relations__sites_v_version_embedding_config_allowed_origins;
   relations__sites_v: typeof relations__sites_v;
   relations_themes: typeof relations_themes;
   relations__themes_v: typeof relations__themes_v;
