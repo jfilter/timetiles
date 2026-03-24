@@ -2,8 +2,12 @@
  * Job handler for cleaning up stuck scheduled ingests.
  *
  * Identifies and resets scheduled ingests that have been stuck in "running"
- * status for too long (default 2 hours). This prevents permanent blocking
- * of scheduled ingests due to job failures or system crashes.
+ * status for too long (default 4 hours). The threshold is intentionally generous
+ * because `lastRun` records the trigger/queue time, not when processing actually
+ * started — there can be significant delay due to queue backlog or worker restarts.
+ *
+ * Before resetting, also checks whether a Payload job is still actively processing
+ * the ingest to avoid killing in-progress work.
  *
  * @module
  * @category Jobs
@@ -17,10 +21,11 @@ import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
-import { isResourceStuck } from "../utils/stuck-detection";
+import { hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
 
 export interface CleanupStuckScheduledIngestsJobInput {
-  /** Hours after which a running import is considered stuck (default: 2) */
+  /** Hours after which a running import is considered stuck (default: 4).
+   * Uses 4h because `lastRun` is the trigger time, not when processing started. */
   stuckThresholdHours?: number;
   /** Whether to run in dry-run mode (default: false) */
   dryRun?: boolean;
@@ -91,7 +96,9 @@ export const cleanupStuckScheduledIngestsJob = {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CleanupStuckScheduledIngestsJobInput;
 
-    const stuckThresholdHours = input?.stuckThresholdHours ?? 2;
+    // Default 4h threshold accounts for the gap between trigger time (lastRun) and
+    // actual processing start. See stuck-detection.ts for details.
+    const stuckThresholdHours = input?.stuckThresholdHours ?? 4;
     const dryRun = input?.dryRun ?? false;
     const currentTime = new Date();
 
@@ -158,13 +165,24 @@ const processStuckImports = async (
       if (
         isResourceStuck(scheduledIngest.lastStatus, "running", scheduledIngest.lastRun, currentTime, thresholdHours)
       ) {
-        stuckCount++;
-
         const lastRunTime = scheduledIngest.lastRun ? parseDateInput(scheduledIngest.lastRun) : null;
         const stuckMinutes = lastRunTime
           ? Math.round((currentTime.getTime() - lastRunTime.getTime()) / (1000 * 60))
           : -1;
 
+        // Secondary safety check: verify no Payload job is actively processing this ingest
+        const isActive = await hasActivePayloadJob(payload, "input.scheduledIngestId", scheduledIngest.id);
+
+        if (isActive) {
+          logger.info("Scheduled ingest appears stuck but has active Payload job, skipping reset", {
+            scheduledIngestId: scheduledIngest.id,
+            name: scheduledIngest.name,
+            stuckMinutes,
+          });
+          continue;
+        }
+
+        stuckCount++;
         logger.warn("Found stuck scheduled ingest", {
           scheduledIngestId: scheduledIngest.id,
           name: scheduledIngest.name,

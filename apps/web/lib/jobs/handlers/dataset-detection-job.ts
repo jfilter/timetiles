@@ -13,6 +13,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import readline from "node:readline";
 
 import Papa from "papaparse";
 import type { Payload } from "payload";
@@ -44,27 +45,64 @@ const normalizeIngestFileRelationId = (ingestFileId: string | number): number =>
   return normalizedIngestFileId;
 };
 
-// Extract file processing functions
-const processCSVFile = (filePath: string): SheetInfo[] => {
+/**
+ * Read the first line of a CSV to extract headers, then stream-count remaining data rows.
+ * Avoids loading the entire file into memory (the previous implementation used readFileSync
+ * + Papa.parse which buffered everything).
+ */
+const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => {
   logger.info("Processing CSV file", { filePath });
-  const csvContent = fs.readFileSync(filePath, "utf8");
 
-  const parseResult = Papa.parse(csvContent, { header: false, skipEmptyLines: true, dynamicTyping: true });
+  // Read only the first line to get headers
+  const headerLine = await new Promise<string>((resolve, reject) => {
+    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+    let resolved = false;
 
-  const rows = parseResult.data as string[][];
-  if (rows.length === 0) {
+    rl.once("line", (line) => {
+      resolved = true;
+      rl.close();
+      stream.destroy();
+      resolve(line);
+    });
+    rl.once("error", reject);
+    // Guard: only resolve empty if "line" never fired (truly empty file)
+    rl.once("close", () => {
+      if (!resolved) resolve("");
+    });
+  });
+
+  if (!headerLine.trim()) {
     throw new Error("No data rows found in file");
   }
 
-  return [
-    {
-      name: "CSV Data",
-      index: 0,
-      rowCount: rows.length - 1,
-      columnCount: rows[0]?.length ?? 0,
-      headers: rows[0] ?? [],
-    },
-  ];
+  // Parse the header line with Papa to handle quoted fields, commas in values, etc.
+  const headerResult = Papa.parse(headerLine, { header: false, skipEmptyLines: true });
+  const headers = (headerResult.data[0] as string[]) ?? [];
+
+  // Stream-count remaining data rows (excludes header, skips empty lines)
+  const rowCount = await new Promise<number>((resolve, reject) => {
+    let count = 0;
+    let isHeader = true;
+    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+    rl.on("line", (line) => {
+      if (isHeader) {
+        isHeader = false;
+        return;
+      }
+      if (line.trim().length > 0) count++;
+    });
+    rl.on("close", () => resolve(count));
+    rl.on("error", reject);
+  });
+
+  if (rowCount === 0 && headers.length === 0) {
+    throw new Error("No data rows found in file");
+  }
+
+  return [{ name: "CSV Data", index: 0, rowCount, columnCount: headers.length, headers }];
 };
 
 const processExcelFile = (filePath: string): SheetInfo[] => {
@@ -374,7 +412,7 @@ export const datasetDetectionJob = {
         }
 
         // xlsx library handles .xls, .xlsx, and .ods files
-        sheets = fileExtension === ".csv" ? processCSVFile(filePath) : processExcelFile(filePath);
+        sheets = fileExtension === ".csv" ? await processCSVFile(filePath) : processExcelFile(filePath);
       }
 
       if (sheets.length === 0) {

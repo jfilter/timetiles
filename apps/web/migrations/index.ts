@@ -4,6 +4,7 @@ import * as migration_20260322_034359 from './20260322_034359';
 import * as migration_20260322_043744 from './20260322_043744';
 import * as migration_20260322_141908 from './20260322_141908';
 import * as migration_20260323_023544 from './20260323_023544';
+import * as migration_20260324_120000_fix_antimeridian_bounds from './20260324_120000_fix_antimeridian_bounds';
 
 export const migrations = [
   {
@@ -35,5 +36,10 @@ export const migrations = [
     up: migration_20260323_023544.up,
     down: migration_20260323_023544.down,
     name: '20260323_023544'
+  },
+  {
+    up: migration_20260324_120000_fix_antimeridian_bounds.up,
+    down: migration_20260324_120000_fix_antimeridian_bounds.down,
+    name: '20260324_120000_fix_antimeridian_bounds',
   },
 ];

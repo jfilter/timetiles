@@ -32,6 +32,9 @@ import { cleanupStuckScheduledIngestsJob } from "@/lib/jobs/handlers/cleanup-stu
 
 type MockPayload = { find: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
 
+/** Empty result for hasActivePayloadJob checks (no active Payload job found). */
+const NO_ACTIVE_JOBS = { docs: [], totalDocs: 0 };
+
 describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
   let mockPayload: MockPayload;
   let mockJob: { id: string; input?: Record<string, unknown> };
@@ -53,18 +56,19 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
   });
 
   describe("Finding Stuck Imports", () => {
-    it("should find imports stuck for more than 2 hours", async () => {
-      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    it("should find imports stuck for more than 4 hours", async () => {
+      const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
       const stuckImport = {
         id: "import-1",
         name: "Stuck Import",
         lastStatus: "running",
-        lastRun: threeHoursAgo.toISOString(),
+        lastRun: fiveHoursAgo.toISOString(),
         executionHistory: [],
         statistics: { totalRuns: 5, successfulRuns: 4, failedRuns: 0, averageDuration: 5000 },
       };
 
-      mockPayload.find.mockResolvedValue({ docs: [stuckImport], totalDocs: 1 });
+      // First find: scheduled-ingests query; second find: hasActivePayloadJob check
+      mockPayload.find.mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }).mockResolvedValue(NO_ACTIVE_JOBS);
 
       const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
@@ -87,7 +91,7 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       expect(result.output).toEqual({ success: true, totalRunning: 1, stuckCount: 1, resetCount: 1, dryRun: false });
     });
 
-    it("should not find imports running for less than 2 hours", async () => {
+    it("should not find imports running for less than 4 hours", async () => {
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
       const runningImport = {
         id: "import-2",
@@ -112,15 +116,18 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
         id: `import-${i}`,
         name: `Import ${i}`,
         lastStatus: "running",
-        lastRun: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+        lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
         executionHistory: [],
         statistics: {},
       }));
 
-      mockPayload.find.mockResolvedValue({
-        docs: stuckImports.slice(0, 100), // Return only first 100 as per actual limit is 1000
-        totalDocs: 100,
-      });
+      // First find: scheduled-ingests query; subsequent finds: hasActivePayloadJob checks
+      mockPayload.find
+        .mockResolvedValueOnce({
+          docs: stuckImports.slice(0, 100), // Return only first 100 as per actual limit is 1000
+          totalDocs: 100,
+        })
+        .mockResolvedValue(NO_ACTIVE_JOBS);
 
       const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
@@ -144,7 +151,7 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
           id: "import-1",
           name: "Import 1",
           lastStatus: "running",
-          lastRun: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
           executionHistory: [],
           statistics: {},
         },
@@ -152,13 +159,13 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
           id: "import-2",
           name: "Import 2",
           lastStatus: "running",
-          lastRun: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          lastRun: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
           executionHistory: [],
           statistics: {},
         },
       ];
 
-      mockPayload.find.mockResolvedValue({ docs: stuckImports, totalDocs: 2 });
+      mockPayload.find.mockResolvedValueOnce({ docs: stuckImports, totalDocs: 2 }).mockResolvedValue(NO_ACTIVE_JOBS);
 
       const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
@@ -172,7 +179,7 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
           id: "import-1",
           name: "Import 1",
           lastStatus: "running",
-          lastRun: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
           executionHistory: [],
           statistics: {},
         },
@@ -180,13 +187,13 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
           id: "import-2",
           name: "Import 2",
           lastStatus: "running",
-          lastRun: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          lastRun: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
           executionHistory: [],
           statistics: {},
         },
       ];
 
-      mockPayload.find.mockResolvedValue({ docs: stuckImports, totalDocs: 2 });
+      mockPayload.find.mockResolvedValueOnce({ docs: stuckImports, totalDocs: 2 }).mockResolvedValue(NO_ACTIVE_JOBS);
 
       // Make the first update fail
       mockPayload.update.mockRejectedValueOnce(new Error("Update failed")).mockResolvedValueOnce({ id: "import-2" });
@@ -206,12 +213,13 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
         id: "import-1",
         name: "Stuck Import",
         lastStatus: "running",
-        lastRun: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+        lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
         executionHistory: [],
         statistics: {},
       };
 
-      mockPayload.find.mockResolvedValue({ docs: [stuckImport], totalDocs: 1 });
+      // Dry run still checks for active jobs before counting as stuck
+      mockPayload.find.mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }).mockResolvedValue(NO_ACTIVE_JOBS);
 
       mockJob.input = { dryRun: true };
 
@@ -264,7 +272,7 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
         statistics: {},
       };
 
-      mockPayload.find.mockResolvedValue({ docs: [stuckImport], totalDocs: 1 });
+      mockPayload.find.mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }).mockResolvedValue(NO_ACTIVE_JOBS);
 
       const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
@@ -288,12 +296,12 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
         id: "import-1",
         name: "Full History Import",
         lastStatus: "running",
-        lastRun: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+        lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
         executionHistory: existingHistory,
         statistics: { totalRuns: 12, successfulRuns: 12, failedRuns: 0, averageDuration: 5000 },
       };
 
-      mockPayload.find.mockResolvedValue({ docs: [stuckImport], totalDocs: 1 });
+      mockPayload.find.mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }).mockResolvedValue(NO_ACTIVE_JOBS);
 
       await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 

@@ -18,7 +18,7 @@ import type { WorkflowConfig } from "payload";
 
 import { logger } from "@/lib/logger";
 
-import type { ValidateSchemaOutput } from "../types/task-outputs";
+import type { GeocodeBatchOutput, ValidateSchemaOutput } from "../types/task-outputs";
 import { updateIngestFileStatusForJob } from "./completion";
 
 export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
@@ -50,7 +50,14 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
 
       if (resumeFrom !== "create-events") {
         await tasks["create-schema-version"]("create-version", { input: { ingestJobId: id } });
-        await tasks["geocode-batch"]("geocode", { input: { ingestJobId: id, batchNumber: 0 } });
+        const geocode = (await tasks["geocode-batch"]("geocode", {
+          input: { ingestJobId: id, batchNumber: 0 },
+        })) as GeocodeBatchOutput;
+
+        if (geocode.needsReview) {
+          logger.info("ingest-process: geocode-batch requires review", { ingestJobId: id });
+          return;
+        }
       }
 
       await tasks["create-events"]("create-events", { input: { ingestJobId: id } });

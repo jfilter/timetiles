@@ -26,6 +26,7 @@ import {
   createIsPublicField,
   createOwnershipAccess,
   createSlugField,
+  denyPendingDeletion,
   isAuthenticated,
   isEditorOrAdmin,
   isPrivileged,
@@ -217,8 +218,8 @@ const Catalogs: CollectionConfig = {
       return { isPublic: { equals: true } };
     },
 
-    // Only authenticated users can create catalogs
-    create: isAuthenticated,
+    // Only authenticated users can create catalogs (denied for pending-deletion accounts)
+    create: denyPendingDeletion(isAuthenticated),
 
     // Only creator, editors, or admins can update
     update: createOwnershipAccess("catalogs"),

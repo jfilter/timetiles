@@ -38,7 +38,6 @@ export const getAccessibleCatalogIds = async (payload: Payload, user?: User | nu
     const publicCatalogs = await payload.find({
       collection: "catalogs",
       where: { isPublic: { equals: true } },
-      limit: 100,
       pagination: false,
       overrideAccess: true,
       select: { isPublic: true },
@@ -51,7 +50,6 @@ export const getAccessibleCatalogIds = async (payload: Payload, user?: User | nu
       const ownedCatalogs = await payload.find({
         collection: "catalogs",
         where: { createdBy: { equals: user.id } },
-        limit: 100,
         pagination: false,
         overrideAccess: true,
         select: { name: true },

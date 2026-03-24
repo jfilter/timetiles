@@ -34,6 +34,7 @@ import { getClientIdentifier, getRateLimitService } from "../services/rate-limit
 import {
   createCommonConfig,
   createOwnershipAccess,
+  denyPendingDeletion,
   isAuthenticated,
   isEditorOrAdmin,
   isPrivileged,
@@ -130,8 +131,8 @@ const IngestFiles: CollectionConfig = {
       return { user: { equals: user.id } };
     },
 
-    // Only authenticated users can upload files
-    create: isAuthenticated,
+    // Only authenticated users can upload files (denied for pending-deletion accounts)
+    create: denyPendingDeletion(isAuthenticated),
 
     // Only file owner, editors, or admins can update
     update: createOwnershipAccess("ingest-files", "user"),

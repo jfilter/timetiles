@@ -208,23 +208,42 @@ export class QuotaService {
       }
 
       // Create new usage record
-      return await this.payload.create({
-        collection: USER_USAGE_COLLECTION,
-        data: {
-          user: normalizedUserId,
-          urlFetchesToday: 0,
-          fileUploadsToday: 0,
-          ingestJobsToday: 0,
-          currentActiveSchedules: 0,
-          totalEventsCreated: 0,
-          currentCatalogs: 0,
-          currentScraperRepos: 0,
-          scraperRunsToday: 0,
-          lastResetDate: new Date().toISOString(),
-        },
-        overrideAccess: true,
-        ...(req && { req }),
-      });
+      try {
+        return await this.payload.create({
+          collection: USER_USAGE_COLLECTION,
+          data: {
+            user: normalizedUserId,
+            urlFetchesToday: 0,
+            fileUploadsToday: 0,
+            ingestJobsToday: 0,
+            currentActiveSchedules: 0,
+            totalEventsCreated: 0,
+            currentCatalogs: 0,
+            currentScraperRepos: 0,
+            scraperRunsToday: 0,
+            lastResetDate: new Date().toISOString(),
+          },
+          overrideAccess: true,
+          ...(req && { req }),
+        });
+      } catch (createError) {
+        // Handle unique constraint violation from concurrent requests (TOCTOU race).
+        // Another request may have created the record between our find and create.
+        const message = createError instanceof Error ? createError.message : String(createError);
+        if (message.includes("duplicate") || message.includes("unique") || message.includes("23505")) {
+          const retry = await this.payload.find({
+            collection: USER_USAGE_COLLECTION,
+            where: { user: { equals: normalizedUserId } },
+            limit: 1,
+            overrideAccess: true,
+            ...(req && { req }),
+          });
+          if (retry.docs.length > 0 && retry.docs[0]) {
+            return retry.docs[0];
+          }
+        }
+        throw createError;
+      }
     } catch (error) {
       logger.error("Failed to get or create usage record", { error, userId: normalizedUserId });
       throw error;
@@ -638,12 +657,37 @@ export class QuotaService {
     const drizzle = await this.getDrizzle(req);
     const col = userUsageColumns[usageField];
 
-    // Atomic: increment only if current value + amount <= limit
-    const result = await drizzle
-      .update(user_usage)
-      .set({ [usageField]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
-      .where(sql`${user_usage.user} = ${normalizedUserId} AND COALESCE(${col}, 0) + ${amount} <= ${limit}`)
-      .returning({ id: user_usage.id });
+    let result: { id: number }[];
+
+    if (desc.daily) {
+      // For daily quotas, reset stale counters before checking the limit.
+      // Uses the same CASE WHEN pattern as incrementUsage to handle the window
+      // between midnight UTC and the quota-reset job.
+      const needsReset = sql`${user_usage.lastResetDate} IS NULL OR ${user_usage.lastResetDate}::date < CURRENT_DATE`;
+      const effectiveValue = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${col}, 0) END`;
+
+      const setClauses: Record<string, unknown> = {};
+      for (const field of DAILY_USAGE_FIELDS) {
+        const fieldCol = userUsageColumns[field];
+        const increment = field === usageField ? amount : 0;
+        setClauses[field] = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${fieldCol}, 0) END + ${increment}`;
+      }
+      setClauses.lastResetDate = sql`CASE WHEN ${needsReset} THEN NOW() ELSE ${user_usage.lastResetDate} END`;
+      setClauses.updatedAt = sql`NOW()`;
+
+      result = await drizzle
+        .update(user_usage)
+        .set(setClauses)
+        .where(sql`${user_usage.user} = ${normalizedUserId} AND ${effectiveValue} + ${amount} <= ${limit}`)
+        .returning({ id: user_usage.id });
+    } else {
+      // For non-daily quotas, simple atomic check-and-increment
+      result = await drizzle
+        .update(user_usage)
+        .set({ [usageField]: sql`COALESCE(${col}, 0) + ${amount}`, updatedAt: sql`NOW()` })
+        .where(sql`${user_usage.user} = ${normalizedUserId} AND COALESCE(${col}, 0) + ${amount} <= ${limit}`)
+        .returning({ id: user_usage.id });
+    }
 
     if (result.length === 0) {
       // Quota exceeded — no rows updated

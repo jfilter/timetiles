@@ -49,14 +49,15 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     try {
       await client.connect();
       await client.query('DELETE FROM payload."scheduled_ingests"');
+      await client.query('DELETE FROM payload."payload_jobs"');
     } finally {
       await client.end();
     }
   });
 
   describe.sequential("Finding Stuck Imports", () => {
-    it("should find and reset imports stuck for more than 2 hours", async () => {
-      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    it("should find and reset imports stuck for more than 4 hours", async () => {
+      const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
 
       // Create stuck import
       const { scheduledIngest: stuckImport } = await withScheduledIngest(
@@ -68,7 +69,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
           name: "Stuck Import Test",
           frequency: "daily",
           createdBy: testUser.id,
-          additionalData: { lastStatus: "running", lastRun: threeHoursAgo.toISOString() },
+          additionalData: { lastStatus: "running", lastRun: fiveHoursAgo.toISOString() },
         }
       );
 
@@ -88,7 +89,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       expect(resetImport.lastError).toContain("stuck and automatically reset");
     });
 
-    it("should not reset imports running for less than 2 hours", async () => {
+    it("should not reset imports running for less than 4 hours", async () => {
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
 
       // Create recent import

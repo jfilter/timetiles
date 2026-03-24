@@ -111,15 +111,24 @@ const insertBatch = async (payload: Payload, batch: BulkEventData[], now: string
 
   const db = payload.db.drizzle;
 
-  // Insert into events, returning generated IDs
+  // Insert into events, returning generated IDs.
+  // ON CONFLICT DO NOTHING on the unique uniqueId index prevents duplicate events
+  // when two concurrent imports target the same dataset with overlapping data.
+  // Return uniqueId alongside id so we can match back to the batch for version rows.
   const inserted = await db
     .insert(events)
     .values(batch.map((e) => toEventsRow(e, now)))
-    .returning({ id: events.id });
+    .onConflictDoNothing({ target: events.uniqueId })
+    .returning({ id: events.id, uniqueId: events.uniqueId });
 
-  // Populate _events_v so Payload's draft/publish system stays consistent
+  // Populate _events_v so Payload's draft/publish system stays consistent.
+  // With ON CONFLICT DO NOTHING, inserted may be shorter than batch,
+  // so look up each inserted row's source data by uniqueId.
   if (inserted.length > 0) {
-    await db.insert(_events_v).values(inserted.map((row, i) => toVersionRow(row.id, batch[i]!, now)));
+    const batchByUniqueId = new Map(batch.map((e) => [e.uniqueId, e]));
+    await db
+      .insert(_events_v)
+      .values(inserted.map((row) => toVersionRow(row.id, batchByUniqueId.get(row.uniqueId!)!, now)));
   }
 
   return inserted.length;

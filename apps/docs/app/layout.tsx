@@ -4,7 +4,7 @@
  */
 import "nextra-theme-docs/style.css";
 
-import faviconPng from "@timetiles/assets/logos/latest/light/no-grid/png/logo_square_256.png";
+// Favicon served from public/favicon.ico — no import needed
 import logoHorizontal from "@timetiles/assets/logos/latest/light/no-grid/wordmark_horizontal.svg";
 import Image from "next/image";
 import Link from "next/link";
@@ -84,7 +84,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <Head>
-        <link rel="icon" href={faviconPng.src} />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
       <body>
         <Layout

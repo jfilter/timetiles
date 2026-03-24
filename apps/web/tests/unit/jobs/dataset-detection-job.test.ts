@@ -11,15 +11,28 @@
 // Import centralized logger mock
 import "@/tests/mocks/services/logger";
 
+import { Readable } from "node:stream";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { datasetDetectionJob } from "@/lib/jobs/handlers/dataset-detection-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { createMockPayload } from "@/tests/setup/factories";
 
+/** Create a Readable stream from a string, for mocking fs.createReadStream. */
+const createMockReadStream = (content: string): Readable => {
+  return new Readable({
+    read() {
+      this.push(content);
+      this.push(null);
+    },
+  });
+};
+
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
-  return { fs: { existsSync: vi.fn(), readFileSync: vi.fn(), unlinkSync: vi.fn() } };
+  const fsMock = { existsSync: vi.fn(), readFileSync: vi.fn(), unlinkSync: vi.fn(), createReadStream: vi.fn() };
+  return { fs: fsMock };
 });
 
 // Mock external dependencies
@@ -56,11 +69,14 @@ describe.sequential("DatasetDetectionJob Handler", () => {
     vi.clearAllMocks();
 
     // Set default mock implementations
+    const defaultCsvContent = "id,title,date\n1,Event 1,2024-01-01\n2,Event 2,2024-01-02";
     mocks.fs.existsSync.mockReturnValue(true);
-    mocks.fs.readFileSync.mockReturnValue("id,title,date\n1,Event 1,2024-01-01\n2,Event 2,2024-01-02");
+    mocks.fs.readFileSync.mockReturnValue(defaultCsvContent);
     mocks.fs.unlinkSync.mockReturnValue(undefined);
+    // createReadStream returns a Readable stream for the streaming CSV parser
+    mocks.fs.createReadStream.mockImplementation(() => createMockReadStream(defaultCsvContent));
 
-    // CSV content is already set in readFileSync mock above
+    // CSV content is already set in readFileSync and createReadStream mocks above
     // Excel files will need to be handled differently since we removed xlsx mocks
 
     // Mock payload with required methods
@@ -556,7 +572,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       }
       const largeCsvContent = headers + rows.join("\n");
 
-      mocks.fs.readFileSync.mockReturnValue(largeCsvContent);
+      mocks.fs.createReadStream.mockImplementation(() => createMockReadStream(largeCsvContent));
 
       await datasetDetectionJob.handler(mockContext);
 
@@ -681,8 +697,8 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       await datasetDetectionJob.handler(mockContext);
 
-      // Should fall back to reading the file
-      expect(mocks.fs.readFileSync).toHaveBeenCalled();
+      // Should fall back to streaming the CSV file (createReadStream instead of readFileSync)
+      expect(mocks.fs.createReadStream).toHaveBeenCalled();
     });
 
     it("should fall back to parsing for non-wizard imports", async () => {
@@ -701,8 +717,8 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       await datasetDetectionJob.handler(mockContext);
 
-      // Should read the file since it's not a wizard import
-      expect(mocks.fs.readFileSync).toHaveBeenCalled();
+      // Should stream the file since it's not a wizard import
+      expect(mocks.fs.createReadStream).toHaveBeenCalled();
     });
 
     it("should still verify file exists on disk for wizard imports", async () => {

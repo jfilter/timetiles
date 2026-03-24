@@ -95,7 +95,10 @@ export const FieldFiltersParamSchema = z.preprocess(
       return {};
     }
   },
-  z.record(z.string(), z.array(z.string())).default({})
+  z
+    .record(z.string().max(500), z.array(z.string().max(500)).max(100))
+    .default({})
+    .refine((rec) => Object.keys(rec).length <= 20, { message: "Field filters may contain at most 20 keys" })
 );
 
 /**

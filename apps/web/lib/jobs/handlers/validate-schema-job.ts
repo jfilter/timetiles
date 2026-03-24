@@ -310,6 +310,73 @@ const applyValidationResult = async (
   };
 };
 
+/**
+ * Check if another ingest job for the same dataset is currently in NEEDS_REVIEW state.
+ * This prevents schema drift when one import pauses for review while another sneaks through.
+ */
+export const hasConflictingReviewJob = async (
+  payload: Payload,
+  datasetId: number | string,
+  currentJobId: number
+): Promise<{ conflicting: boolean; conflictingJobId?: number }> => {
+  const reviewJobs = await payload.find({
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    where: {
+      and: [
+        { dataset: { equals: datasetId } },
+        { stage: { equals: PROCESSING_STAGE.NEEDS_REVIEW } },
+        { id: { not_equals: currentJobId } },
+      ],
+    },
+    limit: 1,
+    overrideAccess: true,
+  });
+
+  if (reviewJobs.docs.length > 0) {
+    return { conflicting: true, conflictingJobId: reviewJobs.docs[0]?.id };
+  }
+
+  return { conflicting: false };
+};
+
+/** Pause this job if another import for the same dataset is already in NEEDS_REVIEW. */
+const guardAgainstConcurrentReview = async (
+  payload: Payload,
+  datasetId: number | string,
+  jobIdTyped: number,
+  ingestJobId: number | string,
+  logger: ReturnType<typeof createJobLogger>
+) => {
+  const { conflicting, conflictingJobId } = await hasConflictingReviewJob(payload, datasetId, jobIdTyped);
+  if (!conflicting) return null;
+
+  logger.info("Another import for this dataset is pending review, pausing this job", {
+    ingestJobId,
+    datasetId,
+    conflictingJobId,
+  });
+
+  await payload.update({
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: jobIdTyped,
+    data: {
+      stage: PROCESSING_STAGE.NEEDS_REVIEW,
+      schemaValidation: {
+        isCompatible: true,
+        breakingChanges: [],
+        newFields: [],
+        transformSuggestions: [],
+        requiresApproval: true,
+        approvalReason: `Another import for this dataset is pending review (job #${conflictingJobId}). Please resolve that import first.`,
+      },
+    },
+  });
+
+  await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
+
+  return { output: { needsReview: true, requiresApproval: true, hasBreakingChanges: false, newFields: 0 } };
+};
+
 /** Best-effort sidecar CSV cleanup for error paths. */
 const cleanupSidecarsOnError = async (payload: Payload, jobId: number): Promise<void> => {
   try {
@@ -376,6 +443,11 @@ export const validateSchemaJob = {
       });
 
       const { job, dataset, ingestFile } = await loadJobResources(payload, jobIdTyped);
+
+      // Schema drift guard: if another import for the same dataset is pending review,
+      // pause this one too to prevent concurrent schema conflicts.
+      const driftResult = await guardAgainstConcurrentReview(payload, dataset.id, jobIdTyped, ingestJobId, logger);
+      if (driftResult) return driftResult;
 
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
       await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA, uniqueRows);
