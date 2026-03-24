@@ -164,16 +164,41 @@ export const createPayloadSchema = async (databaseName: string): Promise<void> =
  */
 export const runMigrations = (connectionString: string): void => {
   try {
-    logger.info("Running Payload migrations...");
+    // Mask password in log output
+    const safeUrl = connectionString.replace(/:[^@]+@/, ":***@");
+    logger.info({ url: safeUrl }, "Running Payload migrations...");
+
+    const env = { ...process.env, DATABASE_URL: connectionString };
+    logger.info(
+      {
+        DATABASE_URL_set: !!env.DATABASE_URL,
+        PAYLOAD_SECRET_set: !!env.PAYLOAD_SECRET,
+        NEXT_PUBLIC_PAYLOAD_URL: env.NEXT_PUBLIC_PAYLOAD_URL,
+        cwd: process.cwd(),
+      },
+      "Migration env check"
+    );
 
     // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
-    execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate`, {
-      stdio: "inherit",
-      env: { ...process.env, DATABASE_URL: connectionString },
+    const output = execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate`, {
+      stdio: "pipe",
+      env,
+      encoding: "utf-8",
     });
+
+    // Log migration output so CI shows what happened
+    if (output.trim()) {
+      for (const line of output.trim().split("\n")) {
+        logger.info(line);
+      }
+    }
 
     logger.info("Migrations completed successfully");
   } catch (error) {
+    // execSync throws with stdout/stderr attached
+    const execError = error as { stdout?: string; stderr?: string };
+    if (execError.stdout) logger.error({ stdout: execError.stdout }, "Migration stdout");
+    if (execError.stderr) logger.error({ stderr: execError.stderr }, "Migration stderr");
     logger.error("Migration failed:", error);
     throw new Error(`Failed to run migrations: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -252,6 +277,7 @@ const shouldSkipSetup = async (
   verbose: boolean
 ): Promise<boolean> => {
   const exists = await databaseExists(dbName);
+  logger.info({ dbName, exists, skipIfExists, dropIfExists }, "shouldSkipSetup check");
 
   if (exists && skipIfExists && !dropIfExists) {
     logVerbose(verbose, `Database ${dbName} already exists, skipping setup`);
