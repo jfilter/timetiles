@@ -81,17 +81,13 @@ export class QueryBuilders {
   }
 
   /**
-   * Build where clause for events collection - checks by title AND date.
-   * Events are considered duplicates only if both title and date match.
+   * Build where clause for events collection - checks by uniqueId.
    */
   private buildEventsWhereClause(item: Record<string, unknown>): Where {
-    const where: Where = {};
-
-    if (item.title != null && item.title !== "" && item.date != null && item.date !== "") {
-      where.and = [{ title: { equals: item.title } }, { date: { equals: item.date } }];
+    if (item.uniqueId != null && item.uniqueId !== "") {
+      return { uniqueId: { equals: item.uniqueId } };
     }
-
-    return where;
+    return {};
   }
 
   /**
