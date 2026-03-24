@@ -77,7 +77,14 @@ export const createCachedResolver = <T>(options: CachedResolverOptions): CachedR
         ...buildScopeWhere(scopeId),
       };
 
-      const result = await payload.find({ collection, where, limit: 1, sort: "createdAt", depth });
+      const result = await payload.find({
+        collection,
+        where,
+        limit: 1,
+        sort: "createdAt",
+        depth,
+        overrideAccess: false,
+      });
       const doc = (result.docs[0] as T | undefined) ?? null;
       keyCache.set(ck, doc);
       return doc;
@@ -102,7 +109,7 @@ export const createCachedResolver = <T>(options: CachedResolverOptions): CachedR
         ...buildScopeWhere(scopeId),
       };
 
-      const result = await payload.find({ collection, where, limit: 1, depth });
+      const result = await payload.find({ collection, where, limit: 1, depth, overrideAccess: false });
       const doc = (result.docs[0] as T | undefined) ?? null;
       defaultCache.set(dk, doc);
       return doc;

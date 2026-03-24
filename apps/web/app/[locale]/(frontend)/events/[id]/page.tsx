@@ -29,11 +29,21 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const payload = await getPayload({ config: configPromise });
 
-  const result = await payload.find({ collection: "events", where: { id: { equals: id } }, depth: 1, limit: 1 });
+  const result = await payload.find({
+    collection: "events",
+    where: { id: { equals: id } },
+    overrideAccess: false,
+    depth: 1,
+    limit: 1,
+  });
 
   const event = result.docs[0];
-  const eventData = event?.originalData as Record<string, unknown> | undefined;
-  const title = (eventData?.title as string) || (eventData?.name as string) || `Event ${id}`;
+  if (!event) {
+    return { title: "Event | TimeTiles", description: "View event details on TimeTiles" };
+  }
+
+  const eventData = event.originalData as Record<string, unknown> | undefined;
+  const title = (eventData?.title as string) || (eventData?.name as string) || `Event ${event.id}`;
 
   return {
     title: `${title} | TimeTiles`,

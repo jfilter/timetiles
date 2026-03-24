@@ -22,6 +22,7 @@ export default async function EventsListPage() {
   // Fetch published events
   const { docs: events } = await payload.find({
     collection: "events",
+    overrideAccess: false,
     limit: 50,
     sort: "-eventTimestamp",
     where: { _status: { equals: "published" } },
