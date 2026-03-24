@@ -21,7 +21,7 @@ import type { User } from "@/payload-types";
  * by Zod schemas. This function checks that the preview
  * exists on disk, is not expired, and belongs to the requesting user.
  *
- * Throws {@link ValidationError} or {@link UnauthorizedError} on failure.
+ * Throws `ValidationError` or `UnauthorizedError` on failure.
  * After a successful call, `previewMeta` is narrowed to non-null.
  */
 export function validateRequest(
