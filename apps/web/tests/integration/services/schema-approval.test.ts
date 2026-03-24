@@ -63,7 +63,7 @@ describe.sequential("Schema Approval Workflow", () => {
 
     // Create test dataset with schema locking enabled (recreated per test)
     const { dataset } = await withDataset(testEnv, testCatalogId, {
-      name: "Schema Approval Test Dataset",
+      name: `Schema Approval Test Dataset ${crypto.randomUUID().slice(0, 8)}`,
       description: "Dataset for schema approval tests",
       schemaConfig: {
         locked: true, // Require approval for all changes
@@ -586,7 +586,7 @@ describe.sequential("Schema Approval Workflow", () => {
       const otherDataset = await payload.create({
         collection: "datasets",
         data: {
-          name: "Other Private Dataset",
+          name: `Other Private Dataset ${Date.now()}`,
           slug: `other-private-ds-${Date.now()}`,
           catalog: otherCatalog.id,
           language: "eng",

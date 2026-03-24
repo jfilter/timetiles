@@ -52,10 +52,17 @@ const executeTruncateWithPayloadConnection = async (payload: Payload, tableList:
     return false;
   }
 
-  // Set lock_timeout to fail fast instead of waiting for idle-in-transaction
-  // connections that hold locks. The caller's fallback path handles failure.
-  await db.execute(`SET LOCAL lock_timeout = '5s'`);
-  await db.execute(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
+  // Wrap in an explicit transaction so SET LOCAL lock_timeout actually applies.
+  // Without BEGIN, each db.execute runs in autocommit and SET LOCAL has no effect.
+  try {
+    await db.execute("BEGIN");
+    await db.execute(`SET LOCAL lock_timeout = '5s'`);
+    await db.execute(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
+    await db.execute("COMMIT");
+  } catch (error) {
+    await db.execute("ROLLBACK").catch(() => {});
+    throw error;
+  }
   return true;
 };
 
@@ -130,6 +137,7 @@ export class SeedManager extends SeedManagerBase {
    * await seedManager.truncate(['users', 'catalogs']); // Truncate only users and catalogs (+ their dependents via CASCADE)
    * ```
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- truncation logic has inherent branching (all vs specific, Payload vs direct SQL, retry)
   async truncate(collections: string[] = []): Promise<void> {
     await this.initialize();
 
@@ -184,12 +192,19 @@ export class SeedManager extends SeedManagerBase {
         });
       }
 
+      // Use DELETE FROM instead of TRUNCATE for per-collection cleanup.
+      // TRUNCATE acquires ACCESS EXCLUSIVE locks that deadlock with Payload's
+      // connection pool (idle connections hold ROW SHARE/EXCLUSIVE locks).
+      // DELETE only needs ROW EXCLUSIVE locks which are compatible with
+      // concurrent reads — fast enough for test tables with few hundred rows.
       const client = createDatabaseClient({ connectionString: dbUrl });
       try {
         await client.connect();
-        await client.query(`SET LOCAL lock_timeout = '10s'`);
-        await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
-        logger.info({ collections }, `Truncated ${collections.length} collections successfully`);
+        for (const collection of collections) {
+          const qualifiedName = toQualifiedCollectionTableName(collection);
+          await client.query(`DELETE FROM ${qualifiedName}`);
+        }
+        logger.info({ collections }, `Deleted data from ${collections.length} collections successfully`);
       } finally {
         await client.end();
       }

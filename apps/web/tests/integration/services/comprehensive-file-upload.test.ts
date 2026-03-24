@@ -314,8 +314,14 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         expect(job.stage).toBe(PROCESSING_STAGE.COMPLETED);
       });
 
-      // Verify events were created from ODS file (3 events in fixture)
-      const events = await payload.find({ collection: "events", limit: 20 });
+      // Verify events were created from ODS file (3 events in fixture, scoped to this import's dataset)
+      const odsIngestJob = importJobs.docs[0];
+      const odsDatasetId = typeof odsIngestJob.dataset === "object" ? odsIngestJob.dataset.id : odsIngestJob.dataset;
+      const events = await payload.find({
+        collection: "events",
+        where: { dataset: { equals: odsDatasetId } },
+        limit: 20,
+      });
 
       expect(events.docs).toHaveLength(3);
       logger.debug(`✓ Created ${events.docs.length} events from ODS file`);
@@ -600,8 +606,20 @@ describe.sequential("Comprehensive File Upload Tests", () => {
         const completed = await runJobsUntilComplete(ingestFile.id, 100);
         expect(completed).toBe(true);
 
-        // Verify all events were created
-        const events = await payload.find({ collection: "events", limit: 100 });
+        // Verify all events were created (scoped to this import's dataset)
+        const largeImportJobs = await payload.find({
+          collection: "ingest-jobs",
+          where: { ingestFile: { equals: ingestFile.id } },
+        });
+        const largeDatasetId =
+          typeof largeImportJobs.docs[0].dataset === "object"
+            ? largeImportJobs.docs[0].dataset.id
+            : largeImportJobs.docs[0].dataset;
+        const events = await payload.find({
+          collection: "events",
+          where: { dataset: { equals: largeDatasetId } },
+          limit: 100,
+        });
 
         expect(events.docs).toHaveLength(50);
         logger.debug(`✓ Successfully processed ${events.docs.length} events`);

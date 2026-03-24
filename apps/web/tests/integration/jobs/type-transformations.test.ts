@@ -70,7 +70,7 @@ describe.sequential("Expression Transforms Integration", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate(["events", "ingest-jobs", "ingest-files", "datasets"]);
+    await testEnv.seedManager.truncate(["events", "ingest-jobs", "ingest-files", "datasets", "dataset-schemas"]);
     vi.restoreAllMocks();
   });
 
@@ -154,7 +154,9 @@ describe.sequential("Expression Transforms Integration", () => {
   });
 
   it("should not transform when allowTransformations is false", async () => {
-    const mockData = [{ id: "1", name: "Alice", age: "25" }];
+    // Use unique IDs (100+) that don't collide with the first test's IDs (1, 2)
+    // to avoid uniqueId constraint violations when truncation doesn't clear bulk-inserted events
+    const mockData = [{ id: "100", name: "Alice", age: "25" }];
     vi.spyOn(fileReaders, "streamBatchesFromFile").mockReturnValue(mockStreamBatch(mockData) as any);
 
     const dataset: Dataset = await payload.create({

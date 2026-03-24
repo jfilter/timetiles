@@ -194,8 +194,13 @@ describe.sequential("Job Queueing Tests", () => {
       logger.info("Verified: single ingest job processed through all stages");
 
       // Verify exactly 3 events (no duplicates from double-processing)
+      // Filter by both dataset and ingestJob to scope to this test's pipeline run
       const datasetId = extractRelationId(importJobs.docs[0].dataset);
-      const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } } });
+      const ingestJobId = importJobs.docs[0].id;
+      const events = await payload.find({
+        collection: "events",
+        where: { dataset: { equals: datasetId }, ingestJob: { equals: ingestJobId } },
+      });
       expect(events.docs).toHaveLength(3);
       logger.info("Verified: correct event count, no stage duplication");
     });

@@ -182,8 +182,10 @@ describe.sequential("Manual Ingest Workflow (Integration)", () => {
     expect(ingestJobs.docs).toHaveLength(1);
     expect(ingestJobs.docs[0].stage).toBe(PROCESSING_STAGE.COMPLETED);
 
-    // Verify events were created
-    const events = await payload.find({ collection: "events", limit: 10 });
+    // Verify events were created (scoped to this ingest job's dataset)
+    const ingestJobDoc = ingestJobs.docs[0];
+    const datasetId = typeof ingestJobDoc.dataset === "object" ? ingestJobDoc.dataset.id : ingestJobDoc.dataset;
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } }, limit: 10 });
 
     expect(events.docs).toHaveLength(3);
 
@@ -286,8 +288,8 @@ describe.sequential("Manual Ingest Workflow (Integration)", () => {
     const completedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
     expect(completedJob.stage).toBe(PROCESSING_STAGE.COMPLETED);
 
-    // Verify events were created
-    const events = await payload.find({ collection: "events", limit: 10 });
+    // Verify events were created (scoped to this test's dataset)
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } }, limit: 10 });
     expect(events.docs.length).toBeGreaterThanOrEqual(2);
   }, 60000);
 

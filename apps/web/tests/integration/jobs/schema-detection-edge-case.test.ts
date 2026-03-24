@@ -22,7 +22,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-const TEST_FILENAME = "edge-case-test.csv";
+const TEST_FILENAME_BASE = "edge-case-test";
 
 /** Run jobs until schema detection is complete */
 const runJobsUntilSchemaComplete = async (
@@ -49,6 +49,7 @@ describe.sequential("Schema Detection - Edge Cases", () => {
   let testCatalogId: number;
   let _testDatasetId: number;
   let uploadUserId: string | number;
+  let testFilename: string;
 
   let originalSchemaDetectionBatchSize: number;
   let originalDuplicateAnalysisBatchSize: number;
@@ -85,8 +86,9 @@ describe.sequential("Schema Detection - Edge Cases", () => {
   beforeEach(async () => {
     await testEnv.seedManager.truncate(collectionsToReset);
 
+    testFilename = `${TEST_FILENAME_BASE}-${crypto.randomUUID().slice(0, 8)}.csv`;
     const { dataset } = await withDataset(testEnv, testCatalogId, {
-      name: TEST_FILENAME,
+      name: testFilename,
       language: "eng",
       schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
     });
@@ -105,10 +107,10 @@ Event 2,2024-01-02,pending
 Event 3,2024-01-03,active`;
 
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
-      filename: TEST_FILENAME,
+      filename: testFilename,
       mimeType: "text/csv",
       user: uploadUserId,
-      additionalData: { originalName: TEST_FILENAME },
+      additionalData: { originalName: testFilename },
       triggerWorkflow: true,
     });
 
@@ -154,10 +156,10 @@ Event 5,2024-01-05,A
 Event 6,2024-01-06,B`;
 
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
-      filename: TEST_FILENAME,
+      filename: testFilename,
       mimeType: "text/csv",
       user: uploadUserId,
-      additionalData: { originalName: TEST_FILENAME },
+      additionalData: { originalName: testFilename },
       triggerWorkflow: true,
     });
 

@@ -131,14 +131,22 @@ describe.sequential("Combined Transformations Integration", () => {
      */
 
     // Create dataset with German language and transformations
+    const uid1 = Math.random().toString(36).slice(2, 8);
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Combined Transform Dataset ${Date.now()}`,
       language: "deu", // German
       schemaConfig: { allowTransformations: true },
       ingestTransforms: [
-        { id: "transform-1", type: "rename", from: "Ereignis_Titel", to: "titel", active: true, autoDetected: false },
         {
-          id: "transform-2",
+          id: `transform-1-${uid1}`,
+          type: "rename",
+          from: "Ereignis_Titel",
+          to: "titel",
+          active: true,
+          autoDetected: false,
+        },
+        {
+          id: `transform-2-${uid1}`,
           type: "string-op",
           from: "Teilnehmer_Anzahl",
           operation: "expression",
@@ -233,6 +241,7 @@ describe.sequential("Combined Transformations Integration", () => {
      * 2. Expression transform operates on renamed field
      */
 
+    const uid2 = Math.random().toString(36).slice(2, 8);
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Order Test Dataset ${Date.now()}`,
       language: "deu",
@@ -240,7 +249,7 @@ describe.sequential("Combined Transformations Integration", () => {
       // First: rename attendee_count → Teilnehmer_Anzahl, then convert to number
       ingestTransforms: [
         {
-          id: "transform-1",
+          id: `transform-1-${uid2}`,
           type: "rename",
           from: "attendee_count",
           to: "Teilnehmer_Anzahl",
@@ -248,7 +257,7 @@ describe.sequential("Combined Transformations Integration", () => {
           autoDetected: false,
         },
         {
-          id: "transform-2",
+          id: `transform-2-${uid2}`,
           type: "string-op",
           from: "Teilnehmer_Anzahl",
           operation: "expression",
@@ -308,12 +317,13 @@ Festival,2500,Music festival`;
      * - Field mapping should detect "titel" as German title field
      */
 
+    const uid3 = Math.random().toString(36).slice(2, 8);
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Mapping Interaction Dataset ${Date.now()}`,
       language: "deu", // German
       ingestTransforms: [
         {
-          id: "transform-1",
+          id: `transform-1-${uid3}`,
           type: "rename",
           from: "event_name",
           to: "titel", // German word for "title"
@@ -355,14 +365,15 @@ Workshop,Learning session,2024-02-20`;
      * - Expression transform: anzahl string → number
      */
 
+    const uid4 = Math.random().toString(36).slice(2, 8);
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Type Interaction Dataset ${Date.now()}`,
       language: "eng",
       schemaConfig: { allowTransformations: true },
       ingestTransforms: [
-        { id: "transform-1", type: "rename", from: "count", to: "anzahl", active: true, autoDetected: false },
+        { id: `transform-1-${uid4}`, type: "rename", from: "count", to: "anzahl", active: true, autoDetected: false },
         {
-          id: "transform-2",
+          id: `transform-2-${uid4}`,
           type: "string-op",
           from: "anzahl", // Transformed field name
           operation: "expression",

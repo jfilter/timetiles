@@ -55,10 +55,11 @@ describe.sequential("Views Collection", () => {
     clearViewCache();
     clearSiteCache();
 
-    // Create a test site for views
+    // Create a test site with a unique slug to avoid collisions across parallel workers
+    const uniqueId = crypto.randomUUID().slice(0, 8);
     testSite = await payload.create({
       collection: "sites",
-      data: { name: "Test Site", slug: "test-site", isPublic: true, _status: "published" },
+      data: { name: `Test Site ${uniqueId}`, slug: `test-site-${uniqueId}`, isPublic: true, _status: "published" },
       user: regularUser,
     });
   });
@@ -318,13 +319,15 @@ describe.sequential("Views Collection", () => {
 
   describe("View Resolver", () => {
     let testView: View;
+    let viewSlug: string;
 
     beforeEach(async () => {
+      viewSlug = `resolver-test-${crypto.randomUUID().slice(0, 8)}`;
       testView = await payload.create({
         collection: "views",
         data: {
           name: "Resolver Test View",
-          slug: "resolver-test",
+          slug: viewSlug,
           site: testSite.id,
           isDefault: false,
           isPublic: true,
@@ -335,7 +338,7 @@ describe.sequential("Views Collection", () => {
     });
 
     it("should find view by slug within a site", async () => {
-      const view = await findViewBySlug(payload, "resolver-test", testSite.id);
+      const view = await findViewBySlug(payload, viewSlug, testSite.id);
       expect(view).not.toBeNull();
       expect(view?.id).toBe(testView.id);
     });
@@ -351,7 +354,7 @@ describe.sequential("Views Collection", () => {
     });
 
     it("should resolve view by slug", async () => {
-      const view = await resolveView(payload, testSite.id, "resolver-test");
+      const view = await resolveView(payload, testSite.id, viewSlug);
       expect(view?.id).toBe(testView.id);
     });
 

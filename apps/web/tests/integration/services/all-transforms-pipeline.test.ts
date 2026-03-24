@@ -108,47 +108,59 @@ describe.sequential("All Transform Types Pipeline", () => {
   /**
    * Build the standard set of transforms used across tests.
    * The order is critical: concatenate runs BEFORE string-op uppercase.
+   * Each call generates unique IDs to avoid conflicts in the shared
+   * datasets_ingest_transforms table (isolate: false).
    */
-  const buildAllTransforms = () => [
-    { id: "t-rename", type: "rename", from: "event_name", to: "title", active: true, autoDetected: false },
-    {
-      id: "t-date",
-      type: "date-parse",
-      from: "event_date",
-      inputFormat: "DD/MM/YYYY",
-      outputFormat: "YYYY-MM-DD",
-      active: true,
-      autoDetected: false,
-    },
-    {
-      id: "t-concat",
-      type: "concatenate",
-      fromFields: ["venue_city", "venue_country"],
-      separator: ", ",
-      to: "location",
-      active: true,
-      autoDetected: false,
-    },
-    { id: "t-upper", type: "string-op", from: "venue_city", operation: "uppercase", active: true, autoDetected: false },
-    {
-      id: "t-split",
-      type: "split",
-      from: "full_address",
-      delimiter: " ",
-      toFields: ["street_name", "street_number", "split_city"],
-      active: true,
-      autoDetected: false,
-    },
-    {
-      id: "t-cast",
-      type: "string-op",
-      from: "attendees",
-      operation: "expression",
-      expression: "toNumber(value)",
-      active: true,
-      autoDetected: false,
-    },
-  ];
+  const buildAllTransforms = () => {
+    const uid = Math.random().toString(36).slice(2, 8);
+    return [
+      { id: `t-rename-${uid}`, type: "rename", from: "event_name", to: "title", active: true, autoDetected: false },
+      {
+        id: `t-date-${uid}`,
+        type: "date-parse",
+        from: "event_date",
+        inputFormat: "DD/MM/YYYY",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+      {
+        id: `t-concat-${uid}`,
+        type: "concatenate",
+        fromFields: ["venue_city", "venue_country"],
+        separator: ", ",
+        to: "location",
+        active: true,
+        autoDetected: false,
+      },
+      {
+        id: `t-upper-${uid}`,
+        type: "string-op",
+        from: "venue_city",
+        operation: "uppercase",
+        active: true,
+        autoDetected: false,
+      },
+      {
+        id: `t-split-${uid}`,
+        type: "split",
+        from: "full_address",
+        delimiter: " ",
+        toFields: ["street_name", "street_number", "split_city"],
+        active: true,
+        autoDetected: false,
+      },
+      {
+        id: `t-cast-${uid}`,
+        type: "string-op",
+        from: "attendees",
+        operation: "expression",
+        expression: "toNumber(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+  };
 
   /**
    * Run a full import pipeline for the given dataset and return the created events.
@@ -252,11 +264,12 @@ describe.sequential("All Transform Types Pipeline", () => {
   // --- Test 2: Inactive transform is skipped ---
 
   it("should skip inactive transforms while applying active ones", async () => {
+    const uid = Math.random().toString(36).slice(2, 8);
     const transforms = [
       ...buildAllTransforms(),
       // 7th transform: lowercase venue_country, but INACTIVE
       {
-        id: "t-lower-inactive",
+        id: `t-lower-inactive-${uid}`,
         type: "string-op",
         from: "venue_country",
         operation: "lowercase",

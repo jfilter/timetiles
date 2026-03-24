@@ -408,9 +408,8 @@ describe.sequential("Scraper Collections Access Control", () => {
 
     const repo = await payload.create({
       collection: "scraper-repos",
-      data: { name: "Path Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
-      user: trustedUser,
-      overrideAccess: false,
+      data: { name: "Path Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
     });
 
     await expect(
@@ -434,9 +433,8 @@ describe.sequential("Scraper Collections Access Control", () => {
 
     const repo = await payload.create({
       collection: "scraper-repos",
-      data: { name: "Abs Path Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
-      user: trustedUser,
-      overrideAccess: false,
+      data: { name: "Abs Path Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
     });
 
     await expect(
@@ -460,9 +458,8 @@ describe.sequential("Scraper Collections Access Control", () => {
 
     const repo = await payload.create({
       collection: "scraper-repos",
-      data: { name: "Env Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
-      user: trustedUser,
-      overrideAccess: false,
+      data: { name: "Env Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
     });
 
     await expect(
@@ -487,9 +484,13 @@ describe.sequential("Scraper Collections Access Control", () => {
 
     const repo = await payload.create({
       collection: "scraper-repos",
-      data: { name: "Invalid Key Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
-      user: trustedUser,
-      overrideAccess: false,
+      data: {
+        name: "Invalid Key Repo",
+        sourceType: "upload",
+        code: { "scraper.py": "pass" },
+        createdBy: trustedUser.id,
+      },
+      overrideAccess: true,
     });
 
     await expect(
@@ -514,9 +515,8 @@ describe.sequential("Scraper Collections Access Control", () => {
 
     const repo = await payload.create({
       collection: "scraper-repos",
-      data: { name: "Valid Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
-      user: trustedUser,
-      overrideAccess: false,
+      data: { name: "Valid Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
     });
 
     const scraper = await payload.create({

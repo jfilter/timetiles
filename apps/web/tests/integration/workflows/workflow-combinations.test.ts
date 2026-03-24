@@ -173,8 +173,10 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(ingestJobs.docs).toHaveLength(1);
     expect(ingestJobs.docs[0].stage).toBe(PROCESSING_STAGE.COMPLETED);
 
-    // Verify events created
-    const events = await payload.find({ collection: "events", limit: 10 });
+    // Verify events created (scoped to this ingest file's dataset)
+    const ingestJobDoc = ingestJobs.docs[0];
+    const datasetId = typeof ingestJobDoc.dataset === "object" ? ingestJobDoc.dataset.id : ingestJobDoc.dataset;
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } }, limit: 10 });
     expect(events.docs).toHaveLength(3);
 
     const titles = events.docs.map((e: any) => e.originalData?.title);
@@ -298,8 +300,8 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     const completedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
     expect(completedJob.stage).toBe(PROCESSING_STAGE.COMPLETED);
 
-    // Verify events were created
-    const events = await payload.find({ collection: "events", limit: 10 });
+    // Verify events were created (scoped to this test's dataset)
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } }, limit: 10 });
     expect(events.docs.length).toBeGreaterThanOrEqual(2);
   }, 60000);
 
@@ -368,8 +370,8 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     const unchangedJob = await payload.findByID({ collection: "ingest-jobs", id: reviewResult.ingestJob!.id });
     expect(unchangedJob.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
 
-    // No events should have been created
-    const events = await payload.find({ collection: "events", limit: 10 });
+    // No events should have been created for this dataset
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } }, limit: 10 });
     expect(events.docs).toHaveLength(0);
 
     // IngestFile should still be pending
@@ -502,14 +504,15 @@ describe.sequential("Workflow Combinations (Integration)", () => {
 
     expect(result.settled).toBe(true);
 
-    // No events should be created from a headers-only file
-    const events = await payload.find({ collection: "events", limit: 10 });
-    expect(events.docs).toHaveLength(0);
-
     // IngestJob should reach a terminal state (failed for empty file, or completed with 0 events)
     const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
     if (jobs.docs.length > 0) {
       expect([PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED]).toContain(jobs.docs[0].stage);
+
+      // No events should be created from a headers-only file (scoped to dataset)
+      const datasetId = typeof jobs.docs[0].dataset === "object" ? jobs.docs[0].dataset.id : jobs.docs[0].dataset;
+      const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } }, limit: 10 });
+      expect(events.docs).toHaveLength(0);
     }
     // File should reach a terminal state
     expect(["completed", "failed"]).toContain(result.ingestFile.status);
@@ -535,10 +538,6 @@ describe.sequential("Workflow Combinations (Integration)", () => {
 
     expect(result.settled).toBe(true);
 
-    // No events should have been created since geocoding failed
-    const events = await payload.find({ collection: "events", limit: 10 });
-    expect(events.docs).toHaveLength(0);
-
     // The IngestJob should be FAILED (geocoding total failure is marked by processSheets)
     const ingestJobs = await payload.find({
       collection: "ingest-jobs",
@@ -546,6 +545,12 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     });
     expect(ingestJobs.docs.length).toBeGreaterThan(0);
     expect(ingestJobs.docs[0].stage).toBe(PROCESSING_STAGE.FAILED);
+
+    // No events should have been created since geocoding failed (scoped to dataset)
+    const datasetId =
+      typeof ingestJobs.docs[0].dataset === "object" ? ingestJobs.docs[0].dataset.id : ingestJobs.docs[0].dataset;
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } }, limit: 10 });
+    expect(events.docs).toHaveLength(0);
 
     // File should be failed since the job failed
     expect(result.ingestFile.status).toBe("failed");
@@ -565,8 +570,15 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(result1.settled).toBe(true);
     expect(result1.ingestFile.status).toBe("completed");
 
-    // Verify first batch events
-    const eventsAfterFirst = await payload.find({ collection: "events", limit: 20 });
+    // Verify first batch events (scoped to file1's ingest job dataset)
+    const ingestJobs1 = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: file1.id } } });
+    const datasetId1 =
+      typeof ingestJobs1.docs[0].dataset === "object" ? ingestJobs1.docs[0].dataset.id : ingestJobs1.docs[0].dataset;
+    const eventsAfterFirst = await payload.find({
+      collection: "events",
+      where: { dataset: { equals: datasetId1 } },
+      limit: 20,
+    });
     expect(eventsAfterFirst.docs.length).toBeGreaterThanOrEqual(2);
 
     // Second import to same catalog
@@ -580,9 +592,16 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(result2.settled).toBe(true);
     expect(result2.ingestFile.status).toBe("completed");
 
-    // Verify all events exist
-    const allEvents = await payload.find({ collection: "events", limit: 20 });
-    expect(allEvents.docs.length).toBeGreaterThanOrEqual(4);
+    // Verify events from second import exist
+    const ingestJobs2 = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: file2.id } } });
+    const datasetId2 =
+      typeof ingestJobs2.docs[0].dataset === "object" ? ingestJobs2.docs[0].dataset.id : ingestJobs2.docs[0].dataset;
+    const eventsFromFile2 = await payload.find({
+      collection: "events",
+      where: { dataset: { equals: datasetId2 } },
+      limit: 20,
+    });
+    expect(eventsFromFile2.docs.length).toBeGreaterThanOrEqual(2);
 
     // Verify both ingest files show completed
     const finalFile1 = await payload.findByID({ collection: "ingest-files", id: file1.id });

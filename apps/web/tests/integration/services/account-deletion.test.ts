@@ -101,9 +101,25 @@ describe.sequential("Account Deletion Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { admin: { role: "admin" } });
 
+      // In shared test environments (isolate: false), other admin users may exist
+      // from other test files. Demote all other admins to ensure ours is truly the last.
+      const allAdmins = await payload.find({
+        collection: "users",
+        where: { and: [{ role: { equals: "admin" } }, { id: { not_equals: users.admin.id } }] },
+        overrideAccess: true,
+      });
+      for (const admin of allAdmins.docs) {
+        await payload.update({ collection: "users", id: admin.id, data: { role: "user" }, overrideAccess: true });
+      }
+
       const result = await deletionService.canDeleteUser(users.admin.id);
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain("last admin");
+
+      // Restore demoted admins
+      for (const admin of allAdmins.docs) {
+        await payload.update({ collection: "users", id: admin.id, data: { role: "admin" }, overrideAccess: true });
+      }
     });
 
     it("should allow deleting admin if another admin exists", async () => {

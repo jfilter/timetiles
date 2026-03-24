@@ -179,16 +179,17 @@ describe.sequential("Dataset Detection Job", () => {
 
   it("should create new dataset when originalName is missing", async () => {
     const csvContent = "name,date\nEvent 1,2024-01-01\n";
+    const uniqueSuffix = crypto.randomUUID().slice(0, 8);
 
     // Pre-create a dataset
     const { dataset: preCreatedDataset } = await withDataset(testEnv, testCatalogId, {
-      name: "test.csv",
+      name: `test-${uniqueSuffix}.csv`,
       language: "deu",
     });
 
     // Create import file WITHOUT originalName
     const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
-      filename: "different-name.csv", // Different from dataset name
+      filename: `different-name-${uniqueSuffix}.csv`, // Different from dataset name
       mimeType: "text/csv",
       user: uploadUserId,
       // NO originalName set
