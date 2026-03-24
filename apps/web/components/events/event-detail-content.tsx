@@ -178,7 +178,7 @@ export const EventDetailContent = ({
               )}
               <FieldBox
                 label={t("status")}
-                value={event.geocodingInfo.geocodingStatus ?? "unknown"}
+                value={event.geocodingInfo.geocodingStatus ?? t("statusUnknown")}
                 capitalize
                 status={event.geocodingInfo.geocodingStatus as "success" | "failed" | "pending"}
               />
@@ -189,7 +189,12 @@ export const EventDetailContent = ({
 
           {/* Additional Data Fields */}
           {additionalFields.map(([key, value]) => (
-            <FieldBox key={key} label={key.replaceAll(/([A-Z])/g, " $1").trim()} value={safeToString(value)} />
+            <FieldBox
+              key={key}
+              // eslint-disable-next-line i18next/no-literal-string -- regex replacement pattern, not user-facing text
+              label={key.replaceAll(/([A-Z])/g, " $1").trim()}
+              value={safeToString(value)}
+            />
           ))}
         </div>
       </div>

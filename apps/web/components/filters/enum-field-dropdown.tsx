@@ -76,6 +76,7 @@ const EnumCheckboxItem = ({ value, count, percent, checked, onToggle, onPreventS
  */
 export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionChange }: EnumFieldDropdownProps) => {
   const t = useTranslations("Common");
+  const tFilters = useTranslations("Filters");
   const hasSelection = selectedValues.length > 0;
 
   const handleToggle = (value: string) => {
@@ -123,7 +124,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
                   type="button"
                   onClick={handleClear}
                   className="hover:bg-muted rounded p-0.5"
-                  aria-label={`Clear ${label} filter`}
+                  aria-label={tFilters("clearFieldFilter", { label })}
                 >
                   <X className="h-3 w-3" aria-hidden="true" />
                 </button>

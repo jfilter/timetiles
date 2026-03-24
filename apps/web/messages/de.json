@@ -38,7 +38,13 @@
     "startOver": "Neu beginnen",
     "showLess": "Weniger anzeigen",
     "showAll": "Alle anzeigen ({count} weitere)",
-    "showAllDatasets": "Alle Datensätze anzeigen"
+    "showAllDatasets": "Alle Datensätze anzeigen",
+    "toggleTheme": "Design umschalten",
+    "switchToLightMode": "Zum hellen Modus wechseln",
+    "switchToDarkMode": "Zum dunklen Modus wechseln",
+    "loadingFilters": "Filter werden geladen",
+    "switchToGerman": "Auf Deutsch wechseln",
+    "switchToEnglish": "Auf Englisch wechseln"
   },
   "Auth": {
     "welcomeBack": "Willkommen zurück",
@@ -136,7 +142,19 @@
     "descFilteredBy": ", gefiltert nach {filters}",
     "descSpanning": ", Zeitraum {dateRange}",
     "descJoinTwo": "{first} und {second}",
-    "descJoinMore": "{first}, {second} und {count} weitere"
+    "descJoinMore": "{first}, {second} und {count} weitere",
+    "eventFallbackTitle": "Ereignis {id}",
+    "startDateSlider": "Startdatum: {date}",
+    "endDateSlider": "Enddatum: {date}",
+    "timelineHistogram": "Zeitleisten-Histogramm – klicken zum Zeitraum auswählen",
+    "startDate": "Startdatum",
+    "endDate": "Enddatum",
+    "histogramBarTitle": "{date}: {count} Ereignisse",
+    "allEvents": "Alle Ereignisse",
+    "eventsLabel": "Ereignisse",
+    "countDatasets": "{count} Datensätze",
+    "dateRangeFrom": "Ab {date}",
+    "dateRangeUntil": "Bis {date}"
   },
   "Filters": {
     "dataSources": "Datenquellen",
@@ -151,7 +169,12 @@
     "myCatalogs": "Meine Kataloge",
     "publicCatalogs": "Öffentliche Kataloge",
     "noDatasets": "Keine Datensätze verfügbar",
-    "more": "+{count} weitere"
+    "more": "+{count} weitere",
+    "selectCatalog": "Katalog {name} auswählen",
+    "deselectCatalog": "Katalog {name} abwählen",
+    "enableDataset": "Datensatz {name} aktivieren",
+    "disableDataset": "Datensatz {name} deaktivieren",
+    "clearFieldFilter": "{label}-Filter löschen"
   },
   "Events": {
     "title": "Ereignisse",
@@ -186,7 +209,8 @@
     "dataset": "Datensatz",
     "location": "Standort",
     "noEventsFound": "Keine Ereignisse gefunden",
-    "showingRecentEvents": "Bis zu 50 der neuesten Ereignisse werden angezeigt"
+    "showingRecentEvents": "Bis zu 50 der neuesten Ereignisse werden angezeigt",
+    "statusUnknown": "unbekannt"
   },
   "Account": {
     "settings": "Kontöinstellungen",
@@ -790,5 +814,31 @@
     "errorTitle": "Etwas ist schiefgelaufen",
     "tryAgain": "Erneut versuchen",
     "originNotAllowed": "Das Einbetten von diesem Ursprung ist nicht gestattet."
+  },
+  "Admin": {
+    "backToSite": "Zurück zur Seite",
+    "switchToLightMode": "Zum hellen Modus wechseln",
+    "switchToDarkMode": "Zum dunklen Modus wechseln",
+    "testGeocoding": "Geocodierung testen",
+    "testGeocodingDescription": "Testen Sie Ihre Geocodierungs-Anbieter mit einer Beispieladresse.",
+    "enterAddress": "Adresse eingeben...",
+    "testing": "Wird getestet...",
+    "test": "Testen",
+    "notConfigured": "Nicht konfiguriert",
+    "success": "Erfolgreich",
+    "failed": "Fehlgeschlagen",
+    "confidence": "Konfidenz: {value}%",
+    "unknownError": "Unbekannter Fehler",
+    "google": "Google",
+    "nominatim": "Nominatim",
+    "opencage": "OpenCage",
+    "embedSaveHint": "Speichern Sie diese Ansicht, um eine Einbettungs-URL zu generieren.",
+    "embedUrl": "Einbettungs-URL",
+    "iframeCode": "iframe-Code",
+    "copied": "Kopiert!",
+    "copyIframeCode": "iframe-Code kopieren",
+    "scheduledImportsDisabled": "Geplante Importe deaktiviert",
+    "scheduledImportsDisabledDescription": "Das Erstellen neuer geplanter Importe ist derzeit durch einen Administrator deaktiviert. Bestehende Zeitpläne können weiterhin angezeigt und bearbeitet werden.",
+    "privateVisibilityRestricted": "Die private Sichtbarkeit ist derzeit eingeschränkt. Alle neuen Kataloge und Datensätze müssen öffentlich sein. Wenden Sie sich an einen Administrator, um private Inhalte zu aktivieren."
   }
 }

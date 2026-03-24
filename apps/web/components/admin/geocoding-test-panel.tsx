@@ -12,6 +12,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import React, { useState } from "react";
 
 import type { TestResult } from "@/lib/hooks/use-geocoding-test";
@@ -73,31 +74,34 @@ const styles = {
 } as const;
 
 const ResultDisplay = ({ result }: { result: TestResult | undefined }) => {
+  const t = useTranslations("Admin");
+
   if (!result) {
-    return <span style={styles.notConfigured}>Not configured</span>;
+    return <span style={styles.notConfigured}>{t("notConfigured")}</span>;
   }
 
   if (result.success && result.result) {
     return (
       <div style={styles.resultText}>
-        <div style={styles.successText}>Success</div>
+        <div style={styles.successText}>{t("success")}</div>
         <div style={styles.coordsText}>
           {result.result.latitude.toFixed(6)}, {result.result.longitude.toFixed(6)}
         </div>
-        <div style={styles.grayText}>Confidence: {(result.result.confidence * 100).toFixed(0)}%</div>
+        <div style={styles.grayText}>{t("confidence", { value: (result.result.confidence * 100).toFixed(0) })}</div>
       </div>
     );
   }
 
   return (
     <div style={styles.resultText}>
-      <div style={styles.failedText}>Failed</div>
-      <div style={styles.grayText}>{result.error ?? "Unknown error"}</div>
+      <div style={styles.failedText}>{t("failed")}</div>
+      <div style={styles.grayText}>{result.error ?? t("unknownError")}</div>
     </div>
   );
 };
 
 export const GeocodingTestPanel = () => {
+  const t = useTranslations("Admin");
   const [testAddress, setTestAddress] = useState("1600 Amphitheatre Parkway, Mountain View, CA");
   const { mutate, isPending, data: results, error } = useGeocodingTest();
 
@@ -113,19 +117,19 @@ export const GeocodingTestPanel = () => {
 
   return (
     <div style={styles.container}>
-      <h3 style={styles.title}>Test Geocoding</h3>
-      <p style={styles.description}>Test your geocoding providers with a sample address.</p>
+      <h3 style={styles.title}>{t("testGeocoding")}</h3>
+      <p style={styles.description}>{t("testGeocodingDescription")}</p>
 
       <div style={styles.inputRow}>
         <input
           type="text"
           value={testAddress}
           onChange={handleInputChange}
-          placeholder="Enter an address..."
+          placeholder={t("enterAddress")}
           style={styles.input}
         />
         <button onClick={handleButtonClick} disabled={isPending || !testAddress.trim()} style={buttonStyle}>
-          {isPending ? "Testing..." : "Test"}
+          {isPending ? t("testing") : t("test")}
         </button>
       </div>
 
@@ -136,7 +140,7 @@ export const GeocodingTestPanel = () => {
           <div style={styles.resultCard}>
             <div style={styles.resultHeader}>
               <span style={styles.dotGoogle} />
-              <span style={styles.providerName}>Google</span>
+              <span style={styles.providerName}>{t("google")}</span>
             </div>
             <ResultDisplay result={results.google} />
           </div>
@@ -144,7 +148,7 @@ export const GeocodingTestPanel = () => {
           <div style={styles.resultCard}>
             <div style={styles.resultHeader}>
               <span style={styles.dotNominatim} />
-              <span style={styles.providerName}>Nominatim</span>
+              <span style={styles.providerName}>{t("nominatim")}</span>
             </div>
             <ResultDisplay result={results.nominatim} />
           </div>
@@ -152,7 +156,7 @@ export const GeocodingTestPanel = () => {
           <div style={styles.resultCard}>
             <div style={styles.resultHeader}>
               <span style={styles.dotOpencage} />
-              <span style={styles.providerName}>OpenCage</span>
+              <span style={styles.providerName}>{t("opencage")}</span>
             </div>
             <ResultDisplay result={results.opencage} />
           </div>

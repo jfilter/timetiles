@@ -18,6 +18,7 @@ import LogoLight from "@timetiles/assets/logos/latest/light/no-grid/png/wordmark
 import { ArrowLeft, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "timetiles-theme";
@@ -59,6 +60,8 @@ const styles = {
 } as const;
 
 const AdminHeader = () => {
+  const t = useTranslations("Admin");
+  const tCommon = useTranslations("Common");
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -81,8 +84,9 @@ const AdminHeader = () => {
       <div style={styles.leftSection}>
         <Image src={logo} alt="TimeTiles" width={32} height={32} style={styles.logoImage} />
         <span style={styles.brandText}>
+          {/* eslint-disable-next-line i18next/no-literal-string -- brand name */}
           {"TimeTiles "}
-          <span style={styles.dashboardBadge}>Dashboard</span>
+          <span style={styles.dashboardBadge}>{tCommon("dashboard")}</span>
         </span>
       </div>
 
@@ -91,7 +95,7 @@ const AdminHeader = () => {
         {/* Back to Site */}
         <Link href="/" style={styles.backLink}>
           <ArrowLeft size={16} />
-          Back to Site
+          {t("backToSite")}
         </Link>
 
         {/* Theme Toggle */}
@@ -100,7 +104,7 @@ const AdminHeader = () => {
             type="button"
             onClick={toggleTheme}
             style={styles.themeButton}
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? t("switchToLightMode") : t("switchToDarkMode")}
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>

@@ -142,7 +142,7 @@ export const TimeRangeSlider = ({
           style={startHandleStyle}
           onPointerDown={handlePointerDown("start")}
           role="slider"
-          aria-label={`Start date: ${startDate ?? formatISODate(minTimestamp)}`}
+          aria-label={t("startDateSlider", { date: startDate ?? formatISODate(minTimestamp) })}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(startPosition * 100)}
@@ -155,7 +155,7 @@ export const TimeRangeSlider = ({
           style={endHandleStyle}
           onPointerDown={handlePointerDown("end")}
           role="slider"
-          aria-label={`End date: ${endDate ?? formatISODate(maxTimestamp)}`}
+          aria-label={t("endDateSlider", { date: endDate ?? formatISODate(maxTimestamp) })}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(endPosition * 100)}
@@ -170,7 +170,7 @@ export const TimeRangeSlider = ({
         onKeyDown={handleHistogramKeyDown}
         role="slider"
         tabIndex={0}
-        aria-label="Timeline histogram - click to set date range"
+        aria-label={t("timelineHistogram")}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(((startPosition + endPosition) / 2) * 100)}
@@ -188,7 +188,7 @@ export const TimeRangeSlider = ({
                   : "bg-cartographic-navy/20 dark:bg-cartographic-charcoal/20"
               }`}
               style={{ height: `${Math.max(4, bar.normalizedHeight * 100)}%` }}
-              title={`${formatShortDate(bar.date)}: ${bar.count} events`}
+              title={t("histogramBarTitle", { date: formatShortDate(bar.date), count: bar.count })}
             />
           ))}
         </div>
@@ -204,7 +204,7 @@ export const TimeRangeSlider = ({
                 onChange={handleStartDateInputChange}
                 min={formatISODate(minTimestamp)}
                 max={endDate ?? formatISODate(maxTimestamp)}
-                label="Start date"
+                label={t("startDate")}
               />
               <span className="text-cartographic-navy/40 dark:text-cartographic-charcoal/40 text-xs" aria-hidden="true">
                 →
@@ -214,7 +214,7 @@ export const TimeRangeSlider = ({
                 onChange={handleEndDateInputChange}
                 min={startDate ?? formatISODate(minTimestamp)}
                 max={formatISODate(maxTimestamp)}
-                label="End date"
+                label={t("endDate")}
               />
             </div>
             <button

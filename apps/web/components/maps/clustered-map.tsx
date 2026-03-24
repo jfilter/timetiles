@@ -170,7 +170,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
         setPopupInfo({
           longitude: coordinates[0],
           latitude: coordinates[1],
-          title: typeof title === "string" ? title : `Event ${String(feature.id ?? "Unknown")}`,
+          title: typeof title === "string" ? title : t("eventFallbackTitle", { id: String(feature.id ?? "Unknown") }),
         });
       }
     };

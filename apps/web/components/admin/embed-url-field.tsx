@@ -13,6 +13,7 @@
 "use client";
 
 import { useDocumentInfo, useFormFields } from "@payloadcms/ui";
+import { useTranslations } from "next-intl";
 import React, { useCallback, useState } from "react";
 
 const styles = {
@@ -70,6 +71,7 @@ const styles = {
 };
 
 export const EmbedUrlField: React.FC = () => {
+  const t = useTranslations("Admin");
   const { id } = useDocumentInfo();
   const slug = useFormFields(([fields]) => fields.slug?.value as string | undefined);
   const [copied, setCopied] = useState(false);
@@ -98,24 +100,24 @@ export const EmbedUrlField: React.FC = () => {
   if (!id || !slug) {
     return (
       <div style={styles.container}>
-        <p style={styles.hint}>Save this view to generate an embed URL.</p>
+        <p style={styles.hint}>{t("embedSaveHint")}</p>
       </div>
     );
   }
 
   return (
     <div style={styles.container}>
-      <span style={styles.label}>Embed URL</span>
+      <span style={styles.label}>{t("embedUrl")}</span>
       <input style={styles.input} readOnly value={embedUrl} onFocus={(e) => e.target.select()} />
 
-      <span style={styles.label}>iframe Code</span>
+      <span style={styles.label}>{t("iframeCode")}</span>
       <textarea style={styles.textarea} readOnly value={iframeCode} onFocus={(e) => e.target.select()} />
 
       {copied ? (
-        <div style={styles.success}>Copied!</div>
+        <div style={styles.success}>{t("copied")}</div>
       ) : (
         <button type="button" style={styles.button} onClick={handleCopy}>
-          Copy iframe Code
+          {t("copyIframeCode")}
         </button>
       )}
     </div>

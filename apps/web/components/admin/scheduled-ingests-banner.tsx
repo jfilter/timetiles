@@ -9,16 +9,21 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import React from "react";
 
 import { FeatureDisabledBanner } from "./feature-disabled-banner";
 
-export const ScheduledIngestsBanner = () => (
-  <FeatureDisabledBanner
-    featureFlag="enableScheduledIngests"
-    title="Scheduled Imports Disabled"
-    description="Creating new scheduled imports is currently disabled by an administrator. Existing schedules can still be viewed and edited."
-  />
-);
+export const ScheduledIngestsBanner = () => {
+  const t = useTranslations("Admin");
+
+  return (
+    <FeatureDisabledBanner
+      featureFlag="enableScheduledIngests"
+      title={t("scheduledImportsDisabled")}
+      description={t("scheduledImportsDisabledDescription")}
+    />
+  );
+};
 
 export default ScheduledIngestsBanner;
