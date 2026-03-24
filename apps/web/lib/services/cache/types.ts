@@ -126,14 +126,6 @@ export interface CacheStorage {
 }
 
 /**
- * Serializer interface for converting objects to/from storable format
- */
-export interface Serializer {
-  serialize<T>(value: T): string | Buffer;
-  deserialize<T>(data: string | Buffer): T;
-}
-
-/**
  * Cache configuration
  */
 export interface CacheConfig {
@@ -147,8 +139,6 @@ export interface CacheConfig {
   maxSize?: number;
   /** Maximum number of entries */
   maxEntries?: number;
-  /** Custom serializer */
-  serializer?: Serializer;
   /** Key prefix */
   keyPrefix?: string;
   /** Callback when entry is evicted */

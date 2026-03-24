@@ -343,21 +343,7 @@ export const useWizardStore = create<WizardStore>()(
 
             const updatedTransforms = { ...s.transforms };
             if (config.ingestTransforms && config.ingestTransforms.length > 0) {
-              // Validate suggested transforms have the required shape before applying
-              const validTransforms = config.ingestTransforms.filter(
-                (t): t is IngestTransform =>
-                  typeof t === "object" &&
-                  t !== null &&
-                  "id" in t &&
-                  "type" in t &&
-                  typeof (t as Record<string, unknown>).type === "string" &&
-                  ["rename", "date-parse", "string-op", "concatenate", "split"].includes(
-                    (t as Record<string, unknown>).type as string
-                  )
-              );
-              if (validTransforms.length > 0) {
-                updatedTransforms[sheetIndex] = validTransforms;
-              }
+              updatedTransforms[sheetIndex] = config.ingestTransforms;
             }
 
             return {

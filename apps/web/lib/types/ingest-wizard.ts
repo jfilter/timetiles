@@ -191,7 +191,7 @@ export interface ConfigSuggestion {
       longitudePath?: string | null;
       locationPath?: string | null;
     };
-    ingestTransforms?: unknown[];
+    ingestTransforms?: IngestTransform[];
     idStrategy?: { type?: string; externalIdPath?: string | null; duplicateStrategy?: string | null };
     deduplicationConfig?: { strategy?: string | null };
     geocodingEnabled?: boolean;

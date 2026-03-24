@@ -8,6 +8,7 @@
  * @category Services
  */
 
+import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import type { ConfigSuggestion } from "@/lib/types/ingest-wizard";
 import type { Dataset } from "@/payload-types";
 
@@ -104,7 +105,7 @@ export const findConfigSuggestions = (
       matchedColumns: matched,
       config: {
         fieldMappingOverrides: overrides ?? {},
-        ingestTransforms: dataset.ingestTransforms ?? [],
+        ingestTransforms: (dataset.ingestTransforms ?? []) as IngestTransform[],
         idStrategy: dataset.idStrategy ?? { type: "auto" },
         deduplicationConfig: dataset.deduplicationConfig ?? { strategy: "skip" },
         geocodingEnabled: dataset.geoFieldDetection?.autoDetect ?? false,
