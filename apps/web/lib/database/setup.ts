@@ -165,7 +165,7 @@ export const createPayloadSchema = async (databaseName: string): Promise<void> =
 export const runMigrations = (connectionString: string): void => {
   try {
     // Mask password in log output
-    const safeUrl = connectionString.replace(/:[^@]+@/, ":***@");
+    const safeUrl = connectionString.replace(/\/\/[^/]+@/, "//***:***@");
     logger.info({ url: safeUrl }, "Running Payload migrations...");
 
     const env = { ...process.env, DATABASE_URL: connectionString };

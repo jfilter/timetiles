@@ -105,14 +105,14 @@ export default async function globalSetup(): Promise<void> {
     throw new Error("DATABASE_URL environment variable is required for E2E tests");
   }
 
-  const safeBaseUrl = baseUrl.replace(/:[^@]+@/, ":***@");
+  const safeBaseUrl = baseUrl.replace(/\/\/[^/]+@/, "//***:***@");
   console.log(
     `🔧 E2E env: DATABASE_URL=${safeBaseUrl}, PAYLOAD_SECRET=${process.env.PAYLOAD_SECRET ? "set" : "MISSING"}, NEXT_PUBLIC_PAYLOAD_URL=${process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "MISSING"}`
   );
 
   const components = parseDatabaseUrl(baseUrl);
   const databaseUrl = constructDatabaseUrl({ ...components, database: databaseName });
-  const safeDatabaseUrl = databaseUrl.replace(/:[^@]+@/, ":***@");
+  const safeDatabaseUrl = databaseUrl.replace(/\/\/[^/]+@/, "//***:***@");
   console.log(`🔧 E2E target DB: ${safeDatabaseUrl}`);
 
   console.log(`📦 Creating test database: ${databaseName}`);

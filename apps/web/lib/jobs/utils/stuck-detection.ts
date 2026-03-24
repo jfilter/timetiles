@@ -66,7 +66,6 @@ export const hasActivePayloadJob = async (
 ): Promise<boolean> => {
   try {
     const activeJobs = await payload.find({
-      // eslint-disable-next-line @typescript-eslint/prefer-as-const -- payload-jobs is an internal Payload collection not in Config["collections"]
       collection: "payload-jobs" as "payload-jobs",
       where: {
         and: [

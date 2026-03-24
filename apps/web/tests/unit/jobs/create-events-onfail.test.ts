@@ -53,13 +53,11 @@ describe.sequential("create-events-batch onFail isolation", () => {
       for (const m of ["select", "from", "where", "limit", "insert", "values", "returning", "delete"]) {
         chain[m] = vi.fn().mockReturnValue(chain);
       }
-      // eslint-disable-next-line unicorn/no-thenable, promise/prefer-await-to-then -- intentional thenable for Drizzle mock
+      // oxlint-disable-next-line unicorn/no-thenable, promise/prefer-await-to-then -- intentional thenable for Drizzle mock
       chain.then = (resolve: any, reject?: any) =>
         rejectWith
-          ? // eslint-disable-next-line promise/prefer-await-to-then
-            Promise.reject(rejectWith).then(resolve, reject)
-          : // eslint-disable-next-line promise/prefer-await-to-then
-            Promise.resolve(resolveValue).then(resolve, reject);
+          ? Promise.reject(rejectWith).then(resolve, reject)
+          : Promise.resolve(resolveValue).then(resolve, reject);
       return chain;
     };
 
