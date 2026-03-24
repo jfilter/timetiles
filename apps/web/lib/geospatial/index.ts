@@ -10,26 +10,17 @@
  */
 
 // Types
-export type { Coordinates, CoordinateSample, CoordinateStats, MapBounds, ParseBoundsResult } from "./types";
+export type { Coordinates, CoordinateSample, CoordinateStats, MapBounds } from "./types";
 export { EARTH_RADIUS_KM } from "./types";
 
 // Validation
-export {
-  areValidCoordinates,
-  categorizeCoordinateValue,
-  isValidCoordinate,
-  isValidLatitude,
-  isValidLatitudeCandidate,
-  isValidLongitude,
-  isValidLongitudeCandidate,
-  valueToString,
-} from "./validation";
+export { areValidCoordinates, isValidCoordinate, valueToString } from "./validation";
 
 // Distance calculations
 export { calculateCentroid, calculateDistance, findMaxDistance } from "./distance";
 
 // Bounds utilities
-export { createBoundingBox, isValidBounds, isWithinBounds, parseBounds, parseBoundsParameter } from "./bounds";
+export { createBoundingBox, isValidBounds, isWithinBounds, parseBounds } from "./bounds";
 
 // Coordinate parsing
 export {

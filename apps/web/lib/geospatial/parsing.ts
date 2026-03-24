@@ -238,7 +238,7 @@ export const parseCoordinate = (value: unknown): number | null => {
  * @internal
  */
 const validateAndNormalizeInput = (value: unknown): string | null => {
-  if (value == null || value == undefined || value === "") {
+  if (value == null || value === "") {
     return null;
   }
 

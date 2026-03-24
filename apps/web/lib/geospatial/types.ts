@@ -71,8 +71,3 @@ export interface CoordinateStats {
  * Earth's radius in kilometers (used for distance calculations).
  */
 export const EARTH_RADIUS_KM = 6371;
-
-/**
- * Re-export ParseBoundsResult from bounds for convenience.
- */
-export type { ParseBoundsResult } from "./bounds";

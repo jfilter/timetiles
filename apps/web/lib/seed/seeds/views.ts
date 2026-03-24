@@ -8,13 +8,14 @@
  */
 import type { View } from "@/payload-types";
 
-export type ViewSeed = Omit<View, "id" | "createdAt" | "updatedAt">;
+/** Seed data type for Views. Allows string slugs for relationship fields (resolved at seed time). */
+export type ViewSeed = Omit<View, "id" | "createdAt" | "updatedAt" | "site"> & { site: number | string };
 
 export const viewSeeds: ViewSeed[] = [
   {
     name: "Default",
     slug: "default-default",
-    site: "default" as unknown as number, // Resolved by relationship resolver via site slug
+    site: "default", // Resolved by relationship resolver via site slug
     isDefault: true,
     isPublic: true,
     _status: "published",

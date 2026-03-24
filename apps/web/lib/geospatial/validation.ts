@@ -11,26 +11,6 @@
 import type { Coordinates } from "./types";
 
 /**
- * Check if latitude is within valid range.
- *
- * @param value - The latitude value to validate
- * @returns True if latitude is between -90 and 90 degrees
- */
-export const isValidLatitude = (value: number): boolean => {
-  return value >= -90 && value <= 90;
-};
-
-/**
- * Check if longitude is within valid range.
- *
- * @param value - The longitude value to validate
- * @returns True if longitude is between -180 and 180 degrees
- */
-export const isValidLongitude = (value: number): boolean => {
-  return value >= -180 && value <= 180;
-};
-
-/**
  * Check if coordinates are valid (includes (0,0) check).
  *
  * Validates both latitude and longitude ranges and filters out
@@ -68,80 +48,6 @@ export const areValidCoordinates = (coords: Coordinates): boolean => {
 };
 
 /**
- * Categorize coordinate value by range.
- *
- * Analyzes a numeric value to determine if it falls within valid
- * latitude range (-90 to 90) or longitude range (-90 to 180).
- * Updates statistics object with the categorization results.
- *
- * @param value - The coordinate value to categorize
- * @param stats - Statistics object to update with categorization results
- */
-export const categorizeCoordinateValue = (
-  value: number,
-  stats: { validCoords: number; latOnly: number; lonOnly: number }
-): void => {
-  const absValue = Math.abs(value);
-
-  if (absValue <= 90) {
-    stats.validCoords++;
-    stats.latOnly++;
-  } else if (absValue <= 180) {
-    stats.validCoords++;
-    stats.lonOnly++;
-  }
-};
-
-/**
- * Check if column is a valid latitude candidate.
- *
- * Evaluates column statistics to determine if it's likely to contain
- * latitude values. Checks that all values are within latitude range
- * and that there's sufficient variation in the data.
- *
- * @param stats - Column statistics including samples and counts
- * @param coordRatio - Ratio of valid coordinates to total values
- * @param bestLatScore - Current best latitude score to beat
- * @returns True if column is a valid latitude candidate
- */
-export const isValidLatitudeCandidate = (
-  stats: { latOnly: number; total: number; samples: number[] },
-  coordRatio: number,
-  bestLatScore: number
-): boolean => {
-  // Check if this column is mostly valid latitudes (all values within -90 to 90)
-  if (stats.latOnly == stats.total && coordRatio > bestLatScore) {
-    // Check it's not all the same value
-    const uniqueValues = new Set(stats.samples).size;
-    return uniqueValues > 1;
-  }
-  return false;
-};
-
-/**
- * Check if column is a valid longitude candidate.
- *
- * Evaluates column statistics to determine if it's likely to contain
- * longitude values. Checks for sufficient variation in the data.
- *
- * @param stats - Column statistics including samples
- * @param coordRatio - Ratio of valid coordinates to total values
- * @param bestLonScore - Current best longitude score to beat
- * @returns True if column is a valid longitude candidate
- */
-export const isValidLongitudeCandidate = (
-  stats: { samples: number[] },
-  coordRatio: number,
-  bestLonScore: number
-): boolean => {
-  if (coordRatio > bestLonScore) {
-    const uniqueValues = new Set(stats.samples).size;
-    return uniqueValues > 1;
-  }
-  return false;
-};
-
-/**
  * Convert value to string safely.
  *
  * Handles various data types and converts them to string representation
@@ -151,7 +57,7 @@ export const isValidLongitudeCandidate = (
  * @returns String representation of the value
  */
 export const valueToString = (value: unknown): string => {
-  if (value == null || value == undefined) {
+  if (value == null) {
     return "";
   }
   if (typeof value == "string") {
@@ -163,6 +69,6 @@ export const valueToString = (value: unknown): string => {
   if (typeof value == "object") {
     return JSON.stringify(value);
   }
-  // All cases handled above, this is unreachable
+  // symbol, bigint, function — convert to empty string
   return "";
 };

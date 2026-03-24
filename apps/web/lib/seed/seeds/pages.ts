@@ -10,7 +10,8 @@
  */
 import type { Page } from "@/payload-types";
 
-export type PageSeed = Omit<Page, "id" | "createdAt" | "updatedAt">;
+/** Seed data type for Pages. Allows string slugs for relationship fields (resolved at seed time). */
+export type PageSeed = Omit<Page, "id" | "createdAt" | "updatedAt" | "site"> & { site: number | string };
 
 /** German translations for pages, keyed by slug */
 export const pagesSeedDe: Record<string, Partial<PageSeed>> = {
@@ -467,7 +468,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Home",
     slug: "home",
-    site: "default" as unknown as number, // Resolved by relationship resolver via site slug
+    site: "default", // Resolved by relationship resolver via site slug
     pageBuilder: [
       {
         blockType: "hero",

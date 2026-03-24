@@ -8,8 +8,6 @@
  * @category Geospatial
  */
 
-import { NextResponse } from "next/server";
-
 import type { Coordinates, MapBounds } from "./types";
 
 /**
@@ -75,52 +73,6 @@ export const parseBounds = (boundsParam: string): MapBounds => {
     throw new Error("Invalid bounds format. Expected: {north, south, east, west}");
   }
   return parsed;
-};
-
-/**
- * Result type for safe bounds parsing with discriminated union.
- *
- * Allows type-safe error handling without exceptions. If parsing succeeds,
- * returns an object with `bounds`. If parsing fails, returns an object
- * with `error` containing a NextResponse.
- */
-export type ParseBoundsResult = { bounds: MapBounds | null; error?: never } | { bounds?: never; error: NextResponse };
-
-/**
- * Safely parse bounds parameter with type-safe error handling.
- *
- * Returns a discriminated union that either contains valid bounds or
- * an error response. This pattern enables type-safe error handling
- * without exceptions.
- *
- * @param boundsParam - Optional JSON string representation of bounds
- * @returns Discriminated union with either bounds or error response
- *
- * @example
- * ```typescript
- * const result = parseBoundsParameter(request.nextUrl.searchParams.get("bounds"));
- * if ("error" in result) {
- *   return result.error; // Type: NextResponse
- * }
- * // result.bounds is now type MapBounds | null
- * const { bounds } = result;
- * ```
- */
-export const parseBoundsParameter = (boundsParam: string | null): ParseBoundsResult => {
-  if (boundsParam == null || boundsParam === "") {
-    return { bounds: null };
-  }
-
-  try {
-    return { bounds: parseBounds(boundsParam) };
-  } catch {
-    return {
-      error: NextResponse.json(
-        { error: "Invalid bounds format. Expected: {north, south, east, west}" },
-        { status: 400 }
-      ),
-    };
-  }
 };
 
 /**
