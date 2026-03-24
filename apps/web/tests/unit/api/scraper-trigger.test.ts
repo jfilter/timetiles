@@ -38,6 +38,7 @@ const mockScraper = { id: 10, name: "Test Scraper", webhookEnabled: true, repo: 
 const createMockPayload = () => ({
   auth: vi.fn().mockResolvedValue({ user: mockUser }),
   findByID: vi.fn(),
+  update: vi.fn(),
   jobs: { queue: vi.fn().mockResolvedValue({ id: "job-abc" }) },
 });
 
@@ -152,5 +153,23 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     expect(response.status).toBe(401);
     const data = await response.json();
     expect(data.error).toBe("Authentication required");
+  });
+
+  it("reverts scraper status to failed when job queue fails", async () => {
+    mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
+
+    const response = await POST(createRequest(), createParams("10"));
+
+    expect(response.status).toBe(500);
+
+    // Verify rollback was called to revert scraper status
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "scrapers",
+        id: 10,
+        data: { lastRunStatus: "failed" },
+        overrideAccess: true,
+      })
+    );
   });
 });

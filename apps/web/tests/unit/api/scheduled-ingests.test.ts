@@ -159,4 +159,29 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
       }),
     });
   });
+
+  it("should revert status to failed when job queue fails", async () => {
+    const mockPayload = createMockPayload();
+    mockPayload.findByID.mockResolvedValue(mockSchedule);
+    mockPayload.update
+      .mockResolvedValueOnce({ docs: [{ ...mockSchedule, lastStatus: "running" }], errors: [] }) // claim succeeds
+      .mockResolvedValueOnce({ docs: [mockSchedule], errors: [] }); // rollback
+    mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
+    mocks.mockGetPayload.mockResolvedValue(mockPayload);
+    vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
+
+    const response = await POST(createRequest(), { params: Promise.resolve({ id: "1" }) });
+    expect(response.status).toBe(500);
+
+    // Verify rollback was called with failed status
+    expect(mockPayload.update).toHaveBeenCalledTimes(2);
+    expect(mockPayload.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        collection: "scheduled-ingests",
+        where: { id: { equals: 1 } },
+        data: { lastStatus: "failed", lastError: "Failed to queue import job" },
+        overrideAccess: true,
+      })
+    );
+  });
 });
