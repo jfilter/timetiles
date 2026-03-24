@@ -16,8 +16,6 @@ import { GET as getStats } from "@/app/api/v1/events/stats/route";
 
 import type { TestEnvironment } from "../../setup/integration/environment";
 
-const COLLECTIONS_TO_RESET = ["users", "events", "datasets", "catalogs"] as const;
-
 describe.sequential("/api/v1/events stats - deeply nested field filtering", () => {
   let payload: Payload;
   let berlinDatasetId: number;
@@ -30,9 +28,7 @@ describe.sequential("/api/v1/events stats - deeply nested field filtering", () =
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
-    // Truncate to avoid data leakage from other test files (isolate: false)
-    await testEnv.seedManager.truncate([...COLLECTIONS_TO_RESET]);
-
+    // No truncation — queries are scoped by dataset ID
     const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
 
     const { catalog } = await withCatalog(testEnv, {
@@ -108,32 +104,42 @@ describe.sequential("/api/v1/events stats - deeply nested field filtering", () =
 
   it("should aggregate datasets using a deeply nested field path", async () => {
     const fieldFilters = JSON.stringify({ "venue.address.city": ["Berlin"] });
+    const datasets = `${berlinDatasetId},${parisDatasetId}`;
     const request = new NextRequest(
-      `http://localhost:3000/api/v1/events/stats?groupBy=dataset&ff=${encodeURIComponent(fieldFilters)}`
+      `http://localhost:3000/api/v1/events/stats?groupBy=dataset&datasets=${datasets}&ff=${encodeURIComponent(fieldFilters)}`
     );
     const response = await getStats(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // Assert filtered results — total reflects only Berlin-filtered events
     expect(data.total).toBe(3);
     expect(data.items).toContainEqual({ id: berlinDatasetId, name: "Berlin Stats Dataset", count: 3 });
   });
 
   it("should calculate geo stats using a deeply nested field path", async () => {
     const fieldFilters = JSON.stringify({ "venue.address.city": ["Berlin"] });
+    const datasets = `${berlinDatasetId},${parisDatasetId}`;
 
+    const unfilteredResponse = await getGeoStats(
+      new NextRequest(`http://localhost:3000/api/v1/events/geo/stats?datasets=${datasets}`),
+      { params: Promise.resolve({}) }
+    );
     const filteredResponse = await getGeoStats(
-      new NextRequest(`http://localhost:3000/api/v1/events/geo/stats?ff=${encodeURIComponent(fieldFilters)}`),
+      new NextRequest(
+        `http://localhost:3000/api/v1/events/geo/stats?datasets=${datasets}&ff=${encodeURIComponent(fieldFilters)}`
+      ),
       { params: Promise.resolve({}) }
     );
 
+    expect(unfilteredResponse.status).toBe(200);
     expect(filteredResponse.status).toBe(200);
 
+    const unfiltered = await unfilteredResponse.json();
     const filtered = await filteredResponse.json();
 
-    // Only assert filtered counts — unfiltered counts are fragile in shared DB (isolate: false)
+    // Scoped by datasets — safe even with pre-existing data
+    expect(unfiltered.p100).toBe(5);
     expect(filtered.p20).toBe(3);
     expect(filtered.p100).toBe(3);
   });

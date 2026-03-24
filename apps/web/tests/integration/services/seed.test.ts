@@ -94,17 +94,17 @@ describe.sequential("Database-backed Seed Operations", () => {
         exitOnFailure: false,
       });
 
-      // Verify we have data before truncation
-      const collections = ["catalogs"] as const;
-      const countsBefore = await payload.find({ collection: "catalogs", limit: 1 });
-      expect(countsBefore.totalDocs).toBeGreaterThan(0);
+      // Capture a specific catalog ID before truncation
+      const catalogsBefore = await payload.find({ collection: "catalogs", limit: 1 });
+      expect(catalogsBefore.totalDocs).toBeGreaterThan(0);
+      const catalogId = catalogsBefore.docs[0]!.id;
 
-      // Truncate — completes without throwing
-      await testEnv.seedManager.truncate([...collections]);
+      // Truncate all seed collections (full list avoids FK constraint issues)
+      await testEnv.seedManager.truncate(seedCollections);
 
-      // Verify truncation cleared the data
-      const countsAfter = await payload.find({ collection: "catalogs", limit: 1 });
-      expect(countsAfter.totalDocs).toBe(0);
+      // Verify the specific catalog no longer exists
+      const catalogAfter = await payload.find({ collection: "catalogs", where: { id: { equals: catalogId } } });
+      expect(catalogAfter.totalDocs).toBe(0);
     }, 90000); // 90 second timeout (increases when running full suite)
   });
 

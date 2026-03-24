@@ -192,19 +192,15 @@ export class SeedManager extends SeedManagerBase {
         });
       }
 
-      // Use DELETE FROM instead of TRUNCATE for per-collection cleanup.
-      // TRUNCATE acquires ACCESS EXCLUSIVE locks that deadlock with Payload's
-      // connection pool (idle connections hold ROW SHARE/EXCLUSIVE locks).
-      // DELETE only needs ROW EXCLUSIVE locks which are compatible with
-      // concurrent reads — fast enough for test tables with few hundred rows.
+      // Use TRUNCATE CASCADE via a dedicated client (not Payload's pool) to avoid
+      // deadlocks with idle Payload connections. A single TRUNCATE statement
+      // handles FK dependencies automatically via CASCADE.
       const client = createDatabaseClient({ connectionString: dbUrl });
       try {
         await client.connect();
-        for (const collection of collections) {
-          const qualifiedName = toQualifiedCollectionTableName(collection);
-          await client.query(`DELETE FROM ${qualifiedName}`);
-        }
-        logger.info({ collections }, `Deleted data from ${collections.length} collections successfully`);
+        const tableList = collections.map(toQualifiedCollectionTableName).join(", ");
+        await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
+        logger.info({ collections }, `Truncated ${collections.length} collections successfully`);
       } finally {
         await client.end();
       }
