@@ -16,42 +16,9 @@ import { z } from "zod";
 import { apiRoute, NotFoundError } from "@/lib/api";
 import { STAGE_ORDER } from "@/lib/constants/stage-graph";
 import { STAGE_DISPLAY_NAMES, STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
-import type { StageProgress } from "@/lib/types/progress-tracking";
+import type { FormattedJobProgress, FormattedStage, StageProgress } from "@/lib/types/progress-tracking";
 import { getDatasetInfo } from "@/lib/utils/event-detail";
 import type { IngestJob } from "@/payload-types";
-
-/**
- * Formatted stage information for API response.
- */
-interface FormattedStage {
-  name: string;
-  displayName: string;
-  status: "pending" | "in_progress" | "completed" | "skipped";
-  progress: number;
-  weight: number;
-  startedAt: string | null;
-  completedAt: string | null;
-  batches: { current: number; total: number };
-  currentBatch: { rowsProcessed: number; rowsTotal: number; percentage: number };
-  performance: { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null };
-}
-
-/**
- * Formatted job progress for API response.
- */
-interface FormattedJobProgress {
-  id: string | number;
-  datasetId: string | number;
-  datasetName?: string;
-  currentStage: string;
-  overallProgress: number;
-  estimatedCompletionTime: string | null;
-  stages: FormattedStage[];
-  errors: number;
-  duplicates: { internal: number; external: number };
-  schemaValidation?: IngestJob["schemaValidation"];
-  results?: IngestJob["results"];
-}
 
 /**
  * Calculate stage progress percentage.
@@ -135,7 +102,7 @@ const formatJobProgress = (job: IngestJob): FormattedJobProgress => {
       external: job.duplicates?.summary?.externalDuplicates ?? 0,
     },
     schemaValidation: job.schemaValidation,
-    results: job.results,
+    results: job.results as FormattedJobProgress["results"],
   };
 };
 

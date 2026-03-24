@@ -11,39 +11,9 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchJson } from "../api/http-error";
+import type { ProgressApiResponse } from "../types/progress-tracking";
 
-export interface ProgressApiResponse {
-  type: string;
-  id: number;
-  status: "pending" | "parsing" | "processing" | "completed" | "failed";
-  originalName: string;
-  catalogId: number | null;
-  datasetsCount: number;
-  datasetsProcessed: number;
-  overallProgress: number;
-  estimatedCompletionTime: string | null;
-  jobs: Array<{
-    id: string | number;
-    datasetId: string | number;
-    datasetName?: string;
-    currentStage: string;
-    overallProgress: number;
-    stages?: Array<{
-      name: string;
-      displayName: string;
-      status: "pending" | "in_progress" | "completed" | "skipped";
-      progress: number;
-      startedAt: string | null;
-      completedAt: string | null;
-      batches: { current: number; total: number };
-      currentBatch: { rowsProcessed: number; rowsTotal: number; percentage: number };
-      performance: { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null };
-    }>;
-    results?: { totalEvents?: number };
-  }>;
-  errorLog?: string | null;
-  completedAt?: string | null;
-}
+export type { ProgressApiResponse } from "../types/progress-tracking";
 
 const POLL_INTERVAL_MS = 2000;
 

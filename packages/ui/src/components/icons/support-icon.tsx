@@ -9,9 +9,7 @@
  */
 import * as React from "react";
 
-export interface IconProps extends React.SVGProps<SVGSVGElement> {
-  size?: number;
-}
+import type { IconProps } from "./map-icon";
 
 export const SupportIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 24, className, ...props }, ref) => (
   <svg

@@ -20,6 +20,14 @@ import {
 } from "@/lib/ingest/configure-service";
 import { cleanupPreview, loadPreviewMetadata } from "@/lib/ingest/preview-store";
 import { validateRequest } from "@/lib/ingest/preview-validation";
+import {
+  authConfigSchema,
+  fieldMappingsSchema,
+  jsonApiConfigSchema,
+  scheduleConfigSchema,
+  sheetMappingsSchema,
+  transformsSchema,
+} from "@/lib/ingest/shared-schemas";
 import { createLogger, logError } from "@/lib/logger";
 import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -33,95 +41,14 @@ const UpdateScheduleBodySchema = z.object({
   previewId: z.uuid(),
   catalogId: z.union([z.number(), z.literal("new")]),
   newCatalogName: z.string().optional(),
-  sheetMappings: z
-    .array(
-      z.object({
-        sheetIndex: z.number().int().min(0),
-        datasetId: z.union([z.number(), z.literal("new")]),
-        newDatasetName: z.string(),
-      })
-    )
-    .min(1),
-  fieldMappings: z
-    .array(
-      z.object({
-        sheetIndex: z.number().int().min(0),
-        titleField: z.string().nullable(),
-        descriptionField: z.string().nullable(),
-        locationNameField: z.string().nullable().optional().default(null),
-        dateField: z.string().nullable(),
-        idField: z.string().nullable(),
-        idStrategy: z.enum(["external", "computed", "auto", "hybrid"]),
-        locationField: z.string().nullable(),
-        latitudeField: z.string().nullable(),
-        longitudeField: z.string().nullable(),
-      })
-    )
-    .min(1),
+  sheetMappings: sheetMappingsSchema,
+  fieldMappings: fieldMappingsSchema,
   deduplicationStrategy: z.enum(["skip", "update", "version"]),
   geocodingEnabled: z.boolean(),
-  transforms: z
-    .array(
-      z.object({
-        sheetIndex: z.number().int().min(0),
-        transforms: z.array(
-          z.object({
-            id: z.string(),
-            type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split"]),
-            active: z.boolean(),
-            autoDetected: z.boolean(),
-            from: z.string().optional(),
-            to: z.string().optional(),
-            inputFormat: z.string().optional(),
-            outputFormat: z.string().optional(),
-            timezone: z.string().optional(),
-            operation: z.enum(["uppercase", "lowercase", "trim", "replace", "expression"]).optional(),
-            pattern: z.string().optional(),
-            replacement: z.string().optional(),
-            expression: z.string().optional(),
-            fromFields: z.array(z.string()).optional(),
-            separator: z.string().optional(),
-            delimiter: z.string().optional(),
-            toFields: z.array(z.string()).optional(),
-          })
-        ),
-      })
-    )
-    .optional(),
-  scheduleConfig: z.object({
-    name: z.string().min(1),
-    scheduleType: z.enum(["frequency", "cron"]),
-    frequency: z.enum(["hourly", "daily", "weekly", "monthly"]).optional(),
-    cronExpression: z.string().optional(),
-    schemaMode: z.enum(["strict", "additive", "flexible"]),
-  }),
-  authConfig: z
-    .object({
-      type: z.enum(["none", "api-key", "bearer", "basic"]),
-      apiKey: z.string().optional(),
-      apiKeyHeader: z.string().optional(),
-      bearerToken: z.string().optional(),
-      username: z.string().optional(),
-      password: z.string().optional(),
-    })
-    .optional(),
-  jsonApiConfig: z
-    .object({
-      recordsPath: z.string().optional(),
-      pagination: z
-        .object({
-          enabled: z.boolean(),
-          type: z.enum(["offset", "cursor", "page"]).optional(),
-          pageParam: z.string().optional(),
-          pageSizeParam: z.string().optional(),
-          pageSize: z.number().optional(),
-          maxPages: z.number().optional(),
-          totalPath: z.string().optional(),
-          nextCursorPath: z.string().optional(),
-        })
-        .optional(),
-    })
-    .optional(),
+  transforms: transformsSchema,
+  scheduleConfig: scheduleConfigSchema,
+  authConfig: authConfigSchema,
+  jsonApiConfig: jsonApiConfigSchema,
   triggerRun: z.boolean().optional(),
 });
 

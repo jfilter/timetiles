@@ -37,28 +37,50 @@ export interface StepFieldMappingProps {
   className?: string;
 }
 
-/** Manage config suggestion state (applied/dismissed) with auto-apply for existing datasets. */
+/** Manage config suggestion state (applied/dismissed) keyed per sheet. */
 const useConfigSuggestion = (
   bestSuggestion: ConfigSuggestion | null,
   sheetMappings: { sheetIndex: number; datasetId?: number | "new" }[],
   activeSheetIndex: number,
   applyDatasetConfig: (sheetIndex: number, config: ConfigSuggestion["config"]) => void
 ) => {
-  const [dismissed, setDismissed] = useState(false);
-  const [applied, setApplied] = useState(false);
-  const appliedRef = useRef(false);
+  const [dismissedSheets, setDismissedSheets] = useState<Set<number>>(new Set());
+  const [appliedSheets, setAppliedSheets] = useState<Set<number>>(new Set());
+  const appliedSheetsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    if (appliedRef.current || !bestSuggestion) return;
+    if (appliedSheetsRef.current.has(activeSheetIndex) || !bestSuggestion) return;
     const mapping = sheetMappings.find((m) => m.sheetIndex === activeSheetIndex);
     if (typeof mapping?.datasetId === "number") {
       applyDatasetConfig(activeSheetIndex, bestSuggestion.config);
-      appliedRef.current = true;
-      setApplied(true);
+      appliedSheetsRef.current = new Set(appliedSheetsRef.current).add(activeSheetIndex);
+      setAppliedSheets((prev) => new Set(prev).add(activeSheetIndex));
     }
   }, [activeSheetIndex, sheetMappings, bestSuggestion, applyDatasetConfig]);
 
-  return { dismissed, applied, setDismissed, setApplied };
+  const dismissed = dismissedSheets.has(activeSheetIndex);
+  const applied = appliedSheets.has(activeSheetIndex);
+
+  return {
+    dismissed,
+    applied,
+    setDismissed: (v: boolean) => {
+      setDismissedSheets((prev) => {
+        const next = new Set(prev);
+        if (v) next.add(activeSheetIndex);
+        else next.delete(activeSheetIndex);
+        return next;
+      });
+    },
+    setApplied: (v: boolean) => {
+      setAppliedSheets((prev) => {
+        const next = new Set(prev);
+        if (v) next.add(activeSheetIndex);
+        else next.delete(activeSheetIndex);
+        return next;
+      });
+    },
+  };
 };
 
 /** Apply a string operation transform for preview. */

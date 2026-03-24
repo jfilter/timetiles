@@ -179,10 +179,22 @@ export const runMigrations = (connectionString: string): void => {
     const env = { ...process.env, DATABASE_URL: connectionString };
 
     // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
-    execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate`, { stdio: "inherit", env });
+    const result = execSync(`DATABASE_URL="${connectionString}" pnpm payload migrate 2>&1`, {
+      env,
+      encoding: "utf-8",
+      maxBuffer: 10 * 1024 * 1024,
+    });
+
+    // Print migration output line by line (logger may be silenced in E2E context)
+    for (const line of result.split("\n")) {
+      if (line.trim()) process.stdout.write(`[migrate] ${line}\n`);
+    }
 
     logger.info("Migrations completed successfully");
   } catch (error) {
+    const execErr = error as { stdout?: string; stderr?: string };
+    if (execErr.stdout) process.stdout.write(`[migrate:stdout] ${execErr.stdout}\n`);
+    if (execErr.stderr) process.stderr.write(`[migrate:stderr] ${execErr.stderr}\n`);
     logger.error("Migration FAILED:", error);
     throw new Error(`Failed to run migrations: ${error instanceof Error ? error.message : String(error)}`);
   }

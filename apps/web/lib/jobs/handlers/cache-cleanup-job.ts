@@ -12,11 +12,8 @@
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { getUrlFetchCache } from "@/lib/services/cache";
-import { CacheManager } from "@/lib/services/cache/manager";
 
 export interface CacheCleanupJobInput {
-  // Optional: specific cache instances to clean
-  cacheNames?: string[];
   // Optional: force cleanup even if recently cleaned
   force?: boolean;
 }
@@ -42,49 +39,31 @@ export const cacheCleanupJob = {
     const input = (context.input ?? context.job?.input) as CacheCleanupJobInput;
 
     const startTime = Date.now();
-    logger.info("Starting cache cleanup job", { cacheNames: input.cacheNames, force: input.force });
+    logger.info("Starting cache cleanup job", { force: input.force });
 
     try {
-      let totalCleaned = 0;
-      const totalEvicted = 0;
-      const results: Record<string, unknown> = {};
-
-      // Clean URL fetch cache (for scheduled ingests)
+      // Clean URL fetch cache (the only concrete cache instance)
       const urlFetchCache = getUrlFetchCache();
-      const urlFetchCleaned = await urlFetchCache.cleanup();
-      totalCleaned += urlFetchCleaned;
-      results.urlFetchCache = { cleaned: urlFetchCleaned, stats: await urlFetchCache.getStats() };
-
-      // Clean other cache instances if specified
-      if (input.cacheNames && input.cacheNames.length > 0) {
-        for (const cacheName of input.cacheNames) {
-          const cache = CacheManager.getInstance(cacheName);
-          if (cache) {
-            const cleaned = await cache.cleanup();
-            totalCleaned += cleaned;
-            results[cacheName] = { cleaned, stats: await cache.getStats() };
-          } else {
-            logger.warn("Cache instance not found", { cacheName });
-          }
-        }
-      } else {
-        // Clean all cache instances
-        const allStats = await CacheManager.getAllStats();
-        for (const [cacheName] of Object.entries(allStats)) {
-          const cache = CacheManager.getInstance(cacheName);
-          if (cache) {
-            const cleaned = await cache.cleanup();
-            totalCleaned += cleaned;
-            results[cacheName] = { cleaned, stats: await cache.getStats() };
-          }
-        }
-      }
+      const totalCleaned = await urlFetchCache.cleanup();
+      const stats = await urlFetchCache.getStats();
 
       const duration = Date.now() - startTime;
 
-      logger.info("Cache cleanup completed", { totalCleaned, totalEvicted, duration, results });
+      logger.info("Cache cleanup completed", {
+        totalCleaned,
+        duration,
+        urlFetchCache: { cleaned: totalCleaned, stats },
+      });
 
-      return { output: { success: true, totalCleaned, totalEvicted, duration, results } };
+      return {
+        output: {
+          success: true,
+          totalCleaned,
+          totalEvicted: 0,
+          duration,
+          results: { urlFetchCache: { cleaned: totalCleaned, stats } },
+        },
+      };
     } catch (error) {
       logError(error, "Cache cleanup job failed");
 

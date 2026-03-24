@@ -59,3 +59,52 @@ export type StageProgress = {
   /** Estimated seconds remaining for this stage (null if not available) */
   estimatedSecondsRemaining: number | null;
 };
+
+// ---------------------------------------------------------------------------
+// API response types (shared between progress route and client hook)
+// ---------------------------------------------------------------------------
+
+/** Formatted stage information for API response. */
+export interface FormattedStage {
+  name: string;
+  displayName: string;
+  status: StageStatus;
+  progress: number;
+  weight: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  batches: { current: number; total: number };
+  currentBatch: { rowsProcessed: number; rowsTotal: number; percentage: number };
+  performance: { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null };
+}
+
+/** Formatted job progress for API response. */
+export interface FormattedJobProgress {
+  id: string | number;
+  datasetId: string | number;
+  datasetName?: string;
+  currentStage: string;
+  overallProgress: number;
+  estimatedCompletionTime: string | null;
+  stages: FormattedStage[];
+  errors: number;
+  duplicates: { internal: number; external: number };
+  schemaValidation?: unknown;
+  results?: { totalEvents?: number } | null;
+}
+
+/** Full progress API response shape. */
+export interface ProgressApiResponse {
+  type: string;
+  id: number;
+  status: "pending" | "parsing" | "processing" | "completed" | "failed";
+  originalName: string;
+  catalogId: number | null;
+  datasetsCount: number;
+  datasetsProcessed: number;
+  overallProgress: number;
+  estimatedCompletionTime: string | null;
+  jobs: FormattedJobProgress[];
+  errorLog?: string | null;
+  completedAt?: string | null;
+}

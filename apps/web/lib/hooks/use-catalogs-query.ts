@@ -14,7 +14,7 @@ import { fetchJson } from "../api/http-error";
 export interface CatalogWithDatasets {
   id: number;
   name: string;
-  datasets: Array<{ id: number; name: string }>;
+  datasets: Array<{ id: number; name: string; eventCount: number }>;
 }
 
 interface CatalogsResponse {

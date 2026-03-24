@@ -15,7 +15,7 @@ import { useEffect } from "react";
 import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
 
-import { canProceedFromStep, getPreviewInvalidatedStep, getStepTitle } from "./wizard-selectors";
+import { canProceedFromStep, getPreviewInvalidatedStep } from "./wizard-selectors";
 import { useWizardStore } from "./wizard-store";
 
 interface InitialAuth {
@@ -78,12 +78,4 @@ export const useWizardCanProceed = (): boolean => {
     isAuthenticated,
     isEmailVerified
   );
-};
-
-/**
- * Get the display title for the current wizard step.
- */
-export const useWizardStepTitle = (): string => {
-  const currentStep = useWizardStore((s) => s.currentStep);
-  return getStepTitle(currentStep);
 };

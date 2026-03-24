@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@timetiles/ui/components/dropdown-menu";
 import { cn } from "@timetiles/ui/lib/utils";
-import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, Plus, Scissors, Trash2, Type } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -30,6 +30,7 @@ import {
   type TransformType,
 } from "@/lib/types/ingest-transforms";
 
+import { TRANSFORM_COLORS, TRANSFORM_ICONS } from "../steps/column-mapping-shared";
 import { TransformEditor } from "./transform-editor";
 
 interface TransformListProps {
@@ -37,22 +38,6 @@ interface TransformListProps {
   onTransformsChange: (transforms: IngestTransform[]) => void;
   sourceColumns: string[];
 }
-
-const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
-  rename: Type,
-  "date-parse": Calendar,
-  "string-op": CaseSensitive,
-  concatenate: ArrowLeftRight,
-  split: Scissors,
-};
-
-const TRANSFORM_COLORS: Record<TransformType, string> = {
-  rename: "text-ring",
-  "date-parse": "text-secondary",
-  "string-op": "text-accent",
-  concatenate: "text-primary",
-  split: "text-purple-600",
-};
 
 // Separate component for dropdown menu items
 interface AddTransformMenuItemProps {

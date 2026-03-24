@@ -9,7 +9,7 @@
  */
 import { isFieldMappingComplete } from "@/lib/types/ingest-wizard";
 
-import { STEP_TITLES, type WizardState, type WizardStep } from "./wizard-store";
+import { type WizardState, type WizardStep } from "./wizard-store";
 
 /**
  * Determine whether the user can proceed from the current wizard step.
@@ -36,32 +36,6 @@ export const canProceedFromStep = (state: WizardState, isAuthenticated: boolean,
     default:
       return false;
   }
-};
-
-/**
- * Get the display title for a wizard step.
- */
-export const getStepTitle = (step: WizardStep): string => STEP_TITLES[step];
-
-/**
- * Determine which step to restore to when loading saved state.
- *
- * @param savedStep - The step from saved state
- * @param wasAuthenticatedOnStart - Whether user was authenticated when wizard loaded
- * @param wasAuthenticatedAtPageLoad - Whether user was authenticated at page load (SSR snapshot)
- */
-export const getRestoredStep = (
-  savedStep: WizardStep | undefined,
-  wasAuthenticatedOnStart: boolean,
-  wasAuthenticatedAtPageLoad: boolean
-): WizardStep => {
-  if (wasAuthenticatedOnStart) {
-    return Math.max(savedStep ?? 2, 2) as WizardStep;
-  }
-  if (!wasAuthenticatedAtPageLoad) {
-    return 1;
-  }
-  return savedStep ?? 1;
 };
 
 /**

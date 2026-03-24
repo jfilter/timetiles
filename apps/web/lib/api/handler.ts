@@ -15,7 +15,7 @@ import config from "@/payload.config";
 import type { User } from "@/payload-types";
 
 import { requireDefaultSite } from "./auth-helpers";
-import { handleError } from "./errors";
+import { ForbiddenError, handleError, UnauthorizedError } from "./errors";
 
 const logger = createLogger("api-handler");
 
@@ -100,11 +100,11 @@ export const apiRoute = <
         }
 
         if ((authMode === "required" || authMode === "admin") && !authReq.user) {
-          return Response.json({ error: "Authentication required" }, { status: 401 });
+          throw new UnauthorizedError("Authentication required");
         }
 
         if (authMode === "admin" && authReq.user?.role !== "admin") {
-          return Response.json({ error: "Admin access required" }, { status: 403 });
+          throw new ForbiddenError("Admin access required");
         }
       }
 

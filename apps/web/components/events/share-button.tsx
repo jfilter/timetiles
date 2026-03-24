@@ -11,6 +11,9 @@ import { Check, Copy, Loader2, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+/** Duration to show "copied" feedback before resetting */
+const COPY_FEEDBACK_MS = 2000;
+
 /** Share button that copies current URL to clipboard or uses native share on mobile */
 export const ShareButton = ({ title }: { title: string }) => {
   const t = useTranslations("Events");
@@ -30,11 +33,11 @@ export const ShareButton = ({ title }: { title: string }) => {
 
         await navigator.clipboard.writeText(url);
         setShareState("copied");
-        setTimeout(() => setShareState("idle"), 2000);
+        setTimeout(() => setShareState("idle"), COPY_FEEDBACK_MS);
       } catch (err: unknown) {
         if ((err as Error).name !== "AbortError") {
           setShareState("error");
-          setTimeout(() => setShareState("idle"), 2000);
+          setTimeout(() => setShareState("idle"), COPY_FEEDBACK_MS);
         } else {
           setShareState("idle");
         }

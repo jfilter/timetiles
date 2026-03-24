@@ -46,9 +46,6 @@ export const buildEventPointLayerConfig = (colors: MapColors = defaultMapColors)
     },
   }) satisfies CircleLayerConfig;
 
-/** Event point layer configuration (default colors) */
-export const eventPointLayerConfig = buildEventPointLayerConfig();
-
 /** Extract valid coordinates from a GeoJSON feature */
 export const getValidCoordinates = (feature: Feature): [number, number] | null => {
   const coordinates = feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;

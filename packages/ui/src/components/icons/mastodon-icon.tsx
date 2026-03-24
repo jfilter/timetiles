@@ -8,9 +8,7 @@
  */
 import * as React from "react";
 
-export interface IconProps extends React.SVGProps<SVGSVGElement> {
-  size?: number;
-}
+import type { IconProps } from "./map-icon";
 
 export const MastodonIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 24, className, ...props }, ref) => (
   <svg ref={ref} width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} {...props}>

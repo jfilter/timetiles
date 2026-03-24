@@ -10,20 +10,7 @@
 
 import { logger } from "@/lib/logger";
 
-import type { CacheConfig, CacheEntry, CacheSetOptions, CacheStorage, Serializer } from "./types";
-
-/**
- * JSON serializer (default)
- */
-export class JsonSerializer implements Serializer {
-  serialize<T>(value: T): string {
-    return JSON.stringify(value);
-  }
-
-  deserialize<T>(data: string | Buffer): T {
-    return JSON.parse(data.toString());
-  }
-}
+import type { CacheConfig, CacheEntry, CacheSetOptions, CacheStorage } from "./types";
 
 /**
  * Main cache service that provides high-level caching operations
@@ -31,13 +18,11 @@ export class JsonSerializer implements Serializer {
 export class Cache {
   private readonly storage: CacheStorage;
   private readonly config: CacheConfig;
-  private readonly serializer: Serializer;
   private readonly keyPrefix: string;
 
   constructor(config: CacheConfig) {
     this.storage = config.storage;
     this.config = config;
-    this.serializer = config.serializer ?? new JsonSerializer();
     this.keyPrefix = config.keyPrefix ?? "";
   }
 

@@ -12,27 +12,20 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 import { Handle, Position } from "@xyflow/react";
-import { ArrowLeftRight, Calendar, CaseSensitive, type LucideIcon, Scissors, Type } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { memo } from "react";
 
 import type { TransformNodeData } from "@/lib/types/flow-mapping";
 import type { TransformType } from "@/lib/types/ingest-transforms";
 
+import { TRANSFORM_ICONS } from "../../../_components/steps/column-mapping-shared";
+
 interface TransformNodeProps {
   data: TransformNodeData;
   selected?: boolean;
 }
 
-const TRANSFORM_ICONS: Record<TransformType, LucideIcon> = {
-  rename: Type,
-  "date-parse": Calendar,
-  "string-op": CaseSensitive,
-  concatenate: ArrowLeftRight,
-  split: Scissors,
-};
-
-const TRANSFORM_COLORS: Record<TransformType, { bg: string; border: string; text: string }> = {
+const TRANSFORM_NODE_COLORS: Record<TransformType, { bg: string; border: string; text: string }> = {
   rename: { bg: "bg-ring/5", border: "border-ring/50", text: "text-ring" },
   "date-parse": { bg: "bg-secondary/5", border: "border-secondary/50", text: "text-secondary" },
   "string-op": { bg: "bg-accent/5", border: "border-accent/50", text: "text-accent" },
@@ -93,7 +86,7 @@ const TransformNodeComponent = ({ data, selected }: Readonly<TransformNodeProps>
   const t = useTranslations("Ingest");
   const { transform, isEditing } = data;
   const Icon = TRANSFORM_ICONS[transform.type];
-  const colors = TRANSFORM_COLORS[transform.type];
+  const colors = TRANSFORM_NODE_COLORS[transform.type];
   const labelKey = TRANSFORM_LABEL_KEYS[transform.type];
   const summary = getTransformSummary(data);
   const sourceFields = getSourceFields(data);
