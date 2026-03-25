@@ -866,5 +866,12 @@
     "scheduledImportsDisabled": "Geplante Importe deaktiviert",
     "scheduledImportsDisabledDescription": "Das Erstellen neuer geplanter Importe ist derzeit durch einen Administrator deaktiviert. Bestehende Zeitpläne können weiterhin angezeigt und bearbeitet werden.",
     "privateVisibilityRestricted": "Die private Sichtbarkeit ist derzeit eingeschränkt. Alle neuen Kataloge und Datensätze müssen öffentlich sein. Wenden Sie sich an einen Administrator, um private Inhalte zu aktivieren."
+  },
+  "Newsletter": {
+    "success": "Erfolgreich abonniert!",
+    "error": "Anmeldung fehlgeschlagen. Bitte versuche es erneut.",
+    "networkError": "Netzwerkfehler. Bitte versuche es erneut.",
+    "subscribing": "Wird abonniert...",
+    "subscribed": "Abonniert"
   }
 }

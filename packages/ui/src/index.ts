@@ -131,8 +131,11 @@ export {
   CallToActionHeadline,
 } from "./components/call-to-action";
 export { DetailsGrid, DetailsIcon, DetailsItem, DetailsLabel, DetailsValue } from "./components/details-grid";
+export type { NewsletterCTAProps } from "./components/newsletter-cta";
 export { NewsletterCTA, newsletterCtaVariants } from "./components/newsletter-cta";
+export type { NewsletterFormProps } from "./components/newsletter-form";
 export { NewsletterForm } from "./components/newsletter-form";
+export type { NewsletterButtonLabels } from "./components/newsletter-shared";
 export {
   TestimonialAuthor,
   TestimonialAvatar,
@@ -142,3 +145,4 @@ export {
   Testimonials,
 } from "./components/testimonials";
 export { Timeline, TimelineDate, TimelineDescription, TimelineItem, TimelineTitle } from "./components/timeline";
+export type { NewsletterMessages } from "./hooks/use-newsletter-subscription";

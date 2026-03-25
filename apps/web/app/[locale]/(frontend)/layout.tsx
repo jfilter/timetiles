@@ -34,7 +34,7 @@ import { headers } from "next/headers";
 import Image from "next/image";
 import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { ConditionalTopMenuBar } from "@/app/_components/conditional-top-menu-bar";
@@ -43,6 +43,7 @@ import { Providers } from "@/components/providers";
 import { SiteBranding } from "@/components/site-branding";
 import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
+import { submitNewsletterSubscription } from "@/lib/blocks/newsletter";
 import { SiteProvider } from "@/lib/context/site-context";
 import { sanitizeHTML } from "@/lib/security/html-sanitizer";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
@@ -100,7 +101,13 @@ export const generateMetadata = async (): Promise<Metadata> => {
   };
 };
 
-const SiteFooter = ({ footerData }: Readonly<{ footerData: FooterType }>) => {
+interface SiteFooterProps {
+  footerData: FooterType;
+  newsletterMessages: { success: string; error: string; networkError: string };
+  newsletterButtonLabels: { submitting: string; submitted: string };
+}
+
+const SiteFooter = ({ footerData, newsletterMessages, newsletterButtonLabels }: Readonly<SiteFooterProps>) => {
   return (
     <Footer>
       <FooterContent
@@ -163,6 +170,9 @@ const SiteFooter = ({ footerData }: Readonly<{ footerData: FooterType }>) => {
               headline={footerData.newsletter.headline ?? "Stay Mapped In"}
               placeholder={footerData.newsletter.placeholder ?? "your@email.address"}
               buttonText={footerData.newsletter.buttonText ?? "Subscribe"}
+              messages={newsletterMessages}
+              onSubmit={submitNewsletterSubscription}
+              buttonLabels={newsletterButtonLabels}
             />
           </FooterColumn>
         )}
@@ -178,8 +188,17 @@ const SiteFooter = ({ footerData }: Readonly<{ footerData: FooterType }>) => {
 };
 
 export default async function FrontendLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [locale, messages] = await Promise.all([getLocale() as Promise<Locale>, getMessages()]);
+  const [locale, messages, tNewsletter] = await Promise.all([
+    getLocale() as Promise<Locale>,
+    getMessages(),
+    getTranslations("Newsletter"),
+  ]);
   const footerData = await getFooterData(locale);
+  const newsletterMessages = {
+    success: tNewsletter("success"),
+    error: tNewsletter("error"),
+    networkError: tNewsletter("networkError"),
+  };
   const payload = await getPayload({ config });
   const headersList = await headers();
   const host = headersList.get("host");
@@ -214,7 +233,14 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
               <SiteBranding />
               <ConditionalTopMenuBar />
               {children}
-              <SiteFooter footerData={footerData} />
+              <SiteFooter
+                footerData={footerData}
+                newsletterMessages={newsletterMessages}
+                newsletterButtonLabels={{
+                  submitting: tNewsletter("subscribing"),
+                  submitted: tNewsletter("subscribed"),
+                }}
+              />
             </SiteProvider>
           </Providers>
         </NextIntlClientProvider>

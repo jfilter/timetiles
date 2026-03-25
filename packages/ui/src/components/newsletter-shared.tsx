@@ -64,22 +64,34 @@ export const NewsletterStatusIndicator = ({
   );
 };
 
+/** Labels for the submit button in different states. */
+export interface NewsletterButtonLabels {
+  submitting?: string;
+  submitted?: string;
+}
+
 /** Button text content based on submission status. */
 export const NewsletterButtonContent = ({
   status,
   buttonText,
+  labels,
   showCheckIcon = false,
 }: {
   status: NewsletterStatus;
   buttonText: string;
-  /** Show a checkmark icon next to "Subscribed" (used by CTA variant) */
+  /** Labels for loading/success states. Defaults provided for backward compat. */
+  labels?: NewsletterButtonLabels;
+  /** Show a checkmark icon next to submitted label (used by CTA variant) */
   showCheckIcon?: boolean;
 }) => {
-  if (status === "loading") return <>Subscribing...</>;
+  const submittingLabel = labels?.submitting ?? "Subscribing...";
+  const submittedLabel = labels?.submitted ?? "Subscribed";
+
+  if (status === "loading") return <>{submittingLabel}</>;
   if (status === "success") {
     return showCheckIcon ? (
       <>
-        Subscribed
+        {submittedLabel}
         <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
@@ -89,7 +101,7 @@ export const NewsletterButtonContent = ({
         </svg>
       </>
     ) : (
-      <>Subscribed ✓</>
+      <>{submittedLabel} ✓</>
     );
   }
   return <>{buttonText}</>;
@@ -148,12 +160,15 @@ export const NewsletterEmailInput = ({
 export const NewsletterSubmitButton = ({
   status,
   buttonText = "Subscribe",
+  labels,
   showCheckIcon = false,
   size = "sm",
   className,
 }: {
   status: NewsletterStatus;
   buttonText?: string;
+  /** Labels for loading/success states. */
+  labels?: NewsletterButtonLabels;
   showCheckIcon?: boolean;
   /** "sm" for compact form, "md" for CTA variant */
   size?: "sm" | "md";
@@ -186,7 +201,12 @@ export const NewsletterSubmitButton = ({
       )}
     >
       <span className={cn("relative z-10", size === "md" && "flex items-center gap-2")}>
-        <NewsletterButtonContent status={status} buttonText={buttonText} showCheckIcon={showCheckIcon} />
+        <NewsletterButtonContent
+          status={status}
+          buttonText={buttonText}
+          labels={labels}
+          showCheckIcon={showCheckIcon}
+        />
       </span>
 
       {/* Hover effect - coordinate line sweep */}
