@@ -223,14 +223,15 @@ init_ssl() {
         echo -e "${YELLOW}No DNS record for www.$DOMAIN_NAME, requesting cert for $DOMAIN_NAME only${NC}"
     fi
 
-    # Request certificate — use base compose only (no SSL override) so certbot
-    # writes to the Docker letsencrypt volume, not the self-signed host mount
-    CERTBOT_DC="docker compose -f $COMPOSE_FILE"
-    [ -f "$BUILD_OVERRIDE" ] && CERTBOT_DC="$CERTBOT_DC -f $BUILD_OVERRIDE"
-    [ -f "$TEST_OVERRIDE" ]  && CERTBOT_DC="$CERTBOT_DC -f $TEST_OVERRIDE"
-    CERTBOT_DC="$CERTBOT_DC --env-file $ENV_FILE"
+    # Request certificate — run certbot directly (not via compose) to avoid
+    # recreating nginx and to write to the Docker letsencrypt volume
+    CERTBOT_IMAGE="certbot/certbot:${CERTBOT_VERSION:-v3.3.0}"
+    PROJECT="${COMPOSE_PROJECT_NAME:-timetiles}"
 
-    if $CERTBOT_DC run --rm certbot certonly --webroot \
+    if docker run --rm \
+        -v "${PROJECT}_letsencrypt:/etc/letsencrypt" \
+        -v "${PROJECT}_certbot-webroot:/var/www/certbot" \
+        "$CERTBOT_IMAGE" certonly --webroot \
         --webroot-path=/var/www/certbot \
         --email "$LETSENCRYPT_EMAIL" \
         --agree-tos \
