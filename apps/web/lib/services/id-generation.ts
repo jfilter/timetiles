@@ -19,8 +19,8 @@ import type { Dataset } from "@/payload-types";
  * For `external` and `content-hash`: deterministic — same input = same ID (dedup works).
  * For `auto-generate`: random — every row gets a unique ID (dedup must be disabled).
  */
-export const generateUniqueId = (data: unknown, idStrategy: Dataset["idStrategy"]): string => {
-  const result = generateEventId(data, { idStrategy } as Dataset);
+export const generateUniqueId = (data: unknown, dataset: Pick<Dataset, "id" | "idStrategy">): string => {
+  const result = generateEventId(data, dataset as Dataset);
 
   if (result.error) {
     throw new Error(`Failed to generate unique ID: ${result.error}`);

@@ -280,11 +280,14 @@ describe("id-generation", () => {
   });
 
   describe("generateUniqueId wrapper", () => {
+    const mockDatasetId = 42;
+    const withDataset = (idStrategy: Record<string, unknown>) => ({ id: mockDatasetId, idStrategy });
+
     it("throws error when external ID is missing", () => {
       const data = { name: "Test Event" }; // Missing external ID field
       const idStrategy = { type: "external" as const, externalIdPath: "id", duplicateStrategy: "skip" as const };
 
-      expect(() => generateUniqueId(data, idStrategy)).toThrow(
+      expect(() => generateUniqueId(data, withDataset(idStrategy))).toThrow(
         "Failed to generate unique ID: Missing external ID at path: id"
       );
     });
@@ -293,7 +296,7 @@ describe("id-generation", () => {
       const data = { id: "" }; // Empty string
       const idStrategy = { type: "external" as const, externalIdPath: "id", duplicateStrategy: "skip" as const };
 
-      expect(() => generateUniqueId(data, idStrategy)).toThrow(
+      expect(() => generateUniqueId(data, withDataset(idStrategy))).toThrow(
         "Failed to generate unique ID: Missing external ID at path: id"
       );
     });
@@ -302,7 +305,7 @@ describe("id-generation", () => {
       const data = { id: null };
       const idStrategy = { type: "external" as const, externalIdPath: "id", duplicateStrategy: "skip" as const };
 
-      expect(() => generateUniqueId(data, idStrategy)).toThrow(
+      expect(() => generateUniqueId(data, withDataset(idStrategy))).toThrow(
         "Failed to generate unique ID: Missing external ID at path: id"
       );
     });
@@ -316,40 +319,40 @@ describe("id-generation", () => {
       };
 
       // Even with excluded fields, a hash is still generated (from the empty remaining data)
-      const result = generateUniqueId(data, idStrategy);
-      expect(result).toMatch(/^undefined:hash:[a-f0-9]{16}$/);
+      const result = generateUniqueId(data, withDataset(idStrategy));
+      expect(result).toMatch(/^42:hash:[a-f0-9]{16}$/);
     });
 
     it("succeeds when external ID is present", () => {
       const data = { id: "test-123", name: "Test Event" };
       const idStrategy = { type: "external" as const, externalIdPath: "id", duplicateStrategy: "skip" as const };
 
-      const result = generateUniqueId(data, idStrategy);
-      expect(result).toMatch(/^undefined:ext:test-123$/);
+      const result = generateUniqueId(data, withDataset(idStrategy));
+      expect(result).toMatch(/^42:ext:test-123$/);
     });
 
     it("succeeds with content-hash strategy", () => {
       const data = { name: "Test Event" };
       const idStrategy = { type: "content-hash" as const, duplicateStrategy: "skip" as const };
 
-      const result = generateUniqueId(data, idStrategy);
-      expect(result).toMatch(/^undefined:hash:[a-f0-9]{16}$/);
+      const result = generateUniqueId(data, withDataset(idStrategy));
+      expect(result).toMatch(/^42:hash:[a-f0-9]{16}$/);
     });
 
     it("returns same hash for identical data with content-hash strategy", () => {
       const data = { name: "Test Event", date: "2024-01-01" };
       const idStrategy = { type: "content-hash" as const, duplicateStrategy: "skip" as const };
 
-      const result1 = generateUniqueId(data, idStrategy);
-      const result2 = generateUniqueId(data, idStrategy);
+      const result1 = generateUniqueId(data, withDataset(idStrategy));
+      const result2 = generateUniqueId(data, withDataset(idStrategy));
       expect(result1).toBe(result2);
     });
 
     it("returns different hash for different data with content-hash strategy", () => {
       const idStrategy = { type: "content-hash" as const, duplicateStrategy: "skip" as const };
 
-      const result1 = generateUniqueId({ name: "Event A" }, idStrategy);
-      const result2 = generateUniqueId({ name: "Event B" }, idStrategy);
+      const result1 = generateUniqueId({ name: "Event A" }, withDataset(idStrategy));
+      const result2 = generateUniqueId({ name: "Event B" }, withDataset(idStrategy));
       expect(result1).not.toBe(result2);
     });
   });

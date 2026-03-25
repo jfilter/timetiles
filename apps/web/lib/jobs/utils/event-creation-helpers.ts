@@ -153,7 +153,7 @@ export const createEventData = (
   geocodingResults: ReturnType<typeof getImportGeocodingResults>,
   transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null
 ) => {
-  const uniqueId = generateUniqueId(row, dataset.idStrategy);
+  const uniqueId = generateUniqueId(row, dataset);
   const ingestJobNum = typeof ingestJobId === "string" ? parseStrictInteger(ingestJobId) : ingestJobId;
 
   const schemaVersionData = job.datasetSchemaVersion;

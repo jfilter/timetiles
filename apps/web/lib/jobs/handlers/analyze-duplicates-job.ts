@@ -92,7 +92,7 @@ const analyzeInternalDuplicates = async (
   })) {
     for (const [index, row] of rows.entries()) {
       const rowNumber = totalRows + index;
-      const uniqueId = generateUniqueId(row, dataset.idStrategy);
+      const uniqueId = generateUniqueId(row, dataset);
 
       if (uniqueIdMap.has(uniqueId)) {
         internalDuplicates.push({ rowNumber, uniqueId, firstOccurrence: uniqueIdMap.get(uniqueId) });
