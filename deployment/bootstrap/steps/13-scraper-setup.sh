@@ -150,7 +150,7 @@ install_runner() {
     rm -rf "${runner_dir:?}/dist" "${runner_dir:?}/node_modules" "${runner_dir:?}/package.json"
 
     # Strategy 1: Extract pre-built runner from GHCR Docker image (no build tools needed)
-    local image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-scraper}:$version"
+    local image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-timescrape}:$version"
 
     # Helper: extract /app from a Docker image into runner_dir using tar (resolves symlinks)
     extract_from_image() {

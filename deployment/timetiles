@@ -1116,7 +1116,7 @@ EOF
             echo -e "${YELLOW}Updating scraper runner...${NC}"
 
             # Update runner: try GHCR image first, fall back to local build
-            image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-scraper}:$version"
+            image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-timescrape}:$version"
             rm -rf "${runner_dir:?}/dist" "${runner_dir:?}/node_modules" "${runner_dir:?}/package.json"
 
             # Helper: extract /app from image using tar (docker cp breaks pnpm symlinks)
