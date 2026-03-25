@@ -2,15 +2,13 @@
 /**
  * Integration tests for event beforeChange hooks:
  * - eventsBeforeChangeHook: sets denormalized access fields (datasetIsPublic, catalogOwnerId) on creation
- * - checkEventQuota: enforces TOTAL_EVENTS limit (tested via quota service — the hook reads
- *   the totalEventsCreated counter which is only incremented by import batch jobs)
+ * - checkEventQuota: enforces TOTAL_EVENTS limit via checkAndIncrementUsage
  *
  * @module
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createQuotaService } from "@/lib/services/quota-service";
 import type { User } from "@/payload-types";
 import {
   createIntegrationTestEnvironment,
@@ -57,28 +55,36 @@ describe.sequential("Event quota and denormalization hooks", () => {
     });
 
   describe("checkEventQuota", () => {
-    it("blocks event creation when totalEventsCreated exceeds quota", async () => {
-      // The hook reads the totalEventsCreated counter from user-usage.
-      // Simulate exceeding the limit by setting the counter directly.
-      const { users } = await withUsers(testEnv, { quotaEditor: { role: "editor", quotas: { maxTotalEvents: 5 } } });
+    it("enforces TOTAL_EVENTS quota via hook (checkAndIncrementUsage)", async () => {
+      const { users } = await withUsers(testEnv, { quotaEditor: { role: "editor", quotas: { maxTotalEvents: 3 } } });
       const quotaEditor = users.quotaEditor;
 
       const catalog = await createCatalog(true, quotaEditor.id);
       const dataset = await createDataset(catalog.id, true);
 
-      // Pre-set usage to be at the limit
-      const quotaService = createQuotaService(payload);
-      await quotaService.checkAndIncrementUsage(quotaEditor, "TOTAL_EVENTS", 5);
+      // Create events up to the limit — hook increments counter on each create
+      for (let i = 0; i < 3; i++) {
+        await payload.create({
+          collection: "events",
+          data: {
+            dataset: dataset.id,
+            sourceData: { i },
+            transformedData: { i },
+            uniqueId: `${dataset.id}:quota:${i}-${Date.now()}`,
+          },
+          user: quotaEditor,
+        });
+      }
 
-      // The next event should be rejected by the hook
+      // Fourth event should be rejected
       await expect(
         payload.create({
           collection: "events",
           data: {
             dataset: dataset.id,
-            sourceData: { test: "over-quota" },
-            transformedData: { test: "over-quota" },
-            uniqueId: `${dataset.id}:over-quota-${Date.now()}`,
+            sourceData: { i: 3 },
+            transformedData: { i: 3 },
+            uniqueId: `${dataset.id}:quota:3-${Date.now()}`,
           },
           user: quotaEditor,
         })
