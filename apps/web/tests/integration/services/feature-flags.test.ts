@@ -386,7 +386,7 @@ describe.sequential("Feature Flag Service", () => {
 
         // Attempt to create scheduled ingest - should fail access control
         await expect(
-          // @ts-expect-error -- `user` is a valid runtime option for access control testing
+          // @ts-expect-error -- Payload's create() union requires `draft` when versioning is enabled
           payload.create({
             collection: "scheduled-ingests",
             data: {
@@ -424,7 +424,7 @@ describe.sequential("Feature Flag Service", () => {
         resetFeatureFlagService();
 
         // Should succeed
-        // @ts-expect-error -- `user` is a valid runtime option for access control testing
+        // @ts-expect-error -- Payload's create() union requires `draft` when versioning is enabled
         const schedule = await payload.create({
           collection: "scheduled-ingests",
           data: {

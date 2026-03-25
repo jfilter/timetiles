@@ -11,13 +11,25 @@
 import type { TransformSuggestion } from "@/lib/types/ingest-transforms";
 import type { SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
 
-interface SchemaPropertyMap {
+/** A JSON Schema property definition. Open-ended because quicktype may add arbitrary fields. */
+export interface SchemaProperty {
+  type?: string | string[];
+  enum?: unknown[];
+  format?: string;
+  minimum?: number;
+  maximum?: number;
+  nullable?: boolean;
+  properties?: Record<string, SchemaProperty>;
+  items?: SchemaProperty | { type: string; properties: Record<string, SchemaProperty> };
+  required?: string[];
+  additionalProperties?: boolean;
+  /** Allow additional JSON Schema keywords from quicktype output. */
   [key: string]: unknown;
 }
 
 interface ChangeDetectionContext {
-  oldProps: SchemaPropertyMap;
-  newProps: SchemaPropertyMap;
+  oldProps: Record<string, SchemaProperty>;
+  newProps: Record<string, SchemaProperty>;
   oldRequired: string[];
   newRequired: string[];
   changes: SchemaChange[];
@@ -86,16 +98,16 @@ const detectAddedFields = (context: ChangeDetectionContext): boolean => {
  */
 const detectEnumChanges = (
   field: string,
-  oldProp: Record<string, unknown>,
-  newProp: Record<string, unknown>,
+  oldProp: SchemaProperty,
+  newProp: SchemaProperty,
   changes: SchemaChange[]
 ): boolean => {
   if (!oldProp.enum || !newProp.enum) {
     return false;
   }
 
-  const oldEnum = (oldProp.enum as unknown[]) || [];
-  const newEnum = (newProp.enum as unknown[]) || [];
+  const oldEnum = oldProp.enum || [];
+  const newEnum = newProp.enum || [];
 
   const added = newEnum.filter((v) => !oldEnum.includes(v));
   const removed = oldEnum.filter((v) => !newEnum.includes(v));
@@ -125,8 +137,8 @@ const detectFieldModifications = (context: ChangeDetectionContext): boolean => {
   for (const field of Object.keys(oldProps)) {
     if (!newProps[field]) continue;
 
-    const oldProp = oldProps[field] as Record<string, unknown>;
-    const newProp = newProps[field] as Record<string, unknown>;
+    const oldProp = oldProps[field]!;
+    const newProp = newProps[field];
 
     const oldType = getFieldType(oldProp);
     const newType = getFieldType(newProp);
@@ -194,17 +206,14 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
 /**
  * Compares two schemas and identifies changes.
  */
-export const compareSchemas = (
-  oldSchema: Record<string, unknown>,
-  newSchema: Record<string, unknown>
-): SchemaComparison => {
+export const compareSchemas = (oldSchema: SchemaProperty, newSchema: SchemaProperty): SchemaComparison => {
   const changes: SchemaChange[] = [];
 
   const context: ChangeDetectionContext = {
-    oldProps: (oldSchema.properties as SchemaPropertyMap) ?? {},
-    newProps: (newSchema.properties as SchemaPropertyMap) ?? {},
-    oldRequired: (oldSchema.required as string[]) ?? [],
-    newRequired: (newSchema.required as string[]) ?? [],
+    oldProps: oldSchema.properties ?? {},
+    newProps: newSchema.properties ?? {},
+    oldRequired: oldSchema.required ?? [],
+    newRequired: newSchema.required ?? [],
     changes,
   };
 
@@ -270,8 +279,8 @@ const getFieldType = (prop: unknown): string => {
  * @returns Array of transform suggestions
  */
 export const detectTransforms = (
-  oldSchema: Record<string, unknown>,
-  newSchema: Record<string, unknown>,
+  oldSchema: SchemaProperty,
+  newSchema: SchemaProperty,
   changes: SchemaChange[]
 ): TransformSuggestion[] => {
   const suggestions: TransformSuggestion[] = [];
@@ -317,8 +326,8 @@ export const detectTransforms = (
 const detectRenameTransform = (
   oldPath: string,
   newPath: string,
-  oldSchema: Record<string, unknown>,
-  newSchema: Record<string, unknown>
+  oldSchema: SchemaProperty,
+  newSchema: SchemaProperty
 ): TransformSuggestion | null => {
   let score = 0;
   const reasons: string[] = [];
@@ -332,8 +341,8 @@ const detectRenameTransform = (
   }
 
   // 2. Type compatibility (30 points max)
-  const oldProp = (oldSchema.properties as SchemaPropertyMap)?.[oldPath];
-  const newProp = (newSchema.properties as SchemaPropertyMap)?.[newPath];
+  const oldProp = oldSchema.properties?.[oldPath];
+  const newProp = newSchema.properties?.[newPath];
 
   if (oldProp && newProp) {
     const oldType = getFieldType(oldProp);
@@ -535,11 +544,11 @@ const matchesCommonPattern = (oldPath: string, newPath: string): boolean => {
 const calculatePositionScore = (
   oldPath: string,
   newPath: string,
-  oldSchema: Record<string, unknown>,
-  newSchema: Record<string, unknown>
+  oldSchema: SchemaProperty,
+  newSchema: SchemaProperty
 ): number => {
-  const oldProps = (oldSchema.properties as SchemaPropertyMap) ?? {};
-  const newProps = (newSchema.properties as SchemaPropertyMap) ?? {};
+  const oldProps = oldSchema.properties ?? {};
+  const newProps = newSchema.properties ?? {};
 
   const oldKeys = Object.keys(oldProps);
   const newKeys = Object.keys(newProps);

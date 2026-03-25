@@ -9,7 +9,7 @@
  * @category Utilities
  */
 
-import type { DetectionOptions, FieldMapping, FieldMappingsResult, FieldStatistics } from "../types";
+import type { DetectionOptions, FieldMapping, FieldMappingsResult, FieldStatistics, GeoFieldMapping } from "../types";
 import { validateFieldType } from "./validators";
 
 // ---------------------------------------------------------------------------
@@ -519,8 +519,14 @@ export const detectFieldMappings = (
   const locationName = findFieldWithFallback(fieldStats, "locationName", language, options);
   const geo = options?.skip?.coordinates ? null : detectGeoFields(fieldStats, options);
 
-  // Use a plain object so additional field types can be added dynamically
-  const result: Record<string, unknown> = { title, description, timestamp, locationName, geo };
+  // Use an intersection so additional field types can be added dynamically
+  const result: FieldMappingsResult & Record<string, FieldMapping | GeoFieldMapping | null> = {
+    title,
+    description,
+    timestamp,
+    locationName,
+    geo,
+  };
 
   // Detect additional field types if configured
   if (options?.additionalFieldTypes) {
@@ -534,5 +540,5 @@ export const detectFieldMappings = (
     }
   }
 
-  return result as unknown as FieldMappingsResult;
+  return result;
 };

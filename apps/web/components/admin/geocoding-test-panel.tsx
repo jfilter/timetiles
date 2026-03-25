@@ -15,22 +15,17 @@
 import { useTranslations } from "next-intl";
 import React, { useState } from "react";
 
+import { adminColors, adminStyles } from "@/lib/constants/admin-styles";
 import type { TestResult } from "@/lib/hooks/use-geocoding-test";
 import { useGeocodingTest } from "@/lib/hooks/use-geocoding-test";
 
 // Styles defined outside component (Tailwind unavailable in Payload admin panel)
 const styles = {
-  container: {
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: "8px",
-    padding: "20px",
-    marginBottom: "24px",
-  },
-  title: { margin: "0 0 8px 0", fontSize: "16px", fontWeight: 600 },
-  description: { margin: "0 0 16px 0", fontSize: "13px", color: "#666" },
+  container: { ...adminStyles.card, marginBottom: "24px" },
+  title: { margin: "0 0 8px 0", fontSize: "16px", fontWeight: 600, color: adminColors.text },
+  description: { margin: "0 0 16px 0", fontSize: "13px", color: adminColors.textMuted },
   inputRow: { display: "flex", gap: "8px", marginBottom: "16px" },
-  input: { flex: 1, padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px" },
+  input: adminStyles.input,
   buttonEnabled: {
     padding: "8px 16px",
     background: "#3b82f6",
@@ -59,18 +54,18 @@ const styles = {
     marginBottom: "16px",
   },
   resultsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" },
-  resultCard: { background: "white", padding: "12px", borderRadius: "6px", border: "1px solid #e2e8f0" },
+  resultCard: adminStyles.cardInset,
   resultHeader: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" },
   dotGoogle: { width: "10px", height: "10px", borderRadius: "50%", background: "#3b82f6", display: "block" },
   dotNominatim: { width: "10px", height: "10px", borderRadius: "50%", background: "#22c55e", display: "block" },
   dotOpencage: { width: "10px", height: "10px", borderRadius: "50%", background: "#f97316", display: "block" },
-  providerName: { fontWeight: 500, fontSize: "14px" },
-  notConfigured: { color: "#666", fontSize: "13px" },
-  resultText: { fontSize: "13px" },
+  providerName: { fontWeight: 500, fontSize: "14px", color: adminColors.text },
+  notConfigured: { color: adminColors.textMuted, fontSize: "13px" },
+  resultText: { fontSize: "13px", color: adminColors.text },
   successText: { color: "#22c55e", fontWeight: 500 },
   failedText: { color: "#ef4444", fontWeight: 500 },
-  coordsText: { color: "#666", marginTop: "4px" },
-  grayText: { color: "#666" },
+  coordsText: { color: adminColors.textMuted, marginTop: "4px" },
+  grayText: { color: adminColors.textMuted },
 } as const;
 
 const ResultDisplay = ({ result }: { result: TestResult | undefined }) => {

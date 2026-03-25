@@ -25,6 +25,12 @@ import { GeocodingError } from "./types";
 
 const logger = createLogger("geocoding-operations");
 
+/** Delay before retrying a failed geocoding operation (ms). */
+const GEOCODING_RETRY_DELAY_MS = 5000;
+
+/** Maximum time to wait for a single geocoding operation (ms). */
+const GEOCODING_OPERATION_TIMEOUT_MS = 10_000;
+
 export class GeocodingOperations {
   constructor(
     private readonly providerManager: ProviderManager,
@@ -167,7 +173,7 @@ export class GeocodingOperations {
       try {
         const geocodePromise = this.geocodeWithProvider(provider.geocoder, testAddress);
         const timeoutPromise = new Promise((_resolve, reject) =>
-          setTimeout(() => reject(new Error("Geocoding timeout")), 5000)
+          setTimeout(() => reject(new Error("Geocoding timeout")), GEOCODING_RETRY_DELAY_MS)
         );
 
         const providerResults = (await Promise.race([geocodePromise, timeoutPromise])) as Entry[];
@@ -197,7 +203,7 @@ export class GeocodingOperations {
   ): Promise<Entry[]> {
     const geocodePromise = geocoder.geocode(address);
     const timeoutPromise = new Promise((_resolve, reject) =>
-      setTimeout(() => reject(new Error("Provider timeout")), 10000)
+      setTimeout(() => reject(new Error("Provider timeout")), GEOCODING_OPERATION_TIMEOUT_MS)
     );
 
     return (await Promise.race([geocodePromise, timeoutPromise])) as Entry[];

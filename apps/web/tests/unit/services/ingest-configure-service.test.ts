@@ -10,22 +10,7 @@ vi.mock("@/lib/logger", () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }));
 
-vi.mock("@/lib/api", () => ({
-  AppError: class AppError extends Error {
-    constructor(
-      public statusCode: number,
-      message: string,
-      public code?: string
-    ) {
-      super(message);
-    }
-  },
-}));
-
-vi.mock("@/lib/services/quota-service", () => ({
-  createQuotaService: vi.fn(),
-  QuotaExceededError: class QuotaExceededError extends Error {},
-}));
+vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: vi.fn() }));
 
 import {
   buildDatasetMapping,

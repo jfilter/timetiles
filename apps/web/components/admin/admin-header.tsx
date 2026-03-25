@@ -19,7 +19,9 @@ import { ArrowLeft, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+
+import { adminColors } from "@/lib/constants/admin-styles";
+import { useMounted } from "@/lib/hooks/use-theme";
 
 const STORAGE_KEY = "timetiles-theme";
 
@@ -30,20 +32,20 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "12px 24px",
-    borderBottom: "1px solid var(--theme-elevation-100)",
-    background: "var(--theme-elevation-0)",
+    borderBottom: `1px solid ${adminColors.border}`,
+    background: adminColors.bg,
   },
   leftSection: { display: "flex", alignItems: "center", gap: "12px" },
   logoImage: { borderRadius: "4px" },
-  brandText: { fontSize: "16px", fontWeight: 600, color: "var(--theme-elevation-800)" },
-  dashboardBadge: { marginLeft: "8px", fontSize: "12px", fontWeight: 400, color: "var(--theme-elevation-500)" },
+  brandText: { fontSize: "16px", fontWeight: 600, color: adminColors.text },
+  dashboardBadge: { marginLeft: "8px", fontSize: "12px", fontWeight: 400, color: adminColors.textMuted },
   rightSection: { display: "flex", alignItems: "center", gap: "16px" },
   backLink: {
     display: "flex",
     alignItems: "center",
     gap: "6px",
     fontSize: "14px",
-    color: "var(--theme-elevation-600)",
+    color: adminColors.textInteractive,
     textDecoration: "none",
   },
   themeButton: {
@@ -55,7 +57,7 @@ const styles = {
     background: "transparent",
     cursor: "pointer",
     borderRadius: "4px",
-    color: "var(--theme-elevation-600)",
+    color: adminColors.textInteractive,
   },
 } as const;
 
@@ -63,16 +65,13 @@ const AdminHeader = () => {
   const t = useTranslations("Admin");
   const tCommon = useTranslations("Common");
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
-    // Sync to main app's localStorage
+    // Payload's useTheme() manages the admin panel theme independently.
+    // Write to the main app's localStorage key so the frontend theme stays in sync.
     localStorage.setItem(STORAGE_KEY, newTheme);
   };
 

@@ -1,6 +1,10 @@
 /**
  * Standardized error classes and centralized error handler for API routes.
  *
+ * The base {@link AppError} class lives in `lib/types/errors.ts` (Layer 0)
+ * so that any layer can extend it without violating architectural boundaries.
+ * It is re-exported here for convenience.
+ *
  * @module
  * @category API
  */
@@ -8,7 +12,10 @@ import type { Payload } from "payload";
 import { z } from "zod";
 
 import { logError } from "@/lib/logger";
+import { AppError } from "@/lib/types/errors";
 import type { User } from "@/payload-types";
+
+export { AppError };
 
 /**
  * Standard error response format for all API routes.
@@ -20,17 +27,6 @@ export interface ErrorResponse {
   code?: string;
   /** Optional additional error context or details */
   details?: unknown;
-}
-
-export class AppError extends Error {
-  constructor(
-    public readonly statusCode: number,
-    message: string,
-    public readonly code?: string,
-    public readonly details?: unknown
-  ) {
-    super(message);
-  }
 }
 
 export class ValidationError extends AppError {

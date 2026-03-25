@@ -45,7 +45,10 @@ export const POST = apiRoute({
     // Verify dataset exists and user has access
     const dataset = await payload
       .findByID({ collection: "datasets", id: datasetId, overrideAccess: false, user })
-      .catch(() => null);
+      .catch((error) => {
+        logger.warn({ error }, "Failed to find dataset");
+        return null;
+      });
 
     if (!dataset) {
       throw new NotFoundError("Dataset not found");

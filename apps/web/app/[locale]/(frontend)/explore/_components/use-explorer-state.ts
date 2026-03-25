@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { useFilters, useSelectedEvent } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
@@ -66,12 +66,12 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
   const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
 
-  const handleZoomToData = () => {
+  const handleZoomToData = useCallback(() => {
     if (boundsData?.bounds && mapRef.current) {
       mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
       viewport.setBoundsState("bounds-applied");
     }
-  };
+  }, [boundsData?.bounds, mapRef, viewport]);
 
   // Shared zoom-to-data logic
   const dataBoundsOutsideViewport = isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds);
@@ -95,9 +95,12 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
       handleZoomToData,
     },
     filters: { filters, activeFilterCount },
-    selection: { selectedEventId, openEvent, closeEvent },
+    selection: useMemo(() => ({ selectedEventId, openEvent, closeEvent }), [selectedEventId, openEvent, closeEvent]),
     data: { ...queries, isLoadingInitialBounds },
-    ui: { isFilterDrawerOpen, toggleFilterDrawer, setFilterDrawerOpen },
+    ui: useMemo(
+      () => ({ isFilterDrawerOpen, toggleFilterDrawer, setFilterDrawerOpen }),
+      [isFilterDrawerOpen, toggleFilterDrawer, setFilterDrawerOpen]
+    ),
     scope,
   };
 };

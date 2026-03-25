@@ -116,7 +116,9 @@ export class ProviderManager {
         apiKey: undefined,
         formatter: null,
         fetch: this.createFetchWithUserAgent(),
-      } as unknown as Parameters<typeof NodeGeocoder>[0]),
+        // as unknown as Options: @types/node-geocoder expects node-fetch Response,
+        // but we pass standard web fetch — the runtime behavior is compatible.
+      } as unknown as Options),
       priority: 10,
       enabled: true,
       rateLimit: DEFAULT_NOMINATIM_RATE_LIMIT,
@@ -230,7 +232,9 @@ export class ProviderManager {
       apiKey: undefined,
       formatter: null,
       fetch: this.createFetchWithUserAgent(userAgent),
-    } as unknown as Parameters<typeof NodeGeocoder>[0]);
+      // as unknown as Options: @types/node-geocoder expects node-fetch Response,
+      // but we pass standard web fetch — the runtime behavior is compatible.
+    } as unknown as Options);
   }
 
   private getOpenCageBoundsString(
@@ -260,7 +264,11 @@ export class ProviderManager {
       return null;
     }
 
-    const config: Record<string, unknown> = { provider: "opencage", apiKey: openCageConfig.apiKey, formatter: null };
+    const config: { provider: "opencage"; apiKey: unknown; formatter: null; bounds?: string } = {
+      provider: "opencage",
+      apiKey: openCageConfig.apiKey,
+      formatter: null,
+    };
 
     const boundsString = this.getOpenCageBoundsString(
       openCageConfig.bounds as Parameters<ProviderManager["getOpenCageBoundsString"]>[0]
@@ -269,6 +277,6 @@ export class ProviderManager {
       config.bounds = boundsString;
     }
 
-    return NodeGeocoder(config as unknown as Options);
+    return NodeGeocoder(config as Options);
   }
 }

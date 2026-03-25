@@ -22,18 +22,10 @@ export { calculateCentroid, calculateDistance, findMaxDistance } from "./distanc
 // Bounds utilities
 export { createBoundingBox, isValidBounds, isWithinBounds, parseBounds } from "./bounds";
 
-// Coordinate parsing
-export {
-  parseCoordinate,
-  parseDegreesMinutesFormat,
-  parseDirectionalFormat,
-  parseDMSFormat,
-  tryParseDecimal,
-} from "./parsing";
-
-// Format detection
-export type { FormatDetectionResult } from "./detection";
-export { checkCommaFormat, checkGeoJsonFormat, checkSpaceFormat } from "./detection";
+// Coordinate parsing — sub-format parsers and detection helpers are
+// exported directly from ./parsing and ./detection for consumers that
+// need them (tests, schema-detection).  Only the high-level
+// parseCoordinate is re-exported here.
 
 // Formatting
 export { formatCenterCoordinates, formatCoordinate, formatEventCount, getCenterFromBounds } from "./formatting";

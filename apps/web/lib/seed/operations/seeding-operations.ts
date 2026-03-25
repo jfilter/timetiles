@@ -456,7 +456,7 @@ export class SeedingOperations {
       }
     } else if (collectionName === "users") {
       // Disable verification email for seeded users (they're already pre-verified).
-      // @ts-expect-error -- disableVerificationEmail is a valid runtime option for auth collections but not in Payload's types
+      // @ts-expect-error -- data is Record<string, unknown> from seed JSON; Payload expects strict Users type
       await payload.create({
         collection: "users",
         data: resolvedItem,

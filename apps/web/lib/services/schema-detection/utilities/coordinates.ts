@@ -9,6 +9,8 @@
  * @category Utilities
  */
 
+import { tryParseDecimal } from "@/lib/geospatial/parsing";
+
 import type { DetectionOptions, FieldMapping, FieldStatistics, GeoFieldMapping } from "../types";
 import {
   ADDRESS_PATTERNS,
@@ -17,15 +19,6 @@ import {
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
 } from "./patterns";
-
-/**
- * Parse a coordinate string value.
- */
-const parseCoordinate = (value: string): number | null => {
-  const trimmed = value.trim();
-  const parsed = Number.parseFloat(trimmed);
-  return isNaN(parsed) ? null : parsed;
-};
 
 /**
  * Check if a field contains valid coordinate values.
@@ -45,7 +38,7 @@ const isValidCoordinateField = (stats: FieldStatistics, bounds: { min: number; m
 
     for (const sample of stats.uniqueSamples.slice(0, 10)) {
       if (typeof sample === "string" && sample.trim() !== "") {
-        const parsed = parseCoordinate(sample);
+        const parsed = tryParseDecimal(sample);
         if (parsed !== null) {
           totalCount++;
           if (parsed >= bounds.min && parsed <= bounds.max) {
@@ -84,7 +77,11 @@ const findCoordinateField = (
   return bestMatch;
 };
 
-/** Check if samples contain comma-separated coordinates. */
+/**
+ * Check if samples contain comma-separated coordinates and determine lat/lng order.
+ * Note: A simpler format-detection-only version exists in lib/geospatial/detection.ts.
+ * This version additionally determines coordinate order (lat,lng vs lng,lat).
+ */
 const checkCommaFormat = (samples: unknown[]): { format: string; confidence: number } | null => {
   let matches = 0;
   let latLngOrder = 0;

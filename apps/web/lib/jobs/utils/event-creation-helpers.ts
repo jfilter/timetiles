@@ -7,6 +7,7 @@
  * @module
  * @category Jobs
  */
+import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import { generateUniqueId } from "@/lib/services/id-generation";
@@ -16,13 +17,6 @@ import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { Dataset } from "@/payload-types";
 
 const logger = createLogger("event-creation-helpers");
-
-/** Parse a coordinate value from number or string to a finite number, or NaN. */
-const parseCoordinate = (value: unknown): number => {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") return Number(value);
-  return NaN;
-};
 
 /**
  * Extract coordinates from a row based on field mappings and geocoding results.
@@ -46,8 +40,8 @@ export const extractCoordinates = (
 
     // Validate both type and coordinate bounds
     if (
-      !isNaN(parsedLat) &&
-      !isNaN(parsedLng) &&
+      parsedLat !== null &&
+      parsedLng !== null &&
       parsedLat >= -90 &&
       parsedLat <= 90 &&
       parsedLng >= -180 &&

@@ -24,10 +24,11 @@ import { enrichEnumFields } from "@/lib/services/schema-detection/utilities";
 import type { FieldStatistics, SchemaBuilderState, SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
 
 import { createFieldStats, getValueType, updateFieldStats } from "./field-statistics";
+import type { SchemaProperty } from "./schema-comparison";
 import { compareSchemas } from "./schema-comparison";
 
+/** A row of imported data. Values are genuinely untyped — CSV/Excel sources produce arbitrary field/value pairs. */
 type DataRecord = Record<string, unknown>;
-type SchemaProperty = Record<string, unknown>;
 
 export class ProgressiveSchemaBuilder {
   private readonly state: SchemaBuilderState;
@@ -225,7 +226,7 @@ export class ProgressiveSchemaBuilder {
     }
   }
 
-  async getSchema(): Promise<Record<string, unknown>> {
+  async getSchema(): Promise<SchemaProperty> {
     if (this.state.dataSamples.length === 0) {
       return { type: "object", properties: {}, required: [], additionalProperties: false };
     }
@@ -249,10 +250,10 @@ export class ProgressiveSchemaBuilder {
       });
 
       const schemaString = result.lines.join("\n");
-      let schema: Record<string, unknown>;
+      let schema: SchemaProperty;
 
       try {
-        schema = JSON.parse(schemaString);
+        schema = JSON.parse(schemaString) as SchemaProperty;
       } catch (parseError) {
         logger.error("Failed to parse quicktype output", { schemaString, parseError });
         return this.buildManualSchema();
@@ -263,9 +264,9 @@ export class ProgressiveSchemaBuilder {
       if (schema.$ref && schema.definitions) {
         // Extract the referenced schema from definitions
         const refName = (schema.$ref as string).replace("#/definitions/", "");
-        const definitions = schema.definitions as Record<string, unknown>;
+        const definitions = schema.definitions as Record<string, SchemaProperty>;
         if (definitions[refName]) {
-          schema = definitions[refName] as Record<string, unknown>;
+          schema = definitions[refName]!;
         }
       }
 
@@ -293,8 +294,8 @@ export class ProgressiveSchemaBuilder {
     }
   }
 
-  private enhanceSchemaWithStats(schema: Record<string, unknown>): void {
-    const properties = schema.properties as Record<string, SchemaProperty>;
+  private enhanceSchemaWithStats(schema: SchemaProperty): void {
+    const { properties } = schema;
 
     if (!properties) return;
 
@@ -362,22 +363,22 @@ export class ProgressiveSchemaBuilder {
     return current as SchemaProperty;
   }
 
-  private createArrayProperty(): Record<string, unknown> {
+  private createArrayProperty(): SchemaProperty {
     return { type: "array", items: { type: "object", properties: {} } };
   }
 
-  private createObjectProperty(): Record<string, unknown> {
+  private createObjectProperty(): SchemaProperty {
     return { type: "object", properties: {} };
   }
 
   private processFieldPath(
-    properties: Record<string, unknown>,
+    properties: Record<string, SchemaProperty>,
     fieldPath: string,
     stats: FieldStatistics,
     required: string[]
   ): void {
     const parts = fieldPath.split(".").filter((p) => p !== "");
-    let current = properties;
+    let current: Record<string, SchemaProperty> = properties;
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
@@ -387,7 +388,7 @@ export class ProgressiveSchemaBuilder {
       if (part.endsWith("[]")) {
         const fieldName = part.slice(0, -2);
         current[fieldName] ??= this.createArrayProperty();
-        current = (current[fieldName] as { items: { properties: Record<string, unknown> } }).items.properties;
+        current = (current[fieldName] as { items: { properties: Record<string, SchemaProperty> } }).items.properties;
       } else if (isLast) {
         current[part] = this.buildPropertySchema(stats);
         // Mark as required if appears in most records
@@ -396,13 +397,13 @@ export class ProgressiveSchemaBuilder {
         }
       } else {
         current[part] ??= this.createObjectProperty();
-        current = (current[part] as { properties: Record<string, unknown> }).properties;
+        current = (current[part] as { properties: Record<string, SchemaProperty> }).properties;
       }
     }
   }
 
-  private buildManualSchema(): Record<string, unknown> {
-    const properties: Record<string, unknown> = {};
+  private buildManualSchema(): SchemaProperty {
+    const properties: Record<string, SchemaProperty> = {};
     const required: string[] = [];
 
     for (const [fieldPath, stats] of Object.entries(this.state.fieldStats)) {
@@ -412,8 +413,8 @@ export class ProgressiveSchemaBuilder {
     return { type: "object", properties, required, additionalProperties: false };
   }
 
-  private buildPropertySchema(stats: FieldStatistics): Record<string, unknown> {
-    const schema: Record<string, unknown> = {};
+  private buildPropertySchema(stats: FieldStatistics): SchemaProperty {
+    const schema: SchemaProperty = {};
 
     // Determine primary type from type distribution
     const typeEntries = Object.entries(stats.typeDistribution)
@@ -464,12 +465,12 @@ export class ProgressiveSchemaBuilder {
     return typeMap[type] ?? "string";
   }
 
-  compareWithPrevious(previousSchema: Record<string, unknown>): SchemaComparison {
+  compareWithPrevious(previousSchema: SchemaProperty): SchemaComparison {
     const currentSchema = this.getSchemaSync();
     return compareSchemas(previousSchema, currentSchema);
   }
 
-  getSchemaSync(): Record<string, unknown> {
+  getSchemaSync(): SchemaProperty {
     return this.buildManualSchema();
   }
 
@@ -503,5 +504,6 @@ export class ProgressiveSchemaBuilder {
   }
 }
 
+export type { SchemaProperty } from "./schema-comparison";
 export { compareSchemas } from "./schema-comparison";
 export type { FieldStatistics, SchemaBuilderState, SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";

@@ -91,6 +91,7 @@ import {
 } from "@/lib/constants/quota-constants";
 import { drizzleColumns } from "@/lib/database/drizzle-helpers";
 import { createLogger } from "@/lib/logger";
+import { AppError } from "@/lib/types/errors";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { user_usage } from "@/payload-generated-schema";
@@ -138,9 +139,12 @@ const normalizeUserId = (userId: UserIdentifier): number => {
 
 /**
  * Custom error class for quota exceeded scenarios.
+ *
+ * Extends {@link AppError} so that the centralized `handleError` in
+ * `lib/api/errors.ts` automatically returns a structured 429 response
+ * without needing a manual conversion wrapper.
  */
-export class QuotaExceededError extends Error {
-  public statusCode = 429;
+export class QuotaExceededError extends AppError {
   public quotaKey: QuotaKey;
   public current: number;
   public limit: number;
@@ -148,7 +152,7 @@ export class QuotaExceededError extends Error {
 
   constructor(quotaKey: QuotaKey, current: number, limit: number, resetTime?: Date) {
     const message = QUOTAS[quotaKey].errorMessage(current, limit);
-    super(message);
+    super(429, message, "QUOTA_EXCEEDED");
     this.name = "QuotaExceededError";
     this.quotaKey = quotaKey;
     this.current = current;
