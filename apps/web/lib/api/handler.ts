@@ -15,7 +15,7 @@ import config from "@/payload.config";
 import type { User } from "@/payload-types";
 
 import { requireDefaultSite } from "./auth-helpers";
-import { ForbiddenError, handleError, UnauthorizedError } from "./errors";
+import { ForbiddenError, handleError, UnauthorizedError, ValidationError } from "./errors";
 
 const logger = createLogger("api-handler");
 
@@ -120,7 +120,16 @@ export const apiRoute = <
       }
 
       // --- Validate body ---
-      const body = routeConfig.body ? routeConfig.body.parse(await req.json().catch(() => ({}))) : (undefined as TBody);
+      let body: TBody = undefined as TBody;
+      if (routeConfig.body) {
+        let rawBody: unknown;
+        try {
+          rawBody = await req.json();
+        } catch {
+          throw new ValidationError("Invalid JSON in request body");
+        }
+        body = routeConfig.body.parse(rawBody);
+      }
 
       // --- Validate query ---
       const query = routeConfig.query

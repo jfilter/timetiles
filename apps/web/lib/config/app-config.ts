@@ -17,6 +17,8 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
+
 // ---------------------------------------------------------------------------
 // Zod schemas
 // ---------------------------------------------------------------------------
@@ -177,9 +179,6 @@ const DEFAULT_RATE_LIMITS = {
     ],
   },
 } satisfies Record<string, RateLimitConfig>;
-
-/** Trust level numeric keys (0–5). */
-const TRUST_LEVELS = { UNTRUSTED: 0, BASIC: 1, REGULAR: 2, TRUSTED: 3, POWER_USER: 4, UNLIMITED: 5 } as const;
 
 const DEFAULT_QUOTAS = {
   [TRUST_LEVELS.UNTRUSTED]: {

@@ -408,3 +408,4 @@ The import pipeline uses 4 Payload Workflows:
 4. **Error Handling**: Log all errors with context using `logger` and `logError`
 5. **Testing**: Never use mocks for database or external services
 6. **Geospatial Data**: Always use [longitude, latitude] coordinate order (GeoJSON standard)
+7. **Terminology**: "ingest" is the internal/technical term; "import" is the user-facing term. Both refer to the same file processing pipeline. Collections use "ingest" (`ingest-jobs`, `ingest-files`); the UI says "Import".

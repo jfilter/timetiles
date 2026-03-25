@@ -15,14 +15,10 @@
  */
 import type { TrustLevelRateLimitsConfig } from "@/lib/config/app-config";
 import { getAppConfig } from "@/lib/config/app-config";
+import { TRUST_LEVELS, type TrustLevel } from "@/lib/constants/trust-levels";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
-/**
- * Trust levels for users, determining their access and resource limits.
- */
-export const TRUST_LEVELS = { UNTRUSTED: 0, BASIC: 1, REGULAR: 2, TRUSTED: 3, POWER_USER: 4, UNLIMITED: 5 } as const;
-
-export type TrustLevel = (typeof TRUST_LEVELS)[keyof typeof TRUST_LEVELS];
+export { TRUST_LEVELS, type TrustLevel } from "@/lib/constants/trust-levels";
 
 /**
  * User quota configuration interface.
