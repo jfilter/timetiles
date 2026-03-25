@@ -290,6 +290,9 @@ jobs:
           echo "==> Checking main app health..."
           wait_for_health http://localhost:3000/api/health timetiles 30 2
 
+          echo "==> Verifying payload CLI is available for workers..."
+          docker exec timetiles node node_modules/.bin/payload --help | grep -q "jobs:run"
+
       - name: Smoke test timescrape image
         if: ${{ needs.merge-timescrape.result == 'success' }}
         env:

@@ -73,6 +73,23 @@ setup() {
 }
 
 # =============================================================================
+# Worker Containers
+# =============================================================================
+
+@test "payload CLI is accessible at node_modules/.bin/payload" {
+    skip_if_services_not_running
+    run $DC_CMD exec -T web node -e "require('fs').accessSync('/app/node_modules/.bin/payload')"
+    [ "$status" -eq 0 ]
+}
+
+@test "payload CLI can run --help" {
+    skip_if_services_not_running
+    run $DC_CMD exec -T web node node_modules/.bin/payload --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"jobs:run"* ]]
+}
+
+# =============================================================================
 # Scraper Runner Integration
 # =============================================================================
 
