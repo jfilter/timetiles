@@ -97,7 +97,7 @@ const baseFieldMapping = {
   descriptionField: "description",
   dateField: "date",
   idField: null,
-  idStrategy: "auto" as const,
+  idStrategy: "content-hash" as const,
   locationField: "location",
   latitudeField: "lat",
   longitudeField: "lng",

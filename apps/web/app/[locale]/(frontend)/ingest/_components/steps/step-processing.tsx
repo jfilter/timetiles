@@ -25,6 +25,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
+import { ReviewPanel } from "@/components/ingest/review-panel";
 import { Link, useRouter } from "@/i18n/navigation";
 import { type ProgressApiResponse, useIngestProgressQuery } from "@/lib/hooks/use-ingest-progress-query";
 
@@ -63,6 +64,8 @@ interface ImportProgress {
   catalogId?: number;
   datasets?: Array<{ id: number; name: string; eventsCount: number }>;
   stages: FormattedStage[];
+  /** Job requiring review (if any). */
+  needsReviewJob?: ProgressApiResponse["jobs"][0] | null;
 }
 
 const formatDuration = (startedAt: string | null, completedAt: string | null): string | null => {
@@ -119,10 +122,11 @@ const transformProgressResponse = (data: ProgressApiResponse): ImportProgress =>
     catalogId: data.catalogId ?? undefined,
     datasets: data.status === "completed" ? datasets : undefined,
     stages,
+    needsReviewJob: data.jobs.find((job) => job.reviewReason) ?? null,
   };
 };
 
-type ProcessingStatus = "completed" | "failed" | "processing";
+type ProcessingStatus = "completed" | "failed" | "processing" | "needs-review";
 
 const calculateProgressPercent = (progress: ImportProgress | null): number => {
   if (!progress) return 0;
@@ -244,7 +248,7 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
 };
 
 const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => {
-  const visible = stages.filter((s) => s.status !== "skipped" && s.name !== "needs-review");
+  const visible = stages.filter((s) => s.status !== "skipped");
   return (
     <div className="space-y-1 px-6 py-4">
       {visible.map((stage, index) => (
@@ -268,6 +272,18 @@ const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
         </div>
         <h2 className="text-foreground font-serif text-3xl font-bold">{t("importComplete")}</h2>
         <p className="text-muted-foreground mt-2">{t("importCompleteDescription")}</p>
+      </>
+    );
+  }
+
+  if (status === "needs-review") {
+    return (
+      <>
+        <div className="bg-secondary/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+          <AlertCircleIcon className="text-secondary h-8 w-8" />
+        </div>
+        <h2 className="text-foreground font-serif text-3xl font-bold">{t("reviewRequired")}</h2>
+        <p className="text-muted-foreground mt-2">{t("reviewRequiredDescription")}</p>
       </>
     );
   }
@@ -339,9 +355,12 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
       }
     };
   }, []);
+  const isNeedsReview = !!progress?.needsReviewJob;
+
   const status: ProcessingStatus = (() => {
     if (isCompleted) return "completed";
     if (isFailed) return "failed";
+    if (isNeedsReview) return "needs-review";
     return "processing";
   })();
 
@@ -363,10 +382,10 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
       {/* Progress card */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* Stage timeline — visible during processing and after completion */}
-          {(status === "processing" || status === "completed") && progress?.stages && progress.stages.length > 0 && (
-            <StageTimeline stages={progress.stages} />
-          )}
+          {/* Stage timeline — visible during processing, review, and after completion */}
+          {(status === "processing" || status === "needs-review" || status === "completed") &&
+            progress?.stages &&
+            progress.stages.length > 0 && <StageTimeline stages={progress.stages} />}
 
           {/* Fallback: simple progress for when stages aren't available yet */}
           {status === "processing" && (!progress?.stages || progress.stages.length === 0) && (
@@ -378,6 +397,13 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
               <div className="bg-primary/10 h-2 overflow-hidden rounded-full">
                 <div className="bg-ring h-full transition-all duration-300" style={progressBarStyle} />
               </div>
+            </div>
+          )}
+
+          {/* Review panel — shown when a job needs attention */}
+          {status === "needs-review" && progress?.needsReviewJob && (
+            <div className="border-primary/10 border-t px-6 py-4">
+              <ReviewPanel job={progress.needsReviewJob} />
             </div>
           )}
 

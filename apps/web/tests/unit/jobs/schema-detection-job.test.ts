@@ -71,6 +71,7 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
     NO_TIMESTAMP_DETECTED: "no-timestamp",
     NO_LOCATION_DETECTED: "no-location",
   },
+  shouldReviewHighEmptyRows: vi.fn().mockReturnValue({ needsReview: false }),
   shouldReviewNoTimestamp: vi.fn().mockReturnValue({ needsReview: false }),
   shouldReviewNoLocation: vi.fn().mockReturnValue({ needsReview: false }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),

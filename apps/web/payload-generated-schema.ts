@@ -66,7 +66,7 @@ export const enum_datasets_ingest_transforms_operation = db_schema.enum(
 );
 export const enum_datasets_id_strategy_type = db_schema.enum(
   "enum_datasets_id_strategy_type",
-  ["external", "computed", "auto", "hybrid"],
+  ["external", "content-hash", "auto-generate"],
 );
 export const enum_datasets_id_strategy_duplicate_strategy = db_schema.enum(
   "enum_datasets_id_strategy_duplicate_strategy",
@@ -117,7 +117,7 @@ export const enum__datasets_v_version_ingest_transforms_operation =
   ]);
 export const enum__datasets_v_version_id_strategy_type = db_schema.enum(
   "enum__datasets_v_version_id_strategy_type",
-  ["external", "computed", "auto", "hybrid"],
+  ["external", "content-hash", "auto-generate"],
 );
 export const enum__datasets_v_version_id_strategy_duplicate_strategy =
   db_schema.enum("enum__datasets_v_version_id_strategy_duplicate_strategy", [
@@ -1205,6 +1205,27 @@ export const datasets_id_strategy_computed_id_fields = db_schema.table(
   ],
 );
 
+export const datasets_id_strategy_exclude_fields = db_schema.table(
+  "datasets_id_strategy_exclude_fields",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    fieldPath: varchar("field_path"),
+  },
+  (columns) => [
+    index("datasets_id_strategy_exclude_fields_order_idx").on(columns._order),
+    index("datasets_id_strategy_exclude_fields_parent_id_idx").on(
+      columns._parentID,
+    ),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [datasets.id],
+      name: "datasets_id_strategy_exclude_fields_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const datasets_ingest_transforms = db_schema.table(
   "datasets_ingest_transforms",
   {
@@ -1271,7 +1292,9 @@ export const datasets = db_schema.table(
     }),
     metadata: jsonb("metadata"),
     idStrategy_type:
-      enum_datasets_id_strategy_type("id_strategy_type").default("auto"),
+      enum_datasets_id_strategy_type("id_strategy_type").default(
+        "content-hash",
+      ),
     idStrategy_externalIdPath: varchar("id_strategy_external_id_path"),
     idStrategy_duplicateStrategy: enum_datasets_id_strategy_duplicate_strategy(
       "id_strategy_duplicate_strategy",
@@ -1408,6 +1431,30 @@ export const _datasets_v_version_id_strategy_computed_id_fields =
     ],
   );
 
+export const _datasets_v_version_id_strategy_exclude_fields = db_schema.table(
+  "_datasets_v_version_id_strategy_exclude_fields",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    fieldPath: varchar("field_path"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => [
+    index("_datasets_v_version_id_strategy_exclude_fields_order_idx").on(
+      columns._order,
+    ),
+    index("_datasets_v_version_id_strategy_exclude_fields_parent_id_idx").on(
+      columns._parentID,
+    ),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_datasets_v.id],
+      name: "_datasets_v_version_id_strategy_exclude_fields_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const _datasets_v_version_ingest_transforms = db_schema.table(
   "_datasets_v_version_ingest_transforms",
   {
@@ -1495,7 +1542,7 @@ export const _datasets_v = db_schema.table(
     version_metadata: jsonb("version_metadata"),
     version_idStrategy_type: enum__datasets_v_version_id_strategy_type(
       "version_id_strategy_type",
-    ).default("auto"),
+    ).default("content-hash"),
     version_idStrategy_externalIdPath: varchar(
       "version_id_strategy_external_id_path",
     ),
@@ -8783,6 +8830,16 @@ export const relations_datasets_id_strategy_computed_id_fields = relations(
     }),
   }),
 );
+export const relations_datasets_id_strategy_exclude_fields = relations(
+  datasets_id_strategy_exclude_fields,
+  ({ one }) => ({
+    _parentID: one(datasets, {
+      fields: [datasets_id_strategy_exclude_fields._parentID],
+      references: [datasets.id],
+      relationName: "idStrategy_excludeFields",
+    }),
+  }),
+);
 export const relations_datasets_ingest_transforms = relations(
   datasets_ingest_transforms,
   ({ one }) => ({
@@ -8812,6 +8869,9 @@ export const relations_datasets = relations(datasets, ({ one, many }) => ({
   idStrategy_computedIdFields: many(datasets_id_strategy_computed_id_fields, {
     relationName: "idStrategy_computedIdFields",
   }),
+  idStrategy_excludeFields: many(datasets_id_strategy_exclude_fields, {
+    relationName: "idStrategy_excludeFields",
+  }),
   ingestTransforms: many(datasets_ingest_transforms, {
     relationName: "ingestTransforms",
   }),
@@ -8827,6 +8887,14 @@ export const relations__datasets_v_version_id_strategy_computed_id_fields =
       fields: [_datasets_v_version_id_strategy_computed_id_fields._parentID],
       references: [_datasets_v.id],
       relationName: "version_idStrategy_computedIdFields",
+    }),
+  }));
+export const relations__datasets_v_version_id_strategy_exclude_fields =
+  relations(_datasets_v_version_id_strategy_exclude_fields, ({ one }) => ({
+    _parentID: one(_datasets_v, {
+      fields: [_datasets_v_version_id_strategy_exclude_fields._parentID],
+      references: [_datasets_v.id],
+      relationName: "version_idStrategy_excludeFields",
     }),
   }));
 export const relations__datasets_v_version_ingest_transforms = relations(
@@ -8866,6 +8934,12 @@ export const relations__datasets_v = relations(
       _datasets_v_version_id_strategy_computed_id_fields,
       {
         relationName: "version_idStrategy_computedIdFields",
+      },
+    ),
+    version_idStrategy_excludeFields: many(
+      _datasets_v_version_id_strategy_exclude_fields,
+      {
+        relationName: "version_idStrategy_excludeFields",
       },
     ),
     version_ingestTransforms: many(_datasets_v_version_ingest_transforms, {
@@ -11294,9 +11368,11 @@ type DatabaseSchema = {
   _catalogs_v: typeof _catalogs_v;
   data_exports: typeof data_exports;
   datasets_id_strategy_computed_id_fields: typeof datasets_id_strategy_computed_id_fields;
+  datasets_id_strategy_exclude_fields: typeof datasets_id_strategy_exclude_fields;
   datasets_ingest_transforms: typeof datasets_ingest_transforms;
   datasets: typeof datasets;
   _datasets_v_version_id_strategy_computed_id_fields: typeof _datasets_v_version_id_strategy_computed_id_fields;
+  _datasets_v_version_id_strategy_exclude_fields: typeof _datasets_v_version_id_strategy_exclude_fields;
   _datasets_v_version_ingest_transforms: typeof _datasets_v_version_ingest_transforms;
   _datasets_v: typeof _datasets_v;
   dataset_schemas_schema_summary_new_fields: typeof dataset_schemas_schema_summary_new_fields;
@@ -11461,9 +11537,11 @@ type DatabaseSchema = {
   relations__catalogs_v: typeof relations__catalogs_v;
   relations_data_exports: typeof relations_data_exports;
   relations_datasets_id_strategy_computed_id_fields: typeof relations_datasets_id_strategy_computed_id_fields;
+  relations_datasets_id_strategy_exclude_fields: typeof relations_datasets_id_strategy_exclude_fields;
   relations_datasets_ingest_transforms: typeof relations_datasets_ingest_transforms;
   relations_datasets: typeof relations_datasets;
   relations__datasets_v_version_id_strategy_computed_id_fields: typeof relations__datasets_v_version_id_strategy_computed_id_fields;
+  relations__datasets_v_version_id_strategy_exclude_fields: typeof relations__datasets_v_version_id_strategy_exclude_fields;
   relations__datasets_v_version_ingest_transforms: typeof relations__datasets_v_version_ingest_transforms;
   relations__datasets_v: typeof relations__datasets_v;
   relations_dataset_schemas_schema_summary_new_fields: typeof relations_dataset_schemas_schema_summary_new_fields;

@@ -37,6 +37,7 @@ import type { ReviewChecksConfig } from "../workflows/review-checks";
 import {
   REVIEW_REASONS,
   setNeedsReview,
+  shouldReviewHighEmptyRows,
   shouldReviewNoLocation,
   shouldReviewNoTimestamp,
 } from "../workflows/review-checks";
@@ -300,6 +301,66 @@ const updateSchemaState = async (
   });
 };
 
+/** Run post-detection review checks (empty rows, missing timestamp/location). */
+const runSchemaReviewChecks = async (
+  payload: Payload,
+  ingestJobId: number | string,
+  job: IngestJob,
+  totalRowsProcessed: number,
+  emptyRowCount: number,
+  fieldMappings: Record<string, string | null | undefined> | null,
+  lastSchemaBuilder: ProgressiveSchemaBuilder | null
+): Promise<{ needsReview: true } | null> => {
+  // Load per-source review check overrides from the ingest file
+  const ingestFileId = typeof job.ingestFile === "object" ? job.ingestFile?.id : job.ingestFile;
+  const ingestFile = ingestFileId
+    ? await payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId })
+    : null;
+  const reviewChecks = (ingestFile?.processingOptions as Record<string, unknown> | null)?.reviewChecks as
+    | ReviewChecksConfig
+    | undefined;
+
+  // Review check: high empty row rate
+  const emptyCheck = shouldReviewHighEmptyRows(totalRowsProcessed, emptyRowCount, reviewChecks);
+  if (emptyCheck.needsReview) {
+    await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_EMPTY_ROW_RATE, {
+      totalRows: totalRowsProcessed,
+      emptyRows: emptyRowCount,
+      emptyRate: emptyCheck.emptyRate,
+    });
+    return { needsReview: true };
+  }
+
+  // Review check: no timestamp / no location field detected
+  if (fieldMappings) {
+    const availableColumns = lastSchemaBuilder?.getState()?.fieldStats
+      ? Object.keys(lastSchemaBuilder.getState().fieldStats)
+      : Object.keys(fieldMappings);
+
+    const timestampCheck = shouldReviewNoTimestamp(fieldMappings, reviewChecks);
+    if (timestampCheck.needsReview) {
+      await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.NO_TIMESTAMP_DETECTED, {
+        detectedMappings: fieldMappings,
+        availableColumns,
+        message: "No date or time column was detected in your data.",
+      });
+      return { needsReview: true };
+    }
+
+    const locationCheck = shouldReviewNoLocation(fieldMappings, reviewChecks);
+    if (locationCheck.needsReview) {
+      await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.NO_LOCATION_DETECTED, {
+        detectedMappings: fieldMappings,
+        availableColumns,
+        message: "No location, address, or coordinate columns were detected in your data.",
+      });
+      return { needsReview: true };
+    }
+  }
+
+  return null;
+};
+
 export const schemaDetectionJob = {
   slug: JOB_TYPES.DETECT_SCHEMA,
   retries: 1,
@@ -364,11 +425,19 @@ export const schemaDetectionJob = {
       // Single-job pattern always processes all rows from scratch.
       // Persisted schemaBuilderState is saved for observability but never used to seed.
       let previousState: SchemaBuilderState | null = null;
+      let emptyRowCount = 0;
 
       for await (const rows of streamBatchesFromFile(filePath, {
         sheetIndex: job.sheetIndex ?? undefined,
         batchSize: BATCH_SIZE,
       })) {
+        // Count empty rows (all values null/blank) before processing
+        for (const row of rows) {
+          if (Object.values(row).every((v) => v == null || (typeof v === "string" && v.trim() === ""))) {
+            emptyRowCount++;
+          }
+        }
+
         // Process batch and build schema
         const { nonDuplicateRows, schemaBuilder, updatedSchema } = await processBatchSchema(
           rows,
@@ -408,35 +477,18 @@ export const schemaDetectionJob = {
         totalRowsProcessed,
       });
 
-      // Load per-source review check overrides from the ingest file
-      const ingestFileId = typeof job.ingestFile === "object" ? job.ingestFile?.id : job.ingestFile;
-      const ingestFile = ingestFileId
-        ? await payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId })
-        : null;
-      const reviewChecks = (ingestFile?.processingOptions as Record<string, unknown> | null)?.reviewChecks as
-        | ReviewChecksConfig
-        | undefined;
-
-      // Review check: no timestamp field detected
-      if (fieldMappings) {
-        const timestampCheck = shouldReviewNoTimestamp(fieldMappings, reviewChecks);
-        if (timestampCheck.needsReview) {
-          await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.NO_TIMESTAMP_DETECTED, {
-            detectedMappings: fieldMappings,
-            message: "No timestamp or date field was detected in the data",
-          });
-          return { output: { needsReview: true, totalBatches: batchNumber, totalRowsProcessed } };
-        }
-
-        // Review check: no location field detected
-        const locationCheck = shouldReviewNoLocation(fieldMappings, reviewChecks);
-        if (locationCheck.needsReview) {
-          await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.NO_LOCATION_DETECTED, {
-            detectedMappings: fieldMappings,
-            message: "No location, address, or coordinate fields were detected in the data",
-          });
-          return { output: { needsReview: true, totalBatches: batchNumber, totalRowsProcessed } };
-        }
+      // Run post-detection review checks
+      const reviewResult = await runSchemaReviewChecks(
+        payload,
+        ingestJobId,
+        job,
+        totalRowsProcessed,
+        emptyRowCount,
+        fieldMappings,
+        lastSchemaBuilder
+      );
+      if (reviewResult) {
+        return { output: { needsReview: true, totalBatches: batchNumber, totalRowsProcessed } };
       }
 
       return { output: { totalBatches: batchNumber, totalRowsProcessed } };

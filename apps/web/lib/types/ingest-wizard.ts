@@ -83,7 +83,7 @@ export interface FieldMapping {
   dateField: string | null;
   endDateField: string | null;
   idField: string | null;
-  idStrategy: "external" | "computed" | "auto" | "hybrid";
+  idStrategy: "external" | "content-hash" | "auto-generate";
   locationField: string | null;
   latitudeField: string | null;
   longitudeField: string | null;

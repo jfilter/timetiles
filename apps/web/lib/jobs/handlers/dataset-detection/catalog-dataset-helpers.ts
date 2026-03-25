@@ -159,7 +159,7 @@ export const findOrCreateDataset = async (
         strictValidation: false,
         allowTransformations: true,
       },
-      idStrategy: { type: "auto", duplicateStrategy: "skip" },
+      idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
       _status: "published" as const,
       ...(userId ? { createdBy: userId } : {}),
     },

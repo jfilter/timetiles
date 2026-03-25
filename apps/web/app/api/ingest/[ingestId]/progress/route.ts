@@ -68,6 +68,20 @@ const formatStage = (stageName: string, stageData: StageProgress): FormattedStag
 };
 
 /**
+ * Extract and format stages from the job progress structure, sorted by pipeline order.
+ */
+const extractFormattedStages = (job: IngestJob): FormattedStage[] => {
+  const stages = (job.progress?.stages as Record<string, StageProgress> | undefined) ?? {};
+  return Object.entries(stages)
+    .sort(([a], [b]) => {
+      const ai = STAGE_ORDER.indexOf(a as (typeof STAGE_ORDER)[number]);
+      const bi = STAGE_ORDER.indexOf(b as (typeof STAGE_ORDER)[number]);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    })
+    .map(([stageName, stageData]) => formatStage(stageName, stageData));
+};
+
+/**
  * Format job progress with detailed stage information.
  */
 const formatJobProgress = (job: IngestJob): FormattedJobProgress => {
@@ -75,19 +89,8 @@ const formatJobProgress = (job: IngestJob): FormattedJobProgress => {
   const datasetId = datasetSummary?.id ?? (typeof job.dataset === "number" ? job.dataset : 0);
   const datasetName = datasetSummary?.name;
 
-  // Get stages from new progress structure
-  const stages = (job.progress?.stages as Record<string, StageProgress> | undefined) ?? {};
   const overallPercentage = (job.progress?.overallPercentage as number | undefined) ?? 0;
   const estimatedCompletionTime = (job.progress?.estimatedCompletionTime as Date | undefined) ?? null;
-
-  // Format all stages, sorted by canonical pipeline order
-  const formattedStages = Object.entries(stages)
-    .sort(([a], [b]) => {
-      const ai = STAGE_ORDER.indexOf(a as (typeof STAGE_ORDER)[number]);
-      const bi = STAGE_ORDER.indexOf(b as (typeof STAGE_ORDER)[number]);
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    })
-    .map(([stageName, stageData]) => formatStage(stageName, stageData));
 
   return {
     id: job.id,
@@ -96,13 +99,15 @@ const formatJobProgress = (job: IngestJob): FormattedJobProgress => {
     currentStage: job.stage,
     overallProgress: Math.round(overallPercentage),
     estimatedCompletionTime: estimatedCompletionTime ? new Date(estimatedCompletionTime).toISOString() : null,
-    stages: formattedStages,
+    stages: extractFormattedStages(job),
     errors: job.errors?.length ?? 0,
     duplicates: {
       internal: job.duplicates?.summary?.internalDuplicates ?? 0,
       external: job.duplicates?.summary?.externalDuplicates ?? 0,
     },
     schemaValidation: job.schemaValidation,
+    reviewReason: job.reviewReason ?? null,
+    reviewDetails: (job.reviewDetails as Record<string, unknown>) ?? null,
     results: job.results as FormattedJobProgress["results"],
   };
 };

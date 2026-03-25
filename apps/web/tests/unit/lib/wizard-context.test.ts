@@ -144,7 +144,7 @@ describe("Wizard Store", () => {
       const state = useWizardStore.getState();
       expect(state.fieldMappings).toHaveLength(2);
       expect(state.fieldMappings[0]?.sheetIndex).toBe(0);
-      expect(state.fieldMappings[0]?.idStrategy).toBe("auto");
+      expect(state.fieldMappings[0]?.idStrategy).toBe("content-hash");
       expect(state.fieldMappings[1]?.sheetIndex).toBe(1);
     });
 
@@ -163,7 +163,7 @@ describe("Wizard Store", () => {
             dateField: "date",
             endDateField: null,
             idField: null,
-            idStrategy: "auto" as const,
+            idStrategy: "content-hash" as const,
             locationField: null,
             latitudeField: null,
             longitudeField: null,
@@ -227,7 +227,7 @@ describe("Wizard Store", () => {
             dateField: null,
             endDateField: null,
             idField: null,
-            idStrategy: "auto" as const,
+            idStrategy: "content-hash" as const,
             locationField: null,
             latitudeField: null,
             longitudeField: null,
@@ -243,7 +243,7 @@ describe("Wizard Store", () => {
       expect(state.fieldMappings[0]?.titleField).toBe("name");
       expect(state.fieldMappings[0]?.dateField).toBe("created_at");
       expect(state.fieldMappings[0]?.locationField).toBe("address");
-      expect(state.fieldMappings[0]?.idStrategy).toBe("auto"); // Unchanged
+      expect(state.fieldMappings[0]?.idStrategy).toBe("content-hash"); // Unchanged
     });
 
     it("setFieldMapping updates idStrategy", () => {
@@ -257,7 +257,7 @@ describe("Wizard Store", () => {
             dateField: null,
             endDateField: null,
             idField: null,
-            idStrategy: "auto" as const,
+            idStrategy: "content-hash" as const,
             locationField: null,
             latitudeField: null,
             longitudeField: null,
@@ -577,7 +577,7 @@ describe("canProceed Validation", () => {
       dateField: null,
       endDateField: null,
       idField: null,
-      idStrategy: "auto",
+      idStrategy: "content-hash",
       locationField: null,
       latitudeField: null,
       longitudeField: null,

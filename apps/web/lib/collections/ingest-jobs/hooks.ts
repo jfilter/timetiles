@@ -184,6 +184,41 @@ const auditAdminStageOverride = async (req: PayloadRequest, doc: IngestJob, prev
   });
 };
 
+/** Maps review reasons to the skip flag that prevents them from re-triggering on resume. */
+const APPROVAL_SKIP_FLAGS: Record<string, string> = {
+  [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: "skipDuplicateRateCheck",
+  [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: "skipEmptyRowCheck",
+  [REVIEW_REASONS.NO_TIMESTAMP_DETECTED]: "skipTimestampCheck",
+  [REVIEW_REASONS.NO_LOCATION_DETECTED]: "skipLocationCheck",
+  [REVIEW_REASONS.GEOCODING_PARTIAL]: "skipGeocodingCheck",
+};
+
+/**
+ * When a review is approved, set the corresponding skip flag on the ingest file's
+ * processingOptions so the same check doesn't fire again on resume.
+ */
+const setApprovalSkipFlag = async (req: PayloadRequest, doc: IngestJob): Promise<void> => {
+  const skipFlag = doc.reviewReason ? APPROVAL_SKIP_FLAGS[doc.reviewReason] : undefined;
+  if (!skipFlag) return;
+
+  const ingestFileId = extractRelationId(doc.ingestFile);
+  if (!ingestFileId) return;
+
+  const ingestFile = await req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId, req });
+  const existing = (ingestFile?.processingOptions as Record<string, unknown>) ?? {};
+  const existingChecks = (existing.reviewChecks as Record<string, unknown>) ?? {};
+
+  await req.payload.update({
+    collection: COLLECTION_NAMES.INGEST_FILES,
+    id: ingestFileId,
+    req, // Stay in same transaction to prevent deadlock
+    data: { processingOptions: { ...existing, reviewChecks: { ...existingChecks, [skipFlag]: true } } },
+    context: { skipIngestFileHooks: true }, // Don't re-trigger ingest-file hooks
+  });
+
+  logger.info("Set approval skip flag on ingest file", { ingestFileId, skipFlag, reviewReason: doc.reviewReason });
+};
+
 const trackIngestJobQuota = async (req: PayloadRequest, doc: IngestJob): Promise<void> => {
   const ingestFileId = requireRelationId(doc.ingestFile, "ingestJob.ingestFile");
   const ingestFile = await req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId });
@@ -213,6 +248,20 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
       if (doc.reviewReason === REVIEW_REASONS.QUOTA_EXCEEDED && req.user?.role !== "admin") {
         throw new Error("Only admins can approve quota-exceeded imports. Please contact us to increase your limit.");
       }
+
+      // high-row-errors: events already exist — just mark completed, no re-run needed
+      if (doc.reviewReason === REVIEW_REASONS.HIGH_ROW_ERROR_RATE) {
+        await req.payload.update({
+          collection: COLLECTION_NAMES.INGEST_JOBS,
+          id: doc.id,
+          data: { stage: PROCESSING_STAGE.COMPLETED },
+          req, // Stay in same transaction
+        });
+        return doc;
+      }
+
+      // For reasons that would loop on re-run, set skip flag so the check doesn't fire again
+      await setApprovalSkipFlag(req, doc);
 
       const resumeFrom = getResumePointForReason(doc.reviewReason);
       const input = { ingestJobId: String(doc.id), resumeFrom };

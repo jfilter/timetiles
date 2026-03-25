@@ -475,18 +475,30 @@ export interface Dataset {
     /**
      * How to generate unique IDs for events
      */
-    type: 'external' | 'computed' | 'auto' | 'hybrid';
+    type: 'external' | 'content-hash' | 'auto-generate';
     /**
      * JSON path to ID field (e.g., 'id' or 'metadata.uuid')
      */
     externalIdPath?: string | null;
     /**
-     * Fields to combine for unique hash
+     * Deprecated: kept for backward compatibility with existing data
      */
     computedIdFields?:
       | {
           /**
            * Path to field to include in hash
+           */
+          fieldPath: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Fields to exclude from the content hash (e.g., volatile timestamps)
+     */
+    excludeFields?:
+      | {
+          /**
+           * Path to field to exclude from content hash
            */
           fieldPath: string;
           id?: string | null;
@@ -4083,6 +4095,12 @@ export interface DatasetsSelect<T extends boolean = true> {
         type?: T;
         externalIdPath?: T;
         computedIdFields?:
+          | T
+          | {
+              fieldPath?: T;
+              id?: T;
+            };
+        excludeFields?:
           | T
           | {
               fieldPath?: T;

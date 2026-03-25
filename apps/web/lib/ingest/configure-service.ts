@@ -61,12 +61,12 @@ export const buildIdStrategy = (
   fieldMapping: FieldMapping | undefined,
   deduplicationStrategy: ConfigureIngestRequest["deduplicationStrategy"]
 ): {
-  type: FieldMapping["idStrategy"] | "auto";
+  type: FieldMapping["idStrategy"];
   externalIdPath?: string | null;
   duplicateStrategy: ConfigureIngestRequest["deduplicationStrategy"];
 } => {
   if (!fieldMapping) {
-    return { type: "auto", duplicateStrategy: deduplicationStrategy };
+    return { type: "content-hash", duplicateStrategy: deduplicationStrategy };
   }
   return {
     type: fieldMapping.idStrategy,

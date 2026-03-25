@@ -47,7 +47,7 @@ describe.sequential("Config Suggestions - Integration", () => {
         catalog: catalog.id,
         language: "eng",
         fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationNamePath: "location" },
-        idStrategy: { type: "auto" },
+        idStrategy: { type: "content-hash" },
       },
     });
 
@@ -120,7 +120,7 @@ describe.sequential("Config Suggestions - Integration", () => {
         language: "eng",
         fieldMappingOverrides: { titlePath: "name", timestampPath: "date", locationNamePath: "location" },
         ingestTransforms: transforms,
-        idStrategy: { type: "auto" },
+        idStrategy: { type: "content-hash" },
       },
     });
 

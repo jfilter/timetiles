@@ -58,7 +58,6 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
     NO_LOCATION_DETECTED: "no-location",
   },
   shouldReviewHighDuplicates: vi.fn().mockReturnValue({ needsReview: false }),
-  shouldReviewHighEmptyRows: vi.fn().mockReturnValue({ needsReview: false }),
   checkQuotaForSheet: vi.fn().mockResolvedValue({ allowed: true }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
 }));

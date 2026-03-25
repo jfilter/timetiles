@@ -179,7 +179,7 @@ describe("findConfigSuggestions", () => {
     expect(results).toHaveLength(1);
     const config = results[0]!.config;
     expect(config.ingestTransforms).toEqual([]);
-    expect(config.idStrategy).toEqual({ type: "auto" });
+    expect(config.idStrategy).toEqual({ type: "content-hash" });
     expect(config.deduplicationConfig).toEqual({ strategy: "skip" });
     expect(config.geocodingEnabled).toBe(false);
   });

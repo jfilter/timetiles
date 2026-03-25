@@ -81,19 +81,18 @@ const Datasets: CollectionConfig = {
           type: "select",
           options: [
             { label: "Use External ID from Source", value: "external" },
-            { label: "Compute Hash from Fields", value: "computed" },
-            { label: "Auto-detect Duplicates by Content", value: "auto" },
-            { label: "Try External, Fallback to Computed", value: "hybrid" },
+            { label: "Content Hash (detect duplicates by content)", value: "content-hash" },
+            { label: "Auto-generate (no duplicate detection)", value: "auto-generate" },
           ],
           required: true,
-          defaultValue: "auto",
+          defaultValue: "content-hash",
           admin: { description: "How to generate unique IDs for events" },
         },
         {
           name: "externalIdPath",
           type: "text",
           admin: {
-            condition: (data) => ["external", "hybrid"].includes(data?.idStrategy?.type),
+            condition: (data) => data?.idStrategy?.type === "external",
             description: "JSON path to ID field (e.g., 'id' or 'metadata.uuid')",
           },
         },
@@ -109,8 +108,24 @@ const Datasets: CollectionConfig = {
             },
           ],
           admin: {
-            condition: (data) => ["computed", "hybrid"].includes(data?.idStrategy?.type),
-            description: "Fields to combine for unique hash",
+            condition: () => false,
+            description: "Deprecated: kept for backward compatibility with existing data",
+          },
+        },
+        {
+          name: "excludeFields",
+          type: "array",
+          fields: [
+            {
+              name: "fieldPath",
+              type: "text",
+              required: true,
+              admin: { description: "Path to field to exclude from content hash" },
+            },
+          ],
+          admin: {
+            condition: (data) => data?.idStrategy?.type === "content-hash",
+            description: "Fields to exclude from the content hash (e.g., volatile timestamps)",
           },
         },
         {
@@ -198,7 +213,7 @@ const Datasets: CollectionConfig = {
     {
       name: "deduplicationConfig",
       type: "group",
-      admin: { condition: editorOrAdminCondition },
+      admin: { condition: (data) => editorOrAdminCondition(data) && data?.idStrategy?.type !== "auto-generate" },
       fields: [
         {
           name: "enabled",

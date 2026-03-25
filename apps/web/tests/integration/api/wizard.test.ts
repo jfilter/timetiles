@@ -216,7 +216,7 @@ describe.sequential("Import Wizard API Endpoints", () => {
           catalog: catalog.id,
           language: "eng",
           fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationPath: "location" },
-          idStrategy: { type: "auto", duplicateStrategy: "skip" },
+          idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
         },
       });
 
@@ -224,7 +224,7 @@ describe.sequential("Import Wizard API Endpoints", () => {
       expect(dataset.name).toBe(datasetName);
       expect(dataset.fieldMappingOverrides.titlePath).toBe("title");
       expect(dataset.fieldMappingOverrides.timestampPath).toBe("date");
-      expect(dataset.idStrategy.type).toBe("auto");
+      expect(dataset.idStrategy.type).toBe("content-hash");
     });
 
     it("updates existing dataset with new field mappings", async () => {
@@ -275,7 +275,7 @@ describe.sequential("Import Wizard API Endpoints", () => {
               descriptionField: "description",
               dateField: "date",
               idField: null,
-              idStrategy: "auto",
+              idStrategy: "content-hash",
               locationField: "location",
               latitudeField: null,
               longitudeField: null,
@@ -390,20 +390,20 @@ describe.sequential("Import Wizard API Endpoints", () => {
       expect(externalDataset.idStrategy.externalIdPath).toBe("event_id");
       expect(externalDataset.idStrategy.duplicateStrategy).toBe("update");
 
-      // Test computed ID strategy
-      const computedDataset = await payload.create({
+      // Test content-hash ID strategy
+      const contentHashDataset = await payload.create({
         collection: "datasets",
         data: {
-          name: "Computed ID Dataset",
-          slug: `computed-id-${Date.now()}`,
+          name: "Content Hash ID Dataset",
+          slug: `content-hash-id-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          idStrategy: { type: "computed", duplicateStrategy: "version" },
+          idStrategy: { type: "content-hash", duplicateStrategy: "version" },
         },
       });
 
-      expect(computedDataset.idStrategy.type).toBe("computed");
-      expect(computedDataset.idStrategy.duplicateStrategy).toBe("version");
+      expect(contentHashDataset.idStrategy.type).toBe("content-hash");
+      expect(contentHashDataset.idStrategy.duplicateStrategy).toBe("version");
     });
   });
 

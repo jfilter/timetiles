@@ -200,7 +200,7 @@ describe.sequential("All Transform Types Pipeline", () => {
       language: "eng",
       schemaConfig: { allowTransformations: true },
       ingestTransforms: buildAllTransforms(),
-      idStrategy: { type: "auto" },
+      idStrategy: { type: "content-hash" },
     });
 
     const events = await runFullImport(dataset.id);
@@ -285,7 +285,7 @@ describe.sequential("All Transform Types Pipeline", () => {
       language: "eng",
       schemaConfig: { allowTransformations: true },
       ingestTransforms: transforms,
-      idStrategy: { type: "auto" },
+      idStrategy: { type: "content-hash" },
     });
 
     const events = await runFullImport(dataset.id);
@@ -311,7 +311,7 @@ describe.sequential("All Transform Types Pipeline", () => {
       language: "eng",
       schemaConfig: { allowTransformations: true },
       ingestTransforms: buildAllTransforms(),
-      idStrategy: { type: "auto" },
+      idStrategy: { type: "content-hash" },
     });
 
     const events = await runFullImport(dataset.id);

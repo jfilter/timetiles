@@ -9,6 +9,7 @@ import * as migration_20260325_014023 from './20260325_014023';
 import * as migration_20260325_014025_update_sql_functions_for_renamed_column from './20260325_014025_update_sql_functions_for_renamed_column';
 import * as migration_20260325_024938 from './20260325_024938';
 import * as migration_20260325_104859 from './20260325_104859';
+import * as migration_20260325_135037 from './20260325_135037';
 
 export const migrations = [
   {
@@ -64,6 +65,11 @@ export const migrations = [
   {
     up: migration_20260325_104859.up,
     down: migration_20260325_104859.down,
-    name: '20260325_104859'
+    name: '20260325_104859',
+  },
+  {
+    up: migration_20260325_135037.up,
+    down: migration_20260325_135037.down,
+    name: '20260325_135037'
   },
 ];

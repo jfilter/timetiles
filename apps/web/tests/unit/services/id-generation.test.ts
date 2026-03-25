@@ -100,34 +100,40 @@ describe("id-generation", () => {
       });
     });
 
-    describe("computed ID strategy", () => {
+    describe("content-hash ID strategy", () => {
       const mockDataset: Partial<Dataset> = {
         id: mockDatasetId,
-        idStrategy: {
-          type: "computed",
-          computedIdFields: [{ fieldPath: "title" }, { fieldPath: "date" }],
-          duplicateStrategy: "skip",
-        },
+        idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
       };
 
-      it("generates hash from specified fields", () => {
-        const data = { title: "Test Event", date: "2024-03-15", description: "Should not be included" };
+      it("generates hash from all fields", () => {
+        const data = { title: "Test Event", date: "2024-03-15", description: "Included in hash" };
 
         const result = generateEventId(data, mockDataset as Dataset);
 
-        expect(result.uniqueId).toMatch(/^123:comp:[a-f0-9]{16}$/);
-        expect(result.strategy).toBe("computed");
+        expect(result.uniqueId).toMatch(/^123:hash:[a-f0-9]{16}$/);
+        expect(result.strategy).toBe("content-hash");
         expect(result.sourceId).toBeUndefined();
       });
 
-      it("generates consistent hash for same values", () => {
+      it("generates consistent hash for same data", () => {
         const data1 = { title: "Event", date: "2024-03-15" };
-        const data2 = { title: "Event", date: "2024-03-15", extra: "ignored" };
+        const data2 = { title: "Event", date: "2024-03-15" };
 
         const result1 = generateEventId(data1, mockDataset as Dataset);
         const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.uniqueId).toBe(result2.uniqueId);
+      });
+
+      it("generates different hash when extra fields present", () => {
+        const data1 = { title: "Event", date: "2024-03-15" };
+        const data2 = { title: "Event", date: "2024-03-15", extra: "additional" };
+
+        const result1 = generateEventId(data1, mockDataset as Dataset);
+        const result2 = generateEventId(data2, mockDataset as Dataset);
+
+        expect(result1.uniqueId).not.toBe(result2.uniqueId);
       });
 
       it("generates different hash for different values", () => {
@@ -140,173 +146,86 @@ describe("id-generation", () => {
         expect(result1.uniqueId).not.toBe(result2.uniqueId);
       });
 
-      it("handles nested field paths", () => {
-        const datasetWithNestedFields: Partial<Dataset> = {
+      it("excludes specified fields from hash", () => {
+        const datasetWithExcludes: Partial<Dataset> = {
           id: mockDatasetId,
           idStrategy: {
-            type: "computed",
-            computedIdFields: [{ fieldPath: "metadata.id" }, { fieldPath: "location.name" }],
+            type: "content-hash",
+            excludeFields: [{ fieldPath: "lastModified" }],
             duplicateStrategy: "skip",
           },
         };
 
-        const data = { metadata: { id: "meta-123" }, location: { name: "NYC" } };
+        const data1 = { title: "Event", lastModified: "2024-01-01" };
+        const data2 = { title: "Event", lastModified: "2024-12-31" };
 
-        const result = generateEventId(data, datasetWithNestedFields as Dataset);
+        const result1 = generateEventId(data1, datasetWithExcludes as Dataset);
+        const result2 = generateEventId(data2, datasetWithExcludes as Dataset);
 
-        expect(result.uniqueId).toMatch(/^123:comp:[a-f0-9]{16}$/);
-        expect(result.error).toBeUndefined();
-      });
-
-      it("returns error for missing required fields", () => {
-        const data = { title: "Test Event" }; // Missing 'date' field
-
-        const result = generateEventId(data, mockDataset as Dataset);
-
-        expect(result.uniqueId).toMatch(/^123:error:\d+$/);
-        expect(result.error).toBe("Missing required fields for computed ID: date");
-      });
-
-      it("handles null and undefined values", () => {
-        const data = { title: null, date: undefined };
-
-        const result = generateEventId(data, mockDataset as Dataset);
-
-        expect(result.error).toContain("Missing required fields");
-      });
-
-      it("returns error when computedIdFields is empty array", () => {
-        const emptyFieldsDataset: Partial<Dataset> = {
-          id: mockDatasetId,
-          idStrategy: { type: "computed", computedIdFields: [], duplicateStrategy: "skip" },
-        };
-
-        const data = { title: "Event A", date: "2024-01-01" };
-        const result = generateEventId(data, emptyFieldsDataset as Dataset);
-
-        expect(result.uniqueId).toMatch(/^123:error:\d+$/);
-        expect(result.error).toContain("computedIdFields must not be empty");
+        expect(result1.uniqueId).toBe(result2.uniqueId);
       });
     });
 
-    describe("auto ID strategy", () => {
+    describe("auto-generate ID strategy", () => {
       const mockDataset: Partial<Dataset> = {
         id: mockDatasetId,
-        idStrategy: { type: "auto", duplicateStrategy: "skip" },
+        idStrategy: { type: "auto-generate", duplicateStrategy: "skip" },
       };
 
-      it("generates unique auto ID with content hash", () => {
+      it("generates unique random ID", () => {
         const data = { title: "Test Event", date: "2024-03-15" };
 
         const result = generateEventId(data, mockDataset as Dataset);
 
-        expect(result.uniqueId).toMatch(/^123:auto:\d+:[a-f0-9]{8}$/); // 4 bytes = 8 hex chars
-        expect(result.contentHash).toMatch(/^[a-f0-9]{64}$/); // SHA256 hash
-        expect(result.strategy).toBe("auto");
+        expect(result.uniqueId).toMatch(/^123:auto:\d+:[a-f0-9]{8}$/);
+        expect(result.strategy).toBe("auto-generate");
       });
 
-      it("generates consistent content hash for same data", () => {
+      it("generates different IDs for same data (non-deterministic)", () => {
         const data = { title: "Test", value: 123 };
 
         const result1 = generateEventId(data, mockDataset as Dataset);
         const result2 = generateEventId(data, mockDataset as Dataset);
 
-        expect(result1.contentHash).toBe(result2.contentHash);
-        expect(result1.uniqueId).not.toBe(result2.uniqueId); // Unique IDs differ
-      });
-
-      it("generates different content hash for different data", () => {
-        const data1 = { title: "Event1" };
-        const data2 = { title: "Event2" };
-
-        const result1 = generateEventId(data1, mockDataset as Dataset);
-        const result2 = generateEventId(data2, mockDataset as Dataset);
-
-        expect(result1.contentHash).not.toBe(result2.contentHash);
-      });
-
-      it("normalizes object key order for consistent hashing", () => {
-        const data1 = { b: 2, a: 1, c: 3 };
-        const data2 = { a: 1, c: 3, b: 2 };
-
-        const result1 = generateEventId(data1, mockDataset as Dataset);
-        const result2 = generateEventId(data2, mockDataset as Dataset);
-
-        expect(result1.contentHash).toBe(result2.contentHash);
-      });
-
-      it("produces different content hashes for different nested object values", () => {
-        const data1 = { name: "X", meta: { priority: "high" } };
-        const data2 = { name: "X", meta: { priority: "low" } };
-
-        const result1 = generateEventId(data1, mockDataset as Dataset);
-        const result2 = generateEventId(data2, mockDataset as Dataset);
-
-        expect(result1.contentHash).not.toBe(result2.contentHash);
-      });
-
-      it("produces different content hashes for deeply nested differences", () => {
-        const data1 = { a: { b: { c: { d: 1 } } } };
-        const data2 = { a: { b: { c: { d: 2 } } } };
-
-        const result1 = generateEventId(data1, mockDataset as Dataset);
-        const result2 = generateEventId(data2, mockDataset as Dataset);
-
-        expect(result1.contentHash).not.toBe(result2.contentHash);
-      });
-
-      it("normalizes nested object key order for consistent hashing", () => {
-        const data1 = { z: { b: 2, a: 1 }, m: "val" };
-        const data2 = { m: "val", z: { a: 1, b: 2 } };
-
-        const result1 = generateEventId(data1, mockDataset as Dataset);
-        const result2 = generateEventId(data2, mockDataset as Dataset);
-
-        expect(result1.contentHash).toBe(result2.contentHash);
+        expect(result1.uniqueId).not.toBe(result2.uniqueId);
       });
     });
 
-    describe("hybrid ID strategy", () => {
-      const mockDataset: Partial<Dataset> = {
-        id: mockDatasetId,
-        idStrategy: {
-          type: "hybrid",
-          externalIdPath: "id",
-          computedIdFields: [{ fieldPath: "title" }, { fieldPath: "date" }],
-          duplicateStrategy: "skip",
-        },
-      };
-
-      it("uses external ID when available", () => {
-        const data = { id: "ext-123", title: "Test Event", date: "2024-03-15" };
-
-        const result = generateEventId(data, mockDataset as Dataset);
-
-        expect(result.uniqueId).toBe("123:ext:ext-123");
-        expect(result.strategy).toBe("external");
-      });
-
-      it("falls back to computed ID when external missing", () => {
-        const data = { title: "Test Event", date: "2024-03-15" };
-
-        const result = generateEventId(data, mockDataset as Dataset);
-
-        expect(result.uniqueId).toMatch(/^123:comp:[a-f0-9]{16}$/);
-        expect(result.strategy).toBe("computed");
-      });
-
-      it("returns error when both strategies fail", () => {
-        const data = {
-          title: "Test Event",
-          // Missing both 'id' and 'date'
+    describe("removed strategy names", () => {
+      it("returns error for removed 'computed' strategy", () => {
+        const mockDataset: Partial<Dataset> = {
+          id: mockDatasetId,
+          idStrategy: { type: "computed" as any, duplicateStrategy: "skip" },
         };
 
-        const result = generateEventId(data, mockDataset as Dataset);
+        const result = generateEventId({ id: 1 }, mockDataset as Dataset);
 
         expect(result.uniqueId).toMatch(/^123:error:\d+$/);
-        expect(result.error).toContain("Hybrid ID generation failed");
-        expect(result.error).toContain("External:");
-        expect(result.error).toContain("Computed:");
+        expect(result.error).toBe("Unknown ID strategy: computed");
+      });
+
+      it("returns error for removed 'auto' strategy", () => {
+        const mockDataset: Partial<Dataset> = {
+          id: mockDatasetId,
+          idStrategy: { type: "auto" as any, duplicateStrategy: "skip" },
+        };
+
+        const result = generateEventId({ id: 1 }, mockDataset as Dataset);
+
+        expect(result.uniqueId).toMatch(/^123:error:\d+$/);
+        expect(result.error).toBe("Unknown ID strategy: auto");
+      });
+
+      it("returns error for removed 'hybrid' strategy", () => {
+        const mockDataset: Partial<Dataset> = {
+          id: mockDatasetId,
+          idStrategy: { type: "hybrid" as any, duplicateStrategy: "skip" },
+        };
+
+        const result = generateEventId({ id: 1 }, mockDataset as Dataset);
+
+        expect(result.uniqueId).toMatch(/^123:error:\d+$/);
+        expect(result.error).toBe("Unknown ID strategy: hybrid");
       });
     });
 
@@ -388,17 +307,17 @@ describe("id-generation", () => {
       );
     });
 
-    it("throws error when computed ID fields are missing", () => {
-      const data = { title: "Test" }; // Missing 'date' field
+    it("throws error for content-hash with excludeFields when all fields excluded", () => {
+      const data = { title: "Test" };
       const idStrategy = {
-        type: "computed" as const,
-        computedIdFields: [{ fieldPath: "title" }, { fieldPath: "date" }],
+        type: "content-hash" as const,
+        excludeFields: [{ fieldPath: "title" }],
         duplicateStrategy: "skip" as const,
       };
 
-      expect(() => generateUniqueId(data, idStrategy)).toThrow(
-        "Failed to generate unique ID: Missing required fields for computed ID: date"
-      );
+      // Even with excluded fields, a hash is still generated (from the empty remaining data)
+      const result = generateUniqueId(data, idStrategy);
+      expect(result).toMatch(/^undefined:hash:[a-f0-9]{16}$/);
     });
 
     it("succeeds when external ID is present", () => {
@@ -409,12 +328,29 @@ describe("id-generation", () => {
       expect(result).toMatch(/^undefined:ext:test-123$/);
     });
 
-    it("succeeds with auto strategy", () => {
+    it("succeeds with content-hash strategy", () => {
       const data = { name: "Test Event" };
-      const idStrategy = { type: "auto" as const, duplicateStrategy: "skip" as const };
+      const idStrategy = { type: "content-hash" as const, duplicateStrategy: "skip" as const };
 
       const result = generateUniqueId(data, idStrategy);
-      expect(result).toMatch(/^undefined:auto:\d+:[a-f0-9]{8}$/);
+      expect(result).toMatch(/^undefined:hash:[a-f0-9]{16}$/);
+    });
+
+    it("returns same hash for identical data with content-hash strategy", () => {
+      const data = { name: "Test Event", date: "2024-01-01" };
+      const idStrategy = { type: "content-hash" as const, duplicateStrategy: "skip" as const };
+
+      const result1 = generateUniqueId(data, idStrategy);
+      const result2 = generateUniqueId(data, idStrategy);
+      expect(result1).toBe(result2);
+    });
+
+    it("returns different hash for different data with content-hash strategy", () => {
+      const idStrategy = { type: "content-hash" as const, duplicateStrategy: "skip" as const };
+
+      const result1 = generateUniqueId({ name: "Event A" }, idStrategy);
+      const result2 = generateUniqueId({ name: "Event B" }, idStrategy);
+      expect(result1).not.toBe(result2);
     });
   });
 });

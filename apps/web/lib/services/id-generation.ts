@@ -1,14 +1,11 @@
 /**
  * Provides functions for generating unique identifiers for events.
  *
- * This module is responsible for creating consistent and unique IDs for event records based on
- * a dataset's configured ID strategy. It supports several strategies:
- * - `external`: Uses a unique ID provided in the source data.
- * - `computed`: Generates a hash from a specified set of fields in the data.
- * - `auto`: Generates a unique ID and a content hash for duplicate detection.
- * - `hybrid`: Attempts to use an external ID first and falls back to a computed ID.
- *
- * The module includes helpers for extracting values from nested objects and sanitizing IDs.
+ * Three ID strategies:
+ * - `external`: Uses a unique ID from a field in the source data.
+ * - `content-hash`: Generates a deterministic SHA-256 hash from all fields (optionally excluding some).
+ *    Used for dedup — identical rows produce the same ID.
+ * - `auto-generate`: Generates a random unique ID per row. Dedup is not supported with this strategy.
  *
  * @module
  */
@@ -16,11 +13,15 @@ import { createHash, randomBytes } from "node:crypto";
 
 import type { Dataset } from "@/payload-types";
 
-// Simple wrapper for use in job handlers
+/**
+ * Generate a unique ID for an event row.
+ *
+ * For `external` and `content-hash`: deterministic — same input = same ID (dedup works).
+ * For `auto-generate`: random — every row gets a unique ID (dedup must be disabled).
+ */
 export const generateUniqueId = (data: unknown, idStrategy: Dataset["idStrategy"]): string => {
   const result = generateEventId(data, { idStrategy } as Dataset);
 
-  // Throw error if ID generation failed - don't create events with error IDs
   if (result.error) {
     throw new Error(`Failed to generate unique ID: ${result.error}`);
   }
@@ -31,7 +32,7 @@ export const generateUniqueId = (data: unknown, idStrategy: Dataset["idStrategy"
 export const generateEventId = (
   data: unknown,
   dataset: Dataset
-): { uniqueId: string; sourceId?: string; contentHash?: string; strategy: string; error?: string } => {
+): { uniqueId: string; sourceId?: string; strategy: string; error?: string } => {
   const strategy = dataset.idStrategy;
 
   if (!strategy) {
@@ -43,14 +44,11 @@ export const generateEventId = (
       case "external":
         return generateExternalId(data, strategy, String(dataset.id));
 
-      case "computed":
-        return generateComputedId(data, strategy, String(dataset.id));
+      case "content-hash":
+        return generateContentHashId(data, strategy, String(dataset.id));
 
-      case "auto":
-        return generateAutoId(data, String(dataset.id));
-
-      case "hybrid":
-        return generateHybridId(data, strategy, String(dataset.id));
+      case "auto-generate":
+        return generateAutoId(String(dataset.id));
 
       default:
         throw new Error(`Unknown ID strategy: ${strategy.type as string}`);
@@ -75,87 +73,43 @@ const generateExternalId = (
     throw new Error(`Missing external ID at path: ${strategy.externalIdPath ?? "unknown"}`);
   }
 
-  // Validate ID format
   const sanitizedId = sanitizeId(sourceId);
-
   return { uniqueId: `${datasetId}:ext:${sanitizedId}`, sourceId: sanitizedId, strategy: "external" };
 };
 
-const generateComputedId = (
+/**
+ * Generate a deterministic ID from row content via SHA-256 hash.
+ * Optionally excludes specified fields (e.g., volatile timestamps).
+ */
+const generateContentHashId = (
   data: unknown,
-  strategy: { computedIdFields?: Array<{ fieldPath: string; id?: string | null }> | null },
+  strategy: { excludeFields?: Array<{ fieldPath: string; id?: string | null }> | null },
   datasetId: string
 ): { uniqueId: string; strategy: string } => {
-  if (!strategy.computedIdFields || strategy.computedIdFields.length === 0) {
-    throw new Error("computedIdFields must not be empty - at least one field is required for computed IDs");
-  }
-
-  const values: Array<{ field: string; value: unknown }> = [];
-  const missingFields: string[] = [];
-
-  for (const fieldConfig of strategy.computedIdFields) {
-    const value = extractFieldValue(data, fieldConfig.fieldPath);
-
-    if (value === null || value === undefined) {
-      missingFields.push(fieldConfig.fieldPath);
-    } else {
-      values.push({ field: fieldConfig.fieldPath, value });
+  let hashData = data;
+  if (strategy.excludeFields && strategy.excludeFields.length > 0 && data && typeof data === "object") {
+    const excludePaths = new Set(strategy.excludeFields.map((f) => f.fieldPath));
+    const filtered: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      if (!excludePaths.has(key)) {
+        filtered[key] = value;
+      }
     }
+    hashData = filtered;
   }
 
-  if (missingFields.length > 0) {
-    throw new Error(`Missing required fields for computed ID: ${missingFields.join(", ")}`);
-  }
-
-  // Create stable hash
-  const sortedValues = [...values].sort((a, b) => a.field.localeCompare(b.field));
-  const hashInput = sortedValues.map((v) => `${v.field}:${JSON.stringify(v.value)}`).join("|");
-
-  const hash = createHash("sha256").update(`${datasetId}:${hashInput}`).digest("hex").substring(0, 16);
-
-  return { uniqueId: `${datasetId}:comp:${hash}`, strategy: "computed" };
+  const hash = generateContentHash(hashData);
+  return { uniqueId: `${datasetId}:hash:${hash.substring(0, 16)}`, strategy: "content-hash" };
 };
 
-const generateAutoId = (
-  data: unknown,
-  datasetId: string
-): { uniqueId: string; contentHash: string; strategy: string } => {
-  // Generate content hash for duplicate detection
-  const contentHash = generateContentHash(data);
-
-  // Unique ID will be assigned after duplicate check
-  // Using timestamp + cryptographically secure random for uniqueness
+/** Generate a random unique ID. No dedup possible. */
+const generateAutoId = (datasetId: string): { uniqueId: string; strategy: string } => {
   const timestamp = Date.now();
-  const random = randomBytes(4).toString("hex"); // 8 hex characters
-
-  return { uniqueId: `${datasetId}:auto:${timestamp}:${random}`, contentHash, strategy: "auto" };
-};
-
-const generateHybridId = (
-  data: unknown,
-  strategy: {
-    externalIdPath?: string | null;
-    computedIdFields?: Array<{ fieldPath: string; id?: string | null }> | null;
-  },
-  datasetId: string
-): { uniqueId: string; sourceId?: string; strategy: string } => {
-  // Try external first
-  try {
-    return generateExternalId(data, strategy, datasetId);
-  } catch (externalError) {
-    // Fall back to computed
-    try {
-      return generateComputedId(data, strategy, datasetId);
-    } catch (computedError) {
-      throw new Error(
-        `Hybrid ID generation failed. External: ${externalError instanceof Error ? externalError.message : "unknown"}. Computed: ${computedError instanceof Error ? computedError.message : "unknown"}`
-      );
-    }
-  }
+  const random = randomBytes(4).toString("hex");
+  return { uniqueId: `${datasetId}:auto:${timestamp}:${random}`, strategy: "auto-generate" };
 };
 
 const generateContentHash = (data: unknown): string => {
-  // Use a recursive replacer to sort keys at every nesting level
   const sortReplacer = (_key: string, value: unknown): unknown => {
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const sorted: Record<string, unknown> = {};
@@ -167,38 +121,27 @@ const generateContentHash = (data: unknown): string => {
     return value;
   };
   const normalized = JSON.stringify(data, sortReplacer);
-
   return createHash("sha256").update(normalized).digest("hex");
 };
 
 const extractFieldValue = (data: unknown, path: string): unknown => {
   if (!path) return null;
-
   const parts = path.split(".");
   let value = data as Record<string, unknown>;
-
   for (const part of parts) {
-    if (value == null || typeof value !== "object") {
-      return null;
-    }
+    if (value == null || typeof value !== "object") return null;
     value = value[part] as Record<string, unknown>;
   }
-
   return value;
 };
 
 const sanitizeId = (id: unknown): string => {
   const str = String(id).trim();
-
-  // Validate length
   if (str.length === 0 || str.length > 255) {
     throw new Error(`Invalid ID length: ${str.length} (must be 1-255 characters)`);
   }
-
-  // Allow alphanumeric, dash, underscore, colon, dot
   if (!/^[\w\-.:]+$/.test(str)) {
     throw new Error(`Invalid ID format: ${str} (only alphanumeric, -, _, :, . allowed)`);
   }
-
   return str;
 };

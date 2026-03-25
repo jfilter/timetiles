@@ -215,7 +215,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   // Add ID preview column — shows the *source* of each ID, not the actual hash.
   // Real ID generation lives in lib/services/id-generation.ts (uses node:crypto, server-only).
-  const previewWithIds = useIdPreview(transformedSampleData, activeMapping);
+  const previewWithIds = useIdPreview(transformedSampleData, activeMapping, t("contentHashPreview"));
 
   // Build preview fields from transformed data (includes new columns from transforms)
   const allPreviewFields = useMemo(() => {

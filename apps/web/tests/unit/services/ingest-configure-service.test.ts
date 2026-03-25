@@ -43,7 +43,7 @@ const nullFieldMapping: FieldMapping = {
   dateField: null,
   endDateField: null,
   idField: null,
-  idStrategy: "auto",
+  idStrategy: "content-hash",
   locationField: null,
   latitudeField: null,
   longitudeField: null,
@@ -83,7 +83,7 @@ describe("import-configure-service", () => {
 
   describe("buildIdStrategy", () => {
     it("returns auto strategy when fieldMapping is undefined", () => {
-      expect(buildIdStrategy(undefined, "skip")).toEqual({ type: "auto", duplicateStrategy: "skip" });
+      expect(buildIdStrategy(undefined, "skip")).toEqual({ type: "content-hash", duplicateStrategy: "skip" });
     });
 
     it("uses fieldMapping idStrategy and idField", () => {

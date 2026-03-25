@@ -66,10 +66,9 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
 
   const { updateSchedule, isUpdating } = useUpdateSchedule();
   const ID_STRATEGY_LABELS: Record<string, string> = {
-    auto: t("idStrategyAuto"),
+    "content-hash": t("idStrategyContentHash"),
     external: t("idStrategyExternal"),
-    computed: t("idStrategyComputed"),
-    hybrid: t("idStrategyHybrid"),
+    "auto-generate": t("idStrategyAutoGenerate"),
   };
 
   const DUPLICATE_LABELS: Record<string, string> = {
@@ -345,7 +344,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-foreground font-mono text-sm">
-                        {ID_STRATEGY_LABELS[mapping?.idStrategy ?? "auto"]}
+                        {ID_STRATEGY_LABELS[mapping?.idStrategy ?? "content-hash"]}
                       </span>
                       {mapping?.idStrategy === "external" && mapping?.idField && (
                         <span className="text-muted-foreground font-mono text-xs">({mapping.idField})</span>

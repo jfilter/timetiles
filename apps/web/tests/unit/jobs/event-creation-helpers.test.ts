@@ -211,7 +211,7 @@ describe("createEventData", () => {
     const result = createEventData(
       row,
       row,
-      { id: 42, idStrategy: { type: "auto", duplicateStrategy: "skip" } } as any,
+      { id: 42, idStrategy: { type: "content-hash", duplicateStrategy: "skip" } } as any,
       "123abc",
       {},
       {},

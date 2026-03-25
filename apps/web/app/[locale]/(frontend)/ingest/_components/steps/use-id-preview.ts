@@ -16,10 +16,13 @@ import type { FieldMapping } from "@/lib/types/ingest-wizard";
  * Generate ID preview values based on the active mapping's ID strategy.
  *
  * Returns the transformed sample data with a `__id` field prepended to each row.
+ *
+ * @param contentHashLabel - Translated label for content-hash strategy preview.
  */
 export const useIdPreview = (
   transformedSampleData: Record<string, unknown>[],
-  activeMapping: FieldMapping | undefined
+  activeMapping: FieldMapping | undefined,
+  contentHashLabel: string
 ): Record<string, unknown>[] => {
   return useMemo(() => {
     if (!activeMapping) return transformedSampleData;
@@ -30,16 +33,13 @@ export const useIdPreview = (
       if (strategy === "external" && activeMapping.idField) {
         const val = row[activeMapping.idField];
         id = val != null ? stringify(val) : "";
-      } else if (strategy === "computed") {
-        const parts = [row[activeMapping.titleField ?? ""], row[activeMapping.dateField ?? ""]].filter(Boolean);
-        id = parts.length > 0 ? `hash(${parts.map(stringify).join(", ")})` : `row-${i + 1}`;
-      } else if (strategy === "hybrid" && activeMapping.idField) {
-        const val = row[activeMapping.idField];
-        id = val != null ? stringify(val) : "hash(...)";
+      } else if (strategy === "content-hash") {
+        id = contentHashLabel;
       } else {
+        // strategy === "auto-generate"
         id = `auto-${i + 1}`;
       }
       return { __id: id, ...row };
     });
-  }, [transformedSampleData, activeMapping]);
+  }, [transformedSampleData, activeMapping, contentHashLabel]);
 };

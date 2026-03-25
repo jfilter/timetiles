@@ -95,7 +95,7 @@ const createFieldMapping = (overrides: Partial<FieldMapping> = {}): FieldMapping
   dateField: null,
   endDateField: null,
   idField: null,
-  idStrategy: "auto",
+  idStrategy: "content-hash",
   locationField: null,
   latitudeField: null,
   longitudeField: null,

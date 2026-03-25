@@ -90,6 +90,8 @@ export interface FormattedJobProgress {
   errors: number;
   duplicates: { internal: number; external: number };
   schemaValidation?: unknown;
+  reviewReason?: string | null;
+  reviewDetails?: Record<string, unknown> | null;
   results?: { totalEvents?: number } | null;
 }
 

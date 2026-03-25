@@ -32,7 +32,6 @@ import {
   REVIEW_REASONS,
   setNeedsReview,
   shouldReviewHighDuplicates,
-  shouldReviewHighEmptyRows,
 } from "../workflows/review-checks";
 
 interface DuplicateAnalysisResult {
@@ -79,12 +78,10 @@ const analyzeInternalDuplicates = async (
   internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
   uniqueIdMap: Map<string, number>;
   totalRows: number;
-  emptyRows: number;
 }> => {
   const internalDuplicates: DuplicateAnalysisResult["internalDuplicates"] = [];
   const uniqueIdMap = new Map<string, number>();
   let totalRows = 0;
-  let emptyRows = 0;
   let batchNumber = 0;
 
   const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
@@ -94,13 +91,6 @@ const analyzeInternalDuplicates = async (
     batchSize: ANALYSIS_BATCH_SIZE,
   })) {
     for (const [index, row] of rows.entries()) {
-      // Count empty rows (all values null, undefined, or blank)
-      const isEmptyRow = Object.values(row).every((v) => v == null || (typeof v === "string" && v.trim() === ""));
-      if (isEmptyRow) {
-        emptyRows++;
-        continue; // Skip empty rows from duplicate analysis
-      }
-
       const rowNumber = totalRows + index;
       const uniqueId = generateUniqueId(row, dataset.idStrategy);
 
@@ -126,7 +116,7 @@ const analyzeInternalDuplicates = async (
     await ProgressTrackingService.completeBatch(payload, job, PROCESSING_STAGE.ANALYZE_DUPLICATES, batchNumber);
   }
 
-  return { internalDuplicates, uniqueIdMap, totalRows, emptyRows };
+  return { internalDuplicates, uniqueIdMap, totalRows };
 };
 
 const analyzeExternalDuplicates = async (
@@ -176,11 +166,10 @@ const performDuplicateAnalysis = async (
   externalDuplicates: DuplicateAnalysisResult["externalDuplicates"];
   totalRows: number;
   uniqueRows: number;
-  emptyRows: number;
 }> => {
   await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES, fileTotalRows);
 
-  const { internalDuplicates, uniqueIdMap, totalRows, emptyRows } = await analyzeInternalDuplicates(
+  const { internalDuplicates, uniqueIdMap, totalRows } = await analyzeInternalDuplicates(
     payload,
     filePath,
     dataset,
@@ -194,7 +183,7 @@ const performDuplicateAnalysis = async (
   await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
   await ProgressTrackingService.updatePostDeduplicationTotals(payload, ingestJobId, uniqueRows);
 
-  return { internalDuplicates, externalDuplicates, totalRows, uniqueRows, emptyRows };
+  return { internalDuplicates, externalDuplicates, totalRows, uniqueRows };
 };
 
 // Helper to update job with duplicate results
@@ -341,25 +330,6 @@ export const analyzeDuplicatesJob = {
       const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
         | ReviewChecksConfig
         | undefined;
-
-      // Review check: high empty row rate
-      const emptyCheck = shouldReviewHighEmptyRows(results.totalRows, results.emptyRows, reviewChecks);
-      if (emptyCheck.needsReview) {
-        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_EMPTY_ROW_RATE, {
-          totalRows: results.totalRows,
-          emptyRows: results.emptyRows,
-          emptyRate: emptyCheck.emptyRate,
-        });
-        return {
-          output: {
-            needsReview: true,
-            totalRows: results.totalRows,
-            uniqueRows: results.uniqueRows,
-            internalDuplicates: results.internalDuplicates.length,
-            externalDuplicates: results.externalDuplicates.length,
-          },
-        };
-      }
 
       // Review check: high duplicate rate (>80%)
       const dupCheck = shouldReviewHighDuplicates(results.totalRows, results.uniqueRows, reviewChecks);

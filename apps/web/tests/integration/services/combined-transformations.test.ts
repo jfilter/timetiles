@@ -156,7 +156,7 @@ describe.sequential("Combined Transformations Integration", () => {
           active: true,
         },
       ],
-      idStrategy: { type: "auto" },
+      idStrategy: { type: "content-hash" },
     });
 
     // Upload German CSV with datasetMapping metadata to specify which dataset to use
@@ -267,7 +267,7 @@ describe.sequential("Combined Transformations Integration", () => {
           active: true,
         },
       ],
-      idStrategy: { type: "auto" },
+      idStrategy: { type: "content-hash" },
     });
 
     // Create CSV with original field name "attendee_count"
@@ -333,7 +333,7 @@ Festival,2500,Music festival,2024-02-20,Munich`;
           autoDetected: false,
         },
       ],
-      idStrategy: { type: "auto" },
+      idStrategy: { type: "content-hash" },
     });
 
     const csvContent = `event_name,description,date,location
@@ -383,7 +383,7 @@ Workshop,Learning session,2024-02-20,Munich`;
           active: true,
         },
       ],
-      idStrategy: { type: "auto" },
+      idStrategy: { type: "content-hash" },
     });
 
     const csvContent = `name,count,description,date,location
