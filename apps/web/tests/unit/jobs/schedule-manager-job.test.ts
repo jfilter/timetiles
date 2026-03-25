@@ -5,13 +5,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 import {
   calculateNextRun,
   getNextExecutionTime,
   getNextFrequencyExecution,
   shouldRunNow,
 } from "@/lib/jobs/handlers/schedule-manager/schedule-evaluation";
+import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 
 // Mock dependencies
 vi.mock("@/lib/logger", () => ({

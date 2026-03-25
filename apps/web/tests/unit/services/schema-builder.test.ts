@@ -12,8 +12,6 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { compareSchemas, ProgressiveSchemaBuilder } from "../../../lib/services/schema-builder";
-import type { SchemaProperty } from "../../../lib/services/schema-builder";
 import {
   createFieldStats,
   getValueType,
@@ -21,6 +19,9 @@ import {
   updateFieldStats,
 } from "@/lib/services/schema-builder/field-statistics";
 import { detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
+
+import type { SchemaProperty } from "../../../lib/services/schema-builder";
+import { compareSchemas, ProgressiveSchemaBuilder } from "../../../lib/services/schema-builder";
 
 describe("ProgressiveSchemaBuilder", () => {
   describe("processBatch", () => {

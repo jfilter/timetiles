@@ -38,8 +38,8 @@ vi.mock("@/lib/utils/relation-id", () => ({
   },
 }));
 
-import { dataExportJob } from "@/lib/jobs/handlers/data-export-job";
 import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails";
+import { dataExportJob } from "@/lib/jobs/handlers/data-export-job";
 import { logError } from "@/lib/logger";
 
 describe.sequential("dataExportJob", () => {
@@ -86,7 +86,7 @@ describe.sequential("dataExportJob", () => {
   });
 
   it("should throw when exportId is not provided", async () => {
-    const context = createContext(undefined);
+    const context = createContext();
 
     await expect(dataExportJob.handler(context as any)).rejects.toThrow("Export ID not provided");
   });

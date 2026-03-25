@@ -109,7 +109,6 @@ describe.sequential("ingestJobAfterDeleteHook", () => {
 });
 
 describe.sequential("beforeChangeHooks", () => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const hook = beforeChangeHooks[0]!;
 
   beforeEach(() => {
@@ -286,7 +285,6 @@ describe.sequential("beforeChangeHooks", () => {
 });
 
 describe.sequential("afterChangeHooks", () => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const hook = afterChangeHooks[0]!;
 
   beforeEach(() => {
