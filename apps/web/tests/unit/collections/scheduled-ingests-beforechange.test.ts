@@ -8,6 +8,21 @@
  */
 import "@/tests/mocks/services/logger";
 
+const cronMocks = vi.hoisted(() => ({ calculateNextCronRun: vi.fn() }));
+
+// Keep original implementation as default, override in specific tests
+vi.mock("@/lib/ingest/cron-parser", async (importOriginal) => {
+  const original = await importOriginal();
+  const realCalculateNextCronRun = original.calculateNextCronRun as (...args: unknown[]) => unknown;
+  return {
+    ...original,
+    calculateNextCronRun: (...args: unknown[]) =>
+      cronMocks.calculateNextCronRun.getMockImplementation()
+        ? cronMocks.calculateNextCronRun(...args)
+        : realCalculateNextCronRun(...args),
+  };
+});
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { beforeChangeHook } from "@/lib/collections/scheduled-ingests/hooks";
@@ -173,6 +188,119 @@ describe("scheduled-ingests beforeChange hook", () => {
       });
 
       expect(result.statistics).toEqual({ totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 });
+    });
+  });
+
+  describe("webhook token management", () => {
+    it("should generate a 64-char hex token on first enable", () => {
+      const data: Record<string, unknown> = { webhookEnabled: true };
+
+      const result = beforeChangeHook({
+        data,
+        operation: "create",
+        originalDoc: undefined as never,
+        req: {} as never,
+        context: {} as never,
+        collection: {} as never,
+      });
+
+      expect(result.webhookToken).toBeDefined();
+      expect(typeof result.webhookToken).toBe("string");
+      expect(result.webhookToken).toHaveLength(64);
+      expect(result.webhookToken).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it("should regenerate token when re-enabling webhooks", () => {
+      const data: Record<string, unknown> = { webhookEnabled: true, webhookToken: "old-token-value" };
+
+      const result = beforeChangeHook({
+        data,
+        operation: "update",
+        originalDoc: { webhookEnabled: false } as never,
+        req: {} as never,
+        context: {} as never,
+        collection: {} as never,
+      });
+
+      expect(result.webhookToken).toBeDefined();
+      expect(result.webhookToken).not.toBe("old-token-value");
+      expect(result.webhookToken).toHaveLength(64);
+      expect(result.webhookToken).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it("should clear token when disabling webhooks", () => {
+      const data: Record<string, unknown> = { webhookEnabled: false };
+
+      const result = beforeChangeHook({
+        data,
+        operation: "update",
+        originalDoc: { webhookEnabled: true } as never,
+        req: {} as never,
+        context: {} as never,
+        collection: {} as never,
+      });
+
+      expect(result.webhookToken).toBeNull();
+    });
+  });
+
+  describe("createdBy preservation", () => {
+    it("should preserve createdBy on update", () => {
+      const data: Record<string, unknown> = { scheduleType: "frequency", frequency: "daily" };
+
+      const result = beforeChangeHook({
+        data,
+        operation: "update",
+        originalDoc: { createdBy: 42 } as never,
+        req: {} as never,
+        context: {} as never,
+        collection: {} as never,
+      });
+
+      expect(result.createdBy).toBe(42);
+    });
+  });
+
+  describe("invalid frequency", () => {
+    it("should throw for invalid frequency with timezone", () => {
+      const data: Record<string, unknown> = {
+        scheduleType: "frequency",
+        frequency: "invalid-freq",
+        enabled: true,
+        timezone: "Europe/Berlin",
+      };
+
+      expect(() =>
+        beforeChangeHook({
+          data,
+          operation: "create",
+          originalDoc: undefined as never,
+          req: {} as never,
+          context: {} as never,
+          collection: {} as never,
+        })
+      ).toThrow("Invalid frequency: invalid-freq");
+    });
+  });
+
+  describe("cron nextRun null result", () => {
+    it("should handle null cron calculation gracefully", () => {
+      cronMocks.calculateNextCronRun.mockImplementation(() => null);
+
+      const data: Record<string, unknown> = { scheduleType: "cron", cronExpression: "bad", enabled: true };
+
+      const result = beforeChangeHook({
+        data,
+        operation: "create",
+        originalDoc: undefined as never,
+        req: {} as never,
+        context: {} as never,
+        collection: {} as never,
+      });
+
+      // nextRun should not be set when calculateNextCronRun returns null
+      // (the else branch in handleScheduleInitialization logs a warning)
+      expect(result.nextRun).toBeUndefined();
     });
   });
 });

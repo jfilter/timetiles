@@ -582,4 +582,149 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(drizzleMock.select).not.toHaveBeenCalled();
     });
   });
+
+  describe("onFail Callback", () => {
+    it("should mark ingest job as failed when ingestJobId is a string", async () => {
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        job: { error: "Some task failure" },
+      };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await analyzeDuplicatesJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: "import-999",
+        data: { stage: "failed", errorLog: { lastError: "Some task failure", context: "analyze-duplicates" } },
+      });
+    });
+
+    it("should mark ingest job as failed when ingestJobId is a number", async () => {
+      const mockArgs = { input: { ingestJobId: 123 }, req: { payload: mockPayload }, job: { error: "Task error" } };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await analyzeDuplicatesJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: 123,
+        data: { stage: "failed", errorLog: { lastError: "Task error", context: "analyze-duplicates" } },
+      });
+    });
+
+    it("should use fallback message when job.error is not a string", async () => {
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        job: { error: { complex: "object" } },
+      };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await analyzeDuplicatesJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            errorLog: { lastError: "Task failed after all retries", context: "analyze-duplicates" },
+          }),
+        })
+      );
+    });
+
+    it("should skip when ingestJobId is not a string or number", async () => {
+      const mockArgs = { input: { ingestJobId: undefined }, req: { payload: mockPayload }, job: { error: "error" } };
+
+      await analyzeDuplicatesJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+
+    it("should not throw when update fails in onFail", async () => {
+      const mockArgs = { input: { ingestJobId: "import-999" }, req: { payload: mockPayload }, job: { error: "error" } };
+
+      mockPayload.update.mockRejectedValueOnce(new Error("DB error"));
+
+      // Should not throw
+      await expect(analyzeDuplicatesJob.onFail(mockArgs as any)).resolves.not.toThrow();
+    });
+  });
+
+  describe("Review checks", () => {
+    it("should trigger needsReview when high duplicate rate detected", async () => {
+      const { shouldReviewHighDuplicates } = await import("@/lib/jobs/workflows/review-checks");
+      (shouldReviewHighDuplicates as any).mockReturnValueOnce({ needsReview: true, duplicateRate: 0.85 });
+
+      const mockIngestJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        ingestFile: "file-789",
+        sheetIndex: 0,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id" },
+      };
+
+      const mockIngestFile = createMockIngestFile();
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockIngestJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob);
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1" }]]));
+      mocks.generateUniqueId.mockReturnValueOnce("uid-1");
+      drizzleMock._enqueue([]);
+      mockPayload.update.mockResolvedValue({});
+
+      const result = await analyzeDuplicatesJob.handler(mockContext);
+
+      expect(result.output).toEqual(expect.objectContaining({ needsReview: true }));
+    });
+
+    it("should trigger needsReview when quota exceeded", async () => {
+      const { checkQuotaForSheet } = await import("@/lib/jobs/workflows/review-checks");
+      (checkQuotaForSheet as any).mockResolvedValueOnce({ allowed: false, current: 100, limit: 50 });
+
+      const mockIngestJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        ingestFile: "file-789",
+        sheetIndex: 0,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id" },
+      };
+
+      const mockIngestFile = createMockIngestFile();
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockIngestJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob);
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1" }]]));
+      mocks.generateUniqueId.mockReturnValueOnce("uid-1");
+      drizzleMock._enqueue([]);
+      mockPayload.update.mockResolvedValue({});
+
+      const result = await analyzeDuplicatesJob.handler(mockContext);
+
+      expect(result.output).toEqual(expect.objectContaining({ needsReview: true }));
+    });
+  });
 });

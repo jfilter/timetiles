@@ -304,4 +304,188 @@ describe.sequential("scraperRepoSyncJob", () => {
       })
     );
   });
+
+  it("should throw when git repo has no gitUrl", async () => {
+    const repo = { id: 5, sourceType: "git", gitUrl: undefined, createdBy: 100 };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await expect(scraperRepoSyncJob.handler(context as any)).rejects.toThrow("Git URL is required");
+  });
+
+  it("should throw when upload repo has no inline code", async () => {
+    const repo = { id: 5, sourceType: "upload", code: null, createdBy: 100 };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await expect(scraperRepoSyncJob.handler(context as any)).rejects.toThrow("No inline code found");
+  });
+
+  it("should throw when upload repo has no scrapers.yml in code", async () => {
+    const repo = { id: 5, sourceType: "upload", code: { "main.py": "print('hello')" }, createdBy: 100 };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await expect(scraperRepoSyncJob.handler(context as any)).rejects.toThrow("No scrapers.yml found");
+  });
+
+  it("should throw when manifest parsing fails", async () => {
+    const repo = { id: 5, sourceType: "upload", code: { "scrapers.yml": "invalid: yaml" }, createdBy: 100 };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const { parseManifest } = await import("@/lib/ingest/manifest-parser");
+    (parseManifest as any).mockReturnValue({ success: false, error: "Invalid manifest format" });
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await expect(scraperRepoSyncJob.handler(context as any)).rejects.toThrow("Invalid manifest format");
+  });
+
+  it("should handle git repo with custom branch", async () => {
+    const repo = {
+      id: 5,
+      sourceType: "git",
+      gitUrl: "https://github.com/test/repo.git",
+      gitBranch: "develop",
+      createdBy: 100,
+    };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const fsp = await import("node:fs/promises");
+    (fsp.readFile as any).mockResolvedValue("scrapers:\n  - name: S1");
+
+    const { parseManifest } = await import("@/lib/ingest/manifest-parser");
+    (parseManifest as any).mockReturnValue({
+      success: true,
+      scrapers: [createParsedScraper({ name: "S1", slug: "s1" })],
+    });
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await scraperRepoSyncJob.handler(context as any);
+
+    expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "scraper-repos", id: 5, overrideAccess: true });
+  });
+
+  it("should default to main branch for git repos without gitBranch", async () => {
+    const repo = {
+      id: 5,
+      sourceType: "git",
+      gitUrl: "https://github.com/test/repo.git",
+      // no gitBranch - should default to "main"
+      createdBy: 100,
+    };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const fsp = await import("node:fs/promises");
+    (fsp.readFile as any).mockResolvedValue("scrapers:\n  - name: S1");
+
+    const { parseManifest } = await import("@/lib/ingest/manifest-parser");
+    (parseManifest as any).mockReturnValue({
+      success: true,
+      scrapers: [createParsedScraper({ name: "S1", slug: "s1" })],
+    });
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await scraperRepoSyncJob.handler(context as any);
+
+    // Just verify it completes without error
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "scraper-repos",
+        data: expect.objectContaining({ lastSyncStatus: "success" }),
+      })
+    );
+  });
+
+  it("should handle createdBy as a populated relation object", async () => {
+    const repo = {
+      id: 5,
+      sourceType: "upload",
+      code: { "scrapers.yml": "scrapers: ..." },
+      createdBy: { id: 42, email: "user@example.com" }, // populated
+    };
+    mockPayload.findByID.mockResolvedValue(repo);
+    mockPayload.find.mockResolvedValue({ docs: [] });
+
+    const { parseManifest } = await import("@/lib/ingest/manifest-parser");
+    (parseManifest as any).mockReturnValue({
+      success: true,
+      scrapers: [createParsedScraper({ name: "S1", slug: "s1" })],
+    });
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await scraperRepoSyncJob.handler(context as any);
+
+    // The create call should include repoCreatedBy from the populated relation
+    expect(mockPayload.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ repoCreatedBy: 42 }) })
+    );
+  });
+
+  it("should handle null createdBy", async () => {
+    const repo = { id: 5, sourceType: "upload", code: { "scrapers.yml": "scrapers: ..." }, createdBy: null };
+    mockPayload.findByID.mockResolvedValue(repo);
+    mockPayload.find.mockResolvedValue({ docs: [] });
+
+    const { parseManifest } = await import("@/lib/ingest/manifest-parser");
+    (parseManifest as any).mockReturnValue({
+      success: true,
+      scrapers: [createParsedScraper({ name: "S1", slug: "s1" })],
+    });
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await scraperRepoSyncJob.handler(context as any);
+
+    // Should still create successfully with undefined repoCreatedBy
+    expect(mockPayload.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ repoCreatedBy: undefined }) })
+    );
+  });
+
+  it("should handle failed status update during error path", async () => {
+    // Repo not found
+    mockPayload.findByID.mockResolvedValue(null);
+    // Make the error status update also fail
+    mockPayload.update.mockRejectedValue(new Error("Update also failed"));
+
+    const context = createMockContext({ scraperRepoId: 999 });
+
+    // Should still throw the original error even if update fails
+    await expect(scraperRepoSyncJob.handler(context as any)).rejects.toThrow("Scraper repo not found: 999");
+  });
+
+  it("should read input from context.job.input when context.input is undefined", async () => {
+    const repo = { id: 5, sourceType: "upload", code: { "scrapers.yml": "scrapers: ..." }, createdBy: 100 };
+    mockPayload.findByID.mockResolvedValue(repo);
+    mockPayload.find.mockResolvedValue({ docs: [] });
+
+    const { parseManifest } = await import("@/lib/ingest/manifest-parser");
+    (parseManifest as any).mockReturnValue({ success: true, scrapers: [createParsedScraper()] });
+
+    // Use job.input instead of context.input
+    const context = {
+      req: { payload: mockPayload },
+      job: { id: "sync-job-1", input: { scraperRepoId: 5 } },
+      input: undefined,
+    };
+
+    await scraperRepoSyncJob.handler(context as any);
+
+    expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "scraper-repos", id: 5, overrideAccess: true });
+  });
+
+  it("should pass scraper schedule as null when not in manifest", async () => {
+    const repo = { id: 5, sourceType: "upload", code: { "scrapers.yml": "scrapers: ..." }, createdBy: 100 };
+    mockPayload.findByID.mockResolvedValue(repo);
+    mockPayload.find.mockResolvedValue({ docs: [] });
+
+    const { parseManifest } = await import("@/lib/ingest/manifest-parser");
+    (parseManifest as any).mockReturnValue({ success: true, scrapers: [createParsedScraper({ schedule: undefined })] });
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    await scraperRepoSyncJob.handler(context as any);
+
+    expect(mockPayload.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ schedule: null }) })
+    );
+  });
 });

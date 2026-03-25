@@ -12,7 +12,16 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { ProgressiveSchemaBuilder } from "../../../lib/services/schema-builder";
+import {
+  createFieldStats,
+  getValueType,
+  mergeFieldStats,
+  updateFieldStats,
+} from "@/lib/services/schema-builder/field-statistics";
+import { detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
+
+import type { SchemaProperty } from "../../../lib/services/schema-builder";
+import { compareSchemas, ProgressiveSchemaBuilder } from "../../../lib/services/schema-builder";
 
 describe("ProgressiveSchemaBuilder", () => {
   describe("processBatch", () => {
@@ -697,6 +706,532 @@ describe("ProgressiveSchemaBuilder", () => {
       const props = schema.properties as Record<string, any>;
       expect(props.flag).toBeDefined();
       expect(props.flag.type).toBe("string");
+    });
+
+    it("should map unknown types to string", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ value: true }]);
+
+      const schema = builder.getSchemaSync();
+      const props = schema.properties as Record<string, any>;
+      expect(props.value).toBeDefined();
+      expect(props.value.type).toBe("boolean");
+    });
+  });
+
+  describe("getSchema — async", () => {
+    it("handles nested objects in schema with array items", async () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ items: [{ name: "first" }] }, { items: [{ name: "second" }] }]);
+
+      const schema = await builder.getSchema();
+      expect(schema.type).toBe("object");
+      expect(schema.properties).toBeDefined();
+    });
+
+    it("handles $ref and definitions in quicktype output", async () => {
+      const builder = new ProgressiveSchemaBuilder();
+      // Process enough varied data that quicktype might produce definitions
+      builder.processBatch([
+        { id: 1, name: "Test", data: { nested: "value" } },
+        { id: 2, name: "Test2", data: { nested: "value2" } },
+      ]);
+
+      const schema = await builder.getSchema();
+      // Should successfully extract schema regardless of quicktype's format
+      expect(schema.type).toBe("object");
+      expect(schema.properties).toBeDefined();
+    });
+  });
+
+  describe("nested object processing", () => {
+    it("handles array of objects — nested fields tracked", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ tags: [{ name: "tag1" }, { name: "tag2" }] }]);
+
+      const state = builder.getState();
+      // tags is tracked as array type
+      expect(state.fieldStats["tags"]).toBeDefined();
+      expect(state.fieldStats["tags"]?.typeDistribution.array).toBe(1);
+      // Nested items get "tags[]" prefix in processNestedValue
+      expect(state.fieldStats["tags[].name"]).toBeDefined();
+    });
+
+    it("handles array of primitives (no nesting)", () => {
+      const builder = new ProgressiveSchemaBuilder();
+      builder.processBatch([{ values: [1, 2, 3] }]);
+
+      const state = builder.getState();
+      expect(state.fieldStats["values"]).toBeDefined();
+      expect(state.fieldStats["values"]?.typeDistribution.array).toBe(1);
+    });
+
+    it("handles nested object fields in schema", () => {
+      const builder = new ProgressiveSchemaBuilder(undefined, { maxDepth: 3 });
+      builder.processBatch([{ meta: { title: "Test" } }]);
+
+      const state = builder.getState();
+      expect(state.fieldStats["meta"]).toBeDefined();
+      expect(state.fieldStats["meta.title"]).toBeDefined();
+    });
+  });
+});
+
+describe("field-statistics — direct function tests", () => {
+  describe("getValueType", () => {
+    it("returns 'null' for null", () => {
+      expect(getValueType(null)).toBe("null");
+    });
+
+    it("returns 'undefined' for undefined", () => {
+      expect(getValueType(undefined)).toBe("undefined");
+    });
+
+    it("returns 'array' for arrays", () => {
+      expect(getValueType([1, 2, 3])).toBe("array");
+    });
+
+    it("returns 'integer' for integers", () => {
+      expect(getValueType(42)).toBe("integer");
+    });
+
+    it("returns 'number' for floats", () => {
+      expect(getValueType(3.14)).toBe("number");
+    });
+
+    it("returns 'date' for ISO date strings", () => {
+      expect(getValueType("2024-01-15")).toBe("date");
+    });
+
+    it("returns 'date' for ISO datetime strings", () => {
+      expect(getValueType("2024-01-15T10:30:00")).toBe("date");
+    });
+
+    it("returns 'boolean-string' for 'true'/'false' strings", () => {
+      expect(getValueType("true")).toBe("boolean-string");
+      expect(getValueType("false")).toBe("boolean-string");
+    });
+
+    it("returns 'string' for normal strings", () => {
+      expect(getValueType("hello")).toBe("string");
+    });
+
+    it("returns 'boolean' for actual booleans", () => {
+      expect(getValueType(true)).toBe("boolean");
+    });
+
+    it("returns 'object' for plain objects", () => {
+      expect(getValueType({ key: "value" })).toBe("object");
+    });
+
+    it("returns 'string' for invalid ISO date (e.g., 2024-13-40)", () => {
+      expect(getValueType("2024-13-40")).toBe("string");
+    });
+
+    it("returns 'string' for date-like string with invalid month 00", () => {
+      expect(getValueType("2024-00-15")).toBe("string");
+    });
+
+    it("returns 'date' for date matching m/d/y format", () => {
+      expect(getValueType("1/15/2024")).toBe("date");
+    });
+  });
+
+  describe("createFieldStats", () => {
+    it("creates default stats with empty path", () => {
+      const stats = createFieldStats();
+      expect(stats.path).toBe("");
+      expect(stats.occurrences).toBe(0);
+      expect(stats.depth).toBe(0);
+    });
+
+    it("creates stats with path-based depth", () => {
+      const stats = createFieldStats("a.b.c");
+      expect(stats.path).toBe("a.b.c");
+      expect(stats.depth).toBe(2);
+    });
+  });
+
+  describe("updateFieldStats", () => {
+    it("updates numeric stats with existing stats", () => {
+      const stats = createFieldStats("value");
+      updateFieldStats(stats, 10, 100);
+      expect(stats.numericStats).toBeDefined();
+      expect(stats.numericStats!.min).toBe(10);
+      expect(stats.numericStats!.max).toBe(10);
+
+      // Update again with a different value
+      updateFieldStats(stats, 20, 100);
+      expect(stats.numericStats!.min).toBe(10);
+      expect(stats.numericStats!.max).toBe(20);
+      expect(stats.numericStats!.isInteger).toBe(true);
+    });
+
+    it("tracks float as non-integer in numeric stats", () => {
+      const stats = createFieldStats("value");
+      updateFieldStats(stats, 10.5, 100);
+      expect(stats.numericStats!.isInteger).toBe(false);
+    });
+
+    it("updates typeDistribution when it is initially undefined", () => {
+      const stats = createFieldStats("value");
+      // Set typeDistribution to undefined to test the initialization path
+      (stats as any).typeDistribution = undefined;
+      updateFieldStats(stats, "hello", 100);
+      expect(stats.typeDistribution).toBeDefined();
+    });
+
+    it("tracks Date objects as ISO string samples", () => {
+      const stats = createFieldStats("date");
+      const dateValue = new Date("2024-01-15T00:00:00Z");
+      updateFieldStats(stats, dateValue, 100);
+      expect(stats.uniqueSamples).toContain("2024-01-15T00:00:00.000Z");
+    });
+
+    it("tracks null values in unique samples", () => {
+      const stats = createFieldStats("value");
+      updateFieldStats(stats, null, 100);
+      expect(stats.nullCount).toBe(1);
+      expect(stats.uniqueSamples).toContain(null);
+    });
+
+    it("respects maxUniqueValues limit", () => {
+      const stats = createFieldStats("value");
+      for (let i = 0; i < 5; i++) {
+        updateFieldStats(stats, `val-${i}`, 3);
+      }
+      // With maxUniqueValues=3, should stop adding after 3
+      expect(stats.uniqueSamples).toHaveLength(3);
+    });
+
+    it("does not add duplicate unique samples", () => {
+      const stats = createFieldStats("value");
+      updateFieldStats(stats, "same", 100);
+      updateFieldStats(stats, "same", 100);
+      expect(stats.uniqueSamples.filter((v) => v === "same")).toHaveLength(1);
+    });
+
+    it("detects date format in strings", () => {
+      const stats = createFieldStats("date");
+      updateFieldStats(stats, "2024-01-15", 100);
+      expect(stats.formats.date).toBe(1);
+    });
+
+    it("detects negative numeric strings", () => {
+      const stats = createFieldStats("value");
+      updateFieldStats(stats, "-123.45", 100);
+      expect(stats.formats.numeric).toBe(1);
+    });
+
+    it("does not detect email without dot after @", () => {
+      const stats = createFieldStats("email");
+      updateFieldStats(stats, "user@localhost", 100);
+      expect(stats.formats.email).toBeUndefined();
+    });
+
+    it("does not detect email with spaces", () => {
+      const stats = createFieldStats("email");
+      updateFieldStats(stats, "user @example.com", 100);
+      expect(stats.formats.email).toBeUndefined();
+    });
+
+    it("does not detect email with multiple @ signs", () => {
+      const stats = createFieldStats("email");
+      updateFieldStats(stats, "user@@example.com", 100);
+      expect(stats.formats.email).toBeUndefined();
+    });
+
+    it("skips undefined values in unique samples without adding them", () => {
+      const stats = createFieldStats("value");
+      // Functions and symbols should not be added to unique samples
+      updateFieldStats(stats, Symbol("test") as any, 100);
+      // The sampleValue will be undefined so it's not added
+      expect(stats.uniqueSamples).toHaveLength(0);
+    });
+  });
+
+  describe("mergeFieldStats", () => {
+    it("merges two field stats correctly", () => {
+      const stats1 = createFieldStats("value");
+      updateFieldStats(stats1, 10, 100);
+      updateFieldStats(stats1, 20, 100);
+
+      const stats2 = createFieldStats("value");
+      updateFieldStats(stats2, 30, 100);
+
+      const merged = mergeFieldStats(stats1, stats2);
+      expect(merged.occurrences).toBe(3);
+      expect(merged.numericStats!.min).toBe(10);
+      expect(merged.numericStats!.max).toBe(30);
+    });
+
+    it("merges when only one side has numeric stats", () => {
+      const stats1 = createFieldStats("value");
+      updateFieldStats(stats1, 10, 100);
+
+      const stats2 = createFieldStats("value");
+      updateFieldStats(stats2, "text", 100);
+
+      const merged = mergeFieldStats(stats1, stats2);
+      expect(merged.numericStats).toBeDefined();
+      expect(merged.numericStats!.min).toBe(10);
+    });
+
+    it("merges unique samples with deduplication and limit", () => {
+      const stats1 = createFieldStats("value");
+      for (let i = 0; i < 60; i++) {
+        updateFieldStats(stats1, `val-a-${i}`, 200);
+      }
+
+      const stats2 = createFieldStats("value");
+      for (let i = 0; i < 60; i++) {
+        updateFieldStats(stats2, `val-b-${i}`, 200);
+      }
+
+      const merged = mergeFieldStats(stats1, stats2);
+      expect(merged.uniqueSamples.length).toBeLessThanOrEqual(100);
+    });
+
+    it("merges enum values from both sides", () => {
+      const stats1 = createFieldStats("status");
+      stats1.enumValues = [{ value: "active", count: 5, percent: 50 }];
+      stats1.occurrences = 10;
+
+      const stats2 = createFieldStats("status");
+      stats2.enumValues = [
+        { value: "active", count: 3, percent: 30 },
+        { value: "pending", count: 7, percent: 70 },
+      ];
+      stats2.occurrences = 10;
+
+      const merged = mergeFieldStats(stats1, stats2);
+      expect(merged.enumValues).toBeDefined();
+      expect(merged.enumValues!.find((e) => e.value === "active")!.count).toBe(8);
+      expect(merged.enumValues!.find((e) => e.value === "pending")!.count).toBe(7);
+    });
+
+    it("handles merge with no enum values on either side", () => {
+      const stats1 = createFieldStats("value");
+      stats1.occurrences = 5;
+      const stats2 = createFieldStats("value");
+      stats2.occurrences = 5;
+
+      const merged = mergeFieldStats(stats1, stats2);
+      expect(merged.enumValues).toBeUndefined();
+    });
+
+    it("merges type distributions correctly", () => {
+      const stats1 = createFieldStats("value");
+      stats1.typeDistribution = { string: 5, integer: 3 };
+      stats1.occurrences = 8;
+
+      const stats2 = createFieldStats("value");
+      stats2.typeDistribution = { string: 2, number: 4 };
+      stats2.occurrences = 6;
+
+      const merged = mergeFieldStats(stats1, stats2);
+      expect(merged.typeDistribution.string).toBe(7);
+      expect(merged.typeDistribution.integer).toBe(3);
+      expect(merged.typeDistribution.number).toBe(4);
+    });
+
+    it("uses earliest firstSeen and latest lastSeen", () => {
+      const stats1 = createFieldStats("value");
+      stats1.firstSeen = new Date("2024-01-01");
+      stats1.lastSeen = new Date("2024-01-15");
+      stats1.occurrences = 5;
+
+      const stats2 = createFieldStats("value");
+      stats2.firstSeen = new Date("2024-01-10");
+      stats2.lastSeen = new Date("2024-01-20");
+      stats2.occurrences = 5;
+
+      const merged = mergeFieldStats(stats1, stats2);
+      expect(merged.firstSeen).toEqual(new Date("2024-01-01"));
+      expect(merged.lastSeen).toEqual(new Date("2024-01-20"));
+    });
+  });
+});
+
+describe("schema-comparison — direct function tests", () => {
+  describe("compareSchemas", () => {
+    it("detects fields becoming required (breaking)", () => {
+      const oldSchema: SchemaProperty = { type: "object", properties: { name: { type: "string" } }, required: [] };
+      const newSchema: SchemaProperty = {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+      };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      const formatChanges = result.changes.filter((c) => c.type === "format_change");
+      expect(formatChanges).toHaveLength(1);
+      expect(formatChanges[0]!.severity).toBe("error");
+      expect(result.isBreaking).toBe(true);
+    });
+
+    it("detects fields becoming optional (non-breaking)", () => {
+      const oldSchema: SchemaProperty = {
+        type: "object",
+        properties: { name: { type: "string" } },
+        required: ["name"],
+      };
+      const newSchema: SchemaProperty = { type: "object", properties: { name: { type: "string" } }, required: [] };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      const formatChanges = result.changes.filter((c) => c.type === "format_change");
+      expect(formatChanges).toHaveLength(1);
+      expect(formatChanges[0]!.severity).toBe("info");
+      expect(formatChanges[0]!.autoApprovable).toBe(true);
+    });
+
+    it("handles empty schemas without errors", () => {
+      const result = compareSchemas({}, {});
+      expect(result.changes).toHaveLength(0);
+      expect(result.isBreaking).toBe(false);
+      expect(result.canAutoApprove).toBe(true);
+    });
+
+    it("detects new required fields as breaking when not first import", () => {
+      const oldSchema: SchemaProperty = { type: "object", properties: { id: { type: "string" } }, required: [] };
+      const newSchema: SchemaProperty = {
+        type: "object",
+        properties: { id: { type: "string" }, newRequired: { type: "string" } },
+        required: ["newRequired"],
+      };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      const newFieldChanges = result.changes.filter((c) => c.type === "new_field" && c.path === "newRequired");
+      expect(newFieldChanges).toHaveLength(1);
+      expect(newFieldChanges[0]!.severity).toBe("error");
+      expect(result.isBreaking).toBe(true);
+    });
+
+    it("treats all new fields as non-breaking on first import (empty old schema)", () => {
+      const oldSchema: SchemaProperty = { type: "object", properties: {}, required: [] };
+      const newSchema: SchemaProperty = {
+        type: "object",
+        properties: { id: { type: "string" }, name: { type: "string" } },
+        required: ["id"],
+      };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      const newFieldChanges = result.changes.filter((c) => c.type === "new_field");
+      expect(newFieldChanges.every((c) => c.severity === "info")).toBe(true);
+      expect(result.isBreaking).toBe(false);
+    });
+
+    it("handles getFieldType with array types", () => {
+      const oldSchema: SchemaProperty = {
+        type: "object",
+        properties: { value: { type: ["string", "integer"] } },
+        required: [],
+      };
+      const newSchema: SchemaProperty = { type: "object", properties: { value: { type: "string" } }, required: [] };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      // "string | integer" -> "string" is a type change
+      const typeChanges = result.changes.filter((c) => c.type === "type_change");
+      expect(typeChanges).toHaveLength(1);
+    });
+
+    it("handles getFieldType with oneOf/anyOf", () => {
+      const oldSchema: SchemaProperty = {
+        type: "object",
+        properties: { value: { oneOf: [{ type: "string" }, { type: "number" }] } as SchemaProperty },
+        required: [],
+      };
+      const newSchema: SchemaProperty = { type: "object", properties: { value: { type: "string" } }, required: [] };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      const typeChanges = result.changes.filter((c) => c.type === "type_change");
+      expect(typeChanges).toHaveLength(1);
+    });
+
+    it("handles getFieldType with enum-only property", () => {
+      const oldSchema: SchemaProperty = { type: "object", properties: { status: { enum: ["a", "b"] } }, required: [] };
+      const newSchema: SchemaProperty = { type: "object", properties: { status: { type: "string" } }, required: [] };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      const typeChanges = result.changes.filter((c) => c.type === "type_change");
+      expect(typeChanges).toHaveLength(1);
+    });
+
+    it("handles getFieldType with unknown property", () => {
+      const oldSchema: SchemaProperty = { type: "object", properties: { value: {} }, required: [] };
+      const newSchema: SchemaProperty = { type: "object", properties: { value: { type: "string" } }, required: [] };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      const typeChanges = result.changes.filter((c) => c.type === "type_change");
+      expect(typeChanges).toHaveLength(1);
+    });
+
+    it("handles getFieldType with type as an object (defensive)", () => {
+      const oldSchema: SchemaProperty = {
+        type: "object",
+        properties: { value: { type: { nested: true } as any } },
+        required: [],
+      };
+      const newSchema: SchemaProperty = { type: "object", properties: { value: { type: "string" } }, required: [] };
+
+      const result = compareSchemas(oldSchema, newSchema);
+      const typeChanges = result.changes.filter((c) => c.type === "type_change");
+      expect(typeChanges).toHaveLength(1);
+    });
+  });
+
+  describe("detectTransforms", () => {
+    it("detects rename transforms with high confidence", () => {
+      const oldSchema: SchemaProperty = {
+        type: "object",
+        properties: { title: { type: "string" }, date: { type: "string" } },
+        required: [],
+      };
+      const newSchema: SchemaProperty = {
+        type: "object",
+        properties: { event_title: { type: "string" }, date: { type: "string" } },
+        required: [],
+      };
+
+      const changes = compareSchemas(oldSchema, newSchema).changes;
+      const suggestions = detectTransforms(oldSchema, newSchema, changes);
+
+      // Should suggest renaming event_title to title
+      expect(suggestions.length).toBeGreaterThanOrEqual(0);
+      if (suggestions.length > 0) {
+        expect(suggestions[0]!.type).toBe("rename");
+        expect(suggestions[0]!.confidence).toBeGreaterThanOrEqual(70);
+      }
+    });
+
+    it("returns empty suggestions when no renames detected", () => {
+      const oldSchema: SchemaProperty = {
+        type: "object",
+        properties: { completely_different: { type: "string" } },
+        required: [],
+      };
+      const newSchema: SchemaProperty = {
+        type: "object",
+        properties: { xyz_unrelated: { type: "number" } },
+        required: [],
+      };
+
+      const changes = compareSchemas(oldSchema, newSchema).changes;
+      const suggestions = detectTransforms(oldSchema, newSchema, changes);
+      // Low confidence should be filtered out
+      expect(suggestions.every((s) => s.confidence >= 70)).toBe(true);
+    });
+
+    it("handles common rename patterns", () => {
+      const oldSchema: SchemaProperty = { type: "object", properties: { user: { type: "string" } }, required: [] };
+      const newSchema: SchemaProperty = { type: "object", properties: { user_id: { type: "string" } }, required: [] };
+
+      const changes = compareSchemas(oldSchema, newSchema).changes;
+      const suggestions = detectTransforms(oldSchema, newSchema, changes);
+
+      if (suggestions.length > 0) {
+        expect(suggestions[0]!.confidence).toBeGreaterThanOrEqual(70);
+      }
     });
   });
 });

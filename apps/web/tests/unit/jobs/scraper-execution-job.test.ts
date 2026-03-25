@@ -29,6 +29,10 @@ vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: vi.fn() }))
 
 vi.mock("uuid", () => ({ v4: vi.fn().mockReturnValue("test-uuid-1234") }));
 
+vi.mock("@/lib/ingest/create-ingest-file", () => ({
+  createIngestFileAndQueueDetection: vi.fn().mockResolvedValue({ ingestFileId: 42 }),
+}));
+
 describe.sequential("scraperExecutionJob", () => {
   let mockPayload: any;
   let mockQuotaService: any;
@@ -329,5 +333,176 @@ describe.sequential("scraperExecutionJob", () => {
       "SCRAPER_RUNS_PER_DAY",
       1
     );
+  });
+
+  describe("auto-import", () => {
+    const csvData = "id,title\n1,Event 1";
+
+    /**
+     * Set up the fetch mock to handle multiple calls:
+     * 1. POST /run -> runner response (success with download_url)
+     * 2. GET /output/... -> CSV download
+     * 3. DELETE /output/... -> cleanup (best-effort)
+     */
+    const setupAutoImportFetch = (runnerOverrides: Record<string, unknown> = {}) => {
+      const runnerResponse = createMockRunnerResponse(runnerOverrides);
+      globalThis.fetch = vi
+        .fn()
+        // First call: POST /run -> runner response
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue(runnerResponse),
+          text: vi.fn().mockResolvedValue(""),
+        })
+        // Second call: GET download CSV
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode(csvData).buffer),
+        })
+        // Third call: DELETE cleanup
+        .mockResolvedValueOnce({ ok: true, status: 204 });
+    };
+
+    beforeEach(async () => {
+      // Override findByID to return scraper with autoImport: true
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "scrapers") {
+          return Promise.resolve(createMockScraper({ autoImport: true }));
+        }
+        if (collection === "users") {
+          return Promise.resolve({ id: 200, email: "owner@example.com" });
+        }
+        return Promise.resolve(null);
+      });
+
+      // Re-apply createIngestFileAndQueueDetection mock
+      const { createIngestFileAndQueueDetection } = await import("@/lib/ingest/create-ingest-file");
+      (createIngestFileAndQueueDetection as any).mockResolvedValue({ ingestFileId: 42 });
+    });
+
+    it("should trigger auto-import when autoImport=true and run succeeds with download_url", async () => {
+      setupAutoImportFetch();
+
+      const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+      const result = await scraperExecutionJob.handler(context as any);
+
+      // The output should include the ingestFileId
+      expect(result.output).toEqual(expect.objectContaining({ runId: 1, status: "success", ingestFileId: 42 }));
+
+      // createIngestFileAndQueueDetection should have been called
+      const { createIngestFileAndQueueDetection } = await import("@/lib/ingest/create-ingest-file");
+      expect(createIngestFileAndQueueDetection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: mockPayload,
+          importFileData: expect.objectContaining({ status: "pending", catalog: 100, user: 200 }),
+          file: expect.objectContaining({ mimetype: "text/csv", size: 2048 }),
+        })
+      );
+
+      // Scraper-run should be linked to the import file
+      const linkCalls = mockPayload.update.mock.calls.filter((call: unknown[]) => {
+        const arg = call[0] as { collection: string; data?: { resultFile?: number } };
+        return arg.collection === "scraper-runs" && arg.data?.resultFile === 42;
+      });
+      expect(linkCalls).toHaveLength(1);
+    });
+
+    it("should still succeed when auto-import fails", async () => {
+      setupAutoImportFetch();
+
+      // Make createIngestFileAndQueueDetection throw
+      const { createIngestFileAndQueueDetection } = await import("@/lib/ingest/create-ingest-file");
+      (createIngestFileAndQueueDetection as any).mockRejectedValue(new Error("Disk full"));
+
+      const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+      // Job should NOT throw even though auto-import fails
+      const result = await scraperExecutionJob.handler(context as any);
+
+      expect(result.output).toEqual(expect.objectContaining({ runId: 1, status: "success" }));
+      // ingestFileId should not be in output since auto-import failed
+      expect(result.output.ingestFileId).toBeUndefined();
+
+      // logError should have been called for the auto-import failure
+      const { logError } = await import("@/lib/logger");
+      expect(logError).toHaveBeenCalledWith(
+        expect.any(Error),
+        "Auto-import failed after successful scrape",
+        expect.objectContaining({ scraperId: 10 })
+      );
+    });
+
+    it("should call DELETE for cleanup after successful auto-import", async () => {
+      setupAutoImportFetch();
+
+      const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+      await scraperExecutionJob.handler(context as any);
+
+      // Third fetch call should be the DELETE cleanup
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+
+      const deleteCall = fetchMock.mock.calls[2]!;
+      expect(deleteCall[0]).toBe("https://runner.example.com/output/test-uuid-1234");
+      expect(deleteCall[1]).toEqual(expect.objectContaining({ method: "DELETE" }));
+    });
+  });
+
+  describe("handleRunFailure error resilience", () => {
+    it("should log and continue when scraper-runs update fails during handleRunFailure", async () => {
+      // Make runner call fail
+      globalThis.fetch = createFailureFetchMock(500, "Server error");
+
+      // Make the first update (scraper-runs failure update) reject, but second (scrapers) succeed
+      // Note: there are updates before handleRunFailure (create run record + set running status),
+      // so we need to let those succeed first
+      mockPayload.update
+        .mockResolvedValueOnce({}) // set scraper to "running" status
+        .mockRejectedValueOnce(new Error("scraper-runs update failed")) // handleRunFailure: scraper-runs
+        .mockResolvedValueOnce({}); // handleRunFailure: scrapers
+
+      const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+
+      await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow();
+
+      // The scraper status update should still have been attempted despite scraper-runs failing
+      const scraperFailCalls = mockPayload.update.mock.calls.filter((call: unknown[]) => {
+        const arg = call[0] as { collection: string; data?: { lastRunStatus?: string } };
+        return arg.collection === "scrapers" && arg.data?.lastRunStatus === "failed";
+      });
+      expect(scraperFailCalls).toHaveLength(1);
+
+      // logError should have been called for the scraper-runs update failure
+      const { logError } = await import("@/lib/logger");
+      expect(logError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "scraper-runs update failed" }),
+        "Failed to update scraper run on error",
+        expect.objectContaining({ runId: 1 })
+      );
+    });
+
+    it("should log and not throw when scrapers update fails during handleRunFailure", async () => {
+      // Make runner call fail
+      globalThis.fetch = createFailureFetchMock(500, "Server error");
+
+      // Let scraper-runs update succeed but scrapers update fail in handleRunFailure
+      mockPayload.update
+        .mockResolvedValueOnce({}) // set scraper to "running" status
+        .mockResolvedValueOnce({}) // handleRunFailure: scraper-runs
+        .mockRejectedValueOnce(new Error("scrapers update failed")); // handleRunFailure: scrapers
+
+      const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+
+      // The job still throws the original runner error, not the update error
+      await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("Runner API returned 500");
+
+      const { logError } = await import("@/lib/logger");
+      expect(logError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "scrapers update failed" }),
+        "Failed to update scraper status on error",
+        expect.objectContaining({ scraperId: 10 })
+      );
+    });
   });
 });
