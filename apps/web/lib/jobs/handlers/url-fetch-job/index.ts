@@ -86,10 +86,6 @@ const handleDuplicateCheck = async (
     dataHash,
   });
 
-  if (context.scheduledIngest) {
-    await updateScheduledIngestSuccess(payload, context.scheduledIngest, existingFile.id, 0);
-  }
-
   return { ingestFileId: existingFile.id, filename: existingFile.filename, contentHash: dataHash, isDuplicate: true };
 };
 
@@ -195,7 +191,7 @@ const prepareCacheOptions = (
 ) => ({
   useCache: cachingEnabled && scheduledIngest?.advancedOptions?.useHttpCache !== false,
   bypassCache:
-    !cachingEnabled || (triggeredBy === "manual" && scheduledIngest?.advancedOptions?.bypassCacheOnManual === true),
+    cachingEnabled && triggeredBy === "manual" && scheduledIngest?.advancedOptions?.bypassCacheOnManual === true,
   respectCacheControl: scheduledIngest?.advancedOptions?.respectCacheControl !== false,
 });
 
@@ -287,17 +283,15 @@ export const urlFetchJob = {
       throw new Error("Source URL is required");
     }
 
-    let scheduledIngest: ScheduledIngest | null = null;
+    // Load scheduled ingest config before try block — disabled/not-found is expected
+    // behavior that should not be logged as an error
+    const scheduledIngest = await loadScheduledIngestConfig(payload, input.scheduledIngestId);
+    if (input.scheduledIngestId && !scheduledIngest) {
+      logger.info("Scheduled ingest disabled or not found, aborting", { scheduledIngestId: input.scheduledIngestId });
+      throw new Error("scheduled ingest is disabled or not found");
+    }
 
     try {
-      scheduledIngest = await loadScheduledIngestConfig(payload, input.scheduledIngestId);
-
-      // Abort if scheduled ingest was requested but is disabled or not found
-      if (input.scheduledIngestId && !scheduledIngest) {
-        logger.info("scheduled ingest disabled or not found, aborting", { scheduledIngestId: input.scheduledIngestId });
-        throw new Error("scheduled ingest is disabled or not found");
-      }
-
       // Resolve userId from input or scheduled ingest's creator
       const resolvedUserId = input.userId ?? extractRelationId(scheduledIngest?.createdBy);
 
@@ -322,6 +316,10 @@ export const urlFetchJob = {
       const importContext = createImportContext(input, scheduledIngest);
       const duplicateResult = await handleDuplicateCheck(payload, importContext, result.contentHash);
       if (duplicateResult) {
+        if (scheduledIngest) {
+          const duration = Date.now() - startTime;
+          await updateScheduledIngestSuccess(payload, scheduledIngest, duplicateResult.ingestFileId, duration);
+        }
         return buildSuccessOutput(
           duplicateResult.ingestFileId,
           duplicateResult.filename,
