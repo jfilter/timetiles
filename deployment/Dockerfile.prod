@@ -73,6 +73,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 # not included in Next.js standalone output — see payloadcms/payload#7176)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
+# Copy full source tree for Payload CLI workers. The CLI uses @swc/core to compile
+# payload.config.ts at runtime, which imports the entire lib/ tree via path aliases.
+# This is required because Next.js standalone output bundles the config into webpack
+# chunks that can't be imported independently.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/tsconfig.json ./apps/web/tsconfig.json
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/payload.config.ts ./apps/web/payload.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/lib ./apps/web/lib
+COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
+
 # pnpm doesn't hoist binaries to node_modules/.bin/ — replace the empty
 # directory with a symlink so docker-compose worker commands work
 RUN rm -rf /app/node_modules/.bin \

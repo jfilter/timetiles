@@ -139,6 +139,7 @@ services:
   worker-ingest:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-ingest
+    working_dir: /app/apps/web
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -155,7 +156,7 @@ services:
     command:
       [
         "node",
-        "node_modules/.pnpm/node_modules/payload/bin.js",
+        "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
         "--cron",
         "*/1 * * * *",
@@ -187,6 +188,7 @@ services:
   worker-default:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-default
+    working_dir: /app/apps/web
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -203,7 +205,7 @@ services:
     command:
       [
         "node",
-        "node_modules/.pnpm/node_modules/payload/bin.js",
+        "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
         "--cron",
         "*/1 * * * *",
@@ -236,6 +238,7 @@ services:
   worker-maintenance:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-maintenance
+    working_dir: /app/apps/web
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -252,7 +255,7 @@ services:
     command:
       [
         "node",
-        "node_modules/.pnpm/node_modules/payload/bin.js",
+        "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
         "--cron",
         "*/5 * * * *",
