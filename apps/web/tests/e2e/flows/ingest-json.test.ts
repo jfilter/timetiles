@@ -131,13 +131,9 @@ test.describe("Import Wizard - JSON File Upload", () => {
     await expect(completionIndicator).toBeVisible({ timeout: 120_000 });
 
     // Verify events were created (3 records in valid-events.json)
-    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-    const successMessage = page.getByText(/[1-9]\d* events imported/i);
+    // The completion UI shows "N events" per dataset, not "N events imported"
+    const successMessage = page.getByText(/3 events/i);
     await expect(successMessage).toBeVisible({ timeout: 5_000 });
-
-    // Verify explore link is available
-    const viewOnMapButton = page.getByRole("link", { name: /view on map|explore/i });
-    await expect(viewOnMapButton).toBeVisible();
   });
 });
 

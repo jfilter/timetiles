@@ -10,6 +10,7 @@
  * @category Services
  */
 import fs from "node:fs";
+import path from "node:path";
 
 import type { NextRequest } from "next/server";
 import type { Payload } from "payload";
@@ -410,6 +411,23 @@ export const createIngestFileRecord = async (
 ): Promise<IngestFile> => {
   const fileBuffer = fs.readFileSync(previewMeta.filePath);
   const datasetMapping = buildDatasetMapping(body.sheetMappings, datasetMappingEntries);
+
+  // Ensure the file name Payload stores has an extension matching the actual content.
+  // The preview step may convert files (JSON/GeoJSON → CSV) or fetch URLs without
+  // file extensions. The original name is preserved in `originalName` for display;
+  // here we only fix the storage name so downstream tasks read the correct format.
+  const previewExt = path.extname(previewMeta.filePath).toLowerCase();
+  const originalExt = path.extname(previewMeta.originalName).toLowerCase();
+  let fileName = previewMeta.originalName;
+  let fileMimeType = previewMeta.mimeType;
+  if (previewExt && previewExt !== originalExt) {
+    // Extension mismatch: converted (e.g. .json→.csv) or URL without extension
+    fileName = originalExt
+      ? previewMeta.originalName.replace(new RegExp(`\\${originalExt}$`, "i"), previewExt)
+      : `${previewMeta.originalName}${previewExt}`;
+    fileMimeType = previewExt === ".csv" ? "text/csv" : previewMeta.mimeType;
+  }
+
   const ingestFile = await payload.create({
     collection: "ingest-files",
     user,
@@ -428,12 +446,7 @@ export const createIngestFileRecord = async (
         wizardConfig: { sheetMappings: body.sheetMappings, fieldMappings: body.fieldMappings },
       },
     },
-    file: {
-      data: fileBuffer,
-      name: previewMeta.originalName,
-      mimetype: previewMeta.mimeType,
-      size: previewMeta.fileSize,
-    },
+    file: { data: fileBuffer, name: fileName, mimetype: fileMimeType, size: fileBuffer.length },
   });
 
   logger.info(

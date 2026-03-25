@@ -174,12 +174,21 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
   test("step 3: trigger second manual run", async ({ request }) => {
     expect(scheduledIngestId).toBeDefined();
 
+    // Capture current run count before triggering
+    const beforeResp = await request.get(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}`, {
+      headers: { Authorization: `JWT ${token}` },
+    });
+    const beforeData = await beforeResp.json();
+    const runsBefore = beforeData.statistics?.successfulRuns ?? 0;
+
     const triggerResponse = await request.post(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}/trigger`, {
       headers: { Authorization: `JWT ${token}` },
     });
     expect(triggerResponse.status()).toBe(200);
 
-    await expectScheduleStatus(request, "success", 60_000);
+    // Wait for successfulRuns to increase (not just lastStatus, which might still be
+    // "success" from the previous run)
+    await expectScheduleRunCount(request, runsBefore + 1, 60_000);
   });
 
   test("step 4: verify schedule ran successfully", async ({ request }) => {
@@ -197,16 +206,21 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     test.setTimeout(180_000);
     ingestPage = new IngestPage(page);
 
-    // Navigate to schedules page
+    // Navigate to schedules page (redirects to /account/imports?tab=scheduled)
     await page.goto("/account/schedules", { waitUntil: "domcontentloaded" });
 
-    // Find and click the Edit button
-    const editButton = page.getByTitle(/edit schedule/i).first();
-    await expect(editButton).toBeVisible({ timeout: 10_000 });
-    await editButton.click();
+    // Open the actions dropdown menu (3-dot icon) for the first schedule row
+    const actionsButton = page.getByLabel(/actions/i).first();
+    await expect(actionsButton).toBeVisible({ timeout: 10_000 });
+    await actionsButton.click();
 
-    // Should navigate to wizard in edit mode
-    await page.waitForURL(/\/import\?edit=\d+/, { timeout: 10_000 });
+    // Click "Edit" in the dropdown
+    const editItem = page.getByRole("menuitem", { name: /edit/i });
+    await expect(editItem).toBeVisible({ timeout: 5_000 });
+    await editItem.click();
+
+    // Should navigate to wizard in edit mode (route is /ingest, not /import)
+    await page.waitForURL(/\/ingest\?edit=\d+/, { timeout: 10_000 });
 
     // Wizard should show edit mode indicator
     const editIndicator = page.getByText(/editing/i);
@@ -274,19 +288,26 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     const updateResponse = await updateResponsePromise;
     expect(updateResponse.status()).toBe(200);
 
-    // Should redirect to schedules page
-    await page.waitForURL(/\/account\/schedules/, { timeout: 15_000 });
+    // Should redirect to schedules page (may land on /account/imports?tab=scheduled)
+    await page.waitForURL(/\/account\/(schedules|imports)/, { timeout: 15_000 });
   });
 
   test("step 6: trigger post-edit run", async ({ request }) => {
     expect(scheduledIngestId).toBeDefined();
+
+    // Capture current run count before triggering
+    const beforeResp = await request.get(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}`, {
+      headers: { Authorization: `JWT ${token}` },
+    });
+    const beforeData = await beforeResp.json();
+    const runsBefore = beforeData.statistics?.successfulRuns ?? 0;
 
     const triggerResponse = await request.post(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}/trigger`, {
       headers: { Authorization: `JWT ${token}` },
     });
     expect(triggerResponse.status()).toBe(200);
 
-    await expectScheduleStatus(request, "success", 60_000);
+    await expectScheduleRunCount(request, runsBefore + 1, 60_000);
   });
 
   test("step 7: verify updated schedule name and successful runs", async ({ request }) => {
@@ -324,5 +345,22 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
       await new Promise((resolve) => setTimeout(resolve, 2_000));
     }
     throw new Error(`Schedule did not reach status "${expectedStatus}" within ${timeoutMs}ms`);
+  };
+
+  // Helper: poll until successfulRuns reaches the expected minimum count
+  const expectScheduleRunCount = async (apiRequest: APIRequestContext, minRuns: number, timeoutMs: number) => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const resp = await apiRequest.get(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}`, {
+        headers: { Authorization: `JWT ${token}` },
+      });
+      const data = await resp.json();
+      if ((data.statistics?.successfulRuns ?? 0) >= minRuns) return;
+      if (data.lastStatus === "failed") {
+        throw new Error(`Schedule run failed: ${data.lastError}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+    }
+    throw new Error(`Schedule did not reach ${minRuns} successful runs within ${timeoutMs}ms`);
   };
 });
