@@ -20,6 +20,7 @@ export interface DataSourceDataset {
   id: number;
   name: string;
   catalogId: number | null;
+  hasTemporalData: boolean;
 }
 
 export interface DataSourcesResponse {

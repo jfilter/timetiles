@@ -32,7 +32,7 @@ export const GET = apiRoute({
         limit: 5000,
         pagination: false,
         depth: 1, // Need depth to get catalog relationship
-        select: { id: true, name: true, catalog: true },
+        select: { id: true, name: true, catalog: true, hasTemporalData: true },
         user,
         overrideAccess: false,
       }),
@@ -50,6 +50,7 @@ export const GET = apiRoute({
       id: d.id,
       name: d.name,
       catalogId: typeof d.catalog === "object" && d.catalog != null ? d.catalog.id : null,
+      hasTemporalData: d.hasTemporalData ?? true,
     }));
 
     return { catalogs, datasets };

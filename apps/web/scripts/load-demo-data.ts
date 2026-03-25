@@ -167,6 +167,7 @@ const createDatasetForSource = async (
       language: "deu",
       isPublic: true,
       createdBy: userId,
+      hasTemporalData: false,
       schemaConfig: { autoGrow: true, autoApproveNonBreaking: true },
       geoFieldDetection: { autoDetect: true },
     },

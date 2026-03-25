@@ -51,7 +51,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
   const { map, filters: filterState, selection, data } = explorer;
   const { filters } = filterState;
   const { openEvent } = selection;
-  const { datasets, clusters, clusterStats, boundsData, isLoadingInitialBounds } = data;
+  const { datasets, clusters, clusterStats, boundsData, isLoadingInitialBounds, hasTemporalData } = data;
   const { ref: mapRef, debouncedSimpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
 
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
@@ -83,7 +83,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
           }
           chartContent={
             <div className="flex h-full flex-col p-4">
-              <ChartSection bounds={debouncedSimpleBounds} fillHeight />
+              <ChartSection bounds={debouncedSimpleBounds} fillHeight hasTemporalData={hasTemporalData} />
             </div>
           }
           listContent={
@@ -124,7 +124,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
             />
             <div className="overflow-hidden border-l">
               <div className="flex h-full flex-col p-6">
-                <ChartSection bounds={debouncedSimpleBounds} fillHeight />
+                <ChartSection bounds={debouncedSimpleBounds} fillHeight hasTemporalData={hasTemporalData} />
               </div>
             </div>
           </div>

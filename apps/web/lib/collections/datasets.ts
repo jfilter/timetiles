@@ -345,6 +345,15 @@ const Datasets: CollectionConfig = {
         },
       ],
     },
+    {
+      name: "hasTemporalData",
+      type: "checkbox",
+      defaultValue: true,
+      admin: {
+        readOnly: true,
+        description: "Whether this dataset contains events with timestamps. Auto-set during import.",
+      },
+    },
   ],
 };
 

@@ -452,6 +452,19 @@ export const schemaDetectionJob = {
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA);
       const fieldMappings = await finalizeSchemaDetection(payload, ingestJobId, lastSchemaBuilder, dataset, logger);
 
+      // Update dataset hasTemporalData flag based on whether a timestamp field was detected
+      if (dataset) {
+        const hasTimestamp = Boolean(fieldMappings?.timestampPath);
+        if (dataset.hasTemporalData !== hasTimestamp) {
+          await payload.update({
+            collection: COLLECTION_NAMES.DATASETS,
+            id: typeof dataset.id === "string" ? dataset.id : String(dataset.id),
+            data: { hasTemporalData: hasTimestamp },
+            overrideAccess: true,
+          });
+        }
+      }
+
       logPerformance("Schema detection", Date.now() - startTime, {
         ingestJobId,
         totalBatches: batchNumber,

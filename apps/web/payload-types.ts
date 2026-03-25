@@ -731,6 +731,10 @@ export interface Dataset {
     locationPath?: string | null;
   };
   /**
+   * Whether this dataset contains events with timestamps. Auto-set during import.
+   */
+  hasTemporalData?: boolean | null;
+  /**
    * Select a schema detector for this dataset (leave empty to use default)
    */
   schemaDetector?: (number | null) | SchemaDetector;
@@ -4177,6 +4181,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         longitudePath?: T;
         locationPath?: T;
       };
+  hasTemporalData?: T;
   schemaDetector?: T;
   updatedAt?: T;
   createdAt?: T;
