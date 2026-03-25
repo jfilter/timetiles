@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
     getFileRowCount: vi.fn(),
     streamBatchesFromFile: vi.fn(),
     cleanupSidecarFiles: vi.fn(),
+    cleanupSidecarsForJob: vi.fn(),
     generateUniqueId: vi.fn(),
   };
 });
@@ -40,6 +41,13 @@ vi.mock("@/lib/ingest/file-readers", () => ({
 }));
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
+
+// Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
+// doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles
+vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
+  const actual: Record<string, unknown> = await importOriginal();
+  return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
+});
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
@@ -448,7 +456,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       const mockIngestFile = createMockIngestFile();
 
-      // Use mockImplementation to handle all findByID calls (initial + progress refetch + error-path reload)
+      // Use mockImplementation to handle all findByID calls (initial + progress refetch)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
@@ -470,11 +478,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Corrupt Excel file");
 
-      // Verify sidecar cleanup was called
-      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith(
-        expect.stringContaining("test.csv"),
-        1 // sheetIndex from mockIngestJob
-      );
+      // Verify sidecar cleanup was called (asserts on cleanupSidecarsForJob, not the
+      // low-level cleanupSidecarFiles, because with isolate:false the file-readers
+      // mock doesn't propagate to resource-loading.ts's cached import)
+      expect(mocks.cleanupSidecarsForJob).toHaveBeenCalledWith(mockPayload, "import-123");
     });
   });
 

@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => {
   return {
     streamBatchesFromFile: vi.fn(),
     cleanupSidecarFiles: vi.fn(),
+    cleanupSidecarsForJob: vi.fn(),
     geocode,
     MockGeocodingService,
     getIngestFilePath: vi.fn().mockReturnValue("/app/uploads/test-import.csv"),
@@ -70,6 +71,13 @@ vi.mock("@/lib/ingest/file-readers", () => ({
 
 vi.mock("@/lib/jobs/utils/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
+// Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
+// doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles
+vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
+  const actual: Record<string, unknown> = await importOriginal();
+  return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
+});
+
 // Mock review checks — default: no review needed
 vi.mock("@/lib/jobs/workflows/review-checks", () => ({
   REVIEW_REASONS: {
@@ -100,6 +108,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     // Explicitly reset hoisted mocks to clear both call history AND implementations
     mocks.streamBatchesFromFile.mockReset();
     mocks.cleanupSidecarFiles.mockReset();
+    mocks.cleanupSidecarsForJob.mockReset();
     mocks.geocode.mockReset();
     mocks.getIngestFilePath.mockReset();
     mocks.getIngestFilePath.mockReturnValue("/app/uploads/test-import.csv");
@@ -398,8 +407,10 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("File read error");
 
-      // Should clean up sidecar files (best-effort)
-      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledTimes(1);
+      // Verify sidecar cleanup was called (asserts on cleanupSidecarsForJob, not the
+      // low-level cleanupSidecarFiles, because with isolate:false the file-readers
+      // mock doesn't propagate to resource-loading.ts's cached import)
+      expect(mocks.cleanupSidecarsForJob).toHaveBeenCalledWith(mockPayload, 123);
     });
   });
 

@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => {
   return {
     streamBatchesFromFile: vi.fn(),
     cleanupSidecarFiles: vi.fn(),
+    cleanupSidecarsForJob: vi.fn(),
     ProgressiveSchemaBuilder: vi.fn(),
     startStage: vi.fn(),
     completeStage: vi.fn(),
@@ -56,6 +57,13 @@ vi.mock("@/lib/types/schema-detection", () => ({ getSchemaBuilderState: vi.fn().
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
+
+// Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
+// doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles
+vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
+  const actual: Record<string, unknown> = await importOriginal();
+  return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
+});
 
 // Mock review checks — default: no review needed
 vi.mock("@/lib/jobs/workflows/review-checks", () => ({
@@ -558,11 +566,10 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       expect(error).not.toBeInstanceOf(JobCancelledError);
       expect((error as Error).message).toBe("Connection timeout");
 
-      // Verify sidecar cleanup was called with the correct file path and sheet index
-      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith(
-        expect.stringContaining("test.csv"),
-        0 // sheetIndex from mockIngestJob
-      );
+      // Verify sidecar cleanup was called (asserts on cleanupSidecarsForJob, not the
+      // low-level cleanupSidecarFiles, because with isolate:false the file-readers
+      // mock doesn't propagate to resource-loading.ts's cached import)
+      expect(mocks.cleanupSidecarsForJob).toHaveBeenCalledWith(mockPayload, TEST_IDS.IMPORT_JOB);
     });
   });
 

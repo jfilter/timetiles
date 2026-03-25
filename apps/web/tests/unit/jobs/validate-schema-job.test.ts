@@ -28,6 +28,7 @@ import {
 const mocks = vi.hoisted(() => {
   return {
     cleanupSidecarFiles: vi.fn(),
+    cleanupSidecarsForJob: vi.fn(),
     ProgressiveSchemaBuilder: vi.fn(),
     createSchemaVersion: vi.fn(),
     linkImportToSchemaVersion: vi.fn(),
@@ -43,6 +44,13 @@ vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanup
 vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
+
+// Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
+// doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles
+vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
+  const actual: Record<string, unknown> = await importOriginal();
+  return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
+});
 
 vi.mock("@/lib/services/schema-builder", () => ({ ProgressiveSchemaBuilder: mocks.ProgressiveSchemaBuilder }));
 
@@ -460,9 +468,6 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         throw new Error("Connection timeout");
       });
 
-      // cleanupSidecarsForJob in catch block loads job + file (not dataset)
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
-
       mockPayload.update.mockResolvedValueOnce({});
 
       // Transient error: re-throws original error for Payload to retry (not JobCancelledError)
@@ -471,8 +476,10 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       expect(error).not.toBeInstanceOf(JobCancelledError);
       expect((error as Error).message).toBe("Connection timeout");
 
-      // Verify sidecar cleanup was called with the file path and sheetIndex
-      expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/ingest-files/test.xlsx", 2);
+      // Verify sidecar cleanup was called (asserts on cleanupSidecarsForJob, not the
+      // low-level cleanupSidecarFiles, because with isolate:false the file-readers
+      // mock doesn't propagate to resource-loading.ts's cached import)
+      expect(mocks.cleanupSidecarsForJob).toHaveBeenCalledWith(mockPayload, 123);
     });
   });
 
