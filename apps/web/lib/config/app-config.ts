@@ -53,6 +53,13 @@ const batchSizesSchema = z.object({
   databaseChunk: z.number().int().positive(),
 });
 
+const reviewThresholdsSchema = z.object({
+  highDuplicateRate: z.number().min(0).max(1),
+  geocodingPartialFailureRate: z.number().min(0).max(1),
+  highRowErrorRate: z.number().min(0).max(1),
+  highEmptyRowRate: z.number().min(0).max(1),
+});
+
 // Note: cacheSchema and accountSchema not needed as Zod schemas since the YAML
 // config uses partial validation inline. Types are defined as interfaces below.
 
@@ -66,6 +73,7 @@ const yamlConfigSchema = z
     quotas: z.record(z.string(), userQuotasSchema.partial()).optional(),
     trustLevelRateLimits: z.record(z.string(), trustLevelRateLimitsSchema.partial()).optional(),
     batchSizes: batchSizesSchema.partial().optional(),
+    reviewThresholds: reviewThresholdsSchema.partial().optional(),
     cache: z
       .object({
         urlFetch: z
@@ -367,6 +375,13 @@ const DEFAULT_CACHE = {
 
 const DEFAULT_ACCOUNT = { deletionGracePeriodDays: 30 };
 
+const DEFAULT_REVIEW_THRESHOLDS = {
+  highDuplicateRate: 0.8,
+  geocodingPartialFailureRate: 0.5,
+  highRowErrorRate: 0.1,
+  highEmptyRowRate: 0.2,
+};
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -376,6 +391,7 @@ export type RateLimitConfig = z.infer<typeof rateLimitConfigSchema>;
 export type UserQuotasConfig = z.infer<typeof userQuotasSchema>;
 export type TrustLevelRateLimitsConfig = z.infer<typeof trustLevelRateLimitsSchema>;
 export type BatchSizesConfig = z.infer<typeof batchSizesSchema>;
+export type ReviewThresholdsConfig = z.infer<typeof reviewThresholdsSchema>;
 
 export interface CacheConfig {
   urlFetch: {
@@ -415,6 +431,7 @@ export interface AppConfig {
   batchSizes: BatchSizesConfig;
   cache: CacheConfig;
   account: AccountConfig;
+  reviewThresholds: ReviewThresholdsConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -494,6 +511,17 @@ const loadFromYaml = (): Record<string, unknown> => {
   }
 };
 
+const buildReviewThresholds = (yamlConfig: Record<string, unknown>): ReviewThresholdsConfig => {
+  const yaml = (yamlConfig.reviewThresholds ?? {}) as Partial<ReviewThresholdsConfig>;
+  return {
+    highDuplicateRate: yaml.highDuplicateRate ?? DEFAULT_REVIEW_THRESHOLDS.highDuplicateRate,
+    geocodingPartialFailureRate:
+      yaml.geocodingPartialFailureRate ?? DEFAULT_REVIEW_THRESHOLDS.geocodingPartialFailureRate,
+    highRowErrorRate: yaml.highRowErrorRate ?? DEFAULT_REVIEW_THRESHOLDS.highRowErrorRate,
+    highEmptyRowRate: yaml.highEmptyRowRate ?? DEFAULT_REVIEW_THRESHOLDS.highEmptyRowRate,
+  };
+};
+
 const buildConfig = (yamlConfig: Record<string, unknown>): AppConfig => {
   // Rate limits: YAML overrides replace entire endpoint configs (not deep-merged)
   const rateLimits = { ...DEFAULT_RATE_LIMITS } as Record<string, RateLimitConfig>;
@@ -552,6 +580,9 @@ const buildConfig = (yamlConfig: Record<string, unknown>): AppConfig => {
     ? { ...DEFAULT_ACCOUNT, ...(yamlConfig.account as Partial<AccountConfig>) }
     : { ...DEFAULT_ACCOUNT };
 
+  // Review thresholds: YAML > default
+  const reviewThresholds = buildReviewThresholds(yamlConfig);
+
   return {
     rateLimits: rateLimits as Record<RateLimitName, RateLimitConfig>,
     quotas,
@@ -559,6 +590,7 @@ const buildConfig = (yamlConfig: Record<string, unknown>): AppConfig => {
     batchSizes,
     cache,
     account,
+    reviewThresholds,
   };
 };
 

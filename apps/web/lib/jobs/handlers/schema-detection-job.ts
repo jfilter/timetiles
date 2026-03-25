@@ -33,6 +33,13 @@ import type { SchemaDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { extractDuplicateRows, loadJobAndFilePath } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
+import type { ReviewChecksConfig } from "../workflows/review-checks";
+import {
+  REVIEW_REASONS,
+  setNeedsReview,
+  shouldReviewNoLocation,
+  shouldReviewNoTimestamp,
+} from "../workflows/review-checks";
 
 // Helper to load dataset and extract active transforms
 const loadDatasetAndTransforms = async (
@@ -121,9 +128,9 @@ const finalizeSchemaDetection = async (
   schemaBuilder: ProgressiveSchemaBuilder | null,
   dataset: Dataset | null,
   logger: ReturnType<typeof createJobLogger>
-): Promise<void> => {
+): Promise<Record<string, string | null | undefined> | null> => {
   if (!schemaBuilder) {
-    return;
+    return null;
   }
 
   const finalState = schemaBuilder.getState();
@@ -227,6 +234,8 @@ const finalizeSchemaDetection = async (
     id: ingestJobId,
     data: { detectedFieldMappings: fieldMappings },
   });
+
+  return fieldMappings;
 };
 
 // Helper to process batch and update schema
@@ -297,6 +306,7 @@ export const schemaDetectionJob = {
   outputSchema: [
     { name: "fieldCount", type: "number" as const },
     { name: "totalRowsProcessed", type: "number" as const },
+    { name: "needsReview", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
   onFail: async (args: TaskCallbackArgs) => {
@@ -390,13 +400,44 @@ export const schemaDetectionJob = {
 
       // Complete stage and finalize
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA);
-      await finalizeSchemaDetection(payload, ingestJobId, lastSchemaBuilder, dataset, logger);
+      const fieldMappings = await finalizeSchemaDetection(payload, ingestJobId, lastSchemaBuilder, dataset, logger);
 
       logPerformance("Schema detection", Date.now() - startTime, {
         ingestJobId,
         totalBatches: batchNumber,
         totalRowsProcessed,
       });
+
+      // Load per-source review check overrides from the ingest file
+      const ingestFileId = typeof job.ingestFile === "object" ? job.ingestFile?.id : job.ingestFile;
+      const ingestFile = ingestFileId
+        ? await payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId })
+        : null;
+      const reviewChecks = (ingestFile?.processingOptions as Record<string, unknown> | null)?.reviewChecks as
+        | ReviewChecksConfig
+        | undefined;
+
+      // Review check: no timestamp field detected
+      if (fieldMappings) {
+        const timestampCheck = shouldReviewNoTimestamp(fieldMappings, reviewChecks);
+        if (timestampCheck.needsReview) {
+          await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.NO_TIMESTAMP_DETECTED, {
+            detectedMappings: fieldMappings,
+            message: "No timestamp or date field was detected in the data",
+          });
+          return { output: { needsReview: true, totalBatches: batchNumber, totalRowsProcessed } };
+        }
+
+        // Review check: no location field detected
+        const locationCheck = shouldReviewNoLocation(fieldMappings, reviewChecks);
+        if (locationCheck.needsReview) {
+          await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.NO_LOCATION_DETECTED, {
+            detectedMappings: fieldMappings,
+            message: "No location, address, or coordinate fields were detected in the data",
+          });
+          return { output: { needsReview: true, totalBatches: batchNumber, totalRowsProcessed } };
+        }
+      }
 
       return { output: { totalBatches: batchNumber, totalRowsProcessed } };
     } catch (error) {

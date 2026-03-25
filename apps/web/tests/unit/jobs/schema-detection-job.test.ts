@@ -59,6 +59,23 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
+// Mock review checks — default: no review needed
+vi.mock("@/lib/jobs/workflows/review-checks", () => ({
+  REVIEW_REASONS: {
+    SCHEMA_DRIFT: "schema-drift",
+    QUOTA_EXCEEDED: "quota-exceeded",
+    HIGH_DUPLICATE_RATE: "high-duplicates",
+    GEOCODING_PARTIAL: "geocoding-partial",
+    HIGH_ROW_ERROR_RATE: "high-row-errors",
+    HIGH_EMPTY_ROW_RATE: "high-empty-rows",
+    NO_TIMESTAMP_DETECTED: "no-timestamp",
+    NO_LOCATION_DETECTED: "no-location",
+  },
+  shouldReviewNoTimestamp: vi.fn().mockReturnValue({ needsReview: false }),
+  shouldReviewNoLocation: vi.fn().mockReturnValue({ needsReview: false }),
+  setNeedsReview: vi.fn().mockResolvedValue(undefined),
+}));
+
 /** Helper to create a mock async iterable from arrays of batches. */
 const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
   [Symbol.asyncIterator]: () => {
@@ -143,8 +160,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         recordCount: 3,
       };
 
-      // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
+      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
@@ -241,8 +262,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         typeConflicts: [],
       };
 
-      // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
+      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockData]));
 
@@ -297,8 +322,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         recordCount: 5,
       };
 
-      // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
+      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
 
       // Stream yields two batches
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([batch1, batch2]));
@@ -333,8 +362,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       const mockIngestJob = createMockIngestJob();
       const mockIngestFile = createMockIngestFile();
 
-      // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
+      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
 
       // Mock empty stream (no batches)
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
@@ -380,8 +413,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         recordCount: 1,
       };
 
-      // Setup mocks
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
+      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
@@ -429,7 +466,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         recordCount: 1,
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
+      // Use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
       mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
@@ -557,7 +599,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         recordCount: 1,
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
+      // Use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 

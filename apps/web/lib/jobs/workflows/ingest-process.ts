@@ -18,7 +18,12 @@ import type { WorkflowConfig } from "payload";
 
 import { logger } from "@/lib/logger";
 
-import type { GeocodeBatchOutput, ValidateSchemaOutput } from "../types/task-outputs";
+import type {
+  CreateEventsOutput,
+  DetectSchemaOutput,
+  GeocodeBatchOutput,
+  ValidateSchemaOutput,
+} from "../types/task-outputs";
 import { updateIngestFileStatusForJob } from "./completion";
 
 export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
@@ -38,7 +43,11 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
     try {
       // Tasks throw on error → propagates to Payload → onFail marks IngestJob FAILED
       if (resumeFrom === "detect-schema") {
-        await tasks["detect-schema"]("detect", { input: { ingestJobId: id } });
+        const detect = (await tasks["detect-schema"]("detect", { input: { ingestJobId: id } })) as DetectSchemaOutput;
+        if (detect.needsReview) {
+          logger.info("ingest-process: detect-schema requires review", { ingestJobId: id });
+          return;
+        }
         const validate = (await tasks["validate-schema"]("validate", {
           input: { ingestJobId: id },
         })) as ValidateSchemaOutput;
@@ -60,7 +69,13 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
         }
       }
 
-      await tasks["create-events"]("create-events", { input: { ingestJobId: id } });
+      const events = (await tasks["create-events"]("create-events", {
+        input: { ingestJobId: id },
+      })) as CreateEventsOutput;
+      if (events.needsReview) {
+        logger.info("ingest-process: create-events requires review", { ingestJobId: id });
+        return;
+      }
 
       logger.info("ingest-process workflow completed", { ingestJobId: id });
     } finally {

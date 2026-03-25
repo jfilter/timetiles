@@ -23,6 +23,8 @@ import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
+import type { ReviewChecksConfig } from "../workflows/review-checks";
+import { REVIEW_REASONS, setNeedsReview, shouldReviewHighRowErrors } from "../workflows/review-checks";
 import {
   checkEventQuotaBeforeProcessing,
   cleanupOnError,
@@ -39,6 +41,7 @@ export const createEventsBatchJob = {
   outputSchema: [
     { name: "eventCount", type: "number" as const },
     { name: "duplicatesSkipped", type: "number" as const },
+    { name: "needsReview", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
   onFail: async (args: TaskCallbackArgs) => {
@@ -73,6 +76,10 @@ export const createEventsBatchJob = {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {
+      // Don't override NEEDS_REVIEW with COMPLETED — the review check already set the stage
+      const job = await args.req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
+      if (job?.stage === PROCESSING_STAGE.NEEDS_REVIEW) return;
+
       await args.req.payload.update({
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: ingestJobId,
@@ -177,6 +184,30 @@ export const createEventsBatchJob = {
 
       // Complete the stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
+
+      // Review check: high row error rate
+      const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
+        | ReviewChecksConfig
+        | undefined;
+      const errorCheck = shouldReviewHighRowErrors(totalEventsCreated, totalErrors, reviewChecks);
+      if (errorCheck.needsReview) {
+        // Mark completed first (saves results, tracks quota, cleans up) then pause for review
+        await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);
+        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_ROW_ERROR_RATE, {
+          totalEvents: totalEventsCreated,
+          errorCount: totalErrors,
+          errorRate: errorCheck.errorRate,
+        });
+
+        logPerformance("Event creation (needs review)", Date.now() - startTime, {
+          ingestJobId,
+          totalBatches: batchNumber,
+          totalEventsCreated,
+          totalErrors,
+        });
+
+        return { output: { needsReview: true, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
+      }
 
       // Mark job completed
       await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);

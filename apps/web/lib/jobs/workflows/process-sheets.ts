@@ -27,6 +27,8 @@ import { logError, logger } from "@/lib/logger";
 
 import type {
   AnalyzeDuplicatesOutput,
+  CreateEventsOutput,
+  DetectSchemaOutput,
   GeocodeBatchOutput,
   SheetInfo,
   ValidateSchemaOutput,
@@ -83,7 +85,13 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo): Promi
   }
 
   // Step 2: Detect schema
-  await tasks["detect-schema"](`detect-schema-${s}`, { input: { ingestJobId: id } });
+  const detect = (await tasks["detect-schema"](`detect-schema-${s}`, {
+    input: { ingestJobId: id },
+  })) as DetectSchemaOutput;
+  if (detect.needsReview) {
+    logger.info(`Sheet ${s}: needs review after detect-schema`, sheetCtx);
+    return;
+  }
 
   // Step 3: Validate schema
   const validate = (await tasks["validate-schema"](`validate-${s}`, {
@@ -111,7 +119,13 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo): Promi
   }
 
   // Step 6: Create events
-  await tasks["create-events"](`create-events-${s}`, { input: { ingestJobId: id } });
+  const events = (await tasks["create-events"](`create-events-${s}`, {
+    input: { ingestJobId: id },
+  })) as CreateEventsOutput;
+  if (events.needsReview) {
+    logger.info(`Sheet ${s}: needs review after create-events`, sheetCtx);
+    return;
+  }
 
   logger.info(`Sheet ${s} (${sheet.name}): pipeline completed`, sheetCtx);
 };

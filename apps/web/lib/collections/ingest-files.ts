@@ -125,15 +125,14 @@ const IngestFiles: CollectionConfig = {
     },
 
     // Only authenticated users can upload files (denied for pending-deletion accounts, feature flag must be enabled)
-    create: (async ({ req: { user, payload } }) => {
+    create: async ({ req: { user, payload } }) => {
       // Check authentication + pending deletion first
       if (!user || user.deletionScheduledAt) return false;
 
       // Check feature flag - even admins can't create if disabled
       const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-      // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
-      return await isFeatureEnabled(payload, "enableImportCreation");
-    }) as CollectionConfig["access"]["create"],
+      return isFeatureEnabled(payload, "enableImportCreation");
+    },
 
     // Only file owner, editors, or admins can update
     update: createOwnershipAccess("ingest-files", "user"),

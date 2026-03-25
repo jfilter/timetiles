@@ -41,6 +41,7 @@ export interface AnalyzeDuplicatesOutput {
 
 /** Output from `detect-schema` task. */
 export interface DetectSchemaOutput {
+  needsReview?: boolean;
   fieldCount?: number;
   totalRowsProcessed?: number;
   reason?: string;
@@ -79,6 +80,7 @@ export interface GeocodeBatchOutput {
 
 /** Output from `create-events-batch` task. */
 export interface CreateEventsOutput {
+  needsReview?: boolean;
   eventCount?: number;
   duplicatesSkipped?: number;
   errors?: number;

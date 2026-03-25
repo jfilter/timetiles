@@ -1620,6 +1620,51 @@ export interface ScheduledIngest {
         maxPages?: number | null;
       };
     };
+    /**
+     * Configure which data quality checks pause the import for review. All checks are enabled by default.
+     */
+    reviewChecks?: {
+      /**
+       * Don't pause when no date/time field is detected
+       */
+      skipTimestampCheck?: boolean | null;
+      /**
+       * Don't pause when no location field is detected
+       */
+      skipLocationCheck?: boolean | null;
+      /**
+       * Don't pause when many rows are empty
+       */
+      skipEmptyRowCheck?: boolean | null;
+      /**
+       * Don't pause when many rows fail during creation
+       */
+      skipRowErrorCheck?: boolean | null;
+      /**
+       * Don't pause when most rows are duplicates
+       */
+      skipDuplicateRateCheck?: boolean | null;
+      /**
+       * Don't pause when geocoding has a high failure rate
+       */
+      skipGeocodingCheck?: boolean | null;
+      /**
+       * Override empty row rate threshold (0–1). Leave blank for global default.
+       */
+      emptyRowThreshold?: number | null;
+      /**
+       * Override row error rate threshold (0–1). Leave blank for global default.
+       */
+      rowErrorThreshold?: number | null;
+      /**
+       * Override duplicate rate threshold (0–1). Leave blank for global default.
+       */
+      duplicateRateThreshold?: number | null;
+      /**
+       * Override geocoding failure rate threshold (0–1). Leave blank for global default.
+       */
+      geocodingFailureThreshold?: number | null;
+    };
   };
   /**
    * Last execution time
@@ -1874,6 +1919,51 @@ export interface Scraper {
    * Automatically import CSV into target dataset after successful scrape
    */
   autoImport?: boolean | null;
+  /**
+   * Configure which data quality checks pause the import for review. All checks are enabled by default.
+   */
+  reviewChecks?: {
+    /**
+     * Don't pause when no date/time field is detected
+     */
+    skipTimestampCheck?: boolean | null;
+    /**
+     * Don't pause when no location field is detected
+     */
+    skipLocationCheck?: boolean | null;
+    /**
+     * Don't pause when many rows are empty
+     */
+    skipEmptyRowCheck?: boolean | null;
+    /**
+     * Don't pause when many rows fail during creation
+     */
+    skipRowErrorCheck?: boolean | null;
+    /**
+     * Don't pause when most rows are duplicates
+     */
+    skipDuplicateRateCheck?: boolean | null;
+    /**
+     * Don't pause when geocoding has a high failure rate
+     */
+    skipGeocodingCheck?: boolean | null;
+    /**
+     * Override empty row rate threshold (0–1). Leave blank for global default.
+     */
+    emptyRowThreshold?: number | null;
+    /**
+     * Override row error rate threshold (0–1). Leave blank for global default.
+     */
+    rowErrorThreshold?: number | null;
+    /**
+     * Override duplicate rate threshold (0–1). Leave blank for global default.
+     */
+    duplicateRateThreshold?: number | null;
+    /**
+     * Override geocoding failure threshold (0–1). Leave blank for global default.
+     */
+    geocodingFailureThreshold?: number | null;
+  };
   lastRunAt?: string | null;
   lastRunStatus?: ('success' | 'failed' | 'timeout' | 'running') | null;
   statistics?:
@@ -4360,6 +4450,20 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
                     maxPages?: T;
                   };
             };
+        reviewChecks?:
+          | T
+          | {
+              skipTimestampCheck?: T;
+              skipLocationCheck?: T;
+              skipEmptyRowCheck?: T;
+              skipRowErrorCheck?: T;
+              skipDuplicateRateCheck?: T;
+              skipGeocodingCheck?: T;
+              emptyRowThreshold?: T;
+              rowErrorThreshold?: T;
+              duplicateRateThreshold?: T;
+              geocodingFailureThreshold?: T;
+            };
       };
   lastRun?: T;
   nextRun?: T;
@@ -4434,6 +4538,20 @@ export interface ScrapersSelect<T extends boolean = true> {
   envVars?: T;
   targetDataset?: T;
   autoImport?: T;
+  reviewChecks?:
+    | T
+    | {
+        skipTimestampCheck?: T;
+        skipLocationCheck?: T;
+        skipEmptyRowCheck?: T;
+        skipRowErrorCheck?: T;
+        skipDuplicateRateCheck?: T;
+        skipGeocodingCheck?: T;
+        emptyRowThreshold?: T;
+        rowErrorThreshold?: T;
+        duplicateRateThreshold?: T;
+        geocodingFailureThreshold?: T;
+      };
   lastRunAt?: T;
   lastRunStatus?: T;
   statistics?: T;
@@ -5757,6 +5875,7 @@ export interface TaskDetectSchema {
   output: {
     fieldCount?: number | null;
     totalRowsProcessed?: number | null;
+    needsReview?: boolean | null;
     reason?: string | null;
   };
 }
@@ -5829,6 +5948,7 @@ export interface TaskCreateEvents {
   output: {
     eventCount?: number | null;
     duplicatesSkipped?: number | null;
+    needsReview?: boolean | null;
     reason?: string | null;
   };
 }

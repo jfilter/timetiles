@@ -57,7 +57,7 @@ describe.sequential("Dataset Detection Job", () => {
 
   it("should create ingest-job and complete the pipeline", async () => {
     // Create a simple CSV file
-    const csvContent = "name,date\nEvent 1,2024-01-01\nEvent 2,2024-01-02\n";
+    const csvContent = "name,date,location\nEvent 1,2024-01-01,Berlin\nEvent 2,2024-01-02,Munich\n";
 
     // Create import file using helper (triggers manual-ingest workflow via afterChange hook)
     const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {

@@ -5,15 +5,34 @@
  * by setting the IngestJob to NEEDS_REVIEW with a specific reason.
  * The user (or admin) reviews the issue and decides how to proceed.
  *
+ * Thresholds are configurable at two levels:
+ * - Global defaults via `timetiles.yml` → `reviewThresholds`
+ * - Per-source overrides via `scheduled-ingests` / `scrapers` → `advancedOptions.reviewChecks`
+ *
  * @module
  * @category Jobs
  */
 import type { Payload } from "payload";
 
+import { getAppConfig } from "@/lib/config/app-config";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
+
+/** Per-source review check overrides (stored in processingOptions.reviewChecks). */
+export interface ReviewChecksConfig {
+  skipTimestampCheck?: boolean;
+  skipLocationCheck?: boolean;
+  skipEmptyRowCheck?: boolean;
+  skipRowErrorCheck?: boolean;
+  skipDuplicateRateCheck?: boolean;
+  skipGeocodingCheck?: boolean;
+  emptyRowThreshold?: number | null;
+  rowErrorThreshold?: number | null;
+  duplicateRateThreshold?: number | null;
+  geocodingFailureThreshold?: number | null;
+}
 
 /** Review reasons — extensible enum for different pause conditions. */
 export const REVIEW_REASONS = {
@@ -21,6 +40,10 @@ export const REVIEW_REASONS = {
   QUOTA_EXCEEDED: "quota-exceeded",
   HIGH_DUPLICATE_RATE: "high-duplicates",
   GEOCODING_PARTIAL: "geocoding-partial",
+  HIGH_ROW_ERROR_RATE: "high-row-errors",
+  HIGH_EMPTY_ROW_RATE: "high-empty-rows",
+  NO_TIMESTAMP_DETECTED: "no-timestamp",
+  NO_LOCATION_DETECTED: "no-location",
 } as const;
 
 /** Maps review reason → resume point for the ingest-process workflow. */
@@ -29,10 +52,14 @@ export const REVIEW_RESUME_POINTS: Record<string, string> = {
   [REVIEW_REASONS.QUOTA_EXCEEDED]: "detect-schema",
   [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: "detect-schema",
   [REVIEW_REASONS.GEOCODING_PARTIAL]: "create-events",
+  [REVIEW_REASONS.HIGH_ROW_ERROR_RATE]: "create-events",
+  [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: "detect-schema",
+  [REVIEW_REASONS.NO_TIMESTAMP_DETECTED]: "detect-schema",
+  [REVIEW_REASONS.NO_LOCATION_DETECTED]: "detect-schema",
 };
 
-/** Thresholds for review checks (hardcoded for MVP, configurable later). */
-const THRESHOLDS = { HIGH_DUPLICATE_RATE: 0.8, GEOCODING_PARTIAL_FAILURE_RATE: 0.5 };
+/** Get the global review thresholds from app config. */
+const getThresholds = () => getAppConfig().reviewThresholds;
 
 /**
  * Set an IngestJob to NEEDS_REVIEW with a specific reason and details.
@@ -115,15 +142,18 @@ export const checkQuotaForSheet = async (
  */
 export const shouldReviewHighDuplicates = (
   totalRows: number,
-  uniqueRows: number
+  uniqueRows: number,
+  reviewChecks?: ReviewChecksConfig
 ): { needsReview: boolean; duplicateRate?: number } => {
-  if (totalRows <= 0) return { needsReview: false }; // no rows to check
+  if (reviewChecks?.skipDuplicateRateCheck) return { needsReview: false };
+  if (totalRows <= 0) return { needsReview: false };
 
   // 0 unique rows out of N total = 100% duplicates → definitely needs review
   if (uniqueRows <= 0 && totalRows > 0) return { needsReview: true, duplicateRate: 1 };
 
   const duplicateRate = 1 - uniqueRows / totalRows;
-  if (duplicateRate > THRESHOLDS.HIGH_DUPLICATE_RATE) {
+  const threshold = reviewChecks?.duplicateRateThreshold ?? getThresholds().highDuplicateRate;
+  if (duplicateRate > threshold) {
     return { needsReview: true, duplicateRate };
   }
   return { needsReview: false };
@@ -135,16 +165,90 @@ export const shouldReviewHighDuplicates = (
  */
 export const shouldReviewGeocodingPartial = (
   geocoded: number,
-  failed: number
+  failed: number,
+  reviewChecks?: ReviewChecksConfig
 ): { needsReview: boolean; failRate?: number } => {
+  if (reviewChecks?.skipGeocodingCheck) return { needsReview: false };
+
   const total = geocoded + failed;
   if (total <= 0 || geocoded <= 0) return { needsReview: false }; // total failure handled separately
 
   const failRate = failed / total;
-  if (failRate > THRESHOLDS.GEOCODING_PARTIAL_FAILURE_RATE) {
+  const threshold = reviewChecks?.geocodingFailureThreshold ?? getThresholds().geocodingPartialFailureRate;
+  if (failRate > threshold) {
     return { needsReview: true, failRate };
   }
   return { needsReview: false };
+};
+
+/**
+ * Check if too many rows failed during event creation (>10% by default).
+ * Returns true if review is needed.
+ */
+export const shouldReviewHighRowErrors = (
+  totalEvents: number,
+  errorCount: number,
+  reviewChecks?: ReviewChecksConfig
+): { needsReview: boolean; errorRate?: number } => {
+  if (reviewChecks?.skipRowErrorCheck) return { needsReview: false };
+
+  const total = totalEvents + errorCount;
+  if (total <= 0) return { needsReview: false };
+
+  const errorRate = errorCount / total;
+  const threshold = reviewChecks?.rowErrorThreshold ?? getThresholds().highRowErrorRate;
+  if (errorRate > threshold) {
+    return { needsReview: true, errorRate };
+  }
+  return { needsReview: false };
+};
+
+/**
+ * Check if too many rows are empty (>20% by default).
+ * An empty row is one where all values are null, undefined, or blank strings.
+ * Returns true if review is needed.
+ */
+export const shouldReviewHighEmptyRows = (
+  totalRows: number,
+  emptyRows: number,
+  reviewChecks?: ReviewChecksConfig
+): { needsReview: boolean; emptyRate?: number } => {
+  if (reviewChecks?.skipEmptyRowCheck) return { needsReview: false };
+  if (totalRows <= 0) return { needsReview: false };
+
+  const emptyRate = emptyRows / totalRows;
+  const threshold = reviewChecks?.emptyRowThreshold ?? getThresholds().highEmptyRowRate;
+  if (emptyRate > threshold) {
+    return { needsReview: true, emptyRate };
+  }
+  return { needsReview: false };
+};
+
+/**
+ * Check if no timestamp/date field was detected in the schema.
+ * Returns true if review is needed.
+ */
+export const shouldReviewNoTimestamp = (
+  fieldMappings: { timestampPath?: string | null },
+  reviewChecks?: ReviewChecksConfig
+): { needsReview: boolean } => {
+  if (reviewChecks?.skipTimestampCheck) return { needsReview: false };
+  return { needsReview: !fieldMappings.timestampPath };
+};
+
+/**
+ * Check if no location/address/coordinate fields were detected in the schema.
+ * Returns true if review is needed.
+ */
+export const shouldReviewNoLocation = (
+  fieldMappings: { latitudePath?: string | null; longitudePath?: string | null; locationPath?: string | null },
+  reviewChecks?: ReviewChecksConfig
+): { needsReview: boolean } => {
+  if (reviewChecks?.skipLocationCheck) return { needsReview: false };
+
+  const hasCoordinates = Boolean(fieldMappings.latitudePath && fieldMappings.longitudePath);
+  const hasLocation = Boolean(fieldMappings.locationPath);
+  return { needsReview: !hasCoordinates && !hasLocation };
 };
 
 /**

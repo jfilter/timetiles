@@ -68,6 +68,22 @@ vi.mock("@/lib/collections/catalog-ownership", () => ({
   extractDenormalizedAccessFields: mocks.extractDenormalizedAccessFields,
 }));
 
+// Mock review checks — default: no review needed
+vi.mock("@/lib/jobs/workflows/review-checks", () => ({
+  REVIEW_REASONS: {
+    SCHEMA_DRIFT: "schema-drift",
+    QUOTA_EXCEEDED: "quota-exceeded",
+    HIGH_DUPLICATE_RATE: "high-duplicates",
+    GEOCODING_PARTIAL: "geocoding-partial",
+    HIGH_ROW_ERROR_RATE: "high-row-errors",
+    HIGH_EMPTY_ROW_RATE: "high-empty-rows",
+    NO_TIMESTAMP_DETECTED: "no-timestamp",
+    NO_LOCATION_DETECTED: "no-location",
+  },
+  shouldReviewHighRowErrors: vi.fn().mockReturnValue({ needsReview: false }),
+  setNeedsReview: vi.fn().mockResolvedValue(undefined),
+}));
+
 /** Get the events array from the Nth call to bulkInsertEvents (0-indexed). */
 const getBulkInsertedEvents = (callIndex = 0): unknown[] => {
   const call = mocks.bulkInsertEvents.mock.calls[callIndex] as [unknown, unknown[]];
