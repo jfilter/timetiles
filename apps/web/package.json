@@ -8,7 +8,7 @@
     "dev": "./scripts/job-runner.sh & next dev --turbopack",
     "dev:debug": "LOG_LEVEL=debug next dev --turbopack",
     "build": "payload generate:types --silent && next build",
-    "build:compile": "payload generate:types --silent && payload generate:importmap --silent && next build --experimental-build-mode compile --webpack",
+    "build:compile": "payload generate:types --silent && payload generate:importmap --silent && next build --experimental-build-mode compile",
     "start": "next start",
     "lint": "oxlint --config ../../.oxlintrc.json . && eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache",
     "format": "eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && oxfmt --write .",
