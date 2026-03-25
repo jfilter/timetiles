@@ -18,7 +18,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
+import { applyPreviewTransforms } from "@/lib/ingest/transforms";
 import { type ConfigSuggestion, type FieldMapping, isFieldMappingComplete } from "@/lib/types/ingest-wizard";
 
 import { useWizardCanProceed } from "../use-wizard-effects";
@@ -98,58 +98,6 @@ const useConfigSuggestion = (
       });
     },
   };
-};
-
-/** Apply a string operation transform for preview. */
-export const applyStringOp = (result: Record<string, unknown>, tf: IngestTransform & { type: "string-op" }): void => {
-  const v = result[tf.from];
-  if (typeof v !== "string") return;
-  if (tf.operation === "uppercase") result[tf.from] = v.toUpperCase();
-  else if (tf.operation === "lowercase") result[tf.from] = v.toLowerCase();
-  else if (tf.operation === "replace" && tf.pattern !== undefined)
-    result[tf.from] = v.replaceAll(tf.pattern, tf.replacement ?? "");
-};
-
-/** Apply a single transform to a preview row (client-safe, no server deps). */
-export const applyOneTransform = (result: Record<string, unknown>, tf: IngestTransform): void => {
-  if (tf.type === "string-op") return applyStringOp(result, tf);
-  if (tf.type === "rename") {
-    const v = result[tf.from];
-    if (v !== undefined) {
-      result[tf.to] = v;
-      delete result[tf.from];
-    }
-    return;
-  }
-  if (tf.type === "concatenate") {
-    const parts = tf.fromFields.map((f) => result[f]).filter((v) => v != null);
-    if (parts.length > 0) result[tf.to] = parts.map(String).join(tf.separator);
-    return;
-  }
-  if (tf.type === "split") {
-    const v = result[tf.from];
-    if (typeof v !== "string") return;
-    const parts = v.split(tf.delimiter);
-    for (let i = 0; i < tf.toFields.length && i < parts.length; i++) {
-      const field = tf.toFields[i];
-      if (field && parts[i] !== undefined) result[field] = parts[i]!.trim();
-    }
-  }
-};
-
-/** Apply transforms to sample data for preview. */
-export const applyPreviewTransforms = (
-  dataArray: Record<string, unknown>[],
-  transforms: IngestTransform[]
-): Record<string, unknown>[] => {
-  const active = transforms.filter((t) => t.active);
-  if (active.length === 0) return dataArray;
-
-  return dataArray.map((row) => {
-    const result = { ...row };
-    for (const tf of active) applyOneTransform(result, tf);
-    return result;
-  });
 };
 
 /** Check whether the active sheet maps to an existing dataset, locking ID strategy controls. */

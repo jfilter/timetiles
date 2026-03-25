@@ -31,7 +31,7 @@ export const ingestProgressQueryKeys = {
 export const useIngestProgressQuery = (ingestFileId: string | number | null) =>
   useQuery({
     queryKey: ingestProgressQueryKeys.byFile(ingestFileId ?? ""),
-    queryFn: () => fetchProgress(ingestFileId!),
+    queryFn: () => fetchProgress(ingestFileId ?? ""),
     enabled: ingestFileId != null,
     refetchInterval: createItemPollingInterval(isInProgress, POLL_INTERVAL_MS),
   });

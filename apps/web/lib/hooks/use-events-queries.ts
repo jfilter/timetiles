@@ -367,8 +367,8 @@ const fetchEventById = async (eventId: number, signal?: AbortSignal): Promise<Ev
  */
 export const useEventDetailQuery = (eventId: number | null) =>
   useQuery({
-    queryKey: eventsQueryKeys.detail(eventId!),
-    queryFn: ({ signal }) => fetchEventById(eventId!, signal),
+    queryKey: eventsQueryKeys.detail(eventId ?? 0),
+    queryFn: ({ signal }) => fetchEventById(eventId ?? 0, signal),
     enabled: eventId != null,
     ...QUERY_PRESETS.stable,
     retry: (failureCount, error) => {

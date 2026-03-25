@@ -83,6 +83,21 @@ export const applyTransforms = (
 };
 
 /**
+ * Apply transforms to an array of rows for preview display.
+ *
+ * Uses the same transform engine as the import pipeline to ensure
+ * preview results match actual import behavior.
+ */
+export const applyPreviewTransforms = (
+  dataArray: Record<string, unknown>[],
+  transforms: IngestTransform[]
+): Record<string, unknown>[] => {
+  const active = transforms.filter((t) => t.active);
+  if (active.length === 0) return dataArray;
+  return dataArray.map((row) => applyTransforms(row, active));
+};
+
+/**
  * Apply a rename transform using path notation.
  *
  * Supports dot notation for nested paths (e.g., "user.email").

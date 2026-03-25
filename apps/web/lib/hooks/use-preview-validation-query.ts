@@ -27,7 +27,7 @@ export const previewValidationQueryKeys = {
 export const usePreviewValidationQuery = (previewId: string | null, enabled: boolean) =>
   useQuery({
     queryKey: previewValidationQueryKeys.byId(previewId ?? ""),
-    queryFn: () => fetchPreviewValidation(previewId!),
+    queryFn: () => fetchPreviewValidation(previewId ?? ""),
     enabled: enabled && previewId != null,
     ...QUERY_PRESETS.frequent,
   });

@@ -356,7 +356,7 @@ export const useWizardStore = create<WizardStore>()(
             }
 
             const updatedTransforms = { ...s.transforms };
-            if (config.ingestTransforms && config.ingestTransforms.length > 0) {
+            if (config.ingestTransforms != null) {
               updatedTransforms[sheetIndex] = config.ingestTransforms;
             }
 
