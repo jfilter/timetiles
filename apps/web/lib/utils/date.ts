@@ -9,6 +9,8 @@
  * @module
  */
 
+import { valueToString } from "@/lib/utils/format";
+
 const ISO_DATE_PREFIX_REGEX = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/;
 
 /**
@@ -167,6 +169,24 @@ export const formatISODate = (timestamp: number): string => {
  */
 export const parseISODate = (dateStr: string): number => {
   return new Date(dateStr).getTime();
+};
+
+/** Format start/end dates into a human-readable range string */
+export const formatDateRange = (startDate: unknown, endDate: unknown, locale: string = "en-US"): string | null => {
+  const hasStart = startDate != null && valueToString(startDate) !== "";
+  const hasEnd = endDate != null && valueToString(endDate) !== "";
+
+  if (!hasStart && !hasEnd) return null;
+
+  const parts: string[] = [];
+  if (hasStart) {
+    parts.push(new Date(valueToString(startDate)).toLocaleDateString(locale));
+  }
+  if (hasEnd && valueToString(startDate) !== valueToString(endDate)) {
+    parts.push(new Date(valueToString(endDate)).toLocaleDateString(locale));
+  }
+
+  return parts.join(" - ");
 };
 
 /**

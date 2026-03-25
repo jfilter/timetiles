@@ -8,6 +8,8 @@
  * @category Utils
  */
 
+import { isValidCoordinate } from "@/lib/geospatial/validation";
+
 /** Type for event data object — keys are dynamic, determined by source file + transforms */
 export interface EventData {
   [key: string]: unknown;
@@ -88,15 +90,6 @@ export const extractEventFields = (
 // Type coercion
 // ---------------------------------------------------------------------------
 
-/** Safely convert an unknown value to a string, returning empty string for unsupported types */
-export const safeToString = (value: unknown): string => {
-  if (value == null) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (value instanceof Date) return value.toISOString();
-  return "";
-};
-
 /** Extract the data object from an event, handling non-object or array cases.
  *  Accepts both Payload Event objects (`transformedData`) and API DTOs (`data`). */
 export const getEventData = (event: { transformedData?: unknown; data?: unknown }): EventData => {
@@ -125,23 +118,8 @@ export const getDatasetInfo = (dataset: unknown): { id: number; name: string; ca
   return null;
 };
 
-/** Format start/end dates into a human-readable range string */
-export const formatDateRange = (startDate: unknown, endDate: unknown, locale: string = "en-US"): string | null => {
-  const hasStart = startDate != null && safeToString(startDate) !== "";
-  const hasEnd = endDate != null && safeToString(endDate) !== "";
-
-  if (!hasStart && !hasEnd) return null;
-
-  const parts: string[] = [];
-  if (hasStart) {
-    parts.push(new Date(safeToString(startDate)).toLocaleDateString(locale));
-  }
-  if (hasEnd && safeToString(startDate) !== safeToString(endDate)) {
-    parts.push(new Date(safeToString(endDate)).toLocaleDateString(locale));
-  }
-
-  return parts.join(" - ");
-};
+// Re-exported from date.ts — canonical home for date formatting utilities
+export { formatDateRange } from "@/lib/utils/date";
 
 /** Build a location display string from top-level event fields (extracted during import) */
 export const getLocationDisplay = (event: Record<string, unknown> | object): string | null => {
@@ -163,11 +141,9 @@ export const getLocationDisplay = (event: Record<string, unknown> | object): str
   return null;
 };
 
-/** Check whether an event has valid (non-zero) coordinates */
+/** Check whether an event has valid (non-zero) coordinates. Delegates to {@link isValidCoordinate}. */
 export const hasValidCoordinates = (
   location: { latitude?: number | null; longitude?: number | null } | null | undefined
 ): boolean => {
-  return (
-    location?.latitude != null && location.latitude !== 0 && location?.longitude != null && location.longitude !== 0
-  );
+  return isValidCoordinate(location?.latitude ?? null, location?.longitude ?? null);
 };

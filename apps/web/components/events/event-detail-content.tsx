@@ -26,8 +26,8 @@ import {
   getEventData,
   getLocationDisplay,
   hasValidCoordinates,
-  safeToString,
 } from "@/lib/utils/event-detail";
+import { valueToString } from "@/lib/utils/format";
 import type { Event } from "@/payload-types";
 
 import { EventDetailError } from "./event-detail-error";
@@ -89,7 +89,7 @@ export const EventDetailContent = ({
 
   const consumedFields = buildConsumedFieldSet(fieldMappings);
   const additionalFields = Object.entries(eventData).filter(
-    ([key, value]) => !consumedFields.has(key) && value != null && safeToString(value) !== ""
+    ([key, value]) => !consumedFields.has(key) && value != null && valueToString(value) !== ""
   );
 
   return (
@@ -189,7 +189,7 @@ export const EventDetailContent = ({
               key={key}
               // eslint-disable-next-line i18next/no-literal-string -- regex replacement pattern, not user-facing text
               label={key.replaceAll(/([A-Z])/g, " $1").trim()}
-              value={safeToString(value)}
+              value={valueToString(value)}
             />
           ))}
         </div>

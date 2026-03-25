@@ -134,3 +134,18 @@ export const isFeatureEnabled = async (payload: Payload, flag: keyof FeatureFlag
  * Useful for testing or when database is unavailable.
  */
 export const getDefaultFeatureFlags = (): FeatureFlags => ({ ...DEFAULT_FLAGS });
+
+/**
+ * Throws if a feature flag is disabled. Use in hooks and validation logic
+ * where a disabled flag should block the operation.
+ */
+export const requireFeatureEnabled = async (
+  payload: Payload,
+  flag: keyof FeatureFlags,
+  errorMessage: string
+): Promise<void> => {
+  const enabled = await isFeatureEnabled(payload, flag);
+  if (!enabled) {
+    throw new Error(errorMessage);
+  }
+};

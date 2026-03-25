@@ -18,43 +18,43 @@ import {
   getEventTitle,
   getLocationDisplay,
   hasValidCoordinates,
-  safeToString,
 } from "@/lib/utils/event-detail";
+import { valueToString } from "@/lib/utils/format";
 import type { Event } from "@/payload-types";
 
-describe("safeToString", () => {
+describe("valueToString", () => {
   it("should return empty string for null", () => {
-    expect(safeToString(null)).toBe("");
+    expect(valueToString(null)).toBe("");
   });
 
   it("should return empty string for undefined", () => {
-    expect(safeToString(undefined)).toBe("");
+    expect(valueToString(undefined)).toBe("");
   });
 
   it("should return string as-is", () => {
-    expect(safeToString("hello")).toBe("hello");
-    expect(safeToString("")).toBe("");
+    expect(valueToString("hello")).toBe("hello");
+    expect(valueToString("")).toBe("");
   });
 
   it("should convert numbers to strings", () => {
-    expect(safeToString(42)).toBe("42");
-    expect(safeToString(0)).toBe("0");
-    expect(safeToString(-1.5)).toBe("-1.5");
+    expect(valueToString(42)).toBe("42");
+    expect(valueToString(0)).toBe("0");
+    expect(valueToString(-1.5)).toBe("-1.5");
   });
 
   it("should convert booleans to strings", () => {
-    expect(safeToString(true)).toBe("true");
-    expect(safeToString(false)).toBe("false");
+    expect(valueToString(true)).toBe("true");
+    expect(valueToString(false)).toBe("false");
   });
 
   it("should convert Date to ISO string", () => {
     const date = new Date("2024-01-15T10:30:00.000Z");
-    expect(safeToString(date)).toBe("2024-01-15T10:30:00.000Z");
+    expect(valueToString(date)).toBe("2024-01-15T10:30:00.000Z");
   });
 
-  it("should return empty string for objects", () => {
-    expect(safeToString({ foo: "bar" })).toBe("");
-    expect(safeToString([])).toBe("");
+  it("should JSON.stringify objects and arrays", () => {
+    expect(valueToString({ foo: "bar" })).toBe('{"foo":"bar"}');
+    expect(valueToString([])).toBe("[]");
   });
 });
 
@@ -274,17 +274,17 @@ describe("hasValidCoordinates", () => {
     expect(hasValidCoordinates(location as unknown as Event["location"])).toBe(false);
   });
 
-  it("should return false when latitude is 0", () => {
+  it("should return true when only latitude is 0 (equator is valid)", () => {
     const location = { latitude: 0, longitude: -74.006 };
-    expect(hasValidCoordinates(location)).toBe(false);
+    expect(hasValidCoordinates(location)).toBe(true);
   });
 
-  it("should return false when longitude is 0", () => {
+  it("should return true when only longitude is 0 (prime meridian is valid)", () => {
     const location = { latitude: 40.7128, longitude: 0 };
-    expect(hasValidCoordinates(location)).toBe(false);
+    expect(hasValidCoordinates(location)).toBe(true);
   });
 
-  it("should return false when both are 0", () => {
+  it("should return false when both are 0 (suspicious null-island)", () => {
     const location = { latitude: 0, longitude: 0 };
     expect(hasValidCoordinates(location)).toBe(false);
   });

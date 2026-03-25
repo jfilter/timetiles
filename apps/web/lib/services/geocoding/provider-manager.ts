@@ -42,7 +42,7 @@ export class ProviderManager {
 
       // Filter providers based on strategy
       let whereClause = {};
-      if (strategy == "tag-based" && requiredTags.length > 0) {
+      if (strategy === "tag-based" && requiredTags.length > 0) {
         whereClause = { tags: { in: requiredTags } };
       }
 
@@ -54,7 +54,7 @@ export class ProviderManager {
         pagination: false,
       });
 
-      if (providerResults.docs.length == 0) {
+      if (providerResults.docs.length === 0) {
         logger.warn("No geocoding providers found in database, using default configuration");
         this.providers = this.buildDefaultProviderConfigs();
       } else {
@@ -77,7 +77,7 @@ export class ProviderManager {
 
   getEnabledProviders(): ProviderConfig[] {
     const enabledProviders = this.providers.filter((p) => p.enabled);
-    if (enabledProviders.length == 0) {
+    if (enabledProviders.length === 0) {
       throw new Error("No enabled geocoding providers available");
     }
     // Sort by priority (lower number = higher priority)
@@ -210,7 +210,7 @@ export class ProviderManager {
     if (
       googleConfig?.apiKey == null ||
       googleConfig?.apiKey == undefined ||
-      (typeof googleConfig.apiKey == "string" && googleConfig.apiKey.trim() === "")
+      (typeof googleConfig.apiKey === "string" && googleConfig.apiKey.trim() === "")
     ) {
       logger.warn(`Google provider ${doc.name} has no API key configured`);
       return null;

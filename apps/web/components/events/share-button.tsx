@@ -7,44 +7,27 @@
 "use client";
 
 import { Button } from "@timetiles/ui";
-import { Check, Copy, Loader2, Share2 } from "lucide-react";
+import { Check, Copy, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 
-/** Duration to show "copied" feedback before resetting */
-const COPY_FEEDBACK_MS = 2000;
+import { useClipboard } from "@/lib/hooks/use-clipboard";
 
 /** Share button that copies current URL to clipboard or uses native share on mobile */
 export const ShareButton = ({ title }: { title: string }) => {
   const t = useTranslations("Events");
-  const [shareState, setShareState] = useState<"idle" | "copying" | "copied" | "error">("idle");
+  const { copy, isCopied, error } = useClipboard();
 
   const handleShare = () => {
-    const performShare = async () => {
-      setShareState("copying");
-      try {
-        const url = window.location.href;
+    const url = window.location.href;
 
-        if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-          await navigator.share({ title, url });
-          setShareState("idle");
-          return;
-        }
+    // Use native share on mobile if available
+    if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      // oxlint-disable-next-line promise/prefer-await-to-then -- fire-and-forget; AbortError (user canceled) is expected
+      void navigator.share({ title, url }).catch(() => {});
+      return;
+    }
 
-        await navigator.clipboard.writeText(url);
-        setShareState("copied");
-        setTimeout(() => setShareState("idle"), COPY_FEEDBACK_MS);
-      } catch (err: unknown) {
-        if ((err as Error).name !== "AbortError") {
-          setShareState("error");
-          setTimeout(() => setShareState("idle"), COPY_FEEDBACK_MS);
-        } else {
-          setShareState("idle");
-        }
-      }
-    };
-
-    void performShare();
+    void copy(url);
   };
 
   return (
@@ -53,13 +36,11 @@ export const ShareButton = ({ title }: { title: string }) => {
       size="icon"
       className="hover:bg-muted"
       onClick={handleShare}
-      disabled={shareState === "copying"}
-      aria-label={shareState === "copied" ? t("linkCopied") : t("shareEvent")}
+      aria-label={isCopied ? t("linkCopied") : t("shareEvent")}
     >
-      {shareState === "copying" && <Loader2 className="h-5 w-5 animate-spin" />}
-      {shareState === "copied" && <Check className="text-accent h-5 w-5" />}
-      {shareState === "error" && <Copy className="text-destructive h-5 w-5" />}
-      {shareState === "idle" && <Share2 className="h-5 w-5" />}
+      {isCopied && <Check className="text-accent h-5 w-5" />}
+      {error && <Copy className="text-destructive h-5 w-5" />}
+      {!isCopied && !error && <Share2 className="h-5 w-5" />}
     </Button>
   );
 };
