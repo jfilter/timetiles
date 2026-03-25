@@ -40,9 +40,6 @@ const nextConfig = {
     // Use production tsconfig that excludes test files during build
     tsconfigPath: isProduction ? "./tsconfig.build.json" : "./tsconfig.json",
   },
-  // Enable standalone output for Docker deployments
-  // This reduces the image size significantly
-  output: isProduction ? "standalone" : undefined,
 };
 
 export default withPayload(withNextIntl(nextConfig));

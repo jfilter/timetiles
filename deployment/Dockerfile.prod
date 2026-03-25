@@ -55,6 +55,9 @@ WORKDIR /app/apps/web
 RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile --webpack
 
 # Stage 5: Production runner
+# Uses full build (not standalone) so both `next start` and `payload jobs:run` work
+# from the same image. Standalone output can't run the Payload CLI because it bundles
+# the config into webpack chunks — the CLI needs the raw TypeScript source + node_modules.
 FROM node:24-alpine AS runner
 WORKDIR /app
 
@@ -64,29 +67,8 @@ RUN apk upgrade --no-cache \
     && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
-# Copy standalone output
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
-
-# Copy node_modules for Payload CLI (workers need `payload jobs:run` which is
-# not included in Next.js standalone output — see payloadcms/payload#7176)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-
-# Copy full source tree for Payload CLI workers. The CLI uses @swc/core to compile
-# payload.config.ts at runtime, which imports the entire lib/ tree via path aliases.
-# This is required because Next.js standalone output bundles the config into webpack
-# chunks that can't be imported independently.
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/tsconfig.json ./apps/web/tsconfig.json
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/payload.config.ts ./apps/web/payload.config.ts
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/lib ./apps/web/lib
-COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
-
-# pnpm doesn't hoist binaries to node_modules/.bin/ — replace the empty
-# directory with a symlink so docker-compose worker commands work
-RUN rm -rf /app/node_modules/.bin \
-    && ln -s /app/node_modules/.pnpm/node_modules/.bin /app/node_modules/.bin
-
+# Copy full built project (works for both next start AND payload CLI workers)
+COPY --from=builder --chown=nextjs:nodejs /app ./
 
 # Create uploads directory with proper ownership for volume mount
 RUN mkdir -p /app/apps/web/uploads \
@@ -105,5 +87,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Start the server
-CMD ["node", "apps/web/server.js"]
+# Start Next.js (non-standalone mode)
+WORKDIR /app/apps/web
+CMD ["node", "../../node_modules/.pnpm/node_modules/.bin/next", "start"]
