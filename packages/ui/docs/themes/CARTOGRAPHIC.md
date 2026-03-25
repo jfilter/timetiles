@@ -299,15 +299,15 @@ Chart components use the `defaultColors` object from `src/lib/chart-themes.ts`. 
 
 ### Map visualization colors
 
-| Property                | Value            | Purpose                                        |
-| ----------------------- | ---------------- | ---------------------------------------------- |
-| `mapPoint`              | `#0089a7` (blue) | Individual event markers                       |
-| `mapStroke`             | `#ffffff`        | Circle outlines                                |
-| `mapClusterGradient[0]` | `#f5e6d3`        | Cluster density p0-p20 (very light terracotta) |
-| `mapClusterGradient[1]` | `#e8c9a0`        | Cluster density p20-p40 (light terracotta)     |
-| `mapClusterGradient[2]` | `#cd853f`        | Cluster density p40-p60 (terracotta)           |
-| `mapClusterGradient[3]` | `#b06c2e`        | Cluster density p60-p80 (dark terracotta)      |
-| `mapClusterGradient[4]` | `#8b4513`        | Cluster density p80-p100 (saddle brown)        |
+| Property                | Value            | Purpose                                     |
+| ----------------------- | ---------------- | ------------------------------------------- |
+| `mapPoint`              | `#0089a7` (blue) | Individual event markers                    |
+| `mapStroke`             | `#ffffff`        | Circle outlines                             |
+| `mapClusterGradient[0]` | `#f0dcc6`        | Cluster density p0-p20 (warm cream)         |
+| `mapClusterGradient[1]` | `#d4a55a`        | Cluster density p20-p40 (golden terracotta) |
+| `mapClusterGradient[2]` | `#b87333`        | Cluster density p40-p60 (copper/bronze)     |
+| `mapClusterGradient[3]` | `#8b4513`        | Cluster density p60-p80 (saddle brown)      |
+| `mapClusterGradient[4]` | `#5c2d0e`        | Cluster density p80-p100 (dark chocolate)   |
 
 Override chart and map colors via `UIProvider`'s `lightChartTheme`, `darkChartTheme`, and `mapColors` props. See [../THEMING.md](../THEMING.md) for examples.
 

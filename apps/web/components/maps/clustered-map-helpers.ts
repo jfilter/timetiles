@@ -121,18 +121,19 @@ export const buildClusterLayerConfig = (
     filter: clusterFilter,
     paint: {
       // Size based on GLOBAL percentiles (consistent across all views)
+      // Exponential progression: 5.7x radius ratio → 32x area ratio
       "circle-radius": [
         "step",
         ["get", "count"],
-        16, // Default: very small (0-p20)
+        12, // Default: smallest clusters (0-p20)
         globalStats.p20,
-        22, // Level 2: small (p20-p40)
+        20, // Level 2 (p20-p40)
         globalStats.p40,
-        28, // Level 3: medium (p40-p60)
+        32, // Level 3 (p40-p60)
         globalStats.p60,
-        34, // Level 4: large (p60-p80)
+        48, // Level 4 (p60-p80)
         globalStats.p80,
-        40, // Level 5: max size (p80-p100)
+        68, // Level 5: dominant clusters (p80-p100)
       ],
       // Color based on GLOBAL percentiles (consistent across all views)
       "circle-color": [
@@ -152,17 +153,26 @@ export const buildClusterLayerConfig = (
       "circle-opacity": [
         "step",
         ["get", "count"],
-        0.3, // Level 1: light (0-p20)
+        0.5, // Level 1: clearly visible (0-p20)
         viewportStats.p20,
-        0.45, // Level 2: medium-light (p20-p40)
+        0.6, // Level 2 (p20-p40)
         viewportStats.p40,
-        0.6, // Level 3: medium (p40-p60)
+        0.7, // Level 3 (p40-p60)
         viewportStats.p60,
-        0.75, // Level 4: medium-high (p60-p80)
+        0.8, // Level 4 (p60-p80)
         viewportStats.p80,
-        0.9, // Level 5: max opacity (p80-p100)
+        0.92, // Level 5: nearly solid (p80-p100)
       ],
-      "circle-stroke-width": 2,
+      // Stroke width scales with cluster size for better definition
+      "circle-stroke-width": [
+        "step",
+        ["get", "count"],
+        1.5, // Thin for small clusters
+        globalStats.p40,
+        2, // Medium for mid clusters
+        globalStats.p80,
+        2.5, // Thicker for large clusters
+      ],
       "circle-stroke-color": colors.mapStroke,
       "circle-stroke-opacity": 0.8,
     },

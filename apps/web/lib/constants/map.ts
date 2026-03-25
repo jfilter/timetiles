@@ -22,7 +22,7 @@ export const MAP_STYLES = MAP_STYLES_BY_PRESET.cartographic!;
  * Default cluster statistics used when no data is available.
  * These provide sensible defaults for percentile-based cluster visualization.
  */
-export const DEFAULT_CLUSTER_STATS = { p20: 2, p40: 5, p60: 10, p80: 20, p100: 50 } as const;
+export const DEFAULT_CLUSTER_STATS = { p20: 5, p40: 15, p60: 40, p80: 100, p100: 500 } as const;
 
 /**
  * Cluster statistics interface for percentile breakpoints.
