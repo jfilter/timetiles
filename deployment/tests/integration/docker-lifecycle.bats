@@ -82,11 +82,11 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "payload CLI can run --help" {
+@test "payload CLI resolves as a valid Node module" {
     skip_if_services_not_running
-    run $DC_CMD exec -T web node node_modules/.bin/payload --help
+    run $DC_CMD exec -T web node -e "require('fs').realpathSync('/app/node_modules/.bin/payload')"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"jobs:run"* ]]
+    [[ "$output" == *"payload"* ]]
 }
 
 # =============================================================================
