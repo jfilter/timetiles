@@ -104,7 +104,10 @@ RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-
 FROM base AS production
 
 # Patch OS vulnerabilities, remove build-time packages and vulnerable caches
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+# --fix-missing: Ubuntu mirror CDN can serve a package index referencing .deb files
+# already removed from the server, causing transient 404s during upgrade.
+# Skipped packages are caught by the Trivy security scan in CI.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends --fix-missing \
     && apt-get remove -y --purge curl gnupg && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /root/.cache/node /usr/lib/node_modules/npm
