@@ -12,7 +12,6 @@
 
 import { BarChart, type BarChartDataItem, useChartTheme } from "@timetiles/ui/charts";
 
-import { useChartQuery } from "@/lib/hooks/use-chart-query";
 import { useEventsAggregationQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
@@ -43,8 +42,13 @@ const AggregationBarChartComponent = ({
   const scope = useViewScope();
 
   // Fetch aggregation data using unified endpoint (viewport-filtered)
-  const aggregationQuery = useEventsAggregationQuery(filters, bounds ?? null, type, true, scope);
-  const { data, isInitialLoad, isUpdating, isError } = useChartQuery(aggregationQuery);
+  const { data, isInitialLoad, isUpdating, isError } = useEventsAggregationQuery(
+    filters,
+    bounds ?? null,
+    type,
+    true,
+    scope
+  );
 
   // Transform API data to chart format
   const chartData: BarChartDataItem[] = data?.items

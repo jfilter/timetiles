@@ -101,7 +101,7 @@ const formatJobProgress = (job: IngestJob): FormattedJobProgress => {
       internal: job.duplicates?.summary?.internalDuplicates ?? 0,
       external: job.duplicates?.summary?.externalDuplicates ?? 0,
     },
-    schemaValidation: job.schemaValidation,
+    schemaValidation: job.schemaValidation as FormattedJobProgress["schemaValidation"],
     results: job.results as FormattedJobProgress["results"],
   };
 };

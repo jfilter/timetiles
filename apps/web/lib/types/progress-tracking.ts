@@ -8,6 +8,7 @@
  * @module
  * @category Types
  */
+import type { TransformSuggestion } from "./ingest-transforms";
 
 /**
  * Status of a processing stage.
@@ -89,8 +90,18 @@ export interface FormattedJobProgress {
   stages: FormattedStage[];
   errors: number;
   duplicates: { internal: number; external: number };
-  schemaValidation?: unknown;
-  results?: { totalEvents?: number } | null;
+  schemaValidation?: {
+    isCompatible?: boolean | null;
+    breakingChanges?: { field: string; change: string }[];
+    newFields?: { field: string; type: string; optional: boolean }[];
+    transformSuggestions?: TransformSuggestion[];
+    requiresApproval?: boolean | null;
+    approvalReason?: string | null;
+    approved?: boolean | null;
+    approvedBy?: number | null;
+    approvedAt?: string | null;
+  } | null;
+  results?: { totalEvents?: number; duplicatesSkipped?: number; geocoded?: number; errors?: number } | null;
 }
 
 /** Full progress API response shape. */

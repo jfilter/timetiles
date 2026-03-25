@@ -146,9 +146,9 @@ export const formatLongDate = (
 };
 
 /**
- * Format a timestamp to a short date string (e.g., "Jan 2024").
+ * Format a timestamp to a month-year string (e.g., "Jan 2024").
  */
-export const formatShortDate = (timestamp: string | number, locale?: string): string => {
+export const formatMonthYear = (timestamp: string | number, locale?: string): string => {
   const date = new Date(timestamp);
   return date.toLocaleDateString(locale, { month: "short", year: "numeric" });
 };

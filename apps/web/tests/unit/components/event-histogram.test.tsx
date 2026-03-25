@@ -51,17 +51,8 @@ vi.mock("../../../lib/store", () => ({
   },
 }));
 
-// Mock the React Query hook
+// Mock the React Query hook — loading phase is now computed inside the hook
 vi.mock("../../../lib/hooks/use-events-queries", () => ({ useHistogramQuery: vi.fn() }));
-
-// Mock the chart hooks
-vi.mock("../../../lib/hooks/use-chart-query", () => ({
-  useChartQuery: (queryResult: any) => ({
-    ...queryResult,
-    isInitialLoad: !queryResult.data && queryResult.isLoading,
-    isUpdating: !!queryResult.data && queryResult.isLoading,
-  }),
-}));
 
 // useChartFilters deleted — setSingleDayFilter is now part of useFilters (mocked above)
 
@@ -87,8 +78,14 @@ describe.sequential("EventHistogram", () => {
   });
 
   it("renders loading state", () => {
-    // Mock the query as loading
-    mockUseHistogramQuery.mockReturnValue({ data: undefined, isLoading: true, error: null });
+    // Mock the query as loading (initial load — no data yet)
+    mockUseHistogramQuery.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+      isInitialLoad: true,
+      isUpdating: false,
+    });
 
     renderWithProviders(<EventHistogram />);
     // Check for skeleton loading state (ChartSkeleton uses animate-pulse)
@@ -98,7 +95,13 @@ describe.sequential("EventHistogram", () => {
 
   it("renders no data state when histogram data is empty", async () => {
     // Mock the query with empty data
-    mockUseHistogramQuery.mockReturnValue({ data: { histogram: [] }, isLoading: false, error: null });
+    mockUseHistogramQuery.mockReturnValue({
+      data: { histogram: [] },
+      isLoading: false,
+      error: null,
+      isInitialLoad: false,
+      isUpdating: false,
+    });
 
     renderWithProviders(<EventHistogram />);
 
@@ -131,6 +134,8 @@ describe.sequential("EventHistogram", () => {
       },
       isLoading: false,
       error: null,
+      isInitialLoad: false,
+      isUpdating: false,
     });
 
     renderWithProviders(<EventHistogram />);

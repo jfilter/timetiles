@@ -18,9 +18,9 @@ import { QUERY_PRESETS } from "./query-presets";
 export type { DataSourceStatsResponse } from "../types/data-source-stats";
 
 /**
- * Query key for data source stats.
+ * Query keys for data source stats.
  */
-export const dataSourceStatsQueryKey = ["data-source-stats"] as const;
+export const dataSourceStatsKeys = { all: ["data-source-stats"] as const };
 
 /**
  * Fetch data source statistics from the API.
@@ -47,7 +47,7 @@ const fetchDataSourceStats = async (): Promise<DataSourceStatsResponse> => {
  */
 export const useDataSourceStatsQuery = () =>
   useQuery({
-    queryKey: dataSourceStatsQueryKey,
+    queryKey: dataSourceStatsKeys.all,
     queryFn: fetchDataSourceStats,
     ...QUERY_PRESETS.stable,
     // Refetch on window focus to catch new imports

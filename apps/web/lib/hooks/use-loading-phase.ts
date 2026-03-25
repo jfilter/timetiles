@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface LoadingPhase {
   /** True when loading for the first time (nothing rendered yet) */
@@ -22,6 +22,10 @@ export interface LoadingPhase {
 /**
  * Track loading phase for a single `isLoading` boolean.
  *
+ * Uses a ref to track whether data has loaded at least once (avoiding
+ * a dependency-array loop) and a state boolean to trigger re-renders
+ * when the phase transitions.
+ *
  * @param isLoading - Whether the data source is currently loading
  * @returns Loading phase flags
  *
@@ -32,13 +36,15 @@ export interface LoadingPhase {
  * ```
  */
 export const useLoadingPhase = (isLoading: boolean): LoadingPhase => {
+  const hasLoadedOnceRef = useRef(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !hasLoadedOnce) {
+    if (!isLoading && !hasLoadedOnceRef.current) {
+      hasLoadedOnceRef.current = true;
       setHasLoadedOnce(true);
     }
-  }, [isLoading, hasLoadedOnce]);
+  }, [isLoading]);
 
   return { isInitialLoad: isLoading && !hasLoadedOnce, isUpdating: isLoading && hasLoadedOnce };
 };

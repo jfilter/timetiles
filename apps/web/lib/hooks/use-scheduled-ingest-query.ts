@@ -16,7 +16,7 @@ import { scheduledIngestKeys } from "./use-scheduled-ingest-mutations";
 
 export const useScheduledIngestQuery = (id: number | null) =>
   useQuery({
-    queryKey: [...scheduledIngestKeys.all, id],
+    queryKey: scheduledIngestKeys.byId(id),
     queryFn: async () => {
       return fetchJson<ScheduledIngest>(`/api/scheduled-ingests/${id}?depth=1`, { credentials: "include" });
     },
