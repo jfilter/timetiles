@@ -30,9 +30,9 @@ export const MapErrorOverlay = ({ title, subtitle }: { title: string; subtitle: 
   </MapOverlay>
 );
 
-/** Loading overlay shown while computing initial bounds */
+/** Loading overlay shown while computing initial bounds (opaque to hide map underneath) */
 export const MapLoadingOverlay = ({ message }: { message: string }) => (
-  <MapOverlay>
+  <MapOverlay className="bg-background">
     <LoadingState variant="spinner" message={message} />
   </MapOverlay>
 );

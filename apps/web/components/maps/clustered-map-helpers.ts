@@ -23,8 +23,8 @@ const logger = createLogger("ClusteredMap");
 /** Default empty clusters array */
 export const DEFAULT_CLUSTERS: ClusterFeature[] = [];
 
-/** Initial view state for the map */
-export const INITIAL_VIEW_STATE = { longitude: -74, latitude: 40.6, zoom: 9 };
+/** Initial view state for the map (Berlin Alexanderplatz) */
+export const INITIAL_VIEW_STATE = { longitude: 13.4125, latitude: 52.5219, zoom: 12 };
 
 /** CSS style for the map component */
 export const MAP_COMPONENT_STYLE = { width: "100%", height: "100%", minHeight: "400px" };

@@ -16,7 +16,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useMapColors } from "@timetiles/ui/hooks/use-chart-theme";
 import type { LngLatBounds } from "maplibre-gl";
 import { useTranslations } from "next-intl";
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import Map, { Layer, type MapRef, NavigationControl, Popup, Source } from "react-map-gl/maplibre";
 
 import { type ClusterStats, MAP_STYLES, MAP_STYLES_BY_PRESET } from "@/lib/constants/map";
@@ -97,12 +97,25 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       formatFallbackTitle: (id) => t("eventFallbackTitle", { id }),
     });
 
+    const hasAppliedBoundsRef = useRef(false);
+    const [isMapPositioned, setIsMapPositioned] = useState(!!initialViewState);
+
     useImperativeHandle(ref, () => ({
       resize: () => mapRef.current?.resize(),
       fitBounds: (bounds: SimpleBounds, options = {}) => {
         if (mapRef.current) fitMapToBounds(mapRef.current, bounds, options);
       },
     }));
+
+    // Fit map to bounds when they arrive after the initial map load (race condition fix:
+    // onLoad fires once before the bounds query resolves, so we need this effect)
+    useEffect(() => {
+      if (!initialViewState && initialBounds && mapRef.current && !hasAppliedBoundsRef.current) {
+        fitMapToBounds(mapRef.current, initialBounds, { animate: false });
+        hasAppliedBoundsRef.current = true;
+        setIsMapPositioned(true);
+      }
+    }, [initialBounds, initialViewState]);
 
     const globalStats = computeGlobalStats(clusterStats);
     const viewportStats = computeViewportStats(clusters);
@@ -119,9 +132,14 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
           zoom: initialViewState.zoom,
           animate: false,
         });
+        hasAppliedBoundsRef.current = true;
       } else if (initialBounds) {
         fitMapToBounds(map, initialBounds, { animate: false });
+        hasAppliedBoundsRef.current = true;
       }
+
+      // Reveal map now that it's positioned (loading overlay can be removed)
+      setIsMapPositioned(true);
 
       const { bounds, zoom } = logMapInitialized(map, !!initialBounds || !!initialViewState);
       const center = map.getCenter();
@@ -143,12 +161,15 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const eventPointLayer = { ...buildEventPointLayerConfig(mapColors), filter: eventPointFilter };
     const clusterLayer = buildClusterLayerConfig(globalStats, viewportStats, clusterFilter, mapColors);
 
+    // Show loading overlay until map is positioned at the correct location.
+    // The map renders underneath (hidden by overlay) so onLoad can fire and
+    // reposition before revealing — this avoids flashing the NYC default.
+    const showLoading = isLoadingBounds || !isMapPositioned;
+
     return (
       <div className="relative h-full w-full">
-        {isLoadingBounds && <MapLoadingOverlay message={t("loadingMapData")} />}
-        {isError && !isLoadingBounds && (
-          <MapErrorOverlay title={t("unableToLoadMapData")} subtitle={t("mapLoadError")} />
-        )}
+        {showLoading && <MapLoadingOverlay message={t("loadingMapData")} />}
+        {isError && !showLoading && <MapErrorOverlay title={t("unableToLoadMapData")} subtitle={t("mapLoadError")} />}
         <Map
           ref={mapRef}
           initialViewState={INITIAL_VIEW_STATE}
