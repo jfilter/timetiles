@@ -26,7 +26,6 @@ import {
   FooterSection,
   FooterSectionTitle,
   FooterTagline,
-  NewsletterForm,
 } from "@timetiles/ui";
 import type { Metadata } from "next";
 import { DM_Sans, Inter, JetBrains_Mono, Playfair_Display, Space_Mono } from "next/font/google";
@@ -43,7 +42,7 @@ import { Providers } from "@/components/providers";
 import { SiteBranding } from "@/components/site-branding";
 import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
-import { submitNewsletterSubscription } from "@/lib/blocks/newsletter";
+import { NewsletterFormClient } from "@/components/newsletter-form-client";
 import { SiteProvider } from "@/lib/context/site-context";
 import { sanitizeHTML } from "@/lib/security/html-sanitizer";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
@@ -166,12 +165,11 @@ const SiteFooter = ({ footerData, newsletterMessages, newsletterButtonLabels }: 
         ))}
         {footerData.newsletter?.enabled && (
           <FooterColumn className="md:col-span-2">
-            <NewsletterForm
+            <NewsletterFormClient
               headline={footerData.newsletter.headline ?? "Stay Mapped In"}
               placeholder={footerData.newsletter.placeholder ?? "your@email.address"}
               buttonText={footerData.newsletter.buttonText ?? "Subscribe"}
               messages={newsletterMessages}
-              onSubmit={submitNewsletterSubscription}
               buttonLabels={newsletterButtonLabels}
             />
           </FooterColumn>

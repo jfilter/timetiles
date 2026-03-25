@@ -520,7 +520,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const sheetConfigs = [
       { index: 0, title: "title", date: "event_date", location: "venue" }, // Tech Events
       { index: 1, title: "name", date: "date", location: "location" }, // Art Exhibitions
-      { index: 2, title: "event_name", date: "date", location: "address" }, // Sports Events
+      { index: 2, title: "event_name", date: "start_date", location: "address" }, // Sports Events
     ];
 
     for (const config of sheetConfigs) {

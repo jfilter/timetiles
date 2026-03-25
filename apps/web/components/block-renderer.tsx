@@ -32,8 +32,6 @@ import {
   HeroDescription,
   HeroHeadline,
   HeroSubheadline,
-  NewsletterCTA,
-  NewsletterForm,
   TestimonialAuthor,
   TestimonialAvatar,
   TestimonialCard,
@@ -48,7 +46,8 @@ import {
 } from "@timetiles/ui";
 import React from "react";
 
-import { NEWSLETTER_MESSAGES, submitNewsletterSubscription } from "@/lib/blocks/newsletter";
+import { NEWSLETTER_MESSAGES } from "@/lib/blocks/newsletter";
+import { NewsletterCTAClient, NewsletterFormClient } from "@/components/newsletter-form-client";
 import type {
   Block,
   BlockRendererProps,
@@ -303,18 +302,17 @@ const renderCTA = (block: CTABlock, key: string) => (
 
 const renderNewsletterForm = (block: NewsletterFormBlock, key: string) => (
   <div key={key} className="container mx-auto max-w-xl px-6 py-8">
-    <NewsletterForm
+    <NewsletterFormClient
       headline={block.headline ?? undefined}
       placeholder={block.placeholder ?? undefined}
       buttonText={block.buttonText ?? undefined}
       messages={NEWSLETTER_MESSAGES}
-      onSubmit={submitNewsletterSubscription}
     />
   </div>
 );
 
 const renderNewsletterCTA = (block: NewsletterCTABlock, key: string) => (
-  <NewsletterCTA
+  <NewsletterCTAClient
     key={key}
     headline={block.headline ?? undefined}
     description={block.description ?? undefined}
@@ -323,7 +321,6 @@ const renderNewsletterCTA = (block: NewsletterCTABlock, key: string) => (
     variant={block.variant ?? undefined}
     size={block.size ?? undefined}
     messages={NEWSLETTER_MESSAGES}
-    onSubmit={submitNewsletterSubscription}
   />
 );
 
