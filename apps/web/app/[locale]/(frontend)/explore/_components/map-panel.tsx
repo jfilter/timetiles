@@ -12,13 +12,11 @@ import type { RefObject } from "react";
 import type { ClusterFeature } from "@/components/maps/clustered-map";
 import { ClusteredMap, type ClusteredMapHandle, type MapViewState } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
-import type { ClusterStats } from "@/lib/constants/map";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
 interface MapPanelProps {
   mapRef?: RefObject<ClusteredMapHandle | null>;
   clusters: ClusterFeature[];
-  clusterStats?: ClusterStats;
   onBoundsChange: (bounds: LngLatBounds, zoom: number, center?: { lng: number; lat: number }) => void;
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
@@ -31,7 +29,6 @@ interface MapPanelProps {
 export const MapPanel = ({
   mapRef,
   clusters,
-  clusterStats,
   onBoundsChange,
   initialBounds,
   initialViewState,
@@ -44,7 +41,6 @@ export const MapPanel = ({
     <ClusteredMap
       ref={mapRef}
       clusters={clusters}
-      clusterStats={clusterStats}
       onBoundsChange={onBoundsChange}
       initialBounds={initialBounds}
       initialViewState={initialViewState}

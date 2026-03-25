@@ -53,7 +53,6 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
     datasets,
     clusters,
     clustersLoading,
-    clusterStats,
     boundsData,
     isLoadingInitialBounds,
     events,
@@ -104,7 +103,6 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
       <MapPanel
         mapRef={mapRef}
         clusters={clusters}
-        clusterStats={clusterStats}
         onBoundsChange={handleBoundsChange}
         initialBounds={boundsData?.bounds}
         initialViewState={initialViewState}

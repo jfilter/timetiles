@@ -15,7 +15,6 @@ import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import {
   useBoundsQuery,
-  useClusterStatsQuery,
   useEventsListQuery,
   useEventsTotalQuery,
   useMapClustersQuery,
@@ -39,7 +38,6 @@ export const useExplorerQueries = (
     true,
     scope
   );
-  const { data: clusterStats } = useClusterStatsQuery(filters, true, scope);
   const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters, true, scope);
 
   const clusters = clustersData?.features ?? [];
@@ -65,7 +63,6 @@ export const useExplorerQueries = (
     datasets: dataSources?.datasets ?? [],
     clusters,
     clustersLoading,
-    clusterStats,
     boundsData,
     boundsLoading,
     events,

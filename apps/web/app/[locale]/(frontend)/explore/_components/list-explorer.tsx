@@ -51,7 +51,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
   const { map, filters: filterState, selection, data } = explorer;
   const { filters } = filterState;
   const { openEvent } = selection;
-  const { datasets, clusters, clusterStats, boundsData, isLoadingInitialBounds, hasTemporalData } = data;
+  const { datasets, clusters, boundsData, isLoadingInitialBounds, hasTemporalData } = data;
   const { ref: mapRef, debouncedSimpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
 
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
@@ -72,7 +72,6 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
             <MapPanel
               mapRef={mapRef}
               clusters={clusters}
-              clusterStats={clusterStats}
               onBoundsChange={handleBoundsChange}
               initialBounds={boundsData?.bounds}
               initialViewState={initialViewState}
@@ -113,7 +112,6 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
             <MapPanel
               mapRef={mapRef}
               clusters={clusters}
-              clusterStats={clusterStats}
               onBoundsChange={handleBoundsChange}
               initialBounds={boundsData?.bounds}
               initialViewState={initialViewState}

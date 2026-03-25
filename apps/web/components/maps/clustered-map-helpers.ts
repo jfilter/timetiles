@@ -9,7 +9,6 @@ import type { Feature } from "geojson";
 import type { LayerSpecification } from "maplibre-gl";
 import type { MapRef } from "react-map-gl/maplibre";
 
-import { type ClusterStats, DEFAULT_CLUSTER_STATS, ensureAscendingPercentiles } from "@/lib/constants/map";
 import { createLogger } from "@/lib/logger";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
@@ -58,60 +57,14 @@ export const getValidCoordinates = (feature: Feature): [number, number] | null =
   return null;
 };
 
-/** Compute global stats from cluster stats with percentile normalization */
-export const computeGlobalStats = (globalClusterStats: ClusterStats | undefined): ClusterStats => {
-  const rawStats = globalClusterStats ?? DEFAULT_CLUSTER_STATS;
-  const stats = ensureAscendingPercentiles(rawStats);
-
-  logger.debug("Global cluster stats for size/color", { rawStats, stats });
-
-  return stats;
-};
-
-/** Compute viewport-relative stats for opacity (shows density within current view) */
-export const computeViewportStats = (clusters: ClusterFeature[]): ClusterStats => {
-  if (clusters.length === 0) {
-    return DEFAULT_CLUSTER_STATS;
-  }
-
-  const counts = clusters
-    .map((c) => c.properties.count ?? 1)
-    .filter((count) => count > 1) // Only consider actual clusters, not individual points
-    .sort((a, b) => a - b);
-
-  if (counts.length === 0) {
-    return DEFAULT_CLUSTER_STATS;
-  }
-
-  const getPercentile = (arr: number[], percentile: number) => {
-    const index = Math.ceil((percentile / 100) * arr.length) - 1;
-    return arr[Math.max(0, index)];
-  };
-
-  const rawStats = {
-    p20: getPercentile(counts, 20),
-    p40: getPercentile(counts, 40),
-    p60: getPercentile(counts, 60),
-    p80: getPercentile(counts, 80),
-    p100: Math.max(...counts),
-  };
-
-  const stats = ensureAscendingPercentiles(rawStats);
-
-  logger.debug("Viewport cluster percentiles for opacity", {
-    totalClusters: clusters.length,
-    clusterCounts: counts.length,
-    rawStats,
-    stats,
-  });
-
-  return stats;
-};
-
-/** Build the cluster layer configuration based on global and viewport stats */
+/**
+ * Build the cluster layer configuration using continuous sqrt-based scaling.
+ *
+ * Uses MapLibre's native `sqrt` expression for proportional area scaling
+ * (cartographic best practice: circle area proportional to event count).
+ * Every cluster gets a unique size — no discrete banding.
+ */
 export const buildClusterLayerConfig = (
-  globalStats: ClusterStats,
-  viewportStats: ClusterStats,
   clusterFilter: ["==", ["get", string], string],
   colors: MapColors = defaultMapColors
 ) =>
@@ -120,59 +73,43 @@ export const buildClusterLayerConfig = (
     type: "circle" as const,
     filter: clusterFilter,
     paint: {
-      // Size based on GLOBAL percentiles (consistent across all views)
-      // Exponential progression: 5.7x radius ratio → 32x area ratio
+      // Continuous sqrt-based radius: area proportional to count
+      // sqrt(count) → linear interpolation to pixel radius
       "circle-radius": [
-        "step",
-        ["get", "count"],
-        12, // Default: smallest clusters (0-p20)
-        globalStats.p20,
-        20, // Level 2 (p20-p40)
-        globalStats.p40,
-        32, // Level 3 (p40-p60)
-        globalStats.p60,
-        48, // Level 4 (p60-p80)
-        globalStats.p80,
-        68, // Level 5: dominant clusters (p80-p100)
+        "interpolate",
+        ["linear"],
+        ["sqrt", ["get", "count"]],
+        1,
+        8, // sqrt(1)=1 → 8px (single event)
+        5,
+        16, // sqrt(25)=5 → 16px
+        10,
+        24, // sqrt(100)=10 → 24px
+        18,
+        34, // sqrt(~324)=18 → 34px
+        25,
+        50, // sqrt(625)=25 → 50px (largest clusters)
       ],
-      // Color based on GLOBAL percentiles (consistent across all views)
+      // Continuous color gradient based on sqrt(count)
       "circle-color": [
-        "step",
-        ["get", "count"],
-        colors.mapClusterGradient[0], // Level 1 (0-p20)
-        globalStats.p20,
-        colors.mapClusterGradient[1], // Level 2 (p20-p40)
-        globalStats.p40,
-        colors.mapClusterGradient[2], // Level 3 (p40-p60)
-        globalStats.p60,
-        colors.mapClusterGradient[3], // Level 4 (p60-p80)
-        globalStats.p80,
-        colors.mapClusterGradient[4], // Level 5 (p80-p100)
+        "interpolate",
+        ["linear"],
+        ["sqrt", ["get", "count"]],
+        1,
+        colors.mapClusterGradient[0], // lightest
+        5,
+        colors.mapClusterGradient[1],
+        10,
+        colors.mapClusterGradient[2],
+        18,
+        colors.mapClusterGradient[3],
+        25,
+        colors.mapClusterGradient[4], // darkest
       ],
-      // Opacity based on VIEWPORT percentiles (shows relative density in current view)
-      "circle-opacity": [
-        "step",
-        ["get", "count"],
-        0.5, // Level 1: clearly visible (0-p20)
-        viewportStats.p20,
-        0.6, // Level 2 (p20-p40)
-        viewportStats.p40,
-        0.7, // Level 3 (p40-p60)
-        viewportStats.p60,
-        0.8, // Level 4 (p60-p80)
-        viewportStats.p80,
-        0.92, // Level 5: nearly solid (p80-p100)
-      ],
-      // Stroke width scales with cluster size for better definition
-      "circle-stroke-width": [
-        "step",
-        ["get", "count"],
-        1.5, // Thin for small clusters
-        globalStats.p40,
-        2, // Medium for mid clusters
-        globalStats.p80,
-        2.5, // Thicker for large clusters
-      ],
+      // Continuous opacity
+      "circle-opacity": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 0.55, 25, 0.92],
+      // Continuous stroke width
+      "circle-stroke-width": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 1, 25, 2.5],
       "circle-stroke-color": colors.mapStroke,
       "circle-stroke-opacity": 0.8,
     },

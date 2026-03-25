@@ -19,7 +19,7 @@ import { useTranslations } from "next-intl";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import Map, { Layer, type MapRef, NavigationControl, Popup, Source } from "react-map-gl/maplibre";
 
-import { type ClusterStats, MAP_STYLES, MAP_STYLES_BY_PRESET } from "@/lib/constants/map";
+import { MAP_STYLES, MAP_STYLES_BY_PRESET } from "@/lib/constants/map";
 import { useTheme } from "@/lib/hooks/use-theme";
 import { useThemePreset } from "@/lib/hooks/use-theme-preset";
 import type { SimpleBounds } from "@/lib/utils/event-params";
@@ -27,8 +27,6 @@ import type { SimpleBounds } from "@/lib/utils/event-params";
 import {
   buildClusterLayerConfig,
   buildEventPointLayerConfig,
-  computeGlobalStats,
-  computeViewportStats,
   DEFAULT_CLUSTERS,
   fitMapToBounds,
   INITIAL_VIEW_STATE,
@@ -61,7 +59,6 @@ export interface MapViewState {
 interface ClusteredMapProps {
   onBoundsChange?: (bounds: LngLatBounds, zoom: number, center?: { lng: number; lat: number }) => void;
   clusters?: ClusterFeature[];
-  clusterStats?: ClusterStats;
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
   isLoadingBounds?: boolean;
@@ -80,18 +77,7 @@ type MapEventTarget = {
 };
 
 export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
-  (
-    {
-      onBoundsChange,
-      clusters = DEFAULT_CLUSTERS,
-      clusterStats,
-      initialBounds,
-      initialViewState,
-      isLoadingBounds,
-      isError,
-    },
-    ref
-  ) => {
+  ({ onBoundsChange, clusters = DEFAULT_CLUSTERS, initialBounds, initialViewState, isLoadingBounds, isError }, ref) => {
     const t = useTranslations("Explore");
     const { resolvedTheme } = useTheme();
     const { preset } = useThemePreset();
@@ -123,9 +109,6 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       }
     }, [initialBounds, initialViewState]);
 
-    const globalStats = computeGlobalStats(clusterStats);
-    const viewportStats = computeViewportStats(clusters);
-
     const handleLoad = (evt: { target: MapEventTarget }) => {
       const map = evt.target as MapRef;
       if (initialViewState) {
@@ -156,7 +139,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const eventPointFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-point"];
     const clusterFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-cluster"];
     const eventPointLayer = { ...buildEventPointLayerConfig(mapColors), filter: eventPointFilter };
-    const clusterLayer = buildClusterLayerConfig(globalStats, viewportStats, clusterFilter, mapColors);
+    const clusterLayer = buildClusterLayerConfig(clusterFilter, mapColors);
 
     // Show loading overlay until map is positioned (opaque overlay hides default position)
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: false must also fall through
