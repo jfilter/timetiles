@@ -53,6 +53,7 @@ export const transformEvent = (event: Event): EventListItem => {
     locationName: event.locationName ?? null,
     geocodedAddress: event.geocodingInfo?.normalizedAddress ?? null,
     eventTimestamp: event.eventTimestamp ?? "",
+    eventEndTimestamp: event.eventEndTimestamp ?? null,
     isValid: event.validationStatus === "valid",
   };
 };

@@ -113,6 +113,33 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
 };
 
 /**
+ * Extract end timestamp from row data using field mapping.
+ * Returns null if no end date is found (most events don't have one).
+ */
+export const extractEndTimestamp = (row: Record<string, unknown>, endTimestampPath?: string | null): Date | null => {
+  if (endTimestampPath && row[endTimestampPath]) {
+    const date = parseDateInput(row[endTimestampPath] as string | number);
+    if (date) {
+      return date;
+    }
+  }
+
+  // Fallback to common end date fields
+  const endDateFields = ["end_date", "end_time", "end_at", "endDate", "endTime", "finish_date", "finish_time"];
+
+  for (const field of endDateFields) {
+    if (row[field]) {
+      const date = parseDateInput(row[field] as string | number);
+      if (date) {
+        return date;
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
  * Extract location name from row data using field mapping.
  */
 const extractLocationName = (row: Record<string, unknown>, locationNamePath?: string | null): string | null => {
@@ -141,6 +168,7 @@ export const createEventData = (
       locationPath?: string | null;
       locationNamePath?: string | null;
       timestampPath?: string | null;
+      endTimestampPath?: string | null;
     };
   },
   geocodingResults: ReturnType<typeof getImportGeocodingResults>,
@@ -170,6 +198,7 @@ export const createEventData = (
     transformedData: row,
     uniqueId,
     eventTimestamp: (extractTimestamp(row, fieldMappings.timestampPath) ?? new Date()).toISOString(),
+    eventEndTimestamp: extractEndTimestamp(row, fieldMappings.endTimestampPath)?.toISOString() ?? null,
     location,
     locationName,
     coordinateSource,

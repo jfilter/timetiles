@@ -19,6 +19,7 @@ export interface FieldMappingOverrides {
   descriptionPath?: string | null;
   locationNamePath?: string | null;
   timestampPath?: string | null;
+  endTimestampPath?: string | null;
   latitudePath?: string | null;
   longitudePath?: string | null;
   locationPath?: string | null;

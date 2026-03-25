@@ -21,6 +21,7 @@ import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import {
   buildConsumedFieldSet,
   extractEventFields,
+  formatDateRange,
   getDatasetInfo,
   getEventData,
   getLocationDisplay,
@@ -79,7 +80,7 @@ export const EventDetailContent = ({
     typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
   const { title, description: rawDescription } = extractEventFields(eventData, fieldMappings, event.id);
   const description = rawDescription ?? "";
-  const eventDate = event.eventTimestamp ? new Date(event.eventTimestamp).toLocaleDateString(locale) : null;
+  const eventDate = formatDateRange(event.eventTimestamp, event.eventEndTimestamp, locale);
   const locationDisplay = getLocationDisplay(event);
   const datasetInfo = getDatasetInfo(event.dataset);
 

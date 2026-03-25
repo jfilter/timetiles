@@ -702,6 +702,10 @@ export interface Dataset {
      */
     timestampPath?: string | null;
     /**
+     * Override detected end timestamp field (e.g., 'end_date', 'enddatum', 'date_fin')
+     */
+    endTimestampPath?: string | null;
+    /**
      * Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')
      */
     latitudePath?: string | null;
@@ -926,6 +930,10 @@ export interface DatasetSchema {
      * Path to timestamp/date field in source data
      */
     timestampPath?: string | null;
+    /**
+     * Path to end timestamp/date field in source data
+     */
+    endTimestampPath?: string | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -1031,6 +1039,10 @@ export interface IngestJob {
      * Path to timestamp/date field in source data
      */
     timestampPath?: string | null;
+    /**
+     * Path to end timestamp/date field in source data
+     */
+    endTimestampPath?: string | null;
     /**
      * Path to latitude coordinate field in source data
      */
@@ -2015,9 +2027,13 @@ export interface Event {
     validationStatus?: ('valid' | 'out_of_range' | 'suspicious_zero' | 'swapped' | 'invalid') | null;
   };
   /**
-   * When the actual event occurred
+   * When the event starts (or occurred)
    */
   eventTimestamp?: string | null;
+  /**
+   * When the event ends (optional)
+   */
+  eventEndTimestamp?: string | null;
   /**
    * Location/venue name for display (e.g., 'Reichstag', 'Kottbusser Platz')
    */
@@ -4048,6 +4064,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         descriptionPath?: T;
         locationNamePath?: T;
         timestampPath?: T;
+        endTimestampPath?: T;
         latitudePath?: T;
         longitudePath?: T;
         locationPath?: T;
@@ -4124,6 +4141,7 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
         descriptionPath?: T;
         locationNamePath?: T;
         timestampPath?: T;
+        endTimestampPath?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -4207,6 +4225,7 @@ export interface IngestJobsSelect<T extends boolean = true> {
         descriptionPath?: T;
         locationNamePath?: T;
         timestampPath?: T;
+        endTimestampPath?: T;
         latitudePath?: T;
         longitudePath?: T;
         locationPath?: T;
@@ -4482,6 +4501,7 @@ export interface EventsSelect<T extends boolean = true> {
         validationStatus?: T;
       };
   eventTimestamp?: T;
+  eventEndTimestamp?: T;
   locationName?: T;
   validationErrors?: T;
   geocodingInfo?:

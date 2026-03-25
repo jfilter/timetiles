@@ -14,7 +14,13 @@ import { useTranslations } from "next-intl";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import type { EventListItem } from "@/lib/schemas/events";
-import { extractEventFields, getDatasetInfo, getEventData, getLocationDisplay } from "@/lib/utils/event-detail";
+import {
+  extractEventFields,
+  formatDateRange,
+  getDatasetInfo,
+  getEventData,
+  getLocationDisplay,
+} from "@/lib/utils/event-detail";
 
 import { EventsListSkeleton } from "./events-list-skeleton";
 
@@ -42,7 +48,7 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
   const description = rawDescription ?? "";
   const datasetInfo = getDatasetInfo(event.dataset);
   const locationDisplay = getLocationDisplay(event);
-  const eventDate = event.eventTimestamp ? new Date(event.eventTimestamp).toLocaleDateString() : null;
+  const eventDate = formatDateRange(event.eventTimestamp, event.eventEndTimestamp);
 
   const handleClick = () => {
     if (onEventClick) {

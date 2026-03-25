@@ -32,6 +32,7 @@ export interface BulkEventData {
   transformedData: Record<string, unknown>;
   uniqueId: string;
   eventTimestamp: string;
+  eventEndTimestamp?: string | null;
   location?: { latitude: number; longitude: number };
   locationName?: string | null;
   coordinateSource: { type: string; confidence?: number; normalizedAddress?: string };
@@ -57,6 +58,7 @@ const toEventsRow = (event: BulkEventData, now: string): typeof events.$inferIns
   transformedData: event.transformedData,
   uniqueId: event.uniqueId,
   eventTimestamp: event.eventTimestamp,
+  eventEndTimestamp: event.eventEndTimestamp ?? null,
   location_latitude: event.location?.latitude ?? null,
   location_longitude: event.location?.longitude ?? null,
   locationName: event.locationName ?? null,
@@ -90,6 +92,7 @@ const toVersionRow = (parentId: number, event: BulkEventData, now: string): type
   version_coordinateSource_confidence: event.coordinateSource.confidence ?? null,
   version_coordinateSource_normalizedAddress: event.coordinateSource.normalizedAddress ?? null,
   version_eventTimestamp: event.eventTimestamp,
+  version_eventEndTimestamp: event.eventEndTimestamp ?? null,
   version_locationName: event.locationName ?? null,
   version_uniqueId: event.uniqueId,
   version_contentHash: event.contentHash ?? null,

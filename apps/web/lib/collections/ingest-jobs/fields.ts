@@ -125,6 +125,11 @@ export const ingestJobFields: Field[] = [
         admin: { description: "Path to timestamp/date field in source data", readOnly: true },
       },
       {
+        name: "endTimestampPath",
+        type: "text",
+        admin: { description: "Path to end timestamp/date field in source data", readOnly: true },
+      },
+      {
         name: "latitudePath",
         type: "text",
         admin: { description: "Path to latitude coordinate field in source data", readOnly: true },

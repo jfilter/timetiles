@@ -60,6 +60,7 @@ export const EventItemSchema = z
     locationName: z.string().nullable().optional(),
     geocodedAddress: z.string().nullable().optional(),
     eventTimestamp: z.string(),
+    eventEndTimestamp: z.string().nullable().optional(),
     isValid: z.boolean(),
   })
   .openapi("EventItem");

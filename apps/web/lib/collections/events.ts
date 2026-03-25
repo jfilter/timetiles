@@ -191,7 +191,12 @@ const Events: CollectionConfig = {
     {
       name: "eventTimestamp",
       type: "date",
-      admin: { date: { pickerAppearance: "dayAndTime" }, description: "When the actual event occurred" },
+      admin: { date: { pickerAppearance: "dayAndTime" }, description: "When the event starts (or occurred)" },
+    },
+    {
+      name: "eventEndTimestamp",
+      type: "date",
+      admin: { date: { pickerAppearance: "dayAndTime" }, description: "When the event ends (optional)" },
     },
     {
       name: "locationName",
@@ -303,6 +308,7 @@ const Events: CollectionConfig = {
   indexes: [
     { fields: ["dataset", "eventTimestamp"] },
     { fields: ["eventTimestamp"] },
+    { fields: ["eventEndTimestamp"] },
     { fields: ["uniqueId"] },
     { fields: ["dataset", "contentHash"] },
     { fields: ["ingestJob", "ingestBatch"] },

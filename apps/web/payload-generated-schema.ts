@@ -1332,6 +1332,9 @@ export const datasets = db_schema.table(
     fieldMappingOverrides_timestampPath: varchar(
       "field_mapping_overrides_timestamp_path",
     ),
+    fieldMappingOverrides_endTimestampPath: varchar(
+      "field_mapping_overrides_end_timestamp_path",
+    ),
     fieldMappingOverrides_latitudePath: varchar(
       "field_mapping_overrides_latitude_path",
     ),
@@ -1569,6 +1572,9 @@ export const _datasets_v = db_schema.table(
     ),
     version_fieldMappingOverrides_timestampPath: varchar(
       "version_field_mapping_overrides_timestamp_path",
+    ),
+    version_fieldMappingOverrides_endTimestampPath: varchar(
+      "version_field_mapping_overrides_end_timestamp_path",
     ),
     version_fieldMappingOverrides_latitudePath: varchar(
       "version_field_mapping_overrides_latitude_path",
@@ -1814,6 +1820,9 @@ export const dataset_schemas = db_schema.table(
       "field_mappings_location_name_path",
     ),
     fieldMappings_timestampPath: varchar("field_mappings_timestamp_path"),
+    fieldMappings_endTimestampPath: varchar(
+      "field_mappings_end_timestamp_path",
+    ),
     updatedAt: timestamp("updated_at", {
       mode: "string",
       withTimezone: true,
@@ -2035,6 +2044,9 @@ export const _dataset_schemas_v = db_schema.table(
     ),
     version_fieldMappings_timestampPath: varchar(
       "version_field_mappings_timestamp_path",
+    ),
+    version_fieldMappings_endTimestampPath: varchar(
+      "version_field_mappings_end_timestamp_path",
     ),
     version_updatedAt: timestamp("version_updated_at", {
       mode: "string",
@@ -2476,6 +2488,9 @@ export const ingest_jobs = db_schema.table(
     detectedFieldMappings_timestampPath: varchar(
       "detected_field_mappings_timestamp_path",
     ),
+    detectedFieldMappings_endTimestampPath: varchar(
+      "detected_field_mappings_end_timestamp_path",
+    ),
     detectedFieldMappings_latitudePath: varchar(
       "detected_field_mappings_latitude_path",
     ),
@@ -2652,6 +2667,9 @@ export const _ingest_jobs_v = db_schema.table(
     ),
     version_detectedFieldMappings_timestampPath: varchar(
       "version_detected_field_mappings_timestamp_path",
+    ),
+    version_detectedFieldMappings_endTimestampPath: varchar(
+      "version_detected_field_mappings_end_timestamp_path",
     ),
     version_detectedFieldMappings_latitudePath: varchar(
       "version_detected_field_mappings_latitude_path",
@@ -3580,6 +3598,11 @@ export const events = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
+    eventEndTimestamp: timestamp("event_end_timestamp", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
     locationName: varchar("location_name"),
     validationErrors: jsonb("validation_errors"),
     geocodingInfo_originalAddress: varchar("geocoding_info_original_address"),
@@ -3643,6 +3666,7 @@ export const events = db_schema.table(
       columns.eventTimestamp,
     ),
     index("eventTimestamp_idx").on(columns.eventTimestamp),
+    index("eventEndTimestamp_idx").on(columns.eventEndTimestamp),
     index("uniqueId_idx").on(columns.uniqueId),
     index("dataset_contentHash_idx").on(columns.dataset, columns.contentHash),
     index("ingestJob_ingestBatch_idx").on(
@@ -3716,6 +3740,11 @@ export const _events_v = db_schema.table(
         "version_coordinate_source_validation_status",
       ),
     version_eventTimestamp: timestamp("version_event_timestamp", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    version_eventEndTimestamp: timestamp("version_event_end_timestamp", {
       mode: "string",
       withTimezone: true,
       precision: 3,
@@ -3835,6 +3864,9 @@ export const _events_v = db_schema.table(
       columns.version_eventTimestamp,
     ),
     index("version_eventTimestamp_idx").on(columns.version_eventTimestamp),
+    index("version_eventEndTimestamp_idx").on(
+      columns.version_eventEndTimestamp,
+    ),
     index("version_uniqueId_idx").on(columns.version_uniqueId),
     index("version_dataset_version_contentHash_idx").on(
       columns.version_dataset,
