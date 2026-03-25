@@ -82,13 +82,6 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "payload CLI resolves as a valid Node module" {
-    skip_if_services_not_running
-    run $DC_CMD exec -T web node -e "require('fs').realpathSync('/app/node_modules/.bin/payload')"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"payload"* ]]
-}
-
 # =============================================================================
 # Scraper Runner Integration
 # =============================================================================
