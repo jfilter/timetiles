@@ -24,6 +24,12 @@ import { CodeIcon, MoreHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
+import {
+  buildRepoMap,
+  flattenScraperRows,
+  getScraperStatusVariant,
+  type ScraperRow,
+} from "@/app/[locale]/(frontend)/account/_components/scraper-view-model";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   useDeleteScraperRepoMutation,
@@ -34,12 +40,6 @@ import { useScraperReposQuery, useScrapersQuery } from "@/lib/hooks/use-scrapers
 import { formatDateLocale } from "@/lib/utils/date";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
-import {
-  buildRepoMap,
-  flattenScraperRows,
-  getScraperStatusVariant,
-  type ScraperRow,
-} from "@/app/[locale]/(frontend)/account/_components/scraper-view-model";
 import { ScraperRunHistory } from "./scraper-run-history";
 
 interface ScrapersTableProps {
@@ -121,17 +121,14 @@ export const ScrapersTable = ({ initialRepos, initialScrapers }: ScrapersTablePr
         cell: ({ row }) => {
           const status = row.original.scraper.lastRunStatus;
           const variant = getScraperStatusVariant(status);
-          const label =
-            variant === "info"
-              ? t("statusRunning")
-              : variant === "success"
-                ? t("statusSuccess")
-                : variant === "warning"
-                  ? t("statusTimeout")
-                  : variant === "error"
-                    ? t("statusFailed")
-                    : t("statusNeverRun");
-          return <StatusBadge variant={variant} label={label} />;
+          const labelMap = {
+            info: t("statusRunning"),
+            success: t("statusSuccess"),
+            warning: t("statusTimeout"),
+            error: t("statusFailed"),
+            muted: t("statusNeverRun"),
+          } as const;
+          return <StatusBadge variant={variant} label={labelMap[variant] ?? t("statusNeverRun")} />;
         },
       },
       {

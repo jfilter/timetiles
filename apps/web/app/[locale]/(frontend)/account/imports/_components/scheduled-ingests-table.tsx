@@ -24,6 +24,10 @@ import { ClockIcon, MoreHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
+import {
+  getScheduleFrequencyKey,
+  getScheduleStatusVariant,
+} from "@/app/[locale]/(frontend)/account/_components/schedule-view-model";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -35,10 +39,6 @@ import { useScheduledIngestsQuery } from "@/lib/hooks/use-scheduled-ingests-quer
 import { formatDateLocale } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
-import {
-  getScheduleFrequencyKey,
-  getScheduleStatusVariant,
-} from "@/app/[locale]/(frontend)/account/_components/schedule-view-model";
 import { ScheduleRunHistory } from "./schedule-run-history";
 
 interface ScheduledIngestsTableProps {
@@ -113,8 +113,9 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
         header: t("status"),
         cell: ({ row }) => {
           const variant = getScheduleStatusVariant(row.original);
-          const label =
-            variant === "muted" ? t("statusDisabled") : variant === "error" ? t("statusFailed") : t("statusActive");
+          let label = t("statusActive");
+          if (variant === "muted") label = t("statusDisabled");
+          else if (variant === "error") label = t("statusFailed");
           return <StatusBadge variant={variant} label={label} />;
         },
       },

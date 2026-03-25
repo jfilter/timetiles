@@ -69,7 +69,9 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 // Get status badge using shared variant logic
 const getStatusBadge = (schedule: ScheduledIngest, t: TranslateFn) => {
   const variant = getScheduleStatusVariant(schedule);
-  const label = variant === "muted" ? t("disabled") : variant === "error" ? t("failed") : t("active");
+  let label = t("active");
+  if (variant === "muted") label = t("disabled");
+  else if (variant === "error") label = t("failed");
   return <StatusBadge variant={variant} label={label} icon={STATUS_ICONS[variant]} />;
 };
 
