@@ -139,7 +139,6 @@ services:
   worker-ingest:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-ingest
-    working_dir: /app/apps/web
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -166,6 +165,7 @@ services:
         "50",
       ]
     environment:
+      PAYLOAD_CONFIG_PATH: /app/apps/web/payload.config.ts
       NODE_PATH: /app/node_modules/.pnpm/node_modules
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
@@ -189,7 +189,6 @@ services:
   worker-default:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-default
-    working_dir: /app/apps/web
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -217,6 +216,7 @@ services:
         "--handle-schedules",
       ]
     environment:
+      PAYLOAD_CONFIG_PATH: /app/apps/web/payload.config.ts
       NODE_PATH: /app/node_modules/.pnpm/node_modules
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
@@ -240,7 +240,6 @@ services:
   worker-maintenance:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-maintenance
-    working_dir: /app/apps/web
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -267,6 +266,7 @@ services:
         "10",
       ]
     environment:
+      PAYLOAD_CONFIG_PATH: /app/apps/web/payload.config.ts
       NODE_PATH: /app/node_modules/.pnpm/node_modules
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
