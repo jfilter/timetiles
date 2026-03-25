@@ -9,8 +9,9 @@
  *
  * @module
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import * as geocodingModule from "@/lib/services/geocoding";
 import type { IngestJob } from "@/payload-types";
 
 import {
@@ -75,6 +76,34 @@ describe.sequential("Review Checks Pipeline", () => {
   });
 
   beforeEach(async () => {
+    // Mock geocoding so tests don't depend on external Nominatim API.
+    // Without this, the geocode-batch step makes real HTTP requests that fail
+    // under Nominatim rate limiting when the full test suite runs.
+    const mockGeocodingResult = {
+      latitude: 52.52,
+      longitude: 13.405,
+      confidence: 0.9,
+      normalizedAddress: "Berlin, Germany",
+      provider: "mock",
+      components: {},
+      metadata: {},
+    };
+
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      geocode: vi.fn().mockResolvedValue(mockGeocodingResult),
+      batchGeocode: vi.fn().mockImplementation((addresses: string[]) => {
+        const results = new Map();
+        for (const addr of addresses) {
+          results.set(addr, mockGeocodingResult);
+        }
+        return Promise.resolve({
+          results,
+          summary: { total: addresses.length, successful: addresses.length, failed: 0, cached: 0 },
+        });
+      }),
+      testConfiguration: vi.fn().mockResolvedValue({}),
+    } as unknown as geocodingModule.GeocodingService);
+
     await testEnv.seedManager.truncate(collectionsToReset);
   });
 
