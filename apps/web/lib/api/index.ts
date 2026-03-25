@@ -13,6 +13,7 @@ export {
   requirePrivileged,
   requireScrapersEnabled,
 } from "./auth-helpers";
+export { cacheHeaders, type CacheStrategy } from "./cache-headers";
 export {
   AppError,
   ConflictError,

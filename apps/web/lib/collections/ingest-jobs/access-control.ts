@@ -41,9 +41,9 @@ export const ingestJobsAccess = {
     if (!user) return false;
 
     // Check feature flag - even admins can't create if disabled
-    const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+    const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
     // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
-    return await isFeatureEnabled(payload, "enableImportCreation");
+    return await getFeatureFlagService(payload).isEnabled("enableImportCreation");
   }) as Access,
 
   // Only import file owner, editors, or admins can update

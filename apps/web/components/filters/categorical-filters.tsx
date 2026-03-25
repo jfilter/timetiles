@@ -51,30 +51,6 @@ export interface CategoricalFiltersProps {
  * Renders enum field dropdowns when a single dataset is selected.
  * Enum field data is fetched by the parent and passed as props.
  */
-/** Renders a single enum field with a stable callback */
-const EnumFieldItem = ({
-  field,
-  selectedValues,
-  onFieldFilterChange,
-}: {
-  field: EnumField;
-  selectedValues: string[];
-  onFieldFilterChange: (path: string, values: string[]) => void;
-}) => {
-  const handleSelectionChange = (newValues: string[]) => {
-    onFieldFilterChange(field.path, newValues);
-  };
-
-  return (
-    <EnumFieldDropdown
-      label={field.label}
-      values={field.values}
-      selectedValues={selectedValues}
-      onSelectionChange={handleSelectionChange}
-    />
-  );
-};
-
 export const CategoricalFilters = ({ enumFields, isLoading }: CategoricalFiltersProps) => {
   const { filters, setFieldFilter } = useFilters();
 
@@ -87,11 +63,12 @@ export const CategoricalFilters = ({ enumFields, isLoading }: CategoricalFilters
   return (
     <div className="space-y-3">
       {enumFields.map((field) => (
-        <EnumFieldItem
+        <EnumFieldDropdown
           key={field.path}
-          field={field}
+          label={field.label}
+          values={field.values}
           selectedValues={filters.fieldFilters[field.path] ?? EMPTY_ARRAY}
-          onFieldFilterChange={setFieldFilter}
+          onSelectionChange={(newValues: string[]) => setFieldFilter(field.path, newValues)}
         />
       ))}
     </div>

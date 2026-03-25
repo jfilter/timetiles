@@ -22,7 +22,7 @@ const fetchDataSources = async (): Promise<DataSourcesResponse> => {
   return fetchJson<DataSourcesResponse>("/api/v1/data-sources");
 };
 
-const dataSourcesQueryKeys = { all: ["data-sources"] as const };
+export const dataSourcesKeys = { all: ["data-sources"] as const };
 
 /**
  * Hook to fetch lightweight catalog and dataset data.
@@ -31,4 +31,4 @@ const dataSourcesQueryKeys = { all: ["data-sources"] as const };
  * Results are cached for 5 minutes.
  */
 export const useDataSourcesQuery = () =>
-  useQuery({ queryKey: dataSourcesQueryKeys.all, queryFn: fetchDataSources, ...QUERY_PRESETS.stable });
+  useQuery({ queryKey: dataSourcesKeys.all, queryFn: fetchDataSources, ...QUERY_PRESETS.stable });

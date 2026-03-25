@@ -25,8 +25,8 @@ import { getSchemaBuilderState } from "@/lib/types/schema-detection";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
-import { loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext } from "../utils/job-context";
+import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import type { ProcessingOptions } from "./validate-schema/schema-evaluation";
 import {
   determineRequiresApproval,
@@ -36,13 +36,9 @@ import {
 } from "./validate-schema/schema-evaluation";
 import {
   applyValidationResult,
-  cleanupSidecarsOnError,
   guardAgainstConcurrentReview,
   handleSchemaModeFailure,
 } from "./validate-schema/validation-persistence";
-
-// Re-export for backward compatibility (used by integration tests)
-export { hasConflictingReviewJob } from "./validate-schema/validation-persistence";
 
 // Helper function to get schema from cached builder state
 const getSchemaFromCache = async (job: {
@@ -95,25 +91,7 @@ export const validateSchemaJob = {
     { name: "failureReason", type: "text" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskCallbackArgs) => {
-    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
-    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
-    try {
-      await args.req.payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
-            context: "validate-schema",
-          },
-        },
-      });
-    } catch {
-      // Best-effort — don't throw in onFail
-    }
-  },
+  onFail: createStandardOnFail("validate-schema"),
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
@@ -130,11 +108,7 @@ export const validateSchemaJob = {
 
     try {
       // Set stage for UI progress display (workflow controls sequencing)
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { stage: PROCESSING_STAGE.VALIDATE_SCHEMA },
-      });
+      await setJobStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
       const { job, dataset, ingestFile } = await loadJobResources(payload, jobIdTyped);
 
@@ -208,7 +182,7 @@ export const validateSchemaJob = {
     } catch (error) {
       logError(error, "Schema validation failed", { ingestJobId });
 
-      await cleanupSidecarsOnError(payload, jobIdTyped);
+      await cleanupSidecarsForJob(payload, jobIdTyped);
 
       // Re-throw — Payload retries up to `retries` count, then onFail handles failure.
       // JobCancelledError (e.g. quota exceeded) skips retries entirely.

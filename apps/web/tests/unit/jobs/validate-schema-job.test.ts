@@ -460,11 +460,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
         throw new Error("Connection timeout");
       });
 
-      // Second loadJobResources call (in catch block for cleanup)
-      mockPayload.findByID
-        .mockResolvedValueOnce(mockIngestJob)
-        .mockResolvedValueOnce(mockDataset)
-        .mockResolvedValueOnce(mockIngestFile);
+      // cleanupSidecarsForJob in catch block loads job + file (not dataset)
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockIngestFile);
 
       mockPayload.update.mockResolvedValueOnce({});
 

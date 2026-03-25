@@ -31,11 +31,6 @@ vi.mock("../../../lib/hooks/use-filters", () => ({
   useFilters: () => ({ filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} } }),
 }));
 
-// Mock chart hooks
-vi.mock("../../../lib/hooks/use-chart-query", () => ({
-  useChartQuery: (query: any) => ({ ...query, isInitialLoad: false, isUpdating: false }),
-}));
-
 vi.mock("@timetiles/ui/charts", () => ({
   useChartTheme: () => ({
     backgroundColor: "#ffffff",
@@ -70,6 +65,8 @@ vi.mock("../../../lib/hooks/use-events-queries", () => {
         : { items: [], total: 0, groupedBy: "catalog" },
     isLoading: false,
     error: null,
+    isInitialLoad: false,
+    isUpdating: false,
   }));
 
   return { useEventsAggregationQuery: mockEventsAggregationQuery };

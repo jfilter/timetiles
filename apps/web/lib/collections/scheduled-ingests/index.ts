@@ -249,9 +249,9 @@ const ScheduledIngests: CollectionConfig = {
       if (!user) return false;
 
       // Check feature flag - even admins can't create if disabled
-      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+      const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
       // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
-      return await isFeatureEnabled(payload, "enableScheduledIngests");
+      return await getFeatureFlagService(payload).isEnabled("enableScheduledIngests");
     }),
 
     // Users can only update their own scheduled ingests, editors and admins can update all

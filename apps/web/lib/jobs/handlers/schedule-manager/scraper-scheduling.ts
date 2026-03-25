@@ -51,8 +51,8 @@ export const processScheduledScrapers = async (
   currentTime: Date
 ): Promise<{ triggered: number; errors: number }> => {
   // Check if scrapers feature is enabled
-  const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-  if (!(await isFeatureEnabled(payload, "enableScrapers"))) {
+  const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+  if (!(await getFeatureFlagService(payload).isEnabled("enableScrapers"))) {
     return { triggered: 0, errors: 0 };
   }
 

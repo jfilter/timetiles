@@ -10,7 +10,7 @@
  */
 import type { CollectionBeforeChangeHook, CollectionConfig, Where } from "payload";
 
-import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
 import { computeWebhookUrl, handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
@@ -169,7 +169,7 @@ const Scrapers: CollectionConfig = {
     },
     create: async ({ req: { user, payload } }) => {
       if (!user) return false;
-      const enabled = await isFeatureEnabled(payload, "enableScrapers");
+      const enabled = await getFeatureFlagService(payload).isEnabled("enableScrapers");
       if (!enabled) return false;
       const trustLevel = typeof user.trustLevel === "string" ? Number(user.trustLevel) : (user.trustLevel ?? 0);
       return trustLevel >= 3 || user.role === "admin";

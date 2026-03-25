@@ -21,13 +21,12 @@ import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
-import { loadJobResources } from "../utils/resource-loading";
+import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
 import type { ReviewChecksConfig } from "../workflows/review-checks";
 import { REVIEW_REASONS, setNeedsReview, shouldReviewHighRowErrors } from "../workflows/review-checks";
 import {
   checkEventQuotaBeforeProcessing,
-  cleanupOnError,
   cleanupPriorAttempt,
   markJobCompleted,
   updateJobErrors,
@@ -44,34 +43,12 @@ export const createEventsBatchJob = {
     { name: "needsReview", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskCallbackArgs) => {
-    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
-    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
-    // Clean up orphaned events from successful batches before the failure.
-    // Wrapped separately so cleanup failure doesn't prevent status update.
-    const failLogger = createJobLogger(String(ingestJobId), "create-events-batch-onFail");
-    try {
-      await cleanupPriorAttempt(args.req.payload, ingestJobId, failLogger);
-    } catch {
-      // Best-effort cleanup — log handled inside cleanupPriorAttempt
-    }
-
-    try {
-      await args.req.payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
-            context: "create-events-batch",
-          },
-        },
-      });
-    } catch {
-      // Best-effort — don't throw in onFail
-    }
-  },
+  onFail: createStandardOnFail("create-events-batch", {
+    beforeFail: async (payload, ingestJobId) => {
+      const failLogger = createJobLogger(String(ingestJobId), "create-events-batch-onFail");
+      await cleanupPriorAttempt(payload, ingestJobId, failLogger);
+    },
+  }),
   onSuccess: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
@@ -80,11 +57,7 @@ export const createEventsBatchJob = {
       const job = await args.req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
       if (job?.stage === PROCESSING_STAGE.NEEDS_REVIEW) return;
 
-      await args.req.payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { stage: PROCESSING_STAGE.COMPLETED },
-      });
+      await setJobStage(args.req.payload, ingestJobId, PROCESSING_STAGE.COMPLETED);
     } catch {
       // Best-effort — don't throw in onSuccess
     }
@@ -104,11 +77,7 @@ export const createEventsBatchJob = {
 
     try {
       // Set stage for UI progress tracking (workflow controls sequencing)
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { stage: PROCESSING_STAGE.CREATE_EVENTS },
-      });
+      await setJobStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
       const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);
       filePath = getIngestFilePath(ingestFile.filename ?? "");
@@ -213,7 +182,7 @@ export const createEventsBatchJob = {
       return { output: { needsReview, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
     } catch (error) {
       logError(error, "Event creation failed", { ingestJobId });
-      cleanupOnError(filePath, sheetIndex);
+      await cleanupSidecarsForJob(payload, ingestJobId);
 
       // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;

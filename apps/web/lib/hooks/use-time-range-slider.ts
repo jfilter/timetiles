@@ -10,7 +10,7 @@
  */
 /* eslint-disable sonarjs/max-lines-per-function -- Hook consolidates all slider state/handlers from the component */
 import type React from "react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { useFullHistogramQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -18,6 +18,9 @@ import { useViewScope } from "@/lib/hooks/use-view-scope";
 import type { HistogramResponse } from "@/lib/schemas/events";
 
 import { formatISODate, parseISODate } from "../utils/date";
+
+/** Referentially stable empty array to avoid re-creating on every render */
+const EMPTY_HISTOGRAM: HistogramResponse["histogram"] = [];
 
 interface UseTimeRangeSliderProps {
   filters: FilterState;
@@ -100,10 +103,10 @@ export const useTimeRangeSlider = ({
   const scope = useViewScope();
   const { data: histogramData, isLoading } = useFullHistogramQuery(filters, scope);
 
-  const histogram = histogramData?.histogram ?? [];
+  const histogram = histogramData?.histogram ?? EMPTY_HISTOGRAM;
 
   // Calculate the data range and normalize histogram
-  const { minTimestamp, maxTimestamp, normalizedBars } = (() => {
+  const { minTimestamp, maxTimestamp, normalizedBars } = useMemo(() => {
     if (histogram.length === 0) {
       return { minTimestamp: 0, maxTimestamp: 0, normalizedBars: [] };
     }
@@ -124,7 +127,7 @@ export const useTimeRangeSlider = ({
     }));
 
     return { minTimestamp: min, maxTimestamp: max, normalizedBars: bars };
-  })();
+  }, [histogram]);
 
   // Convert current filter dates to slider positions (0-1)
   const startPosition = (() => {

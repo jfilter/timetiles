@@ -112,6 +112,8 @@ export const checkQuotaForSheet = async (
   const user = await payload.findByID({ collection: COLLECTION_NAMES.USERS, id: userId });
   if (!user) return { allowed: true };
 
+  // Quota phase 1 of 3: approximate gate before user sees the review screen.
+  // See also: phase 2 (re-check) and phase 3 (increment) in create-events-batch/job-completion.ts.
   const quotaService = createQuotaService(payload);
 
   // Check per-import quota

@@ -4,7 +4,7 @@
  * @module
  * @category Components
  */
-import { formatShortDate } from "@/lib/utils/date";
+import { formatMonthYear } from "@/lib/utils/date";
 import type { Catalog, Dataset } from "@/payload-types";
 
 /**
@@ -46,11 +46,11 @@ export const buildDynamicTitle = (
   const hasEnd = filters.endDate != null && filters.endDate !== "";
 
   if (hasStart && hasEnd) {
-    dateRange = `${formatShortDate(filters.startDate!)} – ${formatShortDate(filters.endDate!)}`;
+    dateRange = `${formatMonthYear(filters.startDate!)} – ${formatMonthYear(filters.endDate!)}`;
   } else if (hasStart) {
-    dateRange = t("dateRangeFrom", { date: formatShortDate(filters.startDate!) });
+    dateRange = t("dateRangeFrom", { date: formatMonthYear(filters.startDate!) });
   } else if (hasEnd) {
-    dateRange = t("dateRangeUntil", { date: formatShortDate(filters.endDate!) });
+    dateRange = t("dateRangeUntil", { date: formatMonthYear(filters.endDate!) });
   }
 
   return { title, dateRange };

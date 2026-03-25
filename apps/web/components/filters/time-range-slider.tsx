@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
-import { formatISODate, formatShortDate, parseISODate } from "@/lib/utils/date";
+import { formatISODate, formatMonthYear, parseISODate } from "@/lib/utils/date";
 
 const DATE_INPUT_CLASS =
   "border-primary/20 focus:border-secondary focus:ring-secondary/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none";
@@ -105,10 +105,10 @@ export const TimeRangeSlider = ({ filters, onStartDateChange, onEndDateChange }:
       {/* Date range labels */}
       <div className="-mx-2 flex items-center justify-between">
         <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
-          {formatShortDate(minTimestamp)}
+          {formatMonthYear(minTimestamp)}
         </span>
         <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
-          {formatShortDate(maxTimestamp)}
+          {formatMonthYear(maxTimestamp)}
         </span>
       </div>
 
@@ -180,7 +180,7 @@ export const TimeRangeSlider = ({ filters, onStartDateChange, onEndDateChange }:
                 isBarInRange(bar.date, bar.dateEnd) ? "bg-ring dark:bg-ring/80" : "bg-primary/20 dark:bg-foreground/20"
               }`}
               style={{ height: `${Math.max(4, bar.normalizedHeight * 100)}%` }}
-              title={t("histogramBarTitle", { date: formatShortDate(bar.date), count: bar.count })}
+              title={t("histogramBarTitle", { date: formatMonthYear(bar.date), count: bar.count })}
             />
           ))}
         </div>
@@ -224,9 +224,9 @@ export const TimeRangeSlider = ({ filters, onStartDateChange, onEndDateChange }:
             className="hover:bg-primary/5 dark:hover:bg-foreground/5 w-full rounded py-1 text-center transition-colors"
           >
             <span className="text-foreground dark:text-foreground font-mono text-xs">
-              {startDate == null ? formatShortDate(minTimestamp) : formatShortDate(parseISODate(startDate))}
+              {startDate == null ? formatMonthYear(minTimestamp) : formatMonthYear(parseISODate(startDate))}
               {" → "}
-              {endDate == null ? formatShortDate(maxTimestamp) : formatShortDate(parseISODate(endDate))}
+              {endDate == null ? formatMonthYear(maxTimestamp) : formatMonthYear(parseISODate(endDate))}
             </span>
           </button>
         )}

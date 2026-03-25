@@ -17,7 +17,7 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { applyTransformsBatch } from "@/lib/ingest/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
@@ -30,8 +30,14 @@ import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-det
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
-import { extractDuplicateRows, loadJobAndFilePath } from "../utils/resource-loading";
+import type { JobHandlerContext } from "../utils/job-context";
+import {
+  cleanupSidecarsForJob,
+  createStandardOnFail,
+  extractDuplicateRows,
+  loadJobAndFilePath,
+  setJobStage,
+} from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 import type { ReviewChecksConfig } from "../workflows/review-checks";
 import {
@@ -273,18 +279,15 @@ const updateBatchProgress = async (
   payload: Payload,
   job: IngestJob,
   rowsProcessedSoFar: number,
-  batchNumber: number,
-  nonDuplicateRows: number
+  batchNumber: number
 ): Promise<void> => {
-  await ProgressTrackingService.updateStageProgress(
+  await ProgressTrackingService.updateAndCompleteBatch(
     payload,
     job,
     PROCESSING_STAGE.DETECT_SCHEMA,
     rowsProcessedSoFar,
-    nonDuplicateRows
+    batchNumber + 1
   );
-
-  await ProgressTrackingService.completeBatch(payload, job, PROCESSING_STAGE.DETECT_SCHEMA, batchNumber + 1);
 };
 
 // Helper to update schema state in database
@@ -370,25 +373,7 @@ export const schemaDetectionJob = {
     { name: "needsReview", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskCallbackArgs) => {
-    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
-    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
-    try {
-      await args.req.payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
-            context: "schema-detection",
-          },
-        },
-      });
-    } catch {
-      // Best-effort — don't throw in onFail
-    }
-  },
+  onFail: createStandardOnFail("schema-detection"),
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as SchemaDetectionJobInput["input"];
@@ -401,11 +386,7 @@ export const schemaDetectionJob = {
 
     try {
       // Set stage for UI progress display (workflow controls sequencing)
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { stage: PROCESSING_STAGE.DETECT_SCHEMA },
-      });
+      await setJobStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA);
 
       // Load resources
       const { job, filePath } = await loadJobAndFilePath(payload, ingestJobId);
@@ -457,7 +438,7 @@ export const schemaDetectionJob = {
         });
 
         // Update progress
-        await updateBatchProgress(payload, job, totalRowsProcessed, batchNumber, nonDuplicateRows.length);
+        await updateBatchProgress(payload, job, totalRowsProcessed, batchNumber);
 
         // Save intermediate state for observability
         const currentState = schemaBuilder.getState();
@@ -496,12 +477,7 @@ export const schemaDetectionJob = {
       logError(error, "Schema detection failed", { ingestJobId });
 
       // Clean up sidecar CSV files on error (Excel → CSV conversions)
-      try {
-        const { filePath: failedFilePath, job: failedJob } = await loadJobAndFilePath(payload, ingestJobId);
-        cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
-      } catch {
-        // Best-effort cleanup — don't mask the original error
-      }
+      await cleanupSidecarsForJob(payload, ingestJobId);
 
       // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;

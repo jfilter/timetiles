@@ -10,7 +10,7 @@ import { AppError, ForbiddenError } from "@/lib/api/errors";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { type FeatureFlags, getFeatureFlagService } from "@/lib/services/feature-flag-service";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import type { User } from "@/payload-types";
 
@@ -62,10 +62,10 @@ export const requireOwnerOrAdmin = (user: { id: number; role?: string | null }, 
  */
 export const requireFeatureEnabled = async (
   payload: Payload,
-  flag: Parameters<typeof isFeatureEnabled>[1],
+  flag: keyof FeatureFlags,
   message = "Feature is not enabled"
 ): Promise<void> => {
-  const enabled = await isFeatureEnabled(payload, flag);
+  const enabled = await getFeatureFlagService(payload).isEnabled(flag);
   if (!enabled) {
     throw new ForbiddenError(message);
   }

@@ -59,10 +59,11 @@ export const markJobCompleted = async (
   // Clean up sidecar CSV files
   cleanupSidecarFiles(filePath, sheetIndex);
 
-  // Track total events created for the user's quota.
+  // Quota phase 3 of 3: authoritative usage tracking after events are created.
   // Note: bulkInsertEvents uses raw Drizzle INSERT (bypasses Payload hooks), so the
   // beforeChange quota check on events doesn't run for imports. Quota is enforced via
-  // a pre-check in review-checks.ts (before import starts) and this post-increment.
+  // a pre-check in review-checks.ts (phase 1 gate, before import starts), phase 2 re-check
+  // below in checkEventQuotaBeforeProcessing, and this post-increment (phase 3).
   // There is a small TOCTOU window where concurrent imports by the same user could
   // both pass the pre-check and overshoot the quota — accepted tradeoff for bulk perf.
   try {
@@ -118,11 +119,6 @@ export const updateJobErrors = async (
   return storedErrorCount + errorsToStore.length;
 };
 
-export const cleanupOnError = (filePath: string, sheetIndex: number) => {
-  // Clean up sidecar CSV files on error
-  cleanupSidecarFiles(filePath, sheetIndex);
-};
-
 export const checkEventQuotaBeforeProcessing = async (
   payload: Payload,
   ingestFile: IngestFile,
@@ -140,6 +136,8 @@ export const checkEventQuotaBeforeProcessing = async (
     return;
   }
 
+  // Quota phase 2 of 3: re-check before processing (TOCTOU mitigation).
+  // See also: phase 1 (gate) in workflows/review-checks.ts, phase 3 (increment) above in markJobCompleted.
   const quotaService = createQuotaService(payload);
 
   // Use uniqueRows from deduplication summary -- this is the actual number of events

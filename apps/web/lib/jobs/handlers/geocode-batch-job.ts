@@ -15,7 +15,7 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
@@ -25,8 +25,8 @@ import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
-import { loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext } from "../utils/job-context";
+import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
 import type { ReviewChecksConfig } from "../workflows/review-checks";
 import { REVIEW_REASONS, setNeedsReview, shouldReviewGeocodingPartial } from "../workflows/review-checks";
@@ -125,6 +125,8 @@ const geocodeUniqueLocations = async (
 
     processed += chunk.length;
 
+    // Note: uses updateStageProgress (not updateAndCompleteBatch) because geocoding
+    // tracks unique locations rather than file-row batches — there is no batch number.
     await ProgressTrackingService.updateStageProgress(
       payload,
       job,
@@ -150,29 +152,10 @@ export const geocodeBatchJob = {
     { name: "needsReview", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskCallbackArgs) => {
-    // Note: onFail does NOT fire when tasks run inside workflow handlers with Promise.allSettled.
-    // Promise.allSettled catches the TaskError before it reaches Payload's error handler.
-    // Failure marking is handled by processSheets instead. This callback is kept for
-    // standalone task execution (outside workflows).
-    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
-    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
-    try {
-      await args.req.payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
-            context: "geocode-batch",
-          },
-        },
-      });
-    } catch {
-      // Best-effort — don't throw in onFail
-    }
-  },
+  // Note: onFail does NOT fire when tasks run inside workflow handlers with Promise.allSettled.
+  // Failure marking is handled by processSheets instead. This callback is kept for
+  // standalone task execution (outside workflows).
+  onFail: createStandardOnFail("geocode-batch"),
 
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
     const { payload } = context.req;
@@ -186,11 +169,7 @@ export const geocodeBatchJob = {
 
     try {
       // Set stage for UI progress tracking (workflow controls sequencing)
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { stage: PROCESSING_STAGE.GEOCODE_BATCH },
-      });
+      await setJobStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
 
       // Create a geocoding service scoped to this job invocation
       const geocodingService = createGeocodingService(payload);
@@ -288,13 +267,7 @@ export const geocodeBatchJob = {
       logError(error, "Unique location geocoding failed", { ingestJobId });
 
       // Clean up sidecar CSV files on error (best-effort)
-      try {
-        const { job: failedJob, ingestFile: failedFile } = await loadJobResources(payload, ingestJobId);
-        const failedFilePath = getIngestFilePath(failedFile.filename ?? "");
-        cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
-      } catch {
-        // Best-effort cleanup
-      }
+      await cleanupSidecarsForJob(payload, ingestJobId);
 
       // Re-throw — caught by processSheets try/catch which marks the sheet FAILED
       throw error;

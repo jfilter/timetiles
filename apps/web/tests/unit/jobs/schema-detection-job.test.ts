@@ -31,8 +31,7 @@ const mocks = vi.hoisted(() => {
     ProgressiveSchemaBuilder: vi.fn(),
     startStage: vi.fn(),
     completeStage: vi.fn(),
-    updateStageProgress: vi.fn(),
-    completeBatch: vi.fn(),
+    updateAndCompleteBatch: vi.fn(),
   };
 });
 
@@ -48,8 +47,7 @@ vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     startStage: mocks.startStage,
     completeStage: mocks.completeStage,
-    updateStageProgress: mocks.updateStageProgress,
-    completeBatch: mocks.completeBatch,
+    updateAndCompleteBatch: mocks.updateAndCompleteBatch,
   },
 }));
 
@@ -175,8 +173,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
 
       mocks.startStage.mockResolvedValueOnce(undefined);
-      mocks.updateStageProgress.mockResolvedValueOnce(undefined);
-      mocks.completeBatch.mockResolvedValueOnce(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
 
       // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
@@ -200,8 +197,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         "detect-schema",
         expect.any(Number) // totalRows from duplicates.summary
       );
-      expect(mocks.updateStageProgress).toHaveBeenCalled();
-      expect(mocks.completeBatch).toHaveBeenCalled();
+      expect(mocks.updateAndCompleteBatch).toHaveBeenCalled();
     });
 
     it("should detect geocoding fields via schema builder", async () => {
@@ -277,8 +273,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
 
       mocks.startStage.mockResolvedValueOnce(undefined);
-      mocks.updateStageProgress.mockResolvedValueOnce(undefined);
-      mocks.completeBatch.mockResolvedValueOnce(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
 
       // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
@@ -288,8 +283,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();
-      expect(mocks.updateStageProgress).toHaveBeenCalled();
-      expect(mocks.completeBatch).toHaveBeenCalled();
+      expect(mocks.updateAndCompleteBatch).toHaveBeenCalled();
 
       // Schema and state are saved to the import job via payload.update
       // (verified by the fact that the handler completes successfully)
@@ -342,8 +336,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
         .mockReturnValueOnce(mockState2);
 
       mocks.startStage.mockResolvedValue(undefined);
-      mocks.updateStageProgress.mockResolvedValue(undefined);
-      mocks.completeBatch.mockResolvedValue(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValue(undefined);
 
       // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
@@ -428,8 +421,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
 
       mocks.startStage.mockResolvedValueOnce(undefined);
-      mocks.updateStageProgress.mockResolvedValueOnce(undefined);
-      mocks.completeBatch.mockResolvedValueOnce(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
 
       // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
@@ -444,8 +436,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();
-      expect(mocks.updateStageProgress).toHaveBeenCalled();
-      expect(mocks.completeBatch).toHaveBeenCalled();
+      expect(mocks.updateAndCompleteBatch).toHaveBeenCalled();
     });
   });
 
@@ -480,8 +471,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
 
       mocks.startStage.mockResolvedValueOnce(undefined);
-      mocks.updateStageProgress.mockResolvedValueOnce(undefined);
-      mocks.completeBatch.mockResolvedValueOnce(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
 
       await schemaDetectionJob.handler(mockContext);
 
@@ -614,8 +604,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
 
       mocks.startStage.mockResolvedValueOnce(undefined);
-      mocks.updateStageProgress.mockResolvedValueOnce(undefined);
-      mocks.completeBatch.mockResolvedValueOnce(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
 
       const result = await schemaDetectionJob.handler(mockContext);
 

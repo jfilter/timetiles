@@ -381,8 +381,13 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         detectedFieldMappings: { locationPath: "address" },
       };
 
-      // Mock findByID to return the job for all calls (including error cleanup re-load)
-      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+      // Mock findByID to return appropriate data for each collection (including error cleanup re-load)
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "datasets") return Promise.resolve(createMockDataset());
+        if (collection === "ingest-files") return Promise.resolve({ id: "file-1", filename: "test.csv" });
+        return Promise.resolve(null);
+      });
       mockPayload.update.mockResolvedValue({});
 
       // Make streamBatchesFromFile throw an error (permanent, not matching transient patterns)

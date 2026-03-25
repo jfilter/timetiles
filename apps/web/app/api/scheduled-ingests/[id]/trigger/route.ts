@@ -14,6 +14,7 @@ import { z } from "zod";
 
 import { apiRoute, ConflictError, safeFindByID } from "@/lib/api";
 import { queueJobWithRollback } from "@/lib/api/job-helpers";
+import { claimScheduledIngestRunning } from "@/lib/services/webhook-registry";
 import type { ScheduledIngest } from "@/payload-types";
 
 export const POST = apiRoute({
@@ -31,20 +32,22 @@ export const POST = apiRoute({
       user,
     });
 
-    // Atomically claim the import by updating only if not already running.
-    // This prevents a race condition where two concurrent trigger requests
-    // could both start an import.
-    // Use overrideAccess: true because access was already verified above.
-    const claimResult = await payload.update({
-      collection: "scheduled-ingests",
-      where: { id: { equals: numericId }, lastStatus: { not_equals: "running" } },
-      data: { lastRun: new Date().toISOString(), lastStatus: "running" },
-      overrideAccess: true,
-    });
-
-    if (claimResult.docs.length === 0) {
+    // Atomically claim "running" status via a single SQL UPDATE with a WHERE
+    // guard. This prevents a race condition where two concurrent trigger
+    // requests could both start an import. Access was already verified above.
+    const claimed = await claimScheduledIngestRunning(payload, numericId);
+    if (!claimed) {
       throw new ConflictError("Import is already running");
     }
+
+    // Set lastRun timestamp (separate from the atomic claim because
+    // claimScheduledIngestRunning only sets last_status for simplicity)
+    await payload.update({
+      collection: "scheduled-ingests",
+      id: numericId,
+      data: { lastRun: new Date().toISOString() },
+      overrideAccess: true,
+    });
 
     // Queue the URL fetch job — revert status on failure
     await queueJobWithRollback(

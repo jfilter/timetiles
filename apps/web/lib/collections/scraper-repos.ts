@@ -12,7 +12,7 @@ import type { CollectionConfig, Where } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { isPrivateUrl } from "@/lib/security/url-validation";
-import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 
 const COLLECTION_SLUG = "scraper-repos" as const;
@@ -42,7 +42,7 @@ const ScraperRepos: CollectionConfig = {
     },
     create: async ({ req: { user, payload } }) => {
       if (!user) return false;
-      const enabled = await isFeatureEnabled(payload, "enableScrapers");
+      const enabled = await getFeatureFlagService(payload).isEnabled("enableScrapers");
       if (!enabled) return false;
       // Trust level 3+ required
       const trustLevel = typeof user.trustLevel === "string" ? Number(user.trustLevel) : (user.trustLevel ?? 0);

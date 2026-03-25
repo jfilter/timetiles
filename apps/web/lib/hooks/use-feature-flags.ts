@@ -14,7 +14,7 @@ import type { FeatureFlags } from "@/lib/services/feature-flag-service";
 
 import { QUERY_PRESETS } from "./query-presets";
 
-const FEATURE_FLAGS_QUERY_KEY = ["feature-flags"] as const;
+export const featureFlagKeys = { all: ["feature-flags"] as const };
 
 /**
  * Fetches feature flags from the API.
@@ -35,7 +35,7 @@ export const fetchFeatureFlags = async (): Promise<FeatureFlags> => {
  * ```
  */
 export const useFeatureFlags = () =>
-  useQuery({ queryKey: FEATURE_FLAGS_QUERY_KEY, queryFn: fetchFeatureFlags, ...QUERY_PRESETS.standard });
+  useQuery({ queryKey: featureFlagKeys.all, queryFn: fetchFeatureFlags, ...QUERY_PRESETS.standard });
 
 /**
  * Hook to check if a specific feature is enabled.

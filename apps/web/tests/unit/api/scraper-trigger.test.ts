@@ -12,17 +12,15 @@ import "@/tests/mocks/services/site-resolver";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
 
-const mocks = vi.hoisted(() => ({
-  mockGetPayload: vi.fn(),
-  mockIsFeatureEnabled: vi.fn(),
-  mockClaimScraperRunning: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockIsEnabled: vi.fn(), mockClaimScraperRunning: vi.fn() }));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
-vi.mock("@/lib/services/feature-flag-service", () => ({ isFeatureEnabled: mocks.mockIsFeatureEnabled }));
+vi.mock("@/lib/services/feature-flag-service", () => ({
+  getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: mocks.mockIsEnabled }),
+}));
 vi.mock("@/lib/services/webhook-registry", () => ({ claimScraperRunning: mocks.mockClaimScraperRunning }));
 
 import { NextRequest } from "next/server";
@@ -61,13 +59,13 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     vi.mocked(getPayload).mockReset();
     vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
 
-    mocks.mockIsFeatureEnabled.mockResolvedValue(true);
+    mocks.mockIsEnabled.mockResolvedValue(true);
     mocks.mockClaimScraperRunning.mockResolvedValue(true);
     mockPayload.findByID.mockResolvedValue(mockScraper);
   });
 
   it("returns 403 when feature flag is disabled", async () => {
-    mocks.mockIsFeatureEnabled.mockResolvedValue(false);
+    mocks.mockIsEnabled.mockResolvedValue(false);
 
     const response = await POST(createRequest(), createParams("10"));
 

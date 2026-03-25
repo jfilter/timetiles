@@ -14,6 +14,7 @@
  */
 "use client";
 
+import type { UseQueryResult } from "@tanstack/react-query";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
@@ -27,8 +28,13 @@ import type { FilterState } from "../types/filter-state";
 import type { BoundsType, ViewScope } from "../utils/event-params";
 import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 import { QUERY_PRESETS } from "./query-presets";
+import type { LoadingPhase } from "./use-loading-phase";
+import { useLoadingPhase } from "./use-loading-phase";
 
 const logger = createLogger("EventsQueries");
+
+/** Query result enriched with loading-phase flags for chart components. */
+export type ChartQueryResult<TData, TError = Error> = UseQueryResult<TData, TError> & LoadingPhase;
 
 // Types for API responses
 
@@ -216,8 +222,8 @@ export const useHistogramQuery = (
   bounds: BoundsType,
   enabled: boolean = true,
   scope?: ViewScope
-) =>
-  useQuery({
+): ChartQueryResult<HistogramResponse> => {
+  const query = useQuery({
     queryKey: eventsQueryKeys.histogram(filters, bounds, scope),
     queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal, scope),
     enabled: enabled && bounds != null, // Only run when bounds are available
@@ -225,6 +231,9 @@ export const useHistogramQuery = (
 
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
+  const phase = useLoadingPhase(query.isLoading);
+  return { ...query, ...phase };
+};
 
 /**
  * Hook to fetch histogram data for the full date range (no date or bounds filters).
@@ -291,8 +300,8 @@ export const useEventsAggregationQuery = (
   groupBy: "catalog" | "dataset",
   enabled: boolean = true,
   scope?: ViewScope
-) =>
-  useQuery({
+): ChartQueryResult<AggregateResponse> => {
+  const query = useQuery({
     queryKey: eventsQueryKeys.aggregation(filters, bounds, groupBy, scope),
     queryFn: ({ signal }) => fetchAggregation(filters, bounds, groupBy, signal, scope),
     enabled: enabled && bounds != null,
@@ -300,6 +309,9 @@ export const useEventsAggregationQuery = (
 
     placeholderData: (previousData) => previousData,
   });
+  const phase = useLoadingPhase(query.isLoading);
+  return { ...query, ...phase };
+};
 
 // Infinite query hook for paginated events list
 export const useEventsInfiniteQuery = (

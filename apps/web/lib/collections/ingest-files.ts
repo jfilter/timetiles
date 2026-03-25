@@ -130,8 +130,8 @@ const IngestFiles: CollectionConfig = {
       if (!user || user.deletionScheduledAt) return false;
 
       // Check feature flag - even admins can't create if disabled
-      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-      return isFeatureEnabled(payload, "enableImportCreation");
+      const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+      return getFeatureFlagService(payload).isEnabled("enableImportCreation");
     },
 
     // Only file owner, editors, or admins can update

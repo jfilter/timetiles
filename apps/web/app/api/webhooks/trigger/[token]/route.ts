@@ -8,7 +8,6 @@
  * @module
  * @category API
  */
-import { sql } from "@payloadcms/db-postgres";
 import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
@@ -16,7 +15,12 @@ import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { queueWebhookImport } from "@/lib/ingest/trigger-service";
 import { logger } from "@/lib/logger";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
-import { claimScraperRunning, resolveWebhookToken, type WebhookTarget } from "@/lib/services/webhook-registry";
+import {
+  claimScheduledIngestRunning,
+  claimScraperRunning,
+  resolveWebhookToken,
+  type WebhookTarget,
+} from "@/lib/services/webhook-registry";
 
 interface RateLimitResponse {
   success: false;
@@ -84,15 +88,9 @@ const handleScheduledIngestTrigger = async (
   target: Extract<WebhookTarget, { type: "scheduled-ingest" }>
 ): Promise<Record<string, unknown>> => {
   // Atomically claim "running" status to prevent concurrent executions
-  const claimResult = (await payload.db.drizzle.execute(sql`
-    UPDATE payload.scheduled_ingests
-    SET last_status = 'running'
-    WHERE id = ${target.id}
-      AND (last_status IS NULL OR last_status != 'running')
-    RETURNING id
-  `)) as { rows: Array<{ id: number }> };
+  const claimed = await claimScheduledIngestRunning(payload, target.id);
 
-  if (claimResult.rows.length === 0) {
+  if (!claimed) {
     logger.info(
       { scheduledIngestId: target.id, name: target.name },
       "Webhook trigger skipped - import already running"

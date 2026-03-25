@@ -78,8 +78,8 @@ export const cleanupStuckScrapersJob = {
 
     try {
       // Check if scrapers feature is enabled
-      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-      if (!(await isFeatureEnabled(payload, "enableScrapers"))) {
+      const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+      if (!(await getFeatureFlagService(payload).isEnabled("enableScrapers"))) {
         return { output: { success: true, skipped: true, reason: "Scrapers feature disabled" } };
       }
 

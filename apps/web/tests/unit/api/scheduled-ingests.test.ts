@@ -26,12 +26,15 @@ const mockSchedule = {
   createdBy: { id: 1, email: TEST_EMAILS.user },
 };
 
-const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn() }));
+const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockClaimScheduledIngestRunning: vi.fn() }));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/lib/services/webhook-registry", () => ({
+  claimScheduledIngestRunning: mocks.mockClaimScheduledIngestRunning,
+}));
 
 // Import AFTER mocks
 const { POST } = await import("@/app/api/scheduled-ingests/[id]/trigger/route");
@@ -51,6 +54,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     // With isolate: false, ensure the module-level getPayload binding is configured
     mocks.mockGetPayload.mockReset();
     vi.mocked(getPayload).mockReset();
+    mocks.mockClaimScheduledIngestRunning.mockResolvedValue(true);
   });
 
   it("should return 401 when not authenticated", async () => {
@@ -104,7 +108,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
   it("should enforce access control via overrideAccess: false", async () => {
     const mockPayload = createMockPayload();
     mockPayload.findByID.mockResolvedValue(mockSchedule);
-    mockPayload.update.mockResolvedValue({ docs: [{ ...mockSchedule, lastStatus: "running" }], errors: [] });
+    mockPayload.update.mockResolvedValue({ id: 1 });
     mockPayload.jobs.queue.mockResolvedValue({ id: "job-123" });
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
 
@@ -118,7 +122,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
   it("should return 409 when import is already running (atomic claim)", async () => {
     const mockPayload = createMockPayload();
     mockPayload.findByID.mockResolvedValue({ ...mockSchedule, lastStatus: "running" });
-    mockPayload.update.mockResolvedValue({ docs: [], errors: [] });
+    mocks.mockClaimScheduledIngestRunning.mockResolvedValue(false);
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
 
     const response = await POST(createRequest(), { params: Promise.resolve({ id: "1" }) });
@@ -132,7 +136,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
   it("should trigger import when not already running (atomic claim succeeds)", async () => {
     const mockPayload = createMockPayload();
     mockPayload.findByID.mockResolvedValue(mockSchedule);
-    mockPayload.update.mockResolvedValue({ docs: [{ ...mockSchedule, lastStatus: "running" }], errors: [] });
+    mockPayload.update.mockResolvedValue({ id: 1 });
     mockPayload.jobs.queue.mockResolvedValue({ id: "job-123" });
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
 
@@ -142,10 +146,15 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     const data = await response.json();
     expect(data.message).toBe("Import triggered");
 
+    // Verify atomic claim was called with correct ID
+    expect(mocks.mockClaimScheduledIngestRunning).toHaveBeenCalledWith(mockPayload, 1);
+
+    // Verify lastRun timestamp update (separate from atomic claim)
     expect(mockPayload.update).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "scheduled-ingests",
-        where: { id: { equals: 1 }, lastStatus: { not_equals: "running" } },
+        id: 1,
+        data: expect.objectContaining({ lastRun: expect.any(String) }),
         overrideAccess: true,
       })
     );
@@ -164,7 +173,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     const mockPayload = createMockPayload();
     mockPayload.findByID.mockResolvedValue(mockSchedule);
     mockPayload.update
-      .mockResolvedValueOnce({ docs: [{ ...mockSchedule, lastStatus: "running" }], errors: [] }) // claim succeeds
+      .mockResolvedValueOnce({ id: 1 }) // lastRun update
       .mockResolvedValueOnce({ docs: [mockSchedule], errors: [] }); // rollback
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
@@ -174,6 +183,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     expect(response.status).toBe(500);
 
     // Verify rollback was called with failed status
+    // update calls: [0] = lastRun timestamp, [1] = rollback
     expect(mockPayload.update).toHaveBeenCalledTimes(2);
     expect(mockPayload.update).toHaveBeenLastCalledWith(
       expect.objectContaining({

@@ -20,8 +20,8 @@ export const GET = apiRoute({
   auth: "admin",
   rateLimit: { type: "API_GENERAL" },
   handler: async ({ payload }) => {
-    const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-    const enabled = await isFeatureEnabled(payload, "enableScheduledJobExecution");
+    const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+    const enabled = await getFeatureFlagService(payload).isEnabled("enableScheduledJobExecution");
 
     const recentJobs = await payload.find({
       collection: "payload-jobs",

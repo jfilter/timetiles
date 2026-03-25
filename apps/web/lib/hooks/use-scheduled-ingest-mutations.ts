@@ -13,7 +13,10 @@ import type { ScheduledIngest } from "@/payload-types";
 
 import { fetchJson } from "../api/http-error";
 
-export const scheduledIngestKeys = { all: ["scheduled-ingests"] as const };
+export const scheduledIngestKeys = {
+  all: ["scheduled-ingests"] as const,
+  byId: (id: number | null) => [...scheduledIngestKeys.all, id] as const,
+};
 
 export const useToggleScheduledIngestMutation = () => {
   const queryClient = useQueryClient();

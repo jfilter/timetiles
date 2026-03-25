@@ -11,9 +11,11 @@
  */
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { COLLECTION_NAMES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/ingest-constants";
+import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
 
+import type { TaskCallbackArgs } from "./job-context";
 import { getIngestFilePath } from "./upload-path";
 
 /**
@@ -112,6 +114,86 @@ export const failIngestJob = async (
     id: ingestJobId,
     data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError: errorMessage, context: context ?? "unknown" } },
   });
+};
+
+/**
+ * Extract ingestJobId from task callback args, returning null if missing or wrong type.
+ */
+// eslint-disable-next-line sonarjs/function-return-type -- ingestJobId can be string or number from Payload
+export const extractIngestJobId = (args: TaskCallbackArgs): string | number | null => {
+  const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
+  if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return null;
+  return ingestJobId;
+};
+
+/**
+ * Extract an error message from a job error value.
+ *
+ * Handles Error objects, strings, and unknown values.
+ */
+const extractErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Task failed after all retries";
+};
+
+/**
+ * Factory for standard onFail callbacks that mark an ingest job as FAILED.
+ *
+ * Covers the common pattern shared by 6 of 7 ingest job handlers
+ * (all except dataset-detection which updates INGEST_FILES instead).
+ *
+ * @param context - Error context string identifying the handler (e.g. "schema-detection")
+ * @param options.beforeFail - Optional async callback invoked before marking the job as failed.
+ *   Runs in a separate try/catch so cleanup failures don't prevent the status update.
+ */
+export const createStandardOnFail = (
+  context: string,
+  options?: { beforeFail?: (payload: Payload, ingestJobId: string | number) => Promise<void> }
+): ((args: TaskCallbackArgs) => Promise<void>) => {
+  return async (args: TaskCallbackArgs) => {
+    const ingestJobId = extractIngestJobId(args);
+    if (ingestJobId == null) return;
+
+    if (options?.beforeFail) {
+      try {
+        await options.beforeFail(args.req.payload, ingestJobId);
+      } catch {
+        // Best-effort pre-fail cleanup — don't mask the status update
+      }
+    }
+
+    try {
+      await args.req.payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError: extractErrorMessage(args.job.error), context } },
+      });
+    } catch {
+      // Best-effort — don't throw in onFail
+    }
+  };
+};
+
+/**
+ * Best-effort sidecar CSV cleanup for a failed job. Swallows all errors.
+ */
+export const cleanupSidecarsForJob = async (payload: Payload, ingestJobId: string | number): Promise<void> => {
+  try {
+    const job = await loadIngestJob(payload, ingestJobId);
+    const ingestFile = await loadIngestFile(payload, job.ingestFile);
+    const filePath = getIngestFilePath(ingestFile.filename ?? "");
+    cleanupSidecarFiles(filePath, job.sheetIndex ?? 0);
+  } catch {
+    // Best-effort cleanup — don't mask the original error
+  }
+};
+
+/**
+ * Set the processing stage on an ingest job (for UI progress display).
+ */
+export const setJobStage = async (payload: Payload, jobId: string | number, stage: ProcessingStage): Promise<void> => {
+  await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: jobId, data: { stage } });
 };
 
 /**

@@ -6,8 +6,8 @@
  * a second concurrent import to the same dataset is detected as conflicting.
  * This prevents schema drift when multiple imports run concurrently.
  *
- * Tests import `hasConflictingReviewJob` directly from the validate-schema-job
- * handler and run it against real Payload collections.
+ * Tests import `hasConflictingReviewJob` directly from validation-persistence
+ * and run it against real Payload collections.
  *
  * Tests use unique datasets and ingest files per test, so no truncation is needed.
  *
@@ -17,7 +17,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { hasConflictingReviewJob } from "@/lib/jobs/handlers/validate-schema-job";
+import { hasConflictingReviewJob } from "@/lib/jobs/handlers/validate-schema/validation-persistence";
 
 import {
   createIntegrationTestEnvironment,
