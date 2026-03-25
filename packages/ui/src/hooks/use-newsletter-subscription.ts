@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useUIConfig } from "../provider";
 
-type SubmitStatus = "idle" | "loading" | "success" | "error";
+export type NewsletterStatus = "idle" | "loading" | "success" | "error";
 
 interface UseNewsletterSubscriptionConfig {
   resetDelay?: number;
@@ -33,7 +33,7 @@ interface UseNewsletterSubscriptionConfig {
 interface UseNewsletterSubscriptionReturn {
   email: string;
   setEmail: (email: string) => void;
-  status: SubmitStatus;
+  status: NewsletterStatus;
   message: string;
   handleSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => Promise<void>;
 }
@@ -45,7 +45,7 @@ export const useNewsletterSubscription = ({
 }: UseNewsletterSubscriptionConfig = {}): UseNewsletterSubscriptionReturn => {
   const { onNewsletterSubmit } = useUIConfig();
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [status, setStatus] = useState<NewsletterStatus>("idle");
   const [message, setMessage] = useState("");
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
