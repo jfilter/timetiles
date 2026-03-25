@@ -89,6 +89,7 @@ import {
   type UserQuotas,
   type UserUsage,
 } from "@/lib/constants/quota-constants";
+import { drizzleColumns } from "@/lib/database/drizzle-helpers";
 import { createLogger } from "@/lib/logger";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
@@ -98,12 +99,10 @@ import type { User, UserUsage as UserUsageRecord } from "@/payload-types";
 const logger = createLogger("quota-service");
 
 /**
- * Drizzle table schemas have typed column properties but don't support
- * runtime string indexing. This single cast concentrates the type workaround
- * instead of repeating `as unknown as Record<string, unknown>` at each call site.
- * @see https://github.com/drizzle-team/drizzle-orm/issues/1510
+ * Pre-cast Drizzle table for dynamic column access.
+ * @see drizzleColumns in `@/lib/database/drizzle-helpers`
  */
-const userUsageColumns: Record<string, unknown> = user_usage as unknown as Record<string, unknown>;
+const userUsageColumns = drizzleColumns(user_usage);
 
 /** Collection slug for user usage tracking */
 const USER_USAGE_COLLECTION = "user-usage";
@@ -608,6 +607,7 @@ export class QuotaService {
   /**
    * Validate a quota check and throw if exceeded.
    * Now async since checkQuota is async.
+   * @throws {QuotaExceededError} if the quota would be exceeded
    */
   async validateQuota(user: User | null | undefined, quotaKey: QuotaKey, amount: number = 1): Promise<void> {
     const result = await this.checkQuota(user, quotaKey, amount);
@@ -625,7 +625,7 @@ export class QuotaService {
    * requests cannot both slip through.
    *
    * @returns true if increment succeeded, false if quota would be exceeded
-   * @throws QuotaExceededError if quota exceeded and throwOnExceeded is true
+   * @throws {QuotaExceededError} if quota exceeded and throwOnExceeded is true
    */
   async checkAndIncrementUsage(
     user: User,

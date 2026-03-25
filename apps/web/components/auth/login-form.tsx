@@ -10,7 +10,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Button, Input, Label } from "@timetiles/ui";
+import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 
@@ -18,6 +18,7 @@ import { Link } from "@/i18n/navigation";
 import { loginRequest } from "@/lib/hooks/use-auth-mutations";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
+import { AuthFormField } from "./auth-form-field";
 import { FormError } from "./form-feedback";
 
 export interface LoginFormProps {
@@ -50,33 +51,29 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
 
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
-      <div className="space-y-2">
-        <Label htmlFor="login-email">{t("emailLabel")}</Label>
-        <Input
-          id="login-email"
-          type="email"
-          value={email}
-          onChange={handleEmailChange}
-          placeholder={t("emailPlaceholder")}
-          disabled={isPending}
-          required
-          autoComplete="email"
-        />
-      </div>
+      <AuthFormField
+        id="login-email"
+        label={t("emailLabel")}
+        type="email"
+        value={email}
+        onChange={handleEmailChange}
+        placeholder={t("emailPlaceholder")}
+        disabled={isPending}
+        required
+        autoComplete="email"
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="login-password">{t("passwordLabel")}</Label>
-        <Input
-          id="login-password"
-          type="password"
-          value={password}
-          onChange={handlePasswordChange}
-          placeholder={t("passwordPlaceholder")}
-          disabled={isPending}
-          required
-          autoComplete="current-password"
-        />
-      </div>
+      <AuthFormField
+        id="login-password"
+        label={t("passwordLabel")}
+        type="password"
+        value={password}
+        onChange={handlePasswordChange}
+        placeholder={t("passwordPlaceholder")}
+        disabled={isPending}
+        required
+        autoComplete="current-password"
+      />
 
       <FormError error={error} />
 

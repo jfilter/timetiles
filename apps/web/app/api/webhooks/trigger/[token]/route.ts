@@ -16,8 +16,7 @@ import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { queueWebhookImport } from "@/lib/ingest/trigger-service";
 import { logger } from "@/lib/logger";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
-import type { WebhookTarget } from "@/lib/services/webhook-registry";
-import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
+import { claimScraperRunning, resolveWebhookToken, type WebhookTarget } from "@/lib/services/webhook-registry";
 
 interface RateLimitResponse {
   success: false;

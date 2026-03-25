@@ -26,7 +26,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
-import { NewsletterButtonContent, NewsletterStatusIndicator } from "./newsletter-shared";
+import { NewsletterEmailInput, NewsletterStatusMessage, NewsletterSubmitButton } from "./newsletter-shared";
 
 const newsletterCtaVariants = cva("relative overflow-hidden", {
   variants: {
@@ -56,6 +56,8 @@ export interface NewsletterCTAProps extends VariantProps<typeof newsletterCtaVar
   className?: string;
   /** Custom submission handler; delegates to this instead of built-in fetch when provided */
   onSubmit?: (email: string, additionalData?: Record<string, unknown>) => Promise<void>;
+  /** Privacy/disclaimer text shown below the form */
+  privacyNote?: string;
 }
 
 const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
@@ -70,6 +72,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
       additionalData,
       className,
       onSubmit,
+      privacyNote = "No spam, ever. Unsubscribe anytime. We respect your privacy.",
     },
     ref
   ) => {
@@ -154,98 +157,22 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
             <div className="relative">
               {/* Input and button combined */}
               <div className="flex flex-col gap-3 md:flex-row">
-                <div className="relative flex-1">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={placeholder}
-                    disabled={status === "loading" || status === "success"}
-                    className={cn(
-                      "h-14 w-full rounded-sm border px-6 py-3",
-                      "border-border dark:border-border",
-                      "bg-background/80 backdrop-blur-sm",
-                      "text-foreground font-mono text-base",
-                      "placeholder:text-muted-foreground placeholder:font-sans placeholder:text-sm",
-                      "transition-all duration-300",
-                      "focus:border-primary focus:ring-primary/20 focus:ring-2 focus:outline-none",
-                      "disabled:cursor-not-allowed disabled:opacity-50",
-                      status === "success" && "border-accent ring-accent/20 ring-2"
-                    )}
-                    required
-                  />
-                  <NewsletterStatusIndicator status={status} size="md" />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={status === "loading" || status === "success"}
-                  className={cn(
-                    "group relative h-14 overflow-hidden rounded-sm px-8",
-                    "bg-primary text-primary-foreground",
-                    "font-sans text-base font-semibold tracking-wide",
-                    "transition-all duration-300",
-                    "hover:bg-primary/90 hover:scale-[1.02] hover:shadow-xl",
-                    "focus:ring-primary focus:ring-2 focus:ring-offset-2 focus:outline-none",
-                    "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100",
-                    "active:scale-[0.98]",
-                    status === "success" && "bg-accent hover:bg-accent/90"
-                  )}
-                >
-                  <span className="relative z-10 flex items-center gap-2">
-                    <NewsletterButtonContent status={status} buttonText={buttonText} showCheckIcon />
-                  </span>
-
-                  {/* Hover effect - coordinate line sweep */}
-                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                </button>
+                <NewsletterEmailInput
+                  email={email}
+                  onEmailChange={setEmail}
+                  status={status}
+                  placeholder={placeholder}
+                  size="md"
+                />
+                <NewsletterSubmitButton status={status} buttonText={buttonText} showCheckIcon size="md" />
               </div>
 
-              {/* Status message */}
-              {message && (
-                <div
-                  className={cn(
-                    "animate-fade-in mt-4 flex items-start gap-2 rounded-sm p-4",
-                    status === "success" && "bg-accent/10 border-accent/20 border",
-                    status === "error" && "bg-destructive/10 border-destructive/20 border"
-                  )}
-                >
-                  <div className="flex-shrink-0">
-                    {status === "success" && (
-                      <svg className="text-accent h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                    {status === "error" && (
-                      <svg className="text-destructive h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                  <p
-                    className={cn(
-                      "text-sm leading-relaxed font-medium",
-                      status === "success" && "text-accent dark:text-accent",
-                      status === "error" && "text-destructive"
-                    )}
-                  >
-                    {message}
-                  </p>
-                </div>
-              )}
+              <NewsletterStatusMessage status={status} message={message} decorated />
             </div>
 
             {/* Privacy note */}
             <p className="text-foreground/40 dark:text-foreground/40 mt-6 text-center font-mono text-xs tracking-wide">
-              No spam, ever. Unsubscribe anytime. We respect your privacy.
+              {privacyNote}
             </p>
           </form>
         </div>

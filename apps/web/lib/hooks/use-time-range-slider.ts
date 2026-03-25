@@ -21,8 +21,6 @@ import { formatISODate, parseISODate } from "../utils/date";
 
 interface UseTimeRangeSliderProps {
   filters: FilterState;
-  startDate: string | null;
-  endDate: string | null;
   onStartDateChange: (date: string | null) => void;
   onEndDateChange: (date: string | null) => void;
 }
@@ -41,6 +39,10 @@ interface UseTimeRangeSliderReturn {
   histogramRef: React.RefObject<HTMLDivElement | null>;
   /** Whether histogram data is loading */
   isLoading: boolean;
+  /** Current start date filter value (pass-through from filters) */
+  startDate: string | null;
+  /** Current end date filter value (pass-through from filters) */
+  endDate: string | null;
   /** Raw histogram buckets */
   histogram: HistogramResponse["histogram"];
   /** Minimum timestamp in the data range */
@@ -85,11 +87,10 @@ interface UseTimeRangeSliderReturn {
 
 export const useTimeRangeSlider = ({
   filters,
-  startDate,
-  endDate,
   onStartDateChange,
   onEndDateChange,
 }: UseTimeRangeSliderProps): UseTimeRangeSliderReturn => {
+  const { startDate, endDate } = filters;
   const trackRef = useRef<HTMLDivElement>(null);
   const histogramRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<"start" | "end" | null>(null);
@@ -255,6 +256,8 @@ export const useTimeRangeSlider = ({
     trackRef,
     histogramRef,
     isLoading,
+    startDate,
+    endDate,
     histogram,
     minTimestamp,
     maxTimestamp,

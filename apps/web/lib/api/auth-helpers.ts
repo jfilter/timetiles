@@ -14,21 +14,21 @@ import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import type { User } from "@/payload-types";
 
+/** Payload relation IDs can be a number, stringified number, null, or undefined. */
+type OwnerId = number | string | null | undefined;
+
 /**
  * Check if a user can manage a resource based on role or ownership.
  * Admins and editors can manage any resource; regular users only their own.
  */
-export const canManageResource = (
-  user: { id: number; role?: string | null },
-  ownerId: number | string | null | undefined
-): boolean => {
+export const canManageResource = (user: { id: number; role?: string | null }, ownerId: OwnerId): boolean => {
   if (isPrivileged(user)) return true;
   return ownerId != null && ownerId === user.id;
 };
 
 /**
  * Require that the user has admin role.
- * @throws ForbiddenError if user is not an admin
+ * @throws {ForbiddenError} if user is not an admin
  */
 export const requireAdmin = (user: { role?: string | null }): void => {
   if (user.role !== "admin") {
@@ -38,7 +38,7 @@ export const requireAdmin = (user: { role?: string | null }): void => {
 
 /**
  * Require that the user has editor or admin role.
- * @throws ForbiddenError if user is not privileged
+ * @throws {ForbiddenError} if user is not privileged
  */
 export const requirePrivileged = (user: { role?: string | null }): void => {
   if (!isPrivileged(user)) {
@@ -48,12 +48,9 @@ export const requirePrivileged = (user: { role?: string | null }): void => {
 
 /**
  * Require that the user owns the resource or is an admin.
- * @throws ForbiddenError if neither condition is met
+ * @throws {ForbiddenError} if neither condition is met
  */
-export const requireOwnerOrAdmin = (
-  user: { id: number; role?: string | null },
-  ownerId: number | string | null | undefined
-): void => {
+export const requireOwnerOrAdmin = (user: { id: number; role?: string | null }, ownerId: OwnerId): void => {
   if (user.role === "admin") return;
   if (ownerId != null && ownerId === user.id) return;
   throw new ForbiddenError("Access denied");
@@ -61,7 +58,7 @@ export const requireOwnerOrAdmin = (
 
 /**
  * Require that a feature flag is enabled.
- * @throws ForbiddenError if the feature is disabled
+ * @throws {ForbiddenError} if the feature is disabled
  */
 export const requireFeatureEnabled = async (
   payload: Payload,
@@ -76,7 +73,7 @@ export const requireFeatureEnabled = async (
 
 /**
  * Require that the scrapers feature flag is enabled.
- * @throws ForbiddenError if the feature is disabled
+ * @throws {ForbiddenError} if the feature is disabled
  */
 export const requireScrapersEnabled = async (payload: Payload): Promise<void> =>
   requireFeatureEnabled(payload, "enableScrapers", "Scraper feature is not enabled");
@@ -84,7 +81,7 @@ export const requireScrapersEnabled = async (payload: Payload): Promise<void> =>
 /**
  * Require that the request originates from the default (main) site.
  * Non-default sites are display-only and cannot perform data ingestion.
- * @throws ForbiddenError if the request is from a non-default site
+ * @throws {ForbiddenError} if the request is from a non-default site
  */
 export const requireDefaultSite = async (payload: Payload, req: { headers: Headers }): Promise<void> => {
   const host = req.headers.get("host");
@@ -98,7 +95,7 @@ export const requireDefaultSite = async (payload: Payload, req: { headers: Heade
  * Verify a user's password by attempting a login.
  * Throws an error with a descriptive message on failure.
  */
-export const verifyPassword = async (payload: Payload, user: User, password: string): Promise<void> => {
+const verifyPassword = async (payload: Payload, user: User, password: string): Promise<void> => {
   try {
     await payload.login({ collection: "users", data: { email: user.email, password } });
   } catch {
@@ -112,7 +109,7 @@ export const verifyPassword = async (payload: Payload, user: User, password: str
  * Throws AppError(401) on failure.
  *
  * @param errorMessage - Custom error message for the 401 response (default: "Password is incorrect")
- * @throws AppError with status 401 if the password is incorrect
+ * @throws {AppError} with status 401 if the password is incorrect
  */
 export const verifyPasswordWithAudit = async (
   payload: Payload,

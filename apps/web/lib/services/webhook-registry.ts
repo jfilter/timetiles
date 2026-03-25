@@ -21,6 +21,9 @@ const logger = createLogger("webhook-registry");
 
 /**
  * Result of resolving a webhook token to a triggerable resource.
+ *
+ * Discriminated union keyed on `type` so callers get a narrowed `record`
+ * type after checking `target.type`.
  */
 export type WebhookTarget =
   | { type: "scheduled-ingest"; id: number; name: string; record: ScheduledIngest }

@@ -15,6 +15,7 @@ import { apiRoute, AppError, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
+import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 
@@ -48,42 +49,46 @@ export const POST = apiRoute({
       throw new AppError(429, "Too many failed password attempts. Please try again later.");
     }
 
-    // Verify password
-    await verifyPasswordWithAudit(payload, user, password, clientId, "account_deletion", "Invalid password");
+    // Constant-time response to prevent timing side-channel attacks
+    // from distinguishing password verification or eligibility check timing.
+    return withTimingPad(TIMING_PAD_MS.ACCOUNT_DELETION, async () => {
+      // Verify password
+      await verifyPasswordWithAudit(payload, user, password, clientId, "account_deletion", "Invalid password");
 
-    // Check if user can be deleted
-    const deletionService = createAccountDeletionService(payload);
-    const canDelete = await deletionService.canDeleteUser(user.id);
+      // Check if user can be deleted
+      const deletionService = createAccountDeletionService(payload);
+      const canDelete = await deletionService.canDeleteUser(user.id);
 
-    if (!canDelete.allowed) {
-      throw new ValidationError(canDelete.reason ?? "Account cannot be deleted");
-    }
+      if (!canDelete.allowed) {
+        throw new ValidationError(canDelete.reason ?? "Account cannot be deleted");
+      }
 
-    // Check if already pending deletion
-    if (user.deletionStatus === "pending_deletion") {
-      throw new ValidationError("Deletion already scheduled");
-    }
+      // Check if already pending deletion
+      if (user.deletionStatus === "pending_deletion") {
+        throw new ValidationError("Deletion already scheduled");
+      }
 
-    // Schedule deletion
-    const result = await deletionService.scheduleDeletion(user.id);
+      // Schedule deletion
+      const result = await deletionService.scheduleDeletion(user.id);
 
-    await auditLog(payload, {
-      action: AUDIT_ACTIONS.DELETION_SCHEDULED,
-      userId: user.id,
-      userEmail: user.email,
-      ipAddress: clientId,
-      details: { deletionScheduledAt: result.deletionScheduledAt },
+      await auditLog(payload, {
+        action: AUDIT_ACTIONS.DELETION_SCHEDULED,
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress: clientId,
+        details: { deletionScheduledAt: result.deletionScheduledAt },
+      });
+
+      logger.info(
+        { userId: user.id, deletionScheduledAt: result.deletionScheduledAt, clientId },
+        "Account deletion scheduled"
+      );
+
+      return {
+        message: `Your account will be deleted in ${DELETION_GRACE_PERIOD_DAYS} days. You can cancel anytime before then.`,
+        deletionScheduledAt: result.deletionScheduledAt,
+        summary: result.summary,
+      };
     });
-
-    logger.info(
-      { userId: user.id, deletionScheduledAt: result.deletionScheduledAt, clientId },
-      "Account deletion scheduled"
-    );
-
-    return {
-      message: `Your account will be deleted in ${DELETION_GRACE_PERIOD_DAYS} days. You can cancel anytime before then.`,
-      deletionScheduledAt: result.deletionScheduledAt,
-      summary: result.summary,
-    };
   },
 });

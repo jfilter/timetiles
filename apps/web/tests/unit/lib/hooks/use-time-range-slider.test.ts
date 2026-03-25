@@ -29,9 +29,9 @@ const makeHistogram = (buckets: Array<{ date: string; dateEnd: string; count: nu
 });
 
 const defaultProps = () => ({
-  filters: {} as Parameters<typeof useTimeRangeSlider>[0]["filters"],
-  startDate: null as string | null,
-  endDate: null as string | null,
+  filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} } as Parameters<
+    typeof useTimeRangeSlider
+  >[0]["filters"],
   onStartDateChange: vi.fn(),
   onEndDateChange: vi.fn(),
 });
@@ -116,7 +116,8 @@ describe("useTimeRangeSlider", () => {
         typeof useFullHistogramQuery
       >);
 
-      const props = { ...defaultProps(), startDate, endDate };
+      const base = defaultProps();
+      const props = { ...base, filters: { ...base.filters, startDate, endDate } };
       return renderHook(() => useTimeRangeSlider(props));
     };
 
@@ -173,7 +174,8 @@ describe("useTimeRangeSlider", () => {
         typeof useFullHistogramQuery
       >);
 
-      const props = { ...defaultProps(), startDate: "2024-03-01", endDate: "2024-08-01" };
+      const base = defaultProps();
+      const props = { ...base, filters: { ...base.filters, startDate: "2024-03-01", endDate: "2024-08-01" } };
       const { result } = renderHook(() => useTimeRangeSlider(props));
 
       const bars = result.current.normalizedBars;
@@ -197,7 +199,8 @@ describe("useTimeRangeSlider", () => {
       >);
 
       // Narrow range that excludes first and last bars
-      const props = { ...defaultProps(), startDate: "2024-04-15", endDate: "2024-06-15" };
+      const base = defaultProps();
+      const props = { ...base, filters: { ...base.filters, startDate: "2024-04-15", endDate: "2024-06-15" } };
       const { result } = renderHook(() => useTimeRangeSlider(props));
 
       const bars = result.current.normalizedBars;
@@ -238,7 +241,8 @@ describe("useTimeRangeSlider", () => {
       >);
 
       // startDate === endDate → only bars containing that exact point are in range
-      const props = { ...defaultProps(), startDate: "2024-05-01", endDate: "2024-05-01" };
+      const base = defaultProps();
+      const props = { ...base, filters: { ...base.filters, startDate: "2024-05-01", endDate: "2024-05-01" } };
       const { result } = renderHook(() => useTimeRangeSlider(props));
 
       const bars = result.current.normalizedBars;

@@ -35,7 +35,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useReducer } from "react";
 
 import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
 import type { UrlAuthConfig } from "@/lib/types/ingest-wizard";
@@ -65,6 +65,52 @@ const ACCEPTED_TYPES = [
 
 type InputMode = "file" | "url";
 
+const DEFAULT_AUTH_CONFIG: UrlAuthConfig = {
+  type: "none",
+  apiKey: "",
+  apiKeyHeader: "X-API-Key",
+  bearerToken: "",
+  username: "",
+  password: "",
+};
+
+interface UploadState {
+  inputMode: InputMode;
+  isDragging: boolean;
+  error: string | null;
+  jsonDetected: boolean;
+  urlInput: string;
+  authConfig: UrlAuthConfig;
+}
+
+type UploadAction =
+  | { type: "SET_MODE"; mode: InputMode }
+  | { type: "SET_DRAGGING"; isDragging: boolean }
+  | { type: "SET_ERROR"; error: string | null }
+  | { type: "SET_URL"; url: string }
+  | { type: "SET_AUTH"; config: UrlAuthConfig }
+  | { type: "SET_JSON_DETECTED"; detected: boolean }
+  | { type: "RESET_URL_STATE" };
+
+const uploadReducer = (state: UploadState, action: UploadAction): UploadState => {
+  switch (action.type) {
+    case "SET_MODE":
+      return { ...state, inputMode: action.mode };
+    case "SET_DRAGGING":
+      return { ...state, isDragging: action.isDragging };
+    case "SET_ERROR":
+      return { ...state, error: action.error };
+    case "SET_URL":
+      return { ...state, urlInput: action.url };
+    case "SET_AUTH":
+      return { ...state, authConfig: action.config };
+    case "SET_JSON_DETECTED":
+      return { ...state, jsonDetected: action.detected };
+    case "RESET_URL_STATE":
+      return { ...state, error: null, urlInput: "" };
+  }
+};
+
 export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const t = useTranslations("Ingest");
   const file = useWizardStore((s) => s.file);
@@ -80,51 +126,41 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const clearFile = useWizardStore((s) => s.clearFile);
   const canProceed = useWizardCanProceed();
 
-  // Input mode - file upload or URL (edit mode always starts with URL)
-  const [inputMode, setInputMode] = useState<InputMode>(sourceUrl != null || editMode ? "url" : "file");
+  const [state, dispatch] = useReducer(uploadReducer, {
+    inputMode: sourceUrl != null || editMode ? "url" : "file",
+    isDragging: false,
+    error: null,
+    jsonDetected: false,
+    urlInput: sourceUrl ?? "",
+    authConfig: storeAuthConfig ?? DEFAULT_AUTH_CONFIG,
+  });
+
+  const { inputMode, isDragging, error, jsonDetected, urlInput, authConfig } = state;
 
   const uploadMutation = usePreviewSchemaUploadMutation();
   const urlMutation = usePreviewSchemaUrlMutation();
 
-  // File upload state
-  const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [jsonDetected, setJsonDetected] = useState(false);
-
-  // URL input state — in edit mode, pre-fill from store
-  const [urlInput, setUrlInput] = useState(sourceUrl ?? "");
-  const [authConfig, setAuthConfig] = useState<UrlAuthConfig>(
-    storeAuthConfig ?? {
-      type: "none",
-      apiKey: "",
-      apiKeyHeader: "X-API-Key",
-      bearerToken: "",
-      username: "",
-      password: "",
-    }
-  );
-
   const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUrlInput(e.target.value);
+    dispatch({ type: "SET_URL", url: e.target.value });
   };
 
   const handleInputModeChange = (value: string) => {
-    setInputMode(value as InputMode);
+    dispatch({ type: "SET_MODE", mode: value as InputMode });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
+    dispatch({ type: "SET_DRAGGING", isDragging: true });
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    dispatch({ type: "SET_DRAGGING", isDragging: false });
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    dispatch({ type: "SET_DRAGGING", isDragging: false });
 
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) {
@@ -140,7 +176,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   };
 
   const processFile = async (selectedFile: File) => {
-    setError(null);
+    dispatch({ type: "SET_ERROR", error: null });
 
     try {
       const formData = new FormData();
@@ -156,17 +192,17 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         data.configSuggestions
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("failedToProcessFile"));
+      dispatch({ type: "SET_ERROR", error: err instanceof Error ? err.message : t("failedToProcessFile") });
     }
   };
 
   const processUrl = async () => {
     if (!urlInput.trim()) {
-      setError(t("pleaseEnterUrl"));
+      dispatch({ type: "SET_ERROR", error: t("pleaseEnterUrl") });
       return;
     }
 
-    setError(null);
+    dispatch({ type: "SET_ERROR", error: null });
 
     try {
       const authPayload = authConfig.type === "none" ? undefined : authConfig;
@@ -180,13 +216,9 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       setSourceUrl(urlInput.trim(), authConfig.type === "none" ? null : authConfig);
 
       // Detect JSON conversion and store config
-      if (data.wasConverted) {
-        setJsonDetected(true);
-        if (!jsonApiConfig) {
-          setJsonApiConfig({ wasAutoDetected: true });
-        }
-      } else {
-        setJsonDetected(false);
+      dispatch({ type: "SET_JSON_DETECTED", detected: !!data.wasConverted });
+      if (data.wasConverted && !jsonApiConfig) {
+        setJsonApiConfig({ wasAutoDetected: true });
       }
 
       setFile(
@@ -197,14 +229,13 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         data.configSuggestions
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("failedToFetchUrl"));
+      dispatch({ type: "SET_ERROR", error: err instanceof Error ? err.message : t("failedToFetchUrl") });
     }
   };
 
   const handleRemoveFile = () => {
     clearFile();
-    setError(null);
-    setUrlInput("");
+    dispatch({ type: "RESET_URL_STATE" });
   };
 
   // Render the file upload area
@@ -278,7 +309,10 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <Card className="p-4">
-            <AuthConfigFields authConfig={authConfig} onAuthConfigChange={setAuthConfig} />
+            <AuthConfigFields
+              authConfig={authConfig}
+              onAuthConfigChange={(config) => dispatch({ type: "SET_AUTH", config })}
+            />
           </Card>
         </CollapsibleContent>
       </Collapsible>

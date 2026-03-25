@@ -46,19 +46,11 @@ const DateInput = ({
 
 interface TimeRangeSliderProps {
   filters: FilterState;
-  startDate: string | null;
-  endDate: string | null;
   onStartDateChange: (date: string | null) => void;
   onEndDateChange: (date: string | null) => void;
 }
 
-export const TimeRangeSlider = ({
-  filters,
-  startDate,
-  endDate,
-  onStartDateChange,
-  onEndDateChange,
-}: Readonly<TimeRangeSliderProps>) => {
+export const TimeRangeSlider = ({ filters, onStartDateChange, onEndDateChange }: Readonly<TimeRangeSliderProps>) => {
   const t = useTranslations("Explore");
   const tCommon = useTranslations("Common");
 
@@ -66,6 +58,8 @@ export const TimeRangeSlider = ({
     trackRef,
     histogramRef,
     isLoading,
+    startDate,
+    endDate,
     histogram,
     minTimestamp,
     maxTimestamp,
@@ -86,7 +80,7 @@ export const TimeRangeSlider = ({
     handleCloseEditMode,
     handleHistogramKeyDown,
     handleHistogramClick,
-  } = useTimeRangeSlider({ filters, startDate, endDate, onStartDateChange, onEndDateChange });
+  } = useTimeRangeSlider({ filters, onStartDateChange, onEndDateChange });
 
   // Loading state
   if (isLoading) {

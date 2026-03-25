@@ -4,11 +4,39 @@
  * @module
  * @category Collections
  */
-import type { CollectionBeforeChangeHook, TypeWithID, Where } from "payload";
+import type { CollectionBeforeChangeHook, Payload, TypeWithID, Where } from "payload";
 
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Config } from "@/payload-types";
 
 type CollectionSlug = keyof Config["collections"];
+
+interface RelationOwnershipOptions {
+  /** Collection slug of the related document to fetch. */
+  collection: CollectionSlug;
+  /** ID of the related document. */
+  id: number;
+  /** Field on the related document that holds the owner reference. */
+  userField: string;
+  /** ID of the user who should own the related document. */
+  userId: number;
+  /** Error message thrown when ownership does not match. */
+  errorMessage: string;
+}
+
+/**
+ * Validate that a user owns a related resource.
+ *
+ * Fetches the related document and checks if the specified user field
+ * matches the given user ID. Throws if the ownership check fails.
+ */
+export const validateRelationOwnership = async (payload: Payload, opts: RelationOwnershipOptions): Promise<void> => {
+  const doc = await payload.findByID({ collection: opts.collection, id: opts.id, overrideAccess: true });
+  const ownerId = extractRelationId((doc as unknown as Record<string, unknown>)?.[opts.userField]);
+  if (ownerId !== opts.userId) {
+    throw new Error(opts.errorMessage);
+  }
+};
 
 interface SingleDefaultOptions {
   /** Payload collection slug */

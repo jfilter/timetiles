@@ -10,7 +10,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Button, Input, Label } from "@timetiles/ui";
+import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -18,21 +18,25 @@ import { useTranslations } from "next-intl";
 import { forgotPasswordRequest } from "@/lib/hooks/use-auth-mutations";
 import { useInputState } from "@/lib/hooks/use-input-state";
 
+import { AuthFormField } from "./auth-form-field";
 import { FormError, FormSuccess } from "./form-feedback";
 
 export interface ForgotPasswordFormProps {
   /** Callback fired on successful submission */
   onSuccess?: () => void;
+  /** Callback fired on submission error */
+  onError?: (error: string) => void;
   /** Additional CSS classes */
   className?: string;
 }
 
-export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPasswordFormProps>) => {
+export const ForgotPasswordForm = ({ onSuccess, onError, className }: Readonly<ForgotPasswordFormProps>) => {
   const t = useTranslations("Auth");
   const [email, handleEmailChange] = useInputState();
   const { status, error, isPending, mutate } = useMutation({
     mutationFn: forgotPasswordRequest,
     onSuccess: () => onSuccess?.(),
+    onError: (err: Error) => onError?.(err.message),
   });
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -57,19 +61,17 @@ export const ForgotPasswordForm = ({ onSuccess, className }: Readonly<ForgotPass
 
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
-      <div className="space-y-2">
-        <Label htmlFor="forgot-email">{t("emailLabel")}</Label>
-        <Input
-          id="forgot-email"
-          type="email"
-          value={email}
-          onChange={handleEmailChange}
-          placeholder={t("emailPlaceholder")}
-          disabled={isPending}
-          required
-          autoComplete="email"
-        />
-      </div>
+      <AuthFormField
+        id="forgot-email"
+        label={t("emailLabel")}
+        type="email"
+        value={email}
+        onChange={handleEmailChange}
+        placeholder={t("emailPlaceholder")}
+        disabled={isPending}
+        required
+        autoComplete="email"
+      />
 
       <FormError error={error} />
 
