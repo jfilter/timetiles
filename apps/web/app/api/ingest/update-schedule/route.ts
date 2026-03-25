@@ -103,10 +103,18 @@ export const PATCH = apiRoute({
     const isSingleSheet = datasetMappingEntries.length === 1;
     const firstDatasetId = datasetMappingEntries[0]?.dataset;
 
-    // Only set advancedOptions if JSON API config is provided
-    const advancedOptions = body.jsonApiConfig
+    // Only treat jsonApiConfig as meaningful if it has a recordsPath or enabled pagination.
+    // Zod's optional() can produce an empty object {} which is truthy but has no real config.
+    const hasJsonApiConfig =
+      body.jsonApiConfig != null &&
+      (!!body.jsonApiConfig.recordsPath || body.jsonApiConfig.pagination?.enabled === true);
+
+    // Always include advancedOptions to prevent Payload from filling the group with
+    // defaults. When JSON API config is provided, set responseFormat to "json".
+    // Otherwise, force responseFormat to "auto" to prevent Payload defaulting to "json".
+    const advancedOptions = hasJsonApiConfig
       ? { ...existing.advancedOptions, responseFormat: "json" as const, jsonApiConfig: body.jsonApiConfig }
-      : null;
+      : { ...existing.advancedOptions, responseFormat: "auto" as const };
 
     const updateData: Record<string, unknown> = {
       name: body.scheduleConfig.name,
@@ -130,10 +138,8 @@ export const PATCH = apiRoute({
           : undefined,
     };
 
-    // Only set advancedOptions if we have JSON config; otherwise don't touch it
-    if (advancedOptions) {
-      updateData.advancedOptions = advancedOptions;
-    }
+    // Always include advancedOptions to prevent Payload from filling group defaults
+    updateData.advancedOptions = advancedOptions;
 
     // Only update auth config if provided (otherwise keep existing encrypted values)
     if (body.authConfig) {

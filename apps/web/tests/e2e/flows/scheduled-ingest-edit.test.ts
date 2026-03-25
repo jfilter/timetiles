@@ -295,7 +295,7 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
   test("step 6: trigger post-edit run", async ({ request }) => {
     expect(scheduledIngestId).toBeDefined();
 
-    // Capture current run count before triggering
+    // Capture current run count and debug advancedOptions before triggering
     const beforeResp = await request.get(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}`, {
       headers: { Authorization: `JWT ${token}` },
     });
