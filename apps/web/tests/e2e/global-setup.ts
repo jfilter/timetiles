@@ -20,6 +20,7 @@ const __dirname = path.dirname(__filename);
 // Load environment variables before importing database utilities
 loadEnv({ path: path.resolve(process.cwd(), ".env.local") });
 
+import { resetEnv } from "@/lib/config/env";
 import { databaseExists, dropDatabase } from "@/lib/database/operations";
 import { checkPostgreSQLConnection, setupDatabase } from "@/lib/database/setup";
 import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
@@ -62,6 +63,7 @@ const waitForServer = async (url: string, timeout: number): Promise<void> => {
 const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
   const originalDatabaseUrl = process.env.DATABASE_URL;
   process.env.DATABASE_URL = databaseUrl;
+  resetEnv(); // Flush cached getEnv() so Payload connects to the test database
 
   let seedManager;
   try {
@@ -79,6 +81,7 @@ const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
     if (originalDatabaseUrl) {
       process.env.DATABASE_URL = originalDatabaseUrl;
     }
+    resetEnv();
   }
 };
 
