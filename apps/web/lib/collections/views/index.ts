@@ -13,7 +13,7 @@
 import type { CollectionConfig } from "payload";
 
 import { createCommonConfig, createCreatedByField, createIsPublicField, createSlugField } from "../shared-fields";
-import * as access from "./access";
+import { create, deleteAccess, read, readVersions, update } from "./access";
 import { enforceSingleDefault, invalidateViewCache, setCreatedBy } from "./hooks";
 
 const Views: CollectionConfig = {
@@ -25,13 +25,7 @@ const Views: CollectionConfig = {
     group: "Configuration",
     description: "Configure UI views with custom data scope, filters, and map settings",
   },
-  access: {
-    read: access.read,
-    create: access.create,
-    update: access.update,
-    delete: access.deleteAccess,
-    readVersions: access.readVersions,
-  },
+  access: { read, create, update, delete: deleteAccess, readVersions },
   hooks: { beforeChange: [setCreatedBy, enforceSingleDefault], afterChange: [invalidateViewCache] },
   fields: [
     // ============ IDENTITY ============

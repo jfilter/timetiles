@@ -25,6 +25,16 @@
  * });
  * ```
  */
+/** Recommended minimum durations for timing-sensitive operations (ms). */
+export const TIMING_PAD_MS = {
+  /** Email change — includes duplicate check + send verification */
+  EMAIL_CHANGE: 1000,
+  /** Password change — verify + update */
+  PASSWORD_CHANGE: 1000,
+  /** Account deletion scheduling — verify + eligibility check */
+  ACCOUNT_DELETION: 1000,
+} as const;
+
 export const withTimingPad = async <T>(minDurationMs: number, fn: () => Promise<T>): Promise<T> => {
   const startTime = Date.now();
   const result = await fn();

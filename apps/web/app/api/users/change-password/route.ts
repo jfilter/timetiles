@@ -12,6 +12,7 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { logger } from "@/lib/logger";
+import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 
@@ -23,28 +24,32 @@ export const POST = apiRoute({
     const clientId = getClientIdentifier(req);
     const { currentPassword, newPassword } = body;
 
-    // Verify current password
-    await verifyPasswordWithAudit(
-      payload,
-      user,
-      currentPassword,
-      clientId,
-      "password_change",
-      "Current password is incorrect"
-    );
+    // Constant-time response to prevent timing side-channel attacks
+    // from distinguishing password verification success/failure timing.
+    return withTimingPad(TIMING_PAD_MS.PASSWORD_CHANGE, async () => {
+      // Verify current password
+      await verifyPasswordWithAudit(
+        payload,
+        user,
+        currentPassword,
+        clientId,
+        "password_change",
+        "Current password is incorrect"
+      );
 
-    // Update the password
-    await payload.update({ collection: "users", id: user.id, data: { password: newPassword } });
+      // Update the password
+      await payload.update({ collection: "users", id: user.id, data: { password: newPassword } });
 
-    await auditLog(payload, {
-      action: AUDIT_ACTIONS.PASSWORD_CHANGED,
-      userId: user.id,
-      userEmail: user.email,
-      ipAddress: clientId,
+      await auditLog(payload, {
+        action: AUDIT_ACTIONS.PASSWORD_CHANGED,
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress: clientId,
+      });
+
+      logger.info({ userId: user.id, clientId }, "Password changed successfully");
+
+      return { message: "Password changed successfully" };
     });
-
-    logger.info({ userId: user.id, clientId }, "Password changed successfully");
-
-    return { message: "Password changed successfully" };
   },
 });
