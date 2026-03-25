@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/no-hardcoded-ip -- test fixtures use example IPs */
 /**
  * Unit tests for Audit Log IP Cleanup Job Handler.
  *

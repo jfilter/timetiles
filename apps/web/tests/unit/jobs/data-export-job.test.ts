@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/publicly-writable-directories -- test fixtures use mock paths */
 /**
  * Unit tests for Data Export Job Handler.
  *
