@@ -77,6 +77,7 @@ const mergeFieldMappings = (
     descriptionPath: string | null;
     locationNamePath: string | null;
     timestampPath: string | null;
+    endTimestampPath: string | null;
     latitudePath: string | null;
     longitudePath: string | null;
     locationPath: string | null;
@@ -87,6 +88,7 @@ const mergeFieldMappings = (
   descriptionPath: dataset?.fieldMappingOverrides?.descriptionPath ?? detectedMappings.descriptionPath,
   locationNamePath: dataset?.fieldMappingOverrides?.locationNamePath ?? detectedMappings.locationNamePath,
   timestampPath: dataset?.fieldMappingOverrides?.timestampPath ?? detectedMappings.timestampPath,
+  endTimestampPath: dataset?.fieldMappingOverrides?.endTimestampPath ?? detectedMappings.endTimestampPath,
   latitudePath: dataset?.fieldMappingOverrides?.latitudePath ?? detectedMappings.latitudePath,
   longitudePath: dataset?.fieldMappingOverrides?.longitudePath ?? detectedMappings.longitudePath,
   locationPath: dataset?.fieldMappingOverrides?.locationPath ?? detectedMappings.locationPath,
@@ -212,6 +214,7 @@ const finalizeSchemaDetection = async (
       description: Boolean(dataset?.fieldMappingOverrides?.descriptionPath),
       locationName: Boolean(dataset?.fieldMappingOverrides?.locationNamePath),
       timestamp: Boolean(dataset?.fieldMappingOverrides?.timestampPath),
+      endTimestamp: Boolean(dataset?.fieldMappingOverrides?.endTimestampPath),
       latitude: Boolean(dataset?.fieldMappingOverrides?.latitudePath),
       longitude: Boolean(dataset?.fieldMappingOverrides?.longitudePath),
       location: Boolean(dataset?.fieldMappingOverrides?.locationPath),

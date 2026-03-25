@@ -40,7 +40,7 @@ export default async function EventsListPage() {
       ) : (
         <div className="grid gap-4">
           {events.map((event) => {
-            const eventData = event.originalData as Record<string, unknown>;
+            const eventData = event.transformedData as Record<string, unknown>;
             const title =
               (typeof eventData.title === "string" && eventData.title) ||
               (typeof eventData.name === "string" && eventData.name) ||

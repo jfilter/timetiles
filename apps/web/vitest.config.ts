@@ -67,6 +67,7 @@ export default defineConfig({
           exclude: [
             "tests/unit/services/cache/**/*.test.ts",
             "tests/unit/jobs/event-creation-helpers.test.ts",
+            "tests/unit/jobs/execute-account-deletion-job.test.ts",
             "tests/unit/jobs/schedule-manager-*.test.ts",
             "tests/unit/api/**/*.test.ts",
             "tests/unit/security/safe-fetch.test.ts",
@@ -86,6 +87,7 @@ export default defineConfig({
           include: [
             "tests/unit/services/cache/**/*.test.ts",
             "tests/unit/jobs/event-creation-helpers.test.ts",
+            "tests/unit/jobs/execute-account-deletion-job.test.ts",
             "tests/unit/jobs/schedule-manager-*.test.ts",
             "tests/unit/api/**/*.test.ts",
             "tests/unit/security/safe-fetch.test.ts",

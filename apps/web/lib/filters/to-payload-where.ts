@@ -60,7 +60,7 @@ const buildFieldFilterWhere = (fieldFilters?: Record<string, string[]>): Where[]
   if (!fieldFilters) return [];
   return Object.entries(fieldFilters)
     .filter(([fieldPath, values]) => values.length > 0 && isValidFieldKey(fieldPath))
-    .map(([fieldPath, values]) => ({ [`originalData.${fieldPath}`]: { in: values } }));
+    .map(([fieldPath, values]) => ({ [`transformedData.${fieldPath}`]: { in: values } }));
 };
 
 const buildBoundsWhere = (bounds: CanonicalBounds): Where[] => {

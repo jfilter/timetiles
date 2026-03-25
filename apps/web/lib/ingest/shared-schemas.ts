@@ -29,6 +29,7 @@ export const fieldMappingsSchema = z
       descriptionField: z.string().nullable(),
       locationNameField: z.string().nullable().optional().default(null),
       dateField: z.string().nullable(),
+      endDateField: z.string().nullable().optional().default(null),
       idField: z.string().nullable(),
       idStrategy: z.enum(["external", "computed", "auto", "hybrid"]),
       locationField: z.string().nullable(),

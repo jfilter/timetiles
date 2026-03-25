@@ -447,7 +447,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       // Group events by location to verify coordinates are consistent
       const eventsByLocation: Record<string, any[]> = {};
       for (const event of events.docs) {
-        const location = event.originalData.location;
+        const location = event.transformedData.location;
         eventsByLocation[location] ??= [];
         eventsByLocation[location].push(event);
       }

@@ -18,12 +18,12 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
-import { formatDate } from "@/lib/utils/date";
 import {
+  buildConsumedFieldSet,
+  extractEventFields,
   formatDateRange,
   getDatasetInfo,
   getEventData,
-  getEventTitle,
   getLocationDisplay,
   hasValidCoordinates,
   safeToString,
@@ -65,9 +65,6 @@ export const EventDetailContent = ({
   const t = useTranslations("Events");
   const tCommon = useTranslations("Common");
 
-  // Get additional data fields (excluding known fields)
-  const knownFields = new Set(["title", "name", "description", "startDate", "endDate", "city", "country", "id"]);
-
   // Show loading state
   if (isLoading) {
     return <EventDetailSkeleton />;
@@ -81,17 +78,18 @@ export const EventDetailContent = ({
   const eventData = getEventData(event);
   const fieldMappings =
     typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
-  const title = getEventTitle(eventData, fieldMappings);
-  const description = safeToString(eventData.description);
-  const dateRange = formatDateRange(eventData.startDate, eventData.endDate, locale);
-  const locationDisplay = getLocationDisplay(event, eventData);
+  const { title, description: rawDescription } = extractEventFields(eventData, fieldMappings, event.id);
+  const description = rawDescription ?? "";
+  const eventDate = formatDateRange(event.eventTimestamp, event.eventEndTimestamp, locale);
+  const locationDisplay = getLocationDisplay(event);
   const datasetInfo = getDatasetInfo(event.dataset);
 
   const hasCoordinates = hasValidCoordinates(event.location);
   const badgeClass = getDatasetBadgeClass(datasetInfo?.id ?? null);
 
+  const consumedFields = buildConsumedFieldSet(fieldMappings);
   const additionalFields = Object.entries(eventData).filter(
-    ([key, value]) => !knownFields.has(key) && value != null && safeToString(value) !== ""
+    ([key, value]) => !consumedFields.has(key) && value != null && safeToString(value) !== ""
   );
 
   return (
@@ -139,7 +137,7 @@ export const EventDetailContent = ({
       {description && <p className="text-muted-foreground leading-relaxed">{description}</p>}
 
       {/* Location and date - one row with icons */}
-      {(locationDisplay != null || dateRange != null) && (
+      {(locationDisplay != null || eventDate != null) && (
         <div className="text-muted-foreground flex items-center justify-between text-sm">
           {locationDisplay && (
             <div className="flex items-center gap-1.5">
@@ -147,10 +145,10 @@ export const EventDetailContent = ({
               <span>{locationDisplay}</span>
             </div>
           )}
-          {dateRange && (
+          {eventDate && (
             <div className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4 shrink-0" />
-              <span>{dateRange}</span>
+              <span>{eventDate}</span>
             </div>
           )}
         </div>
@@ -184,8 +182,6 @@ export const EventDetailContent = ({
               />
             </>
           )}
-
-          {event.eventTimestamp && <FieldBox label={t("eventDate")} value={formatDate(event.eventTimestamp)} />}
 
           {/* Additional Data Fields */}
           {additionalFields.map(([key, value]) => (

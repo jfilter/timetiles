@@ -21,6 +21,7 @@ export interface FieldMappings {
   descriptionPath: string | null;
   locationNamePath: string | null;
   timestampPath: string | null;
+  endTimestampPath: string | null;
   latitudePath: string | null;
   longitudePath: string | null;
   locationPath: string | null;
@@ -34,6 +35,7 @@ export const toFlatMappings = (result: FieldMappingsResult): FieldMappings => ({
   descriptionPath: result.description?.path ?? null,
   locationNamePath: result.locationName?.path ?? null,
   timestampPath: result.timestamp?.path ?? null,
+  endTimestampPath: null,
   latitudePath: result.geo?.latitude?.path ?? null,
   longitudePath: result.geo?.longitude?.path ?? null,
   locationPath: result.geo?.locationField?.path ?? null,

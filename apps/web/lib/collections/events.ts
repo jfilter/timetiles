@@ -107,10 +107,18 @@ const Events: CollectionConfig = {
       admin: { description: "The ingest job that created this event" },
     },
     {
-      name: "originalData",
+      name: "sourceData",
       type: "json",
       required: true,
-      admin: { description: "Generic data in JSON format (JSONB indexed for fast queries)" },
+      admin: { description: "Raw source data as received from the import source, before any transforms" },
+    },
+    {
+      name: "transformedData",
+      type: "json",
+      required: true,
+      admin: {
+        description: "Final event data after import transforms (identical to sourceData when no transforms applied)",
+      },
     },
     {
       name: "location",
@@ -183,7 +191,12 @@ const Events: CollectionConfig = {
     {
       name: "eventTimestamp",
       type: "date",
-      admin: { date: { pickerAppearance: "dayAndTime" }, description: "When the actual event occurred" },
+      admin: { date: { pickerAppearance: "dayAndTime" }, description: "When the event starts (or occurred)" },
+    },
+    {
+      name: "eventEndTimestamp",
+      type: "date",
+      admin: { date: { pickerAppearance: "dayAndTime" }, description: "When the event ends (optional)" },
     },
     {
       name: "locationName",
@@ -295,6 +308,7 @@ const Events: CollectionConfig = {
   indexes: [
     { fields: ["dataset", "eventTimestamp"] },
     { fields: ["eventTimestamp"] },
+    { fields: ["eventEndTimestamp"] },
     { fields: ["uniqueId"] },
     { fields: ["dataset", "contentHash"] },
     { fields: ["ingestJob", "ingestBatch"] },

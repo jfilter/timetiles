@@ -49,7 +49,8 @@ describe("/api/v1/events - location filtering", () => {
         data: {
           uniqueId: `with-coords-${i + 1}`,
           dataset: testDatasetId,
-          originalData: { title: `Event with coords ${i + 1}` },
+          sourceData: { title: `Event with coords ${i + 1}` },
+          transformedData: { title: `Event with coords ${i + 1}` },
           location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
         },
@@ -63,7 +64,8 @@ describe("/api/v1/events - location filtering", () => {
         data: {
           uniqueId: `no-coords-${i + 1}`,
           dataset: testDatasetId,
-          originalData: { title: `Event without coords ${i + 1}` },
+          sourceData: { title: `Event without coords ${i + 1}` },
+          transformedData: { title: `Event without coords ${i + 1}` },
           // No location field
           eventTimestamp: new Date(2024, 0, 20 + i).toISOString(),
         },

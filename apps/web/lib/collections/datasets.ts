@@ -309,6 +309,11 @@ const Datasets: CollectionConfig = {
           admin: { description: "Override detected timestamp field (e.g., 'created_at', 'datum', 'date')" },
         },
         {
+          name: "endTimestampPath",
+          type: "text",
+          admin: { description: "Override detected end timestamp field (e.g., 'end_date', 'enddatum', 'date_fin')" },
+        },
+        {
           name: "latitudePath",
           type: "text",
           admin: { description: "Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')" },

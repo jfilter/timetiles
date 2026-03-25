@@ -9,8 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { EventData } from "@/lib/utils/event-detail";
 import {
+  buildConsumedFieldSet,
   extractEventFields,
   formatDateRange,
   getDatasetInfo,
@@ -59,28 +59,28 @@ describe("safeToString", () => {
 });
 
 describe("getEventData", () => {
-  it("should extract originalData object from event", () => {
-    const event = { originalData: { title: "Test Event", description: "A test" } } as unknown as Event;
+  it("should extract transformedData object from event", () => {
+    const event = { transformedData: { title: "Test Event", description: "A test" } } as unknown as Event;
     expect(getEventData(event)).toEqual({ title: "Test Event", description: "A test" });
   });
 
-  it("should return empty object if originalData is null", () => {
-    const event = { originalData: null } as unknown as Event;
+  it("should return empty object if transformedData is null", () => {
+    const event = { transformedData: null } as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if originalData is undefined", () => {
+  it("should return empty object if transformedData is undefined", () => {
     const event = {} as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if originalData is an array", () => {
-    const event = { originalData: [1, 2, 3] } as unknown as Event;
+  it("should return empty object if transformedData is an array", () => {
+    const event = { transformedData: [1, 2, 3] } as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if originalData is a primitive", () => {
-    const event = { originalData: "string" } as unknown as Event;
+  it("should return empty object if transformedData is a primitive", () => {
+    const event = { transformedData: "string" } as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
@@ -227,40 +227,26 @@ describe("formatDateRange", () => {
 describe("getLocationDisplay", () => {
   it("should return location name when available", () => {
     const event = { locationName: "Central Park" } as Event;
-    expect(getLocationDisplay(event, {})).toBe("Central Park");
+    expect(getLocationDisplay(event)).toBe("Central Park");
   });
 
   it("should return normalized address when location name is not available", () => {
     const event = { geocodingInfo: { normalizedAddress: "123 Main St, City, Country" } } as Event;
-    expect(getLocationDisplay(event, {})).toBe("123 Main St, City, Country");
+    expect(getLocationDisplay(event)).toBe("123 Main St, City, Country");
   });
 
-  it("should return city and country when geocoding not available", () => {
-    const event = {} as Event;
-    const eventData: EventData = { city: "New York", country: "USA" };
-    expect(getLocationDisplay(event, eventData)).toBe("New York, USA");
-  });
-
-  it("should return only city when country is missing", () => {
-    const event = {} as Event;
-    const eventData: EventData = { city: "New York" };
-    expect(getLocationDisplay(event, eventData)).toBe("New York");
-  });
-
-  it("should return only country when city is missing", () => {
-    const event = {} as Event;
-    const eventData: EventData = { country: "USA" };
-    expect(getLocationDisplay(event, eventData)).toBe("USA");
+  it("should return geocodedAddress from flat DTO", () => {
+    const event = { geocodedAddress: "Copenhagen, Denmark" } as unknown as Event;
+    expect(getLocationDisplay(event)).toBe("Copenhagen, Denmark");
   });
 
   it("should return null when no location info available", () => {
-    expect(getLocationDisplay({} as Event, {})).toBeNull();
+    expect(getLocationDisplay({} as Event)).toBeNull();
   });
 
   it("should prefer location name over geocoded address", () => {
     const event = { locationName: "Central Park", geocodingInfo: { normalizedAddress: "Geocoded Address" } } as Event;
-    const eventData: EventData = { city: "City", country: "Country" };
-    expect(getLocationDisplay(event, eventData)).toBe("Central Park");
+    expect(getLocationDisplay(event)).toBe("Central Park");
   });
 });
 
@@ -301,5 +287,47 @@ describe("hasValidCoordinates", () => {
   it("should return false when both are 0", () => {
     const location = { latitude: 0, longitude: 0 };
     expect(hasValidCoordinates(location)).toBe(false);
+  });
+});
+
+describe("buildConsumedFieldSet", () => {
+  it("should include probe keys and id with no mappings", () => {
+    const result = buildConsumedFieldSet();
+    expect(result).toEqual(new Set(["id", "title", "name", "description"]));
+  });
+
+  it("should include probe keys and id when mappings are null", () => {
+    const result = buildConsumedFieldSet(null);
+    expect(result).toEqual(new Set(["id", "title", "name", "description"]));
+  });
+
+  it("should include all mapping paths", () => {
+    const result = buildConsumedFieldSet({
+      titlePath: "Titel",
+      descriptionPath: "Beschreibung",
+      timestampPath: "Datum",
+      locationPath: "Adresse",
+      locationNamePath: "Ort",
+      latitudePath: "Breitengrad",
+      longitudePath: "Laengengrad",
+    });
+    expect(result.has("Titel")).toBe(true);
+    expect(result.has("Beschreibung")).toBe(true);
+    expect(result.has("Datum")).toBe(true);
+    expect(result.has("Adresse")).toBe(true);
+    expect(result.has("Ort")).toBe(true);
+    expect(result.has("Breitengrad")).toBe(true);
+    expect(result.has("Laengengrad")).toBe(true);
+    // Probe keys still present
+    expect(result.has("title")).toBe(true);
+    expect(result.has("name")).toBe(true);
+    expect(result.has("description")).toBe(true);
+    expect(result.has("id")).toBe(true);
+  });
+
+  it("should skip null and empty mapping paths", () => {
+    const result = buildConsumedFieldSet({ titlePath: "event_name", descriptionPath: null, timestampPath: "" });
+    expect(result.has("event_name")).toBe(true);
+    expect(result.size).toBe(5); // id, title, name, description, event_name
   });
 });

@@ -192,9 +192,9 @@ describe.sequential("Multi-Language Import Tests", () => {
     expect(events.docs).toHaveLength(expectedEventCount);
 
     const firstEvent = events.docs[0];
-    expect(firstEvent.originalData).toBeDefined();
+    expect(firstEvent.transformedData).toBeDefined();
     for (const field of expectedFields) {
-      expect(firstEvent.originalData[field]).toBeDefined();
+      expect(firstEvent.transformedData[field]).toBeDefined();
     }
     expect(firstEvent.eventTimestamp).toBeDefined();
   };

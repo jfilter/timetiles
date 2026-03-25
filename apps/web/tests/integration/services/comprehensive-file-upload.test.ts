@@ -326,8 +326,8 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       expect(events.docs).toHaveLength(3);
       logger.debug(`✓ Created ${events.docs.length} events from ODS file`);
 
-      // Verify specific event data (title is stored in originalData.title JSON field)
-      const eventTitles = events.docs.map((e: any) => e.originalData.title);
+      // Verify specific event data (title is stored in transformedData.title JSON field)
+      const eventTitles = events.docs.map((e: any) => e.transformedData.title);
       expect(eventTitles).toContain("ODS Conference 2024");
       expect(eventTitles).toContain("OpenDocument Workshop");
       expect(eventTitles).toContain("LibreOffice Summit");

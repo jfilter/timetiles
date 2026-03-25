@@ -211,17 +211,19 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.docs as Array<{ originalData: Record<string, unknown> }>;
+    const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
 
     // All imported events should have uppercase titles
     const uppercasedEvents = events.filter(
-      (e) => typeof e.originalData?.title === "string" && e.originalData.title === e.originalData.title.toUpperCase()
+      (e) =>
+        typeof e.transformedData?.title === "string" &&
+        e.transformedData.title === e.transformedData.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBeGreaterThan(0);
 
     // Verify a specific title is uppercased (from valid-events.csv)
     const techEvent = events.find(
-      (e) => typeof e.originalData?.title === "string" && e.originalData.title.includes("TECH CONFERENCE")
+      (e) => typeof e.transformedData?.title === "string" && e.transformedData.title.includes("TECH CONFERENCE")
     );
     expect(techEvent).toBeDefined();
   });

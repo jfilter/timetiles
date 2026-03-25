@@ -165,12 +165,14 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.docs as Array<{ originalData: Record<string, unknown> }>;
+    const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
     expect(events.length).toBeGreaterThan(0);
 
     // All events should have uppercase titles (transform was applied)
     const uppercasedEvents = events.filter(
-      (e) => typeof e.originalData?.title === "string" && e.originalData.title === e.originalData.title.toUpperCase()
+      (e) =>
+        typeof e.transformedData?.title === "string" &&
+        e.transformedData.title === e.transformedData.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBe(events.length);
   });

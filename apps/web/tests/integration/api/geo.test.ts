@@ -98,7 +98,12 @@ describe("/api/v1/events/geo", () => {
         data: {
           uniqueId: `cluster-test-event-${i + 1}`,
           dataset: Number.parseInt(testDatasetId),
-          originalData: {
+          sourceData: {
+            title: `Test Event ${i + 1}`,
+            description: `Test event for clustering at ${testLocations[i]?.lat}, ${testLocations[i]?.lng}`,
+            venue: { city: i < 4 ? "Berlin" : "Paris", address: { city: i < 4 ? "Berlin" : "Paris" } },
+          },
+          transformedData: {
             title: `Test Event ${i + 1}`,
             description: `Test event for clustering at ${testLocations[i]?.lat}, ${testLocations[i]?.lng}`,
             venue: { city: i < 4 ? "Berlin" : "Paris", address: { city: i < 4 ? "Berlin" : "Paris" } },

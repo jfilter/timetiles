@@ -34,6 +34,7 @@ export interface SuggestedMappings {
     descriptionPath: FieldMappingSuggestion;
     locationNamePath: FieldMappingSuggestion;
     timestampPath: FieldMappingSuggestion;
+    endTimestampPath: FieldMappingSuggestion;
     latitudePath: FieldMappingSuggestion;
     longitudePath: FieldMappingSuggestion;
     locationPath: FieldMappingSuggestion;
@@ -80,6 +81,7 @@ export interface FieldMapping {
   descriptionField: string | null;
   locationNameField: string | null;
   dateField: string | null;
+  endDateField: string | null;
   idField: string | null;
   idStrategy: "external" | "computed" | "auto" | "hybrid";
   locationField: string | null;
@@ -187,6 +189,7 @@ export interface ConfigSuggestion {
       descriptionPath?: string | null;
       locationNamePath?: string | null;
       timestampPath?: string | null;
+      endTimestampPath?: string | null;
       latitudePath?: string | null;
       longitudePath?: string | null;
       locationPath?: string | null;

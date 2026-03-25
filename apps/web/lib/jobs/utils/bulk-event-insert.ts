@@ -28,9 +28,11 @@ const logger = createLogger("bulk-event-insert");
 export interface BulkEventData {
   dataset: number;
   ingestJob?: number;
-  originalData: Record<string, unknown>;
+  sourceData: Record<string, unknown>;
+  transformedData: Record<string, unknown>;
   uniqueId: string;
   eventTimestamp: string;
+  eventEndTimestamp?: string | null;
   location?: { latitude: number; longitude: number };
   locationName?: string | null;
   coordinateSource: { type: string; confidence?: number; normalizedAddress?: string };
@@ -52,9 +54,11 @@ const BATCH_SIZE = 250;
 const toEventsRow = (event: BulkEventData, now: string): typeof events.$inferInsert => ({
   dataset: event.dataset,
   ingestJob: event.ingestJob ?? null,
-  originalData: event.originalData,
+  sourceData: event.sourceData,
+  transformedData: event.transformedData,
   uniqueId: event.uniqueId,
   eventTimestamp: event.eventTimestamp,
+  eventEndTimestamp: event.eventEndTimestamp ?? null,
   location_latitude: event.location?.latitude ?? null,
   location_longitude: event.location?.longitude ?? null,
   locationName: event.locationName ?? null,
@@ -79,7 +83,8 @@ const toVersionRow = (parentId: number, event: BulkEventData, now: string): type
   version_datasetIsPublic: event.datasetIsPublic ?? false,
   version_catalogOwnerId: event.catalogOwnerId ?? null,
   version_ingestJob: event.ingestJob ?? null,
-  version_originalData: event.originalData,
+  version_sourceData: event.sourceData,
+  version_transformedData: event.transformedData,
   version_location_latitude: event.location?.latitude ?? null,
   version_location_longitude: event.location?.longitude ?? null,
   version_coordinateSource_type: event.coordinateSource
@@ -87,6 +92,7 @@ const toVersionRow = (parentId: number, event: BulkEventData, now: string): type
   version_coordinateSource_confidence: event.coordinateSource.confidence ?? null,
   version_coordinateSource_normalizedAddress: event.coordinateSource.normalizedAddress ?? null,
   version_eventTimestamp: event.eventTimestamp,
+  version_eventEndTimestamp: event.eventEndTimestamp ?? null,
   version_locationName: event.locationName ?? null,
   version_uniqueId: event.uniqueId,
   version_contentHash: event.contentHash ?? null,

@@ -220,10 +220,12 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.docs as Array<{ originalData: Record<string, unknown> }>;
+    const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
 
     const uppercasedEvents = events.filter(
-      (e) => typeof e.originalData?.title === "string" && e.originalData.title === e.originalData.title.toUpperCase()
+      (e) =>
+        typeof e.transformedData?.title === "string" &&
+        e.transformedData.title === e.transformedData.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBeGreaterThan(0);
   });

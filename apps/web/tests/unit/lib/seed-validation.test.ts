@@ -98,7 +98,7 @@ describe("Seed Data Validation", () => {
     it("should generate valid events for development environment", () => {
       const events = eventSeeds("development");
       expect(events.length).toBeGreaterThan(0);
-      expect(events.every((event) => event.dataset && event.originalData)).toBe(true);
+      expect(events.every((event) => event.dataset && event.transformedData)).toBe(true);
     });
 
     it("should have proper dataset references", () => {
@@ -145,9 +145,9 @@ describe("Seed Data Validation", () => {
       expect(
         devEvents.some(
           (e) =>
-            e.originalData &&
-            typeof e.originalData === "object" &&
-            ("venue" in e.originalData || "performer" in e.originalData)
+            e.transformedData &&
+            typeof e.transformedData === "object" &&
+            ("venue" in e.transformedData || "performer" in e.transformedData)
         )
       ).toBe(true);
     });

@@ -154,7 +154,14 @@ export const createEvent = (overrides: Partial<Event> = {}): Event => ({
   id: 1,
   dataset: 1,
   uniqueId: "test-event-1",
-  originalData: {
+  sourceData: {
+    title: "Test Event",
+    description: "A test event description",
+    date: "2024-03-15T10:00:00Z",
+    category: "conference",
+    tags: ["tech", "test"],
+  },
+  transformedData: {
     title: "Test Event",
     description: "A test event description",
     date: "2024-03-15T10:00:00Z",
@@ -169,19 +176,21 @@ export const createEvent = (overrides: Partial<Event> = {}): Event => ({
 });
 
 export const createEvents = (count: number = 3): Event[] => {
-  return Array.from({ length: count }, (_, i) =>
-    createEvent({
+  return Array.from({ length: count }, (_, i) => {
+    const data = {
+      title: `Test Event ${i + 1}`,
+      description: `Description for event ${i + 1}`,
+      date: `2024-03-${15 + i}T10:00:00Z`,
+    };
+    return createEvent({
       id: i + 1,
       dataset: 1,
       uniqueId: `test-event-${i + 1}`,
-      originalData: {
-        title: `Test Event ${i + 1}`,
-        description: `Description for event ${i + 1}`,
-        date: `2024-03-${15 + i}T10:00:00Z`,
-      },
+      sourceData: data,
+      transformedData: data,
       location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
-    })
-  );
+    });
+  });
 };
 
 // Simple event data for Map component (flattened structure)

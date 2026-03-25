@@ -187,6 +187,11 @@ const DatasetSchemas: CollectionConfig = {
           type: "text",
           admin: { description: "Path to timestamp/date field in source data", readOnly: true },
         },
+        {
+          name: "endTimestampPath",
+          type: "text",
+          admin: { description: "Path to end timestamp/date field in source data", readOnly: true },
+        },
       ],
     },
   ],
