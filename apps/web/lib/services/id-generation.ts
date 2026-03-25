@@ -11,8 +11,8 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 
-import type { Dataset } from "@/payload-types";
 import { extractExternalIdValue, formatEventId, ID_PREFIXES, sanitizeId } from "@/lib/utils/event-id";
+import type { Dataset } from "@/payload-types";
 
 /**
  * Generate a unique ID for an event row.
