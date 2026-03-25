@@ -13,7 +13,7 @@
 import type { CollectionConfig } from "payload";
 
 import { createCommonConfig, createCreatedByField, createIsPublicField, createSlugField } from "../shared-fields";
-import * as access from "./access";
+import { create, deleteAccess, read, readVersions, update } from "./access";
 import {
   createDefaultView,
   enforceSingleDefault,
@@ -32,13 +32,7 @@ const Sites: CollectionConfig = {
     group: "Configuration",
     description: "Configure sites with custom domains and branding",
   },
-  access: {
-    read: access.read,
-    create: access.create,
-    update: access.update,
-    delete: access.deleteAccess,
-    readVersions: access.readVersions,
-  },
+  access: { read, create, update, delete: deleteAccess, readVersions },
   hooks: {
     beforeChange: [setCreatedBy, enforceSingleDefault, restrictDomainField, sanitizeCustomCode],
     afterChange: [invalidateSiteCache, createDefaultView],

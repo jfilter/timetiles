@@ -12,6 +12,7 @@ import type {
 
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
+import { validateRelationOwnership } from "@/lib/collections/shared-hooks";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { getResumePointForReason, REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
@@ -52,6 +53,16 @@ const enforceCompletedTerminalState = (
 };
 
 /**
+ * Detects whether this update represents a schema approval transition
+ * (user approving a schema that was previously unapproved).
+ */
+const isSchemaApproval = (operation: string, current: Partial<IngestJob>, previousDoc?: IngestJob): boolean =>
+  operation === "update" &&
+  current.stage === PROCESSING_STAGE.NEEDS_REVIEW &&
+  current.schemaValidation?.approved === true &&
+  previousDoc?.schemaValidation?.approved !== true;
+
+/**
  * Handles schema approval workflow.
  */
 const handleSchemaApproval = (
@@ -60,13 +71,7 @@ const handleSchemaApproval = (
   req: PayloadRequest,
   originalDoc?: IngestJob
 ): void => {
-  const isApprovalUpdate =
-    operation === "update" &&
-    data.stage === PROCESSING_STAGE.NEEDS_REVIEW &&
-    data.schemaValidation?.approved === true &&
-    originalDoc?.schemaValidation?.approved !== true;
-
-  if (isApprovalUpdate && data.schemaValidation) {
+  if (isSchemaApproval(operation, data, originalDoc) && data.schemaValidation) {
     if (!req.user) {
       throw new Error("Authentication required to approve schema changes");
     }
@@ -87,11 +92,13 @@ const validateIngestFileOwnership = async (
   const ingestFileId = extractRelationId(ingestFile);
   if (!ingestFileId) return;
 
-  const file = await req.payload.findByID({ collection: "ingest-files", id: ingestFileId, overrideAccess: true });
-  const ownerId = extractRelationId(file?.user);
-  if (ownerId !== userId) {
-    throw new Error("You can only create ingest jobs for your own ingest files");
-  }
+  await validateRelationOwnership(req.payload, {
+    collection: "ingest-files",
+    id: ingestFileId,
+    userField: "user",
+    userId,
+    errorMessage: "You can only create ingest jobs for your own ingest files",
+  });
 };
 
 const validateDatasetCatalogAccess = async (
@@ -193,12 +200,7 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     }
 
     // Queue ingest-process workflow when NEEDS_REVIEW is approved
-    if (
-      operation === "update" &&
-      previousDoc?.stage === PROCESSING_STAGE.NEEDS_REVIEW &&
-      doc.schemaValidation?.approved === true &&
-      previousDoc?.schemaValidation?.approved !== true
-    ) {
+    if (isSchemaApproval(operation, doc, previousDoc)) {
       // Quota exceeded requires admin approval
       if (doc.reviewReason === REVIEW_REASONS.QUOTA_EXCEEDED && req.user?.role !== "admin") {
         throw new Error("Only admins can approve quota-exceeded imports. Please contact us to increase your limit.");
@@ -221,7 +223,8 @@ export const ingestJobAfterDeleteHook: CollectionAfterDeleteHook = ({ doc }) => 
       const filePath = getIngestFilePath(filename);
       cleanupSidecarFiles(filePath, doc.sheetIndex ?? 0);
     }
-  } catch {
-    // Best-effort cleanup
+  } catch (error) {
+    // Best-effort cleanup — log so stale files are traceable
+    logger.debug({ error, ingestJobId: doc.id }, "Failed to clean up sidecar files after ingest job deletion");
   }
 };

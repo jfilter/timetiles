@@ -14,7 +14,7 @@
  */
 import type { CollectionConfig } from "payload";
 
-import * as access from "./datasets/access";
+import { create, deleteAccess, read, readVersions, update } from "./datasets/access";
 import { syncIsPublicToEvents, validateDatasetNameUniqueness, validatePublicCatalogDataset } from "./datasets/hooks";
 import { transformationFields } from "./datasets/transformation-fields";
 import {
@@ -31,13 +31,7 @@ const Datasets: CollectionConfig = {
   slug: "datasets",
   ...createCommonConfig(),
   admin: { useAsTitle: "name", defaultColumns: ["name", "catalog", "language", "isPublic"], group: "Data" },
-  access: {
-    read: access.read,
-    create: access.create,
-    update: access.update,
-    delete: access.deleteAccess,
-    readVersions: access.readVersions,
-  },
+  access: { read, create, update, delete: deleteAccess, readVersions },
   hooks: {
     beforeChange: [validateDatasetNameUniqueness, validatePublicCatalogDataset],
     afterChange: [syncIsPublicToEvents],
