@@ -8,16 +8,20 @@
  * @category Utils
  */
 
-/** Type for event data object */
+/** Type for event data object — keys are dynamic, determined by source file + transforms */
 export interface EventData {
-  title?: string;
-  name?: string;
-  description?: string;
-  startDate?: string;
-  endDate?: string;
-  city?: string;
-  country?: string;
   [key: string]: unknown;
+}
+
+/** Field mappings from a dataset's fieldMappingOverrides */
+export interface FieldMappingOverrides {
+  titlePath?: string | null;
+  descriptionPath?: string | null;
+  locationNamePath?: string | null;
+  timestampPath?: string | null;
+  latitudePath?: string | null;
+  longitudePath?: string | null;
+  locationPath?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -34,11 +38,26 @@ export const extractFieldFromData = (data: unknown, path: string | null | undefi
   return null;
 };
 
-/** Field mappings from a dataset's fieldMappingOverrides */
-interface FieldMappingPaths {
-  titlePath?: string | null;
-  descriptionPath?: string | null;
-}
+/**
+ * Build the set of originalData keys already rendered by dedicated UI sections.
+ *
+ * Includes:
+ * - Dynamic mapping paths from dataset fieldMappingOverrides (actual column names
+ *   whose values were extracted into top-level Event fields during import)
+ * - Literal keys probed by extractEventFields as fallbacks ("title", "name", "description")
+ * - "id" (structural, not user data)
+ */
+export const buildConsumedFieldSet = (fieldMappings?: FieldMappingOverrides | null): Set<string> => {
+  const keys = new Set<string>(["id", "title", "name", "description"]);
+  if (fieldMappings) {
+    for (const path of Object.values(fieldMappings)) {
+      if (typeof path === "string" && path) {
+        keys.add(path);
+      }
+    }
+  }
+  return keys;
+};
 
 /**
  * Extract title and description from event data using dataset field mappings.
@@ -49,7 +68,7 @@ interface FieldMappingPaths {
  */
 export const extractEventFields = (
   eventData: unknown,
-  fieldMappings?: FieldMappingPaths | null,
+  fieldMappings?: FieldMappingOverrides | null,
   eventId?: number
 ): { title: string; description: string | null } => {
   const title =
@@ -85,7 +104,7 @@ export const getEventData = (event: { originalData?: unknown; data?: unknown }):
 };
 
 /** Get event title from data, using field mappings when available. */
-export const getEventTitle = (eventData: EventData, fieldMappings?: FieldMappingPaths | null): string => {
+export const getEventTitle = (eventData: EventData, fieldMappings?: FieldMappingOverrides | null): string => {
   return extractEventFields(eventData, fieldMappings).title;
 };
 
@@ -123,8 +142,8 @@ export const formatDateRange = (startDate: unknown, endDate: unknown, locale: st
   return parts.join(" - ");
 };
 
-/** Build a location display string from event and data fields */
-export const getLocationDisplay = (event: Record<string, unknown> | object, eventData: EventData): string | null => {
+/** Build a location display string from top-level event fields (extracted during import) */
+export const getLocationDisplay = (event: Record<string, unknown> | object): string | null => {
   const eventRecord = event as Record<string, unknown>;
   // Prefer location name (venue, place name) if available
   const locationName = typeof eventRecord.locationName === "string" ? eventRecord.locationName : null;
@@ -136,9 +155,7 @@ export const getLocationDisplay = (event: Record<string, unknown> | object, even
   if (geocodingInfo?.normalizedAddress) {
     return geocodingInfo.normalizedAddress;
   }
-  // Final fallback to city/country from data
-  const cityCountry = [safeToString(eventData.city), safeToString(eventData.country)].filter(Boolean);
-  return cityCountry.length > 0 ? cityCountry.join(", ") : null;
+  return null;
 };
 
 /** Check whether an event has valid (non-zero) coordinates */

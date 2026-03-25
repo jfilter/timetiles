@@ -18,6 +18,7 @@ import { getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { EventDetailContent } from "@/components/events";
+import { extractEventFields } from "@/lib/utils/event-detail";
 
 export const dynamic = "force-dynamic";
 
@@ -42,13 +43,11 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
     return { title: "Event | TimeTiles", description: "View event details on TimeTiles" };
   }
 
-  const eventData = event.originalData as Record<string, unknown> | undefined;
-  const title = (eventData?.title as string) || (eventData?.name as string) || `Event ${event.id}`;
+  const fieldMappings =
+    typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
+  const { title, description } = extractEventFields(event.originalData, fieldMappings, event.id);
 
-  return {
-    title: `${title} | TimeTiles`,
-    description: (eventData?.description as string) || "View event details on TimeTiles",
-  };
+  return { title: `${title} | TimeTiles`, description: description ?? "View event details on TimeTiles" };
 };
 
 interface EventDetailsPageProps {

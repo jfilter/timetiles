@@ -14,14 +14,7 @@ import { useTranslations } from "next-intl";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import type { EventListItem } from "@/lib/schemas/events";
-import {
-  formatDateRange,
-  getDatasetInfo,
-  getEventData,
-  getEventTitle,
-  getLocationDisplay,
-  safeToString,
-} from "@/lib/utils/event-detail";
+import { extractEventFields, getDatasetInfo, getEventData, getLocationDisplay } from "@/lib/utils/event-detail";
 
 import { EventsListSkeleton } from "./events-list-skeleton";
 
@@ -45,11 +38,11 @@ interface EventItemProps {
 
 const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
   const eventData = getEventData(event);
-  const title = getEventTitle(eventData);
-  const description = safeToString(eventData.description);
+  const { title, description: rawDescription } = extractEventFields(eventData);
+  const description = rawDescription ?? "";
   const datasetInfo = getDatasetInfo(event.dataset);
-  const locationDisplay = getLocationDisplay(event, eventData);
-  const dateRange = formatDateRange(eventData.startDate, eventData.endDate);
+  const locationDisplay = getLocationDisplay(event);
+  const eventDate = event.eventTimestamp ? new Date(event.eventTimestamp).toLocaleDateString() : null;
 
   const handleClick = () => {
     if (onEventClick) {
@@ -93,7 +86,7 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
       {description && <CardDescription className="mt-2 line-clamp-2">{description}</CardDescription>}
 
       {/* Location and Date row with icons */}
-      {(locationDisplay != null || dateRange != null) && (
+      {(locationDisplay != null || eventDate != null) && (
         <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
           {locationDisplay && (
             <div className="flex min-w-0 items-center gap-1.5">
@@ -101,10 +94,10 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
               <span className="truncate">{locationDisplay}</span>
             </div>
           )}
-          {dateRange && (
+          {eventDate && (
             <div className="flex shrink-0 items-center gap-1.5">
               <Calendar className="h-4 w-4 shrink-0" />
-              <span>{dateRange}</span>
+              <span>{eventDate}</span>
             </div>
           )}
         </div>
