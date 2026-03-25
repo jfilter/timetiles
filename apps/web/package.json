@@ -34,7 +34,8 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "openapi:generate": "tsx scripts/generate-openapi.ts",
-    "demo-data": "dotenv -e ../../.env -e .env.local -- tsx scripts/load-demo-data.ts"
+    "demo-data": "dotenv -e ../../.env -e .env.local -- tsx scripts/load-demo-data.ts",
+    "setup-site": "dotenv -e ../../.env -e .env.local -- tsx scripts/setup-site.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",

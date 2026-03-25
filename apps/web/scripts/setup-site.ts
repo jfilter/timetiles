@@ -209,17 +209,20 @@ const findOrCreateAboutPage = async (payload: PayloadInstance, siteId: number) =
         },
         {
           blockType: "features",
-          headline: "What is TimeTiles?",
+          sectionTitle: "What is TimeTiles?",
           features: [
             {
+              icon: "insights",
               title: "Import Data",
               description: "Import events from CSV, Excel, or scheduled URLs with automatic schema detection.",
             },
             {
+              icon: "map",
               title: "Explore on Maps",
               description: "Visualize events on interactive maps with clustering and spatial filtering.",
             },
             {
+              icon: "timeline",
               title: "Filter by Time",
               description: "Use temporal histograms and date ranges to find exactly what you need.",
             },

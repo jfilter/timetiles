@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data setup-site demo-berlin init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE from .env (default: docker)
 -include .env
@@ -330,6 +330,16 @@ seed:
 #        make demo-data ARGS="--clean"    # Remove demo data
 demo-data:
 	@LOG_LEVEL=info pnpm --filter web demo-data $(ARGS)
+
+# Set up a functional site (navigation, pages, branding, footer)
+# Usage: make setup-site               # Create site configuration
+#        make setup-site ARGS="--clean"  # Remove site configuration
+setup-site:
+	@LOG_LEVEL=info pnpm --filter web setup-site $(ARGS)
+
+# Full Berlin demo: site setup + 10 public datasets from daten.berlin.de
+demo-berlin: setup-site
+	@$(MAKE) demo-data ARGS="--trigger"
 
 # Complete first-time initialization (setup + database + seed + start dev)
 init: setup up wait-db
