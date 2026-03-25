@@ -12,6 +12,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import type { Dataset } from "@/payload-types";
+import { extractExternalIdValue, formatEventId, ID_PREFIXES, sanitizeId } from "@/lib/utils/event-id";
 
 /**
  * Generate a unique ID for an event row.
@@ -67,14 +68,18 @@ const generateExternalId = (
   strategy: { externalIdPath?: string | null },
   datasetId: string
 ): { uniqueId: string; sourceId: string; strategy: string } => {
-  const sourceId = extractFieldValue(data, strategy.externalIdPath ?? "");
+  const sourceId = extractExternalIdValue(data, strategy.externalIdPath ?? "");
 
   if (sourceId == null || sourceId === "") {
     throw new Error(`Missing external ID at path: ${strategy.externalIdPath ?? "unknown"}`);
   }
 
   const sanitizedId = sanitizeId(sourceId);
-  return { uniqueId: `${datasetId}:ext:${sanitizedId}`, sourceId: sanitizedId, strategy: "external" };
+  return {
+    uniqueId: formatEventId(datasetId, ID_PREFIXES.external, sanitizedId),
+    sourceId: sanitizedId,
+    strategy: "external",
+  };
 };
 
 /**
@@ -99,14 +104,20 @@ const generateContentHashId = (
   }
 
   const hash = generateContentHash(hashData);
-  return { uniqueId: `${datasetId}:hash:${hash.substring(0, 16)}`, strategy: "content-hash" };
+  return {
+    uniqueId: formatEventId(datasetId, ID_PREFIXES["content-hash"], hash.substring(0, 16)),
+    strategy: "content-hash",
+  };
 };
 
 /** Generate a random unique ID. No dedup possible. */
 const generateAutoId = (datasetId: string): { uniqueId: string; strategy: string } => {
   const timestamp = Date.now();
   const random = randomBytes(4).toString("hex");
-  return { uniqueId: `${datasetId}:auto:${timestamp}:${random}`, strategy: "auto-generate" };
+  return {
+    uniqueId: formatEventId(datasetId, ID_PREFIXES["auto-generate"], `${timestamp}:${random}`),
+    strategy: "auto-generate",
+  };
 };
 
 const generateContentHash = (data: unknown): string => {
@@ -122,26 +133,4 @@ const generateContentHash = (data: unknown): string => {
   };
   const normalized = JSON.stringify(data, sortReplacer);
   return createHash("sha256").update(normalized).digest("hex");
-};
-
-const extractFieldValue = (data: unknown, path: string): unknown => {
-  if (!path) return null;
-  const parts = path.split(".");
-  let value = data as Record<string, unknown>;
-  for (const part of parts) {
-    if (value == null || typeof value !== "object") return null;
-    value = value[part] as Record<string, unknown>;
-  }
-  return value;
-};
-
-const sanitizeId = (id: unknown): string => {
-  const str = String(id).trim();
-  if (str.length === 0 || str.length > 255) {
-    throw new Error(`Invalid ID length: ${str.length} (must be 1-255 characters)`);
-  }
-  if (!/^[\w\-.:]+$/.test(str)) {
-    throw new Error(`Invalid ID format: ${str} (only alphanumeric, -, _, :, . allowed)`);
-  }
-  return str;
 };
