@@ -10,24 +10,17 @@
 "use client";
 
 import { Checkbox, ConfirmDialog } from "@timetiles/ui";
-import { Button } from "@timetiles/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@timetiles/ui/components/dropdown-menu";
 import { cn } from "@timetiles/ui/lib/utils";
-import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 
-import { TRANSFORM_TYPE_LABELS, type TransformType } from "@/lib/types/ingest-transforms";
+import type { TransformType } from "@/lib/types/ingest-transforms";
 import type { ConfidenceLevel, FieldMappingStringField, IngestTransform } from "@/lib/types/ingest-wizard";
 
-import { TransformEditor } from "../transforms/transform-editor";
-import { TargetSelect, TRANSFORM_COLORS, TRANSFORM_ICONS } from "./column-mapping-shared";
+import { TargetSelect } from "./column-mapping-shared";
 import { ConfidenceBadge } from "./field-select";
+import { AddTransformMenu, TransformChip } from "./transform-chip";
+import { ExpandedEditorRow } from "./transform-editor-row";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -135,117 +128,8 @@ const useTransformEditing = (
   };
 };
 
-/** Short label for a transform chip. */
-export const getTransformChipLabel = (
-  transform: IngestTransform,
-  t: (key: string, values?: Record<string, unknown>) => string
-): string => {
-  switch (transform.type) {
-    case "rename":
-      return transform.to ? t("tfChipRename", { name: transform.to }) : t("tfChipRenameDefault");
-    case "date-parse":
-      return transform.inputFormat ? t("tfChipDate", { format: transform.inputFormat }) : t("tfChipDateDefault");
-    case "string-op":
-      return transform.operation.charAt(0).toUpperCase() + transform.operation.slice(1);
-    case "concatenate":
-      return t("tfChipJoin", { count: transform.fromFields.length });
-    case "split":
-      return t("tfChipSplit", { count: transform.toFields.length });
-  }
-};
-
-// ---------------------------------------------------------------------------
-// TransformChip
-// ---------------------------------------------------------------------------
-
-interface TransformChipProps {
-  transform: IngestTransform;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onRemove: () => void;
-}
-
-const TransformChip = ({ transform, isExpanded, onToggle, onRemove }: Readonly<TransformChipProps>) => {
-  const t = useTranslations("Ingest");
-  const Icon = TRANSFORM_ICONS[transform.type];
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 text-xs",
-        isExpanded
-          ? "border-primary/30 bg-primary/5 ring-ring ring-1"
-          : "border-primary/15 bg-card/30 hover:bg-card/60",
-        !transform.active && "opacity-50"
-      )}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex items-center gap-1"
-        aria-expanded={isExpanded}
-        aria-label={TRANSFORM_TYPE_LABELS[transform.type]}
-      >
-        <Icon className={cn("h-3 w-3", TRANSFORM_COLORS[transform.type])} />
-        <span className="text-foreground max-w-[120px] truncate">
-          {getTransformChipLabel(transform, t as (key: string, values?: Record<string, unknown>) => string)}
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-muted-foreground hover:text-destructive -mr-0.5 ml-0.5 rounded-sm p-0.5"
-        aria-label={t("removeTransform")}
-      >
-        <X className="h-3 w-3" />
-      </button>
-    </span>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// AddTransformMenu
-// ---------------------------------------------------------------------------
-
-interface AddTransformMenuProps {
-  columnName: string;
-  onAdd: (columnName: string, type: TransformType) => void;
-  /** Subset of transform types to offer. Defaults to all except concatenate. */
-  types?: TransformType[];
-}
-
-const DEFAULT_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "split"];
-
-/** Dropdown that adds a new transform to a column. Subset of types via `types` prop. */
-const AddTransformMenu = ({ columnName, onAdd, types = DEFAULT_TRANSFORM_TYPES }: Readonly<AddTransformMenuProps>) => {
-  const t = useTranslations("Ingest");
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-foreground h-6 gap-1 px-1.5 text-xs"
-          aria-label={t("addTransformToColumn")}
-        >
-          <Plus className="h-3 w-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
-        {types.map((type) => {
-          const Icon = TRANSFORM_ICONS[type];
-          return (
-            <DropdownMenuItem key={type} onClick={() => onAdd(columnName, type)}>
-              <Icon className={cn("mr-2 h-4 w-4", TRANSFORM_COLORS[type])} />
-              {TRANSFORM_TYPE_LABELS[type]}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
+/** Short label for a transform chip. Re-exported for external consumers. */
+export { getTransformChipLabel } from "./transform-chip";
 
 // ---------------------------------------------------------------------------
 // SplitChildRow
@@ -363,61 +247,6 @@ const SplitChildRow = ({
         onConfirm={editing.handleConfirmRemove}
       />
     </>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// ExpandedEditorRow — shared editor row with save/cancel
-// ---------------------------------------------------------------------------
-
-interface ExpandedEditorRowProps {
-  expandedTransform: IngestTransform | null;
-  columnName: string;
-  sourceColumns: string[];
-  onDraftChange: (updates: Partial<IngestTransform>) => void;
-  onSave: () => void;
-  onCancel: () => void;
-  bgClass?: string;
-}
-
-const ExpandedEditorRow = ({
-  expandedTransform,
-  columnName,
-  sourceColumns,
-  onDraftChange,
-  onSave,
-  onCancel,
-  bgClass,
-}: Readonly<ExpandedEditorRowProps>) => {
-  const t = useTranslations("Ingest");
-
-  if (!expandedTransform) return null;
-
-  const Icon = TRANSFORM_ICONS[expandedTransform.type];
-
-  return (
-    <tr className={cn("border-primary/5 border-b last:border-0", bgClass)}>
-      <td colSpan={4} className="bg-muted/30 px-6 py-4">
-        <div className="max-w-2xl">
-          <div className="mb-2 flex items-center gap-2">
-            <Icon className={cn("h-4 w-4", TRANSFORM_COLORS[expandedTransform.type])} />
-            <span className="text-foreground text-sm font-medium">{TRANSFORM_TYPE_LABELS[expandedTransform.type]}</span>
-            <span className="text-muted-foreground text-xs">
-              {t("flowSourceColumn")}: {columnName}
-            </span>
-          </div>
-          <TransformEditor transform={expandedTransform} onChange={onDraftChange} sourceColumns={sourceColumns} />
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={onCancel}>
-              {t("cancelEdit")}
-            </Button>
-            <Button size="sm" onClick={onSave}>
-              {t("saveTransform")}
-            </Button>
-          </div>
-        </div>
-      </td>
-    </tr>
   );
 };
 
