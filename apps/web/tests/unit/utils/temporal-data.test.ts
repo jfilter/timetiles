@@ -1,3 +1,8 @@
+/**
+ * Tests for the temporal data visibility utility.
+ *
+ * @module
+ */
 import { describe, expect, it } from "vitest";
 
 import type { DataSourceDataset } from "@/lib/types/data-sources";

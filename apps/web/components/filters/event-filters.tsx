@@ -16,8 +16,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
-import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
+import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { hasVisibleTemporalData } from "@/lib/utils/temporal-data";
