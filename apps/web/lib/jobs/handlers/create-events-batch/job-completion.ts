@@ -59,7 +59,8 @@ export const markJobCompleted = async (
   // Clean up sidecar CSV files
   cleanupSidecarFiles(filePath, sheetIndex);
 
-  // Track total events created for the user's quota
+  // Quota phase 3 of 3: authoritative usage tracking after events are created.
+  // See also: phase 1 (gate) in workflows/review-checks.ts, phase 2 (re-check) below in checkEventQuotaBeforeProcessing.
   try {
     const ingestJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
 
@@ -113,11 +114,6 @@ export const updateJobErrors = async (
   return storedErrorCount + errorsToStore.length;
 };
 
-export const cleanupOnError = (filePath: string, sheetIndex: number) => {
-  // Clean up sidecar CSV files on error
-  cleanupSidecarFiles(filePath, sheetIndex);
-};
-
 export const checkEventQuotaBeforeProcessing = async (
   payload: Payload,
   ingestFile: IngestFile,
@@ -135,6 +131,8 @@ export const checkEventQuotaBeforeProcessing = async (
     return;
   }
 
+  // Quota phase 2 of 3: re-check before processing (TOCTOU mitigation).
+  // See also: phase 1 (gate) in workflows/review-checks.ts, phase 3 (increment) above in markJobCompleted.
   const quotaService = createQuotaService(payload);
 
   // Use uniqueRows from deduplication summary -- this is the actual number of events

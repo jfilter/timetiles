@@ -15,7 +15,7 @@ import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { cleanupSidecarFiles, getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
@@ -23,8 +23,8 @@ import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
-import { loadJobResources } from "../utils/resource-loading";
+import type { JobHandlerContext } from "../utils/job-context";
+import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
 import {
   checkQuotaForSheet,
@@ -269,25 +269,7 @@ export const analyzeDuplicatesJob = {
     { name: "skipped", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskCallbackArgs) => {
-    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
-    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
-    try {
-      await args.req.payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
-            context: "analyze-duplicates",
-          },
-        },
-      });
-    } catch {
-      // Best-effort — don't throw in onFail
-    }
-  },
+  onFail: createStandardOnFail("analyze-duplicates"),
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as AnalyzeDuplicatesJobInput["input"];
@@ -371,13 +353,7 @@ export const analyzeDuplicatesJob = {
       logError(error, "Duplicate analysis failed", { ingestJobId });
 
       // Clean up sidecar CSV files on error (Excel → CSV conversions)
-      try {
-        const { job: failedJob, ingestFile: failedFile } = await loadJobResources(payload, ingestJobId);
-        const failedFilePath = getIngestFilePath(failedFile.filename ?? "");
-        cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
-      } catch {
-        // Best-effort cleanup — don't mask the original error
-      }
+      await cleanupSidecarsForJob(payload, ingestJobId);
 
       // Re-throw — Payload retries up to `retries` count, then onFail handles failure
       throw error;

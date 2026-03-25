@@ -35,6 +35,14 @@ export const myJobHandler: TaskHandler<"my-job"> = async ({ input, req }) => {
 
 All ingest workflows run on the `ingest` queue with per-resource concurrency keys.
 
+## Progress Tracking
+
+Use `ProgressTrackingService.updateAndCompleteBatch()` for all batch progress writes in jobs that iterate file rows (schema detection, event creation). This combines progress update and batch completion into a single DB write, avoiding two separate read-serialize-write cycles per batch.
+
+Throttle writes to reduce DB load (e.g., write every N batches via a `PROGRESS_WRITE_INTERVAL` constant). See `create-events-batch-job.ts` for the reference pattern.
+
+Exception: `geocode-batch-job.ts` uses `updateStageProgress()` alone because geocoding tracks unique locations (not file-row batches) and has no batch number concept.
+
 ## See Also
 
 - **tests/integration/CLAUDE.md** — Job testing patterns

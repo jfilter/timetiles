@@ -15,8 +15,8 @@ import { createJobLogger, logError } from "@/lib/logger";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
-import { loadDataset, loadIngestJob } from "../utils/resource-loading";
+import type { JobHandlerContext } from "../utils/job-context";
+import { createStandardOnFail, loadDataset, loadIngestJob, setJobStage } from "../utils/resource-loading";
 
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
@@ -58,25 +58,7 @@ export const createSchemaVersionJob = {
     { name: "skipped", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: async (args: TaskCallbackArgs) => {
-    const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
-    if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
-    try {
-      await args.req.payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: {
-          stage: PROCESSING_STAGE.FAILED,
-          errorLog: {
-            lastError: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
-            context: "create-schema-version",
-          },
-        },
-      });
-    } catch {
-      // Best-effort — don't throw in onFail
-    }
-  },
+  onFail: createStandardOnFail("create-schema-version"),
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CreateSchemaVersionJobInput["input"];
@@ -91,11 +73,7 @@ export const createSchemaVersionJob = {
       const job = await loadIngestJob(payload, ingestJobId);
 
       // Set stage for UI progress tracking (workflow controls sequencing)
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { stage: PROCESSING_STAGE.CREATE_SCHEMA_VERSION },
-      });
+      await setJobStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
       // Start CREATE_SCHEMA_VERSION stage
       const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;

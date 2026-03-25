@@ -11,14 +11,11 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { createJobLogger } from "@/lib/logger";
 import type { detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 
-import { loadJobResources } from "../../utils/resource-loading";
-import { getIngestFilePath } from "../../utils/upload-path";
 import type { SchemaModeResult } from "./schema-evaluation";
 
 // Handle schema mode failure -- updates job to FAILED and returns early result
@@ -182,15 +179,4 @@ export const guardAgainstConcurrentReview = async (
   await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
   return { output: { needsReview: true, requiresApproval: true, hasBreakingChanges: false, newFields: 0 } };
-};
-
-/** Best-effort sidecar CSV cleanup for error paths. */
-export const cleanupSidecarsOnError = async (payload: Payload, jobId: number): Promise<void> => {
-  try {
-    const { job: failedJob, ingestFile: failedFile } = await loadJobResources(payload, jobId);
-    const failedFilePath = getIngestFilePath(failedFile.filename ?? "");
-    cleanupSidecarFiles(failedFilePath, failedJob.sheetIndex ?? 0);
-  } catch {
-    // Best-effort cleanup -- don't mask the original error
-  }
 };
