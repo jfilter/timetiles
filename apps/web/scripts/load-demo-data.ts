@@ -347,6 +347,7 @@ const main = async () => {
       for (const item of created) {
         await triggerImport(payload, item.ingestId);
       }
+
       logger.info("All imports queued. They will be processed by the job runner.");
     } else {
       logger.info(

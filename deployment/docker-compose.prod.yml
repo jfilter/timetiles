@@ -158,7 +158,7 @@ services:
         "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
         "--cron",
-        "*/1 * * * *",
+        "*/10 * * * * *",
         "--queue",
         "ingest",
         "--limit",
