@@ -41,7 +41,6 @@ export const useClipboard = () => {
       setError(true);
       scheduleReset(setError);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- scheduleReset is stable (captures ref)
   }, []);
 
   return { copy, isCopied, error } as const;
