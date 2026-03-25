@@ -95,7 +95,7 @@ const analyzeInternalDuplicates = async (
   })) {
     for (const [index, row] of rows.entries()) {
       // Count empty rows (all values null, undefined, or blank)
-      const isEmptyRow = Object.values(row).every((v) => v == null || String(v).trim() === "");
+      const isEmptyRow = Object.values(row).every((v) => v == null || (typeof v === "string" && v.trim() === ""));
       if (isEmptyRow) {
         emptyRows++;
         continue; // Skip empty rows from duplicate analysis

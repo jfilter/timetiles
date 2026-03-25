@@ -185,32 +185,22 @@ export const createEventsBatchJob = {
       // Complete the stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
-      // Review check: high row error rate
+      // Mark job completed (saves results, tracks quota, cleans up files)
+      await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);
+
+      // Review check: high row error rate — pause after completion so results are saved
       const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
         | ReviewChecksConfig
         | undefined;
       const errorCheck = shouldReviewHighRowErrors(totalEventsCreated, totalErrors, reviewChecks);
-      if (errorCheck.needsReview) {
-        // Mark completed first (saves results, tracks quota, cleans up) then pause for review
-        await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);
+      const needsReview = errorCheck.needsReview;
+      if (needsReview) {
         await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_ROW_ERROR_RATE, {
           totalEvents: totalEventsCreated,
           errorCount: totalErrors,
           errorRate: errorCheck.errorRate,
         });
-
-        logPerformance("Event creation (needs review)", Date.now() - startTime, {
-          ingestJobId,
-          totalBatches: batchNumber,
-          totalEventsCreated,
-          totalErrors,
-        });
-
-        return { output: { needsReview: true, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
       }
-
-      // Mark job completed
-      await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);
 
       logPerformance("Event creation", Date.now() - startTime, {
         ingestJobId,
@@ -220,7 +210,7 @@ export const createEventsBatchJob = {
         totalErrors,
       });
 
-      return { output: { eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
+      return { output: { needsReview, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
     } catch (error) {
       logError(error, "Event creation failed", { ingestJobId });
       cleanupOnError(filePath, sheetIndex);

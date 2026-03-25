@@ -46,16 +46,21 @@ export const REVIEW_REASONS = {
   NO_LOCATION_DETECTED: "no-location",
 } as const;
 
+/** Resume point constants for the ingest-process workflow. */
+const RESUME_DETECT_SCHEMA = "detect-schema";
+const RESUME_CREATE_EVENTS = "create-events";
+const RESUME_CREATE_SCHEMA_VERSION = "create-schema-version";
+
 /** Maps review reason → resume point for the ingest-process workflow. */
 export const REVIEW_RESUME_POINTS: Record<string, string> = {
-  [REVIEW_REASONS.SCHEMA_DRIFT]: "create-schema-version",
-  [REVIEW_REASONS.QUOTA_EXCEEDED]: "detect-schema",
-  [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: "detect-schema",
-  [REVIEW_REASONS.GEOCODING_PARTIAL]: "create-events",
-  [REVIEW_REASONS.HIGH_ROW_ERROR_RATE]: "create-events",
-  [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: "detect-schema",
-  [REVIEW_REASONS.NO_TIMESTAMP_DETECTED]: "detect-schema",
-  [REVIEW_REASONS.NO_LOCATION_DETECTED]: "detect-schema",
+  [REVIEW_REASONS.SCHEMA_DRIFT]: RESUME_CREATE_SCHEMA_VERSION,
+  [REVIEW_REASONS.QUOTA_EXCEEDED]: RESUME_DETECT_SCHEMA,
+  [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: RESUME_DETECT_SCHEMA,
+  [REVIEW_REASONS.GEOCODING_PARTIAL]: RESUME_CREATE_EVENTS,
+  [REVIEW_REASONS.HIGH_ROW_ERROR_RATE]: RESUME_CREATE_EVENTS,
+  [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: RESUME_DETECT_SCHEMA,
+  [REVIEW_REASONS.NO_TIMESTAMP_DETECTED]: RESUME_DETECT_SCHEMA,
+  [REVIEW_REASONS.NO_LOCATION_DETECTED]: RESUME_DETECT_SCHEMA,
 };
 
 /** Get the global review thresholds from app config. */
@@ -255,6 +260,6 @@ export const shouldReviewNoLocation = (
  * Get the resume point for a given review reason.
  */
 export const getResumePointForReason = (reason: string | null | undefined): string => {
-  if (!reason) return "create-schema-version"; // default (backward compat with schema-drift)
-  return REVIEW_RESUME_POINTS[reason] ?? "create-schema-version";
+  if (!reason) return RESUME_CREATE_SCHEMA_VERSION; // default (backward compat with schema-drift)
+  return REVIEW_RESUME_POINTS[reason] ?? RESUME_CREATE_SCHEMA_VERSION;
 };

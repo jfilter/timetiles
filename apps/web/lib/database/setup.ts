@@ -168,7 +168,6 @@ export const runMigrations = (connectionString: string): void => {
 
     const env = { ...process.env, DATABASE_URL: connectionString };
 
-    // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
     execSync(`pnpm payload migrate`, { env, stdio: "inherit" });
 
     logger.info("Migrations completed successfully");

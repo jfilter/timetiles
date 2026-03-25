@@ -241,7 +241,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // Verify result — workflow-compatible output format
-      expect(result).toEqual({ output: { eventCount: 2, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 2, duplicatesSkipped: 0 } });
 
       // Verify streaming was used
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith("/mock/ingest-files/test.csv", {
@@ -300,7 +300,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // Job handler stores results; onSuccess callback sets stage to COMPLETED.
-      expect(result).toEqual({ output: { eventCount: 1, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 1, duplicatesSkipped: 0 } });
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "ingest-jobs",
@@ -361,6 +361,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       expect(result).toEqual({
         output: {
+          needsReview: false,
           eventCount: 1, // Only first row created
           duplicatesSkipped: 2, // Second and third rows skipped
         },
@@ -415,7 +416,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // Should indicate all batches processed
-      expect(result).toEqual({ output: { eventCount: 4, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 4, duplicatesSkipped: 0 } });
 
       // Should bulk-insert events in 2 batches (2 events each)
       expect(mocks.bulkInsertEvents).toHaveBeenCalledTimes(2);
@@ -580,7 +581,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // 4 created (bulk inserted), 0 skipped (no duplicates), 1 error — no double-counting
-      expect(result).toEqual({ output: { eventCount: 4, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 4, duplicatesSkipped: 0 } });
 
       // Uses updateAndCompleteBatch (combined progress + batch completion in a single DB write).
       // Single batch (batchNumber=1), so the final write after the loop fires.
@@ -639,7 +640,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       expect(drizzleMock.delete).toHaveBeenCalledTimes(2);
 
       // Verify the handler continued normally and produced a result
-      expect(result).toEqual({ output: { eventCount: 1, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 1, duplicatesSkipped: 0 } });
     });
   });
 
@@ -773,7 +774,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      expect(result).toEqual({ output: { eventCount: 0, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 0, duplicatesSkipped: 0 } });
 
       // Should store results (stage transition moved to onSuccess callback)
       expect(mockPayload.update).toHaveBeenCalledWith({
