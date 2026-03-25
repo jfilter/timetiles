@@ -241,7 +241,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         expect.objectContaining({
           dataset: "dataset-456",
           uniqueId: "dataset-456:ext:1",
-          originalData: expect.objectContaining({ id: "1", title: "Event 1", address: "123 Main St" }),
+          transformedData: expect.objectContaining({ id: "1", title: "Event 1", address: "123 Main St" }),
         })
       );
 
@@ -826,7 +826,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: "25" }),
+          transformedData: expect.objectContaining({ age: "25" }),
           validationStatus: "pending",
           transformations: null,
         })
@@ -883,7 +883,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: 25 }),
+          transformedData: expect.objectContaining({ age: 25 }),
           validationStatus: "transformed",
           transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
         })
@@ -991,7 +991,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: 25, active: true }),
+          transformedData: expect.objectContaining({ age: 25, active: true }),
           transformations: expect.arrayContaining([
             expect.objectContaining({ path: "age" }),
             expect.objectContaining({ path: "active" }),
@@ -1049,7 +1049,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: "25" }), // Still string
+          transformedData: expect.objectContaining({ age: "25" }), // Still string
           validationStatus: "pending",
         })
       );
@@ -1107,7 +1107,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
+          transformedData: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
           validationStatus: "transformed", // Marks as transformed (attempted)
           transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
         })

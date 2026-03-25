@@ -28,7 +28,8 @@ const logger = createLogger("bulk-event-insert");
 export interface BulkEventData {
   dataset: number;
   ingestJob?: number;
-  originalData: Record<string, unknown>;
+  sourceData: Record<string, unknown>;
+  transformedData: Record<string, unknown>;
   uniqueId: string;
   eventTimestamp: string;
   location?: { latitude: number; longitude: number };
@@ -52,7 +53,8 @@ const BATCH_SIZE = 250;
 const toEventsRow = (event: BulkEventData, now: string): typeof events.$inferInsert => ({
   dataset: event.dataset,
   ingestJob: event.ingestJob ?? null,
-  originalData: event.originalData,
+  sourceData: event.sourceData,
+  transformedData: event.transformedData,
   uniqueId: event.uniqueId,
   eventTimestamp: event.eventTimestamp,
   location_latitude: event.location?.latitude ?? null,
@@ -79,7 +81,8 @@ const toVersionRow = (parentId: number, event: BulkEventData, now: string): type
   version_datasetIsPublic: event.datasetIsPublic ?? false,
   version_catalogOwnerId: event.catalogOwnerId ?? null,
   version_ingestJob: event.ingestJob ?? null,
-  version_originalData: event.originalData,
+  version_sourceData: event.sourceData,
+  version_transformedData: event.transformedData,
   version_location_latitude: event.location?.latitude ?? null,
   version_location_longitude: event.location?.longitude ?? null,
   version_coordinateSource_type: event.coordinateSource

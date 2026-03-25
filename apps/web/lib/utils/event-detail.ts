@@ -39,7 +39,7 @@ export const extractFieldFromData = (data: unknown, path: string | null | undefi
 };
 
 /**
- * Build the set of originalData keys already rendered by dedicated UI sections.
+ * Build the set of transformedData keys already rendered by dedicated UI sections.
  *
  * Includes:
  * - Dynamic mapping paths from dataset fieldMappingOverrides (actual column names
@@ -97,9 +97,9 @@ export const safeToString = (value: unknown): string => {
 };
 
 /** Extract the data object from an event, handling non-object or array cases.
- *  Accepts both Payload Event objects (`originalData`) and API DTOs (`data`). */
-export const getEventData = (event: { originalData?: unknown; data?: unknown }): EventData => {
-  const raw = event.originalData ?? event.data;
+ *  Accepts both Payload Event objects (`transformedData`) and API DTOs (`data`). */
+export const getEventData = (event: { transformedData?: unknown; data?: unknown }): EventData => {
+  const raw = event.transformedData ?? event.data;
   return typeof raw === "object" && raw != null && !Array.isArray(raw) ? (raw as EventData) : {};
 };
 
@@ -150,10 +150,14 @@ export const getLocationDisplay = (event: Record<string, unknown> | object): str
   if (locationName) {
     return locationName;
   }
-  // Fall back to geocoded/normalized address
+  // Fall back to geocoded/normalized address (nested Payload shape or flat DTO)
   const geocodingInfo = eventRecord.geocodingInfo as { normalizedAddress?: string | null } | null | undefined;
   if (geocodingInfo?.normalizedAddress) {
     return geocodingInfo.normalizedAddress;
+  }
+  const geocodedAddress = typeof eventRecord.geocodedAddress === "string" ? eventRecord.geocodedAddress : null;
+  if (geocodedAddress) {
+    return geocodedAddress;
   }
   return null;
 };

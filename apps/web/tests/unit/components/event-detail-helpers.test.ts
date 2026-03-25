@@ -59,28 +59,28 @@ describe("safeToString", () => {
 });
 
 describe("getEventData", () => {
-  it("should extract originalData object from event", () => {
-    const event = { originalData: { title: "Test Event", description: "A test" } } as unknown as Event;
+  it("should extract transformedData object from event", () => {
+    const event = { transformedData: { title: "Test Event", description: "A test" } } as unknown as Event;
     expect(getEventData(event)).toEqual({ title: "Test Event", description: "A test" });
   });
 
-  it("should return empty object if originalData is null", () => {
-    const event = { originalData: null } as unknown as Event;
+  it("should return empty object if transformedData is null", () => {
+    const event = { transformedData: null } as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if originalData is undefined", () => {
+  it("should return empty object if transformedData is undefined", () => {
     const event = {} as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if originalData is an array", () => {
-    const event = { originalData: [1, 2, 3] } as unknown as Event;
+  it("should return empty object if transformedData is an array", () => {
+    const event = { transformedData: [1, 2, 3] } as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
-  it("should return empty object if originalData is a primitive", () => {
-    const event = { originalData: "string" } as unknown as Event;
+  it("should return empty object if transformedData is a primitive", () => {
+    const event = { transformedData: "string" } as unknown as Event;
     expect(getEventData(event)).toEqual({});
   });
 
@@ -233,6 +233,11 @@ describe("getLocationDisplay", () => {
   it("should return normalized address when location name is not available", () => {
     const event = { geocodingInfo: { normalizedAddress: "123 Main St, City, Country" } } as Event;
     expect(getLocationDisplay(event)).toBe("123 Main St, City, Country");
+  });
+
+  it("should return geocodedAddress from flat DTO", () => {
+    const event = { geocodedAddress: "Copenhagen, Denmark" } as unknown as Event;
+    expect(getLocationDisplay(event)).toBe("Copenhagen, Denmark");
   });
 
   it("should return null when no location info available", () => {

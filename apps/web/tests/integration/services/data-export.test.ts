@@ -113,7 +113,12 @@ describe.sequential("Data Export Service", () => {
       for (let i = 0; i < 5; i++) {
         await payload.create({
           collection: "events",
-          data: { dataset: dataset.id, uniqueId: `test-event-${i}`, originalData: { title: `Event ${i}` } },
+          data: {
+            dataset: dataset.id,
+            uniqueId: `test-event-${i}`,
+            sourceData: { title: `Event ${i}` },
+            transformedData: { title: `Event ${i}` },
+          },
         });
       }
 

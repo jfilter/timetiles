@@ -130,6 +130,7 @@ const extractLocationName = (row: Record<string, unknown>, locationNamePath?: st
  */
 export const createEventData = (
   row: Record<string, unknown>,
+  sourceRow: Record<string, unknown>,
   dataset: Dataset,
   ingestJobId: string | number,
   job: {
@@ -165,7 +166,8 @@ export const createEventData = (
   return {
     dataset: dataset.id,
     ingestJob: ingestJobNum ?? undefined,
-    originalData: row,
+    sourceData: sourceRow,
+    transformedData: row,
     uniqueId,
     eventTimestamp: (extractTimestamp(row, fieldMappings.timestampPath) ?? new Date()).toISOString(),
     location,

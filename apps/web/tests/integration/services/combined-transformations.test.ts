@@ -109,8 +109,10 @@ describe.sequential("Combined Transformations Integration", () => {
   };
 
   const getEventData = (event: Event): Record<string, unknown> => {
-    return typeof event.originalData === "object" && event.originalData !== null && !Array.isArray(event.originalData)
-      ? (event.originalData as Record<string, unknown>)
+    return typeof event.transformedData === "object" &&
+      event.transformedData !== null &&
+      !Array.isArray(event.transformedData)
+      ? (event.transformedData as Record<string, unknown>)
       : {};
   };
 
@@ -213,19 +215,19 @@ describe.sequential("Combined Transformations Integration", () => {
     expect(firstEventData.datum).toBe("2024-01-15"); // Papa Parse converted DD.MM.YYYY to YYYY-MM-DD
 
     // Verify all three events
-    expect(events.docs[0].originalData).toMatchObject({
+    expect(events.docs[0].transformedData).toMatchObject({
       titel: "Technische Konferenz",
       Teilnehmer_Anzahl: 150,
       beschreibung: "Eine wichtige Konferenz über Technologie",
     });
 
-    expect(events.docs[1].originalData).toMatchObject({
+    expect(events.docs[1].transformedData).toMatchObject({
       titel: "Musik Festival",
       Teilnehmer_Anzahl: 2500,
       beschreibung: "Großes Open-Air Musikfestival",
     });
 
-    expect(events.docs[2].originalData).toMatchObject({
+    expect(events.docs[2].transformedData).toMatchObject({
       titel: "Wissenschaftssymposium",
       Teilnehmer_Anzahl: 75,
       beschreibung: "Akademische Diskussionsrunde",

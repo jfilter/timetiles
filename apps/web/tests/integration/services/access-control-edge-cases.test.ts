@@ -94,7 +94,8 @@ describe.sequential("Access Control Edge Cases", () => {
         collection: "events",
         data: {
           dataset: dataset.id,
-          originalData: { test: "orphaned event" },
+          sourceData: { test: "orphaned event" },
+          transformedData: { test: "orphaned event" },
           uniqueId: `${dataset.id}:test:orphan-${Date.now()}`,
         },
         user: adminUser,
@@ -558,7 +559,8 @@ describe.sequential("Access Control Edge Cases", () => {
         collection: "events",
         data: {
           dataset: dataset.id,
-          originalData: { test: "chain test" },
+          sourceData: { test: "chain test" },
+          transformedData: { test: "chain test" },
           uniqueId: `${dataset.id}:test:chain-${Date.now()}`,
         },
         user: adminUser,

@@ -271,7 +271,7 @@ export class SchemaInferenceService {
       }
 
       const dataRecords = events.docs
-        .map((event) => event.originalData)
+        .map((event) => event.transformedData)
         .filter((d): d is Record<string, unknown> => d != null && typeof d === "object");
 
       if (dataRecords.length > 0) {

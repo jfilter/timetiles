@@ -1951,9 +1951,21 @@ export interface Event {
    */
   ingestJob?: (number | null) | IngestJob;
   /**
-   * Generic data in JSON format (JSONB indexed for fast queries)
+   * Raw source data as received from the import source, before any transforms
    */
-  originalData:
+  sourceData:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Final event data after import transforms (identical to sourceData when no transforms applied)
+   */
+  transformedData:
     | {
         [k: string]: unknown;
       }
@@ -4445,7 +4457,8 @@ export interface EventsSelect<T extends boolean = true> {
   datasetIsPublic?: T;
   catalogOwnerId?: T;
   ingestJob?: T;
-  originalData?: T;
+  sourceData?: T;
+  transformedData?: T;
   location?:
     | T
     | {

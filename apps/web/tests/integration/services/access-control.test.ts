@@ -387,7 +387,8 @@ describe.sequential("Hierarchical Access Control", () => {
         collection: "events",
         data: {
           dataset: publicDatasetInPublicCatalog.id,
-          originalData: { test: "public event" },
+          sourceData: { test: "public event" },
+          transformedData: { test: "public event" },
           uniqueId: `${publicDatasetInPublicCatalog.id}:test:public-event`,
         },
         user: ownerUser,
@@ -397,7 +398,8 @@ describe.sequential("Hierarchical Access Control", () => {
         collection: "events",
         data: {
           dataset: privateDatasetInPrivateCatalog.id,
-          originalData: { test: "private event" },
+          sourceData: { test: "private event" },
+          transformedData: { test: "private event" },
           uniqueId: `${privateDatasetInPrivateCatalog.id}:test:private-event`,
         },
         user: ownerUser,
@@ -449,7 +451,7 @@ describe.sequential("Hierarchical Access Control", () => {
         payload.update({
           collection: "events",
           id: publicEvent.id,
-          data: { originalData: { test: "hacked" } },
+          data: { transformedData: { test: "hacked" } },
           user: otherUser,
           overrideAccess: false,
         })
@@ -460,11 +462,11 @@ describe.sequential("Hierarchical Access Control", () => {
       const updated = await payload.update({
         collection: "events",
         id: publicEvent.id,
-        data: { originalData: { test: "updated by owner" } },
+        data: { transformedData: { test: "updated by owner" } },
         user: ownerUser,
         overrideAccess: false,
       });
-      expect(updated.originalData.test).toBe("updated by owner");
+      expect(updated.transformedData.test).toBe("updated by owner");
     });
 
     it("should prevent non-owner from deleting event", async () => {
@@ -534,7 +536,8 @@ describe.sequential("Hierarchical Access Control", () => {
         collection: "events",
         data: {
           dataset: privateDatasetInPrivateCatalog.id,
-          originalData: { test: "to be deleted" },
+          sourceData: { test: "to be deleted" },
+          transformedData: { test: "to be deleted" },
           uniqueId: `${privateDatasetInPrivateCatalog.id}:test:temp-${Date.now()}`,
         },
         user: ownerUser,

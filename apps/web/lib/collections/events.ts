@@ -107,10 +107,18 @@ const Events: CollectionConfig = {
       admin: { description: "The ingest job that created this event" },
     },
     {
-      name: "originalData",
+      name: "sourceData",
       type: "json",
       required: true,
-      admin: { description: "Generic data in JSON format (JSONB indexed for fast queries)" },
+      admin: { description: "Raw source data as received from the import source, before any transforms" },
+    },
+    {
+      name: "transformedData",
+      type: "json",
+      required: true,
+      admin: {
+        description: "Final event data after import transforms (identical to sourceData when no transforms applied)",
+      },
     },
     {
       name: "location",

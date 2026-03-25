@@ -24,7 +24,7 @@ export const transformEvent = (event: Event): EventListItem => {
     typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
 
   // Extract title, description, and id using shared normalization
-  const eventData = event.originalData;
+  const eventData = event.transformedData;
   const { title, description } = extractEventFields(eventData, fieldMappings, event.id);
   const id = extractFieldFromData(eventData, "id");
 
@@ -50,6 +50,8 @@ export const transformEvent = (event: Event): EventListItem => {
       event.location?.longitude != null && event.location?.latitude != null
         ? { longitude: event.location.longitude, latitude: event.location.latitude }
         : null,
+    locationName: event.locationName ?? null,
+    geocodedAddress: event.geocodingInfo?.normalizedAddress ?? null,
     eventTimestamp: event.eventTimestamp ?? "",
     isValid: event.validationStatus === "valid",
   };

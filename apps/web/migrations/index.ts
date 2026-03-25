@@ -5,6 +5,8 @@ import * as migration_20260322_043744 from './20260322_043744';
 import * as migration_20260322_141908 from './20260322_141908';
 import * as migration_20260323_023544 from './20260323_023544';
 import * as migration_20260324_120000_fix_antimeridian_bounds from './20260324_120000_fix_antimeridian_bounds';
+import * as migration_20260325_014023 from './20260325_014023';
+import * as migration_20260325_014025_update_sql_functions_for_renamed_column from './20260325_014025_update_sql_functions_for_renamed_column';
 
 export const migrations = [
   {
@@ -35,11 +37,21 @@ export const migrations = [
   {
     up: migration_20260323_023544.up,
     down: migration_20260323_023544.down,
-    name: '20260323_023544'
+    name: '20260323_023544',
   },
   {
     up: migration_20260324_120000_fix_antimeridian_bounds.up,
     down: migration_20260324_120000_fix_antimeridian_bounds.down,
     name: '20260324_120000_fix_antimeridian_bounds',
+  },
+  {
+    up: migration_20260325_014023.up,
+    down: migration_20260325_014023.down,
+    name: '20260325_014023',
+  },
+  {
+    up: migration_20260325_014025_update_sql_functions_for_renamed_column.up,
+    down: migration_20260325_014025_update_sql_functions_for_renamed_column.down,
+    name: '20260325_014025_update_sql_functions_for_renamed_column',
   },
 ];

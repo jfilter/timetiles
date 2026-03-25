@@ -287,20 +287,22 @@ test.describe("Flow Editor Transforms", () => {
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.docs as Array<{ originalData: Record<string, unknown> }>;
+    const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
 
     // All events in this dataset should have uppercase titles
     const uppercasedEvents = events.filter(
-      (e) => typeof e.originalData?.title === "string" && e.originalData.title === e.originalData.title.toUpperCase()
+      (e) =>
+        typeof e.transformedData?.title === "string" &&
+        e.transformedData.title === e.transformedData.title.toUpperCase()
     );
     expect(uppercasedEvents.length).toBeGreaterThan(0);
 
     // Verify specific title is uppercased (from valid-events.csv)
     const techEvent = events.find(
-      (e) => typeof e.originalData?.title === "string" && e.originalData.title.includes("TECH CONFERENCE")
+      (e) => typeof e.transformedData?.title === "string" && e.transformedData.title.includes("TECH CONFERENCE")
     );
     expect(techEvent).toBeDefined();
-    expect(techEvent!.originalData.title).toBe("TECH CONFERENCE 2024");
+    expect(techEvent!.transformedData.title).toBe("TECH CONFERENCE 2024");
   });
 
   test("should apply rename transform and verify field name change", async ({ page }) => {
@@ -405,16 +407,16 @@ test.describe("Flow Editor Transforms", () => {
     expect(eventsResponse.ok()).toBe(true);
 
     const eventsData = await eventsResponse.json();
-    const events = eventsData.docs as Array<{ originalData: Record<string, unknown> }>;
+    const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
 
     // Find events with the renamed field
     const renamedEvents = events.filter(
-      (e) => typeof e.originalData?.event_type === "string" && !("category" in e.originalData)
+      (e) => typeof e.transformedData?.event_type === "string" && !("category" in e.transformedData)
     );
     expect(renamedEvents.length).toBeGreaterThan(0);
 
     // Verify specific value - "technology" should now be under "event_type"
-    const techEvent = renamedEvents.find((e) => e.originalData.event_type === "technology");
+    const techEvent = renamedEvents.find((e) => e.transformedData.event_type === "technology");
     expect(techEvent).toBeDefined();
   });
 });

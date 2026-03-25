@@ -45,7 +45,7 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
 
   const fieldMappings =
     typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
-  const { title, description } = extractEventFields(event.originalData, fieldMappings, event.id);
+  const { title, description } = extractEventFields(event.transformedData, fieldMappings, event.id);
 
   return { title: `${title} | TimeTiles`, description: description ?? "View event details on TimeTiles" };
 };

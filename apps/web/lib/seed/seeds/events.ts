@@ -120,7 +120,8 @@ const generateEventsForDataset = (
     events.push({
       uniqueId: `${config.slug}-event-${i}`,
       dataset: config.slug,
-      originalData: metadata,
+      sourceData: metadata,
+      transformedData: metadata,
       location: needsLocation ? location : undefined,
       locationName,
       eventTimestamp: eventTimestamp,

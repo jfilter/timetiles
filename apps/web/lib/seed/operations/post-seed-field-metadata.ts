@@ -102,8 +102,8 @@ const generateFieldMetadataForDataset = async (
 
   // Analyze each event's data field
   for (const event of events.docs) {
-    if (event.originalData && typeof event.originalData === "object") {
-      analyzeEventData(event.originalData as Record<string, unknown>, fieldStats);
+    if (event.transformedData && typeof event.transformedData === "object") {
+      analyzeEventData(event.transformedData as Record<string, unknown>, fieldStats);
     }
   }
 
