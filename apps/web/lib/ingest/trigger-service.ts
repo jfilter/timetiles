@@ -36,7 +36,7 @@ export const generateIngestName = (scheduledIngest: ScheduledIngest, currentTime
 
 interface TriggerOptions {
   /** Which code path triggered this import. */
-  triggeredBy: "webhook" | "schedule";
+  triggeredBy: "webhook" | "schedule" | "manual";
   /** If provided, nextRun will be set in the post-queue update. */
   nextRun?: string;
   /** When true, skip the atomic status claim (caller already claimed "running"). */

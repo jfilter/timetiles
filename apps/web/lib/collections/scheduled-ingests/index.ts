@@ -130,28 +130,6 @@ const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promis
   }
 };
 
-// Helper to validate source URL
-const validateSourceUrl = (data: unknown): void => {
-  const typedData = data as Record<string, unknown> | undefined;
-  if (!typedData?.sourceUrl) return;
-
-  const urlValidation = validateUrl(typedData.sourceUrl as string);
-  if (urlValidation !== true) {
-    throw new Error(urlValidation);
-  }
-};
-
-// Helper to validate cron expression
-const validateCronSchedule = (data: unknown): void => {
-  const typedData = data as Record<string, unknown> | undefined;
-  if (typedData?.scheduleType !== "cron" || !typedData?.cronExpression) return;
-
-  const cronValidation = validateCronExpression(typedData.cronExpression as string);
-  if (cronValidation !== true) {
-    throw new Error(cronValidation);
-  }
-};
-
 // Helper to validate schedule configuration
 const validateScheduleConfig = (data: unknown): void => {
   const typedData = data as Record<string, unknown> | undefined;
@@ -309,10 +287,16 @@ const ScheduledIngests: CollectionConfig = {
         await validateCatalogAccess(data, req);
 
         // Validate URL
-        validateSourceUrl(data);
+        if (data.sourceUrl) {
+          const urlResult = validateUrl(data.sourceUrl as string);
+          if (urlResult !== true) throw new Error(urlResult);
+        }
 
         // Validate cron expression if using cron schedule
-        validateCronSchedule(data);
+        if (data.scheduleType === "cron" && data.cronExpression) {
+          const cronResult = validateCronExpression(data.cronExpression as string);
+          if (cronResult !== true) throw new Error(cronResult);
+        }
 
         // Validate schedule configuration
         validateScheduleConfig(data);

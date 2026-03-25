@@ -112,7 +112,7 @@ export const datasetEnumFieldsKeys = {
 export const useDatasetEnumFieldsQuery = (datasetId: string | null, maxFields = 5) =>
   useQuery({
     queryKey: datasetEnumFieldsKeys.byDataset(datasetId),
-    queryFn: () => fetchDatasetFieldMetadata(datasetId!),
+    queryFn: () => fetchDatasetFieldMetadata(datasetId ?? ""),
     enabled: datasetId != null,
     ...QUERY_PRESETS.stable,
     select: (data) => selectTopEnumFields(data, maxFields),
