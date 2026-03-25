@@ -13,29 +13,25 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import readline from "node:readline";
 
-import Papa from "papaparse";
 import type { Payload } from "payload";
-import { read, utils } from "xlsx";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
-import type { Dataset } from "@/payload-types";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { getIngestFilePath } from "../utils/upload-path";
-
-interface SheetInfo {
-  name: string;
-  index: number;
-  rowCount: number;
-  columnCount?: number;
-  headers?: string[];
-}
+import {
+  buildConfigSnapshot,
+  findOrCreateDataset,
+  getOrCreateCatalog,
+  validateDatasetAccessForUser,
+} from "./dataset-detection/catalog-dataset-helpers";
+import type { SheetInfo } from "./dataset-detection/parse-files";
+import { buildSheetsFromWizardMetadata, processCSVFile, processExcelFile } from "./dataset-detection/parse-files";
 
 const normalizeIngestFileRelationId = (ingestFileId: string | number): number => {
   const normalizedIngestFileId = typeof ingestFileId === "number" ? ingestFileId : parseStrictInteger(ingestFileId);
@@ -43,159 +39,6 @@ const normalizeIngestFileRelationId = (ingestFileId: string | number): number =>
     throw new Error("Invalid import file ID");
   }
   return normalizedIngestFileId;
-};
-
-/**
- * Read the first line of a CSV to extract headers, then stream-count remaining data rows.
- * Avoids loading the entire file into memory (the previous implementation used readFileSync
- * + Papa.parse which buffered everything).
- */
-const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => {
-  logger.info("Processing CSV file", { filePath });
-
-  // Read only the first line to get headers
-  const headerLine = await new Promise<string>((resolve, reject) => {
-    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-    let resolved = false;
-
-    rl.once("line", (line) => {
-      resolved = true;
-      rl.close();
-      stream.destroy();
-      resolve(line);
-    });
-    rl.once("error", reject);
-    // Guard: only resolve empty if "line" never fired (truly empty file)
-    rl.once("close", () => {
-      if (!resolved) resolve("");
-    });
-  });
-
-  if (!headerLine.trim()) {
-    throw new Error("No data rows found in file");
-  }
-
-  // Parse the header line with Papa to handle quoted fields, commas in values, etc.
-  const headerResult = Papa.parse(headerLine, { header: false, skipEmptyLines: true });
-  const headers = (headerResult.data[0] as string[]) ?? [];
-
-  // Stream-count remaining data rows (excludes header, skips empty lines)
-  const rowCount = await new Promise<number>((resolve, reject) => {
-    let count = 0;
-    let isHeader = true;
-    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
-    rl.on("line", (line) => {
-      if (isHeader) {
-        isHeader = false;
-        return;
-      }
-      if (line.trim().length > 0) count++;
-    });
-    rl.on("close", () => resolve(count));
-    rl.on("error", reject);
-  });
-
-  if (rowCount === 0 && headers.length === 0) {
-    throw new Error("No data rows found in file");
-  }
-
-  return [{ name: "CSV Data", index: 0, rowCount, columnCount: headers.length, headers }];
-};
-
-const processExcelFile = (filePath: string): SheetInfo[] => {
-  logger.info("Processing Excel file", { filePath });
-  const fileBuffer = fs.readFileSync(filePath);
-  const workbook = read(fileBuffer, { type: "buffer" });
-  const sheets: SheetInfo[] = [];
-
-  for (let i = 0; i < workbook.SheetNames.length; i++) {
-    const sheetName = workbook.SheetNames[i];
-    const worksheet = workbook.Sheets[sheetName!];
-    if (!worksheet) continue;
-
-    const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
-    if (jsonData.length > 0 && jsonData[0]) {
-      sheets.push({
-        name: sheetName ?? `Sheet${i}`,
-        index: i,
-        rowCount: jsonData.length - 1,
-        columnCount: Array.isArray(jsonData[0]) ? jsonData[0].length : 0,
-        headers: Array.isArray(jsonData[0]) ? jsonData[0] : [],
-      });
-    }
-  }
-
-  return sheets;
-};
-
-/**
- * Build minimal SheetInfo from wizard metadata, skipping file I/O.
- * Returns null if metadata is incomplete (falls through to normal parsing).
- */
-const buildSheetsFromWizardMetadata = (metadata: Record<string, unknown>): SheetInfo[] | null => {
-  if (metadata.source !== "import-wizard") return null;
-
-  const datasetMapping = metadata.datasetMapping as
-    | { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] }
-    | undefined;
-  if (!datasetMapping) return null;
-
-  if (datasetMapping.mappingType === "single") {
-    return [{ name: "Sheet 1", index: 0, rowCount: 0 }];
-  }
-
-  const wizardConfig = metadata.wizardConfig as
-    | { sheetMappings?: Array<{ sheetIndex: number; newDatasetName?: string }> }
-    | undefined;
-
-  if (datasetMapping.mappingType === "multiple" && wizardConfig?.sheetMappings?.length) {
-    return wizardConfig.sheetMappings.map((sm) => ({
-      name: sm.newDatasetName ?? `Sheet ${sm.sheetIndex + 1}`,
-      index: sm.sheetIndex,
-      rowCount: 0,
-    }));
-  }
-
-  return null;
-};
-
-/** Build an immutable config snapshot from a dataset for the import job record. */
-const buildConfigSnapshot = (dataset: Dataset) => ({
-  fieldMappingOverrides: dataset.fieldMappingOverrides ?? null,
-  idStrategy: dataset.idStrategy ?? null,
-  deduplicationConfig: dataset.deduplicationConfig ?? null,
-  geoFieldDetection: dataset.geoFieldDetection ?? null,
-  schemaConfig: dataset.schemaConfig ?? null,
-  ingestTransforms: dataset.ingestTransforms ?? [],
-});
-
-/**
- * Validates that a user has access to the dataset's catalog.
- * Throws if the user does not own the catalog and it is not public.
- */
-const validateDatasetAccessForUser = async (
-  payload: Payload,
-  dataset: Dataset,
-  userId: number | undefined
-): Promise<void> => {
-  if (!userId) return;
-
-  const catalogId = extractRelationId(dataset.catalog);
-  if (!catalogId) return;
-
-  const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
-
-  const catalogOwnerId = extractRelationId(catalog?.createdBy);
-  const isPublicCatalog = catalog?.isPublic ?? false;
-
-  if (catalogOwnerId !== userId && !isPublicCatalog) {
-    throw new Error(
-      `Ingest file owner does not have access to the target dataset (dataset ${dataset.id} in catalog ${catalogId})`
-    );
-  }
 };
 
 const handleSingleSheet = async (
@@ -474,119 +317,4 @@ export const datasetDetectionJob = {
       throw error;
     }
   },
-};
-
-// Helper function to get or create catalog
-const getOrCreateCatalog = async (payload: Payload, catalogId?: string | number, userId?: number): Promise<number> => {
-  if (typeof catalogId === "number") {
-    return catalogId;
-  }
-
-  if (catalogId) {
-    const parsedCatalogId = parseStrictInteger(catalogId);
-    if (parsedCatalogId == null) {
-      throw new Error("Invalid catalog ID");
-    }
-
-    return parsedCatalogId;
-  }
-
-  // Create new catalog for this import
-  const newCatalog = await payload.create({
-    collection: COLLECTION_NAMES.CATALOGS,
-    data: {
-      name: `Import Catalog ${new Date().toISOString().split("T")[0]}`,
-      description: {
-        root: {
-          type: "root",
-          children: [
-            {
-              type: "paragraph",
-              version: 1,
-              children: [{ type: "text", version: 1, text: "Auto-generated catalog for imported data" }],
-            },
-          ],
-          direction: "ltr",
-          format: "",
-          indent: 0,
-          version: 1,
-        },
-      },
-      _status: "published",
-      ...(userId ? { createdBy: userId } : {}),
-    },
-  });
-
-  if (typeof newCatalog.id === "number") {
-    return newCatalog.id;
-  }
-
-  const parsedCatalogId = parseStrictInteger(String(newCatalog.id));
-  if (parsedCatalogId == null) {
-    throw new Error("Invalid catalog ID");
-  }
-
-  return parsedCatalogId;
-};
-
-// Helper function to find or create dataset
-const findOrCreateDataset = async (
-  payload: Payload,
-  catalogId: number,
-  datasetName: string,
-  userId?: number
-): Promise<Dataset> => {
-  // Try to find existing dataset in catalog
-  const existingDatasets = await payload.find({
-    collection: COLLECTION_NAMES.DATASETS,
-    where: { catalog: { equals: catalogId }, name: { equals: datasetName } },
-    limit: 1,
-  });
-
-  if (existingDatasets.docs.length > 0 && existingDatasets.docs[0]) {
-    logger.info("Found existing dataset", { datasetId: existingDatasets.docs[0].id, name: datasetName });
-    return existingDatasets.docs[0];
-  }
-
-  // Create new dataset if not found
-  const newDataset = await payload.create({
-    collection: COLLECTION_NAMES.DATASETS,
-    data: {
-      name: datasetName,
-      catalog: catalogId,
-      description: {
-        root: {
-          type: "root",
-          children: [
-            {
-              type: "paragraph",
-              version: 1,
-              children: [{ type: "text", version: 1, text: `Auto-created dataset for ${datasetName}` }],
-            },
-          ],
-          direction: "ltr",
-          format: "",
-          indent: 0,
-          version: 1,
-        },
-      },
-      language: "eng",
-      // Use default configurations
-      deduplicationConfig: { enabled: true, strategy: "skip" },
-      schemaConfig: {
-        autoGrow: true,
-        autoApproveNonBreaking: true,
-        locked: false,
-        strictValidation: false,
-        allowTransformations: true,
-      },
-      idStrategy: { type: "auto", duplicateStrategy: "skip" },
-      _status: "published" as const,
-      ...(userId ? { createdBy: userId } : {}),
-    },
-  });
-
-  logger.info("Created new dataset", { datasetId: newDataset.id, name: datasetName, catalogId });
-
-  return newDataset;
 };
