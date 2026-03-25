@@ -67,6 +67,8 @@ export const detectFileTypeFromResponse = (
       },
       "text/plain": { mimeType: "text/plain", fileExtension: ".txt" },
       "application/json": { mimeType: "application/json", fileExtension: ".json" },
+      "application/geo+json": { mimeType: "application/geo+json", fileExtension: ".geojson" },
+      "application/vnd.geo+json": { mimeType: "application/geo+json", fileExtension: ".geojson" },
     };
 
     if (normalizedType && typeMap[normalizedType]) {
@@ -84,6 +86,7 @@ export const detectFileTypeFromResponse = (
     ".xlsx": { mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileExtension: ".xlsx" },
     ".txt": { mimeType: "text/plain", fileExtension: ".txt" },
     ".json": { mimeType: "application/json", fileExtension: ".json" },
+    ".geojson": { mimeType: "application/geo+json", fileExtension: ".geojson" },
   };
 
   if (extensionMap[urlExtension]) {

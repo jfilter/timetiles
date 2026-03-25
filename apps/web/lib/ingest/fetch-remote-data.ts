@@ -15,6 +15,7 @@ import { logger } from "@/lib/logger";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
 
+import { convertGeoJsonToCsv, isGeoJson, normalizeWfsUrl } from "./geojson-to-csv";
 import { convertJsonToCsv, recordsToCsv } from "./json-to-csv";
 
 // ---------------------------------------------------------------------------
@@ -35,7 +36,7 @@ export interface FetchRemoteDataOptions {
   /** JSON API handling — recordsPath and pagination config. */
   jsonApiConfig?: { recordsPath?: string; pagination?: PaginationConfig };
   /** Force response format instead of auto-detecting. */
-  responseFormat?: "auto" | "csv" | "json";
+  responseFormat?: "auto" | "csv" | "json" | "geojson";
 }
 
 export interface FetchRemoteDataResult {
@@ -64,15 +65,44 @@ const SUPPORTED_EXTENSIONS = new Set([".csv", ".xls", ".xlsx", ".ods", ".txt"]);
 // Implementation
 // ---------------------------------------------------------------------------
 
+const isGeoJsonDetected = (mimeType: string, responseFormat: string | undefined, data: Buffer): boolean => {
+  if (responseFormat === "geojson") return true;
+  if (responseFormat === "csv" || responseFormat === "json") return false;
+  if (mimeType === "application/geo+json" || mimeType === "application/vnd.geo+json") return true;
+  // For application/json responses, content-sniff to distinguish GeoJSON from JSON API
+  if (mimeType === "application/json") {
+    try {
+      return isGeoJson(JSON.parse(data.toString("utf-8")));
+    } catch {
+      return false;
+    }
+  }
+  return false;
+};
+
 const isJsonDetected = (mimeType: string, responseFormat?: string): boolean => {
   if (responseFormat === "json") return true;
-  if (responseFormat === "csv") return false;
+  if (responseFormat === "csv" || responseFormat === "geojson") return false;
   return mimeType === "application/json";
+};
+
+/** Convert a fetched GeoJSON buffer to CSV. */
+const convertFetchedGeoJson = (
+  data: Buffer,
+  url: string
+): { finalData: Buffer; recordCount: number; finalMimeType: string; finalExtension: string } => {
+  const result = convertGeoJsonToCsv(data);
+  logger.info("GeoJSON conversion complete", {
+    url: sanitizeUrlForLogging(url),
+    featureCount: result.featureCount,
+    geometryTypes: result.geometryTypes,
+  });
+  return { finalData: result.csv, recordCount: result.featureCount, finalMimeType: "text/csv", finalExtension: ".csv" };
 };
 
 /**
  * Fetch remote data from a URL, detect its type, and optionally convert
- * JSON API responses to CSV.
+ * JSON or GeoJSON responses to CSV.
  *
  * Both the import wizard and scheduled ingest jobs use this function as
  * the single entry point for all remote data fetching.
@@ -94,10 +124,18 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
 
   const authHeaders = buildAuthHeaders(authConfig);
 
-  logger.info("Fetching remote data", { url: sanitizeUrlForLogging(sourceUrl), timeout, maxRetries, responseFormat });
+  // Normalize WFS URLs to ensure they return GeoJSON
+  const normalizedUrl = normalizeWfsUrl(sourceUrl);
+
+  logger.info("Fetching remote data", {
+    url: sanitizeUrlForLogging(normalizedUrl),
+    timeout,
+    maxRetries,
+    responseFormat,
+  });
 
   // Fetch the data
-  const fetchResult = await fetchWithRetry(sourceUrl, {
+  const fetchResult = await fetchWithRetry(normalizedUrl, {
     authHeaders,
     timeout,
     maxSize,
@@ -120,10 +158,19 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
   let recordCount: number | undefined;
   let pagesProcessed: number | undefined;
 
+  // GeoJSON response — convert to CSV (check before JSON since GeoJSON is a subset of JSON)
+  if (isGeoJsonDetected(finalMimeType, responseFormat, fetchResult.data)) {
+    const geoResult = convertFetchedGeoJson(fetchResult.data, normalizedUrl);
+    finalData = geoResult.finalData;
+    recordCount = geoResult.recordCount;
+    finalMimeType = geoResult.finalMimeType;
+    finalExtension = geoResult.finalExtension;
+    wasConverted = true;
+  }
   // JSON response — convert to CSV
-  if (isJsonDetected(finalMimeType, responseFormat)) {
+  else if (isJsonDetected(finalMimeType, responseFormat)) {
     logger.info("JSON response detected, converting to CSV", {
-      url: sanitizeUrlForLogging(sourceUrl),
+      url: sanitizeUrlForLogging(normalizedUrl),
       originalMimeType: finalMimeType,
       hasPagination: jsonApiConfig?.pagination?.enabled === true,
     });
@@ -158,7 +205,7 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
   if (!SUPPORTED_EXTENSIONS.has(finalExtension)) {
     throw new Error(
       `Unsupported file type: ${finalMimeType} (${finalExtension}). ` +
-        "The URL must return CSV, Excel, ODS, or JSON data."
+        "The URL must return CSV, Excel, ODS, JSON, or GeoJSON data."
     );
   }
 
