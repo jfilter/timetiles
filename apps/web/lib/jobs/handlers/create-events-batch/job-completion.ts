@@ -59,7 +59,12 @@ export const markJobCompleted = async (
   // Clean up sidecar CSV files
   cleanupSidecarFiles(filePath, sheetIndex);
 
-  // Track total events created for the user's quota
+  // Track total events created for the user's quota.
+  // Note: bulkInsertEvents uses raw Drizzle INSERT (bypasses Payload hooks), so the
+  // beforeChange quota check on events doesn't run for imports. Quota is enforced via
+  // a pre-check in review-checks.ts (before import starts) and this post-increment.
+  // There is a small TOCTOU window where concurrent imports by the same user could
+  // both pass the pre-check and overshoot the quota — accepted tradeoff for bulk perf.
   try {
     const ingestJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
 

@@ -170,36 +170,6 @@ const batchSyncChildRecords = async (
   await bulkSyncCollection(req, "dataset-schemas", datasets, changes);
 };
 
-/** Validates slug uniqueness for catalogs. */
-const validateSlugUniqueness = async (
-  data: Record<string, unknown>,
-  req: PayloadRequest,
-  operation: "create" | "update"
-): Promise<void> => {
-  const slug = data.slug;
-  if (!slug || typeof slug !== "string") return;
-
-  const existing = await req.payload.find({
-    collection: "catalogs",
-    where: { slug: { equals: slug } },
-    limit: 1,
-    overrideAccess: true,
-  });
-
-  if (existing.docs.length === 0) return;
-
-  if (operation === "update") {
-    const currentDocId = req.context?.id;
-    const existingDocId = existing.docs[0]?.id;
-
-    if (currentDocId && existingDocId && currentDocId !== existingDocId) {
-      throw new Error(`Slug "${slug}" is already in use by another catalog.`);
-    }
-  } else {
-    throw new Error(`Slug "${slug}" is already in use.`);
-  }
-};
-
 const Catalogs: CollectionConfig = {
   slug: "catalogs",
   ...createCommonConfig(),
@@ -250,11 +220,6 @@ const Catalogs: CollectionConfig = {
         // Handle quota check and increment for new catalogs
         if (operation === "create") {
           await checkAndIncrementQuota(req);
-        }
-
-        // Validate slug uniqueness
-        if (operation === "create" || operation === "update") {
-          await validateSlugUniqueness(data, req, operation);
         }
 
         return data;
