@@ -43,10 +43,12 @@ if [ ! -f /data/postgresql/PG_VERSION ]; then
     su - postgres -c "/usr/lib/postgresql/17/bin/initdb -D /data/postgresql"
 
     # Configure authentication
+    # Local socket: peer auth (OS user identity, no password needed for setup)
+    # TCP connections: scram-sha-256 (used by the Next.js app via DATABASE_URL)
     echo "Configuring PostgreSQL authentication..."
     cat > /data/postgresql/pg_hba.conf << 'EOF'
 # TYPE  DATABASE        USER            ADDRESS                 METHOD
-local   all             all                                     scram-sha-256
+local   all             all                                     peer
 host    all             all             127.0.0.1/32            scram-sha-256
 host    all             all             ::1/128                 scram-sha-256
 EOF
