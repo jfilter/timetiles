@@ -42,5 +42,3 @@ export const FeatureDisabledBanner = ({ featureFlag, title, description }: Featu
     </AdminNotice>
   );
 };
-
-export default FeatureDisabledBanner;

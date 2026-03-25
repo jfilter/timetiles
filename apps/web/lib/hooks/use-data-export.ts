@@ -10,7 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { fetchJson } from "../api/http-error";
 import type { DataExport, ExportListResponse, RequestExportResponse } from "../types/data-export-api";
-import { QUERY_PRESETS } from "./query-presets";
+import { createItemPollingInterval, QUERY_PRESETS } from "./query-presets";
 
 export type {
   DataExport,
@@ -22,10 +22,10 @@ export type {
 /**
  * Query key for data exports.
  */
-export const dataExportKeys = {
+export const dataExportQueryKeys = {
   all: ["data-exports"] as const,
-  list: () => [...dataExportKeys.all, "list"] as const,
-  latest: () => [...dataExportKeys.all, "latest"] as const,
+  list: () => [...dataExportQueryKeys.all, "list"] as const,
+  latest: () => [...dataExportQueryKeys.all, "latest"] as const,
 };
 
 /** Shape returned by the Payload REST API for the data-exports collection. */
@@ -64,26 +64,18 @@ const requestDataExport = async (): Promise<RequestExportResponse> => {
   return fetchJson<RequestExportResponse>("/api/data-exports/request", { method: "POST" });
 };
 
-// Returns polling interval or false to stop - React Query expects this pattern
-// eslint-disable-next-line sonarjs/function-return-type
-const getExportPollingInterval = (query: { state: { data?: ExportListResponse } }): number | false => {
-  const data = query.state.data;
-  const hasPending = data?.exports?.some((exp) => exp.status === "pending" || exp.status === "processing");
-  if (hasPending) {
-    return 5000;
-  }
-  return false;
-};
+const hasPendingExports = (data: ExportListResponse) =>
+  data.exports?.some((exp) => exp.status === "pending" || exp.status === "processing") ?? false;
 
 /**
  * Hook to fetch the user's data exports.
  */
 export const useDataExportsQuery = () => {
   return useQuery({
-    queryKey: dataExportKeys.list(),
+    queryKey: dataExportQueryKeys.list(),
     queryFn: fetchDataExports,
     ...QUERY_PRESETS.frequent,
-    refetchInterval: (query) => getExportPollingInterval(query),
+    refetchInterval: createItemPollingInterval(hasPendingExports, 5000),
   });
 };
 
@@ -112,7 +104,7 @@ export const useRequestDataExportMutation = () => {
     mutationFn: requestDataExport,
     onSuccess: () => {
       // Invalidate the exports query to trigger a refetch
-      void queryClient.invalidateQueries({ queryKey: dataExportKeys.all });
+      void queryClient.invalidateQueries({ queryKey: dataExportQueryKeys.all });
     },
   });
 };

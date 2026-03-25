@@ -10,10 +10,13 @@
 
 import type { Coordinates } from "./types";
 
+// Re-export valueToString so geospatial/parsing.ts can still import from here
+export { valueToString } from "@/lib/utils/format";
+
 /**
- * Check if coordinates are valid (includes (0,0) check).
+ * Check if coordinates are valid (includes NaN and (0,0) checks).
  *
- * Validates both latitude and longitude ranges and filters out
+ * Validates latitude/longitude ranges, rejects NaN, and filters out
  * suspicious (0,0) coordinates which are unlikely to be real
  * locations except in the ocean.
  *
@@ -25,50 +28,22 @@ export const isValidCoordinate = (lat: number | null, lon: number | null): boole
   if (lat == null || lon == null) {
     return false;
   }
-
+  if (Number.isNaN(lat) || Number.isNaN(lon)) {
+    return false;
+  }
   // Check ranges and suspicious (0,0) - exact zero unlikely except in ocean
-  return !(lat < -90 || lat > 90 || lon < -180 || lon > 180 || (lat == 0 && lon == 0));
+  return !(lat < -90 || lat > 90 || lon < -180 || lon > 180 || (lat === 0 && lon === 0));
 };
 
 /**
  * Check if a coordinate object has valid latitude and longitude.
  *
+ * Delegates to {@link isValidCoordinate} for consistent validation
+ * including range checks, NaN rejection, and (0,0) filtering.
+ *
  * @param coords - Coordinate object with latitude and longitude
- * @returns True if both latitude and longitude are within valid ranges
+ * @returns True if coordinates are valid
  */
 export const areValidCoordinates = (coords: Coordinates): boolean => {
-  return (
-    coords.latitude >= -90 &&
-    coords.latitude <= 90 &&
-    coords.longitude >= -180 &&
-    coords.longitude <= 180 &&
-    !Number.isNaN(coords.latitude) &&
-    !Number.isNaN(coords.longitude)
-  );
-};
-
-/**
- * Convert value to string safely.
- *
- * Handles various data types and converts them to string representation
- * for import processing.
- *
- * @param value - Value to convert (any type)
- * @returns String representation of the value
- */
-export const valueToString = (value: unknown): string => {
-  if (value == null) {
-    return "";
-  }
-  if (typeof value == "string") {
-    return value;
-  }
-  if (typeof value == "number" || typeof value == "boolean") {
-    return String(value);
-  }
-  if (typeof value == "object") {
-    return JSON.stringify(value);
-  }
-  // symbol, bigint, function — convert to empty string
-  return "";
+  return isValidCoordinate(coords.latitude, coords.longitude);
 };

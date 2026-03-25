@@ -26,15 +26,12 @@ export class GeocodingService {
   private readonly payload: Payload;
   private settings: GeocodingSettings | null = null;
   private initialized = false;
-  private providerManager: ProviderManager;
-  private cacheManager: CacheManager;
-  private geocodingOperations: GeocodingOperations;
+  private providerManager: ProviderManager | null = null;
+  private cacheManager: CacheManager | null = null;
+  private geocodingOperations: GeocodingOperations | null = null;
 
   constructor(payload: Payload) {
     this.payload = payload;
-    this.providerManager = new ProviderManager(payload, this.settings);
-    this.cacheManager = new CacheManager(payload, this.settings);
-    this.geocodingOperations = new GeocodingOperations(this.providerManager, this.cacheManager, this.settings);
   }
 
   async initialize(): Promise<void> {
@@ -70,17 +67,17 @@ export class GeocodingService {
 
   async geocode(address: string): Promise<GeocodingResult> {
     await this.initialize();
-    return this.geocodingOperations.geocode(address);
+    return this.geocodingOperations!.geocode(address);
   }
 
   async batchGeocode(addresses: string[], batchSize: number = 10): Promise<BatchGeocodingResult> {
     await this.initialize();
-    return this.geocodingOperations.batchGeocode(addresses, batchSize);
+    return this.geocodingOperations!.batchGeocode(addresses, batchSize);
   }
 
   async testConfiguration(testAddress?: string): Promise<Record<string, unknown>> {
     await this.initialize();
-    return this.geocodingOperations.testConfiguration(testAddress);
+    return this.geocodingOperations!.testConfiguration(testAddress);
   }
 
   async refreshConfiguration(): Promise<void> {
@@ -90,7 +87,7 @@ export class GeocodingService {
 
   async cleanupCache(): Promise<void> {
     await this.initialize();
-    await this.cacheManager.cleanupCache();
+    await this.cacheManager!.cleanupCache();
   }
 
   private async loadSettings(): Promise<void> {

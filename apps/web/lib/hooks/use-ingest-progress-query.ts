@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { fetchJson } from "../api/http-error";
 import type { ProgressApiResponse } from "../types/progress-tracking";
+import { createItemPollingInterval } from "./query-presets";
 
 export type { ProgressApiResponse } from "../types/progress-tracking";
 
@@ -19,6 +20,8 @@ const POLL_INTERVAL_MS = 2000;
 
 const fetchProgress = (ingestFileId: string | number) =>
   fetchJson<ProgressApiResponse>(`/api/ingest/${ingestFileId}/progress`, { credentials: "include" });
+
+const isInProgress = (data: ProgressApiResponse) => data.status !== "completed" && data.status !== "failed";
 
 export const ingestProgressQueryKeys = {
   all: ["import-progress"] as const,
@@ -30,10 +33,5 @@ export const useIngestProgressQuery = (ingestFileId: string | number | null) =>
     queryKey: ingestProgressQueryKeys.byFile(ingestFileId ?? ""),
     queryFn: () => fetchProgress(ingestFileId!),
     enabled: ingestFileId != null,
-    // eslint-disable-next-line sonarjs/function-return-type -- React Query refetchInterval API requires false | number
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === "completed" || status === "failed") return false;
-      return POLL_INTERVAL_MS;
-    },
+    refetchInterval: createItemPollingInterval(isInProgress, POLL_INTERVAL_MS),
   });
