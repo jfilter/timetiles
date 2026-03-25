@@ -87,6 +87,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
 RUN rm -rf /app/node_modules/.bin \
     && ln -s /app/node_modules/.pnpm/node_modules/.bin /app/node_modules/.bin
 
+# Symlink root node_modules into apps/web so Payload CLI workers (which run
+# with working_dir /app/apps/web) can resolve packages like zod, drizzle, etc.
+RUN ln -s /app/node_modules /app/apps/web/node_modules
+
 # Create uploads directory with proper ownership for volume mount
 RUN mkdir -p /app/apps/web/uploads \
     && chown -R nextjs:nodejs /app/apps/web/uploads
