@@ -211,7 +211,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
       ...(environment === "development"
         ? {
             autoRun: [
-              { cron: "* * * * *", queue: "ingest", limit: 1 },
+              { cron: "* * * * *", queue: "ingest", limit: 3 },
               { cron: "* * * * *", queue: "default", limit: 5 },
               { cron: "*/5 * * * *", queue: "maintenance", limit: 5 },
             ],

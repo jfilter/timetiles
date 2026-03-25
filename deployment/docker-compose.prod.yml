@@ -163,7 +163,7 @@ services:
         "--queue",
         "ingest",
         "--limit",
-        "50",
+        "3",
       ]
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
