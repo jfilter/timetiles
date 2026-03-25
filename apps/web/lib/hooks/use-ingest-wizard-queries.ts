@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { SheetInfo } from "@/lib/types/ingest-wizard";
 
 import { fetchJson } from "../api/http-error";
+import { QUERY_PRESETS } from "./query-presets";
 
 export const previewSheetsKeys = {
   all: ["preview-sheets"] as const,
@@ -28,5 +29,6 @@ export const usePreviewSheetsQuery = (previewId: string | null) => {
     queryKey: previewSheetsKeys.byPreview(previewId),
     queryFn: () => fetchJson<{ sheets: SheetInfo[] }>(`/api/ingest/preview-schema?previewId=${previewId}`),
     enabled: !!previewId,
+    ...QUERY_PRESETS.standard,
   });
 };

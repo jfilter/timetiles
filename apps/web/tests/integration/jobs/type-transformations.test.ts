@@ -24,8 +24,10 @@ import {
 
 // Helper to safely access event data fields
 const getEventData = (event: Event): Record<string, unknown> => {
-  return typeof event.originalData === "object" && event.originalData !== null && !Array.isArray(event.originalData)
-    ? (event.originalData as Record<string, unknown>)
+  return typeof event.transformedData === "object" &&
+    event.transformedData !== null &&
+    !Array.isArray(event.transformedData)
+    ? (event.transformedData as Record<string, unknown>)
     : {};
 };
 

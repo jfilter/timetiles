@@ -57,7 +57,10 @@ export const EventItemSchema = z
     dataset: z.object({ id: z.number(), name: z.string().optional(), catalog: z.string().optional() }),
     data: z.record(z.string(), z.unknown()),
     location: z.object({ longitude: z.number(), latitude: z.number() }).nullable(),
+    locationName: z.string().nullable().optional(),
+    geocodedAddress: z.string().nullable().optional(),
     eventTimestamp: z.string(),
+    eventEndTimestamp: z.string().nullable().optional(),
     isValid: z.boolean(),
   })
   .openapi("EventItem");

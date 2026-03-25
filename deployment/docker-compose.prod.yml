@@ -139,6 +139,7 @@ services:
   worker-ingest:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-ingest
+    working_dir: /app/apps/web
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -153,7 +154,17 @@ services:
     tmpfs:
       - /tmp
     command:
-      ["node", "node_modules/.bin/payload", "jobs:run", "--cron", "*/1 * * * *", "--queue", "ingest", "--limit", "50"]
+      [
+        "node",
+        "/app/node_modules/.pnpm/node_modules/payload/bin.js",
+        "jobs:run",
+        "--cron",
+        "*/1 * * * *",
+        "--queue",
+        "ingest",
+        "--limit",
+        "50",
+      ]
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
@@ -173,10 +184,11 @@ services:
     networks:
       - timetiles-network
 
-  # Default worker — scheduled jobs, webhooks, general tasks
-  worker-default:
+  # General worker — scheduled jobs, webhooks, maintenance, cleanup
+  worker-general:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
-    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-default
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-general
+    working_dir: /app/apps/web
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -193,12 +205,12 @@ services:
     command:
       [
         "node",
-        "node_modules/.bin/payload",
+        "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
         "--cron",
         "*/1 * * * *",
         "--queue",
-        "default",
+        "default,maintenance",
         "--limit",
         "20",
         "--handle-schedules",
@@ -212,52 +224,6 @@ services:
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
       SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
-      - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
-      - ${CONFIG_DIR:-./config}:/app/apps/web/config:ro
-    networks:
-      - timetiles-network
-
-  # Maintenance worker — periodic cleanup, cache, quotas
-  worker-maintenance:
-    image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
-    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-maintenance
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    read_only: true
-    tmpfs:
-      - /tmp
-    command:
-      [
-        "node",
-        "node_modules/.bin/payload",
-        "jobs:run",
-        "--cron",
-        "*/5 * * * *",
-        "--queue",
-        "maintenance",
-        "--limit",
-        "10",
-      ]
-    environment:
-      DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
-      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
-      NODE_ENV: ${NODE_ENV:-production}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
     depends_on:
       postgres:
         condition: service_healthy

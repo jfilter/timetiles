@@ -41,7 +41,7 @@ const logger = createLogger("test-env");
  * Payload's `disableVerificationEmail` option is valid at runtime but not in the strict create type overloads.
  */
 const createUserWithoutVerification = (payload: Payload, data: Record<string, unknown>): Promise<any> =>
-  // @ts-expect-error -- disableVerificationEmail is a valid runtime option for auth collections
+  // @ts-expect-error -- Payload's create() union requires `draft` when versioning is enabled; data is loosely typed from test helpers
   payload.create({ collection: "users", data, disableVerificationEmail: true });
 
 interface SharedWorkerEnvironment {

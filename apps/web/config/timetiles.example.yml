@@ -104,6 +104,19 @@
 #     respectCacheControl: true
 
 # ---------------------------------------------------------------------------
+# Review Thresholds
+# ---------------------------------------------------------------------------
+# Thresholds that trigger NEEDS_REVIEW pauses in the import pipeline.
+# Values are rates between 0 and 1. Per-source overrides can be configured
+# on scheduled ingests and scrapers in the admin dashboard.
+
+# reviewThresholds:
+#   highDuplicateRate: 0.8           # Pause if >80% rows are duplicates
+#   geocodingPartialFailureRate: 0.5 # Pause if >50% geocoding fails
+#   highRowErrorRate: 0.1            # Pause if >10% rows fail during creation
+#   highEmptyRowRate: 0.2            # Pause if >20% rows are empty
+
+# ---------------------------------------------------------------------------
 # Account Settings
 # ---------------------------------------------------------------------------
 

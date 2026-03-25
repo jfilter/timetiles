@@ -7,6 +7,7 @@
  * @module
  * @category Jobs
  */
+import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import { generateUniqueId } from "@/lib/services/id-generation";
@@ -16,13 +17,6 @@ import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { Dataset } from "@/payload-types";
 
 const logger = createLogger("event-creation-helpers");
-
-/** Parse a coordinate value from number or string to a finite number, or NaN. */
-const parseCoordinate = (value: unknown): number => {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") return Number(value);
-  return NaN;
-};
 
 /**
  * Extract coordinates from a row based on field mappings and geocoding results.
@@ -46,8 +40,8 @@ export const extractCoordinates = (
 
     // Validate both type and coordinate bounds
     if (
-      !isNaN(parsedLat) &&
-      !isNaN(parsedLng) &&
+      parsedLat !== null &&
+      parsedLng !== null &&
       parsedLat >= -90 &&
       parsedLat <= 90 &&
       parsedLng >= -180 &&
@@ -113,6 +107,18 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
 };
 
 /**
+ * Extract end timestamp from row data using field mapping.
+ * Returns null if no end date is found (most events don't have one).
+ */
+export const extractEndTimestamp = (row: Record<string, unknown>, endTimestampPath?: string | null): Date | null => {
+  if (!endTimestampPath || !row[endTimestampPath]) {
+    return null;
+  }
+
+  return parseDateInput(row[endTimestampPath] as string | number);
+};
+
+/**
  * Extract location name from row data using field mapping.
  */
 const extractLocationName = (row: Record<string, unknown>, locationNamePath?: string | null): string | null => {
@@ -130,6 +136,7 @@ const extractLocationName = (row: Record<string, unknown>, locationNamePath?: st
  */
 export const createEventData = (
   row: Record<string, unknown>,
+  sourceRow: Record<string, unknown>,
   dataset: Dataset,
   ingestJobId: string | number,
   job: {
@@ -140,6 +147,7 @@ export const createEventData = (
       locationPath?: string | null;
       locationNamePath?: string | null;
       timestampPath?: string | null;
+      endTimestampPath?: string | null;
     };
   },
   geocodingResults: ReturnType<typeof getImportGeocodingResults>,
@@ -165,9 +173,11 @@ export const createEventData = (
   return {
     dataset: dataset.id,
     ingestJob: ingestJobNum ?? undefined,
-    originalData: row,
+    sourceData: sourceRow,
+    transformedData: row,
     uniqueId,
     eventTimestamp: (extractTimestamp(row, fieldMappings.timestampPath) ?? new Date()).toISOString(),
+    eventEndTimestamp: extractEndTimestamp(row, fieldMappings.endTimestampPath)?.toISOString() ?? null,
     location,
     locationName,
     coordinateSource,

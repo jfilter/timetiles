@@ -55,11 +55,19 @@ const enforceCompletedTerminalState = (
 /**
  * Detects whether this update represents a schema approval transition
  * (user approving a schema that was previously unapproved).
+ *
+ * @param stageSource - The document whose stage to check. In beforeChange this is `data`
+ *   (incoming mutation); in afterChange this must be `previousDoc` (pre-update state).
  */
-const isSchemaApproval = (operation: string, current: Partial<IngestJob>, previousDoc?: IngestJob): boolean =>
+const isSchemaApproval = (
+  operation: string,
+  stageSource: Partial<IngestJob>,
+  approvalSource: Partial<IngestJob>,
+  previousDoc?: IngestJob
+): boolean =>
   operation === "update" &&
-  current.stage === PROCESSING_STAGE.NEEDS_REVIEW &&
-  current.schemaValidation?.approved === true &&
+  stageSource.stage === PROCESSING_STAGE.NEEDS_REVIEW &&
+  approvalSource.schemaValidation?.approved === true &&
   previousDoc?.schemaValidation?.approved !== true;
 
 /**
@@ -71,7 +79,7 @@ const handleSchemaApproval = (
   req: PayloadRequest,
   originalDoc?: IngestJob
 ): void => {
-  if (isSchemaApproval(operation, data, originalDoc) && data.schemaValidation) {
+  if (isSchemaApproval(operation, data, data, originalDoc) && data.schemaValidation) {
     if (!req.user) {
       throw new Error("Authentication required to approve schema changes");
     }
@@ -200,7 +208,7 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     }
 
     // Queue ingest-process workflow when NEEDS_REVIEW is approved
-    if (isSchemaApproval(operation, doc, previousDoc)) {
+    if (isSchemaApproval(operation, previousDoc ?? doc, doc, previousDoc)) {
       // Quota exceeded requires admin approval
       if (doc.reviewReason === REVIEW_REASONS.QUOTA_EXCEEDED && req.user?.role !== "admin") {
         throw new Error("Only admins can approve quota-exceeded imports. Please contact us to increase your limit.");

@@ -14,7 +14,7 @@
  * @category Jobs
  */
 import { extractDenormalizedAccessFields } from "@/lib/collections/catalog-ownership";
-import { BATCH_SIZES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
@@ -23,6 +23,8 @@ import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
+import type { ReviewChecksConfig } from "../workflows/review-checks";
+import { REVIEW_REASONS, setNeedsReview, shouldReviewHighRowErrors } from "../workflows/review-checks";
 import {
   checkEventQuotaBeforeProcessing,
   cleanupPriorAttempt,
@@ -38,6 +40,7 @@ export const createEventsBatchJob = {
   outputSchema: [
     { name: "eventCount", type: "number" as const },
     { name: "duplicatesSkipped", type: "number" as const },
+    { name: "needsReview", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
   onFail: createStandardOnFail("create-events-batch", {
@@ -50,6 +53,10 @@ export const createEventsBatchJob = {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {
+      // Don't override NEEDS_REVIEW with COMPLETED — the review check already set the stage
+      const job = await args.req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
+      if (job?.stage === PROCESSING_STAGE.NEEDS_REVIEW) return;
+
       await setJobStage(args.req.payload, ingestJobId, PROCESSING_STAGE.COMPLETED);
     } catch {
       // Best-effort — don't throw in onSuccess
@@ -147,8 +154,22 @@ export const createEventsBatchJob = {
       // Complete the stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
-      // Mark job completed
+      // Mark job completed (saves results, tracks quota, cleans up files)
       await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);
+
+      // Review check: high row error rate — pause after completion so results are saved
+      const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
+        | ReviewChecksConfig
+        | undefined;
+      const errorCheck = shouldReviewHighRowErrors(totalEventsCreated, totalErrors, reviewChecks);
+      const needsReview = errorCheck.needsReview;
+      if (needsReview) {
+        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_ROW_ERROR_RATE, {
+          totalEvents: totalEventsCreated,
+          errorCount: totalErrors,
+          errorRate: errorCheck.errorRate,
+        });
+      }
 
       logPerformance("Event creation", Date.now() - startTime, {
         ingestJobId,
@@ -158,7 +179,7 @@ export const createEventsBatchJob = {
         totalErrors,
       });
 
-      return { output: { eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
+      return { output: { needsReview, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
     } catch (error) {
       logError(error, "Event creation failed", { ingestJobId });
       await cleanupSidecarsForJob(payload, ingestJobId);

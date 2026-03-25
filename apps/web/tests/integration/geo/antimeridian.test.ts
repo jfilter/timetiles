@@ -44,7 +44,8 @@ describe.sequential("Anti-meridian longitude filtering", () => {
       data: {
         uniqueId: "antimeridian-event-a-fiji",
         dataset: testDatasetId,
-        originalData: { title: "Fiji Event" },
+        sourceData: { title: "Fiji Event" },
+        transformedData: { title: "Fiji Event" },
         location: { latitude: -17.7134, longitude: 175.0 },
         eventTimestamp: new Date(2024, 0, 10).toISOString(),
       },
@@ -56,7 +57,8 @@ describe.sequential("Anti-meridian longitude filtering", () => {
       data: {
         uniqueId: "antimeridian-event-b-samoa",
         dataset: testDatasetId,
-        originalData: { title: "Samoa Event" },
+        sourceData: { title: "Samoa Event" },
+        transformedData: { title: "Samoa Event" },
         location: { latitude: -13.759, longitude: -175.0 },
         eventTimestamp: new Date(2024, 0, 20).toISOString(),
       },
@@ -68,7 +70,8 @@ describe.sequential("Anti-meridian longitude filtering", () => {
       data: {
         uniqueId: "antimeridian-event-c-greenwich",
         dataset: testDatasetId,
-        originalData: { title: "Greenwich Event" },
+        sourceData: { title: "Greenwich Event" },
+        transformedData: { title: "Greenwich Event" },
         location: { latitude: 51.4769, longitude: 0.0 },
         eventTimestamp: new Date(2024, 0, 30).toISOString(),
       },

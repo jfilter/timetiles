@@ -14,9 +14,8 @@ import fs from "node:fs";
 import type { NextRequest } from "next/server";
 import type { Payload } from "payload";
 
-import { AppError } from "@/lib/api";
 import { createLogger } from "@/lib/logger";
-import { createQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
+import { createQuotaService } from "@/lib/services/quota-service";
 import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import type {
   ConfigureIngestRequest,
@@ -150,6 +149,9 @@ export const processDataset = async (
         deduplicationConfig,
         geoFieldDetection,
         schemaConfig,
+        // IngestTransform (discriminated union with Date, required booleans, typed arrays)
+        // vs Dataset["ingestTransforms"] (flat type with string dates, optional nullables, loose arrays).
+        // The double cast bridges these structural differences; Payload handles serialization at write time.
         ...(transforms && transforms.length > 0
           ? { ingestTransforms: transforms as unknown as NonNullable<Dataset["ingestTransforms"]> }
           : {}),
@@ -176,6 +178,7 @@ export const processDataset = async (
     deduplicationConfig,
     geoFieldDetection,
     schemaConfig,
+    // Same IngestTransform vs Dataset["ingestTransforms"] mismatch — see comment above.
     ...(transforms ? { ingestTransforms: transforms as unknown as NonNullable<Dataset["ingestTransforms"]> } : {}),
   };
 
@@ -439,16 +442,4 @@ export const createIngestFileRecord = async (
   );
 
   return ingestFile;
-};
-
-/**
- * Convert QuotaExceededError to AppError so the framework handles it correctly.
- * Bug 15: surface quota-exceeded as 429 rather than 500.
- * @throws {AppError} with status 429 if the original error is a QuotaExceededError
- */
-export const rethrowQuotaError = (error: unknown): never => {
-  if (error instanceof QuotaExceededError) {
-    throw new AppError(error.statusCode, error.message, "QUOTA_EXCEEDED");
-  }
-  throw error;
 };

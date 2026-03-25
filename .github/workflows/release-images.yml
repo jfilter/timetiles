@@ -45,13 +45,12 @@ jobs:
       lfs: true
     secrets: inherit
 
-  build-scraper:
+  build-timescrape:
     uses: ./.github/workflows/build-image.yml
     with:
-      image-name: ghcr.io/${{ github.repository }}-scraper
+      image-name: ghcr.io/${{ github.repository }}-timescrape
       dockerfile: apps/timescrape/Dockerfile
-      # Scope uses "scraper-runner" to avoid artifact pattern overlap with scraper-python/node
-      scope: scraper-runner
+      scope: timescrape
       timeout-minutes: 15
     secrets: inherit
 
@@ -165,12 +164,12 @@ jobs:
       dispatch-tag: ${{ github.event.inputs.tag }}
     secrets: inherit
 
-  merge-scraper:
-    needs: [build-scraper, test-deployment]
+  merge-timescrape:
+    needs: [build-timescrape, test-deployment]
     uses: ./.github/workflows/merge-manifest.yml
     with:
-      image-name: ghcr.io/${{ github.repository }}-scraper
-      scope: scraper-runner
+      image-name: ghcr.io/${{ github.repository }}-timescrape
+      scope: timescrape
       original-event-name: ${{ github.event_name }}
       dispatch-tag: ${{ github.event.inputs.tag }}
     secrets: inherit
@@ -200,7 +199,9 @@ jobs:
   smoke-test:
     name: Smoke Test
     runs-on: ubuntu-latest
-    needs: [merge-main, merge-allinone, merge-scraper]
+    needs: [merge-main, merge-allinone, merge-timescrape]
+    # Run if main was published, even when allinone or timescrape failed/skipped
+    if: ${{ !cancelled() && needs.merge-main.result == 'success' }}
     timeout-minutes: 15
 
     steps:
@@ -239,13 +240,12 @@ jobs:
           echo "db_password=$(openssl rand -base64 32 | tr -d '/+=')" >> "$GITHUB_OUTPUT"
           echo "scraper_key=$(openssl rand -hex 20)" >> "$GITHUB_OUTPUT"
 
-      - name: Smoke test all images
+      - name: Smoke test main image
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           VERSION: ${{ steps.tag.outputs.version }}
           PAYLOAD_SECRET: ${{ steps.secrets.outputs.payload_secret }}
           DB_PASSWORD: ${{ steps.secrets.outputs.db_password }}
-          SCRAPER_KEY: ${{ steps.secrets.outputs.scraper_key }}
         run: |
           # Reusable health check: wait_for_health <url> <container> <max_attempts> <interval>
           wait_for_health() {
@@ -263,7 +263,6 @@ jobs:
             return 1
           }
 
-          # --- Main image (needs external PostgreSQL) ---
           echo "==> Starting PostgreSQL..."
           docker network create timetiles-test
           docker run -d --name postgres --network timetiles-test \
@@ -275,7 +274,6 @@ jobs:
 
           echo "==> Waiting for PostgreSQL..."
           wait_for_health "" postgres 30 2 || true
-          # pg_isready is more reliable for postgres
           for i in {1..30}; do
             docker exec postgres pg_isready -U timetiles_user -d timetiles 2>/dev/null && break
             sleep 2
@@ -292,17 +290,51 @@ jobs:
           echo "==> Checking main app health..."
           wait_for_health http://localhost:3000/api/health timetiles 30 2
 
-          # --- Scraper image ---
+          echo "==> Verifying payload CLI is available for workers..."
+          docker exec timetiles node -e "require('fs').accessSync('/app/node_modules/.pnpm/node_modules/payload/bin.js')"
+
+      - name: Smoke test timescrape image
+        if: ${{ needs.merge-timescrape.result == 'success' }}
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          VERSION: ${{ steps.tag.outputs.version }}
+          SCRAPER_KEY: ${{ steps.secrets.outputs.scraper_key }}
+        run: |
+          wait_for_health() {
+            local url=$1 container=$2 max=${3:-30} interval=${4:-2}
+            for ((i=1; i<=max; i++)); do
+              if curl -f --max-time 5 "$url" 2>/dev/null; then echo " OK"; return 0; fi
+              echo "  waiting... ($i/$max)"; sleep "$interval"
+            done
+            echo "FAILED - $container logs:"; docker logs "$container"; return 1
+          }
+
           echo "==> Starting scraper runner..."
           docker run -d --name scraper-test -p 4000:4000 \
             -e SCRAPER_API_KEY="${SCRAPER_KEY}" \
-            "${IMAGE}-scraper:${VERSION}"
+            "${IMAGE}-timescrape:${VERSION}"
 
           echo "==> Checking scraper health..."
           wait_for_health http://localhost:4000/health scraper-test 15 2
           docker stop scraper-test && docker rm scraper-test
 
-          # --- All-in-one image (PostgreSQL bundled inside) ---
+      - name: Smoke test allinone image
+        if: ${{ needs.merge-allinone.result == 'success' }}
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          VERSION: ${{ steps.tag.outputs.version }}
+          PAYLOAD_SECRET: ${{ steps.secrets.outputs.payload_secret }}
+          DB_PASSWORD: ${{ steps.secrets.outputs.db_password }}
+        run: |
+          wait_for_health() {
+            local url=$1 container=$2 max=${3:-30} interval=${4:-2}
+            for ((i=1; i<=max; i++)); do
+              if curl -f --max-time 5 "$url" 2>/dev/null; then echo " OK"; return 0; fi
+              echo "  waiting... ($i/$max)"; sleep "$interval"
+            done
+            echo "FAILED - $container logs:"; docker logs "$container"; return 1
+          }
+
           echo "==> Starting all-in-one..."
           docker run -d --name allinone-test -p 8080:80 \
             -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
@@ -313,15 +345,28 @@ jobs:
           wait_for_health http://localhost:8080/api/health allinone-test 45 3
           docker stop allinone-test && docker rm allinone-test
 
-          # Verify arm64 manifests exist (full arm64 deployment test not possible on amd64 runner)
+      - name: Verify arm64 manifests
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          VERSION: ${{ steps.tag.outputs.version }}
+          ALLINONE_AVAILABLE: ${{ needs.merge-allinone.result == 'success' }}
+        run: |
           echo "==> Verifying arm64 manifests..."
-          for img in "${IMAGE}:${VERSION}" "${IMAGE}:${VERSION}-allinone" "${IMAGE}-scraper:${VERSION}"; do
+          for img in "${IMAGE}:${VERSION}" "${IMAGE}-timescrape:${VERSION}"; do
             if docker manifest inspect "$img" 2>/dev/null | grep -q "arm64"; then
               echo "  $img: arm64 manifest present"
             else
               echo "  WARNING: $img: arm64 manifest missing"
             fi
           done
+          if [ "$ALLINONE_AVAILABLE" = "true" ]; then
+            img="${IMAGE}:${VERSION}-allinone"
+            if docker manifest inspect "$img" 2>/dev/null | grep -q "arm64"; then
+              echo "  $img: arm64 manifest present"
+            else
+              echo "  WARNING: $img: arm64 manifest missing"
+            fi
+          fi
 
       - name: Collect logs on failure
         if: failure()

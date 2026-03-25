@@ -41,23 +41,10 @@ describe("EventsList", () => {
     const events = [
       createMockEvent({
         id: 1,
-        data: {
-          title: "Environmental Conference", // Backend provides enriched title
-          description: "Climate change discussion",
-          date: "2024-06-15",
-          city: "Copenhagen",
-          country: "Denmark",
-        },
+        data: { title: "Environmental Conference", description: "Climate change discussion" },
+        eventTimestamp: "2024-06-15T10:00:00Z",
       }),
-      createMockEvent({
-        id: 2,
-        data: {
-          title: "Economic Summit", // Backend provides enriched title
-          venue: "Convention Center",
-          city: "Zurich",
-          country: "Switzerland",
-        },
-      }),
+      createMockEvent({ id: 2, data: { title: "Economic Summit" }, eventTimestamp: "2024-07-01T10:00:00Z" }),
     ];
 
     renderWithProviders(<EventsList events={events} />);
@@ -65,91 +52,44 @@ describe("EventsList", () => {
     // Should display backend-provided titles
     expect(screen.getByText("Environmental Conference")).toBeInTheDocument();
     expect(screen.getByText("Economic Summit")).toBeInTheDocument();
+  });
 
-    // Should display location information
+  test("displays formatted dates from eventTimestamp", () => {
+    const events = [
+      createMockEvent({ id: 1, data: { title: "Event with timestamp" }, eventTimestamp: "2024-09-20T10:00:00Z" }),
+      createMockEvent({ id: 2, data: { title: "Event without timestamp" }, eventTimestamp: "" }),
+    ];
+
+    renderWithProviders(<EventsList events={events} />);
+
+    // Should display date from eventTimestamp
+    expect(screen.getByText("9/20/2024")).toBeInTheDocument();
+
+    // Event without timestamp should not display date
+    expect(screen.getByText("Event without timestamp")).toBeInTheDocument();
+  });
+
+  test("displays location from locationName and geocodedAddress", () => {
+    const events = [
+      createMockEvent({ id: 1, data: { title: "Event with venue" }, locationName: "Bella Center" } as any),
+      createMockEvent({
+        id: 2,
+        data: { title: "Event with geocoded address" },
+        geocodedAddress: "Copenhagen, Denmark",
+      } as any),
+      createMockEvent({ id: 3, data: { title: "Event with no location" } }),
+    ];
+
+    renderWithProviders(<EventsList events={events} />);
+
+    // Should display venue name
+    expect(screen.getByText("Bella Center")).toBeInTheDocument();
+
+    // Should display geocoded address
     expect(screen.getByText("Copenhagen, Denmark")).toBeInTheDocument();
-    expect(screen.getByText("Zurich, Switzerland")).toBeInTheDocument();
-  });
 
-  test("displays formatted dates correctly", () => {
-    const events = [
-      createMockEvent({
-        id: 1,
-        data: {
-          title: "Single Start Date Event", // Backend enriches with title
-          startDate: "2024-06-15",
-        },
-        eventTimestamp: "2024-06-15T10:00:00Z",
-      }),
-      createMockEvent({
-        id: 2,
-        data: {
-          title: "Multi-day Event", // Backend enriches with title
-          startDate: "2024-06-26",
-          endDate: "2024-06-30",
-        },
-      }),
-    ];
-
-    renderWithProviders(<EventsList events={events} />);
-
-    // Should display single start date
-    expect(screen.getByText("6/15/2024")).toBeInTheDocument();
-
-    // Should display date range (formatted as "start - end")
-    expect(screen.getByText("6/26/2024 - 6/30/2024")).toBeInTheDocument();
-  });
-
-  test("extracts location from various field patterns", () => {
-    const events = [
-      createMockEvent({ id: 1, data: { title: "Event with city/country", city: "Paris", country: "France" } }),
-      createMockEvent({
-        id: 2,
-        data: {
-          title: "Event with no location fields",
-          // No city/country fields - should not display location
-        },
-      }),
-      createMockEvent({
-        id: 3,
-        data: { title: "Event with venue", venue: "Madison Square Garden", city: "New York", country: "USA" },
-      }),
-    ];
-
-    renderWithProviders(<EventsList events={events} />);
-
-    // Should display city/country combinations
-    expect(screen.getByText("Paris, France")).toBeInTheDocument();
-
-    // Event with no location fields should not display location
-    expect(screen.getByText("Event with no location fields")).toBeInTheDocument();
-
-    // Should display city/country for event with venue data
-    expect(screen.getByText("New York, USA")).toBeInTheDocument();
-  });
-
-  test("handles events with complex nested data", () => {
-    const events = [
-      createMockEvent({
-        id: 1,
-        data: {
-          event: {
-            name: "Nested Event Name", // Nested structure
-            details: { location: { city: "Barcelona", country: "Spain" } },
-          },
-          // Also flat fields for comparison
-          title: "Flat Title",
-          city: "Madrid",
-          country: "Spain",
-        },
-      }),
-    ];
-
-    renderWithProviders(<EventsList events={events} />);
-
-    // Should prefer flat fields over nested ones
-    expect(screen.getByText("Flat Title")).toBeInTheDocument();
-    expect(screen.getByText("Madrid, Spain")).toBeInTheDocument();
+    // Event with no location should not display location row
+    expect(screen.getByText("Event with no location")).toBeInTheDocument();
   });
 
   test("sorts events chronologically when eventTimestamp is available", () => {

@@ -166,10 +166,40 @@ export const STEP_TITLES: Record<WizardStep, string> = Object.fromEntries(
   WIZARD_STEPS.map((s) => [s.step, s.title])
 ) as Record<WizardStep, string>;
 
+/** Maximum wizard step (last step in the array). */
+const MAX_STEP = WIZARD_STEPS.length as WizardStep;
+
+/** In edit mode, stop before the processing step. */
+const EDIT_MAX_STEP = (MAX_STEP - 1) as WizardStep;
+
+/** Step index for the schedule configuration. Skipped for file uploads (no URL). */
+const SCHEDULE_STEP: WizardStep = 5;
+
+/** Step index for the review screen (follows the schedule step). */
+const REVIEW_STEP: WizardStep = 6;
+
+/** Step index for field mapping (precedes the schedule step). */
+const MAPPING_STEP: WizardStep = 4;
+
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "timetiles-wizard-v2";
 const STORAGE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/** Update an item in a sheet-indexed array by finding its sheetIndex and merging partial updates. */
+const updateBySheetIndex = <T extends { sheetIndex: number }>(
+  items: T[],
+  sheetIndex: number,
+  update: Partial<T>
+): T[] => {
+  const result = [...items];
+  const index = result.findIndex((m) => m.sheetIndex === sheetIndex);
+  const current = result[index];
+  if (index >= 0 && current) {
+    result[index] = { ...current, ...update, sheetIndex: current.sheetIndex };
+  }
+  return result;
+};
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 
@@ -211,10 +241,10 @@ export const useWizardStore = create<WizardStore>()(
 
         nextStep: () =>
           set((s) => {
-            const maxStep = s.editMode ? 6 : 7;
-            let next = Math.min(s.currentStep + 1, maxStep) as WizardStep;
+            const max = s.editMode ? EDIT_MAX_STEP : MAX_STEP;
+            let next = Math.min(s.currentStep + 1, max) as WizardStep;
             // Skip Schedule step for file uploads (no URL = no schedule)
-            if (next === 5 && !s.sourceUrl) next = 6;
+            if (next === SCHEDULE_STEP && !s.sourceUrl) next = REVIEW_STEP;
             return { currentStep: next };
           }),
 
@@ -222,7 +252,7 @@ export const useWizardStore = create<WizardStore>()(
           set((s) => {
             let prev = Math.max(s.currentStep - 1, 1) as WizardStep;
             // Skip Schedule step going back if no URL
-            if (prev === 5 && !s.sourceUrl) prev = 4;
+            if (prev === SCHEDULE_STEP && !s.sourceUrl) prev = MAPPING_STEP;
             return { currentStep: prev };
           }),
 
@@ -284,26 +314,10 @@ export const useWizardStore = create<WizardStore>()(
           set((s) => ({ selectedCatalogId: catalogId, newCatalogName: newCatalogName ?? s.newCatalogName })),
 
         setSheetMapping: (sheetIndex, mapping) =>
-          set((s) => {
-            const mappings = [...s.sheetMappings];
-            const index = mappings.findIndex((m) => m.sheetIndex === sheetIndex);
-            const current = mappings[index];
-            if (index >= 0 && current) {
-              mappings[index] = { ...current, ...mapping, sheetIndex: current.sheetIndex };
-            }
-            return { sheetMappings: mappings };
-          }),
+          set((s) => ({ sheetMappings: updateBySheetIndex(s.sheetMappings, sheetIndex, mapping) })),
 
         setFieldMapping: (sheetIndex, mapping) =>
-          set((s) => {
-            const mappings = [...s.fieldMappings];
-            const index = mappings.findIndex((m) => m.sheetIndex === sheetIndex);
-            const current = mappings[index];
-            if (index >= 0 && current) {
-              mappings[index] = { ...current, ...mapping, sheetIndex: current.sheetIndex };
-            }
-            return { fieldMappings: mappings };
-          }),
+          set((s) => ({ fieldMappings: updateBySheetIndex(s.fieldMappings, sheetIndex, mapping) })),
 
         setTransforms: (sheetIndex, transforms) =>
           set((s) => ({ transforms: { ...s.transforms, [sheetIndex]: transforms } })),
@@ -374,8 +388,7 @@ export const useWizardStore = create<WizardStore>()(
           }),
 
         complete: () => {
-          useWizardStore.persist.clearStorage();
-          set({ ...initialState, _initialized: true });
+          get().reset();
         },
 
         reset: () => {

@@ -541,7 +541,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "About",
     slug: "about",
-    site: "default" as unknown as number,
+    site: "default",
     pageBuilder: [
       {
         blockType: "hero",
@@ -688,7 +688,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Contact",
     slug: "contact",
-    site: "default" as unknown as number,
+    site: "default",
     pageBuilder: [
       {
         blockType: "hero",
@@ -767,7 +767,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Terms of Service",
     slug: "terms",
-    site: "default" as unknown as number,
+    site: "default",
     pageBuilder: [
       {
         blockType: "hero",
@@ -843,7 +843,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Privacy Policy",
     slug: "privacy",
-    site: "default" as unknown as number,
+    site: "default",
     pageBuilder: [
       {
         blockType: "hero",

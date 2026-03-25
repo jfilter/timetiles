@@ -230,6 +230,103 @@ const executionFields: Field[] = [
           },
         ],
       },
+      {
+        name: "reviewChecks",
+        type: "group",
+        label: "Data Quality Review Checks",
+        admin: {
+          description:
+            "Configure which data quality checks pause the import for review. All checks are enabled by default.",
+        },
+        fields: [
+          {
+            name: "skipTimestampCheck",
+            type: "checkbox",
+            defaultValue: false,
+            label: "Skip 'no timestamp' check",
+            admin: { description: "Don't pause when no date/time field is detected", width: "50%" },
+          },
+          {
+            name: "skipLocationCheck",
+            type: "checkbox",
+            defaultValue: false,
+            label: "Skip 'no location' check",
+            admin: { description: "Don't pause when no location field is detected", width: "50%" },
+          },
+          {
+            name: "skipEmptyRowCheck",
+            type: "checkbox",
+            defaultValue: false,
+            label: "Skip 'high empty rows' check",
+            admin: { description: "Don't pause when many rows are empty", width: "50%" },
+          },
+          {
+            name: "skipRowErrorCheck",
+            type: "checkbox",
+            defaultValue: false,
+            label: "Skip 'high row errors' check",
+            admin: { description: "Don't pause when many rows fail during creation", width: "50%" },
+          },
+          {
+            name: "skipDuplicateRateCheck",
+            type: "checkbox",
+            defaultValue: false,
+            label: "Skip 'high duplicates' check",
+            admin: { description: "Don't pause when most rows are duplicates", width: "50%" },
+          },
+          {
+            name: "skipGeocodingCheck",
+            type: "checkbox",
+            defaultValue: false,
+            label: "Skip 'geocoding failure' check",
+            admin: { description: "Don't pause when geocoding has a high failure rate", width: "50%" },
+          },
+          {
+            name: "emptyRowThreshold",
+            type: "number",
+            min: 0,
+            max: 1,
+            admin: {
+              description: "Override empty row rate threshold (0–1). Leave blank for global default.",
+              step: 0.05,
+              width: "50%",
+            },
+          },
+          {
+            name: "rowErrorThreshold",
+            type: "number",
+            min: 0,
+            max: 1,
+            admin: {
+              description: "Override row error rate threshold (0–1). Leave blank for global default.",
+              step: 0.05,
+              width: "50%",
+            },
+          },
+          {
+            name: "duplicateRateThreshold",
+            type: "number",
+            min: 0,
+            max: 1,
+            admin: {
+              description: "Override duplicate rate threshold (0–1). Leave blank for global default.",
+              step: 0.05,
+              width: "50%",
+            },
+          },
+          {
+            name: "geocodingFailureThreshold",
+            type: "number",
+            min: 0,
+            max: 1,
+            admin: {
+              description: "Override geocoding failure rate threshold (0–1). Leave blank for global default.",
+              step: 0.05,
+              width: "50%",
+            },
+          },
+        ],
+      },
     ],
   },
 

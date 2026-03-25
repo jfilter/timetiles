@@ -207,8 +207,10 @@ describe("extractTimestamp", () => {
 
 describe("createEventData", () => {
   it("does not coerce partially numeric import job ids into event relations", () => {
+    const row = { title: "Test Event", date: "2024-06-15T10:30:00Z" };
     const result = createEventData(
-      { title: "Test Event", date: "2024-06-15T10:30:00Z" },
+      row,
+      row,
       { id: 42, idStrategy: { type: "auto", duplicateStrategy: "skip" } } as any,
       "123abc",
       {},

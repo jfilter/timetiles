@@ -16,6 +16,7 @@ import { z } from "zod";
 import { apiRoute, NotFoundError } from "@/lib/api";
 import { STAGE_ORDER } from "@/lib/constants/stage-graph";
 import { STAGE_DISPLAY_NAMES, STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
+import { createLogger } from "@/lib/logger";
 import type { FormattedJobProgress, FormattedStage, StageProgress } from "@/lib/types/progress-tracking";
 import { getDatasetInfo } from "@/lib/utils/event-detail";
 import type { IngestJob } from "@/payload-types";
@@ -106,6 +107,8 @@ const formatJobProgress = (job: IngestJob): FormattedJobProgress => {
   };
 };
 
+const logger = createLogger("ingest-progress");
+
 export const GET = apiRoute({
   auth: "required",
   site: "default",
@@ -123,7 +126,10 @@ export const GET = apiRoute({
         user,
         overrideAccess: false,
       })
-      .catch(() => null);
+      .catch((error) => {
+        logger.warn({ error }, "Failed to find ingest file");
+        return null;
+      });
 
     if (!ingestFile) {
       throw new NotFoundError("Import not found or access denied");

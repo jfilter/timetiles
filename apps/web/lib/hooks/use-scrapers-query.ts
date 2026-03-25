@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { Scraper, ScraperRepo, ScraperRun } from "@/payload-types";
 
-import { QUERY_PRESETS } from "./query-presets";
+import { createActivePollingInterval, QUERY_PRESETS } from "./query-presets";
 import { scraperKeys } from "./use-scraper-mutations";
 
 export const useScraperReposQuery = (initialData?: ScraperRepo[]) =>
@@ -35,13 +35,7 @@ export const useScrapersQuery = (repoId?: number, initialData?: Scraper[]) =>
     },
     initialData,
     ...QUERY_PRESETS.standard,
-    // eslint-disable-next-line sonarjs/function-return-type -- React Query refetchInterval API requires false | number
-    refetchInterval: (query) => {
-      const docs = query.state.data;
-      if (!docs?.length) return false;
-      const hasRunning = docs.some((d) => d.lastRunStatus === "running");
-      return hasRunning ? POLL_INTERVAL : false;
-    },
+    refetchInterval: createActivePollingInterval<Scraper>((d) => d.lastRunStatus === "running", POLL_INTERVAL),
   });
 
 export const useScraperRunsQuery = (scraperId?: number) =>

@@ -28,6 +28,7 @@ import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
+import type { ReviewChecksConfig } from "../workflows/review-checks";
 import { REVIEW_REASONS, setNeedsReview, shouldReviewGeocodingPartial } from "../workflows/review-checks";
 
 /**
@@ -246,7 +247,10 @@ export const geocodeBatchJob = {
       });
 
       // Review check: geocoding partial failure (>50% failed)
-      const geoCheck = shouldReviewGeocodingPartial(successCount, failureCount);
+      const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
+        | ReviewChecksConfig
+        | undefined;
+      const geoCheck = shouldReviewGeocodingPartial(successCount, failureCount, reviewChecks);
       if (geoCheck.needsReview) {
         await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.GEOCODING_PARTIAL, {
           geocoded: successCount,

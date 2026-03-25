@@ -223,8 +223,15 @@ init_ssl() {
         echo -e "${YELLOW}No DNS record for www.$DOMAIN_NAME, requesting cert for $DOMAIN_NAME only${NC}"
     fi
 
-    # Request certificate
-    if $DC_CMD run --rm certbot certonly --webroot \
+    # Request certificate — run certbot directly (not via compose) to avoid
+    # recreating nginx and to write to the Docker letsencrypt volume
+    CERTBOT_IMAGE="certbot/certbot:${CERTBOT_VERSION:-v3.3.0}"
+    PROJECT="${COMPOSE_PROJECT_NAME:-timetiles}"
+
+    if docker run --rm \
+        -v "${PROJECT}_letsencrypt:/etc/letsencrypt" \
+        -v "${PROJECT}_certbot-webroot:/var/www/certbot" \
+        "$CERTBOT_IMAGE" certonly --webroot \
         --webroot-path=/var/www/certbot \
         --email "$LETSENCRYPT_EMAIL" \
         --agree-tos \
@@ -1095,7 +1102,10 @@ EOF
     update)
         check_env
         echo -e "${YELLOW}Updating TimeTiles...${NC}"
-        git pull origin main
+        # Pull latest deployment files if this is a git-based install
+        if git rev-parse --git-dir &>/dev/null 2>&1; then
+            git pull origin main
+        fi
         if [ -f "$SCRIPT_DIR/docker-compose.override.yml" ]; then
             echo -e "${YELLOW}Rebuilding local images...${NC}"
             $DC_CMD build web
@@ -1116,7 +1126,7 @@ EOF
             echo -e "${YELLOW}Updating scraper runner...${NC}"
 
             # Update runner: try GHCR image first, fall back to local build
-            image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-scraper}:$version"
+            image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-timescrape}:$version"
             rm -rf "${runner_dir:?}/dist" "${runner_dir:?}/node_modules" "${runner_dir:?}/package.json"
 
             # Helper: extract /app from image using tar (docker cp breaks pnpm symlinks)

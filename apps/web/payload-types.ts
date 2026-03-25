@@ -702,6 +702,10 @@ export interface Dataset {
      */
     timestampPath?: string | null;
     /**
+     * Override detected end timestamp field (e.g., 'end_date', 'enddatum', 'date_fin')
+     */
+    endTimestampPath?: string | null;
+    /**
      * Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')
      */
     latitudePath?: string | null;
@@ -926,6 +930,10 @@ export interface DatasetSchema {
      * Path to timestamp/date field in source data
      */
     timestampPath?: string | null;
+    /**
+     * Path to end timestamp/date field in source data
+     */
+    endTimestampPath?: string | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -1031,6 +1039,10 @@ export interface IngestJob {
      * Path to timestamp/date field in source data
      */
     timestampPath?: string | null;
+    /**
+     * Path to end timestamp/date field in source data
+     */
+    endTimestampPath?: string | null;
     /**
      * Path to latitude coordinate field in source data
      */
@@ -1608,6 +1620,51 @@ export interface ScheduledIngest {
         maxPages?: number | null;
       };
     };
+    /**
+     * Configure which data quality checks pause the import for review. All checks are enabled by default.
+     */
+    reviewChecks?: {
+      /**
+       * Don't pause when no date/time field is detected
+       */
+      skipTimestampCheck?: boolean | null;
+      /**
+       * Don't pause when no location field is detected
+       */
+      skipLocationCheck?: boolean | null;
+      /**
+       * Don't pause when many rows are empty
+       */
+      skipEmptyRowCheck?: boolean | null;
+      /**
+       * Don't pause when many rows fail during creation
+       */
+      skipRowErrorCheck?: boolean | null;
+      /**
+       * Don't pause when most rows are duplicates
+       */
+      skipDuplicateRateCheck?: boolean | null;
+      /**
+       * Don't pause when geocoding has a high failure rate
+       */
+      skipGeocodingCheck?: boolean | null;
+      /**
+       * Override empty row rate threshold (0–1). Leave blank for global default.
+       */
+      emptyRowThreshold?: number | null;
+      /**
+       * Override row error rate threshold (0–1). Leave blank for global default.
+       */
+      rowErrorThreshold?: number | null;
+      /**
+       * Override duplicate rate threshold (0–1). Leave blank for global default.
+       */
+      duplicateRateThreshold?: number | null;
+      /**
+       * Override geocoding failure rate threshold (0–1). Leave blank for global default.
+       */
+      geocodingFailureThreshold?: number | null;
+    };
   };
   /**
    * Last execution time
@@ -1862,6 +1919,51 @@ export interface Scraper {
    * Automatically import CSV into target dataset after successful scrape
    */
   autoImport?: boolean | null;
+  /**
+   * Configure which data quality checks pause the import for review. All checks are enabled by default.
+   */
+  reviewChecks?: {
+    /**
+     * Don't pause when no date/time field is detected
+     */
+    skipTimestampCheck?: boolean | null;
+    /**
+     * Don't pause when no location field is detected
+     */
+    skipLocationCheck?: boolean | null;
+    /**
+     * Don't pause when many rows are empty
+     */
+    skipEmptyRowCheck?: boolean | null;
+    /**
+     * Don't pause when many rows fail during creation
+     */
+    skipRowErrorCheck?: boolean | null;
+    /**
+     * Don't pause when most rows are duplicates
+     */
+    skipDuplicateRateCheck?: boolean | null;
+    /**
+     * Don't pause when geocoding has a high failure rate
+     */
+    skipGeocodingCheck?: boolean | null;
+    /**
+     * Override empty row rate threshold (0–1). Leave blank for global default.
+     */
+    emptyRowThreshold?: number | null;
+    /**
+     * Override row error rate threshold (0–1). Leave blank for global default.
+     */
+    rowErrorThreshold?: number | null;
+    /**
+     * Override duplicate rate threshold (0–1). Leave blank for global default.
+     */
+    duplicateRateThreshold?: number | null;
+    /**
+     * Override geocoding failure threshold (0–1). Leave blank for global default.
+     */
+    geocodingFailureThreshold?: number | null;
+  };
   lastRunAt?: string | null;
   lastRunStatus?: ('success' | 'failed' | 'timeout' | 'running') | null;
   statistics?:
@@ -1951,9 +2053,21 @@ export interface Event {
    */
   ingestJob?: (number | null) | IngestJob;
   /**
-   * Generic data in JSON format (JSONB indexed for fast queries)
+   * Raw source data as received from the import source, before any transforms
    */
-  originalData:
+  sourceData:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Final event data after import transforms (identical to sourceData when no transforms applied)
+   */
+  transformedData:
     | {
         [k: string]: unknown;
       }
@@ -2003,9 +2117,13 @@ export interface Event {
     validationStatus?: ('valid' | 'out_of_range' | 'suspicious_zero' | 'swapped' | 'invalid') | null;
   };
   /**
-   * When the actual event occurred
+   * When the event starts (or occurred)
    */
   eventTimestamp?: string | null;
+  /**
+   * When the event ends (optional)
+   */
+  eventEndTimestamp?: string | null;
   /**
    * Location/venue name for display (e.g., 'Reichstag', 'Kottbusser Platz')
    */
@@ -4036,6 +4154,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         descriptionPath?: T;
         locationNamePath?: T;
         timestampPath?: T;
+        endTimestampPath?: T;
         latitudePath?: T;
         longitudePath?: T;
         locationPath?: T;
@@ -4112,6 +4231,7 @@ export interface DatasetSchemasSelect<T extends boolean = true> {
         descriptionPath?: T;
         locationNamePath?: T;
         timestampPath?: T;
+        endTimestampPath?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -4195,6 +4315,7 @@ export interface IngestJobsSelect<T extends boolean = true> {
         descriptionPath?: T;
         locationNamePath?: T;
         timestampPath?: T;
+        endTimestampPath?: T;
         latitudePath?: T;
         longitudePath?: T;
         locationPath?: T;
@@ -4329,6 +4450,20 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
                     maxPages?: T;
                   };
             };
+        reviewChecks?:
+          | T
+          | {
+              skipTimestampCheck?: T;
+              skipLocationCheck?: T;
+              skipEmptyRowCheck?: T;
+              skipRowErrorCheck?: T;
+              skipDuplicateRateCheck?: T;
+              skipGeocodingCheck?: T;
+              emptyRowThreshold?: T;
+              rowErrorThreshold?: T;
+              duplicateRateThreshold?: T;
+              geocodingFailureThreshold?: T;
+            };
       };
   lastRun?: T;
   nextRun?: T;
@@ -4403,6 +4538,20 @@ export interface ScrapersSelect<T extends boolean = true> {
   envVars?: T;
   targetDataset?: T;
   autoImport?: T;
+  reviewChecks?:
+    | T
+    | {
+        skipTimestampCheck?: T;
+        skipLocationCheck?: T;
+        skipEmptyRowCheck?: T;
+        skipRowErrorCheck?: T;
+        skipDuplicateRateCheck?: T;
+        skipGeocodingCheck?: T;
+        emptyRowThreshold?: T;
+        rowErrorThreshold?: T;
+        duplicateRateThreshold?: T;
+        geocodingFailureThreshold?: T;
+      };
   lastRunAt?: T;
   lastRunStatus?: T;
   statistics?: T;
@@ -4445,7 +4594,8 @@ export interface EventsSelect<T extends boolean = true> {
   datasetIsPublic?: T;
   catalogOwnerId?: T;
   ingestJob?: T;
-  originalData?: T;
+  sourceData?: T;
+  transformedData?: T;
   location?:
     | T
     | {
@@ -4469,6 +4619,7 @@ export interface EventsSelect<T extends boolean = true> {
         validationStatus?: T;
       };
   eventTimestamp?: T;
+  eventEndTimestamp?: T;
   locationName?: T;
   validationErrors?: T;
   geocodingInfo?:
@@ -5724,6 +5875,7 @@ export interface TaskDetectSchema {
   output: {
     fieldCount?: number | null;
     totalRowsProcessed?: number | null;
+    needsReview?: boolean | null;
     reason?: string | null;
   };
 }
@@ -5796,6 +5948,7 @@ export interface TaskCreateEvents {
   output: {
     eventCount?: number | null;
     duplicatesSkipped?: number | null;
+    needsReview?: boolean | null;
     reason?: string | null;
   };
 }

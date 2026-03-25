@@ -16,15 +16,18 @@ import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
+import { requireFeatureEnabled } from "@/lib/services/feature-flag-service";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
 /** Check if private imports are allowed */
 const validatePrivateImportAllowed = async (req: PayloadRequest, isPublic: boolean | undefined): Promise<void> => {
-  const allowPrivate = await getFeatureFlagService(req.payload).isEnabled("allowPrivateImports");
-  if (!allowPrivate && isPublic === false) {
-    throw new Error("Private datasets are currently disabled. Please make the dataset public.");
+  if (isPublic === false) {
+    await requireFeatureEnabled(
+      req.payload,
+      "allowPrivateImports",
+      "Private datasets are currently disabled. Please make the dataset public."
+    );
   }
 };
 
@@ -35,7 +38,7 @@ const getCatalogCreatorId = (catalog: Catalog): number | null => {
 };
 
 /** Validate user can create dataset in this catalog */
-const validateCreatePermission = (user: User, _catalog: Catalog, catalogCreatorId: number | null): void => {
+const validateCreatePermission = (user: User, catalogCreatorId: number | null): void => {
   const isOwner = catalogCreatorId === user.id;
 
   if (!isPrivileged(user) && !isOwner) {
@@ -74,14 +77,14 @@ const processCatalogValidation = async (
 
   // Validate create permission
   if (operation === "create" && req.user) {
-    validateCreatePermission(req.user, catalog, catalogCreatorId);
+    validateCreatePermission(req.user, catalogCreatorId);
   }
 
   // Validate update permission when catalog is being changed
   if (operation === "update" && req.user) {
     const previousCatalogId = originalDoc?.catalog ? extractRelationId(originalDoc.catalog) : undefined;
     if (previousCatalogId !== catalogId) {
-      validateCreatePermission(req.user, catalog, catalogCreatorId);
+      validateCreatePermission(req.user, catalogCreatorId);
     }
   }
 

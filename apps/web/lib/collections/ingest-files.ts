@@ -31,14 +31,7 @@ import type { User } from "@/payload-types";
 import { createRequestLogger } from "../logger";
 import { createQuotaService } from "../services/quota-service";
 import { getClientIdentifier, getRateLimitService } from "../services/rate-limit-service";
-import {
-  createCommonConfig,
-  createOwnershipAccess,
-  denyPendingDeletion,
-  isAuthenticated,
-  isEditorOrAdmin,
-  isPrivileged,
-} from "./shared-fields";
+import { createCommonConfig, createOwnershipAccess, isEditorOrAdmin, isPrivileged } from "./shared-fields";
 
 const logger = createRequestLogger("ingest-files");
 
@@ -131,8 +124,15 @@ const IngestFiles: CollectionConfig = {
       return { user: { equals: user.id } };
     },
 
-    // Only authenticated users can upload files (denied for pending-deletion accounts)
-    create: denyPendingDeletion(isAuthenticated),
+    // Only authenticated users can upload files (denied for pending-deletion accounts, feature flag must be enabled)
+    create: async ({ req: { user, payload } }) => {
+      // Check authentication + pending deletion first
+      if (!user || user.deletionScheduledAt) return false;
+
+      // Check feature flag - even admins can't create if disabled
+      const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+      return getFeatureFlagService(payload).isEnabled("enableImportCreation");
+    },
 
     // Only file owner, editors, or admins can update
     update: createOwnershipAccess("ingest-files", "user"),

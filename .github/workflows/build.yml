@@ -22,11 +22,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate API documentation
-        timeout-minutes: 3
-        run: pnpm docs:api
-        working-directory: apps/docs
-
       - name: Check theme abstraction
         timeout-minutes: 1
         run: ./scripts/check-theme-abstraction.sh

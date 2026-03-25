@@ -62,7 +62,8 @@ describe.sequential("Schema Maintenance Job", () => {
         data: {
           dataset: testDatasetId,
           uniqueId: generateUniqueId(testDatasetId),
-          originalData: { name: `Event ${i}`, value: i },
+          sourceData: { name: `Event ${i}`, value: i },
+          transformedData: { name: `Event ${i}`, value: i },
           eventTimestamp: new Date().toISOString(),
         },
         overrideAccess: true,
@@ -96,7 +97,8 @@ describe.sequential("Schema Maintenance Job", () => {
       data: {
         dataset: testDatasetId,
         uniqueId: generateUniqueId(testDatasetId),
-        originalData: { name: "Test" },
+        sourceData: { name: "Test" },
+        transformedData: { name: "Test" },
         eventTimestamp: new Date().toISOString(),
       },
       overrideAccess: true,
@@ -136,7 +138,8 @@ describe.sequential("Schema Maintenance Job", () => {
         data: {
           dataset: testDatasetId,
           uniqueId: generateUniqueId(testDatasetId),
-          originalData: { name: `Event ${i}` },
+          sourceData: { name: `Event ${i}` },
+          transformedData: { name: `Event ${i}` },
           eventTimestamp: new Date().toISOString(),
         },
         overrideAccess: true,

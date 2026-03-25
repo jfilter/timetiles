@@ -43,14 +43,14 @@ vi.mock("@/lib/config/app-config", () => ({
 
 vi.mock("@/lib/middleware/auth", () => ({}));
 
-vi.mock("@/lib/services/quota-service", () => {
-  class QuotaExceededError extends Error {
-    statusCode = 429;
+vi.mock("@/lib/services/quota-service", async () => {
+  const { AppError } = await import("@/lib/types/errors");
+  class QuotaExceededError extends AppError {
     quotaType: string;
     current: number;
     limit: number;
     constructor(quotaType: string, current: number, limit: number) {
-      super(`Quota exceeded: ${quotaType}`);
+      super(429, `Quota exceeded: ${quotaType}`, "QUOTA_EXCEEDED");
       this.name = "QuotaExceededError";
       this.quotaType = quotaType;
       this.current = current;

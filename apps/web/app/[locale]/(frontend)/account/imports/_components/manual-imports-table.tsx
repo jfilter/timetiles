@@ -17,6 +17,7 @@ import { useMemo } from "react";
 import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
 import { useIngestFilesQuery } from "@/lib/hooks/use-ingest-files-query";
 import { formatDateLocale } from "@/lib/utils/date";
+import { formatFileSize } from "@/lib/utils/format";
 import type { IngestFile } from "@/payload-types";
 
 import { IngestJobsDetail } from "./ingest-jobs-detail";
@@ -36,16 +37,6 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
 const getStatusVariant = (status: string | null | undefined): StatusVariant => {
   if (!status) return "muted";
   return STATUS_VARIANT_MAP[status] ?? "muted";
-};
-
-const KB = 1024;
-const MB = 1024 * KB;
-
-const formatFileSize = (bytes: number | null | undefined): string => {
-  if (bytes == null) return "-";
-  if (bytes < KB) return `${bytes} B`;
-  if (bytes < MB) return `${(bytes / KB).toFixed(1)} KB`;
-  return `${(bytes / MB).toFixed(1)} MB`;
 };
 
 export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => {

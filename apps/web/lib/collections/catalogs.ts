@@ -12,7 +12,7 @@
  * @category Collections
  * @module
  */
-import type { CollectionConfig, PayloadRequest } from "payload";
+import type { CollectionConfig, PayloadRequest, Where } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
@@ -37,10 +37,13 @@ const logger = createLogger("catalogs");
 
 /** Validates that private catalogs are allowed if isPublic is false. */
 const validatePrivateVisibility = async (data: Record<string, unknown>, req: PayloadRequest): Promise<void> => {
-  const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
-  const allowPrivate = await getFeatureFlagService(req.payload).isEnabled("allowPrivateImports");
-  if (!allowPrivate && data.isPublic === false) {
-    throw new Error("Private catalogs are currently disabled. Please make the catalog public.");
+  if (data.isPublic === false) {
+    const { requireFeatureEnabled } = await import("@/lib/services/feature-flag-service");
+    await requireFeatureEnabled(
+      req.payload,
+      "allowPrivateImports",
+      "Private catalogs are currently disabled. Please make the catalog public."
+    );
   }
 };
 
@@ -167,51 +170,20 @@ const batchSyncChildRecords = async (
   await bulkSyncCollection(req, "dataset-schemas", datasets, changes);
 };
 
-/** Validates slug uniqueness for catalogs. */
-const validateSlugUniqueness = async (
-  data: Record<string, unknown>,
-  req: PayloadRequest,
-  operation: "create" | "update"
-): Promise<void> => {
-  const slug = data.slug;
-  if (!slug || typeof slug !== "string") return;
-
-  const existing = await req.payload.find({
-    collection: "catalogs",
-    where: { slug: { equals: slug } },
-    limit: 1,
-    overrideAccess: true,
-  });
-
-  if (existing.docs.length === 0) return;
-
-  if (operation === "update") {
-    const currentDocId = req.context?.id;
-    const existingDocId = existing.docs[0]?.id;
-
-    if (currentDocId && existingDocId && currentDocId !== existingDocId) {
-      throw new Error(`Slug "${slug}" is already in use by another catalog.`);
-    }
-  } else {
-    throw new Error(`Slug "${slug}" is already in use.`);
-  }
-};
-
 const Catalogs: CollectionConfig = {
   slug: "catalogs",
   ...createCommonConfig(),
   admin: { useAsTitle: "name", defaultColumns: ["name", "isPublic", "createdBy"], group: "Data" },
   access: {
     // Public catalogs can be read by anyone, private ones only by creator or admins
-    // @ts-expect-error - Payload access control allows returning true | Where query object
-    // eslint-disable-next-line sonarjs/function-return-type
-    read: ({ req: { user } }) => {
+    // eslint-disable-next-line sonarjs/function-return-type -- returns true | Where depending on role
+    read: ({ req: { user } }): boolean | Where => {
       // Admins and editors can read all
       if (isPrivileged(user)) return true;
 
       // Users (including not logged in) can read public catalogs OR their own private catalogs
       if (user) {
-        return { or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }] };
+        return { or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }] } as Where;
       }
 
       // Not logged in - only public catalogs
@@ -248,11 +220,6 @@ const Catalogs: CollectionConfig = {
         // Handle quota check and increment for new catalogs
         if (operation === "create") {
           await checkAndIncrementQuota(req);
-        }
-
-        // Validate slug uniqueness
-        if (operation === "create" || operation === "update") {
-          await validateSlugUniqueness(data, req, operation);
         }
 
         return data;

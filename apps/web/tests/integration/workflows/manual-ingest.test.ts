@@ -190,7 +190,7 @@ describe.sequential("Manual Ingest Workflow (Integration)", () => {
     expect(events.docs).toHaveLength(3);
 
     // Verify event data is correct
-    const eventTitles = events.docs.map((e: any) => e.originalData?.title);
+    const eventTitles = events.docs.map((e: any) => e.transformedData?.title);
     expect(eventTitles).toContain("Berlin Conference");
     expect(eventTitles).toContain("Munich Meetup");
     expect(eventTitles).toContain("Hamburg Workshop");

@@ -16,7 +16,7 @@ mkdir -p /var/www/certbot
 
 # Set directory ownership
 chown -R postgres:postgres /data/postgresql
-chown -R nextjs:nextjs /data/uploads
+chown -R nextjs:nodejs /data/uploads
 
 # ── Security: require secrets to be explicitly set ──────────────────────────
 # DB_PASSWORD (or POSTGRES_PASSWORD) must be provided — no fallback
@@ -43,10 +43,12 @@ if [ ! -f /data/postgresql/PG_VERSION ]; then
     su - postgres -c "/usr/lib/postgresql/17/bin/initdb -D /data/postgresql"
 
     # Configure authentication
+    # Local socket: peer auth (OS user identity, no password needed for setup)
+    # TCP connections: scram-sha-256 (used by the Next.js app via DATABASE_URL)
     echo "Configuring PostgreSQL authentication..."
     cat > /data/postgresql/pg_hba.conf << 'EOF'
 # TYPE  DATABASE        USER            ADDRESS                 METHOD
-local   all             all                                     scram-sha-256
+local   all             all                                     peer
 host    all             all             127.0.0.1/32            scram-sha-256
 host    all             all             ::1/128                 scram-sha-256
 EOF
@@ -145,7 +147,7 @@ cat > /app/start-nextjs.sh << 'WRAPPER'
 set -a
 source /etc/timetiles.env
 set +a
-exec node apps/web/server.js
+cd /app/apps/web && exec node ../../node_modules/.pnpm/node_modules/next/dist/bin/next start
 WRAPPER
 chmod +x /app/start-nextjs.sh
 chown nextjs:nodejs /app/start-nextjs.sh

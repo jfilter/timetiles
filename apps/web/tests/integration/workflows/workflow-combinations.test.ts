@@ -179,7 +179,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } }, limit: 10 });
     expect(events.docs).toHaveLength(3);
 
-    const titles = events.docs.map((e: any) => e.originalData?.title);
+    const titles = events.docs.map((e: any) => e.transformedData?.title);
     expect(titles).toContain("Alpha Conference");
     expect(titles).toContain("Beta Meetup");
     expect(titles).toContain("Gamma Workshop");

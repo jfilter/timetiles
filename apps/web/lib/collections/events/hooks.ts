@@ -15,19 +15,12 @@ import { createQuotaService } from "@/lib/services/quota-service";
 import { requireRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, Event } from "@/payload-types";
 
-/** Check event creation quota for user */
+/** Check and increment event creation quota for user */
 const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
   if (!req.user) return;
 
   const quotaService = createQuotaService(req.payload);
-  const totalEventsCheck = await quotaService.checkQuota(req.user, "TOTAL_EVENTS", 1);
-
-  if (!totalEventsCheck.allowed) {
-    throw new Error(
-      `Total events limit reached (${totalEventsCheck.current}/${totalEventsCheck.limit}). ` +
-        `Please upgrade your account or remove old events.`
-    );
-  }
+  await quotaService.checkAndIncrementUsage(req.user, "TOTAL_EVENTS", 1, req);
 };
 
 /**

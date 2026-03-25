@@ -80,7 +80,8 @@ describe("/api/v1/events - field filter logic", () => {
         data: {
           uniqueId: `filter-logic-${i + 1}`,
           dataset: testDatasetId,
-          originalData: eventData,
+          sourceData: eventData,
+          transformedData: eventData,
           location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
         },

@@ -52,8 +52,13 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
     QUOTA_EXCEEDED: "quota-exceeded",
     HIGH_DUPLICATE_RATE: "high-duplicates",
     GEOCODING_PARTIAL: "geocoding-partial",
+    HIGH_ROW_ERROR_RATE: "high-row-errors",
+    HIGH_EMPTY_ROW_RATE: "high-empty-rows",
+    NO_TIMESTAMP_DETECTED: "no-timestamp",
+    NO_LOCATION_DETECTED: "no-location",
   },
   shouldReviewHighDuplicates: vi.fn().mockReturnValue({ needsReview: false }),
+  shouldReviewHighEmptyRows: vi.fn().mockReturnValue({ needsReview: false }),
   checkQuotaForSheet: vi.fn().mockResolvedValue({ allowed: true }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
 }));

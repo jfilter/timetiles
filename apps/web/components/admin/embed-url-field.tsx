@@ -70,9 +70,6 @@ const styles = {
   hint: { fontSize: "11px", color: "#94a3b8", margin: "0" },
 };
 
-/** Duration to show "copied" feedback before resetting */
-const COPY_FEEDBACK_MS = 2000;
-
 export const EmbedUrlField: React.FC = () => {
   const t = useTranslations("Admin");
   const { id } = useDocumentInfo();
@@ -91,7 +88,7 @@ export const EmbedUrlField: React.FC = () => {
       try {
         await navigator.clipboard.writeText(iframeCode);
         setCopied(true);
-        setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
+        setTimeout(() => setCopied(false), 2000);
       } catch {
         // Clipboard API may fail in non-HTTPS contexts — select the textarea as fallback
         const textarea = document.querySelector<HTMLTextAreaElement>("textarea[readonly]");
@@ -126,5 +123,3 @@ export const EmbedUrlField: React.FC = () => {
     </div>
   );
 };
-
-export default EmbedUrlField;

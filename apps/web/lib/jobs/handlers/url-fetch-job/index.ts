@@ -117,6 +117,7 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
       skipDuplicateChecking: scheduledIngest?.advancedOptions?.skipDuplicateChecking ?? false,
       autoApproveSchema: scheduledIngest?.advancedOptions?.autoApproveSchema ?? false,
       schemaMode: scheduledIngest?.schemaMode ?? undefined,
+      reviewChecks: scheduledIngest?.advancedOptions?.reviewChecks ?? undefined,
     },
   };
 

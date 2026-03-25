@@ -120,6 +120,7 @@ export const detectSuggestedMappings = (
       descriptionPath: detectFieldFromHeaders(headers, "description", langCode),
       locationNamePath: detectFieldFromHeaders(headers, "locationName", langCode),
       timestampPath: detectFieldFromHeaders(headers, "timestamp", langCode),
+      endTimestampPath: { path: null, confidence: 0, confidenceLevel: "none" },
       latitudePath: detectFieldFromHeaders(headers, "latitude", langCode),
       longitudePath: detectFieldFromHeaders(headers, "longitude", langCode),
       locationPath: detectFieldFromHeaders(headers, "location", langCode),

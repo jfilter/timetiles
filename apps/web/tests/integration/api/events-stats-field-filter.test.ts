@@ -72,7 +72,8 @@ describe.sequential("/api/v1/events stats - deeply nested field filtering", () =
         data: {
           uniqueId: `stats-field-filter-berlin-${i + 1}`,
           dataset: berlinDatasetId,
-          originalData: { title: `Berlin Stats Event ${i + 1}`, venue: { address: { city: "Berlin" } } },
+          sourceData: { title: `Berlin Stats Event ${i + 1}`, venue: { address: { city: "Berlin" } } },
+          transformedData: { title: `Berlin Stats Event ${i + 1}`, venue: { address: { city: "Berlin" } } },
           location,
           eventTimestamp: new Date(2024, 2, 10 + i).toISOString(),
         },
@@ -88,7 +89,8 @@ describe.sequential("/api/v1/events stats - deeply nested field filtering", () =
         data: {
           uniqueId: `stats-field-filter-paris-${i + 1}`,
           dataset: parisDatasetId,
-          originalData: { title: `Paris Stats Event ${i + 1}`, venue: { address: { city: "Paris" } } },
+          sourceData: { title: `Paris Stats Event ${i + 1}`, venue: { address: { city: "Paris" } } },
+          transformedData: { title: `Paris Stats Event ${i + 1}`, venue: { address: { city: "Paris" } } },
           location,
           eventTimestamp: new Date(2024, 3, 10 + i).toISOString(),
         },

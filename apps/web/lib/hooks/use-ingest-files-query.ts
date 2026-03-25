@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { IngestFile } from "@/payload-types";
 
-import { QUERY_PRESETS } from "./query-presets";
+import { createActivePollingInterval, QUERY_PRESETS } from "./query-presets";
 
 export const ingestFileKeys = { all: ["ingest-files"] as const };
 
@@ -26,11 +26,8 @@ export const useIngestFilesQuery = (initialData?: IngestFile[]) =>
     queryFn: () => fetchCollectionDocs<IngestFile>("/api/ingest-files?sort=-createdAt&limit=200"),
     initialData,
     ...QUERY_PRESETS.standard,
-    // eslint-disable-next-line sonarjs/function-return-type -- React Query refetchInterval API requires false | number
-    refetchInterval: (query) => {
-      const docs = query.state.data;
-      if (!docs?.length) return false;
-      const hasActive = docs.some((d) => !TERMINAL_STATUSES.has(d.status ?? ""));
-      return hasActive ? POLL_INTERVAL : false;
-    },
+    refetchInterval: createActivePollingInterval<IngestFile>(
+      (d) => !TERMINAL_STATUSES.has(d.status ?? ""),
+      POLL_INTERVAL
+    ),
   });

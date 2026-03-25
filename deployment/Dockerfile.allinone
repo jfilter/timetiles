@@ -104,17 +104,18 @@ RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-
 FROM base AS production
 
 # Patch OS vulnerabilities, remove build-time packages and vulnerable caches
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+# --fix-missing: Ubuntu mirror CDN can serve a package index referencing .deb files
+# already removed from the server, causing transient 404s during upgrade.
+# Skipped packages are caught by the Trivy security scan in CI.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends --fix-missing \
     && apt-get remove -y --purge curl gnupg && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /root/.cache/node /usr/lib/node_modules/npm
 
 WORKDIR /app
 
-# Copy standalone output from builder
-COPY --from=builder --chown=nextjs:nodejs /build/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /build/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /build/apps/web/public ./apps/web/public
+# Copy full built project (non-standalone — works for both next start and payload CLI)
+COPY --from=builder --chown=nextjs:nodejs /build ./
 
 # Create directories for data, certbot, and supervisor logs
 RUN mkdir -p /data/postgresql /data/uploads /data/ssl /var/www/certbot /var/log/supervisor \

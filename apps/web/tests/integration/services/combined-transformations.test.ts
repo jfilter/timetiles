@@ -109,8 +109,10 @@ describe.sequential("Combined Transformations Integration", () => {
   };
 
   const getEventData = (event: Event): Record<string, unknown> => {
-    return typeof event.originalData === "object" && event.originalData !== null && !Array.isArray(event.originalData)
-      ? (event.originalData as Record<string, unknown>)
+    return typeof event.transformedData === "object" &&
+      event.transformedData !== null &&
+      !Array.isArray(event.transformedData)
+      ? (event.transformedData as Record<string, unknown>)
       : {};
   };
 
@@ -213,19 +215,19 @@ describe.sequential("Combined Transformations Integration", () => {
     expect(firstEventData.datum).toBe("2024-01-15"); // Papa Parse converted DD.MM.YYYY to YYYY-MM-DD
 
     // Verify all three events
-    expect(events.docs[0].originalData).toMatchObject({
+    expect(events.docs[0].transformedData).toMatchObject({
       titel: "Technische Konferenz",
       Teilnehmer_Anzahl: 150,
       beschreibung: "Eine wichtige Konferenz über Technologie",
     });
 
-    expect(events.docs[1].originalData).toMatchObject({
+    expect(events.docs[1].transformedData).toMatchObject({
       titel: "Musik Festival",
       Teilnehmer_Anzahl: 2500,
       beschreibung: "Großes Open-Air Musikfestival",
     });
 
-    expect(events.docs[2].originalData).toMatchObject({
+    expect(events.docs[2].transformedData).toMatchObject({
       titel: "Wissenschaftssymposium",
       Teilnehmer_Anzahl: 75,
       beschreibung: "Akademische Diskussionsrunde",
@@ -269,9 +271,9 @@ describe.sequential("Combined Transformations Integration", () => {
     });
 
     // Create CSV with original field name "attendee_count"
-    const csvContent = `event_name,attendee_count,description
-Conference,150,Technical conference
-Festival,2500,Music festival`;
+    const csvContent = `event_name,attendee_count,description,date,location
+Conference,150,Technical conference,2024-01-15,Berlin
+Festival,2500,Music festival,2024-02-20,Munich`;
 
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, Buffer.from(csvContent), {
       user: approverUser.id,
@@ -334,9 +336,9 @@ Festival,2500,Music festival`;
       idStrategy: { type: "auto" },
     });
 
-    const csvContent = `event_name,description,date
-Konferenz,Technical event,2024-01-15
-Workshop,Learning session,2024-02-20`;
+    const csvContent = `event_name,description,date,location
+Konferenz,Technical event,2024-01-15,Berlin
+Workshop,Learning session,2024-02-20,Munich`;
 
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, Buffer.from(csvContent), {
       user: approverUser.id,
@@ -384,9 +386,9 @@ Workshop,Learning session,2024-02-20`;
       idStrategy: { type: "auto" },
     });
 
-    const csvContent = `name,count,description
-Event A,100,First event
-Event B,200,Second event`;
+    const csvContent = `name,count,description,date,location
+Event A,100,First event,2024-01-15,Berlin
+Event B,200,Second event,2024-02-20,Munich`;
 
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, Buffer.from(csvContent), {
       user: approverUser.id,

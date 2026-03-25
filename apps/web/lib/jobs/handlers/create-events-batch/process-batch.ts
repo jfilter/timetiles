@@ -78,6 +78,7 @@ const buildBulkEventFromRow = (
 
   const eventData = createEventData(
     transformedRow,
+    row,
     dataset,
     ingestJobId,
     ctx.job,

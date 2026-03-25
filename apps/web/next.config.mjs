@@ -31,7 +31,7 @@ const nextConfig = {
   experimental: {
     // Optimize barrel file imports for faster builds and smaller bundles
     // See: https://vercel.com/blog/how-we-optimized-package-imports-in-next-js
-    optimizePackageImports: ["lucide-react", "@xyflow/react", "@timetiles/ui", "@tanstack/react-query", "date-fns"],
+    optimizePackageImports: ["lucide-react", "@xyflow/react", "@tanstack/react-query", "date-fns"],
     // Enable native View Transitions API for smooth page transitions
     viewTransition: true,
   },
@@ -40,9 +40,6 @@ const nextConfig = {
     // Use production tsconfig that excludes test files during build
     tsconfigPath: isProduction ? "./tsconfig.build.json" : "./tsconfig.json",
   },
-  // Enable standalone output for Docker deployments
-  // This reduces the image size significantly
-  output: isProduction ? "standalone" : undefined,
 };
 
 export default withPayload(withNextIntl(nextConfig));

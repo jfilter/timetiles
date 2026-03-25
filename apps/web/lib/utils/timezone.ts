@@ -80,7 +80,7 @@ export const createTimezoneFormatter = (timezone: string): Intl.DateTimeFormat =
  * because it is already January 16 00:30 in Berlin.
  */
 export const getDatePartsInTimezone = (utcDate: Date, timezone: string): DateParts => {
-  return parseParts(createTimezoneFormatter(timezone), utcDate);
+  return getDatePartsWithFormatter(utcDate, createTimezoneFormatter(timezone));
 };
 
 /**

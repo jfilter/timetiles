@@ -104,7 +104,11 @@ export const triggerAutoImport = async (
     ...(catalogId != null ? { catalog: catalogId } : {}),
     ...(userId != null ? { user: userId } : {}),
     ...(targetDatasetId != null ? { targetDataset: targetDatasetId } : {}),
-    processingOptions: { autoApproveSchema: true, skipDuplicateChecking: false },
+    processingOptions: {
+      autoApproveSchema: true,
+      skipDuplicateChecking: false,
+      reviewChecks: scraper.reviewChecks ?? undefined,
+    },
   };
 
   // Create import file, queue detection, and mark as parsing

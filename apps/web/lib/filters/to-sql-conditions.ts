@@ -114,7 +114,7 @@ const buildFieldFilterConditions = (fieldFilters?: Record<string, string[]>): Sq
     // Defense-in-depth: re-validate even though sanitizeFieldFilters ran at construction
     if (!isValidFieldKey(fieldKey)) continue;
     conditions.push(
-      sql`(e.original_data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
+      sql`(e.transformed_data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
         values.map((value) => sql`${value}`),
         sql`, `
       )})`

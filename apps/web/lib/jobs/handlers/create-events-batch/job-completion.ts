@@ -60,7 +60,12 @@ export const markJobCompleted = async (
   cleanupSidecarFiles(filePath, sheetIndex);
 
   // Quota phase 3 of 3: authoritative usage tracking after events are created.
-  // See also: phase 1 (gate) in workflows/review-checks.ts, phase 2 (re-check) below in checkEventQuotaBeforeProcessing.
+  // Note: bulkInsertEvents uses raw Drizzle INSERT (bypasses Payload hooks), so the
+  // beforeChange quota check on events doesn't run for imports. Quota is enforced via
+  // a pre-check in review-checks.ts (phase 1 gate, before import starts), phase 2 re-check
+  // below in checkEventQuotaBeforeProcessing, and this post-increment (phase 3).
+  // There is a small TOCTOU window where concurrent imports by the same user could
+  // both pass the pre-check and overshoot the quota — accepted tradeoff for bulk perf.
   try {
     const ingestJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
 

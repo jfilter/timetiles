@@ -237,7 +237,7 @@ export class DataExportService {
         id: e.id,
         datasetId: requireRelationId(e.dataset, "event.dataset"),
         eventTimestamp: e.eventTimestamp,
-        originalData: e.originalData,
+        transformedData: e.transformedData,
         location: e.location ? { latitude: e.location.latitude, longitude: e.location.longitude } : null,
         geocodingStatus: (e.geocodingInfo as { status?: string } | null)?.status,
         validationStatus: e.validationStatus,

@@ -68,6 +68,22 @@ vi.mock("@/lib/collections/catalog-ownership", () => ({
   extractDenormalizedAccessFields: mocks.extractDenormalizedAccessFields,
 }));
 
+// Mock review checks — default: no review needed
+vi.mock("@/lib/jobs/workflows/review-checks", () => ({
+  REVIEW_REASONS: {
+    SCHEMA_DRIFT: "schema-drift",
+    QUOTA_EXCEEDED: "quota-exceeded",
+    HIGH_DUPLICATE_RATE: "high-duplicates",
+    GEOCODING_PARTIAL: "geocoding-partial",
+    HIGH_ROW_ERROR_RATE: "high-row-errors",
+    HIGH_EMPTY_ROW_RATE: "high-empty-rows",
+    NO_TIMESTAMP_DETECTED: "no-timestamp",
+    NO_LOCATION_DETECTED: "no-location",
+  },
+  shouldReviewHighRowErrors: vi.fn().mockReturnValue({ needsReview: false }),
+  setNeedsReview: vi.fn().mockResolvedValue(undefined),
+}));
+
 /** Get the events array from the Nth call to bulkInsertEvents (0-indexed). */
 const getBulkInsertedEvents = (callIndex = 0): unknown[] => {
   const call = mocks.bulkInsertEvents.mock.calls[callIndex] as [unknown, unknown[]];
@@ -225,7 +241,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // Verify result — workflow-compatible output format
-      expect(result).toEqual({ output: { eventCount: 2, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 2, duplicatesSkipped: 0 } });
 
       // Verify streaming was used
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith("/mock/ingest-files/test.csv", {
@@ -241,7 +257,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         expect.objectContaining({
           dataset: "dataset-456",
           uniqueId: "dataset-456:ext:1",
-          originalData: expect.objectContaining({ id: "1", title: "Event 1", address: "123 Main St" }),
+          transformedData: expect.objectContaining({ id: "1", title: "Event 1", address: "123 Main St" }),
         })
       );
 
@@ -284,7 +300,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // Job handler stores results; onSuccess callback sets stage to COMPLETED.
-      expect(result).toEqual({ output: { eventCount: 1, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 1, duplicatesSkipped: 0 } });
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "ingest-jobs",
@@ -345,6 +361,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       expect(result).toEqual({
         output: {
+          needsReview: false,
           eventCount: 1, // Only first row created
           duplicatesSkipped: 2, // Second and third rows skipped
         },
@@ -399,7 +416,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // Should indicate all batches processed
-      expect(result).toEqual({ output: { eventCount: 4, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 4, duplicatesSkipped: 0 } });
 
       // Should bulk-insert events in 2 batches (2 events each)
       expect(mocks.bulkInsertEvents).toHaveBeenCalledTimes(2);
@@ -564,7 +581,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const result = await createEventsBatchJob.handler(mockContext);
 
       // 4 created (bulk inserted), 0 skipped (no duplicates), 1 error — no double-counting
-      expect(result).toEqual({ output: { eventCount: 4, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 4, duplicatesSkipped: 0 } });
 
       // Uses updateAndCompleteBatch (combined progress + batch completion in a single DB write).
       // Single batch (batchNumber=1), so the final write after the loop fires.
@@ -623,7 +640,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       expect(drizzleMock.delete).toHaveBeenCalledTimes(2);
 
       // Verify the handler continued normally and produced a result
-      expect(result).toEqual({ output: { eventCount: 1, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 1, duplicatesSkipped: 0 } });
     });
   });
 
@@ -757,7 +774,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      expect(result).toEqual({ output: { eventCount: 0, duplicatesSkipped: 0 } });
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 0, duplicatesSkipped: 0 } });
 
       // Should store results (stage transition moved to onSuccess callback)
       expect(mockPayload.update).toHaveBeenCalledWith({
@@ -826,7 +843,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: "25" }),
+          transformedData: expect.objectContaining({ age: "25" }),
           validationStatus: "pending",
           transformations: null,
         })
@@ -883,7 +900,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: 25 }),
+          transformedData: expect.objectContaining({ age: 25 }),
           validationStatus: "transformed",
           transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
         })
@@ -991,7 +1008,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: 25, active: true }),
+          transformedData: expect.objectContaining({ age: 25, active: true }),
           transformations: expect.arrayContaining([
             expect.objectContaining({ path: "age" }),
             expect.objectContaining({ path: "active" }),
@@ -1049,7 +1066,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: "25" }), // Still string
+          transformedData: expect.objectContaining({ age: "25" }), // Still string
           validationStatus: "pending",
         })
       );
@@ -1107,7 +1124,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          originalData: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
+          transformedData: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
           validationStatus: "transformed", // Marks as transformed (attempted)
           transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
         })

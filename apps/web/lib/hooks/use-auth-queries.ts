@@ -61,6 +61,7 @@ export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
     queryKey: authKeys.currentUser,
     queryFn: fetchCurrentUser,
     enabled: options?.enabled ?? true,
+    // Auth state must always be fresh — login/logout/token-expiry can change it at any time
     staleTime: 0,
   });
 };

@@ -10,6 +10,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchJson } from "../api/http-error";
+import { QUERY_PRESETS } from "./query-presets";
 
 export interface CatalogWithDatasets {
   id: number;
@@ -28,4 +29,5 @@ export const catalogsQueryKeys = {
   withDatasets: () => [...catalogsQueryKeys.all, "with-datasets"] as const,
 };
 
-export const useCatalogsQuery = () => useQuery({ queryKey: catalogsQueryKeys.withDatasets(), queryFn: fetchCatalogs });
+export const useCatalogsQuery = () =>
+  useQuery({ queryKey: catalogsQueryKeys.withDatasets(), queryFn: fetchCatalogs, ...QUERY_PRESETS.stable });

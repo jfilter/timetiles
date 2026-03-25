@@ -73,6 +73,16 @@ setup() {
 }
 
 # =============================================================================
+# Worker Containers
+# =============================================================================
+
+@test "payload CLI bin.js is accessible for workers" {
+    skip_if_services_not_running
+    run $DC_CMD exec -T web node -e "require('fs').accessSync('/app/node_modules/.pnpm/node_modules/payload/bin.js')"
+    [ "$status" -eq 0 ]
+}
+
+# =============================================================================
 # Scraper Runner Integration
 # =============================================================================
 

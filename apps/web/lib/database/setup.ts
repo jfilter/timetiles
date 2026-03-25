@@ -168,7 +168,6 @@ export const runMigrations = (connectionString: string): void => {
 
     const env = { ...process.env, DATABASE_URL: connectionString };
 
-    // eslint-disable-next-line sonarjs/os-command -- Safe migration execution
     execSync(`pnpm payload migrate`, { env, stdio: "inherit" });
 
     logger.info("Migrations completed successfully");
@@ -251,7 +250,6 @@ const shouldSkipSetup = async (
   verbose: boolean
 ): Promise<boolean> => {
   const exists = await databaseExists(dbName);
-  logger.info({ dbName, exists, skipIfExists, dropIfExists }, "shouldSkipSetup check");
 
   if (exists && skipIfExists && !dropIfExists) {
     logVerbose(verbose, `Database ${dbName} already exists, skipping setup`);

@@ -1331,6 +1331,9 @@ export const datasets = db_schema.table(
     fieldMappingOverrides_timestampPath: varchar(
       "field_mapping_overrides_timestamp_path",
     ),
+    fieldMappingOverrides_endTimestampPath: varchar(
+      "field_mapping_overrides_end_timestamp_path",
+    ),
     fieldMappingOverrides_latitudePath: varchar(
       "field_mapping_overrides_latitude_path",
     ),
@@ -1565,6 +1568,9 @@ export const _datasets_v = db_schema.table(
     ),
     version_fieldMappingOverrides_timestampPath: varchar(
       "version_field_mapping_overrides_timestamp_path",
+    ),
+    version_fieldMappingOverrides_endTimestampPath: varchar(
+      "version_field_mapping_overrides_end_timestamp_path",
     ),
     version_fieldMappingOverrides_latitudePath: varchar(
       "version_field_mapping_overrides_latitude_path",
@@ -1809,6 +1815,9 @@ export const dataset_schemas = db_schema.table(
       "field_mappings_location_name_path",
     ),
     fieldMappings_timestampPath: varchar("field_mappings_timestamp_path"),
+    fieldMappings_endTimestampPath: varchar(
+      "field_mappings_end_timestamp_path",
+    ),
     updatedAt: timestamp("updated_at", {
       mode: "string",
       withTimezone: true,
@@ -2028,6 +2037,9 @@ export const _dataset_schemas_v = db_schema.table(
     ),
     version_fieldMappings_timestampPath: varchar(
       "version_field_mappings_timestamp_path",
+    ),
+    version_fieldMappings_endTimestampPath: varchar(
+      "version_field_mappings_end_timestamp_path",
     ),
     version_updatedAt: timestamp("version_updated_at", {
       mode: "string",
@@ -2466,6 +2478,9 @@ export const ingest_jobs = db_schema.table(
     detectedFieldMappings_timestampPath: varchar(
       "detected_field_mappings_timestamp_path",
     ),
+    detectedFieldMappings_endTimestampPath: varchar(
+      "detected_field_mappings_end_timestamp_path",
+    ),
     detectedFieldMappings_latitudePath: varchar(
       "detected_field_mappings_latitude_path",
     ),
@@ -2641,6 +2656,9 @@ export const _ingest_jobs_v = db_schema.table(
     ),
     version_detectedFieldMappings_timestampPath: varchar(
       "version_detected_field_mappings_timestamp_path",
+    ),
+    version_detectedFieldMappings_endTimestampPath: varchar(
+      "version_detected_field_mappings_end_timestamp_path",
     ),
     version_detectedFieldMappings_latitudePath: varchar(
       "version_detected_field_mappings_latitude_path",
@@ -2964,6 +2982,40 @@ export const scheduled_ingests = db_schema.table(
       "advanced_options_json_api_config_pagination_max_pages",
       { mode: "number" },
     ).default(50),
+    advancedOptions_reviewChecks_skipTimestampCheck: boolean(
+      "advanced_options_review_checks_skip_timestamp_check",
+    ).default(false),
+    advancedOptions_reviewChecks_skipLocationCheck: boolean(
+      "advanced_options_review_checks_skip_location_check",
+    ).default(false),
+    advancedOptions_reviewChecks_skipEmptyRowCheck: boolean(
+      "advanced_options_review_checks_skip_empty_row_check",
+    ).default(false),
+    advancedOptions_reviewChecks_skipRowErrorCheck: boolean(
+      "advanced_options_review_checks_skip_row_error_check",
+    ).default(false),
+    advancedOptions_reviewChecks_skipDuplicateRateCheck: boolean(
+      "advanced_options_review_checks_skip_duplicate_rate_check",
+    ).default(false),
+    advancedOptions_reviewChecks_skipGeocodingCheck: boolean(
+      "advanced_options_review_checks_skip_geocoding_check",
+    ).default(false),
+    advancedOptions_reviewChecks_emptyRowThreshold: numeric(
+      "advanced_options_review_checks_empty_row_threshold",
+      { mode: "number" },
+    ),
+    advancedOptions_reviewChecks_rowErrorThreshold: numeric(
+      "advanced_options_review_checks_row_error_threshold",
+      { mode: "number" },
+    ),
+    advancedOptions_reviewChecks_duplicateRateThreshold: numeric(
+      "advanced_options_review_checks_duplicate_rate_threshold",
+      { mode: "number" },
+    ),
+    advancedOptions_reviewChecks_geocodingFailureThreshold: numeric(
+      "advanced_options_review_checks_geocoding_failure_threshold",
+      { mode: "number" },
+    ),
     lastRun: timestamp("last_run", {
       mode: "string",
       withTimezone: true,
@@ -3223,6 +3275,40 @@ export const _scheduled_ingests_v = db_schema.table(
       "version_advanced_options_json_api_config_pagination_max_pages",
       { mode: "number" },
     ).default(50),
+    version_advancedOptions_reviewChecks_skipTimestampCheck: boolean(
+      "version_advanced_options_review_checks_skip_timestamp_check",
+    ).default(false),
+    version_advancedOptions_reviewChecks_skipLocationCheck: boolean(
+      "version_advanced_options_review_checks_skip_location_check",
+    ).default(false),
+    version_advancedOptions_reviewChecks_skipEmptyRowCheck: boolean(
+      "version_advanced_options_review_checks_skip_empty_row_check",
+    ).default(false),
+    version_advancedOptions_reviewChecks_skipRowErrorCheck: boolean(
+      "version_advanced_options_review_checks_skip_row_error_check",
+    ).default(false),
+    version_advancedOptions_reviewChecks_skipDuplicateRateCheck: boolean(
+      "version_advanced_options_review_checks_skip_duplicate_rate_check",
+    ).default(false),
+    version_advancedOptions_reviewChecks_skipGeocodingCheck: boolean(
+      "version_advanced_options_review_checks_skip_geocoding_check",
+    ).default(false),
+    version_advancedOptions_reviewChecks_emptyRowThreshold: numeric(
+      "version_advanced_options_review_checks_empty_row_threshold",
+      { mode: "number" },
+    ),
+    version_advancedOptions_reviewChecks_rowErrorThreshold: numeric(
+      "version_advanced_options_review_checks_row_error_threshold",
+      { mode: "number" },
+    ),
+    version_advancedOptions_reviewChecks_duplicateRateThreshold: numeric(
+      "version_advanced_options_review_checks_duplicate_rate_threshold",
+      { mode: "number" },
+    ),
+    version_advancedOptions_reviewChecks_geocodingFailureThreshold: numeric(
+      "version_advanced_options_review_checks_geocoding_failure_threshold",
+      { mode: "number" },
+    ),
     version_lastRun: timestamp("version_last_run", {
       mode: "string",
       withTimezone: true,
@@ -3413,6 +3499,40 @@ export const scrapers = db_schema.table(
       onDelete: "set null",
     }),
     autoImport: boolean("auto_import").default(false),
+    reviewChecks_skipTimestampCheck: boolean(
+      "review_checks_skip_timestamp_check",
+    ).default(false),
+    reviewChecks_skipLocationCheck: boolean(
+      "review_checks_skip_location_check",
+    ).default(false),
+    reviewChecks_skipEmptyRowCheck: boolean(
+      "review_checks_skip_empty_row_check",
+    ).default(false),
+    reviewChecks_skipRowErrorCheck: boolean(
+      "review_checks_skip_row_error_check",
+    ).default(false),
+    reviewChecks_skipDuplicateRateCheck: boolean(
+      "review_checks_skip_duplicate_rate_check",
+    ).default(false),
+    reviewChecks_skipGeocodingCheck: boolean(
+      "review_checks_skip_geocoding_check",
+    ).default(false),
+    reviewChecks_emptyRowThreshold: numeric(
+      "review_checks_empty_row_threshold",
+      { mode: "number" },
+    ),
+    reviewChecks_rowErrorThreshold: numeric(
+      "review_checks_row_error_threshold",
+      { mode: "number" },
+    ),
+    reviewChecks_duplicateRateThreshold: numeric(
+      "review_checks_duplicate_rate_threshold",
+      { mode: "number" },
+    ),
+    reviewChecks_geocodingFailureThreshold: numeric(
+      "review_checks_geocoding_failure_threshold",
+      { mode: "number" },
+    ),
     lastRunAt: timestamp("last_run_at", {
       mode: "string",
       withTimezone: true,
@@ -3532,7 +3652,8 @@ export const events = db_schema.table(
     ingestJob: integer("ingest_job_id").references((): AnyPgColumn => ingest_jobs.id, {
       onDelete: "set null",
     }),
-    originalData: jsonb("original_data"),
+    sourceData: jsonb("source_data"),
+    transformedData: jsonb("transformed_data"),
     location_latitude: numeric("location_latitude", { mode: "number" }),
     location_longitude: numeric("location_longitude", { mode: "number" }),
     coordinateSource_type: enum_events_coordinate_source_type(
@@ -3561,6 +3682,11 @@ export const events = db_schema.table(
         "coordinate_source_validation_status",
       ),
     eventTimestamp: timestamp("event_timestamp", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    eventEndTimestamp: timestamp("event_end_timestamp", {
       mode: "string",
       withTimezone: true,
       precision: 3,
@@ -3628,6 +3754,7 @@ export const events = db_schema.table(
       columns.eventTimestamp,
     ),
     index("eventTimestamp_idx").on(columns.eventTimestamp),
+    index("eventEndTimestamp_idx").on(columns.eventEndTimestamp),
     index("uniqueId_idx").on(columns.uniqueId),
     index("dataset_contentHash_idx").on(columns.dataset, columns.contentHash),
     index("ingestJob_ingestBatch_idx").on(
@@ -3663,7 +3790,8 @@ export const _events_v = db_schema.table(
         onDelete: "set null",
       },
     ),
-    version_originalData: jsonb("version_original_data"),
+    version_sourceData: jsonb("version_source_data"),
+    version_transformedData: jsonb("version_transformed_data"),
     version_location_latitude: numeric("version_location_latitude", {
       mode: "number",
     }),
@@ -3698,6 +3826,11 @@ export const _events_v = db_schema.table(
         "version_coordinate_source_validation_status",
       ),
     version_eventTimestamp: timestamp("version_event_timestamp", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    version_eventEndTimestamp: timestamp("version_event_end_timestamp", {
       mode: "string",
       withTimezone: true,
       precision: 3,
@@ -3817,6 +3950,9 @@ export const _events_v = db_schema.table(
       columns.version_eventTimestamp,
     ),
     index("version_eventTimestamp_idx").on(columns.version_eventTimestamp),
+    index("version_eventEndTimestamp_idx").on(
+      columns.version_eventEndTimestamp,
+    ),
     index("version_uniqueId_idx").on(columns.version_uniqueId),
     index("version_dataset_version_contentHash_idx").on(
       columns.version_dataset,
