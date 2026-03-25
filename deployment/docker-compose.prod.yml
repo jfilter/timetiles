@@ -152,8 +152,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command:
-      ["node", "node_modules/.pnpm/node_modules/.bin/payload", "jobs:run", "--cron", "*/1 * * * *", "--queue", "ingest", "--limit", "50"]
+    command: ["node_modules/.bin/payload", "jobs:run", "--cron", "*/1 * * * *", "--queue", "ingest", "--limit", "50"]
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
@@ -193,7 +192,7 @@ services:
     command:
       [
         "node",
-        "node_modules/.pnpm/node_modules/.bin/payload",
+        "node_modules/.bin/payload",
         "jobs:run",
         "--cron",
         "*/1 * * * *",
@@ -242,7 +241,7 @@ services:
     command:
       [
         "node",
-        "node_modules/.pnpm/node_modules/.bin/payload",
+        "node_modules/.bin/payload",
         "jobs:run",
         "--cron",
         "*/5 * * * *",
