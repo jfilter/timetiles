@@ -91,9 +91,9 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${CONTAINER_PORT:-3000}
 
-      # Logging
+      # Logging (all containers write to /var/log/timetiles/ via shared volume)
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      LOG_FILE: ${LOG_FILE:-}
+      LOG_FILE: /var/log/timetiles/web.log
 
       # File uploads
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
@@ -116,7 +116,6 @@ services:
     volumes:
       # Persist uploaded files on host for easy backup/restore
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
-      # Persistent log files (optional, set LOG_FILE=/var/log/timetiles/web.log to enable)
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
       # Application config (optional — all values have defaults)
       - ${CONFIG_DIR:-./config}:/app/apps/web/config:ro
@@ -171,6 +170,7 @@ services:
       NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE: /var/log/timetiles/worker-ingest.log
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
       SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
@@ -221,6 +221,7 @@ services:
       NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE: /var/log/timetiles/worker-general.log
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
       SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
