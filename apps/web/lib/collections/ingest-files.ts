@@ -31,14 +31,7 @@ import type { User } from "@/payload-types";
 import { createRequestLogger } from "../logger";
 import { createQuotaService } from "../services/quota-service";
 import { getClientIdentifier, getRateLimitService } from "../services/rate-limit-service";
-import {
-  createCommonConfig,
-  createOwnershipAccess,
-  denyPendingDeletion,
-  isAuthenticated,
-  isEditorOrAdmin,
-  isPrivileged,
-} from "./shared-fields";
+import { createCommonConfig, createOwnershipAccess, isEditorOrAdmin, isPrivileged } from "./shared-fields";
 
 const logger = createRequestLogger("ingest-files");
 
