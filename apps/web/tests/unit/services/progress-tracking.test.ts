@@ -408,4 +408,340 @@ describe.sequential("ProgressTrackingService", () => {
       expect(createEventsStage.rowsTotal).toBe(800);
     });
   });
+
+  describe("updateAndCompleteBatch", () => {
+    it("should combine update and batch completion in a single write", async () => {
+      const startTime = new Date(Date.now() - 10000).toISOString();
+      const mockJob = {
+        id: 123,
+        progress: {
+          stages: {
+            [PROCESSING_STAGE.CREATE_EVENTS]: {
+              status: "in_progress",
+              startedAt: startTime,
+              completedAt: null,
+              rowsProcessed: 0,
+              rowsTotal: 100,
+              batchesProcessed: 0,
+              batchesTotal: 10,
+              currentBatchRows: 50,
+              currentBatchTotal: 100,
+              rowsPerSecond: null,
+              estimatedSecondsRemaining: null,
+            },
+          },
+        },
+      } as unknown as IngestJob;
+
+      await ProgressTrackingService.updateAndCompleteBatch(mockPayload, mockJob, PROCESSING_STAGE.CREATE_EVENTS, 50, 1);
+
+      const updateCall = mockPayload.update.mock.calls[0][0];
+      const stage = updateCall.data.progress.stages[PROCESSING_STAGE.CREATE_EVENTS];
+
+      expect(stage.rowsProcessed).toBe(50);
+      expect(stage.currentBatchRows).toBe(0); // Reset after batch
+      expect(stage.batchesProcessed).toBe(1);
+      expect(stage.rowsPerSecond).toBeGreaterThan(0);
+    });
+
+    it("should re-fetch when stage is missing from passed job", async () => {
+      const startTime = new Date(Date.now() - 5000).toISOString();
+      const mockJob = {
+        id: 123,
+        progress: { stages: {} }, // Missing stage data
+      } as unknown as IngestJob;
+
+      const freshJob = {
+        id: 123,
+        progress: {
+          stages: {
+            [PROCESSING_STAGE.CREATE_EVENTS]: {
+              status: "in_progress",
+              startedAt: startTime,
+              completedAt: null,
+              rowsProcessed: 0,
+              rowsTotal: 100,
+              batchesProcessed: 0,
+              batchesTotal: 10,
+              currentBatchRows: 0,
+              currentBatchTotal: 100,
+              rowsPerSecond: null,
+              estimatedSecondsRemaining: null,
+            },
+          },
+        },
+      } as unknown as IngestJob;
+
+      mockPayload.findByID.mockResolvedValueOnce(freshJob);
+
+      await ProgressTrackingService.updateAndCompleteBatch(mockPayload, mockJob, PROCESSING_STAGE.CREATE_EVENTS, 25, 1);
+
+      expect(mockPayload.findByID).toHaveBeenCalledTimes(1);
+      expect(mockPayload.update).toHaveBeenCalled();
+    });
+
+    it("should throw when stage is not initialized even after re-fetch", async () => {
+      const mockJob = { id: 123, progress: { stages: {} } } as unknown as IngestJob;
+
+      const freshJob = {
+        id: 123,
+        progress: { stages: {} }, // Still missing
+      } as unknown as IngestJob;
+
+      mockPayload.findByID.mockResolvedValueOnce(freshJob);
+
+      await expect(
+        ProgressTrackingService.updateAndCompleteBatch(mockPayload, mockJob, PROCESSING_STAGE.CREATE_EVENTS, 25, 1)
+      ).rejects.toThrow("Stage create-events not initialized");
+    });
+  });
+
+  describe("updateStageProgress edge cases", () => {
+    it("should re-fetch when stage is missing from passed job", async () => {
+      const startTime = new Date(Date.now() - 5000).toISOString();
+      const mockJob = { id: 123, progress: { stages: {} } } as unknown as IngestJob;
+
+      const freshJob = {
+        id: 123,
+        progress: {
+          stages: {
+            [PROCESSING_STAGE.GEOCODE_BATCH]: {
+              status: "in_progress",
+              startedAt: startTime,
+              completedAt: null,
+              rowsProcessed: 0,
+              rowsTotal: 100,
+              batchesProcessed: 0,
+              batchesTotal: 10,
+              currentBatchRows: 0,
+              currentBatchTotal: 10,
+              rowsPerSecond: null,
+              estimatedSecondsRemaining: null,
+            },
+          },
+        },
+      } as unknown as IngestJob;
+
+      mockPayload.findByID.mockResolvedValueOnce(freshJob);
+
+      await ProgressTrackingService.updateStageProgress(mockPayload, mockJob, PROCESSING_STAGE.GEOCODE_BATCH, 50, 10);
+
+      expect(mockPayload.findByID).toHaveBeenCalledTimes(1);
+    });
+
+    it("should throw when stage is not found after re-fetch", async () => {
+      const mockJob = { id: 123, progress: { stages: {} } } as unknown as IngestJob;
+
+      mockPayload.findByID.mockResolvedValueOnce({ id: 123, progress: { stages: {} } });
+
+      await expect(
+        ProgressTrackingService.updateStageProgress(mockPayload, mockJob, PROCESSING_STAGE.GEOCODE_BATCH, 50, 10)
+      ).rejects.toThrow("Stage geocode-batch not initialized");
+    });
+  });
+
+  describe("completeBatch edge cases", () => {
+    it("should re-fetch when stage is missing from passed job", async () => {
+      const mockJob = { id: 123, progress: { stages: {} } } as unknown as IngestJob;
+
+      const freshJob = {
+        id: 123,
+        progress: {
+          stages: {
+            [PROCESSING_STAGE.CREATE_EVENTS]: {
+              status: "in_progress",
+              startedAt: new Date().toISOString(),
+              completedAt: null,
+              rowsProcessed: 50,
+              rowsTotal: 100,
+              batchesProcessed: 0,
+              batchesTotal: 10,
+              currentBatchRows: 50,
+              currentBatchTotal: 100,
+              rowsPerSecond: 10,
+              estimatedSecondsRemaining: 5,
+            },
+          },
+        },
+      } as unknown as IngestJob;
+
+      mockPayload.findByID.mockResolvedValueOnce(freshJob);
+
+      await ProgressTrackingService.completeBatch(mockPayload, mockJob, PROCESSING_STAGE.CREATE_EVENTS, 1);
+
+      expect(mockPayload.findByID).toHaveBeenCalledTimes(1);
+    });
+
+    it("should throw when stage is not found after re-fetch", async () => {
+      const mockJob = { id: 123, progress: { stages: {} } } as unknown as IngestJob;
+      mockPayload.findByID.mockResolvedValueOnce({ id: 123, progress: { stages: {} } });
+
+      await expect(
+        ProgressTrackingService.completeBatch(mockPayload, mockJob, PROCESSING_STAGE.CREATE_EVENTS, 1)
+      ).rejects.toThrow("Stage create-events not initialized");
+    });
+  });
+
+  describe("deserializeDate edge cases", () => {
+    it("should handle number date values in stage progress", async () => {
+      const numericTimestamp = Date.now();
+      const mockJob = {
+        progress: {
+          stages: {
+            [PROCESSING_STAGE.DETECT_SCHEMA]: {
+              status: "in_progress",
+              startedAt: numericTimestamp,
+              completedAt: null,
+              rowsProcessed: 0,
+              rowsTotal: 100,
+              batchesProcessed: 0,
+              batchesTotal: 1,
+              currentBatchRows: 0,
+              currentBatchTotal: 100,
+              rowsPerSecond: null,
+              estimatedSecondsRemaining: null,
+            },
+          },
+        },
+      } as unknown as IngestJob;
+
+      mockPayload.findByID.mockResolvedValue(mockJob);
+
+      // startStage calls deserializeStages internally
+      await ProgressTrackingService.startStage(mockPayload, 123, PROCESSING_STAGE.DETECT_SCHEMA, 800);
+
+      expect(mockPayload.update).toHaveBeenCalled();
+    });
+
+    it("should handle non-standard date values gracefully", async () => {
+      const mockJob = {
+        progress: {
+          stages: {
+            [PROCESSING_STAGE.VALIDATE_SCHEMA]: {
+              status: "in_progress",
+              startedAt: "null", // String "null" should be handled
+              completedAt: "", // Empty string
+              rowsProcessed: 100,
+              rowsTotal: 100,
+              batchesProcessed: 1,
+              batchesTotal: 1,
+              currentBatchRows: 0,
+              currentBatchTotal: 100,
+              rowsPerSecond: 10,
+              estimatedSecondsRemaining: 0,
+            },
+          },
+        },
+      } as unknown as IngestJob;
+
+      mockPayload.findByID.mockResolvedValue(mockJob);
+
+      await ProgressTrackingService.completeStage(mockPayload, 123, PROCESSING_STAGE.VALIDATE_SCHEMA);
+
+      expect(mockPayload.update).toHaveBeenCalled();
+      const updateCall = mockPayload.update.mock.calls[0][0];
+      const stage = updateCall.data.progress.stages[PROCESSING_STAGE.VALIDATE_SCHEMA];
+      expect(stage.status).toBe("completed");
+    });
+  });
+
+  describe("estimateCompletionTime", () => {
+    it("should return null when no valid estimate exists", () => {
+      const stages = {
+        [PROCESSING_STAGE.ANALYZE_DUPLICATES]: {
+          status: "pending" as const,
+          startedAt: null,
+          completedAt: null,
+          rowsProcessed: 0,
+          rowsTotal: 1000,
+          batchesProcessed: 0,
+          batchesTotal: 1,
+          currentBatchRows: 0,
+          currentBatchTotal: 1000,
+          rowsPerSecond: null,
+          estimatedSecondsRemaining: null,
+        },
+      };
+
+      // Only pending stages, no valid estimates -> hasValidEstimate is false
+      const result = ProgressTrackingService.estimateCompletionTime(stages);
+      expect(result).toBeNull();
+    });
+
+    it("should return valid date when in-progress stage has estimate", () => {
+      const stages = {
+        [PROCESSING_STAGE.ANALYZE_DUPLICATES]: {
+          status: "completed" as const,
+          startedAt: new Date(),
+          completedAt: new Date(),
+          rowsProcessed: 1000,
+          rowsTotal: 1000,
+          batchesProcessed: 1,
+          batchesTotal: 1,
+          currentBatchRows: 0,
+          currentBatchTotal: 1000,
+          rowsPerSecond: null,
+          estimatedSecondsRemaining: null,
+        },
+        [PROCESSING_STAGE.DETECT_SCHEMA]: {
+          status: "in_progress" as const,
+          startedAt: new Date(),
+          completedAt: null,
+          rowsProcessed: 500,
+          rowsTotal: 1000,
+          batchesProcessed: 5,
+          batchesTotal: 10,
+          currentBatchRows: 50,
+          currentBatchTotal: 100,
+          rowsPerSecond: 100,
+          estimatedSecondsRemaining: 5,
+        },
+      };
+
+      const result = ProgressTrackingService.estimateCompletionTime(stages);
+      expect(result).toBeInstanceOf(Date);
+      expect(result!.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it("should handle NaN and Infinity in estimates", () => {
+      const stages = {
+        [PROCESSING_STAGE.DETECT_SCHEMA]: {
+          status: "in_progress" as const,
+          startedAt: new Date(),
+          completedAt: null,
+          rowsProcessed: 500,
+          rowsTotal: 1000,
+          batchesProcessed: 5,
+          batchesTotal: 10,
+          currentBatchRows: 50,
+          currentBatchTotal: 100,
+          rowsPerSecond: 100,
+          estimatedSecondsRemaining: NaN,
+        },
+      };
+
+      const result = ProgressTrackingService.estimateCompletionTime(stages);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("completeStage error", () => {
+    it("should throw when stage not initialized", async () => {
+      mockPayload.findByID.mockResolvedValue({ progress: { stages: {} } });
+
+      await expect(
+        ProgressTrackingService.completeStage(mockPayload, 123, PROCESSING_STAGE.VALIDATE_SCHEMA)
+      ).rejects.toThrow("Stage validate-schema not initialized");
+    });
+  });
+
+  describe("skipStage error", () => {
+    it("should throw when stage not initialized", async () => {
+      mockPayload.findByID.mockResolvedValue({ progress: { stages: {} } });
+
+      await expect(ProgressTrackingService.skipStage(mockPayload, 123, PROCESSING_STAGE.GEOCODE_BATCH)).rejects.toThrow(
+        "Stage geocode-batch not initialized"
+      );
+    });
+  });
 });

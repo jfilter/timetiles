@@ -334,4 +334,49 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       );
     });
   });
+
+  describe("onFail Callback", () => {
+    it("should mark ingest job as failed with string error", async () => {
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        job: { error: "Schema version creation failed" },
+      };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await createSchemaVersionJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: "import-999",
+        data: {
+          stage: "failed",
+          errorLog: { lastError: "Schema version creation failed", context: "create-schema-version" },
+        },
+      });
+    });
+
+    it("should skip when ingestJobId is not a string or number", async () => {
+      await createSchemaVersionJob.onFail({
+        input: { ingestJobId: undefined },
+        req: { payload: mockPayload },
+        job: { error: "error" },
+      } as any);
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+
+    it("should not throw when update fails in onFail", async () => {
+      mockPayload.update.mockRejectedValueOnce(new Error("DB error"));
+
+      await expect(
+        createSchemaVersionJob.onFail({
+          input: { ingestJobId: 123 },
+          req: { payload: mockPayload },
+          job: { error: "error" },
+        } as any)
+      ).resolves.not.toThrow();
+    });
+  });
 });

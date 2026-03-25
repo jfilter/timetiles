@@ -602,3 +602,306 @@ describe("date-parse timezone and outputFormat handling", () => {
     expect(result.date).toBe("2024-03-15");
   });
 });
+
+describe("date-parse edge cases", () => {
+  it("should skip date-parse when value is not a string", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "YYYY-MM-DD",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ date: 12345 }, transforms);
+    expect(result.date).toBe(12345);
+  });
+
+  it("should skip date-parse when value is undefined", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "YYYY-MM-DD",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ other: "value" }, transforms);
+    expect(result).not.toHaveProperty("date");
+  });
+
+  it("should keep original value when date parsing throws", () => {
+    // Use an input that will cause an exception in Date constructor
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "DD/MM/YYYY",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+        timezone: "Invalid/Timezone",
+      },
+    ];
+    const result = applyTransforms({ date: "15/03/2024" }, transforms);
+    // Should keep original since timezone parsing throws
+    expect(result.date).toBe("15/03/2024");
+  });
+
+  it("should reject invalid dates like month 13", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "DD/MM/YYYY",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ date: "15/13/2024" }, transforms);
+    // Invalid month 13 should be rejected
+    expect(result.date).toBe("15/13/2024");
+  });
+
+  it("should handle NaN in date parts", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "DD/MM/YYYY",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ date: "abc/03/2024" }, transforms);
+    // NaN part should cause rejection, keep original
+    expect(result.date).toBe("abc/03/2024");
+  });
+
+  it("should leave already-formatted ISO dates unchanged when no timezone", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "date-parse",
+        from: "date",
+        inputFormat: "YYYY-MM-DD",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    // Input is already in YYYY-MM-DD, output format is also YYYY-MM-DD, no timezone
+    // The ISO_DATE_ONLY_REGEX check should keep it unchanged
+    const result = applyTransforms({ date: "2024-03-15" }, transforms);
+    expect(result.date).toBe("2024-03-15");
+  });
+});
+
+describe("string-op edge cases", () => {
+  it("should keep value unchanged when replace has no pattern", () => {
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "string-op", from: "title", operation: "replace", active: true, autoDetected: false },
+    ];
+    const result = applyTransforms({ title: "hello" }, transforms);
+    expect(result.title).toBe("hello");
+  });
+
+  it("should replace with empty string when no replacement specified", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "title",
+        operation: "replace",
+        pattern: "-",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ title: "hello-world" }, transforms);
+    expect(result.title).toBe("helloworld");
+  });
+
+  it("should keep value unchanged for expression without expression string", () => {
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "string-op", from: "title", operation: "expression", active: true, autoDetected: false },
+    ];
+    const result = applyTransforms({ title: "hello" }, transforms);
+    expect(result.title).toBe("hello");
+  });
+
+  it("should return string result from expression that returns string", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "title",
+        operation: "expression",
+        expression: "upper(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ title: "hello" }, transforms);
+    expect(result.title).toBe("HELLO");
+  });
+});
+
+describe("concatenate edge cases", () => {
+  it("should stringify numbers and booleans in concatenation", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "concatenate",
+        fromFields: ["name", "age", "active"],
+        separator: "|",
+        to: "combined",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ name: "John", age: 30, active: true }, transforms);
+    expect(result.combined).toBe("John|30|true");
+  });
+
+  it("should skip object values in concatenation to avoid [object Object]", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "concatenate",
+        fromFields: ["name", "nested"],
+        separator: " ",
+        to: "combined",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ name: "John", nested: { key: "val" } }, transforms);
+    expect(result.combined).toBe("John");
+  });
+
+  it("should not set target field when all source fields are missing", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "concatenate",
+        fromFields: ["missing1", "missing2"],
+        separator: " ",
+        to: "combined",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ other: "value" }, transforms);
+    expect(result).not.toHaveProperty("combined");
+  });
+});
+
+describe("parseDate and parseBool expressions", () => {
+  it("should parse valid date string via parseDate expression", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "date",
+        operation: "expression",
+        expression: "parseDate(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ date: "2024-03-15" }, transforms);
+    expect(result.date).toMatch(/^2024-03-15T/);
+  });
+
+  it("should keep original on invalid date via parseDate expression", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "date",
+        operation: "expression",
+        expression: "parseDate(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ date: "not-a-date" }, transforms);
+    expect(result.date).toBe("not-a-date");
+  });
+
+  it("should parse 'yes' as true via parseBool expression", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "active",
+        operation: "expression",
+        expression: "parseBool(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ active: "yes" }, transforms);
+    expect(result.active).toBe(true);
+  });
+
+  it("should parse 'no' as false via parseBool expression", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "active",
+        operation: "expression",
+        expression: "parseBool(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ active: "no" }, transforms);
+    expect(result.active).toBe(false);
+  });
+
+  it("should keep original on invalid boolean via parseBool expression", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "active",
+        operation: "expression",
+        expression: "parseBool(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ active: "maybe" }, transforms);
+    expect(result.active).toBe("maybe");
+  });
+
+  it("should parse '1' as true and '0' as false via parseBool", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "val",
+        operation: "expression",
+        expression: "parseBool(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    expect(applyTransforms({ val: "1" }, transforms).val).toBe(true);
+    expect(applyTransforms({ val: "0" }, transforms).val).toBe(false);
+  });
+});

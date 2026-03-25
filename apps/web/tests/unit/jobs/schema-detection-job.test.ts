@@ -626,4 +626,100 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       expect(mocks.ProgressiveSchemaBuilder).toHaveBeenCalledWith(undefined);
     });
   });
+
+  describe("onFail Callback", () => {
+    it("should mark ingest job as failed with string error", async () => {
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        job: { error: "Schema detection failed" },
+      };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await schemaDetectionJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: "import-999",
+        data: { stage: "failed", errorLog: { lastError: "Schema detection failed", context: "schema-detection" } },
+      });
+    });
+
+    it("should use fallback message when job.error is not a string", async () => {
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        job: { error: { obj: true } },
+      };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await schemaDetectionJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            errorLog: { lastError: "Task failed after all retries", context: "schema-detection" },
+          }),
+        })
+      );
+    });
+
+    it("should skip when ingestJobId is missing", async () => {
+      await schemaDetectionJob.onFail({ input: {}, req: { payload: mockPayload }, job: { error: "error" } } as any);
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+
+    it("should not throw when update fails", async () => {
+      mockPayload.update.mockRejectedValueOnce(new Error("DB error"));
+
+      await expect(
+        schemaDetectionJob.onFail({
+          input: { ingestJobId: 123 },
+          req: { payload: mockPayload },
+          job: { error: "error" },
+        } as any)
+      ).resolves.not.toThrow();
+    });
+  });
+
+  describe("Review checks in schema detection", () => {
+    it("should trigger needsReview for high empty row rate", async () => {
+      const { shouldReviewHighEmptyRows } = await import("@/lib/jobs/workflows/review-checks");
+      (shouldReviewHighEmptyRows as any).mockReturnValueOnce({ needsReview: true, emptyRate: 0.9 });
+
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
+
+      // All rows are empty (all values null/blank)
+      const mockFileData = [
+        { id: "", title: "", date: "" },
+        { id: "", title: "", date: "" },
+        { id: "", title: "", date: "" },
+      ];
+
+      const mockSchema = { type: "object", properties: {} };
+      const mockState = { fieldStats: {}, recordCount: 0 };
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+      mockSchemaBuilderInstance.processBatch.mockResolvedValue(undefined);
+      mockSchemaBuilderInstance.getSchema.mockResolvedValue(mockSchema);
+      mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
+      mocks.startStage.mockResolvedValue(undefined);
+      mocks.updateStageProgress.mockResolvedValue(undefined);
+      mocks.completeBatch.mockResolvedValue(undefined);
+
+      const result = await schemaDetectionJob.handler(mockContext);
+
+      expect(result).toEqual(expect.objectContaining({ output: expect.objectContaining({ needsReview: true }) }));
+    });
+  });
 });

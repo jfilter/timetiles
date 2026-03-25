@@ -481,4 +481,85 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(result.output).toEqual({ geocoded: 50, failed: 0, skipped: 0, uniqueLocations: 50 });
     });
   });
+
+  describe("onFail Callback", () => {
+    it("should mark ingest job as failed with string error", async () => {
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        job: { error: "Geocoding task failed" },
+      };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await geocodeBatchJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: "import-999",
+        data: { stage: "failed", errorLog: { lastError: "Geocoding task failed", context: "geocode-batch" } },
+      });
+    });
+
+    it("should use fallback message when job.error is not a string", async () => {
+      const mockArgs = { input: { ingestJobId: "import-999" }, req: { payload: mockPayload }, job: { error: null } };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await geocodeBatchJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            errorLog: { lastError: "Task failed after all retries", context: "geocode-batch" },
+          }),
+        })
+      );
+    });
+
+    it("should skip when ingestJobId is missing", async () => {
+      const mockArgs = { input: {}, req: { payload: mockPayload }, job: { error: "error" } };
+
+      await geocodeBatchJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+
+    it("should not throw when update fails", async () => {
+      const mockArgs = { input: { ingestJobId: 123 }, req: { payload: mockPayload }, job: { error: "error" } };
+
+      mockPayload.update.mockRejectedValueOnce(new Error("DB error"));
+
+      await expect(geocodeBatchJob.onFail(mockArgs as any)).resolves.not.toThrow();
+    });
+  });
+
+  describe("Review checks", () => {
+    it("should trigger needsReview when geocoding partial failure is high", async () => {
+      const { shouldReviewGeocodingPartial } = await import("@/lib/jobs/workflows/review-checks");
+      (shouldReviewGeocodingPartial as any).mockReturnValueOnce({ needsReview: true, failRate: 0.6 });
+
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+
+      mockStreamBatches([
+        { id: "1", address: "Valid Address" },
+        { id: "2", address: "Invalid Address" },
+      ]);
+
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+
+      mocks.geocode
+        .mockResolvedValueOnce({
+          latitude: 40.7128,
+          longitude: -74.006,
+          confidence: 0.9,
+          normalizedAddress: "Valid Address, NY",
+        })
+        .mockRejectedValueOnce(new Error("Not found"));
+
+      const result = await geocodeBatchJob.handler(mockContext);
+
+      expect(result.output).toEqual(expect.objectContaining({ needsReview: true, geocoded: 1, failed: 1 }));
+    });
+  });
 });

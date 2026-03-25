@@ -316,5 +316,28 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       const updateCall = mockPayload.update.mock.calls[0]?.[0];
       expect(updateCall.data.executionHistory).toHaveLength(10);
     });
+
+    it("should skip reset when an active Payload job exists for the ingest", async () => {
+      const stuckImport = {
+        id: "import-1",
+        name: "Still Running Import",
+        lastStatus: "running",
+        lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+        executionHistory: [],
+        statistics: {},
+      };
+
+      // First find: scheduled ingests. Second find: hasActivePayloadJob returns docs.
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 })
+        .mockResolvedValueOnce({ docs: [{ id: "active-job" }], totalDocs: 1 }); // Active job found
+
+      const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      // Should not update (active job detected)
+      expect(mockPayload.update).not.toHaveBeenCalled();
+      // stuckCount should be 0 because it was skipped before incrementing
+      expect(result.output.resetCount).toBe(0);
+    });
   });
 });

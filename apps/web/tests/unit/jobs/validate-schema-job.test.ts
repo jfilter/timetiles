@@ -809,4 +809,42 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       );
     });
   });
+
+  describe("onFail Callback", () => {
+    it("should mark ingest job as failed with string error", async () => {
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        job: { error: "Validation failed" },
+      };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await validateSchemaJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: "import-999",
+        data: { stage: "failed", errorLog: { lastError: "Validation failed", context: "validate-schema" } },
+      });
+    });
+
+    it("should skip when ingestJobId is missing", async () => {
+      await validateSchemaJob.onFail({ input: {}, req: { payload: mockPayload }, job: { error: "error" } } as any);
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+
+    it("should not throw when update fails", async () => {
+      mockPayload.update.mockRejectedValueOnce(new Error("DB error"));
+
+      await expect(
+        validateSchemaJob.onFail({
+          input: { ingestJobId: 123 },
+          req: { payload: mockPayload },
+          job: { error: "error" },
+        } as any)
+      ).resolves.not.toThrow();
+    });
+  });
 });

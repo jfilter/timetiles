@@ -31,12 +31,18 @@ const createMockReadStream = (content: string): Readable => {
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
-  const fsMock = { existsSync: vi.fn(), readFileSync: vi.fn(), unlinkSync: vi.fn(), createReadStream: vi.fn() };
+  const fsMock = {
+    existsSync: vi.fn(),
+    readFileSync: vi.fn(),
+    unlinkSync: vi.fn(),
+    createReadStream: vi.fn(),
+    writeFileSync: vi.fn(),
+  };
   return { fs: fsMock };
 });
 
 // Mock external dependencies
-vi.mock("fs", () => ({ default: mocks.fs, promises: { readFile: vi.fn() } }));
+vi.mock("fs", () => ({ ...mocks.fs, default: mocks.fs, promises: { readFile: vi.fn() } }));
 
 // Mock app-config to prevent loadFromYaml from using the mocked fs
 vi.mock("@/lib/config/app-config", () => ({
@@ -735,6 +741,108 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       mocks.fs.existsSync.mockReturnValue(false);
 
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Cannot access file");
+    });
+  });
+
+  describe("onFail Callback", () => {
+    it("should update ingest file status to failed with string error", async () => {
+      const mockArgs = {
+        input: { ingestFileId: "file-123" },
+        req: { payload: mockPayload },
+        job: { error: "Some failure reason" },
+      };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await datasetDetectionJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-files",
+        id: "file-123",
+        data: { status: "failed", errorLog: "Some failure reason" },
+      });
+    });
+
+    it("should use fallback message when job.error is not a string", async () => {
+      const mockArgs = { input: { ingestFileId: "file-123" }, req: { payload: mockPayload }, job: { error: 42 } };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await datasetDetectionJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ errorLog: "Task failed after all retries" }) })
+      );
+    });
+
+    it("should skip when ingestFileId is not a string or number", async () => {
+      const mockArgs = { input: { ingestFileId: undefined }, req: { payload: mockPayload }, job: { error: "error" } };
+
+      await datasetDetectionJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+
+    it("should not throw when update fails in onFail", async () => {
+      const mockArgs = { input: { ingestFileId: "file-123" }, req: { payload: mockPayload }, job: { error: "error" } };
+
+      mockPayload.update.mockRejectedValueOnce(new Error("DB error"));
+
+      await expect(datasetDetectionJob.onFail(mockArgs as any)).resolves.not.toThrow();
+    });
+
+    it("should handle numeric ingestFileId", async () => {
+      const mockArgs = { input: { ingestFileId: 123 }, req: { payload: mockPayload }, job: { error: "error message" } };
+
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await datasetDetectionJob.onFail(mockArgs as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-files",
+        id: 123,
+        data: { status: "failed", errorLog: "error message" },
+      });
+    });
+  });
+
+  describe("JSON file handling", () => {
+    it("should convert JSON file to CSV before processing", async () => {
+      const mockIngestFile = {
+        id: 123,
+        filename: "test.json",
+        filePath: "/tmp/test.json",
+        catalog: 456,
+        originalName: "test.json",
+      };
+
+      const mockCatalog = { id: 456, name: "Test Catalog" };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(mockCatalog);
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockResolvedValue({ id: "test-id" });
+
+      // Mock JSON content
+      const jsonContent = JSON.stringify([
+        { id: 1, name: "Event 1" },
+        { id: 2, name: "Event 2" },
+      ]);
+      mocks.fs.readFileSync.mockReturnValue(jsonContent);
+
+      // Mock the CSV streaming after conversion
+      const csvContent = "id,name\n1,Event 1\n2,Event 2";
+      mocks.fs.createReadStream.mockImplementation(() => createMockReadStream(csvContent));
+
+      await datasetDetectionJob.handler(mockContext);
+
+      // Should have updated the ingest-file with CSV filename
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "ingest-files",
+          id: "ingest-file-123",
+          data: expect.objectContaining({ filename: expect.stringContaining(".csv"), mimeType: "text/csv" }),
+        })
+      );
     });
   });
 });
