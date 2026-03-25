@@ -16,7 +16,7 @@ mkdir -p /var/www/certbot
 
 # Set directory ownership
 chown -R postgres:postgres /data/postgresql
-chown -R nextjs:nextjs /data/uploads
+chown -R nextjs:nodejs /data/uploads
 
 # ── Security: require secrets to be explicitly set ──────────────────────────
 # DB_PASSWORD (or POSTGRES_PASSWORD) must be provided — no fallback
