@@ -1,7 +1,7 @@
 "use client";
 
 /* oxlint-disable complexity */
-/* eslint-disable sonarjs/max-lines-per-function, @typescript-eslint/no-misused-promises */
+/* eslint-disable @typescript-eslint/no-misused-promises */
 
 /**
  * Compact newsletter subscription form with cartographic aesthetics.
@@ -24,7 +24,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import * as React from "react";
 
 import { useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
-import { NewsletterButtonContent, NewsletterStatusIndicator } from "./newsletter-shared";
+import { NewsletterEmailInput, NewsletterStatusMessage, NewsletterSubmitButton } from "./newsletter-shared";
 
 export interface NewsletterFormProps {
   /** Optional headline text */
@@ -94,65 +94,17 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="relative">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={placeholder}
-                disabled={status === "loading" || status === "success"}
-                className={cn(
-                  "h-11 w-full rounded-sm border px-4 py-2",
-                  "border-border dark:border-border",
-                  "bg-background/50 backdrop-blur-sm",
-                  "text-foreground font-mono text-sm",
-                  "placeholder:text-muted-foreground placeholder:font-sans",
-                  "transition-all duration-200",
-                  "focus:border-primary focus:ring-primary/20 focus:ring-2 focus:outline-none",
-                  "disabled:cursor-not-allowed disabled:opacity-50",
-                  status === "success" && "border-accent"
-                )}
-                required
-              />
-              <NewsletterStatusIndicator status={status} size="sm" />
-            </div>
-
-            <button
-              type="submit"
-              disabled={status === "loading" || status === "success"}
-              className={cn(
-                "group relative h-11 w-full overflow-hidden rounded-sm",
-                "bg-primary text-primary-foreground",
-                "font-sans text-sm font-medium tracking-wide",
-                "transition-all duration-300",
-                "hover:bg-primary/90 hover:shadow-lg",
-                "focus:ring-primary focus:ring-2 focus:ring-offset-2 focus:outline-none",
-                "disabled:cursor-not-allowed disabled:opacity-50",
-                "active:scale-[0.98]",
-                status === "success" && "bg-accent hover:bg-accent/90"
-              )}
-            >
-              <span className="relative z-10">
-                <NewsletterButtonContent status={status} buttonText={buttonText} />
-              </span>
-
-              {/* Hover effect - coordinate line sweep */}
-              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-            </button>
+            <NewsletterEmailInput
+              email={email}
+              onEmailChange={setEmail}
+              status={status}
+              placeholder={placeholder}
+              size="sm"
+            />
+            <NewsletterSubmitButton status={status} buttonText={buttonText} size="sm" />
           </form>
 
-          {/* Status message */}
-          {message && (
-            <p
-              className={cn(
-                "animate-fade-in mt-3 font-mono text-xs tracking-wide",
-                status === "success" && "text-accent dark:text-accent",
-                status === "error" && "text-destructive"
-              )}
-            >
-              {message}
-            </p>
-          )}
+          <NewsletterStatusMessage status={status} message={message} />
         </div>
       </div>
     );
