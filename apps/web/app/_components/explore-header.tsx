@@ -7,7 +7,7 @@
 "use client";
 
 import { ArrowLeft, Filter } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import React, { useEffect, useState } from "react";
 
 import { ViewToggle } from "@/app/[locale]/(frontend)/explore/_components/view-toggle";
@@ -33,6 +33,7 @@ export interface ExploreNavigationProps {
 const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps, "currentView">) => {
   const t = useTranslations("Common");
   const tExplore = useTranslations("Explore");
+  const locale = useLocale();
   const { filters } = useFilters();
 
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
@@ -41,12 +42,9 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
 
   const { title } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
 
-  // Format event count as (visible/total)
   const totalEvents = totalEventsData?.total;
-  const eventCount =
-    mapStats == null || totalEvents == null
-      ? null
-      : `(${mapStats.visibleEvents.toLocaleString()}/${totalEvents.toLocaleString()})`;
+  const count = formatEventCount(mapStats?.visibleEvents, totalEvents, locale);
+  const eventCount = count != null ? `(${count})` : null;
 
   return (
     <div className="-mx-6 flex flex-1 items-center justify-between">
@@ -92,6 +90,7 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
 const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
   const t = useTranslations("Common");
   const tExplore = useTranslations("Explore");
+  const locale = useLocale();
   const { filters } = useFilters();
 
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
@@ -119,7 +118,7 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
   const { title, dateRange } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
   const totalEvents = totalEventsData?.total;
   const eventCount =
-    mapStats != null && totalEvents != null ? formatEventCount(mapStats.visibleEvents, totalEvents) : null;
+    mapStats != null && totalEvents != null ? formatEventCount(mapStats.visibleEvents, totalEvents, locale) : null;
 
   return (
     <div className="-mx-8 flex flex-1 items-center">
@@ -140,9 +139,9 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
         </div>
 
         {/* Centered stats */}
-        <div className="flex flex-1 items-center justify-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden whitespace-nowrap">
           {eventCount && <span className="text-primary dark:text-foreground font-mono text-xs">{eventCount}</span>}
-          {eventCount && mapBounds != null && <span className="text-primary/30 dark:text-foreground/30">·</span>}
+          {eventCount && mapBounds != null && <span className="text-primary/50 dark:text-foreground/50">·</span>}
           {mapBounds != null && (
             <span className="text-muted-foreground dark:text-foreground/50 font-mono text-xs">
               {formatCenterCoordinates(mapBounds)}

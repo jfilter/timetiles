@@ -34,17 +34,10 @@ export interface ReviewChecksConfig {
   geocodingFailureThreshold?: number | null;
 }
 
-/** Review reasons — extensible enum for different pause conditions. */
-export const REVIEW_REASONS = {
-  SCHEMA_DRIFT: "schema-drift",
-  QUOTA_EXCEEDED: "quota-exceeded",
-  HIGH_DUPLICATE_RATE: "high-duplicates",
-  GEOCODING_PARTIAL: "geocoding-partial",
-  HIGH_ROW_ERROR_RATE: "high-row-errors",
-  HIGH_EMPTY_ROW_RATE: "high-empty-rows",
-  NO_TIMESTAMP_DETECTED: "no-timestamp",
-  NO_LOCATION_DETECTED: "no-location",
-} as const;
+// Import + re-export from client-safe constants (avoids pulling server deps into client bundle)
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
+
+export { REVIEW_REASONS };
 
 /** Resume point constants for the ingest-process workflow. */
 const RESUME_DETECT_SCHEMA = "detect-schema";

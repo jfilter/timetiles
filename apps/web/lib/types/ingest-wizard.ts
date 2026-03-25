@@ -9,12 +9,12 @@
  * @category Types
  */
 
-import type { LanguageResult } from "@/lib/services/schema-detection";
+import type { LanguageResult } from "@/lib/services/schema-detection/types";
 
 import type { IngestTransform } from "./ingest-transforms";
 
 export type { IngestTransform } from "./ingest-transforms";
-export type { LanguageResult } from "@/lib/services/schema-detection";
+export type { LanguageResult } from "@/lib/services/schema-detection/types";
 
 /** Confidence level for a field mapping suggestion */
 export type ConfidenceLevel = "high" | "medium" | "low" | "none";

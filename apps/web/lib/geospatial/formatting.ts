@@ -7,6 +7,8 @@
  * @module
  * @category Geospatial
  */
+import { formatCompactNumber } from "@/lib/utils/format";
+
 import type { MapBounds } from "./types";
 
 const getCenterLongitude = (east: number, west: number): number => {
@@ -106,27 +108,32 @@ export const formatCenterCoordinates = (bounds: MapBounds, precision: number = 2
  * Format event count statistics.
  *
  * Creates a compact display of visible events vs total events.
+ * Numbers >= 1000 use compact notation (1.2k, 15k, 1.2M).
  *
  * @param visible - Number of visible events
  * @param total - Total number of events
+ * @param locale - Optional locale for decimal separator
  * @returns Formatted count string or null if data is invalid
  *
  * @example
  * ```ts
- * formatEventCount(327, 1240);
- * // "327 / 1,240"
+ * formatEventCount(15202, 20467);
+ * // "15k / 20k"
+ *
+ * formatEventCount(1500, 5000, "de");
+ * // "1,5k / 5k"
  *
  * formatEventCount(5, 5);
  * // "5 / 5"
- *
- * formatEventCount(undefined, undefined);
- * // null
  * ```
  */
-export const formatEventCount = (visible: number | undefined, total: number | undefined): string | null => {
+export const formatEventCount = (
+  visible: number | undefined,
+  total: number | undefined,
+  locale?: string
+): string | null => {
   if (visible == null || total == null || typeof visible !== "number" || typeof total !== "number") {
     return null;
   }
-  const formattedTotal = total.toLocaleString("en-US");
-  return `${visible} / ${formattedTotal}`;
+  return `${formatCompactNumber(visible, locale)} / ${formatCompactNumber(total, locale)}`;
 };

@@ -21,6 +21,27 @@ export const valueToString = (value: unknown): string => {
 };
 
 /**
+ * Format a number in compact notation (e.g. 1.2k, 15k, 1.2M).
+ * Numbers below 1000 are returned as-is. Uses locale-aware decimal separator.
+ *
+ * - Under 10k: one decimal place (1.2k / 1,2k)
+ * - 10k+: rounded (15k, 234k)
+ * - Under 10M: one decimal place (1.2M / 1,2M)
+ * - 10M+: rounded (15M, 234M)
+ */
+export const formatCompactNumber = (n: number, locale?: string): string => {
+  if (n < 1000) return String(n);
+
+  const formatDecimal = (value: number): string =>
+    value.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+
+  if (n < 10_000) return `${formatDecimal(n / 1000)}k`;
+  if (n < 1_000_000) return `${Math.round(n / 1000)}k`;
+  if (n < 10_000_000) return `${formatDecimal(n / 1_000_000)}M`;
+  return `${Math.round(n / 1_000_000)}M`;
+};
+
+/**
  * Format a byte count as a human-readable file size string.
  */
 export const formatFileSize = (bytes: number | null | undefined): string => {
