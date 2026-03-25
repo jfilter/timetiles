@@ -1,7 +1,6 @@
 "use client";
 
 /* oxlint-disable complexity */
-/* eslint-disable @typescript-eslint/no-misused-promises */
 
 /**
  * Compact newsletter subscription form with cartographic aesthetics.
@@ -23,8 +22,13 @@
 import { cn } from "@timetiles/ui/lib/utils";
 import * as React from "react";
 
-import { useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
-import { NewsletterEmailInput, NewsletterStatusMessage, NewsletterSubmitButton } from "./newsletter-shared";
+import { type NewsletterMessages, useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
+import {
+  type NewsletterButtonLabels,
+  NewsletterEmailInput,
+  NewsletterStatusMessage,
+  NewsletterSubmitButton,
+} from "./newsletter-shared";
 
 export interface NewsletterFormProps {
   /** Optional headline text */
@@ -33,12 +37,16 @@ export interface NewsletterFormProps {
   placeholder?: string;
   /** Submit button text */
   buttonText?: string;
+  /** Labels for button loading/success states */
+  buttonLabels?: NewsletterButtonLabels;
   /** Additional data to include in POST request */
   additionalData?: Record<string, unknown>;
   /** Additional CSS classes */
   className?: string;
-  /** Custom submission handler; delegates to this instead of built-in fetch when provided */
+  /** Custom submission handler; delegates to this instead of UIProvider when provided */
   onSubmit?: (email: string, additionalData?: Record<string, unknown>) => Promise<void>;
+  /** Message strings for success/error states (required for i18n) */
+  messages: NewsletterMessages;
 }
 
 const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
@@ -47,15 +55,18 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
       headline = "Stay Mapped In",
       placeholder = "your@email.address",
       buttonText = "Subscribe",
+      buttonLabels,
       additionalData,
       className,
       onSubmit,
+      messages,
     },
     ref
   ) => {
     const { email, setEmail, status, message, handleSubmit } = useNewsletterSubscription({
       resetDelay: 5000,
       additionalData,
+      messages,
       onSubmit,
     });
 
@@ -101,7 +112,7 @@ const NewsletterForm = React.forwardRef<HTMLDivElement, NewsletterFormProps>(
               placeholder={placeholder}
               size="sm"
             />
-            <NewsletterSubmitButton status={status} buttonText={buttonText} size="sm" />
+            <NewsletterSubmitButton status={status} buttonText={buttonText} labels={buttonLabels} size="sm" />
           </form>
 
           <NewsletterStatusMessage status={status} message={message} />

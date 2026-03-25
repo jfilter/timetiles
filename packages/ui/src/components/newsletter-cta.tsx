@@ -1,7 +1,7 @@
 "use client";
 
 /* oxlint-disable complexity */
-/* eslint-disable sonarjs/max-lines-per-function, @typescript-eslint/no-misused-promises */
+/* eslint-disable sonarjs/max-lines-per-function -- large presentational component with intentional decorative markup */
 
 /**
  * Large newsletter CTA section with immersive cartographic design.
@@ -25,8 +25,13 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
-import { NewsletterEmailInput, NewsletterStatusMessage, NewsletterSubmitButton } from "./newsletter-shared";
+import { type NewsletterMessages, useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
+import {
+  type NewsletterButtonLabels,
+  NewsletterEmailInput,
+  NewsletterStatusMessage,
+  NewsletterSubmitButton,
+} from "./newsletter-shared";
 
 const newsletterCtaVariants = cva("relative overflow-hidden", {
   variants: {
@@ -50,12 +55,16 @@ export interface NewsletterCTAProps extends VariantProps<typeof newsletterCtaVar
   placeholder?: string;
   /** Submit button text */
   buttonText?: string;
+  /** Labels for button loading/success states */
+  buttonLabels?: NewsletterButtonLabels;
   /** Additional data to include in POST request */
   additionalData?: Record<string, unknown>;
   /** Additional CSS classes */
   className?: string;
-  /** Custom submission handler; delegates to this instead of built-in fetch when provided */
+  /** Custom submission handler; delegates to this instead of UIProvider when provided */
   onSubmit?: (email: string, additionalData?: Record<string, unknown>) => Promise<void>;
+  /** Message strings for success/error states (required for i18n) */
+  messages: NewsletterMessages;
   /** Privacy/disclaimer text shown below the form */
   privacyNote?: string;
 }
@@ -69,9 +78,11 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
       description = "Join our community of explorers. Get curated event highlights, spatial insights, and new dataset releases delivered to your inbox.",
       placeholder = "your@email.address",
       buttonText = "Subscribe to Updates",
+      buttonLabels,
       additionalData,
       className,
       onSubmit,
+      messages,
       privacyNote = "No spam, ever. Unsubscribe anytime. We respect your privacy.",
     },
     ref
@@ -79,6 +90,7 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
     const { email, setEmail, status, message, handleSubmit } = useNewsletterSubscription({
       resetDelay: 8000,
       additionalData,
+      messages,
       onSubmit,
     });
 
@@ -164,7 +176,13 @@ const NewsletterCTA = React.forwardRef<HTMLElement, NewsletterCTAProps>(
                   placeholder={placeholder}
                   size="md"
                 />
-                <NewsletterSubmitButton status={status} buttonText={buttonText} showCheckIcon size="md" />
+                <NewsletterSubmitButton
+                  status={status}
+                  buttonText={buttonText}
+                  labels={buttonLabels}
+                  showCheckIcon
+                  size="md"
+                />
               </div>
 
               <NewsletterStatusMessage status={status} message={message} decorated />

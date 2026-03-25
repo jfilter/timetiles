@@ -4,7 +4,16 @@
  * @module
  * @category Blocks
  */
+import type { NewsletterMessages } from "@timetiles/ui";
+
 import { fetchJson } from "@/lib/api/http-error";
+
+/** Default newsletter messages — used by block renderer and footer until i18n keys are added. */
+export const NEWSLETTER_MESSAGES: NewsletterMessages = {
+  success: "Successfully subscribed!",
+  error: "Subscription failed. Please try again.",
+  networkError: "Network error. Please try again.",
+};
 
 /**
  * Submit a newsletter subscription request.

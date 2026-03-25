@@ -48,7 +48,7 @@ import {
 } from "@timetiles/ui";
 import React from "react";
 
-import { submitNewsletterSubscription } from "@/lib/blocks/newsletter";
+import { NEWSLETTER_MESSAGES, submitNewsletterSubscription } from "@/lib/blocks/newsletter";
 import type {
   Block,
   BlockRendererProps,
@@ -307,6 +307,7 @@ const renderNewsletterForm = (block: NewsletterFormBlock, key: string) => (
       headline={block.headline ?? undefined}
       placeholder={block.placeholder ?? undefined}
       buttonText={block.buttonText ?? undefined}
+      messages={NEWSLETTER_MESSAGES}
       onSubmit={submitNewsletterSubscription}
     />
   </div>
@@ -321,6 +322,7 @@ const renderNewsletterCTA = (block: NewsletterCTABlock, key: string) => (
     buttonText={block.buttonText ?? undefined}
     variant={block.variant ?? undefined}
     size={block.size ?? undefined}
+    messages={NEWSLETTER_MESSAGES}
     onSubmit={submitNewsletterSubscription}
   />
 );

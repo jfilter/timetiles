@@ -4,28 +4,36 @@
  * Shared newsletter subscription state machine.
  *
  * Handles email input, status transitions, and auto-reset with proper timer
- * cleanup. Accepts an optional `onSubmit` handler so the consuming app can
- * control how the subscription request is made. When `onSubmit` is omitted the
- * hook checks the UIProvider's `onNewsletterSubmit`, and finally falls back to
- * a built-in `fetch("/api/newsletter/subscribe")` call.
+ * cleanup. Requires an `onSubmit` handler (directly or via UIProvider) so
+ * the consuming app controls the API call and message strings.
  *
  * @module
  * @category Hooks
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useUIConfig } from "../provider";
 
 export type NewsletterStatus = "idle" | "loading" | "success" | "error";
 
+/** Message strings displayed after submission. Caller must supply these so the
+ *  UI package stays locale-agnostic. */
+export interface NewsletterMessages {
+  success: string;
+  error: string;
+  networkError: string;
+}
+
 interface UseNewsletterSubscriptionConfig {
   resetDelay?: number;
   additionalData?: Record<string, unknown>;
+  /** Message strings shown after submission (required — keeps UI package locale-agnostic). */
+  messages: NewsletterMessages;
   /**
    * Custom submission handler. When provided, the hook delegates to this
-   * function instead of the built-in fetch. The handler receives the email
-   * and optional additional data, and should throw on failure so the hook's
-   * error handling can display the message.
+   * function instead of the UIProvider's `onNewsletterSubmit`. The handler
+   * receives the email and optional additional data, and should throw on
+   * failure so the hook's error handling can display the message.
    */
   onSubmit?: (email: string, additionalData?: Record<string, unknown>) => Promise<void>;
 }
@@ -35,14 +43,15 @@ interface UseNewsletterSubscriptionReturn {
   setEmail: (email: string) => void;
   status: NewsletterStatus;
   message: string;
-  handleSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  handleSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void;
 }
 
 export const useNewsletterSubscription = ({
   resetDelay = 5000,
   additionalData,
+  messages,
   onSubmit,
-}: UseNewsletterSubscriptionConfig = {}): UseNewsletterSubscriptionReturn => {
+}: UseNewsletterSubscriptionConfig): UseNewsletterSubscriptionReturn => {
   const { onNewsletterSubmit } = useUIConfig();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<NewsletterStatus>("idle");
@@ -57,50 +66,50 @@ export const useNewsletterSubscription = ({
     };
   }, []);
 
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const scheduleReset = useCallback(
+    (delay: number) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        setStatus("idle");
+        setMessage("");
+      }, delay);
+    },
+    [setStatus, setMessage]
+  );
 
-    if (!email) return;
+  const handleSubmit = useCallback(
+    (e: React.SyntheticEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (!email) return;
 
-    setStatus("loading");
-    setMessage("");
+      setStatus("loading");
+      setMessage("");
 
-    try {
-      if (onSubmit) {
-        await onSubmit(email, additionalData);
-      } else if (onNewsletterSubmit) {
-        await onNewsletterSubmit(email, additionalData);
-      } else {
-        const response = await fetch("/api/newsletter/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, ...additionalData }),
-        });
-
-        const data = (await response.json()) as { error?: string };
-
-        if (!response.ok) {
-          throw new Error(data.error ?? "Subscription failed. Please try again.");
-        }
+      const submit = onSubmit ?? onNewsletterSubmit;
+      if (!submit) {
+        setStatus("error");
+        setMessage(messages.error);
+        scheduleReset(resetDelay);
+        return;
       }
 
-      setStatus("success");
-      setMessage("Successfully subscribed!");
-      setEmail("");
-    } catch (error) {
-      setStatus("error");
-      const errorMessage = error instanceof Error ? error.message : "Network error. Please try again.";
-      setMessage(errorMessage);
-    }
-
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => {
-      setStatus("idle");
-      setMessage("");
-    }, resetDelay);
-  };
+      void submit(email, additionalData).then(
+        () => {
+          setStatus("success");
+          setMessage(messages.success);
+          setEmail("");
+          scheduleReset(resetDelay);
+        },
+        (error: unknown) => {
+          setStatus("error");
+          const errorMessage = error instanceof Error ? error.message : messages.networkError;
+          setMessage(errorMessage);
+          scheduleReset(resetDelay);
+        }
+      );
+    },
+    [email, onSubmit, onNewsletterSubmit, additionalData, messages, resetDelay, scheduleReset]
+  );
 
   return { email, setEmail, status, message, handleSubmit };
 };

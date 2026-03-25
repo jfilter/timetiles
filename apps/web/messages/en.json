@@ -862,5 +862,12 @@
     "scheduledImportsDisabled": "Scheduled Imports Disabled",
     "scheduledImportsDisabledDescription": "Creating new scheduled imports is currently disabled by an administrator. Existing schedules can still be viewed and edited.",
     "privateVisibilityRestricted": "Private visibility is currently restricted. All new catalogs and datasets must be public. Contact an administrator to enable private content."
+  },
+  "Newsletter": {
+    "success": "Successfully subscribed!",
+    "error": "Subscription failed. Please try again.",
+    "networkError": "Network error. Please try again.",
+    "subscribing": "Subscribing...",
+    "subscribed": "Subscribed"
   }
 }
