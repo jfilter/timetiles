@@ -89,4 +89,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 
 # Start Next.js (non-standalone mode)
 WORKDIR /app/apps/web
-CMD ["node", "../../node_modules/.pnpm/node_modules/.bin/next", "start"]
+CMD ["node", "../../node_modules/.pnpm/node_modules/next/dist/bin/next", "start"]

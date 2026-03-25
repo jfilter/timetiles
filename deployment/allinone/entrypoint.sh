@@ -147,7 +147,7 @@ cat > /app/start-nextjs.sh << 'WRAPPER'
 set -a
 source /etc/timetiles.env
 set +a
-exec node apps/web/server.js
+cd /app/apps/web && exec node ../../node_modules/.pnpm/node_modules/next/dist/bin/next start
 WRAPPER
 chmod +x /app/start-nextjs.sh
 chown nextjs:nodejs /app/start-nextjs.sh
