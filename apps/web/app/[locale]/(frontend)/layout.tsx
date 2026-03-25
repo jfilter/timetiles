@@ -32,6 +32,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Inter, JetBrains_Mono, Playfair_Display, Space_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import Image from "next/image";
+import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { getPayload } from "payload";
@@ -194,24 +195,18 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <head>
-        {/* Blocking script to apply theme preset before paint — prevents font/color flash */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=localStorage.getItem("timetiles-theme-preset");if(p&&p!=="cartographic"){document.documentElement.classList.add("theme-"+p)}}catch(e){}})()`,
-          }}
-        />
-      </head>
+      <head />
       <body
         className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} ${fontInter.variable} ${fontJetBrains.variable} font-sans antialiased`}
         data-site={site?.slug ?? undefined}
+        suppressHydrationWarning
       >
-        {/* Apply theme class to body for font variable override (next/font sets vars on body) */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=localStorage.getItem("timetiles-theme-preset");if(p&&p!=="cartographic"){document.body.classList.add("theme-"+p)}}catch(e){}})()`,
-          }}
-        />
+        {/* Apply theme preset classes before paint to prevent FOUC.
+            Uses next/script beforeInteractive inside <body> as recommended for App Router. */}
+        <Script
+          id="theme-preset"
+          strategy="beforeInteractive"
+        >{`(function(){try{var p=localStorage.getItem("timetiles-theme-preset");if(p&&p!=="cartographic"){document.documentElement.classList.add("theme-"+p);document.body.classList.add("theme-"+p)}}catch(e){}})()`}</Script>
         {bodyStartHtmlContent && <div dangerouslySetInnerHTML={bodyStartHtmlContent} />}
         <NextIntlClientProvider messages={messages}>
           <Providers>
